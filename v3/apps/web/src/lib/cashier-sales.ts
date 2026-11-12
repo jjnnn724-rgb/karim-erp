@@ -36,10 +36,7 @@ const totalsSchema = z
         avg_day: numLike,
         avg_items: numLike,
         delta: numLike,
-        prev: z
-            .object({ collected: numLike, from: text, to: text, partial: z.unknown().optional() })
-            .passthrough()
-            .optional(),
+        prev: z.object({ collected: numLike, from: text, to: text, partial: z.unknown().optional() }).passthrough().optional(),
     })
     .passthrough();
 
@@ -111,11 +108,7 @@ export const cashierSalesSummarySchema = z
 
 export type CashierSalesSummary = z.infer<typeof cashierSalesSummarySchema>;
 
-export async function fetchCashierSales(
-    from: string,
-    to: string,
-    signal?: AbortSignal,
-): Promise<CashierSalesSummary> {
+export async function fetchCashierSales(from: string, to: string, signal?: AbortSignal): Promise<CashierSalesSummary> {
     const params = new URLSearchParams({ from, to });
     return fetchJson(
         cashierSalesSummarySchema,

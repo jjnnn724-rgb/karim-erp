@@ -11,6 +11,7 @@ import { isWriteRole, writeJson } from './write';
  *  • تسعير     POST /api/veg-requests/:id/price    (warehouse|admin|owner|manager)
  *  • تعديل     PUT  /api/veg-requests/:id/items    (sous_chef|admin|owner)
  *  • إلغاء     POST /api/veg-requests/:id/cancel   (READ_ROLES — gate server-side)
+ *  • طباعة     POST /api/veg-requests/:id/printed  (READ_ROLES — عدّاد فقط)
  *
  * حتى تُفعَّل هذه المسارات في الباك إند، تُعدّ الدوال جاهزة بنفس العقود.
  */
@@ -111,6 +112,13 @@ export async function cancelVegRequest(id: string | number, reason?: string): Pr
     return writeJson(vegResultSchema, `/api/veg-requests/${encodeURIComponent(String(id))}/cancel`, 'POST', {
         reason: reason?.trim() || null,
     });
+}
+
+/** عدّاد الطباعة — POST /:id/printed (:463) لكل أدوار القراءة؛ V2 يطلقه ولا ينتظره. */
+const vegPrintedSchema = z.object({ ok: z.boolean().optional(), print_count: z.coerce.number().optional() }).passthrough();
+
+export async function markVegPrinted(id: string | number): Promise<z.infer<typeof vegPrintedSchema>> {
+    return writeJson(vegPrintedSchema, `/api/veg-requests/${encodeURIComponent(String(id))}/printed`, 'POST');
 }
 
 /* ── الكتالوج ─────────────────────────────────────────────────────────── */

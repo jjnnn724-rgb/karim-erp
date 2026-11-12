@@ -1,6 +1,7 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ItemDossier } from '../components/ItemDossier';
+import { PrintActions } from '../components/PrintActions';
 import { KpiCard, RangeControls, ReportHeader, SectionCard } from '../components/Reports';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import {
@@ -13,17 +14,7 @@ import {
     type InquiryRow,
     saveDownload,
 } from '../lib/inventory-inquiry';
-import {
-    errorMessage,
-    intOf,
-    moneyOf,
-    presetRange,
-    qtyOf,
-    rangeProblem,
-    textOf,
-    todayIso,
-} from '../lib/reporting';
-import { PrintActions } from '../components/PrintActions';
+import { errorMessage, intOf, moneyOf, presetRange, qtyOf, rangeProblem, textOf, todayIso } from '../lib/reporting';
 
 /**
  * محرك استعلامات المخزون — قراءة فقط من `/api/inventory-inquiry`.

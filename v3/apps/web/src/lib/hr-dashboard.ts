@@ -100,19 +100,9 @@ export async function fetchHrSnapshot(signal?: AbortSignal): Promise<HrSnapshot>
     const names = ['دليل الموظفين', 'حضور الأسبوع', 'سلسلة اعتماد الإجازات', 'أقسام HR', 'وحدة المال'];
     const settled = await Promise.allSettled([
         fetchJson(employeeListSchema, '/api/employees?page=1&limit=1000&sort=id&order=asc', token, options),
-        fetchJson(
-            attendanceRangeSchema,
-            `/api/attendance/range?from=${from}&to=${today}&limit=5000`,
-            token,
-            options,
-        ),
+        fetchJson(attendanceRangeSchema, `/api/attendance/range?from=${from}&to=${today}&limit=5000`, token, options),
         fetchJson(leaveListSchema, '/api/hr/leave-workflow', token, options),
-        fetchJson(
-            departmentListSchema,
-            '/api/hrDepartments?page=1&limit=1000&sort=id&order=asc',
-            token,
-            options,
-        ),
+        fetchJson(departmentListSchema, '/api/hrDepartments?page=1&limit=1000&sort=id&order=asc', token, options),
         fetchJson(settingsSchema, '/api/settings/main_settings', token, options),
     ]);
     const failures: string[] = [];
@@ -122,8 +112,7 @@ export async function fetchHrSnapshot(signal?: AbortSignal): Promise<HrSnapshot>
             failures.push(`${names[index] ?? 'مصدر'}: ${reason}`);
         }
     });
-    const value = <T>(index: number, fallback: T): T =>
-        settled[index]?.status === 'fulfilled' ? (settled[index].value as T) : fallback;
+    const value = <T>(index: number, fallback: T): T => (settled[index]?.status === 'fulfilled' ? (settled[index].value as T) : fallback);
     return {
         employees: value<{ data: HrEmployee[] }>(0, { data: [] }).data,
         attendance: value<{ data: HrAttendance[] }>(1, { data: [] }).data,
@@ -150,7 +139,8 @@ export function buildHrKpis(snapshot: HrSnapshot): HrKpi[] {
     const todays = snapshot.attendance.filter((record) => String(record.date ?? '') === snapshot.today);
     const present = todays.filter((record) => Boolean(record.checkIn));
     const late = present.filter(
-        (record) => (record.lateMinutes !== null && record.lateMinutes !== undefined && num(record.lateMinutes) > 0) || record.late === true,
+        (record) =>
+            (record.lateMinutes !== null && record.lateMinutes !== undefined && num(record.lateMinutes) > 0) || record.late === true,
     );
     const pending = snapshot.leaves.filter((leave) => String(leave.status ?? '') === 'pending');
     const salaries = snapshot.employees.reduce((sum, employee) => sum + num(employee.salary), 0);
@@ -224,10 +214,7 @@ export function weeklyAttendance(attendance: HrAttendance[], today: string): { d
 }
 
 /** توزيع الموظفين على الأقسام — الأكواد المجهولة تبقى ظاهرة بكودها. */
-export function departmentDistribution(
-    employees: HrEmployee[],
-    departments: HrDepartmentLite[],
-): { label: string; value: number }[] {
+export function departmentDistribution(employees: HrEmployee[], departments: HrDepartmentLite[]): { label: string; value: number }[] {
     const names = new Map<string, string>();
     for (const department of departments) {
         const code = String(department.code ?? '');
@@ -241,9 +228,7 @@ export function departmentDistribution(
         const label = code ? (names.get(code) ?? code) : 'بدون قسم';
         counts.set(label, (counts.get(label) ?? 0) + 1);
     }
-    return [...counts.entries()]
-        .map(([label, value]) => ({ label, value }))
-        .sort((a, b) => b.value - a.value);
+    return [...counts.entries()].map(([label, value]) => ({ label, value })).sort((a, b) => b.value - a.value);
 }
 
 /** طلبات الإجازة المعلقة مع أسماء أصحابها — الأحدث أولًا كما وردت. */

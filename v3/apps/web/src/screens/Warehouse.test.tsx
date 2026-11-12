@@ -395,9 +395,7 @@ describe('المخزون — وارد سريع', () => {
     });
 
     it('يعرض خطأ الخادم داخل النموذج ويُبقيه مفتوحًا', async () => {
-        mocks.receiveInventoryItem.mockRejectedValueOnce(
-            new ApiError(500, 'MANUAL_RECEIPT_FAILED', 'تعذر تسجيل حركة الإضافة المخزنية'),
-        );
+        mocks.receiveInventoryItem.mockRejectedValueOnce(new ApiError(500, 'MANUAL_RECEIPT_FAILED', 'تعذر تسجيل حركة الإضافة المخزنية'));
         stubFetch();
         renderScreen();
         await waitFor(() => {
@@ -512,9 +510,7 @@ describe('المخزون — حذف وحذف نهائي', () => {
         await screen.findByText('حذف الصنف "باذنجان"؟');
         fireEvent.click(screen.getByRole('button', { name: 'تأكيد' }));
 
-        expect(
-            await screen.findByText((content) => content.includes('هل تريد الحذف النهائي مع كل حركاته وسجلاته؟')),
-        ).toBeTruthy();
+        expect(await screen.findByText((content) => content.includes('هل تريد الحذف النهائي مع كل حركاته وسجلاته؟'))).toBeTruthy();
         fireEvent.click(screen.getByRole('button', { name: 'تأكيد' }));
 
         await waitFor(() => {
@@ -558,9 +554,7 @@ describe('المخزون — دمج المكرر (أدمن)', () => {
         expect(screen.getByText('«باذنجان» — 2 نسخ')).toBeTruthy();
 
         fireEvent.click(screen.getByRole('button', { name: 'دمج في الصنف المحدد' }));
-        expect(
-            await screen.findByText((content) => content.includes('تأكيد الدمج: سيُنقل رصيد 1 صنفًا مكررًا')),
-        ).toBeTruthy();
+        expect(await screen.findByText((content) => content.includes('تأكيد الدمج: سيُنقل رصيد 1 صنفًا مكررًا'))).toBeTruthy();
         fireEvent.click(screen.getByRole('button', { name: 'تأكيد' }));
 
         await waitFor(() => {

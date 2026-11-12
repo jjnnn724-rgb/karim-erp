@@ -1,44 +1,42 @@
 /* ═══════════════════════════════════════════════════════════════════════
-   KARIM ERP — V2 IDENTITY · «ليل الياقوت»
+   KARIM ERP — V2 IDENTITY · «كحلٌ فولاذي»
    ═══════════════════════════════════════════════════════════════════════
    A new visual identity for V2 ONLY. Legacy keeps its own palette because
    this sheet is never linked there and every rule is scoped to `.erp-v2`
    (plus the V2-owned body-mounted layers and the preview body, which
    already carry the token scope).
 
-   THE IDEA (2026-11-06 — طلب المالك: بلا أخضر، هوية ملكية عالمية)
+   THE IDEA (2026-11-06 — طلب المالك: «اللون مش احترافي والديزاين فيه لخبطة»)
    ────────────────────────────────────────────────────────────────────────
-   A royal nocturnal identity: midnight indigo depth, parchment ivory,
-   champagne-gold jewellery. Not a flat "purple theme" — amethyst is a
-   *material* (polished lit stone in the dark, deep royal violet on
-   paper) and the warmth lives in the champagne, never in the action.
-     · AMETHYST IS THE ACTION in both themes: a deep royal fill carrying
-       ivory ink on paper, a luminous lit fill carrying night ink in the
-       dark. The CTA is a lit gemstone, never a flat block.
-     · THE SPINE IS MIDNIGHT INDIGO IN BOTH THEMES: a night-side column
-       (#0E1128) with ivory ink and a CHAMPAGNE PLAQUE for the active item
-       — the one place a user's location is written in metal.
-     · PARCHMENT LIGHT: #F6F1E6 canvas under warm-white cards (#FFFCF5).
-       Lightness is still the luxury; the paper is warm, never grey.
-     · MIDNIGHT ROYAL: #0B0D1F canvas, #151A32 surfaces, #1D243F raised —
-       elevation separates by a lit edge, never by mud.
-     · CHAMPAGNE is jewellery, never paint: focus ring, KPI chips, the rule
-       on the sign-in card, the flourish under the dashboard greeting, the
-       plaque line around the logo.
-     · Royal blue stays the data voice; the chart ramp is amethyst-led.
+   An institutional navy identity: one cold material, one green for good
+   news. The system must read as a single building — a screen may never
+   look like a collage of borrowed palettes.
+     · NAVY IS STRUCTURE in both themes: the spine (#101B2D) and the cover
+       band (#123255) are one family, so depth — not hue — carries rank.
+     · BRAND IS NAVY, NOT VIOLET: a solid #17335F plate with white ink
+       (12.54). The CTA is an institutional plate, never a lit gemstone.
+     · COOL PAPER: #F4F6FA canvas, #FFFFFF cards, #EDF1F7 sunken,
+       #E2E8F0 hairlines. No cream, no beige, no warm cast anywhere.
+     · STEEL IS THE ACCENT: --erp-c-brass* keeps its published name (an
+       API dozens of rules already read) but now carries cold steel blue
+       — #3A6EA5 as a mark, #2B5583 as text (7.69 on the card).
+     · ONE GREEN FOR GOOD NEWS (#15803D); the rest of the status family
+       stays semantic — amber warning, red danger, blue info.
+     · CHARTS ARE NAVY-LED: #17335F → #3A6EA5 → #1D4ED8 → #6B86A8 →
+       #7C8FA6 → #0F766E.
 
    MEASURED (WCAG 2.1 — نفس رياضيات tests/v2-identity.test.js، كلها ≥ الحد)
    ────────────────────────────────────────────────────────────────────────
-     light  primary 14.82 · secondary 10.65 · muted 6.40 · faint 5.32 on the
-            card; faint 4.84 on the canvas (the lowest in the UI).
-     dark   primary 15.08 · secondary 12.29 · muted 8.74 · faint 6.64.
-     sidebar 16.18 / 12.56 / 8.66 / 6.15 · accent 11.10 on the spine (both themes).
-     brand text 8.77 / 9.61 on the card · ivory ink on royal amethyst 8.57 ·
-     night ink on lit amethyst 6.72 · focus 4.23 surface / 3.85 canvas (≥3).
-     brass text-grade 7.05 on card · 6.41 on canvas (jewellery brass stays
-     for ≥3:1 marks, 4.23). every status badge text ≥5.66 on its own tint.
+     light  primary 17.33 · secondary 11.90 · muted 7.48 · faint 5.25 on the
+            card; faint 4.86 on the canvas (the lowest in the UI).
+     dark   primary 15.01 · secondary 11.82 · muted 7.73 · faint 5.79.
+     sidebar 15.16 / 7.04 / 5.72 · plaque ink 17.26 on the lit plaque.
+     brand text 7.69 card / 10.21 dark · cta ink 12.54 / 7.74 ·
+     focus 12.54 surface / 11.59 canvas (≥3).
+     steel text-grade 7.69 card · 7.11 canvas; steel mark 5.31 (≥3).
+     cover band ink 12.09 · its muted 7.10 on #123255.
      every chart stop ≥ 3:1 on the card and on the canvas, both themes
-     (chart-2 champagne #A87B2C = 3.70 card / 3.37 canvas is the floor).
+     (chart-5 steel #7C8FA6 = 3.31 card / 3.06 canvas is the floor).
    tests/v2-identity.test.js recomputes these from this file, so the sheet
    cannot drift lighter than the numbers above without failing.
 
@@ -74,8 +72,8 @@
 /* ── Faces ───────────────────────────────────────────────────────────
    One owner: css/v2/erp-fonts.css declares IBM Plex Sans Arabic
    (400/500/600/700 × arabic/latin), self-hosted from app/fonts/v2/.
-   The identity keeps ONE institutional face on purpose — luxury here is
-   carried by the value ladder and the champagne jewellery, not by a
+   The identity keeps ONE institutional face on purpose — formality here
+   is carried by the value ladder and the steel hairlines, not by a
    second personality switching between a heading and the number beside
    it. This sheet declares no @font-face. */
 
@@ -93,79 +91,80 @@ body {
   /* ── Primitives ─────────────────────────────────────────────────── */
   /* ورقٌ عاجي دافئ تحت بطاقاتٍ عاجية بيضاء: الفخامة في دفء الورق،
      والحبرُ نيليٌّ عميق لا رمادي. */
-  --erp-c-canvas:        #F6F1E6;
-  --erp-c-surface:       #FFFCF5;
+  --erp-c-canvas:        #F4F6FA;
+  --erp-c-surface:       #FFFFFF;
   --erp-c-raised:        #FFFFFF;
-  --erp-c-sunken:        #EDE6D7;
-  --erp-c-hover:         #F3EDE1;
-  --erp-c-active:        #EAE2D0;
-  --erp-c-line:          #E2D9C7;
-  --erp-c-line-strong:   #CBBFA8;
+  --erp-c-sunken:        #EDF1F7;
+  --erp-c-hover:         #F2F5FA;
+  --erp-c-active:        #E6ECF4;
+  --erp-c-line:          #E2E8F0;
+  --erp-c-line-strong:   #C6D0DD;
 
-  --erp-c-ink:           #1F2633;
-  --erp-c-ink-2:         #333D50;
-  --erp-c-ink-muted:     #535E70;
-  --erp-c-ink-faint:     #5F6A7E;
+  --erp-c-ink:           #0E1B2C;
+  --erp-c-ink-2:         #29384C;
+  --erp-c-ink-muted:     #47566A;
+  --erp-c-ink-faint:     #5F6D82;
 
   /* ياقوت ملكي عميق: لون الفعل الوحيد في الفاتح — تعبئة ملكية بحبرٍ عاجي
      للمقروئية العالية (WCAG AA ≥ 4.5:1). */
-  --erp-c-emerald:        #5B21B6;
-  --erp-c-emerald-hover:  #6D28D9;
-  --erp-c-emerald-active: #4C1D95;
-  --erp-c-emerald-text:   #5B21B6;
-  --erp-c-emerald-ink:    #FFF9EE;
+  --erp-c-emerald:        #17335F;
+  --erp-c-emerald-hover:  #1E4278;
+  --erp-c-emerald-active: #102544;
+  --erp-c-emerald-text:   #17335F;
+  --erp-c-emerald-ink:    #FFFFFF;
 
-  /* شامبانيا ملكية: المجوهرات — family الذهب الملكي */
-  --erp-c-brass:         #97742A;  /* 4.23 card — حليّ من عائلة الذهب الملكي */
-  --erp-c-brass-text:    #6E5310;  /* 7.05 card · 6.41 canvas */
-  --erp-c-brass-bright:  #E4C078;  /* الشامبانيا المضية — حلقاتُ وشرائح */
-  --erp-c-brass-soft:    rgba(151, 116, 42, .14);
-  --erp-c-brass-line:    rgba(151, 116, 42, .32);
+  /* لهجة الهوية: فولاذٌ أزرق هادي بدل الذهب — نفس عائلة الفعل، وأخفّ منه
+     وزنًا، فيبقى التمييز بين «الفعل» و«اللمسة» بلا معدنٍ دافئ. */
+  --erp-c-brass:         #3A6EA5;
+  --erp-c-brass-text:    #2B5583;
+  --erp-c-brass-bright:  #A8C6E8;
+  --erp-c-brass-soft:    rgba(58, 110, 165, .12);
+  --erp-c-brass-line:    rgba(58, 110, 165, .30);
 
   /* صوت البيانات: أزرق ملكي واضح — يميّز السلسلة الثانية في الرسوم
-     عن لون الفعل بلا أي دفء معدني. */
-  --erp-c-copper:        #2563EB;
+     عن لون الفعل بلا أي دفء معدني. */  --erp-c-copper:        #1D4ED8;
   --erp-c-copper-text:   #1E40AF;
 
-  /* حالات بدون أخضر: */
-  --erp-c-success:       #D97706;
-  --erp-c-success-text:  #92400E;
-  --erp-c-warning:       #C2410C;
-  --erp-c-warning-text:  #9A3412;
-  --erp-c-danger:        #B03428;
-  --erp-c-danger-text:   #8E241A;
-  --erp-c-info:          #2E5CC8;
-  --erp-c-info-text:     #2348A3;
-  --erp-c-neutral:       #5B6472;
-  --erp-c-neutral-text:  #3F4754;
+  /* حالاتٌ مؤسسية: أخضرٌ هادي للنجاح (قرار المالك 2026-11-06: رسمي، لا
+     كهرماني يلتبس بالتحذير)، والبقية على سلّمٍ متحيّز للأزرق الليلي. */
+  --erp-c-success:       #15803D;
+  --erp-c-success-text:  #146C34;
+  --erp-c-warning:       #B45309;
+  --erp-c-warning-text:  #92400E;
+  --erp-c-danger:        #B42318;
+  --erp-c-danger-text:   #912018;
+  --erp-c-info:          #1D4ED8;
+  --erp-c-info-text:     #1E40AF;
+  --erp-c-neutral:       #556070;
+  --erp-c-neutral-text:  #3D4854;
 
   --erp-c-inverse:       #FFFFFF;
   --erp-c-highlight:     rgba(255, 255, 255, .78);
-  --erp-c-brand-shadow:  rgba(46, 26, 78, .28);
-  --erp-c-plaque-line:   rgba(151, 116, 42, .45);
+  --erp-c-brand-shadow:  rgba(15, 27, 44, .22);
+  --erp-c-plaque-line:   rgba(58, 110, 165, .40);
   /* حبر الشامبانيا على اللوحة الليلية: اللوحة midnight في الوضعين، فدرجة
      الحبر واحدة — لا تتلوّن مع الثيم وإلا اختفت على الميدنايت. */
-  --erp-c-plaque-accent: #241C10;
+  --erp-c-plaque-accent: #0E1B2C;
 
   /* Sidebar primitives — العمود الليلي الملكي، IN BOTH THEMES.
      كحلٌّ ليلي عميق مع شامبانيا على العنصر النشط: العمود هو عمق الغرفة،
      واللوح الذهبي هو ذهبه الوحيد. */
-  --erp-c-sidebar:          #0E1128;
-  --erp-c-sidebar-line:     rgba(243, 239, 228, .10);
-  --erp-c-sidebar-line-2:   rgba(243, 239, 228, .20);
-  --erp-c-sidebar-ink:      #F3EFE4;
-  --erp-c-sidebar-ink-2:    #D9D4C6;
-  --erp-c-sidebar-muted:    #A8B1C7;
-  --erp-c-sidebar-faint:    #8A94B0;
-  --erp-c-sidebar-hover:    #171C36;
-  --erp-c-sidebar-active:   #171C36;
-  --erp-c-sidebar-accent:   #E6C478;
-  --erp-c-sidebar-paper:    #FBF6E9;
-  --erp-c-sidebar-wash:     rgba(230, 196, 120, .14);
-  --erp-c-sidebar-success:  #E3B341;
-  --erp-c-sidebar-info:     #8DA6FF;  /* روابط على الملكي — درجةٌ فاتحة مقروءة */
-  --erp-c-sidebar-plaque:   #FBF6E9;
-  --erp-c-sidebar-plaque-ink: #241C10;
+  --erp-c-sidebar:          #101B2D;
+  --erp-c-sidebar-line:     rgba(226, 236, 248, .10);
+  --erp-c-sidebar-line-2:   rgba(226, 236, 248, .20);
+  --erp-c-sidebar-ink:      #EAF1F9;
+  --erp-c-sidebar-ink-2:    #C9D5E4;
+  --erp-c-sidebar-muted:    #97A7BC;
+  --erp-c-sidebar-faint:    #8596AC;
+  --erp-c-sidebar-hover:    #17253A;
+  --erp-c-sidebar-active:   #1B2C45;
+  --erp-c-sidebar-accent:   #FFFFFF;
+  --erp-c-sidebar-paper:    #F2F6FC;
+  --erp-c-sidebar-wash:     rgba(168, 198, 232, .12);
+  --erp-c-sidebar-success:  #4ADE80;
+  --erp-c-sidebar-info:     #9CC2FF;  /* روابط على الكحلي — درجةٌ فاتحة مقروءة */
+  --erp-c-sidebar-plaque:   #F2F6FC;
+  --erp-c-sidebar-plaque-ink: #0E1B2C;
 
   /* ── Semantic surfaces ──────────────────────────────────────────── */
   --erp-background:        var(--erp-c-canvas);
@@ -225,12 +224,12 @@ body {
   /* سُلَّم فئويٌّ ملكي leadership: الياقوت الملكي يعلّم السلسلة الأولى (لون
      الفعل يحمل الرقم الأول)، ثم شامبانيا البيانات، ثم أزرق ونبيذي ونيلي
      ودخاني. كل درجة ≥ 3:1 على السطح والكانفس في الوضعين (1.4.11). */
-  --erp-chart-1:           #5B21B6;
-  --erp-chart-2:           #A87B2C;
-  --erp-chart-3:           #2563EB;
-  --erp-chart-4:           #6D28D9;
-  --erp-chart-5:           #4338CA;
-  --erp-chart-6:           #475569;
+  --erp-chart-1:           #17335F;
+  --erp-chart-2:           #3A6EA5;
+  --erp-chart-3:           #1D4ED8;
+  --erp-chart-4:           #6B86A8;
+  --erp-chart-5:           #7C8FA6;
+  --erp-chart-6:           #0F766E;
   --erp-chart-track:       var(--erp-c-sunken);
   --erp-chart-grid:        var(--erp-c-line);
   --erp-chart-label:       var(--erp-c-ink-faint);
@@ -306,36 +305,35 @@ body {
 [data-theme="dark"] .erp-pal-backdrop,
 [data-theme="dark"] .erp-preview-banner,
 [data-theme="dark"] body {
-  --erp-c-canvas:        #0B0D1F;
-  --erp-c-surface:       #151A32;
-  --erp-c-raised:        #1D243F;
-  --erp-c-sunken:        #101431;
-  --erp-c-hover:         #232B4A;
-  --erp-c-active:        #2C3457;
-  --erp-c-line:          #262E4E;
-  --erp-c-line-strong:   #37405F;
+  --erp-c-canvas:        #0B1220;
+  --erp-c-surface:       #111C2E;
+  --erp-c-raised:        #17243A;
+  --erp-c-sunken:        #0D1626;
+  --erp-c-hover:         #1B2A42;
+  --erp-c-active:        #21324D;
+  --erp-c-line:          #22324A;
+  --erp-c-line-strong:   #334560;
 
-  /* الليل الملكي: الحبرُ عاجيٌّ دافئ، لا أزرق سريرًا.
-     الدرجات الأربع تُقاس على #151A32: 15.08 / 12.29 / 8.74 / 6.64. */
-  --erp-c-ink:           #F5F0E6;
-  --erp-c-ink-2:         #E0DACB;
-  --erp-c-ink-muted:     #B0B9D2;
-  --erp-c-ink-faint:     #95A1C0;
+  /* ليلٌ كحلي بارد: الحبرُ أبيضُ مائل للأزرق لا عاجيٌّ دافئ. */
+  --erp-c-ink:           #EAF1F9;
+  --erp-c-ink-2:         #CBD8E8;
+  --erp-c-ink-muted:     #9FB0C6;
+  --erp-c-ink-faint:     #8598B1;
 
   /* في الليل يصير الياقوتُ حجرًا مضاءً: تعبئةٌ لامعة تحمل حبرًا ليليًا
      (6.72:1)، ونصُّه النصي #C9B8FF يُقرأ على السطح (9.61:1). */
-  --erp-c-emerald:        #A78BFA;
-  --erp-c-emerald-hover:  #B9A3FF;
-  --erp-c-emerald-active: #8B5CF6;
-  --erp-c-emerald-text:   #C9B8FF;
-  --erp-c-emerald-ink:    #150F33;
+  --erp-c-emerald:        #6FA8F5;
+  --erp-c-emerald-hover:  #8CBCF8;
+  --erp-c-emerald-active: #4E8CE8;
+  --erp-c-emerald-text:   #A8CBF7;
+  --erp-c-emerald-ink:    #08111F;
 
-  /* الشامبانيا في الليل: ذهبٌ هينٌ مضاء. */
-  --erp-c-brass:         #E3B341;
-  --erp-c-brass-text:    #F2CD72;
-  --erp-c-brass-bright:  #F6D98A;
-  --erp-c-brass-soft:    rgba(227, 179, 65, .14);
-  --erp-c-brass-line:    rgba(227, 179, 65, .32);
+  /* اللهجة في الليل: فولاذٌ مضاء بنفس عائلة الأزرق. */
+  --erp-c-brass:         #8FB3DE;
+  --erp-c-brass-text:    #B7D0EE;
+  --erp-c-brass-bright:  #D6E6F8;
+  --erp-c-brass-soft:    rgba(143, 179, 222, .14);
+  --erp-c-brass-line:    rgba(143, 179, 222, .30);
 
   /* صوت البيانات في الداكن: أزرق ملكي — نظير نظيره الفاتح. */
   --erp-c-copper:        #7DA2FF;
@@ -344,50 +342,50 @@ body {
   /* سُلَّم الرسوم في الداكن: نفس ترتيب الفاتح (ياقوت مضيء ← شامبانيا ←
      أزرق ملكي ← بنفتي ← نيلي ← دخاني) بدرجاتٍ أفتح، فلا يتبدّل معنى
      اللون بين الوضعين — الياقوت هو القيادة في الاثنين. */
-  --erp-chart-1:         #C4B5FD;
-  --erp-chart-2:         #E3B341;
+  --erp-chart-1:         #A8CBF7;
+  --erp-chart-2:         #6FA8F5;
   --erp-chart-3:         #7DA2FF;
-  --erp-chart-4:         #A78BFA;
-  --erp-chart-5:         #8B93F8;
-  --erp-chart-6:         #6E79E8;
-  --erp-chart-track:     #1D243F;
-  --erp-chart-grid:      rgba(243, 239, 228, .10);
+  --erp-chart-4:         #9CC2FF;
+  --erp-chart-5:         #C7D6EA;
+  --erp-chart-6:         #7FD8C8;
+  --erp-chart-track:     #17243A;
+  --erp-chart-grid:      rgba(234, 241, 249, .10);
   --erp-chart-label:     var(--erp-c-ink-faint);
 
-  --erp-c-success:       #E3A008;
-  --erp-c-success-text:  #F5C26B;
-  --erp-c-warning:       #E4572E;
-  --erp-c-warning-text:  #F2A48D;
-  --erp-c-danger:        #E05A4B;
-  --erp-c-danger-text:   #F3A79C;
-  --erp-c-info:          #6E8FE0;
-  --erp-c-info-text:     #A9BEF5;
-  --erp-c-neutral:       #7B8698;
-  --erp-c-neutral-text:  #C6CDD8;
+  --erp-c-success:       #34D399;
+  --erp-c-success-text:  #6EE7B7;
+  --erp-c-warning:       #F59E0B;
+  --erp-c-warning-text:  #FBBF24;
+  --erp-c-danger:        #F87171;
+  --erp-c-danger-text:   #FCA5A5;
+  --erp-c-info:          #93B4FF;
+  --erp-c-info-text:     #B9CCFF;
+  --erp-c-neutral:       #8A97A8;
+  --erp-c-neutral-text:  #C7D0DB;
 
-  --erp-c-inverse:       #0B0D1F;
+  --erp-c-inverse:       #0B1220;
   --erp-c-highlight:     rgba(255, 255, 255, .05);
   --erp-c-brand-shadow:  rgba(0, 0, 0, .45);
-  --erp-c-plaque-accent: #241C10;
+  --erp-c-plaque-accent: #0E1B2C;
 
-  --erp-c-sidebar:          #0E1128;
-  --erp-c-sidebar-line:     rgba(243, 239, 228, .08);
-  --erp-c-sidebar-line-2:   rgba(243, 239, 228, .18);
+  --erp-c-sidebar:          #0C1626;
+  --erp-c-sidebar-line:     rgba(226, 236, 248, .08);
+  --erp-c-sidebar-line-2:   rgba(226, 236, 248, .18);
   /* حبرُ العمود في الداكن يعود فاتحًا — قيمُ الفاتح داكنةٌ ولا تصلح
      لسطحٍ شبه أسود (عقد الاختبار يسقط إن انقلبت). */
-  --erp-c-sidebar-ink:      #F3EFE4;
-  --erp-c-sidebar-ink-2:    #D9D4C6;
-  --erp-c-sidebar-muted:    #A8B1C7;
-  --erp-c-sidebar-faint:    #8A94B0;
-  --erp-c-sidebar-hover:    #171C36;
-  --erp-c-sidebar-active:   #171C36;
-  --erp-c-sidebar-accent:   #E6C478;
-  --erp-c-sidebar-paper:    #FBF6E9;
-  --erp-c-sidebar-wash:     rgba(230, 196, 120, .14);
-  --erp-c-sidebar-success:  #E3B341;
-  --erp-c-sidebar-info:     #8DA6FF;
-  --erp-c-sidebar-plaque:   #FBF6E9;
-  --erp-c-sidebar-plaque-ink: #241C10;
+  --erp-c-sidebar-ink:      #EAF1F9;
+  --erp-c-sidebar-ink-2:    #C9D5E4;
+  --erp-c-sidebar-muted:    #97A7BC;
+  --erp-c-sidebar-faint:    #8596AC;
+  --erp-c-sidebar-hover:    #142032;
+  --erp-c-sidebar-active:   #17253A;
+  --erp-c-sidebar-accent:   #FFFFFF;
+  --erp-c-sidebar-paper:    #F2F6FC;
+  --erp-c-sidebar-wash:     rgba(168, 198, 232, .12);
+  --erp-c-sidebar-success:  #4ADE80;
+  --erp-c-sidebar-info:     #9CC2FF;
+  --erp-c-sidebar-plaque:   #F2F6FC;
+  --erp-c-sidebar-plaque-ink: #0E1B2C;
 
   /* Dark surfaces separate by elevation, not by a black veil inside a
      near-black canvas (measured 1.1:1 cap — see erp-themes.css). */
@@ -620,10 +618,10 @@ html[data-theme="dark"] .erp-v2 {
 body {
   /* العمق الياقوتي الذي يُكتب عليه بالعاج: هو نفسه --erp-c-emerald-active
      في الفاتح وليلٌ أعمق في الداكن — اسمٌ منشورٌ واحد لا يكسر أي مستهلك. */
-  --erp-c-forest: #2A1747;
-  --erp-c-forest-raised: #3B2560;
-  --erp-c-forest-ink: #FBF6EC;
-  --erp-c-forest-muted: #CBB8E3;
+  --erp-c-forest: #123255;
+  --erp-c-forest-raised: #1B4372;
+  --erp-c-forest-ink: #F2F7FD;
+  --erp-c-forest-muted: #A9C2DE;
   --erp-hero: var(--erp-c-forest);
   --erp-hero-raised: var(--erp-c-forest-raised);
   --erp-hero-ink: var(--erp-c-forest-ink);
@@ -642,10 +640,10 @@ body {
 
 [data-theme="dark"] .erp-v2,
 [data-theme="dark"] body {
-  --erp-c-forest: #16102E;
-  --erp-c-forest-raised: #201838;
-  --erp-c-forest-ink: #F3EFE9;
-  --erp-c-forest-muted: #C3B4E0;
+  --erp-c-forest: #0E1B2E;
+  --erp-c-forest-raised: #152740;
+  --erp-c-forest-ink: #EAF1F9;
+  --erp-c-forest-muted: #9FB3CB;
 }
 
 .erp-v2 .erp-shell__content {
@@ -816,6 +814,18 @@ body {
   margin-block-start: var(--erp-space-2);
   color: var(--erp-hero-muted);
   font-size: var(--erp-text-base);
+}
+/* سطرٌ إنجليزيٌّ صغيرٌ داخل عنوان البطل: يرث حجم العنوان إن بقي inline فيصير
+   سطرًا عملاقًا أو شبحًا ملاصقًا للعنوان الفرعي. يكسر السطر بحجمه الصريح. */
+.erp-v2 .erp-dash-head .erp-eyebrow,
+.erp-v2 .erp-brief__lock .erp-eyebrow {
+  display: block;
+  margin-block-start: var(--erp-space-2);
+  color: var(--erp-hero-muted);
+  font-family: var(--erp-font-sans);
+  font-size: var(--erp-text-xs);
+  font-weight: var(--erp-fw-semibold);
+  line-height: 1.2;
 }
 .erp-v2 .erp-dash-controls { position: relative; z-index: calc(var(--erp-z-base) + 2); }
 .erp-v2 .erp-dash-head .erp-seg {

@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { ReportHeader, SectionCard } from '../components/Reports';
 import { PrintActions } from '../components/PrintActions';
-import { FilterBar, StatCard } from '../ui';
+import { ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading } from '../components/TableState';
 import { fetchDeptHeadSnapshot } from '../lib/dashboards';
 import { intOf, moneyOf, presetRange, rangeProblem } from '../lib/reporting';
+import { FilterBar, StatCard } from '../ui';
 
 const STATUS_AR: Record<string, string> = {
     pending: 'معلّق',
@@ -41,7 +41,7 @@ export function DeptHeadDashboard() {
 
     const filteredDispatches = useMemo(() => {
         return (data?.dispatchStatuses ?? []).filter((status) => {
-            const textOk = q ? ((STATUS_AR[status.key] ?? status.key) ?? '').includes(q) : true;
+            const textOk = q ? (STATUS_AR[status.key] ?? status.key ?? '').includes(q) : true;
             return textOk;
         });
     }, [data, q]);
@@ -112,12 +112,7 @@ export function DeptHeadDashboard() {
                             hint={`${intOf(data.expensesCount)} حركة مسجلة`}
                             tone="warning"
                         />
-                        <StatCard
-                            label="أذون الصرف"
-                            english="Dispatches"
-                            value={intOf(data.dispatchTotal)}
-                            hint="إجمالي أذون القسم"
-                        />
+                        <StatCard label="أذون الصرف" english="Dispatches" value={intOf(data.dispatchTotal)} hint="إجمالي أذون القسم" />
                         <StatCard
                             label="أقسام فرعية"
                             english="Sub-departments"
@@ -138,10 +133,7 @@ export function DeptHeadDashboard() {
                                             className="flex items-center justify-between rounded-md bg-surface-sunken p-xs text-body-md"
                                         >
                                             <span className="text-ink">
-                                                {source.label}{' '}
-                                                <span className="text-caption text-faint">
-                                                    ({intOf(source.count)})
-                                                </span>
+                                                {source.label} <span className="text-caption text-faint">({intOf(source.count)})</span>
                                             </span>
                                             <span className="erp-numeric text-ink" dir="ltr">
                                                 {moneyOf(source.total)}
@@ -162,9 +154,7 @@ export function DeptHeadDashboard() {
                                             key={status.key}
                                             className="flex items-center justify-between rounded-md bg-surface-sunken p-xs text-body-md"
                                         >
-                                            <span className="text-ink">
-                                                {STATUS_AR[status.key] ?? status.key}
-                                            </span>
+                                            <span className="text-ink">{STATUS_AR[status.key] ?? status.key}</span>
                                             <span className="erp-numeric text-ink" dir="ltr">
                                                 {intOf(status.count)}
                                             </span>
@@ -176,10 +166,7 @@ export function DeptHeadDashboard() {
                     </div>
 
                     {data.failures.length > 0 ? (
-                        <p
-                            className="rounded-md border border-warning bg-surface p-sm text-body-sm text-warning-text"
-                            role="alert"
-                        >
+                        <p className="rounded-md border border-warning bg-surface p-sm text-body-sm text-warning-text" role="alert">
                             {`تعذّر قراءة: ${data.failures.join(' · ')}`}
                         </p>
                     ) : null}

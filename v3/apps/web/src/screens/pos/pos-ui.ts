@@ -9,11 +9,15 @@
 import type { BuffetTier, PosProduct } from '../../lib/pos';
 
 export const POS_ROLES = ['admin', 'manager', 'accountant', 'cashier'] as const;
-export const SELL_ROLES = ['admin', 'manager', 'cashier'] as const;
+/**
+ * صلاحيات الكاشير — الكاشير يبيع ويعلّق ويسترجع فقط؛ المحاسب والمدير والمسؤول
+ * يملكون الكاشير كاملًا (بيع، سجل الفواتير، إلغاء، تقفيل اليوم Z).
+ */
+export const SELL_ROLES = ['admin', 'manager', 'accountant', 'cashier'] as const;
 export const HISTORY_ROLES = ['admin', 'manager', 'accountant'] as const;
-export const VOID_ROLES = ['admin', 'manager'] as const;
+export const VOID_ROLES = ['admin', 'manager', 'accountant'] as const;
 export const CATALOG_IMAGE_ROLES = ['admin', 'manager'] as const;
-export const DAY_CLOSE_ROLES = ['admin', 'manager'] as const;
+export const DAY_CLOSE_ROLES = ['admin', 'manager', 'accountant'] as const;
 export const BUFFET_ADMIN_ROLES = ['admin', 'manager', 'accountant'] as const;
 
 export const PAYMENT_FIELDS = [
@@ -46,23 +50,32 @@ export function qtyText(value: number): string {
     return (Math.round(value * 1000) / 1000).toLocaleString('en-US', { maximumFractionDigits: 3 });
 }
 
-export function safeProductImageUrl(value: string | null | undefined): string {
+export function safeProductImageUrl(value: string | null | undefined, productId?: string | null): string {
     const url = String(value ?? '').trim();
-    return url.startsWith('/uploads/menu/') || /^https:\/\//i.test(url) ? url : '';
+    if (url.startsWith('/uploads/menu/')) {
+        const id = String(productId ?? '').trim();
+        if (!/^[0-9]+$/.test(id)) {
+            return '';
+        }
+        // اسم الرفع يخص هذا الصنف فقط: product-<id>-<ts>-<hash>.<ext> — لا صورة صنف آخر أبدًا.
+        const fileName = url.slice('/uploads/menu/'.length).split(/[?#]/)[0] ?? '';
+        return new RegExp(`(^|[^0-9])${id}([^0-9]|$)`).test(fileName) ? url : '';
+    }
+    return url.startsWith('/v3/img/') || /^https:\/\//i.test(url) ? url : '';
 }
 
 /** حالة الفاتورة → تسمية عربية (نفس خريطة القديم). */
 export function orderStatusLabel(status: string | null | undefined): string {
-    return ({ issued: 'صادرة', reported: 'مبلّغ عنها', cancelled: 'ملغاة' } as Record<string, string>)[
-        String(status ?? '')
-    ] ?? (String(status ?? '') || 'غير محددة');
+    return (
+        ({ issued: 'صادرة', reported: 'مبلّغ عنها', cancelled: 'ملغاة' } as Record<string, string>)[String(status ?? '')] ??
+        (String(status ?? '') || 'غير محددة')
+    );
 }
 
 export function paymentMethodLabel(method: string | null | undefined): string {
     return (
-        ({ cash: 'نقدي', card: 'بطاقة', wallet: 'محفظة', bank_transfer: 'تحويل بنكي' } as Record<string, string>)[
-            String(method ?? '')
-        ] ?? (String(method ?? '') || '—')
+        ({ cash: 'نقدي', card: 'بطاقة', wallet: 'محفظة', bank_transfer: 'تحويل بنكي' } as Record<string, string>)[String(method ?? '')] ??
+        (String(method ?? '') || '—')
     );
 }
 
@@ -110,7 +123,7 @@ export function catalogFromProducts(products: readonly PosProduct[]): CatalogIte
                 unit: String(product.unit ?? ''),
                 barcode: String(product.barcode ?? ''),
                 stock: product.stock_quantity,
-                imageUrl: safeProductImageUrl(product.image_url),
+                imageUrl: safeProductImageUrl(product.image_url, String(product.id)),
                 category: String(product.category ?? '').trim(),
                 tier: '',
                 isBuffet: false,
@@ -222,10 +235,7 @@ export function groupCatalog(items: readonly CatalogItem[], options: CatalogOrde
 }
 
 /** أعلى الأصناف مبيعًا (بلا مفضلة — لها شريطها) لشريط «الأكثر مبيعًا». */
-export function bestSellers(
-    items: readonly CatalogItem[],
-    options: CatalogOrderOptions & { limit?: number },
-): CatalogItem[] {
+export function bestSellers(items: readonly CatalogItem[], options: CatalogOrderOptions & { limit?: number }): CatalogItem[] {
     if (!options.sales) return [];
     const pinned = new Set(options.favorites);
     const limit = options.limit ?? 8;
@@ -287,10 +297,7 @@ export function openServerHtmlWindow(html: string, title = ''): boolean {
 /* ─── رمز QR الضريبي: نفس ملف V2 المخزَّن والمخبَّأ ──────────────────────── */
 
 interface QrGlobal {
-    toDataURL?: (
-        text: string,
-        options?: { width?: number; margin?: number; errorCorrectionLevel?: string },
-    ) => Promise<string>;
+    toDataURL?: (text: string, options?: { width?: number; margin?: number; errorCorrectionLevel?: string }) => Promise<string>;
 }
 
 let qrPromise: Promise<boolean> | null = null;
@@ -370,10 +377,7 @@ export function writePosFavorites(departmentId: string, ids: readonly string[]):
         return;
     }
     try {
-        window.localStorage.setItem(
-            posFavoritesKey(departmentId),
-            JSON.stringify([...ids].slice(0, POS_FAVORITES_LIMIT)),
-        );
+        window.localStorage.setItem(posFavoritesKey(departmentId), JSON.stringify([...ids].slice(0, POS_FAVORITES_LIMIT)));
     } catch {
         // تخزين محلي محظور: تبقى المفضلة في الذاكرة للجلسة الحالية.
     }

@@ -1,17 +1,11 @@
 import './DailyLocks.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { PrintActions } from '../components/PrintActions';
+import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { ApiError } from '../lib/api';
-import {
-    dailyLockRows,
-    displayTotals,
-    fetchDailyLocks,
-    isLocked,
-    type DailyLocksResponse,
-} from '../lib/daily-locks';
+import { type DailyLocksResponse, dailyLockRows, displayTotals, fetchDailyLocks, isLocked } from '../lib/daily-locks';
 import { formatInt } from '../lib/format';
 import { errorMessage, qtyOf, todayIso } from '../lib/reporting';
 
@@ -82,9 +76,7 @@ export function DailyLocks() {
                             dir="ltr"
                         />
                     </label>
-                    <p className="text-body-sm text-muted">
-                        يومٌ واحد في كل طلب — التغيير يجلب بيانات اليوم المختار من الخادم.
-                    </p>
+                    <p className="text-body-sm text-muted">يومٌ واحد في كل طلب — التغيير يجلب بيانات اليوم المختار من الخادم.</p>
                 </div>
             </SectionCard>
 
@@ -111,12 +103,7 @@ export function DailyLocks() {
             {data ? (
                 <>
                     <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-5" aria-label="مؤشرات التقفيل">
-                        <KpiCard
-                            label="اليوم"
-                            english="Date"
-                            value={day || '—'}
-                            hint="اليوم المعروض كما أكّده الخادم"
-                        />
+                        <KpiCard label="اليوم" english="Date" value={day || '—'} hint="اليوم المعروض كما أكّده الخادم" />
                         <KpiCard
                             label="مقفّل"
                             english="Locked"
@@ -151,10 +138,7 @@ export function DailyLocks() {
                         actions={<span className="text-body-sm text-muted">{formatInt(rows.length)} قسمًا</span>}
                     >
                         {rows.length === 0 ? (
-                            <StateEmpty
-                                title="لا أقسام في هذا اليوم"
-                                hint="اختر يومًا آخر — القائمة تأتي من أقسام نقطة البيع المسجّلة."
-                            />
+                            <StateEmpty title="لا أقسام في هذا اليوم" hint="اختر يومًا آخر — القائمة تأتي من أقسام نقطة البيع المسجّلة." />
                         ) : (
                             <TableScroll label="جدول تقفيل الأقسام">
                                 <table className="w-full border-collapse text-body-md">
@@ -189,16 +173,11 @@ export function DailyLocks() {
                                             return (
                                                 <tr
                                                     key={`${String(row.dept_code ?? '')}-${String(index)}`}
-                                                    className={`border-b border-hairline ${
-                                                        rowLocked ? '' : 'bg-surface-hover'
-                                                    }`}
+                                                    className={`border-b border-hairline ${rowLocked ? '' : 'bg-surface-hover'}`}
                                                 >
                                                     <td className="px-sm py-xxs text-ink">
                                                         <b>{String(row.dept_name ?? '—')}</b>{' '}
-                                                        <span
-                                                            className="erp-numeric ms-xs text-caption text-muted"
-                                                            dir="ltr"
-                                                        >
+                                                        <span className="erp-numeric ms-xs text-caption text-muted" dir="ltr">
                                                             {String(row.dept_code ?? '')}
                                                         </span>
                                                     </td>

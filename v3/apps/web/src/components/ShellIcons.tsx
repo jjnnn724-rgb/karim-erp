@@ -53,7 +53,7 @@ export function shellIconForPath(path: string): ShellIconName {
     if (/goods-scan/.test(path)) return 'scan';
     if (/weight/.test(path)) return 'scale';
     if (/attendance|roster|leaves|daily-locks/.test(path)) return 'calendar';
-    if (/permissions|warehouse-gov/.test(path)) return 'shield';
+    if (/permissions|warehouse-gov|mudad|gosi|qiwa/.test(path)) return 'shield';
     if (/users|employees|employee-portal/.test(path)) return 'users';
     if (/returns/.test(path)) return 'returns';
     if (/moves|transfers/.test(path)) return 'arrows';

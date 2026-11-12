@@ -71,17 +71,11 @@ export const cashRegisterTotalsSchema = z
     })
     .passthrough();
 
-const seriesSchema = z
-    .object({ day: nullableText, n: numLike, total: numLike })
-    .passthrough();
+const seriesSchema = z.object({ day: nullableText, n: numLike, total: numLike }).passthrough();
 
-const deptSchema = z
-    .object({ code: nullableText, dept: nullableText, n: numLike, total: numLike })
-    .passthrough();
+const deptSchema = z.object({ code: nullableText, dept: nullableText, n: numLike, total: numLike }).passthrough();
 
-const topCategorySchema = z
-    .object({ category: nullableText, n: numLike, total: numLike })
-    .passthrough();
+const topCategorySchema = z.object({ category: nullableText, n: numLike, total: numLike }).passthrough();
 
 const typeSchema = z.object({ type: nullableText, n: numLike, label: nullableText }).passthrough();
 
@@ -216,10 +210,7 @@ export interface CashRegisterFilters {
     dir?: 'asc' | 'desc';
 }
 
-export async function fetchCashRegister(
-    filters: CashRegisterFilters = {},
-    signal?: AbortSignal,
-): Promise<CashRegisterResponse> {
+export async function fetchCashRegister(filters: CashRegisterFilters = {}, signal?: AbortSignal): Promise<CashRegisterResponse> {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(filters)) {
         if (value !== undefined && value !== null && String(value) !== '') {
@@ -259,10 +250,7 @@ export async function fetchRegisterHtml(filters: CashRegisterFilters = {}): Prom
 
 /** ورقة إذن الصرف A4 من الخادم. */
 export async function fetchVoucherHtml(id: string): Promise<string> {
-    return fetchText(
-        `/api/expense-register/voucher/${encodeURIComponent(id)}/html`,
-        getAccessToken(),
-    );
+    return fetchText(`/api/expense-register/voucher/${encodeURIComponent(id)}/html`, getAccessToken());
 }
 
 /* ── عرض ─────────────────────────────────────────────────────────────── */
@@ -457,9 +445,7 @@ export function multiReportHtml(options: MultiReportOptions): string {
 
     for (const token of tokens) {
         const query = needle(token);
-        const hits = rows.filter(
-            (row) => needle(row.desc).includes(query) || needle(row.request_dept ?? row.deptId).includes(query),
-        );
+        const hits = rows.filter((row) => needle(row.desc).includes(query) || needle(row.request_dept ?? row.deptId).includes(query));
         if (!hits.length) {
             missing.push(token);
             continue;
@@ -498,16 +484,16 @@ export function multiReportHtml(options: MultiReportOptions): string {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>تقرير مفصل — سجلّ الصرف</title>
 <style>
-body{font-family:'IBM Plex Sans Arabic','Tajawal',Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:28px;direction:rtl}
+body{font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif;color:#172b3b;background:#fff;margin:0;padding:28px;direction:rtl}
 .sheet{max-width:960px;margin:auto}
-.head{text-align:center;border-bottom:3px solid #0f5b46;padding-bottom:14px;margin-bottom:16px}
-.head h1{margin:0 0 6px;color:#0f5b46;font-size:22px}.head p{margin:3px 0;color:#555;font-size:13px}
-h3.sec{font-size:14px;color:#0a3d2f;border-bottom:2px solid #eaf3ee;padding-bottom:5px;margin:18px 0 8px}
-table{width:100%;border-collapse:collapse;margin-bottom:10px}th,td{border:1px solid #ccc;padding:6px;text-align:right;font-size:12px}
-th{background:#eaf3ee;color:#0a3d2f}td.c,th.c{text-align:center}td.n{direction:ltr;unicode-bidi:embed}
-.note{border:1px solid #e5d9b5;background:#fdf9ee;border-radius:8px;padding:8px 12px;font-size:12px;color:#6b5620}
-.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#0f5b46;color:#fff}
-.controls button.secondary{background:#555}
+.head{text-align:center;border-bottom:3px solid #0f766e;padding-bottom:14px;margin-bottom:16px}
+.head h1{margin:0 0 6px;color:#0f766e;font-size:22px}.head p{margin:3px 0;color:#596e80;font-size:13px}
+h3.sec{font-size:14px;color:#102a43;border-bottom:2px solid #eaf0f5;padding-bottom:5px;margin:18px 0 8px}
+table{width:100%;border-collapse:collapse;margin-bottom:10px}th,td{border:1px solid #dce5ec;padding:6px;text-align:right;font-size:12px}
+th{background:#eaf0f5;color:#102a43}td.c,th.c{text-align:center}td.n{direction:ltr;unicode-bidi:embed}
+.note{border:1px solid #e6c98c;background:#fef3e2;border-radius:8px;padding:8px 12px;font-size:12px;color:#8f4308}
+.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#0f766e;color:#fff}
+.controls button.secondary{background:#31485a}
 @media print{body{padding:0}.controls{display:none!important}@page{size:A4;margin:11mm}}
 </style></head><body>
 <div class="controls"><button type="button" data-report-print>طباعة</button><button type="button" class="secondary" data-report-close>إغلاق</button></div>

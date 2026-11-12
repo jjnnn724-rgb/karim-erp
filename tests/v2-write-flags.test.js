@@ -41,7 +41,8 @@ describe('write-flags — الافتراضي مغلق (باستثناء إضاف
         expect(ctx.hrDepartmentWriteEnabled('', null)).toBe(false);
         expect(ctx.shelfWriteEnabled('', null)).toBe(false);
         expect(ctx.weightWriteEnabled('', null)).toBe(false);
-        expect(ctx.zkWriteEnabled('', null)).toBe(false);
+        /* قرار المالك 2026‑11‑06: «عايز أتحكم في كل شيء… حتى البصمة» ⇒ ظاهرة افتراضيًا */
+        expect(ctx.zkWriteEnabled('', null)).toBe(true);
         /* قرار المالك 2026‑10‑24: «مفيش بصمة الوجه في v2 موجود في القديم» */
         expect(ctx.portalWriteEnabled('', null)).toBe(true);
         expect(ctx.faceWriteEnabled('', null)).toBe(true);
@@ -87,6 +88,7 @@ describe('write-flags — الافتراضي مغلق (باستثناء إضاف
         /* ظاهران افتراضيًا: تعذّر القراءة لا يُخفي البصمة (الحكم للخادم) */
         expect(ctx.portalWriteEnabled('', throwingStore)).toBe(true);
         expect(ctx.faceWriteEnabled('', throwingStore)).toBe(true);
+        expect(ctx.zkWriteEnabled('', throwingStore)).toBe(true);
         expect(ctx.fiscalWriteEnabled('', throwingStore)).toBe(false);
     });
 
@@ -127,7 +129,9 @@ describe('write-flags — الافتراضي مغلق (باستثناء إضاف
         expect(ctx.hrDepartmentWriteEnabled('?v2deptwrite=1', null)).toBe(false);
         expect(ctx.shelfWriteEnabled('?v2weightwrite=1&v2financewrite=1', null)).toBe(false);
         expect(ctx.weightWriteEnabled('?v2shelfwrite=1&v2recipewrite=1', null)).toBe(false);
-        expect(ctx.zkWriteEnabled('?v2financewrite=1&v2shelfwrite=1&v2weightwrite=1', null)).toBe(false);
+        /* ظاهرٌ افتراضيًا: أعلامُ غيره لا تفتحه ولا تغلقه — =0 وحده يغلق */
+        expect(ctx.zkWriteEnabled('?v2financewrite=1&v2shelfwrite=1&v2weightwrite=1', null)).toBe(true);
+        expect(ctx.zkWriteEnabled('?v2financewrite=1&v2shelfwrite=1&v2weightwrite=1&v2zkwrite=0', null)).toBe(false);
         expect(ctx.portalWriteEnabled('?v2portalwrite=0&v2facewrite=1&v2zkwrite=1', null)).toBe(false);
         expect(ctx.faceWriteEnabled('?v2facewrite=0&v2portalwrite=1&v2zkwrite=1', null)).toBe(false);
         expect(ctx.fiscalWriteEnabled('?v2financewrite=1&v2zkwrite=1&v2facewrite=1', null)).toBe(false);

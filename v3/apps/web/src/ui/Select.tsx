@@ -1,18 +1,18 @@
+import { useId } from 'react';
 import { Label as ShadcnLabel } from '@/components/ui/label';
 import {
-    Select as ShadcnSelect,
     SelectContent as ShadcnContent,
     SelectGroup as ShadcnGroup,
     SelectItem as ShadcnItem,
     SelectLabel as ShadcnPrimitiveLabel,
+    Select as ShadcnSelect,
     SelectSeparator as ShadcnSeparator,
     SelectTrigger as ShadcnTrigger,
     SelectValue as ShadcnValue,
 } from '@/components/ui/select';
-import { useId } from 'react';
 import { cn } from './cn';
+import { type ControlSize, controlClassName, controlSizeClassName } from './Input';
 import { AlertCircleIcon } from './icons';
-import { controlClassName, controlSizeClassName, type ControlSize } from './Input';
 
 /**
  * قائمة اختيار — فوق **shadcn/ui** (`@/components/ui/select`): Radix يدير ARIA
@@ -81,13 +81,7 @@ export function Select({
                     ) : null}
                 </span>
             ) : null}
-            <ShadcnSelect
-                value={value}
-                onValueChange={onValueChange}
-                disabled={disabled}
-                name={name}
-                required={required}
-            >
+            <ShadcnSelect value={value} onValueChange={onValueChange} disabled={disabled} name={name} required={required}>
                 <ShadcnTrigger
                     id={selectId}
                     aria-labelledby={labelId}
@@ -106,7 +100,7 @@ export function Select({
                 <ShadcnContent
                     position="popper"
                     sideOffset={4}
-                    className="z-[var(--erp-z-tooltip)] max-h-64 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-md border border-hairline bg-surface-raised text-ink shadow-[0_24px_64px_rgb(0_0_0/0.30)]"
+                    className="z-[var(--erp-z-tooltip)] max-h-64 min-w-[var(--radix-select-trigger-width)] overflow-hidden rounded-md border border-hairline bg-surface-raised text-ink shadow-pop"
                 >
                     {options.map((option) => (
                         <ShadcnItem
@@ -130,7 +124,11 @@ export function Select({
                     {hint}
                 </p>
             ) : null}
-            {label ? <ShadcnLabel htmlFor={selectId} className="sr-only">{label}</ShadcnLabel> : null}
+            {label ? (
+                <ShadcnLabel htmlFor={selectId} className="sr-only">
+                    {label}
+                </ShadcnLabel>
+            ) : null}
         </div>
     );
 }

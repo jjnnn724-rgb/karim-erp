@@ -184,9 +184,7 @@ describe('بيانات Oracle', () => {
         fireEvent.click(screen.getByRole('button', { name: 'بحث' }));
 
         await waitFor(() => {
-            const hit = calledUrls(mock).find(
-                (url) => new URL(url, 'http://localhost').searchParams.get('search') === 'دجاج',
-            );
+            const hit = calledUrls(mock).find((url) => new URL(url, 'http://localhost').searchParams.get('search') === 'دجاج');
             expect(hit).toBeTruthy();
         });
         // استعلام البحث الجديد يمرّ بحالة تحميل — ننتظر عودة الجدول قبل الترقيم.

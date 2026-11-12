@@ -4,19 +4,57 @@ import { useState } from 'react';
 import { PrintActions } from '../components/PrintActions';
 import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
-import { fetchMonitorOrders, fetchMonitorSummary, monitorCashierLabel, orderTimeText } from '../lib/cashier-monitor';
+import {
+    fetchMonitorInvoiceHtml,
+    fetchMonitorOrders,
+    fetchMonitorSummary,
+    monitorCashierLabel,
+    orderTimeText,
+} from '../lib/cashier-monitor';
+import { openBlankTab, printHtmlDocument } from '../lib/print-document';
 import { errorMessage, intOf, moneyOf, pctOf, shareOf, textOf, todayIso } from '../lib/reporting';
+import { useToast } from '../ui/Toast';
 
 /** تحديث تلقائي كل ٣٠ ثانية — المرآة تُحدَّث نفسها على الخادم بـ live=1. */
 const LIVE_MS = 30000;
 
 /**
  * متابعة الكاشير — أوردرات اليوم الحيّة لكل كاشير، والصندوق المفتوح وآخر حركة.
- * القراءة فقط: لا إغلاق جلسة ولا تعديل فاتورة من هنا.
+ * لا إغلاق جلسة ولا تعديل فاتورة من هنا؛ إعادة الطباعة بمستند الخادم (80مم).
  */
 export function CashierMonitor() {
     const [date, setDate] = useState(() => todayIso());
     const [cashier, setCashier] = useState('');
+    const [printingDoc, setPrintingDoc] = useState('');
+    const { toast } = useToast();
+
+    async function printInvoice(docNo: string) {
+        if (printingDoc) {
+            return;
+        }
+        const win = openBlankTab(`فاتورة ${docNo}`);
+        if (!win) {
+            toast({
+                variant: 'error',
+                title: 'تعذّرت الطباعة',
+                description: 'منع المتصفح فتح نافذة الطباعة — اسمح بالنوافذ المنبثقة ثم أعد المحاولة.',
+            });
+            return;
+        }
+        setPrintingDoc(docNo);
+        try {
+            printHtmlDocument(win, await fetchMonitorInvoiceHtml(docNo));
+        } catch (error) {
+            win.close();
+            toast({
+                variant: 'error',
+                title: 'تعذّرت طباعة الفاتورة',
+                description: errorMessage(error),
+            });
+        } finally {
+            setPrintingDoc('');
+        }
+    }
 
     const summaryQuery = useQuery({
         queryKey: ['cashier-monitor', 'summary', date],
@@ -26,8 +64,7 @@ export function CashierMonitor() {
 
     const ordersQuery = useQuery({
         queryKey: ['cashier-monitor', 'orders', date, cashier],
-        queryFn: ({ signal }) =>
-            fetchMonitorOrders(cashier ? { date, cashier, limit: 50 } : { date, limit: 50 }, signal),
+        queryFn: ({ signal }) => fetchMonitorOrders(cashier ? { date, cashier, limit: 50 } : { date, limit: 50 }, signal),
         refetchInterval: LIVE_MS,
     });
 
@@ -76,10 +113,7 @@ export function CashierMonitor() {
                         >
                             <option value="">كل الكاشيريات</option>
                             {cashiers.map((row) => (
-                                <option
-                                    key={textOf(row.cashier_no) || monitorCashierLabel(row)}
-                                    value={textOf(row.cashier_no)}
-                                >
+                                <option key={textOf(row.cashier_no) || monitorCashierLabel(row)} value={textOf(row.cashier_no)}>
                                     {monitorCashierLabel(row)}
                                 </option>
                             ))}
@@ -104,10 +138,7 @@ export function CashierMonitor() {
 
             {summary ? (
                 <>
-                    <ul
-                        className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4"
-                        aria-label="مؤشرات متابعة الكاشير"
-                    >
+                    <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4" aria-label="مؤشرات متابعة الكاشير">
                         <KpiCard
                             label="كاشيريات اليوم"
                             english="Cashiers"
@@ -192,13 +223,7 @@ export function CashierMonitor() {
                                                     {moneyOf(row.avg)}
                                                 </td>
                                                 <td className="erp-numeric px-sm py-xxs" dir="ltr">
-                                                    <span
-                                                        className={
-                                                            Number(row.open ?? 0) > 0
-                                                                ? 'text-warning-text'
-                                                                : 'text-muted'
-                                                        }
-                                                    >
+                                                    <span className={Number(row.open ?? 0) > 0 ? 'text-warning-text' : 'text-muted'}>
                                                         {intOf(row.open)}
                                                     </span>
                                                 </td>
@@ -257,14 +282,14 @@ export function CashierMonitor() {
                                             <th scope="col" className="px-sm py-xs text-start font-medium">
                                                 الحصة
                                             </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الطباعة
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {orders.map((order) => {
-                                            const totalCollected = orders.reduce(
-                                                (sum, row) => sum + Number(row.net ?? 0),
-                                                0,
-                                            );
+                                            const totalCollected = orders.reduce((sum, row) => sum + Number(row.net ?? 0), 0);
                                             return (
                                                 <tr key={order.doc_no} className="border-b border-hairline">
                                                     <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">
@@ -277,9 +302,8 @@ export function CashierMonitor() {
                                                         {textOf(order.cashier_name) || textOf(order.cashier_no) || '—'}
                                                     </td>
                                                     <td className="px-sm py-xxs text-body-sm text-muted">
-                                                        {[textOf(order.table_name), textOf(order.zone_name)]
-                                                            .filter(Boolean)
-                                                            .join(' · ') || '—'}
+                                                        {[textOf(order.table_name), textOf(order.zone_name)].filter(Boolean).join(' · ') ||
+                                                            '—'}
                                                     </td>
                                                     <td className="erp-numeric px-sm py-xxs" dir="ltr">
                                                         {moneyOf(order.net)}
@@ -289,6 +313,19 @@ export function CashierMonitor() {
                                                     </td>
                                                     <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">
                                                         {pctOf(shareOf(Number(order.net ?? 0), totalCollected))}
+                                                    </td>
+                                                    <td className="px-sm py-xxs">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                void printInvoice(order.doc_no);
+                                                            }}
+                                                            disabled={printingDoc !== ''}
+                                                            aria-label={`طباعة فاتورة ${order.doc_no}`}
+                                                            className="rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-button-sm text-ink hover:bg-surface-hover disabled:opacity-50"
+                                                        >
+                                                            {printingDoc === order.doc_no ? 'جارٍ…' : 'طباعة'}
+                                                        </button>
                                                     </td>
                                                 </tr>
                                             );

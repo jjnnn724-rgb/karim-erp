@@ -67,9 +67,7 @@ export function CashierSales() {
                 onFrom={(value: string) =>
                     setDraft((current: { from: string; to: string; label: string }) => ({ ...current, from: value }))
                 }
-                onTo={(value: string) =>
-                    setDraft((current: { from: string; to: string; label: string }) => ({ ...current, to: value }))
-                }
+                onTo={(value: string) => setDraft((current: { from: string; to: string; label: string }) => ({ ...current, to: value }))}
                 onApply={apply}
                 searchLabel="بحث بالكاشير"
                 searchPlaceholder="ابحث باسم الكاشير…"
@@ -93,10 +91,7 @@ export function CashierSales() {
 
             {data ? (
                 <>
-                    <ul
-                        className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4"
-                        aria-label="مؤشرات مبيعات الكاشير"
-                    >
+                    <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4" aria-label="مؤشرات مبيعات الكاشير">
                         <StatCard
                             label="المحصّل"
                             english="Collected"
@@ -163,10 +158,7 @@ export function CashierSales() {
                                         </thead>
                                         <tbody>
                                             {filteredCashiers.map((row) => (
-                                                <tr
-                                                    key={textOf(row.cashier_no) || cashierLabel(row)}
-                                                    className="border-b border-hairline"
-                                                >
+                                                <tr key={textOf(row.cashier_no) || cashierLabel(row)} className="border-b border-hairline">
                                                     <td className="px-sm py-xxs text-ink">{cashierLabel(row)}</td>
                                                     <td className="erp-numeric px-sm py-xxs" dir="ltr">
                                                         {intOf(row.docs)}
@@ -221,13 +213,8 @@ export function CashierSales() {
                                     </thead>
                                     <tbody>
                                         {topItems.map((item) => (
-                                            <tr
-                                                key={textOf(item.code) || textOf(item.name)}
-                                                className="border-b border-hairline"
-                                            >
-                                                <td className="px-sm py-xxs text-ink">
-                                                    {textOf(item.name) || textOf(item.code) || '—'}
-                                                </td>
+                                            <tr key={textOf(item.code) || textOf(item.name)} className="border-b border-hairline">
+                                                <td className="px-sm py-xxs text-ink">{textOf(item.name) || textOf(item.code) || '—'}</td>
                                                 <td className="erp-numeric px-sm py-xxs" dir="ltr">
                                                     {intOf(item.qty)}
                                                 </td>

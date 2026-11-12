@@ -86,9 +86,7 @@ describe('fetchJson', () => {
             vi.fn(async () => jsonResponse([{ code: '1' }])),
         );
 
-        await expect(fetchJson(v3ChartResponseSchema, '/api/v3/accounting/chart', null)).rejects.toBeInstanceOf(
-            ApiError,
-        );
+        await expect(fetchJson(v3ChartResponseSchema, '/api/v3/accounting/chart', null)).rejects.toBeInstanceOf(ApiError);
     });
 
     it('يحمل رمز الخطأ ورسالته من جسم {error, message}', async () => {
@@ -97,9 +95,7 @@ describe('fetchJson', () => {
             vi.fn(async () => jsonResponse({ error: 'UNAUTHORIZED', message: 'Missing Bearer token.' }, 401)),
         );
 
-        const failure = await fetchJson(v3ChartResponseSchema, '/api/v3/accounting/chart', null).catch(
-            (error: unknown) => error,
-        );
+        const failure = await fetchJson(v3ChartResponseSchema, '/api/v3/accounting/chart', null).catch((error: unknown) => error);
 
         expect(failure).toBeInstanceOf(ApiError);
         expect((failure as ApiError).status).toBe(401);
@@ -112,14 +108,10 @@ describe('fetchJson', () => {
         const message = 'ربط يارا سوفت المباشر غير مفعّل؛ لم تُستخدم أرقام بديلة من النظام المحلي.';
         vi.stubGlobal(
             'fetch',
-            vi.fn(async () =>
-                jsonResponse({ error: 'YARASOFT_REVENUE_UNAVAILABLE', code: 'YARASOFT_REVENUE_UNAVAILABLE', message }, 503),
-            ),
+            vi.fn(async () => jsonResponse({ error: 'YARASOFT_REVENUE_UNAVAILABLE', code: 'YARASOFT_REVENUE_UNAVAILABLE', message }, 503)),
         );
 
-        const failure = await fetchJson(v3ChartResponseSchema, '/api/finance/monthly-comparison', null).catch(
-            (error: unknown) => error,
-        );
+        const failure = await fetchJson(v3ChartResponseSchema, '/api/finance/monthly-comparison', null).catch((error: unknown) => error);
 
         expect(failure).toBeInstanceOf(ApiError);
         expect((failure as ApiError).code).toBe('YARASOFT_REVENUE_UNAVAILABLE');

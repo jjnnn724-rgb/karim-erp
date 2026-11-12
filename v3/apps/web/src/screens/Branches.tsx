@@ -2,26 +2,19 @@ import './Branches.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { PrintActions } from '../components/PrintActions';
-import {
-    Card,
-    StateEmpty,
-    StateError,
-    StateLoading,
-    TableScroll,
-    TableSkeleton,
-} from '../components/TableState';
+import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import {
-    createBranch,
-    deactivateBranch,
-    reactivateBranch,
-    updateBranch,
     type BranchForm,
     type BranchRow,
     branchToRow,
     branchTotals,
+    createBranch,
+    deactivateBranch,
     fetchBranches,
+    reactivateBranch,
     searchBranches,
+    updateBranch,
     validateBranchForm,
 } from '../lib/branches';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
@@ -169,7 +162,7 @@ function BranchFormDialog({ open, onClose, pending, editing, onSave }: BranchFor
             name_ar: (form.name_ar ?? '').trim(),
             name_en: (form.name_en ?? '').trim() || null,
             currency: ((form.currency ?? 'SAR').trim() || 'SAR').toUpperCase(),
-            timezone: ((form.timezone ?? 'Asia/Riyadh').trim() || 'Asia/Riyadh'),
+            timezone: (form.timezone ?? 'Asia/Riyadh').trim() || 'Asia/Riyadh',
             phone: (form.phone ?? '').trim() || null,
             address: (form.address ?? '').trim() || null,
         };
@@ -281,15 +274,7 @@ interface BranchActionDialogProps {
     confirmLabel: string;
 }
 
-function BranchActionDialog({
-    open,
-    title,
-    message,
-    onConfirm,
-    onClose,
-    pending,
-    confirmLabel,
-}: BranchActionDialogProps) {
+function BranchActionDialog({ open, title, message, onConfirm, onClose, pending, confirmLabel }: BranchActionDialogProps) {
     return (
         <Dialog
             open={open}
@@ -364,9 +349,7 @@ export function Branches() {
 
     function toggleSort(key: SortKey) {
         setPage(1);
-        setSort((previous) =>
-            previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' },
-        );
+        setSort((previous) => (previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
     }
 
     function resetFilters() {
@@ -422,7 +405,9 @@ export function Branches() {
         setActionRow(row);
         setActionType(activate ? 'activate' : 'deactivate');
         setActionTitle(activate ? 'تفعيل الفرع' : 'إيقاف الفرع');
-        setActionMessage(activate ? BRANCH_TEXT.confirmActivate.replace('%s', row.nameAr) : BRANCH_TEXT.confirmDeactivate.replace('%s', row.nameAr));
+        setActionMessage(
+            activate ? BRANCH_TEXT.confirmActivate.replace('%s', row.nameAr) : BRANCH_TEXT.confirmDeactivate.replace('%s', row.nameAr),
+        );
         setActionOpen(true);
     }
 
@@ -442,8 +427,8 @@ export function Branches() {
                         </span>
                     </h1>
                     <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        الفروع وأكوادها وعملاتها ومناطقها الزمنية — إضافة وتعديل وإيقاف وتفعيل.
-                        القراءة متاحة لأي حساب مصادق، والكتابة والإدارة محجوزة للأدمن. الفرع الرئيسي لا يُوقف.
+                        الفروع وأكوادها وعملاتها ومناطقها الزمنية — إضافة وتعديل وإيقاف وتفعيل. القراءة متاحة لأي حساب مصادق، والكتابة
+                        والإدارة محجوزة للأدمن. الفرع الرئيسي لا يُوقف.
                     </p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>
@@ -508,10 +493,7 @@ export function Branches() {
                             className="h-10 w-full min-w-0 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:w-64"
                         />
                     </label>
-                    <label
-                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-branches-status"
-                    >
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-branches-status">
                         الحالة
                         <select
                             id="erp-branches-status"
@@ -527,10 +509,7 @@ export function Branches() {
                             <option value="inactive">موقوف</option>
                         </select>
                     </label>
-                    <label
-                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-branches-currency"
-                    >
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-branches-currency">
                         العملة
                         <select
                             id="erp-branches-currency"
@@ -561,9 +540,7 @@ export function Branches() {
                     </span>
                 </div>
                 {search.folded ? (
-                    <p className="mt-sm text-body-sm text-muted">
-                        بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.
-                    </p>
+                    <p className="mt-sm text-body-sm text-muted">بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.</p>
                 ) : null}
             </Card>
 
@@ -573,18 +550,32 @@ export function Branches() {
                     <li key="active" className="flex items-center gap-sm text-body-sm">
                         <span className="w-40 shrink-0 truncate text-ink">مفعّل</span>
                         <span className="h-2 flex-1 overflow-hidden rounded-full bg-surface-sunken">
-                            <span className="block h-full rounded-full bg-success-text" style={{ width: `${totals.total ? (totals.active / totals.total) * 100 : 0}%` }} />
+                            <span
+                                className="block h-full rounded-full bg-success-text"
+                                style={{ width: `${totals.total ? (totals.active / totals.total) * 100 : 0}%` }}
+                            />
                         </span>
-                        <span className="erp-numeric w-16 shrink-0 text-end text-ink" dir="ltr">{formatInt(totals.active)}</span>
-                        <span className="erp-numeric w-14 shrink-0 text-end text-caption text-muted" dir="ltr">{totals.total ? ((totals.active / totals.total) * 100).toFixed(1) : '0'}%</span>
+                        <span className="erp-numeric w-16 shrink-0 text-end text-ink" dir="ltr">
+                            {formatInt(totals.active)}
+                        </span>
+                        <span className="erp-numeric w-14 shrink-0 text-end text-caption text-muted" dir="ltr">
+                            {totals.total ? ((totals.active / totals.total) * 100).toFixed(1) : '0'}%
+                        </span>
                     </li>
                     <li key="inactive" className="flex items-center gap-sm text-body-sm">
                         <span className="w-40 shrink-0 truncate text-ink">موقوف</span>
                         <span className="h-2 flex-1 overflow-hidden rounded-full bg-surface-sunken">
-                            <span className="block h-full rounded-full bg-danger-text" style={{ width: `${totals.total ? (totals.inactive / totals.total) * 100 : 0}%` }} />
+                            <span
+                                className="block h-full rounded-full bg-danger-text"
+                                style={{ width: `${totals.total ? (totals.inactive / totals.total) * 100 : 0}%` }}
+                            />
                         </span>
-                        <span className="erp-numeric w-16 shrink-0 text-end text-ink" dir="ltr">{formatInt(totals.inactive)}</span>
-                        <span className="erp-numeric w-14 shrink-0 text-end text-caption text-muted" dir="ltr">{totals.total ? ((totals.inactive / totals.total) * 100).toFixed(1) : '0'}%</span>
+                        <span className="erp-numeric w-16 shrink-0 text-end text-ink" dir="ltr">
+                            {formatInt(totals.inactive)}
+                        </span>
+                        <span className="erp-numeric w-14 shrink-0 text-end text-caption text-muted" dir="ltr">
+                            {totals.total ? ((totals.inactive / totals.total) * 100).toFixed(1) : '0'}%
+                        </span>
                     </li>
                 </ul>
             </Card>
@@ -609,11 +600,7 @@ export function Branches() {
                 {branchesQuery.isSuccess && sorted.length === 0 ? (
                     <StateEmpty
                         title={filtered ? 'لا فروع تطابق المرشّحات' : 'لا فروع مسجّلة'}
-                        hint={
-                            filtered
-                                ? 'لا نتائج مطابقة؛ عدّل المرشّحات أو امسحها.'
-                                : 'أضف أول فرع.'
-                        }
+                        hint={filtered ? 'لا نتائج مطابقة؛ عدّل المرشّحات أو امسحها.' : 'أضف أول فرع.'}
                     />
                 ) : null}
 
@@ -676,13 +663,9 @@ export function Branches() {
                                             <td className="erp-numeric px-sm py-xxs text-body-sm text-muted" dir="ltr">
                                                 {row.phone || '—'}
                                             </td>
-                                            <td className="px-sm py-xxs text-body-sm text-muted">
-                                                {row.address || '—'}
-                                            </td>
+                                            <td className="px-sm py-xxs text-body-sm text-muted">{row.address || '—'}</td>
                                             <td className="px-sm py-xxs text-body-sm">
-                                                <span className={row.active ? 'text-success-text' : 'text-muted'}>
-                                                    {row.statusLabel}
-                                                </span>
+                                                <span className={row.active ? 'text-success-text' : 'text-muted'}>{row.statusLabel}</span>
                                             </td>
                                             {canManage ? (
                                                 <td className="px-sm py-xxs" data-erp-print-hide>

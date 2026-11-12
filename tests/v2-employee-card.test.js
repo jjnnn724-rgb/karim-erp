@@ -304,7 +304,11 @@ describe('V2 employee card repository (بطاقة الموظف)', () => {
         const s = fs.readFileSync(SCREEN, 'utf8');
         expect(s).toMatch(/'day-off': \{ label: 'راحة أسبوعية', tone: 'neutral' \}/);
         expect(s).toMatch(/ATT_STATE\[r\.state\] \|\| ATT_STATE\.review/);
-        expect(s).toMatch(/راحة أسبوعية مجدولة: \$\{formatInt\(offDays\)\} يومًا/);
+        // الراحة تُقال صفًّا في الجدول («راحة أسبوعية») لا حاشيةً منهجية تحته —
+        // طلب المالك 2026-11-06: «مش عايز التعليقات دي في السستم نهائيًا».
+        expect(s).not.toMatch(/راحة أسبوعية مجدولة/);
+        expect(s).not.toMatch(/يعرض الدقائق الفعلية/);
+        expect(s).not.toMatch(/نفس رقم شاشة الحضور/);
     });
 
     test('the luxury door fetches the generated HTML with its own headers, never through apiFetch', async () => {

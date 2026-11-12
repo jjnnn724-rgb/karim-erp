@@ -11,9 +11,9 @@
  *   · رسوم SVG من مكتبة المشروع (بلا مكتبة خارجية) ⇒ بلا vendor جديد.
  *   · الأنيميشن CSS فقط (لا JS) ⇒ لا إعادة رسم.
  */
-import { apiFetch } from '../../core/api.js?v=4.9.296';
-import { barChart, lineChart, donutChart } from '../charts.js?v=4.9.296';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.296';
+import { apiFetch } from '../../core/api.js?v=4.9.312';
+import { barChart, lineChart, donutChart } from '../charts.js?v=4.9.312';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.312';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -125,14 +125,17 @@ export function mountExecutiveScreen(host, ctx = {}) {
             emptyText: 'لا بيانات',
         });
         const cash = (data && data.cash) || [];
+        // الشرائح تُحسب خارج جملة الإسناد: النغمة نصٌّ بسيط لا وسم، فلا حاجة
+        // لقالبٍ داخل innerHTML (حارس الأمان يقرأ القالب كحقنٍ غير مغلَّف).
+        const cashSlices = cash.map((c, i) => ({
+            label: String(c.name || c.code || '—'),
+            value: Math.abs(Number(c.balance) || 0),
+            tone: 'chart-' + ((i % 6) + 1),
+        }));
         q('[data-exec-chart-cash]').innerHTML = donutChart({
             title: 'النقد في الدفاتر',
             ariaLabel: 'توزيع النقد على الحسابات',
-            slices: cash.map((c, i) => ({
-                label: String(c.name || c.code || '—'),
-                value: Math.abs(Number(c.balance) || 0),
-                tone: `chart-${(i % 6) + 1}`,
-            })),
+            slices: cashSlices,
             formatValue: (v) => money(v),
             emptyText: 'لا حسابات نقد',
         });

@@ -2,11 +2,11 @@ import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import './InventoryInquiryPro.premium.css';
 import { ItemDossier } from '../components/ItemDossier';
+import { PrintActions } from '../components/PrintActions';
 import { RangeControls, ReportHeader, SectionCard } from '../components/Reports';
 import { Card, StateEmpty, StateError } from '../components/TableState';
 import { fetchInquiryExport, fetchInquiryItems, type InquiryRow, saveDownload } from '../lib/inventory-inquiry';
 import { errorMessage, intOf, presetRange, rangeProblem, textOf } from '../lib/reporting';
-import { PrintActions } from '../components/PrintActions';
 
 /**
  * البطاقة الفاخرة — منتقي صنف مباشر يفتح بطاقة الصنف الكاملة.
@@ -27,17 +27,13 @@ export function InventoryInquiryPro() {
     const itemsQuery = useQuery({
         queryKey: ['inquiry-pro-items', applied],
         queryFn: ({ signal }) =>
-            fetchInquiryItems(
-                { from: applied.from, to: applied.to, q: applied.q, sort: 'movements', limit: 200 },
-                signal,
-            ),
+            fetchInquiryItems({ from: applied.from, to: applied.to, q: applied.q, sort: 'movements', limit: 200 }, signal),
         enabled: problem === '',
     });
 
     // تصدير القائمة الحالية من الخادم — نفس بحث الشاشة، وبلا مكتبة في المتصفح.
     const exportFile = useMutation({
-        mutationFn: () =>
-            fetchInquiryExport({ from: applied.from, to: applied.to, q: applied.q, sort: 'movements', limit: 200 }),
+        mutationFn: () => fetchInquiryExport({ from: applied.from, to: applied.to, q: applied.q, sort: 'movements', limit: 200 }),
         onSuccess: (file) => {
             saveDownload(file);
         },
@@ -139,9 +135,7 @@ export function InventoryInquiryPro() {
                         </p>
                     ) : null}
                     <p className="text-caption text-muted" role="status">
-                        {rows.length === 0
-                            ? 'لا نتائج'
-                            : `${intOf(rows.length)} صنفًا في نتائج البحث`}
+                        {rows.length === 0 ? 'لا نتائج' : `${intOf(rows.length)} صنفًا في نتائج البحث`}
                     </p>
                 </div>
             </Card>

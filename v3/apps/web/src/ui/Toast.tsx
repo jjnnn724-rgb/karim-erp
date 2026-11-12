@@ -1,13 +1,4 @@
-import {
-    createContext,
-    useCallback,
-    useContext,
-    useEffect,
-    useMemo,
-    useRef,
-    useState,
-    type ReactNode,
-} from 'react';
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useRef, useState } from 'react';
 import { cn } from './cn';
 import { IconButton } from './IconButton';
 import { AlertTriangleIcon, CheckCircleIcon, InfoIcon, XIcon } from './icons';
@@ -73,10 +64,7 @@ function ToastItem({ record, onDismiss }: { record: ToastRecord; onDismiss: (id:
         <div
             role={variant === 'error' ? 'alert' : 'status'}
             data-variant={variant}
-            className={cn(
-                'flex items-start gap-sm rounded-lg border bg-surface-raised p-sm text-ink shadow-pop',
-                VARIANT_CLASS[variant],
-            )}
+            className={cn('flex items-start gap-sm rounded-lg border bg-surface-raised p-sm text-ink shadow-pop', VARIANT_CLASS[variant])}
         >
             <span aria-hidden="true" className="mt-0.5 shrink-0">
                 {VARIANT_ICON[variant]}

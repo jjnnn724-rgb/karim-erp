@@ -127,9 +127,7 @@ describe('مدفوعات الموردين', () => {
 
         await waitFor(() => {
             const calls = (globalThis.fetch as ReturnType<typeof vi.fn>).mock.calls;
-            expect(calls.some((call) => String(call[0]).includes('/api/procurement/payments?supplierId=10'))).toBe(
-                true,
-            );
+            expect(calls.some((call) => String(call[0]).includes('/api/procurement/payments?supplierId=10'))).toBe(true);
         });
     });
 

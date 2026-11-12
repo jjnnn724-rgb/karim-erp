@@ -14,6 +14,15 @@
   "_exceptions": [
     {
       "rule": "html-unescaped",
+      "file": "frontend/app/js/v2/screens/compliance.js",
+      "count": 1,
+      "owner": "V2 compliance screen",
+      "reference": "SEC-COMPLIANCE-1",
+      "reason": "الإسناد يجمع قوالب داخلية؛ قيم الخادم النصية تمر عبر esc() والأرقام تُحوّل بـNumber، وبطاقات المزوّدين تُبنى بعُقد DOM. تُراجع اختبارات v2-compliance.test.js هذا العقد؛ يُستبدل تجميع HTML ببناء DOM عند إعادة تصميم الشاشة.",
+      "expires": "2026-12-06"
+    },
+    {
+      "rule": "html-unescaped",
       "file": "frontend/app/js/v2/screens/zkteco.js",
       "count": 10,
       "owner": "attendance UI session (zkteco screen)",

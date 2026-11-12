@@ -1,8 +1,10 @@
 import './Attendance.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { AttendanceCorrectButton, AttendanceResolveButton, AttendanceWorkbench } from '../components/AttendanceWorkbench';
 import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
+import { ApiError } from '../lib/api';
 import {
     ATTENDANCE_STATE_AR,
     type AttendancePeriodKind,
@@ -24,11 +26,11 @@ import {
     seesFullPeriod,
     todayIso,
 } from '../lib/attendance';
+import { canWriteAttendance } from '../lib/attendance-write';
 import { useAuthState } from '../lib/auth';
-import { ApiError } from '../lib/api';
-import { downloadBlob } from '../lib/pdf-share';
 import { fetchEmployees, fetchHrDepartments } from '../lib/employees';
 import { formatInt } from '../lib/inventory-register';
+import { downloadBlob } from '../lib/pdf-share';
 import { StatCard } from '../ui/StatCard';
 
 const STATE_KEYS = Object.keys(ATTENDANCE_STATE_AR) as AttendanceState[];
@@ -51,14 +53,7 @@ function Kpi({
     hint: string;
     share: { text: string; aria: string };
 }) {
-    const tone =
-        id === 'late' || id === 'early'
-            ? 'warning'
-            : id === 'missing'
-              ? 'info'
-              : id === 'present'
-                ? 'success'
-                : 'neutral';
+    const tone = id === 'late' || id === 'early' ? 'warning' : id === 'missing' ? 'info' : id === 'present' ? 'success' : 'neutral';
     return (
         <StatCard
             label={label}
@@ -133,9 +128,16 @@ export function Attendance() {
         () => new Map((departmentsQuery.data ?? []).map((department) => [String(department.code), department])),
         [departmentsQuery.data],
     );
+    const recordById = useMemo(
+        () => new Map((attendanceQuery.data?.rows ?? []).map((record) => [String(record.id), record])),
+        [attendanceQuery.data],
+    );
+    const todayRecordByEmployee = useMemo(
+        () => new Map((todayQuery.data?.rows ?? []).map((record) => [String(record.employeeId), record])),
+        [todayQuery.data],
+    );
     const rows = useMemo(
-        () =>
-            (attendanceQuery.data?.rows ?? []).map((record) => attendanceToRow(record, employeeById, departmentByCode)),
+        () => (attendanceQuery.data?.rows ?? []).map((record) => attendanceToRow(record, employeeById, departmentByCode)),
         [attendanceQuery.data, employeeById, departmentByCode],
     );
     const search = useMemo(() => searchAttendanceRows(rows, query), [rows, query]);
@@ -209,11 +211,10 @@ export function Attendance() {
                             Attendance
                         </span>
                     </h1>
-                    <p className="text-body-sm text-muted">
-                        سجل البصمات ومؤشرات الفترة.
-                    </p>
+                    <p className="text-body-sm text-muted">سجل البصمات ومؤشرات الفترة.</p>
                 </div>
                 <PrintActions title="الحضور والانصراف" />
+                <AttendanceWorkbench employees={employeesQuery.data ?? []} todayStr={today} />
                 <button
                     type="button"
                     data-erp-print-hide
@@ -319,19 +320,11 @@ export function Attendance() {
             ) : null}
             {attendanceQuery.isError ? (
                 <Card>
-                    {attendanceQuery.error instanceof ApiError &&
-                    attendanceQuery.error.code === 'NOT_LINKED_TO_EMPLOYEE' ? (
-                        <StateEmpty
-                            title="حسابك غير مرتبط بسجل موظف"
-                            hint="الحضور الذاتي يظهر بعد ربط حساب الدخول ببطاقة الموظف."
-                        />
+                    {attendanceQuery.error instanceof ApiError && attendanceQuery.error.code === 'NOT_LINKED_TO_EMPLOYEE' ? (
+                        <StateEmpty title="حسابك غير مرتبط بسجل موظف" hint="الحضور الذاتي يظهر بعد ربط حساب الدخول ببطاقة الموظف." />
                     ) : (
                         <StateError
-                            message={
-                                attendanceQuery.error instanceof Error
-                                    ? attendanceQuery.error.message
-                                    : 'تعذّر تحميل سجل الحضور'
-                            }
+                            message={attendanceQuery.error instanceof Error ? attendanceQuery.error.message : 'تعذّر تحميل سجل الحضور'}
                             onRetry={() => {
                                 void attendanceQuery.refetch();
                             }}
@@ -349,10 +342,7 @@ export function Attendance() {
                             : ''}
                     </p>
 
-                    <ul
-                        className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-3"
-                        aria-label="مؤشرات الحضور على السجلات الظاهرة"
-                    >
+                    <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-3" aria-label="مؤشرات الحضور على السجلات الظاهرة">
                         {kpis.map((item) => (
                             <Kpi
                                 key={item.id}
@@ -378,10 +368,7 @@ export function Attendance() {
                             <span className="text-body-sm text-muted">آخر {formatInt(bars.length)} يومًا مرسلًا</span>
                         </div>
                         {bars.length ? (
-                            <section
-                                className="mt-sm flex min-h-36 items-end gap-xs overflow-x-auto"
-                                aria-label="مخطط البصمات اليومية"
-                            >
+                            <section className="mt-sm flex min-h-36 items-end gap-xs overflow-x-auto" aria-label="مخطط البصمات اليومية">
                                 {bars.map((bar) => (
                                     <div key={bar.date} className="flex min-w-12 flex-col items-center gap-xxs">
                                         <span className="erp-numeric text-caption text-muted" dir="ltr">
@@ -403,10 +390,7 @@ export function Attendance() {
                         )}
                         <div className="mt-sm flex flex-wrap gap-sm">
                             {legend.map((item) => (
-                                <span
-                                    key={item.key}
-                                    className="rounded-full bg-surface-sunken px-sm py-xxs text-body-sm text-muted"
-                                >
+                                <span key={item.key} className="rounded-full bg-surface-sunken px-sm py-xxs text-body-sm text-muted">
                                     {item.label}: {formatInt(item.count)} · {item.pill.text}
                                 </span>
                             ))}
@@ -473,9 +457,7 @@ export function Attendance() {
                                 مسح المرشّحات
                             </button>
                             {search.folded ? (
-                                <span className="text-caption text-muted">
-                                    بعض النتائج ظهرت بعد تطبيع الحروف العربية.
-                                </span>
+                                <span className="text-caption text-muted">بعض النتائج ظهرت بعد تطبيع الحروف العربية.</span>
                             ) : null}
                         </div>
                         <p className="mt-sm text-body-sm text-muted" role="status" aria-live="polite">
@@ -513,14 +495,16 @@ export function Attendance() {
                                                 <th scope="col" className="px-sm py-xs text-start">
                                                     المصدر
                                                 </th>
+                                                {canWriteAttendance(role) ? (
+                                                    <th scope="col" className="px-sm py-xs text-start" data-erp-print-hide>
+                                                        إجراء
+                                                    </th>
+                                                ) : null}
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {pageRows.map((row) => (
-                                                <tr
-                                                    key={row.id}
-                                                    className="border-b border-hairline hover:bg-surface-hover"
-                                                >
+                                                <tr key={row.id} className="border-b border-hairline hover:bg-surface-hover">
                                                     <td className="px-sm py-xxs text-ink">
                                                         {row.nameResolved ? (
                                                             row.employee
@@ -529,11 +513,7 @@ export function Attendance() {
                                                         )}
                                                     </td>
                                                     <td className="px-sm py-xxs text-ink">
-                                                        {row.deptResolved ? (
-                                                            row.dept
-                                                        ) : (
-                                                            <span className="text-muted">{row.dept}</span>
-                                                        )}
+                                                        {row.deptResolved ? row.dept : <span className="text-muted">{row.dept}</span>}
                                                     </td>
                                                     <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">
                                                         {row.date || '—'}
@@ -547,10 +527,18 @@ export function Attendance() {
                                                     <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">
                                                         {minutesText(row.minutes)}
                                                     </td>
-                                                    <td className={`px-sm py-xxs ${stateTone(row.state)}`}>
-                                                        {row.stateLabel}
-                                                    </td>
+                                                    <td className={`px-sm py-xxs ${stateTone(row.state)}`}>{row.stateLabel}</td>
                                                     <td className="px-sm py-xxs text-muted">{row.sourceLabel}</td>
+                                                    {canWriteAttendance(role) ? (
+                                                        <td className="px-sm py-xxs" data-erp-print-hide>
+                                                            {recordById.get(row.id) ? (
+                                                                <AttendanceCorrectButton
+                                                                    record={recordById.get(row.id)!}
+                                                                    employee={employeeById.get(row.employeeId)}
+                                                                />
+                                                            ) : null}
+                                                        </td>
+                                                    ) : null}
                                                 </tr>
                                             ))}
                                         </tbody>
@@ -586,9 +574,7 @@ export function Attendance() {
                         ) : (
                             <StateEmpty
                                 title={rows.length ? 'لا نتائج مطابقة' : 'لا سجلات في الفترة'}
-                                hint={
-                                    rows.length ? 'لا نتائج مطابقة؛ عدّل المرشّحات.' : 'لا بصمات في هذه الفترة.'
-                                }
+                                hint={rows.length ? 'لا نتائج مطابقة؛ عدّل المرشّحات.' : 'لا بصمات في هذه الفترة.'}
                             />
                         )}
                     </Card>
@@ -639,6 +625,11 @@ export function Attendance() {
                                         <th scope="col" className="px-sm py-xs text-start">
                                             العذر
                                         </th>
+                                        {canWriteAttendance(role) ? (
+                                            <th scope="col" className="px-sm py-xs text-start" data-erp-print-hide>
+                                                إجراء
+                                            </th>
+                                        ) : null}
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -651,9 +642,19 @@ export function Attendance() {
                                             <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">
                                                 {item.hours}
                                             </td>
-                                            <td className="px-sm py-xxs text-ink">
-                                                {item.excused ? 'معذور' : 'غير معذور'}
-                                            </td>
+                                            <td className="px-sm py-xxs text-ink">{item.excused ? 'معذور' : 'غير معذور'}</td>
+                                            {canWriteAttendance(role) ? (
+                                                <td className="px-sm py-xxs" data-erp-print-hide>
+                                                    {!item.excused && employeeById.get(item.employeeId) ? (
+                                                        <AttendanceResolveButton
+                                                            employees={employeesQuery.data ?? []}
+                                                            employee={employeeById.get(item.employeeId)!}
+                                                            date={today}
+                                                            record={todayRecordByEmployee.get(item.employeeId) ?? null}
+                                                        />
+                                                    ) : null}
+                                                </td>
+                                            ) : null}
                                         </tr>
                                     ))}
                                 </tbody>

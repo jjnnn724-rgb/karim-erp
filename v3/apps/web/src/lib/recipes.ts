@@ -110,10 +110,7 @@ const pageSchema = z
     .passthrough();
 
 const listSchema = z.union([pageSchema, z.array(recipeSchema)]);
-const catalogSchema = z.union([
-    z.array(recipeCatalogSchema),
-    z.object({ data: z.array(recipeCatalogSchema) }).passthrough(),
-]);
+const catalogSchema = z.union([z.array(recipeCatalogSchema), z.object({ data: z.array(recipeCatalogSchema) }).passthrough()]);
 
 /* ─── الجلب ────────────────────────────────────────────────────────────── */
 
@@ -144,12 +141,7 @@ export async function fetchRecipes(signal?: AbortSignal): Promise<Recipe[]> {
  */
 export async function fetchRecipesCatalog(signal?: AbortSignal): Promise<RecipeCatalogRow[]> {
     try {
-        const body = await fetchJson(
-            catalogSchema,
-            '/api/pos/recipes/catalog',
-            getAccessToken(),
-            signal ? { signal } : {},
-        );
+        const body = await fetchJson(catalogSchema, '/api/pos/recipes/catalog', getAccessToken(), signal ? { signal } : {});
         return Array.isArray(body) ? body : body.data;
     } catch {
         return [];
@@ -247,9 +239,7 @@ function tokenScore(token: string, row: RecipeRow): { score: number; folded: boo
     }
     if (
         raw &&
-        (row.name.toLowerCase().includes(raw) ||
-            row.deptName.toLowerCase().includes(raw) ||
-            row.deptCode.toLowerCase().includes(raw))
+        (row.name.toLowerCase().includes(raw) || row.deptName.toLowerCase().includes(raw) || row.deptCode.toLowerCase().includes(raw))
     ) {
         return { score: 2, folded: false };
     }

@@ -1,11 +1,11 @@
 /**
  * خريطة التنقّل — المصدر الوحيد لمجموعات القائمة والعناوين والشريط السفلي.
  *
- * الشاشات الـ62 مفاتيح `V3_SCREENS` مقسّمة على سبع مجموعات منطقية (خطة
+ * الشاشات الـ63 مفاتيح `V3_SCREENS` مقسّمة على سبع مجموعات منطقية (خطة
  * المرحلة الثانية §3.3). التقسيم هنا **بيانات** لا JSX، فيختبره حارس
  * الوحدة ويتحقّق من تغطية كل مفاتيح `screens.ts` مرّة واحدة.
  *
- * `Shell.tsx` يحمل كتلة `NAV_ITEMS` الـ62 نفسها (يحرسها
+ * `Shell.tsx` يحمل كتلة `NAV_ITEMS` الـ63 نفسها (يحرسها
  * `registration.test.ts` نصًّا)، وهذا الملف يضيف ما فوقها: التجميع،
  * عنوان كل مسار، والشريط السفلي. أي انحراف بين الاثنين يُسقط
  * `Shell.test.tsx`.
@@ -18,15 +18,7 @@
  * التشغيل أولًا لأن نقطة البيع والمطبخ أكثر ما يُفتح يوميًا، ثم المال والمخزون،
  * والإدارة في آخر القائمة.
  */
-export const NAV_GROUP_IDS = [
-    'operations',
-    'finance',
-    'inventory',
-    'procurement',
-    'hr',
-    'analytics',
-    'system',
-] as const;
+export const NAV_GROUP_IDS = ['operations', 'finance', 'inventory', 'procurement', 'hr', 'analytics', 'system'] as const;
 
 export type NavGroupId = (typeof NAV_GROUP_IDS)[number];
 
@@ -39,22 +31,13 @@ export interface NavGroup {
     readonly keys: readonly string[];
 }
 
-/** سبع مجموعات تغطّي 62 شاشة بلا تكرار ولا زيادة (يحرسه `Shell.test.tsx`). */
+/** سبع مجموعات تغطّي 63 شاشة بلا تكرار ولا زيادة (يحرسه `Shell.test.tsx`). */
 export const NAV_GROUPS: readonly NavGroup[] = [
     {
         id: 'operations',
         label: 'التشغيل',
         shortLabel: 'تشغيل',
-        keys: [
-            'pos-entry',
-            'cashier-monitor',
-            'kitchen',
-            'menu-board',
-            'recipes',
-            'departments',
-            'dept-transfers',
-            'whatsapp',
-        ],
+        keys: ['pos-entry', 'cashier-monitor', 'kitchen', 'menu-board', 'recipes', 'departments', 'dept-transfers', 'whatsapp'],
     },
     {
         id: 'finance',
@@ -112,6 +95,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             'attendance',
             'leaves',
             'payroll',
+            'mudad',
             'roster',
             'dept-employees',
             'employee-portal',
@@ -173,6 +157,7 @@ export const NAV_TITLES: Readonly<Record<string, string>> = {
     '/attendance': 'الحضور والانصراف',
     '/leaves': 'الإجازات',
     '/payroll': 'الرواتب',
+    '/mudad': 'مدد والتأمينات وقوى',
     '/roster': 'الدوام',
     '/users': 'المستخدمون',
     '/branches': 'الفروع',
@@ -206,11 +191,13 @@ export const NAV_TITLES: Readonly<Record<string, string>> = {
     '/cashier-sales': 'مبيعات الكاشير',
     '/cashier-monitor': 'متابعة الكاشير',
     '/pos-entry': 'نقطة البيع',
+    '/cashier': 'واجهة الكاشير',
+    '/integrations': 'مصدر البيانات',
     '/sales-analyzer': 'تحليل المبيعات',
     '/sales-inquiry': 'استعلام المبيعات',
     '/received-analyzer': 'تحليل المستلَم',
     '/wh-vs-pos': 'المخزن مقابل نقطة البيع',
-    '/yarasoft': 'إيرادات الكاشير',
+    '/yarasoft': 'تكامل قاعدة الكاشير',
 };
 
 /**

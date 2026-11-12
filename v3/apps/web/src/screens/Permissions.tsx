@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { PrintActions } from '../components/PrintActions';
+import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import {
     activeUserOptions,
@@ -17,11 +17,7 @@ import {
     permMode,
     searchPermissions,
 } from '../lib/permissions';
-import {
-    PERMISSIONS_TEXT,
-    permissionsWriteVisible,
-    saveUserPermissions,
-} from '../lib/permissions-write';
+import { PERMISSIONS_TEXT, permissionsWriteVisible, saveUserPermissions } from '../lib/permissions-write';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -185,8 +181,8 @@ export function Permissions() {
                         </span>
                     </h1>
                     <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        منح فردية فوق الدور مع كتابة كاملة (admin فقط). السحب يغلب المنح، والمنح يغلب وراثة الدور،
-                        ودور admin يملك كل الصلاحيات ضمنيًا.
+                        منح فردية فوق الدور مع كتابة كاملة (admin فقط). السحب يغلب المنح، والمنح يغلب وراثة الدور، ودور admin يملك كل
+                        الصلاحيات ضمنيًا.
                     </p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>
@@ -209,18 +205,8 @@ export function Permissions() {
                     hint={`${formatInt(totals.groups)} مجموعة`}
                 />
                 <Kpi label="المجموعات" english="Groups" value={formatInt(totals.groups)} hint="بترتيب ورود الكتالوج" />
-                <Kpi
-                    label="قوائم النظام"
-                    english="Menus"
-                    value={formatInt(totals.menus)}
-                    hint="قوائم فريدة تفتحها الصلاحيات"
-                />
-                <Kpi
-                    label="الكيانات"
-                    english="Entities"
-                    value={formatInt(totals.entities)}
-                    hint="قراءة وكتابة عبر الكتالوج كله"
-                />
+                <Kpi label="قوائم النظام" english="Menus" value={formatInt(totals.menus)} hint="قوائم فريدة تفتحها الصلاحيات" />
+                <Kpi label="الكيانات" english="Entities" value={formatInt(totals.entities)} hint="قراءة وكتابة عبر الكتالوج كله" />
             </div>
 
             <Card className="p-sm">
@@ -273,10 +259,7 @@ export function Permissions() {
 
             {bootstrapQuery.isSuccess && !selected ? (
                 <Card>
-                    <StateEmpty
-                        title="اختر مستخدمًا"
-                        hint="اختر حسابًا من القائمة أعلاه لعرض منحه الفردية وسحوبه وآخر سجل تدقيقه."
-                    />
+                    <StateEmpty title="اختر مستخدمًا" hint="اختر حسابًا من القائمة أعلاه لعرض منحه الفردية وسحوبه وآخر سجل تدقيقه." />
                 </Card>
             ) : null}
 
@@ -309,15 +292,17 @@ export function Permissions() {
                                 <b>{targetName || (selectedOption?.label ?? `#${selected}`)}</b>
                                 <span className="text-muted"> — الدور: </span>
                                 <b>{selectedOption?.roleLabel ?? '—'}</b>
-                                {target && !target.active ? (
-                                    <span className="text-caption text-warning-text"> (موقوف)</span>
-                                ) : null}
+                                {target && !target.active ? <span className="text-caption text-warning-text"> (موقوف)</span> : null}
                             </p>
                             <span className="erp-grow" />
                             <span className="text-body-sm text-success-text">{formatInt(modes.grant)} منح</span>
                             <span className="text-body-sm text-danger-text">{formatInt(modes.deny)} سحب</span>
-                            <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">{formatInt(modes.inherit)} وراثة</span>
-                            <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">{formatInt(audit.length)} سطر تدقيق</span>
+                            <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
+                                {formatInt(modes.inherit)} وراثة
+                            </span>
+                            <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
+                                {formatInt(audit.length)} سطر تدقيق
+                            </span>
                             {canWrite && !targetIsAdmin ? (
                                 dirty ? (
                                     <>
@@ -352,10 +337,7 @@ export function Permissions() {
                                 دور admin يملك كل الصلاحيات ضمنيًا؛ لا حاجة لمنح فردي.
                             </p>
                         ) : null}
-                        <label
-                            className="mt-sm flex flex-col gap-xxs text-label-md text-ink-secondary"
-                            htmlFor="erp-perms-q"
-                        >
+                        <label className="mt-sm flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-perms-q">
                             بحث في الصلاحيات
                             <input
                                 id="erp-perms-q"
@@ -369,25 +351,22 @@ export function Permissions() {
                             />
                         </label>
                         {search.folded ? (
-                            <p className="mt-sm text-body-sm text-muted">
-                                بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.
-                            </p>
+                            <p className="mt-sm text-body-sm text-muted">بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.</p>
                         ) : null}
                     </Card>
 
                     {groups.length === 0 ? (
                         <Card>
-                            <StateEmpty
-                                title="لا صلاحيات تطابق البحث"
-                                hint="عدّل كلمة البحث أو امسحها لرؤية الكتالوج كاملًا."
-                            />
+                            <StateEmpty title="لا صلاحيات تطابق البحث" hint="عدّل كلمة البحث أو امسحها لرؤية الكتالوج كاملًا." />
                         </Card>
                     ) : (
                         groups.map((group) => (
                             <Card key={group.name}>
                                 <h2 className="border-b border-hairline px-sm py-xs text-heading-sm text-ink">
                                     {group.name}{' '}
-                                    <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">({formatInt(group.items.length)})</span>
+                                    <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
+                                        ({formatInt(group.items.length)})
+                                    </span>
                                 </h2>
                                 <div className="grid gap-sm p-sm sm:grid-cols-2 xl:grid-cols-3">
                                     {group.items.map((item) => {
@@ -403,9 +382,7 @@ export function Permissions() {
                                                 <p className="erp-numeric text-caption text-muted" dir="ltr">
                                                     {item.key}
                                                 </p>
-                                                <p className={`mt-xs text-body-sm ${MODE_TONE[mode]}`}>
-                                                    {permissionModeLabel(mode)}
-                                                </p>
+                                                <p className={`mt-xs text-body-sm ${MODE_TONE[mode]}`}>{permissionModeLabel(mode)}</p>
                                                 {item.menus.length ? (
                                                     <p className="erp-numeric mt-xs text-caption text-faint" dir="ltr">
                                                         {item.menus.join(' · ')}
@@ -420,7 +397,11 @@ export function Permissions() {
                                                             title="تبديل الوضع: منح ثم سحب ثم وراثة"
                                                             onClick={() => cycleMode(item.key)}
                                                         >
-                                                            {mode === 'grant' ? 'منح ✓ (اضغط لسحب)' : mode === 'deny' ? 'سحب ✓ (اضغط لوراثة)' : 'وراثة (اضغط لمنح)'}
+                                                            {mode === 'grant'
+                                                                ? 'منح ✓ (اضغط لسحب)'
+                                                                : mode === 'deny'
+                                                                  ? 'سحب ✓ (اضغط لوراثة)'
+                                                                  : 'وراثة (اضغط لمنح)'}
                                                         </Button>
                                                     </div>
                                                 ) : null}
@@ -435,7 +416,9 @@ export function Permissions() {
                     <Card>
                         <h2 className="border-b border-hairline px-sm py-xs text-heading-sm text-ink">
                             سجل التدقيق{' '}
-                            <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">(آخر {formatInt(audit.length)} سطر)</span>
+                            <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
+                                (آخر {formatInt(audit.length)} سطر)
+                            </span>
                         </h2>
                         {audit.length === 0 ? (
                             <p className="px-sm py-sm text-body-sm text-muted">لا سجل تدقيق لهذا المستخدم.</p>
@@ -469,16 +452,10 @@ export function Permissions() {
                                                     key={`${String(entry.created_at ?? '')}-${String(entry.perm_key ?? '')}-${String(index)}`}
                                                     className="border-b border-hairline hover:bg-surface-hover"
                                                 >
-                                                    <td
-                                                        className="erp-numeric px-sm py-xxs text-body-sm text-muted"
-                                                        dir="ltr"
-                                                    >
+                                                    <td className="erp-numeric px-sm py-xxs text-body-sm text-muted" dir="ltr">
                                                         {auditTimestamp(String(entry.created_at ?? ''))}
                                                     </td>
-                                                    <td
-                                                        className="erp-numeric px-sm py-xxs text-body-sm text-ink"
-                                                        dir="ltr"
-                                                    >
+                                                    <td className="erp-numeric px-sm py-xxs text-body-sm text-ink" dir="ltr">
                                                         {entry.perm_key || '—'}
                                                     </td>
                                                     <td
@@ -492,12 +469,8 @@ export function Permissions() {
                                                     >
                                                         {label.label}
                                                     </td>
-                                                    <td className="px-sm py-xxs text-body-sm text-muted">
-                                                        {entry.acted_by || '—'}
-                                                    </td>
-                                                    <td className="px-sm py-xxs text-body-sm text-muted">
-                                                        {entry.reason || '—'}
-                                                    </td>
+                                                    <td className="px-sm py-xxs text-body-sm text-muted">{entry.acted_by || '—'}</td>
+                                                    <td className="px-sm py-xxs text-body-sm text-muted">{entry.reason || '—'}</td>
                                                 </tr>
                                             );
                                         })}

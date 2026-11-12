@@ -1,9 +1,12 @@
 import './CashRegister.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
+import { PrintActions } from '../components/PrintActions';
 import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import {
+    type CashRegisterDept,
+    type CashRegisterRow,
     cashRegisterPresets,
     dispatchStatusLabel,
     dispatchStatusTone,
@@ -12,23 +15,20 @@ import {
     fetchRegisterHtml,
     fetchVoucherHtml,
     intText,
+    MULTI_REPORT_SCAN,
     moneyText,
     multiReportHtml,
-    parseReportTokens,
-    MULTI_REPORT_SCAN,
-    typeLabel,
-    voucherRef,
-    type CashRegisterDept,
-    type CashRegisterRow,
     type PeriodPreset,
+    parseReportTokens,
     type StatusTone,
+    typeLabel,
     type VoucherDispatch,
+    voucherRef,
 } from '../lib/cash-register';
 import { openBlankTab, printHtmlDocument, writeHtmlDocument } from '../lib/print-document';
 import { errorMessage } from '../lib/reporting';
 import { writeErrorMessage } from '../lib/write';
 import { useToast } from '../ui/Toast';
-import { PrintActions } from '../components/PrintActions';
 
 /**
  * سجلّ الصرف — قراءة فقط (ADR-001).
@@ -57,8 +57,7 @@ const STATUS_TONE_CLASS: Record<StatusTone, string> = {
     neutral: 'text-muted',
 };
 
-const MONTH_PRESET: PeriodPreset =
-    PRESETS.find((item) => item.key === 'month') ?? { key: 'month', label: 'هذا الشهر', from: '', to: '' };
+const MONTH_PRESET: PeriodPreset = PRESETS.find((item) => item.key === 'month') ?? { key: 'month', label: 'هذا الشهر', from: '', to: '' };
 
 function deltaHint(delta: number | string | null | undefined): string {
     if (delta === null || delta === undefined || delta === '') {
@@ -267,14 +266,15 @@ function VoucherDialog({ id, onClose }: { id: string; onClose: () => void }) {
     }
 
     return (
-        <div className="fixed inset-0 z-[100] grid place-items-start overflow-y-auto bg-overlay p-md">
+        <div className="fixed inset-0 z-[100] grid place-items-start overflow-y-auto bg-overlay p-md" data-erp-modal-overlay>
             <section
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="cr-voucher-title"
                 className="mx-auto w-full max-w-4xl rounded-lg border border-hairline bg-surface-raised p-md shadow-[0_24px_64px_rgb(0_0_0/0.30)]"
+                data-erp-modal-panel
             >
-                <div className="flex flex-wrap items-center justify-between gap-sm border-b border-hairline pb-sm">
+                <div className="flex flex-wrap items-center justify-between gap-sm border-b border-hairline pb-sm" data-erp-modal-head>
                     <h2 id="cr-voucher-title" className="text-heading-md text-ink">
                         إذن صرف{' '}
                         <span className="erp-numeric text-body-sm text-muted" dir="ltr" lang="en">
@@ -409,18 +409,14 @@ function VoucherDialog({ id, onClose }: { id: string; onClose: () => void }) {
                                                 <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">
                                                     {index + 1}
                                                 </td>
-                                                <td className="px-sm py-xxs text-ink">
-                                                    {String(item.itemName ?? item.name ?? '—')}
-                                                </td>
+                                                <td className="px-sm py-xxs text-ink">{String(item.itemName ?? item.name ?? '—')}</td>
                                                 <td className="erp-numeric px-sm py-xxs" dir="ltr">
                                                     {String(item.requestedQty ?? item.qty ?? '—')}
                                                 </td>
                                                 <td className="erp-numeric px-sm py-xxs" dir="ltr">
                                                     {String(item.approvedQty ?? item.requestedQty ?? item.qty ?? '—')}
                                                 </td>
-                                                <td className="px-sm py-xxs text-body-sm text-muted">
-                                                    {String(item.unit ?? '—')}
-                                                </td>
+                                                <td className="px-sm py-xxs text-body-sm text-muted">{String(item.unit ?? '—')}</td>
                                                 <td className="erp-numeric px-sm py-xxs" dir="ltr">
                                                     {item.avgCost !== null && item.avgCost !== undefined
                                                         ? Number(item.avgCost).toFixed(2)
@@ -449,8 +445,7 @@ function VoucherDialog({ id, onClose }: { id: string; onClose: () => void }) {
                         {issued.length > 0 ? (
                             <>
                                 <h3 className="text-heading-sm text-ink">
-                                    المنفَّذ في دفتر الحركات{' '}
-                                    <span className="text-body-sm text-muted">({intText(issued.length)} حركة)</span>
+                                    المنفَّذ في دفتر الحركات <span className="text-body-sm text-muted">({intText(issued.length)} حركة)</span>
                                 </h3>
                                 <TableScroll label="جدول حركات دفتر الصرف المرتبطة بالإذن">
                                     <table className="w-full border-collapse text-body-md">
@@ -546,10 +541,7 @@ function VoucherDialog({ id, onClose }: { id: string; onClose: () => void }) {
                                 <h3 className="text-heading-sm text-ink">التواقيع</h3>
                                 <div className="flex flex-wrap gap-sm">
                                     {signatures.map((signature) => (
-                                        <figure
-                                            key={signature.label}
-                                            className="rounded-md border border-hairline p-xs text-center"
-                                        >
+                                        <figure key={signature.label} className="rounded-md border border-hairline p-xs text-center">
                                             <img
                                                 src={String(signature.url)}
                                                 alt={signature.label}
@@ -633,9 +625,7 @@ export function CashRegister() {
     function toggleSort(key: SortKey) {
         resetPage();
         setSort((previous) =>
-            previous.key === key
-                ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' }
-                : { key, dir: key === 'date' ? 'desc' : 'asc' },
+            previous.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: key === 'date' ? 'desc' : 'asc' },
         );
     }
 
@@ -752,7 +742,7 @@ export function CashRegister() {
                                 {printing === 'register' ? 'جارٍ تجهيز الكشف…' : 'طباعة الكشف'}
                             </button>
                         </div>
-                        <div role="group" aria-label="اختصارات الفترة" className="flex flex-wrap gap-xs">
+                        <fieldset aria-label="اختصارات الفترة" className="m-0 flex min-w-0 flex-wrap gap-xs border-0 p-0">
                             {PRESETS.map((item) => {
                                 const active = preset === item.key;
                                 return (
@@ -773,11 +763,8 @@ export function CashRegister() {
                                     </button>
                                 );
                             })}
-                        </div>
-                        <label
-                            className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                            htmlFor="cr-from"
-                        >
+                        </fieldset>
+                        <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="cr-from">
                             من
                             <input
                                 id="cr-from"
@@ -852,10 +839,7 @@ export function CashRegister() {
                                     ))}
                             </select>
                         </label>
-                        <label
-                            className="flex min-w-56 flex-1 flex-col gap-xxs text-label-md text-ink-secondary"
-                            htmlFor="cr-search"
-                        >
+                        <label className="flex min-w-56 flex-1 flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="cr-search">
                             بحث في البيان
                             <input
                                 id="cr-search"
@@ -881,10 +865,7 @@ export function CashRegister() {
                     </div>
 
                     <div className="flex flex-wrap items-end gap-sm" data-erp-print-hide>
-                        <label
-                            className="flex min-w-64 flex-1 flex-col gap-xxs text-label-md text-ink-secondary"
-                            htmlFor="cr-multi"
-                        >
+                        <label className="flex min-w-64 flex-1 flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="cr-multi">
                             أصناف التقرير المفصل
                             <input
                                 id="cr-multi"
@@ -908,9 +889,7 @@ export function CashRegister() {
                         >
                             {printing === 'multi' ? 'جارٍ بناء التقرير…' : 'تقرير مفصل'}
                         </button>
-                        <span className="text-caption text-muted">
-                            يفحص أول {intText(MULTI_REPORT_SCAN)} حركة في الفترة المختارة.
-                        </span>
+                        <span className="text-caption text-muted">يفحص أول {intText(MULTI_REPORT_SCAN)} حركة في الفترة المختارة.</span>
                     </div>
                 </div>
             </SectionCard>
@@ -937,17 +916,12 @@ export function CashRegister() {
 
             {data ? (
                 <>
-                    <ul
-                        className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-3"
-                        aria-label="مؤشرات الفترة"
-                    >
+                    <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-3" aria-label="مؤشرات الفترة">
                         <KpiCard
                             label="إجمالي الصرف"
                             english="Total"
                             value={moneyText(totals?.total, '')}
-                            hint={`${currency ? `${currency} · ` : ''}على ${intText(totals?.days)} يوم · ${deltaHint(
-                                totals?.delta,
-                            )}`}
+                            hint={`${currency ? `${currency} · ` : ''}على ${intText(totals?.days)} يوم · ${deltaHint(totals?.delta)}`}
                         />
                         <KpiCard
                             label="عدد الحركات"
@@ -966,26 +940,15 @@ export function CashRegister() {
                             english="Top dept"
                             value={String(topDept?.dept ?? '—')}
                             hint={
-                                topDept
-                                    ? `${moneyText(topDept.total, currency)} · ${intText(topDept.n)} حركة`
-                                    : 'لا بيانات في هذه الفترة'
+                                topDept ? `${moneyText(topDept.total, currency)} · ${intText(topDept.n)} حركة` : 'لا بيانات في هذه الفترة'
                             }
                         />
-                        <KpiCard
-                            label="صرف يدوي"
-                            english="Manual"
-                            value={moneyText(totals?.manual_total, '')}
-                            hint="غير مُولَّد آليًا"
-                        />
+                        <KpiCard label="صرف يدوي" english="Manual" value={moneyText(totals?.manual_total, '')} hint="غير مُولَّد آليًا" />
                         <KpiCard
                             label="بلا إذن صرف"
                             english="Unlinked"
                             value={intText(totals?.unlinked)}
-                            hint={
-                                Number(totals?.unlinked ?? 0) > 0
-                                    ? 'حركات غير مربوطة بإذن'
-                                    : 'كل الحركة معلَّمة بإذن'
-                            }
+                            hint={Number(totals?.unlinked ?? 0) > 0 ? 'حركات غير مربوطة بإذن' : 'كل الحركة معلَّمة بإذن'}
                             tone={Number(totals?.unlinked ?? 0) > 0 ? 'danger' : 'success'}
                         />
                     </ul>
@@ -996,10 +959,7 @@ export function CashRegister() {
                                 عرض جدولي بديل لرسم التوزيع — الرسوم البيانية مؤجّلة إلى المرحلة الثانية (ADR-003).
                             </p>
                             {depts.length === 0 ? (
-                                <StateEmpty
-                                    title="لا أقسام في هذه الفترة"
-                                    hint="وسّع المدى أو ألغِ المرشّحات لعرض توزيع الأقسام."
-                                />
+                                <StateEmpty title="لا أقسام في هذه الفترة" hint="وسّع المدى أو ألغِ المرشّحات لعرض توزيع الأقسام." />
                             ) : (
                                 <TableScroll label="جدول توزيع الصرف على الأقسام">
                                     <table className="w-full border-collapse text-body-md">
@@ -1025,10 +985,7 @@ export function CashRegister() {
                                                     <td className="px-sm py-xxs text-ink">
                                                         {String(item.dept ?? 'غير مُسند')}
                                                         {item.code ? (
-                                                            <span
-                                                                className="erp-numeric me-xs text-caption text-muted"
-                                                                dir="ltr"
-                                                            >
+                                                            <span className="erp-numeric me-xs text-caption text-muted" dir="ltr">
                                                                 {String(item.code)}
                                                             </span>
                                                         ) : null}
@@ -1097,10 +1054,7 @@ export function CashRegister() {
                         }
                     >
                         {rows.length === 0 ? (
-                            <StateEmpty
-                                title="لا حركات في هذه الفترة"
-                                hint="وسّع المدى أو ألغِ المرشّحات."
-                            />
+                            <StateEmpty title="لا حركات في هذه الفترة" hint="وسّع المدى أو ألغِ المرشّحات." />
                         ) : (
                             <>
                                 <TableScroll label="جدول حركات سجل الصرف">
@@ -1128,13 +1082,7 @@ export function CashRegister() {
                                                     align="start"
                                                     onSort={toggleSort}
                                                 />
-                                                <SortHeader
-                                                    label="القسم"
-                                                    sortKey="dept"
-                                                    current={sort}
-                                                    align="start"
-                                                    onSort={toggleSort}
-                                                />
+                                                <SortHeader label="القسم" sortKey="dept" current={sort} align="start" onSort={toggleSort} />
                                                 <th scope="col" className="px-sm py-xs text-start font-medium">
                                                     النوع
                                                 </th>
@@ -1163,10 +1111,7 @@ export function CashRegister() {
                                                 const reference = voucherRef(row.request_id);
                                                 const share = Number(row.share ?? 0);
                                                 return (
-                                                    <tr
-                                                        key={row.id}
-                                                        className="border-b border-hairline hover:bg-surface-hover"
-                                                    >
+                                                    <tr key={row.id} className="border-b border-hairline hover:bg-surface-hover">
                                                         <td className="erp-numeric px-sm py-xxs text-body-sm text-muted" dir="ltr">
                                                             {row.date}
                                                         </td>
@@ -1179,9 +1124,7 @@ export function CashRegister() {
                                                         </td>
                                                         <td className="px-sm py-xxs text-ink">
                                                             {description.lead ? (
-                                                                <span className="block text-caption text-muted">
-                                                                    {description.lead}
-                                                                </span>
+                                                                <span className="block text-caption text-muted">{description.lead}</span>
                                                             ) : null}
                                                             {description.rest || '—'}
                                                         </td>
@@ -1197,9 +1140,7 @@ export function CashRegister() {
                                                         <td className="erp-numeric px-sm py-xxs text-end" dir="ltr">
                                                             {moneyText(row.amount, currency)}
                                                             {Number.isFinite(share) && share > 0 ? (
-                                                                <span className="ms-xs text-caption text-muted">
-                                                                    {share.toFixed(1)}%
-                                                                </span>
+                                                                <span className="ms-xs text-caption text-muted">{share.toFixed(1)}%</span>
                                                             ) : null}
                                                         </td>
                                                         <td className="px-sm py-xxs text-center">
@@ -1229,8 +1170,8 @@ export function CashRegister() {
 
                                 <div className="flex flex-wrap items-center justify-between gap-sm border-t border-hairline px-sm py-xs">
                                     <span className="text-body-sm text-muted">
-                                        صفحة {intText(safePage)} من {intText(pageCount)} — المعروض{' '}
-                                        {intText(rows.length)} من {intText(totalCount)}
+                                        صفحة {intText(safePage)} من {intText(pageCount)} — المعروض {intText(rows.length)} من{' '}
+                                        {intText(totalCount)}
                                     </span>
                                     <div className="flex gap-xs">
                                         <button

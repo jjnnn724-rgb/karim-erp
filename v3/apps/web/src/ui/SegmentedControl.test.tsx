@@ -43,9 +43,7 @@ describe('SegmentedControl', () => {
     });
 
     it('بلا مخالفات axe', async () => {
-        const { container } = render(
-            <SegmentedControl label="المدى الزمني" options={options} value="week" onValueChange={vi.fn()} />,
-        );
+        const { container } = render(<SegmentedControl label="المدى الزمني" options={options} value="week" onValueChange={vi.fn()} />);
         await expectNoAxeViolations(container);
     });
 

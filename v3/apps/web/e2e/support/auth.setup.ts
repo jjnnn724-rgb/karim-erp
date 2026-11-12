@@ -1,8 +1,8 @@
-import { mkdirSync, writeFileSync } from "node:fs";
-import { dirname } from "node:path";
-import { fileURLToPath } from "node:url";
-import { test as setup } from "@playwright/test";
-import { hasLiveCreds, login } from "./harness";
+import { mkdirSync, writeFileSync } from 'node:fs';
+import { dirname } from 'node:path';
+import { fileURLToPath } from 'node:url';
+import { test as setup } from '@playwright/test';
+import { hasLiveCreds, login } from './harness';
 
 /**
  * جلسة واحدة للحزمة الحية كلها.
@@ -15,18 +15,16 @@ import { hasLiveCreds, login } from "./harness";
  * فالعمال المتوازون آمنون.
  */
 
-export const AUTH_FILE = fileURLToPath(
-	new URL("../.auth/live.json", import.meta.url),
-);
+export const AUTH_FILE = fileURLToPath(new URL('../.auth/live.json', import.meta.url));
 
-setup("حفظ جلسة حية", async ({ page, context }) => {
-	mkdirSync(dirname(AUTH_FILE), { recursive: true });
-	if (!hasLiveCreds) {
-		// حالة فارغة كي تُقلع المشاريع التابعة ثم تُتخطّى اختباراتها صراحةً.
-		writeFileSync(AUTH_FILE, JSON.stringify({ cookies: [], origins: [] }));
-		return;
-	}
+setup('حفظ جلسة حية', async ({ page, context }) => {
+    mkdirSync(dirname(AUTH_FILE), { recursive: true });
+    if (!hasLiveCreds) {
+        // حالة فارغة كي تُقلع المشاريع التابعة ثم تُتخطّى اختباراتها صراحةً.
+        writeFileSync(AUTH_FILE, JSON.stringify({ cookies: [], origins: [] }));
+        return;
+    }
 
-	await login(page);
-	await context.storageState({ path: AUTH_FILE });
+    await login(page);
+    await context.storageState({ path: AUTH_FILE });
 });

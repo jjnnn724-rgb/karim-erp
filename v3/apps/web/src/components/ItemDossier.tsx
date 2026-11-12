@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
-import { StateEmpty, StateError, StateLoading, TableScroll } from './TableState';
 import { fetchInquiryItem } from '../lib/inventory-inquiry';
 import { errorMessage, intOf, moneyOf, qtyOf, textOf } from '../lib/reporting';
+import { StateEmpty, StateError, StateLoading, TableScroll } from './TableState';
 
 /**
  * بطاقة الصنف — نفس عقد `/api/inventory-inquiry/item/:id` الذي تقرأه v2
@@ -123,9 +123,7 @@ export function ItemDossier({ itemId, from, to }: { itemId: string; from: string
                                                 <span className="block text-caption text-faint">{textOf(row.reason)}</span>
                                             ) : null}
                                         </td>
-                                        <td className="px-sm py-xxs text-muted">
-                                            {textOf(row.location) || textOf(row.deptCode) || '—'}
-                                        </td>
+                                        <td className="px-sm py-xxs text-muted">{textOf(row.location) || textOf(row.deptCode) || '—'}</td>
                                         <td
                                             className={`erp-numeric px-sm py-xxs text-end ${
                                                 Number(row.delta) < 0 ? 'text-danger-text' : 'text-success-text'

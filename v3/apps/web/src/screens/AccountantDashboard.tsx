@@ -1,18 +1,30 @@
 import './AccountantDashboard.premium.css';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useNavigate, useSearch } from '@tanstack/react-router';
+import { useEffect, useMemo, useState } from 'react';
 import { ReportHeader, SectionCard } from '../components/Reports';
-import { FilterBar, StatCard } from '../ui';
 import { StateEmpty, StateError, StateLoading } from '../components/TableState';
 import { fetchAccountantSnapshot } from '../lib/dashboards';
 import { moneyOf, num, pctOf, presetRange, rangeProblem, textOf } from '../lib/reporting';
+import { FilterBar, StatCard } from '../ui';
 
 /** لوحة المحاسب — الشهر من بيان الخادم نفسه، لا من مشي على سجلات الإيراد. */
 export function AccountantDashboard() {
-    const [draft, setDraft] = useState(() => presetRange('month'));
+    const search = useSearch({ from: '/accountant-dashboard' });
+    const navigate = useNavigate({ from: '/accountant-dashboard' });
+    const initialRange = search.from && search.to ? { from: search.from, to: search.to } : presetRange('month');
+    const [draft, setDraft] = useState(initialRange);
     const [range, setRange] = useState(draft);
     const [problem, setProblem] = useState('');
-    const [q, setQ] = useState('');
+    const [q, setQ] = useState(search.q ?? '');
+
+    useEffect(() => {
+        const nextRange = search.from && search.to ? { from: search.from, to: search.to } : presetRange('month');
+        setDraft(nextRange);
+        setRange(nextRange);
+        setQ(search.q ?? '');
+        setProblem('');
+    }, [search.from, search.to, search.q]);
 
     const snapshot = useQuery({
         queryKey: ['dashboard', 'accountant', range.from, range.to],
@@ -24,9 +36,8 @@ export function AccountantDashboard() {
     // فلاتر واجهة أمامية على أحدث الإيرادات والمصروفات (نطاق تاريخ + بحث نصي)
     const filteredRevenues = useMemo(() => {
         return (data?.latestRevenues ?? []).filter((row) => {
-            const dateOk = range.from && range.to
-                ? textOf(row.date).slice(0, 10) >= range.from && textOf(row.date).slice(0, 10) <= range.to
-                : true;
+            const dateOk =
+                range.from && range.to ? textOf(row.date).slice(0, 10) >= range.from && textOf(row.date).slice(0, 10) <= range.to : true;
             const textOk = q ? (textOf(row.source) ?? '').includes(q) : true;
             return dateOk && textOk;
         });
@@ -34,9 +45,8 @@ export function AccountantDashboard() {
 
     const filteredExpenses = useMemo(() => {
         return (data?.latestExpenses ?? []).filter((row) => {
-            const dateOk = range.from && range.to
-                ? textOf(row.date).slice(0, 10) >= range.from && textOf(row.date).slice(0, 10) <= range.to
-                : true;
+            const dateOk =
+                range.from && range.to ? textOf(row.date).slice(0, 10) >= range.from && textOf(row.date).slice(0, 10) <= range.to : true;
             const textOk = q ? (textOf(row.desc) ?? textOf(row.category) ?? '').includes(q) : true;
             return dateOk && textOk;
         });
@@ -52,7 +62,20 @@ export function AccountantDashboard() {
         setProblem(message);
         if (!message) {
             setRange(draft);
+            void navigate({
+                search: (previous) => ({ ...previous, from: draft.from, to: draft.to }),
+                replace: true,
+            });
         }
+    }
+
+    function resetFilters() {
+        const month = presetRange('month');
+        setDraft(month);
+        setRange(month);
+        setQ('');
+        setProblem('');
+        void navigate({ search: () => ({}), replace: true });
     }
 
     return (
@@ -77,7 +100,22 @@ export function AccountantDashboard() {
                 searchLabel="بحث"
                 searchPlaceholder="بحث في الإيرادات والمصروفات…"
                 searchValue={q}
-                onSearchChange={(next: string) => setQ(next)}
+                onSearchChange={(next: string) => {
+                    setQ(next);
+                    void navigate({
+                        search: (previous) => {
+                            const nextSearch = { ...previous };
+                            if (next) {
+                                nextSearch.q = next;
+                            } else {
+                                delete nextSearch.q;
+                            }
+                            return nextSearch;
+                        },
+                        replace: true,
+                    });
+                }}
+                onReset={resetFilters}
                 pending={snapshot.isFetching}
                 error={problem}
                 data-testid="accountant-filter-bar"
@@ -179,10 +217,7 @@ export function AccountantDashboard() {
                     </div>
 
                     {data.failures.length > 0 ? (
-                        <p
-                            className="rounded-md border border-warning bg-surface p-sm text-body-sm text-warning-text"
-                            role="alert"
-                        >
+                        <p className="rounded-md border border-warning bg-surface p-sm text-body-sm text-warning-text" role="alert">
                             {`تعذّر قراءة: ${data.failures.join(' · ')}`}
                         </p>
                     ) : null}

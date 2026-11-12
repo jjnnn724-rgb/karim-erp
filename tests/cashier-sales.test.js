@@ -64,41 +64,46 @@ describe('مبيعات الكاشير — مصدر الصدق', () => {
 });
 
 describe('مبيعات الكاشير — الرداءة تُعرض ولا تُنعَّم', () => {
-    test('الخادم يعدّ المخالفات أربعًا ويُرسل أرقامها', () => {
+    test('الخادم يعدّ المخالفات ويُرسل أرقامها — والتصنيف الأرشيفي بلا مبلغ', () => {
         expect(backend).toMatch(/AS no_lines/);
         expect(backend).toMatch(/ABS\(o\.net - \(o\.total \+ o\.vat\)\) > 0\.005/);
         expect(backend).toMatch(/AS drift_docs/);
-        expect(backend).toMatch(/AS drift_amount/);
+        expect(backend).toMatch(/legacy_docs: Number\(t\.drift_docs\)/);
+        expect(backend).toMatch(/legacy_adjustment: \(Number\(t\.drift_docs\) \|\| 0\) > 0/);
+        expect(backend).toMatch(/line_vat: round2\(t\.line_vat\)/);
         expect(backend).toMatch(/AS pay_unreconciled/);
         expect(backend).toMatch(/unaccounted: round2\(collected - methods/);
     });
 
     test('الشاشة تُظهر كل مخالفة غير صفرية، لا تُصلحها في العرض', () => {
-        for (const k of ['no_lines', 'drift_docs', 'pay_unreconciled', 'unaccounted']) {
+        for (const k of ['no_lines', 'pay_unreconciled', 'unaccounted']) {
             expect(screen).toMatch(new RegExp(`Number\\(?t\\.${k}\\)?`));
             expect(screen).toMatch(k === 'unaccounted'
                 ? /Math\.abs\(Number\(t\.unaccounted\)/ : new RegExp(`t[.]${k}`));
         }
-        // لا مطابقة تُلغي سطرًا ولا رقمٌ يُعاد حسابه هنا
+        // الأرشيف يُصنَّف عدديًّا فقط؛ لا مبلغ فرق ولا تسوية تُعرض أو تُحسب.
+        expect(screen).toMatch(/t\.legacy_docs \?\? t\.drift_docs/);
+        expect(screen).not.toMatch(/drift_amount|drift_large|drift_within_rounding/);
         expect(screen).not.toMatch(/t\.drift_docs\s*[-+]|t\.collected\s*[-+*/]\s*2/);
     });
 
-    test('خانة تجميع الفارق في اللوحة: مجموع drift_amount وعدد السندات', () => {
-        expect(screen).toMatch(/label: 'فارق التسوية'/);
-        expect(screen).toMatch(/value: money\(t\.drift_amount, ''\)/);
-        expect(screen).toMatch(/count\(t\.drift_docs\)/);
-        expect(screen).toMatch(/count\(t\.drift_large_docs\)/);
+    test('خانة الأرشيف في اللوحة: عددٌ بلا مبلغ ولا معادلة تسوية', () => {
+        expect(screen).toMatch(/label: 'سجلات مؤرشفة'/);
+        expect(screen).toMatch(/value: count\(t\.legacy_docs \?\? t\.drift_docs\)/);
+        expect(screen).not.toMatch(/label: 'فارق التسوية'/);
+        expect(screen).not.toMatch(/value: money\(t\.drift_amount/);
+        expect(screen).not.toMatch(/count\(t\.drift_large_docs\)/);
     });
 
-    test('الفارقُ عن (صافٍ + ضريبة) لا يُنسَب إلى التقريب إلا في قدره', () => {
-        // قدرُ التقريب من عدد السطور، عند الخادم لا في الواجهة
-        expect(backend).toMatch(/AS drift_large_docs/);
-        expect(backend).toMatch(/AS drift_large_amount/);
-        expect(backend).toMatch('0.01 * ${LINES_LEN} + 0.005');
-        expect(backend).toMatch(/drift_within_rounding/);
-        expect(screen).toMatch(/s\.drift_within_rounding/);
-        expect(screen).toMatch(/r\.drift_within_rounding/);
-        // والعبارةُ الجزمةُ («سببٌ في الكاشيرية») لا تُقال: المرآةُ لا تسجّله
+    test('لا بند «فرق/تسوية» في أي عرض أو طباعة — السجل القديم يُوسم أرشيفيًّا', () => {
+        // الخادم يحتفظ بالحقول للتوافق فقط، والتقارير تقرأ ضريبة السطور.
+        expect(backend).toMatch(/drift_large_docs/);
+        expect(backend).toMatch(/line_vat/);
+        expect(backend).toMatch(/SUM\(\(e->>'vat'\)::numeric\)/);
+        // ولا سطر «تسوية» في الإيصال ولا عبارة «فرق» تُطبع.
+        expect(backend).not.toMatch(/تسوية \(فرق المحصَّل/);
+        expect(backend).toMatch(/سجل مؤرشف من النظام السابق/);
+        expect(screen).not.toMatch(/s\.drift_within_rounding|r\.drift_within_rounding/);
         expect(screen).not.toMatch(/تعديلُ سعر|تعديلِ سعر|خصمٌ في الكاشيرية|خصمٌ عند البيع/);
         expect(backend).not.toMatch(/تعديلُ سعر|خصمٌ عند البيع/);
     });
@@ -178,7 +183,7 @@ describe('مبيعات الكاشير — ملف الصنف والفاتورة',
     });
 
     test('سطرٌ واحد للوحة والطبع: loadSlip تُقرأ من الاثنين', () => {
-        const calls = [...backend.matchAll(/await loadSlip\(docNo\)/g)].length;
+        const calls = [...backend.matchAll(/findAfterLive\(req, loadSlip, docNo\)/g)].length;
         expect(calls).toBe(2);
         expect(backend).toMatch(/async function loadSlip\(docNo\)/);
         expect(backend).toMatch(/router\.get\('\/invoice\/:docNo\/html'/);
@@ -270,12 +275,14 @@ describe('مبيعات الكاشير — الورقة المطبوعة', () => 
         expect(backend).toMatch('.hd img { width:17mm; height:17mm; object-fit:contain; }');
     });
 
-    test('الإيصالُ نسخةُ عميل: لا سطرَ انضباطٍ على كل فاتورة', () => {
-        /* فارقُ التقريب (هللةٌ لكل سطرٍ أو نصفُها) لا يُطبع؛ ما جاوزَ
-           قدرَه خطرٌ محاسبيٌّ يُطبع سطرًا واحدًا. */
-        expect(backend).toMatch('const driftLarge = Math.abs(drift) > 0.01 * lineCount + 0.005;');
-        expect(backend).toMatch('Math.abs(drift) > 0.005 && driftLarge');
-        expect(backend).toMatch('ملاحظة محاسبية:');
+    test('الإيصالُ نسخةُ عميل: لا سطرَ انضباطٍ ولا بند تسوية', () => {
+        /* لا فارق تقريب يُطبع ولا بند تسوية — السجل القديم يُوسم أرشيفيًّا
+           بلا مبلغ، والأرقام تُعرض كما وردت. */
+        expect(backend).toMatch('const legacy = Math.abs(round2((slip.collected || 0)');
+        expect(backend).toMatch('سجل مؤرشف من النظام السابق');
+        expect(backend).not.toMatch('const driftLarge');
+        expect(backend).not.toMatch('تسوية (فرق المحصَّل');
+        expect(backend).not.toMatch('ملاحظة محاسبية:');
     });
 
     test('ترويسةُ الكشفِ فاتحةٌ للطابعة: حبرٌ داكنٌ على ورقٍ أبيض', () => {
@@ -344,11 +351,13 @@ describe('مبيعات الكاشير — الواجهة', () => {
 
 describe('مبيعات الكاشير — الطبقة والنشر', () => {
     test('الطبقة برموز --erp-* فقط (تبعُ الوضع الليلي بلا إعادة رسم)', () => {
-        const body = css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/@media[^{]+\{/g, '');
-        expect(body).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
-        expect(body).not.toMatch(/rgba?\(/);
-        expect(body).not.toMatch(/\b\d+(px|rem|em)\b/);
-        expect(body).toMatch(/var\(--erp-space-/);
+        /* الطبقةُ الأساسية برموز؛ استعلامات الوسائط (نقاط الكسر وأهداف اللمس)
+           تقبل px بطبيعتها، فلا تُحسب على أنها خروجٌ عن الرموز. */
+        const base = css.replace(/\/\*[\s\S]*?\*\//g, '').split('@media')[0];
+        expect(base).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
+        expect(base).not.toMatch(/rgba?\(/);
+        expect(base).not.toMatch(/\b\d+(px|rem|em)\b/);
+        expect(base).toMatch(/var\(--erp-space-/);
     });
 
     test('فخُّ hidden: اللوحاتُ داخل erp-stack فلها قاعدةٌ تُلغيها', () => {

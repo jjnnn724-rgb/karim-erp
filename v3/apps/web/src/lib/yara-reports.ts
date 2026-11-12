@@ -51,10 +51,7 @@ const itemSalesRowSchema = z
 export const itemSalesSchema = z
     .object({
         rows: z.array(itemSalesRowSchema).optional(),
-        totals: z
-            .object({ invoices: numLike, qty: numLike, net: numLike, vat: numLike })
-            .passthrough()
-            .optional(),
+        totals: z.object({ invoices: numLike, qty: numLike, net: numLike, vat: numLike }).passthrough().optional(),
     })
     .passthrough();
 
@@ -62,12 +59,7 @@ export type ItemSales = z.infer<typeof itemSalesSchema>;
 export type ItemSalesRow = z.infer<typeof itemSalesRowSchema>;
 
 export async function fetchItemSales(from: string, to: string, signal?: AbortSignal): Promise<ItemSales> {
-    return fetchJson(
-        itemSalesSchema,
-        `/api/yara-reports/item-sales?${rangeQuery(from, to)}`,
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    return fetchJson(itemSalesSchema, `/api/yara-reports/item-sales?${rangeQuery(from, to)}`, getAccessToken(), signal ? { signal } : {});
 }
 
 /** تجميع الأصناف عبر الكاشير والأيام — كمية وصافي على الصفوف الواصلة. */
@@ -270,12 +262,7 @@ export const whVsPosSchema = z
 export type WhVsPos = z.infer<typeof whVsPosSchema>;
 
 export async function fetchWhVsPos(from: string, to: string, signal?: AbortSignal): Promise<WhVsPos> {
-    return fetchJson(
-        whVsPosSchema,
-        `/api/yara-reports/wh-vs-pos?${rangeQuery(from, to)}`,
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    return fetchJson(whVsPosSchema, `/api/yara-reports/wh-vs-pos?${rangeQuery(from, to)}`, getAccessToken(), signal ? { signal } : {});
 }
 
 export const WH_VS_POS_STATUS_AR: Record<string, string> = {

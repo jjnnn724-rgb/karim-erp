@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Badge, Button, Input, Pagination, Select } from '../../ui';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../../components/TableState';
 import type { PosOrderDetail, PosOrderPage } from '../../lib/pos';
 import { intOf } from '../../lib/reporting';
+import { Badge, Button, Input, Pagination, Select } from '../../ui';
 import { moneyText, orderStatusLabel, orderStatusTone, paymentMethodLabel } from './pos-ui';
 
 export interface PosHistoryFiltersState {
@@ -139,14 +139,30 @@ export function PosHistory({
                                 <table className="w-full border-collapse text-body-md">
                                     <thead>
                                         <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">رقم الفاتورة</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">القسم</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">التاريخ</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">الكاشير</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">الأصناف</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">الإجمالي</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">الحالة</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">التفاصيل</th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                رقم الفاتورة
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                القسم
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                التاريخ
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الكاشير
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الأصناف
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الإجمالي
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الحالة
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                التفاصيل
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -167,9 +183,7 @@ export function PosHistory({
                                                     {moneyText(order.total_amount)}
                                                 </td>
                                                 <td className="px-sm py-xxs">
-                                                    <Badge variant={orderStatusTone(order.status)}>
-                                                        {orderStatusLabel(order.status)}
-                                                    </Badge>
+                                                    <Badge variant={orderStatusTone(order.status)}>{orderStatusLabel(order.status)}</Badge>
                                                 </td>
                                                 <td className="px-sm py-xxs">
                                                     <Button
@@ -189,12 +203,7 @@ export function PosHistory({
                             </TableScroll>
                         )}
                         {pagination && pagination.totalPages > 1 ? (
-                            <Pagination
-                                page={pagination.page}
-                                pageSize={pagination.limit}
-                                total={pagination.total}
-                                onPageChange={onPage}
-                            />
+                            <Pagination page={pagination.page} pageSize={pagination.limit} total={pagination.total} onPageChange={onPage} />
                         ) : null}
                     </>
                 ) : null}
@@ -272,11 +281,21 @@ export function PosOrderDetailPanel({
                                 <table className="w-full border-collapse text-body-md">
                                     <thead>
                                         <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">الصنف</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">الكمية</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">سعر الوحدة</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">الخصم</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">الإجمالي</th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الصنف
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الكمية
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                سعر الوحدة
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الخصم
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الإجمالي
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -372,9 +391,15 @@ export function PosOrderDetailPanel({
                                 <table className="w-full border-collapse text-body-md">
                                     <thead>
                                         <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">الوسيلة</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">المبلغ</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">المرجع</th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الوسيلة
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                المبلغ
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                المرجع
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody>

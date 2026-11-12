@@ -35,8 +35,26 @@ describe('تحليل مبيعات الأصناف', () => {
                 if (url.includes('/api/yara-reports/item-sales')) {
                     return json({
                         rows: [
-                            { item_code: 'SKU1', item_name: 'برجر', cashier_no: '101', day: '2026-11-05', invoices: 10, qty: 20, net: 1000, vat: 150 },
-                            { item_code: 'SKU1', item_name: 'برجر', cashier_no: '102', day: '2026-11-06', invoices: 5, qty: 8, net: 400, vat: 60 },
+                            {
+                                item_code: 'SKU1',
+                                item_name: 'برجر',
+                                cashier_no: '101',
+                                day: '2026-11-05',
+                                invoices: 10,
+                                qty: 20,
+                                net: 1000,
+                                vat: 150,
+                            },
+                            {
+                                item_code: 'SKU1',
+                                item_name: 'برجر',
+                                cashier_no: '102',
+                                day: '2026-11-06',
+                                invoices: 5,
+                                qty: 8,
+                                net: 400,
+                                vat: 60,
+                            },
                         ],
                         totals: { invoices: 15, qty: 28, net: 1400, vat: 210 },
                     });

@@ -1,7 +1,7 @@
-import { useId, type KeyboardEventHandler, type Ref } from 'react';
+import { type KeyboardEventHandler, type Ref, useId } from 'react';
 import { cn } from './cn';
-import { SearchIcon, XIcon } from './icons';
 import { controlClassName, controlSizeClassName } from './Input';
+import { SearchIcon, XIcon } from './icons';
 
 /**
  * حقل بحث — أيقونة بحث في بداية السطر المنطقية، وزر مسح عند وجود نص.
@@ -19,7 +19,7 @@ export interface SearchInputProps {
     className?: string;
     /** لالتقاط Enter (قارئ باركود) قبل أي معالج آخر. */
     onKeyDown?: KeyboardEventHandler<HTMLInputElement>;
-    autoFocus?: boolean;
+    'data-testid'?: string;
     /** لتركيز الحقل من اختصار لوحة مفاتيح دون البحث في DOM. */
     inputRef?: Ref<HTMLInputElement>;
 }
@@ -34,7 +34,7 @@ export function SearchInput({
     id,
     className,
     onKeyDown,
-    autoFocus = false,
+    'data-testid': testId,
     inputRef,
 }: SearchInputProps) {
     const autoId = useId();
@@ -50,11 +50,11 @@ export function SearchInput({
                 <input
                     ref={inputRef}
                     id={inputId}
+                    data-testid={testId}
                     type="search"
                     value={value}
                     disabled={disabled}
                     placeholder={placeholder}
-                    autoFocus={autoFocus}
                     onKeyDown={onKeyDown}
                     onChange={(event) => {
                         if (disabled) {

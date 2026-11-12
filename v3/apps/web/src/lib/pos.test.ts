@@ -15,6 +15,7 @@ import {
     isBuffetDepartment,
     orderDetailSchema,
     orderPageSchema,
+    posDayKey,
     posDepartmentSchema,
     posProductSchema,
     saleResultSchema,
@@ -78,13 +79,14 @@ describe('عقود الكاشير', () => {
     });
 
     it('الوردية المفتوحة تُطبَّع مع سقوط `session_id` إلى `id`', () => {
+        const openedAt = new Date().toISOString();
         const row = activeShiftSchema.parse({
             id: '987654321',
             department_id: '12',
             cashier_id: '17908800123',
             status: 'open',
             opening_balance: '500.00',
-            opened_at: '2026-11-10T06:12:00.000Z',
+            opened_at: openedAt,
             dept_name: 'البوفيه المفتوح',
             dept_code: 'erp_open_buffet',
             expected_cash: null,
@@ -96,8 +98,33 @@ describe('عقود الكاشير', () => {
             deptName: 'البوفيه المفتوح',
             deptCode: 'erp_open_buffet',
             openingBalance: 500,
-            openedAt: '2026-11-10T06:12:00.000Z',
+            openedAt,
+            openedOn: posDayKey(openedAt),
+            isStale: false,
         });
+    });
+
+    it('وردية فُتحت في يوم سابق تُوسم `isStale` (الخادم يرفض البيع عليها 409)', () => {
+        const openedAt = new Date(Date.now() - 2 * 86_400_000).toISOString();
+        const row = activeShiftSchema.parse({
+            id: '5',
+            department_id: 2,
+            status: 'open',
+            opening_balance: '0',
+            opened_at: openedAt,
+            dept_name: 'الكاشير',
+            dept_code: 'pos',
+        });
+        const shift = activeShiftOf(row);
+        expect(shift.openedOn).toBe(posDayKey(openedAt));
+        expect(shift.isStale).toBe(true);
+    });
+
+    it('`posDayKey` يحسب اليوم بتوقيت الرياض لا بتوقيت الجهاز', () => {
+        // 2026-11-10T22:30Z = 2026-11-11 01:30 في الرياض
+        expect(posDayKey('2026-11-10T22:30:00.000Z')).toBe('2026-11-11');
+        expect(posDayKey(null)).toBe('');
+        expect(posDayKey('not-a-date')).toBe('');
     });
 
     it('`session_id` الصريح يتقدّم على `id` (جلسة كاشير قديمة)', () => {
@@ -251,9 +278,7 @@ describe('عقود الكاشير', () => {
                 },
             ],
             payments: [{ method: 'cash', amount: '57.50' }],
-            print_jobs: [
-                { id: '3', status: 'done', attempts: 1, last_attempt_at: null, completed_at: null, last_error: null },
-            ],
+            print_jobs: [{ id: '3', status: 'done', attempts: 1, last_attempt_at: null, completed_at: null, last_error: null }],
         });
         expect(parsed.success).toBe(true);
     });
@@ -449,9 +474,7 @@ describe('أبواب الكاشير — السلوك على الشبكة', () =>
     });
 
     it('رفع صورة الصنف POST واحد متعدد الأجزاء ثم قراءة رده نفسه', async () => {
-        const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) =>
-            jsonResponse({ id: '7', image_url: '/uploads/menu/p7.png' }),
-        );
+        const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => jsonResponse({ id: '7', image_url: '/uploads/menu/p7.png' }));
         vi.stubGlobal('fetch', fetchMock);
 
         const file = new File([new Uint8Array([1, 2, 3])], 'p.png', { type: 'image/png' });

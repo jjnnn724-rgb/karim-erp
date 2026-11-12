@@ -125,12 +125,7 @@ export async function fetchVegRequests(
     status: VegStatusFilter = 'all',
     signal?: AbortSignal,
 ): Promise<{ requests: VegRequest[]; summary: VegSummary }> {
-    const body = await fetchJson(
-        vegRequestsResponseSchema,
-        vegListPath(status),
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    const body = await fetchJson(vegRequestsResponseSchema, vegListPath(status), getAccessToken(), signal ? { signal } : {});
     return { requests: body.requests, summary: body.summary };
 }
 
@@ -182,11 +177,7 @@ export function vegRequestToRow(request: VegRequest): VegRequestRow {
         status,
         statusLabel: vegStatusLabel(status),
         total: request.total,
-        by: request.created_by_name
-            ? String(request.created_by_name)
-            : request.created_by
-              ? `#${request.created_by}`
-              : '—',
+        by: request.created_by_name ? String(request.created_by_name) : request.created_by ? `#${request.created_by}` : '—',
         created: request.created_at ? String(request.created_at).slice(0, 10) : '',
         receivedBy: request.received_by_name ? String(request.received_by_name) : '',
         pricedBy: request.priced_by_name ? String(request.priced_by_name) : '',

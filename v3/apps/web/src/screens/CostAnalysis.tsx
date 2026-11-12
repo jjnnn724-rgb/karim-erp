@@ -1,20 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { PrintActions } from '../components/PrintActions';
 import { BarList, ReportHeader, SectionCard } from '../components/Reports';
-import { FilterBar, StatCard } from '../ui';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { fetchCostAnalysis, topCostRows } from '../lib/cost-analysis';
-import {
-    errorMessage,
-    intOf,
-    moneyOf,
-    pctOf,
-    presetRange,
-    rangeProblem,
-    shareOf,
-    textOf,
-} from '../lib/reporting';
-import { PrintActions } from '../components/PrintActions';
+import { errorMessage, intOf, moneyOf, pctOf, presetRange, rangeProblem, shareOf, textOf } from '../lib/reporting';
+import { FilterBar, StatCard } from '../ui';
 
 /**
  * تحليل التكاليف — تكلفة كل قسم مقابل إيراده من `finance-routes`.
@@ -97,12 +88,7 @@ export function CostAnalysis() {
             {analysis ? (
                 <>
                     <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4" aria-label="مؤشرات تحليل التكاليف">
-                        <StatCard
-                            label="الإيراد"
-                            english="Revenue"
-                            value={moneyOf(totals?.rev)}
-                            hint="إيراد الفترة من الأقسام والقنوات"
-                        />
+                        <StatCard label="الإيراد" english="Revenue" value={moneyOf(totals?.rev)} hint="إيراد الفترة من الأقسام والقنوات" />
                         <StatCard
                             label="إجمالي التكلفة"
                             english="Total cost"
@@ -121,7 +107,11 @@ export function CostAnalysis() {
                             label="أقسام في التحليل"
                             english="Departments"
                             value={intOf(rows.length)}
-                            hint={textOf(analysis.period?.from) ? `من ${textOf(analysis.period?.from)} إلى ${textOf(analysis.period?.to)}` : 'الفترة الحالية'}
+                            hint={
+                                textOf(analysis.period?.from)
+                                    ? `من ${textOf(analysis.period?.from)} إلى ${textOf(analysis.period?.to)}`
+                                    : 'الفترة الحالية'
+                            }
                         />
                     </ul>
 
@@ -131,10 +121,26 @@ export function CostAnalysis() {
                                 ariaLabel="تركيب التكلفة حسب الوعاء"
                                 emptyText="لا تكلفة مسجلة في الفترة."
                                 items={[
-                                    { label: 'مواد وصرف مخزني', value: moneyOf(totals?.mat), share: shareOf(Number(totals?.mat ?? 0), expenseTotal) },
-                                    { label: 'تحويلات جردية', value: moneyOf(totals?.trn), share: shareOf(Number(totals?.trn ?? 0), expenseTotal) },
-                                    { label: 'تسوية جرد', value: moneyOf(totals?.cnt), share: shareOf(Number(totals?.cnt ?? 0), expenseTotal) },
-                                    { label: 'مصروفات تشغيلية', value: moneyOf(totals?.ops), share: shareOf(Number(totals?.ops ?? 0), expenseTotal) },
+                                    {
+                                        label: 'مواد وصرف مخزني',
+                                        value: moneyOf(totals?.mat),
+                                        share: shareOf(Number(totals?.mat ?? 0), expenseTotal),
+                                    },
+                                    {
+                                        label: 'تحويلات جردية',
+                                        value: moneyOf(totals?.trn),
+                                        share: shareOf(Number(totals?.trn ?? 0), expenseTotal),
+                                    },
+                                    {
+                                        label: 'تسوية جرد',
+                                        value: moneyOf(totals?.cnt),
+                                        share: shareOf(Number(totals?.cnt ?? 0), expenseTotal),
+                                    },
+                                    {
+                                        label: 'مصروفات تشغيلية',
+                                        value: moneyOf(totals?.ops),
+                                        share: shareOf(Number(totals?.ops ?? 0), expenseTotal),
+                                    },
                                 ]}
                             />
                         </SectionCard>
@@ -165,43 +171,41 @@ export function CostAnalysis() {
                             <StateEmpty title="لا بيانات تكلفة" hint="اختر فترة أوسع أو راجع ترحيل القيود." />
                         ) : (
                             <TableScroll label="جدول تكلفة الأقسام">
-                                    <table className="w-full border-collapse text-body-md">
-                                        <thead>
-                                            <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                                <th scope="col" className="px-sm py-xs text-start font-medium">
-                                                    القسم
-                                                </th>
-                                                <th scope="col" className="px-sm py-xs text-start font-medium">
-                                                    الإيراد
-                                                </th>
-                                                <th scope="col" className="px-sm py-xs text-start font-medium">
-                                                    التكلفة
-                                                </th>
-                                                <th scope="col" className="px-sm py-xs text-start font-medium">
-                                                    الصافي
-                                                </th>
-                                                <th scope="col" className="px-sm py-xs text-start font-medium">
-                                                    نسبة التكلفة
-                                                </th>
-                                                <th scope="col" className="px-sm py-xs text-start font-medium">
-                                                    مواد / تحويلات
-                                                </th>
-                                                <th scope="col" className="px-sm py-xs text-start font-medium">
-                                                    تسوية / تشغيل
-                                                </th>
-                                            </tr>
-                                        </thead>
-                                        <tbody>
-                                            {filteredRows.map((row) => (
+                                <table className="w-full border-collapse text-body-md">
+                                    <thead>
+                                        <tr className="bg-surface-sunken text-label-md text-ink-secondary">
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                القسم
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الإيراد
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                التكلفة
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الصافي
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                نسبة التكلفة
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                مواد / تحويلات
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                تسوية / تشغيل
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {filteredRows.map((row) => (
                                             <tr
                                                 key={textOf(row.code) || textOf(row.name)}
                                                 className="border-b border-hairline hover:bg-surface-hover"
                                             >
                                                 <td className="px-sm py-xxs text-ink">
                                                     {textOf(row.name) || textOf(row.code) || '—'}{' '}
-                                                    {row.channel ? (
-                                                        <span className="text-caption text-faint">قناة بيع</span>
-                                                    ) : null}
+                                                    {row.channel ? <span className="text-caption text-faint">قناة بيع</span> : null}
                                                 </td>
                                                 <td className="erp-numeric px-sm py-xxs" dir="ltr">
                                                     {moneyOf(row.rev)}
@@ -231,11 +235,10 @@ export function CostAnalysis() {
                                     </tbody>
                                 </table>
                             </TableScroll>
-                            )}
-                        </SectionCard>
+                        )}
+                    </SectionCard>
                 </>
             ) : null}
         </div>
     );
 }
-

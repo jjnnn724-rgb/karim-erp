@@ -1,6 +1,6 @@
+import fs from 'node:fs';
 import http from 'node:http';
 import https from 'node:https';
-import fs from 'node:fs';
 import path from 'node:path';
 
 const DIST = path.resolve('apps/web/dist');
@@ -51,11 +51,7 @@ function proxy(req, res) {
 http.createServer((req, res) => {
     const url = new URL(req.url ?? '/', 'http://local');
     // API والوسائط وأصول النظام القديم يخدمها الخادم الخلفي، كما في الإنتاج.
-    if (
-        url.pathname.startsWith('/api/') ||
-        url.pathname.startsWith('/uploads/') ||
-        url.pathname.startsWith('/app/assets/')
-    ) {
+    if (url.pathname.startsWith('/api/') || url.pathname.startsWith('/uploads/') || url.pathname.startsWith('/app/assets/')) {
         proxy(req, res);
         return;
     }

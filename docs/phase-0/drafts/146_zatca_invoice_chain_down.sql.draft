@@ -1,0 +1,24 @@
+-- 146_zatca_invoice_chain_down.sql — رجوع مسودة تصميم ZATCA
+-- ──────────────────────────────────────────────────────────────────────────────
+-- مسودة — لا تُشغَّل قبل تطبيق 146 وبموافقة مالك صريحة.
+-- تحذير: حذف سجل الفواتير يُفقد إثبات السلسلة. مسموح في اختبار فقط، أو في
+-- إنتاج بلا أي فاتورة مُصدرة، مع نسخة احتياطية موثقة.
+
+BEGIN;
+
+DROP TRIGGER IF EXISTS zatca_record_no_truncate ON zatca_invoice_records;
+DROP TRIGGER IF EXISTS zatca_record_no_delete ON zatca_invoice_records;
+DROP TRIGGER IF EXISTS zatca_record_immutable ON zatca_invoice_records;
+DROP TRIGGER IF EXISTS zatca_devices_touch ON zatca_devices;
+
+DROP TABLE IF EXISTS zatca_invoice_records;
+DROP TABLE IF EXISTS zatca_devices;
+
+DROP FUNCTION IF EXISTS zatca_record_no_delete();
+DROP FUNCTION IF EXISTS zatca_record_immutable_chain();
+
+DO $$ BEGIN
+    DROP TYPE IF EXISTS zatca_submission_status;
+END $$;
+
+COMMIT;

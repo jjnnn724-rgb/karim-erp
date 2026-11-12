@@ -38,7 +38,7 @@ describe('FilterBar', () => {
     });
 
     it('يعرض رسالة الخطأ عند وجودها', () => {
-        render(<FilterBar {...defaultProps} error='نطاق غير صالح' />);
+        render(<FilterBar {...defaultProps} error="نطاق غير صالح" />);
         expect(screen.getByRole('alert')).toHaveTextContent('نطاق غير صالح');
     });
 
@@ -48,13 +48,35 @@ describe('FilterBar', () => {
         expect(applyBtn).toBeDisabled();
     });
 
+    it('يدعم مرشّحات إضافية وإجراء مسح اختياريًا', () => {
+        const onReset = vi.fn();
+        render(
+            <FilterBar
+                {...defaultProps}
+                advancedFilters={
+                    <label htmlFor="status-filter">
+                        الحالة
+                        <select id="status-filter">
+                            <option>الكل</option>
+                        </select>
+                    </label>
+                }
+                onReset={onReset}
+            />,
+        );
+
+        expect(screen.getByText('الحالة')).toBeTruthy();
+        fireEvent.click(screen.getByRole('button', { name: 'مسح المرشّحات' }));
+        expect(onReset).toHaveBeenCalledTimes(1);
+    });
+
     it('يطبق data-testid على صندوق البحث', () => {
-        render(<FilterBar {...defaultProps} data-testid='filter-search-bar' />);
+        render(<FilterBar {...defaultProps} data-testid="filter-search-bar" />);
         expect(screen.getByTestId('filter-search-bar')).toBeTruthy();
     });
 
     it('يطبق المعرف المخصص على صندوق البحث', () => {
-        render(<FilterBar {...defaultProps} id='my-filter' />);
+        render(<FilterBar {...defaultProps} id="my-filter" />);
         expect(screen.getByLabelText(/بحث/).id).toBe('my-filter');
     });
 

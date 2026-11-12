@@ -6,12 +6,9 @@ describe('isDateOnly', () => {
         expect(isDateOnly(value)).toBe(true);
     });
 
-    test.each(['2026-02-30', '2026-13-01', '2026-00-10', '2026-1-01', '26-01-01', '2026-01-01T00:00:00Z', ''])(
-        'يرفض «%s»',
-        (value) => {
-            expect(isDateOnly(value)).toBe(false);
-        },
-    );
+    test.each(['2026-02-30', '2026-13-01', '2026-00-10', '2026-1-01', '26-01-01', '2026-01-01T00:00:00Z', ''])('يرفض «%s»', (value) => {
+        expect(isDateOnly(value)).toBe(false);
+    });
 
     test('يرفض غير النصوص', () => {
         expect(isDateOnly(20261107)).toBe(false);

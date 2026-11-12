@@ -158,9 +158,7 @@ describe('الرفوف — تكافؤ الكتابة مع V2', () => {
     it('الحذف يطلب تأكيد V2 بنصّ الأصناف ثم يحذف', async () => {
         renderScreen();
         fireEvent.click(await screen.findByRole('button', { name: 'حذف الرف رف أ' }));
-        expect(
-            await screen.findByText('حذف الرف «رف أ»؟ ستُزال تعيينات أصنافه (1 صنفًا) ولن تُحذف الأصناف نفسها.'),
-        ).toBeTruthy();
+        expect(await screen.findByText('حذف الرف «رف أ»؟ ستُزال تعيينات أصنافه (1 صنفًا) ولن تُحذف الأصناف نفسها.')).toBeTruthy();
         fireEvent.click(screen.getByRole('button', { name: 'تأكيد' }));
         await waitFor(() => {
             expect(mocks.deleteShelf).toHaveBeenCalledWith('1');

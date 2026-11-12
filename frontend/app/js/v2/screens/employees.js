@@ -68,11 +68,11 @@
  *   outside the allowlist stay out of every path.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.296';
-import { openInAppReport } from '../report-viewer.js?v=4.9.296';
-import { resolveStatus, statusBadge } from '../status.js?v=4.9.296';
-import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.296';
-import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.296';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.312';
+import { openInAppReport } from '../report-viewer.js?v=4.9.312';
+import { resolveStatus, statusBadge } from '../status.js?v=4.9.312';
+import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.312';
+import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.312';
 import {
     employeeToRow, fetchEmployees, fetchDepartments, departmentMap, employeeMap,
     buildEmployeeKpis, deptCounts, applyEmployeeFilters, searchEmployees, formatInt,
@@ -81,18 +81,21 @@ import {
     createEmployee, updateEmployee, deleteEmployee,
     fetchEmployeeCard, regenerateEmployeeQr,
     EMP_SHEET_COLS, sheetTemplateRows, buildSheetImport, sheetRowToPayload, exportSheetRows,
-} from '../data/employees-repo.js?v=4.9.296';
-import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.296';
-import { fetchAttendanceReport, todayIso, minutesToHM, weekdayAr } from '../data/attendance-repo.js?v=4.9.296';
-import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.296';
+} from '../data/employees-repo.js?v=4.9.312';
+import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.312';
+import {
+    fetchAttendanceReport, fetchAttendanceRange, attendanceMinutes, todayIso, minutesToHM,
+    weekdayAr,
+} from '../data/attendance-repo.js?v=4.9.312';
+import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.312';
 import {
     fetchEmployeeSchedule, scheduleNotice, cardKpis, cardPayroll,
     systemQrText, humanQrText,
-    fetchLuxCardHtml, rangeReportRows, MAX_RANGE_DAYS,
-} from '../data/employee-card-repo.js?v=4.9.296';
-import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.296';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.296';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.296';
+    fetchLuxCardHtml, rangeReportRows,
+} from '../data/employee-card-repo.js?v=4.9.312';
+import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.312';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.312';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.312';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -154,7 +157,8 @@ function topsBlock(depts, total) {
 function attRangeBlock() {
     const today = todayIso();
     return `<div class="erp-emp-sec-block" data-v2-file-range>
-          <h4 class="erp-emp-sec">كشف يوم/فترة <span class="erp-eyebrow" dir="ltr" lang="en">Day / Range</span></h4>
+          <h4 class="erp-emp-sec">أيام الحضور والانصراف
+            <span class="erp-eyebrow" dir="ltr" lang="en">Attendance</span></h4>
           <div class="erp-emp-att erp-no-print">
             <label class="erp-emp-att__f"><span>من</span>
               <input type="date" class="erp-input erp-input--ltr" data-v2-att-from max="${esc(today)}" value="${esc(`${today.slice(0, 7)}-01`)}"></label>
@@ -348,8 +352,11 @@ export function mountEmployeesScreen(host, ctx = {}) {
     const qHint = q('[data-v2-qhint]');
 
     let extrasById = new Map();
+    /* حضور اليوم لكل موظف (employeeId → صف attendance) — يُقرأ مع الدليل في
+       نداءٍ واحد، ويُعرض في البطاقة كشريطٍ منفصل عن شرائح الوردية. فشلُه لا
+       يُسقِط الدليل: الشريط يختفي ويبقى كل شيء آخر كما هو. */
+    let attToday = new Map();
     let currency = '';
-    const expandedIds = new Set();
 
     /* بطاقات الموظفين تُصفَّح ٢٠ لكل صفحة مثل الجدول: ١٣٦ بطاقة في عمود
        واحد كانت تجعل الصفحة ٣٠ ألف بكسل. التوقيع يعيد الصفحة للأولى عند
@@ -537,6 +544,61 @@ export function mountEmployeesScreen(host, ctx = {}) {
             + (m.hasUnit ? ` <small>${esc(m.unit)}</small>` : '');
     }
 
+    /** employeeId → صفّ حضور اليوم. يومٌ واحد لكل موظف؛ ولو تكرر الصفّ يُختار
+     *  الأكمل (بصمة دخول وخروج) حتى لا يُعرض يومٌ مقطوعٌ على أنه كامل. */
+    function attendanceMap(res) {
+        const map = new Map();
+        const list = res && Array.isArray(res.rows) ? res.rows : [];
+        const score = (x) => (String(x.checkIn || '') ? 2 : 0) + (String(x.checkOut || '') ? 1 : 0);
+        for (const rec of list) {
+            if (!rec || rec.employeeId === undefined || rec.employeeId === null) {continue;}
+            const key = String(rec.employeeId);
+            const prev = map.get(key);
+            if (!prev || score(rec) > score(prev)) {map.set(key, rec);}
+        }
+        return map;
+    }
+
+    /** شريط حضور اليوم في البطاقة: حالةٌ واحدة صريحة وثلاثة أرقام (دخول،
+     *  خروج، صافي). لا وقتَ يُخترع: ما لم تُسجّله البصمة يظهر «—»، والموظف
+     *  بلا سجلّ يومٍ يظهر «لا بصمة اليوم» بدل شرائح الوردية الملبِسة. */
+    function todayBits(id, ex) {
+        if (!attToday.size) {return '';}
+        const a = attToday.get(String(id));
+        const hasIn = !!(a && String(a.checkIn || ''));
+        const hasOut = !!(a && String(a.checkOut || ''));
+        const leave = !!(a && a.on_leave);
+        /* راحته الأسبوعية ليست غيابًا: تُقال راحةً حين يكون اليومُ هو يومُ راحته
+           المخزّن ولا سجلّ له، بدل «لا بصمة اليوم». */
+        const off = ex && ex.day_off !== undefined && ex.day_off !== null && ex.day_off !== ''
+            ? Number(ex.day_off) : null;
+        const weeklyOff = !a && off !== null && off === new Date().getDay();
+        let tone = 'none';
+        let label = 'لا بصمة اليوم';
+        if (leave) {tone = 'neutral'; label = 'إجازة';}
+        else if (weeklyOff) {tone = 'neutral'; label = 'راحة أسبوعية';}
+        else if (hasIn && hasOut) {tone = 'success'; label = 'انصرف';}
+        else if (hasIn) {tone = 'info'; label = 'داخل الآن';}
+        else if (hasOut) {tone = 'warning'; label = 'بلا حضور';}
+        const cell = (lbl, val) => `<div class="erp-person__att-cell">`
+            + `<span class="erp-person__att-lbl">${lbl}</span>`
+            + `<span class="erp-person__att-val erp-num" dir="ltr">${esc(val)}</span></div>`;
+        const mins = a ? attendanceMinutes(a) : null;
+        const cells = (hasIn || hasOut)
+            ? `<div class="erp-person__att-cells">
+                ${cell('دخول', hasIn ? String(a.checkIn) : '—')}
+                ${cell('خروج', hasOut ? String(a.checkOut) : '—')}
+                ${cell('صافي', mins !== null ? `${minutesToHM(mins)} س` : '—')}
+              </div>`
+            : '';
+        /* بلا أرقام لا يُرسم صندوقٌ فارغ: البطاقة تحمل سطر حالةٍ فقط، فلا تبدو
+           ناقصةً بجانب بطاقةٍ مليئة. */
+        const cls = cells ? 'erp-person__att' : 'erp-person__att erp-person__att--bare';
+        return `<div class="${cls}" data-tone="${tone}">
+          <span class="erp-person__att-chip">${label}</span>${cells}
+        </div>`;
+    }
+
     function shiftBits(ex) {
         const sh = shiftSummary({
             shift_start: ex.shift_start, shift_karim: ex.shift_karim,
@@ -544,6 +606,7 @@ export function mountEmployeesScreen(host, ctx = {}) {
             day_off: ex.day_off,
         });
         const out = [`<span class="erp-person__shift"><i class="ji" data-i="clock" aria-hidden="true"></i>`
+            + `<span class="erp-person__shift-lbl">الوردية</span>`
             + `<span class="erp-num" dir="ltr">${esc(sh.start)}</span>`
             + `<span>· ${esc(sh.hours)}س${sh.overnight ? ' <i class="ji" data-i="moon" aria-hidden="true"></i>' : ''}</span></span>`];
         if (sh.auto) {out.push(`<span class="erp-person__shift"><i class="ji" data-i="timer" aria-hidden="true"></i><span>انصراف تلقائي</span></span>`);}
@@ -566,13 +629,11 @@ export function mountEmployeesScreen(host, ctx = {}) {
             const fp = ex.deviceUserId
                 ? `<span class="erp-person__shift"><span class="erp-dot erp-dot--success" aria-hidden="true"></span><span>بصمة ${esc(ex.deviceUserId)}</span></span>`
                 : `<span class="erp-person__shift"><span class="erp-dot erp-dot--warning" aria-hidden="true"></span><span>بلا بصمة</span></span>`;
-            const open = expandedIds.has(String(row.id));
-            const phone = row.phone && row.phone !== '—'
-                ? `<span class="erp-num erp-person__phone" dir="ltr">${esc(row.phone)}</span>`
-                : `<span class="erp-text-muted">لا هاتف مسجل</span>`;
+            /* البطاقة كلها زرٌّ يفتح كشف الموظف مباشرة (طلب المالك 2026-11-06:
+               «عايز أضغط على البطاقة تفتح») — لا طيّ ولا خطوةٍ ثانية. */
             return `<li class="erp-person">
-          <button type="button" class="erp-person__head" data-v2-expand="${esc(row.id)}"
-                  aria-expanded="${open ? 'true' : 'false'}" aria-label="بطاقة ${esc(row.name)} — ${open ? 'طي' : 'عرض'} التفاصيل">
+          <button type="button" class="erp-person__head erp-person__open" data-v2-open="${esc(row.id)}"
+                  aria-label="فتح كشف ${esc(row.name)}">
             ${avatar}
             <span class="erp-person__who">
               <span class="erp-person__name">${esc(row.name)}</span>
@@ -585,12 +646,8 @@ export function mountEmployeesScreen(host, ctx = {}) {
             <div class="erp-person__fact"><i class="ji" data-i="briefcase" aria-hidden="true"></i><span>${row.position !== '—' ? esc(row.position) : '<span class="erp-text-muted">—</span>'}</span></div>
             <div class="erp-person__fact"><i class="ji" data-i="banknote" aria-hidden="true"></i><span class="erp-person__salary">${salaryText(ex.salary)}</span></div>
           </div>
+          ${todayBits(row.id, ex)}
           <div class="erp-person__meta">${fp}${shiftBits(ex)}</div>
-          ${open ? `<div class="erp-person__more">
-            <div class="erp-person__fact"><i class="ji" data-i="clock" aria-hidden="true"></i><span>الهاتف: ${phone}</span></div>
-            <div class="erp-person__fact"><i class="ji" data-i="user" aria-hidden="true"></i><span>الحالة: ${esc(statusOf(row.status).label)}</span></div>
-            ${rowActions(row)}
-          </div>` : ''}
         </li>`;
         }).join('') + `</ul>`;
     }
@@ -668,7 +725,10 @@ export function mountEmployeesScreen(host, ctx = {}) {
         loading = true;
         table.setLoading(true);
         try {
-            const [employees, departments, cur] = await Promise.allSettled([fetchEmployees(), fetchDepartments(), fetchCurrency().catch(() => '')]);
+            const [employees, departments, cur, att] = await Promise.allSettled([
+                fetchEmployees(), fetchDepartments(), fetchCurrency().catch(() => ''),
+                fetchAttendanceRange({ from: todayIso(), to: todayIso(), limit: 5000 }),
+            ]);
             if (!el.isConnected) {return;}          // destroyed while in flight
             if (departments.status === 'fulfilled' && departments.value.length) {
                 deptByCode = departmentMap(departments.value);
@@ -683,6 +743,7 @@ export function mountEmployeesScreen(host, ctx = {}) {
             allRows = employees.value.map((e) => employeeToRow(e, deptByCode));
             rawById = employeeMap(employees.value);
             extrasById = cardExtrasMap(employees.value || []);
+            attToday = att.status === 'fulfilled' ? attendanceMap(att.value) : new Map();
             filterOptions();
             paint();
             if (!allRows.length) {notify('لا موظفين في الدليل — لا اسم ولا قسم يُختلق له.');}
@@ -692,6 +753,7 @@ export function mountEmployeesScreen(host, ctx = {}) {
             rows = [];
             rawById = new Map();
             extrasById = new Map();
+            attToday = new Map();
             table.setRows([]);
             kpisHost.innerHTML = '';
             topsHost.innerHTML = '';
@@ -1045,6 +1107,11 @@ export function mountEmployeesScreen(host, ctx = {}) {
         fillSchedule(row, seq);
         fillLeaves(row, seq);
         fillQr(row, seq);
+        /* جدول أيام الحضور والانصراف يُقرأ عند الفتح، لا ينتظر ضغطة: طلب
+           المالك 2026-11-06 «عايز أيام الحضور والانصراف تظهر لما أفتح بطاقته».
+           النطاق الافتراضي هو نفسه الذي رُسمت به الحقول (أول الشهر → اليوم)،
+           والأزرار تبقى لتضييقه. */
+        loadAttRange('range');
     }
 
     async function fillAttendance(row, seq) {
@@ -1096,11 +1163,6 @@ export function mountEmployeesScreen(host, ctx = {}) {
         }
         const ex = extrasById.get(String(row.id)) || {};
         const pr = cardPayroll({ salary: ex.salary, lateMinutes: k.lateMinutes, workDays: k.workDays });
-        // سطر الحدّ: ربع الساعة عتبة — من تجاوزها حُسب تأخيره كاملًا، ومن كان
-        // داخلها لم يُخصم منه شيء. الفرق بين «عليها تأخير» و«محتسَبة» هو هذا.
-        const graceNote = k.graceMinutes > 0 && k.rawLateDays !== k.lateDays
-            ? `<p class="erp-text-sm erp-text-muted">${formatInt(k.rawLateDays)} يومًا فيها دقائق تأخير فعلية (${minutesToHM(k.rawLateMinutes)})؛ منها ${formatInt(k.lateDays)} يومًا تجاوزت حدّ ${formatInt(k.graceMinutes)} دقيقة فحُسب تأخيرها كاملًا، والباقي داخل الحدّ فلا خصم عليه.</p>`
-            : '';
         kpiHost.innerHTML = `
           ${head}
           <div class="erp-emp-stats">
@@ -1116,7 +1178,6 @@ export function mountEmployeesScreen(host, ctx = {}) {
           </div>
           <progress class="erp-emp-rate" max="100" value="${esc(String(k.rate))}"
                     aria-label="نسبة الانتظام ${esc(String(k.rate))} بالمئة"></progress>
-          ${graceNote}
           ${pr ? `<h4 class="erp-emp-sec">الراتب التقديري</h4>
           <div class="erp-emp-stats">
             ${raw('الأساسي', salaryText(pr.basic))}
@@ -1222,24 +1283,36 @@ export function mountEmployeesScreen(host, ctx = {}) {
         if (!el.isConnected || seq !== panelSeq || panelKind !== 'file' || !host.isConnected) {return;}
         if (panelData) {panelData.qrUrl = qrUrl; panelData.humanQrUrl = humanUrl;}
         const payload = card.qrPayload || {};
+        /* بطاقة الهوية: رأسٌ يعرّف صاحبها، رمزان مؤطّران في صفٍّ واحد بحجمين
+           متساويين، بياناتهما كحقولٍ صريحة، ثم أفعالٌ في ذيلٍ مفصول. الرمز
+           الأوّل هو المستعمل يوميًا (كشك الحضور) والثاني للقراءة فقط. */
         host.innerHTML = `<h4 class="erp-emp-sec">بطاقة QR</h4>
           <div class="erp-emp-qr-card">
+            <div class="erp-emp-qr__head">
+              <span class="erp-emp-qr__crest" aria-hidden="true">${esc(initialsOf(row.name))}</span>
+              <span class="erp-emp-qr__who">
+                <span class="erp-emp-qr__name">${esc(row.name)}</span>
+                <span class="erp-emp-qr__sub" dir="ltr">${esc(row.code)}${row.deptResolved ? ` · ${esc(row.dept)}` : ''}</span>
+              </span>
+              <span class="erp-badge" data-tone="success">إصدار <span class="erp-num" dir="ltr">${esc(String(payload.qrVersion ?? '—'))}</span></span>
+            </div>
             <div class="erp-emp-qr__pair">
-              <div class="erp-emp-qr__one">
+              <figure class="erp-emp-qr__one">
                 ${qrUrl
-                    ? `<img class="erp-emp-qr__img" src="${esc(qrUrl)}" alt="رمز QR للموظف ${esc(row.name)}">`
+                    ? `<span class="erp-emp-qr__frame"><img class="erp-emp-qr__img" src="${esc(qrUrl)}" alt="رمز QR للموظف ${esc(row.name)}"></span>`
                     : `<p class="erp-text-sm erp-text-muted">تعذر تحميل مولّد الرموز — أعد فتح الكشف للمحاولة مرة أخرى.</p>`}
-                <span class="erp-emp-qr__cap">رمز النظام — يمسحه كشك الحضور</span>
-              </div>
-              ${humanUrl ? `<div class="erp-emp-qr__one">
-                <img class="erp-emp-qr__img" src="${esc(humanUrl)}" alt="رمز بيانات الموظف ${esc(row.name)} للقراءة فقط">
-                <span class="erp-emp-qr__cap">رمز البيانات — يمسحه الجوال للقراءة</span>
-              </div>` : ''}
+                <figcaption class="erp-emp-qr__cap"><b>رمز الحضور</b><span>يمسحه كشك الحضور</span></figcaption>
+              </figure>
+              ${humanUrl ? `<figure class="erp-emp-qr__one">
+                <span class="erp-emp-qr__frame"><img class="erp-emp-qr__img" src="${esc(humanUrl)}" alt="رمز بيانات الموظف ${esc(row.name)} للقراءة فقط"></span>
+                <figcaption class="erp-emp-qr__cap"><b>رمز البيانات</b><span>للقراءة من الجوال فقط</span></figcaption>
+              </figure>` : ''}
             </div>
-            <div class="erp-emp-qr__meta">
-              <span class="erp-text-sm">رقم البطاقة: <span class="erp-num" dir="ltr">${esc(payload.cardId || '')}</span></span>
-              <span class="erp-text-sm erp-text-muted">إصدار <span class="erp-num" dir="ltr">${esc(String(payload.qrVersion ?? ''))}</span> — المسح يتحقق عبر بوابة الخادم</span>
-            </div>
+            <dl class="erp-emp-qr__meta">
+              <div><dt>رقم البطاقة</dt><dd class="erp-num" dir="ltr">${esc(payload.cardId || '')}</dd></div>
+              <div><dt>الإصدار</dt><dd class="erp-num" dir="ltr">${esc(String(payload.qrVersion ?? ''))}</dd></div>
+            </dl>
+            <p class="erp-emp-qr__note erp-no-print">المسح يتحقق عبر بوابة الخادم.</p>
             <div class="erp-emp-qr__btns erp-no-print">
               ${qrUrl ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-qr="save"><i class="ji" data-i="download" aria-hidden="true"></i><span>حفظ رمز النظام</span></button>` : ''}
               ${humanUrl ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-qr="save-human"><i class="ji" data-i="download" aria-hidden="true"></i><span>حفظ رمز البيانات</span></button>` : ''}
@@ -1326,19 +1399,8 @@ export function mountEmployeesScreen(host, ctx = {}) {
               <td class="erp-td"><span class="erp-badge" data-tone="${esc(st.tone)}">${esc(st.label)}</span></td>
             </tr>`;
         }).join('') || `<tr><td class="erp-td" colspan="7">لا أيام في هذه الفترة</td></tr>`;
-        const offDays = model.rows.filter((r) => r.state === 'day-off').length;
-        // «عليها تأخير» ≠ «أيام تأخير»: الأولى كل يوم فيه دقيقة متأخرة ولو داخل
-        // الحدّ، والثانية ما تجاوز الحدّ فحُسب كاملًا للخصم.
-        const withinGraceDays = model.rows.filter((r) => r.state === 'within-grace').length;
-        const notes = [
-            model.truncated ? `عرض أول ${formatInt(MAX_RANGE_DAYS)} يومًا من الفترة — ضيّق النطاق لرؤية الباقي.` : '',
-            s.reviewDays > 0 ? `قيد المراجعة: ${formatInt(s.reviewDays)} يومًا (${minutesToHM(s.reviewMinutes)}) لا تدخل الإجمالي.` : '',
-            offDays > 0 ? `راحة أسبوعية مجدولة: ${formatInt(offDays)} يومًا في هذه الفترة — بترميز اليوم المخزّن، لا تُعدّ غيابًا.` : '',
-            s.graceMinutes > 0
-                ? `حدّ ${formatInt(s.graceMinutes)} دقيقة عتبة: عمود «التأخير» يعرض الدقائق الفعلية، ومن تجاوز الحدّ حُسب تأخيره كاملًا في «أيام تأخير» و«إجمالي المحتسب»، ومن كان داخله فلا خصم عليه.`
-                : 'عمود «التأخير» يعرض الدقائق الفعلية كما سجلتها البصمة.',
-            'الحالة من حقل التأخير الذي يحسبه الخادم نفسه — نفس رقم شاشة الحضور.',
-        ].filter(Boolean);
+        /* لا شرحَ منهجيّات تحت الجدول: طلب المالك 2026-11-06 «مش عايز التعليقات
+           دي في السستم نهائيًا» — الجدول يقول أرقامه والعناوين تكفي. */
         return `<h4 class="erp-emp-sec">كشف <span class="erp-num" dir="ltr">${esc(s.from)}</span> — <span class="erp-num" dir="ltr">${esc(s.to)}</span>${who ? ` · ${esc(who)}` : ''}</h4>
           <div class="erp-emp-stats">
             ${stat('أيام حضور', formatInt(s.daysPresent))}
@@ -1349,14 +1411,12 @@ export function mountEmployeesScreen(host, ctx = {}) {
             ${stat('تأخير محتسَب', s.totalLateMinutes > 0 ? minutesToHM(s.totalLateMinutes) : '—')}
             ${stat('إجمالي الساعات', String(s.totalKarim))}
           </div>
-          ${withinGraceDays > 0 ? `<p class="erp-text-sm erp-text-muted erp-no-print">${formatInt(withinGraceDays)} يومًا بتأخير داخل السماحية — ظاهرٌ هنا وغير داخل الخصم.</p>` : ''}
           <div class="erp-table__scroll erp-emp-att__scroll" tabindex="0">
             <table class="erp-table__grid">
               <thead><tr><th>التاريخ</th><th>اليوم</th><th>الحضور</th><th>الانصراف</th><th>الساعات</th><th>التأخير</th><th>الحالة</th></tr></thead>
               <tbody>${body}</tbody>
             </table>
-          </div>
-          <p class="erp-text-sm erp-text-muted">${notes.map((n) => esc(n)).join(' ')}</p>`;
+          </div>`;
     }
 
     /** البطاقة الرسمية (lux) يولّدها الخادم صفحةً مستقلّة، فتُعرض في عارض
@@ -1644,15 +1704,11 @@ export function mountEmployeesScreen(host, ctx = {}) {
 
     /* ── Wiring (delegated; no inline handlers) ───────────────────────── */
     el.addEventListener('click', (event) => {
-        const expBtn = event.target.closest('[data-v2-expand]');
-        if (expBtn) {
-            const id = String(expBtn.dataset.v2Expand || '');
-            if (id) {
-                if (expandedIds.has(id)) {expandedIds.delete(id);}
-                else {expandedIds.add(id);}
-                paint();
-                cardsHost.querySelector(`[data-v2-expand="${CSS.escape(id)}"]`)?.focus({ preventScroll: true });
-            }
+        const openBtn = event.target.closest('[data-v2-open]');
+        if (openBtn) {
+            const id = String(openBtn.dataset.v2Open || '');
+            const row = rows.find((r) => String(r.id) === id);
+            if (row) {openFilePanel(row);}
             return;
         }
         const pageBtn = event.target.closest('[data-card-page]');

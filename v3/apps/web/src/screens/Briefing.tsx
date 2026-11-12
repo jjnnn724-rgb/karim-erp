@@ -50,8 +50,7 @@ export function Briefing() {
 
     const totalSales = parseNumericVal(briefing.pos.total || briefing.cashiersTotal.total || posStats.total_sales);
     const totalExpenses = parseNumericVal(briefing.expenses.total || 0);
-    const ordersCount =
-        posStats.orders_count || parseNumericVal(briefing.pos.count || briefing.cashiersTotal.count || 0);
+    const ordersCount = posStats.orders_count || parseNumericVal(briefing.pos.count || briefing.cashiersTotal.count || 0);
     const avgTicket = parseNumericVal(posStats.avg_ticket || (ordersCount > 0 ? totalSales / ordersCount : 0));
 
     const isPending = briefingQuery.isPending || posStatsQuery.isPending;
@@ -137,9 +136,7 @@ export function Briefing() {
                             </div>
                             <div className="p-sm">
                                 {briefing.cashiers.length === 0 ? (
-                                    <p className="text-body-sm text-muted">
-                                        لا توجد مبيعات أقسام مسجلة لهذا اليوم حتى الآن.
-                                    </p>
+                                    <p className="text-body-sm text-muted">لا توجد مبيعات أقسام مسجلة لهذا اليوم حتى الآن.</p>
                                 ) : (
                                     <ul className="flex flex-col gap-xs list-none">
                                         {briefing.cashiers.map((dept, idx) => (
@@ -174,17 +171,15 @@ export function Briefing() {
                             </div>
                             <div className="p-sm">
                                 {briefing.payments.length === 0 ? (
-                                    <p className="text-body-sm text-muted">
-                                        لا توجد عمليات دفع مسجلة لهذا اليوم حتى الآن.
-                                    </p>
+                                    <p className="text-body-sm text-muted">لا توجد عمليات دفع مسجلة لهذا اليوم حتى الآن.</p>
                                 ) : (
                                     <ul className="flex flex-col gap-xs list-none">
-                                        {briefing.payments.map((pm, idx) => {
+                                        {briefing.payments.map((pm) => {
                                             const method = String(pm.method || pm.payment_method || 'نقدي');
                                             const amount = parseNumericVal(pm.total || pm.amount || 0);
                                             return (
                                                 <li
-                                                    key={idx}
+                                                    key={method}
                                                     className="flex items-center justify-between rounded-md bg-surface-sunken p-xs text-body-md"
                                                 >
                                                     <span className="text-ink font-medium">{method}</span>
@@ -214,8 +209,7 @@ export function Briefing() {
                                 {briefing.stockOut.length > 0 && (
                                     <div className="rounded-md border border-danger/30 bg-danger/10 p-sm text-body-md text-danger">
                                         <p className="font-medium">
-                                            يوجد {formatInt(briefing.stockOut.length)} صنفًا نفد رصيدها بالكامل من
-                                            المخزن.
+                                            يوجد {formatInt(briefing.stockOut.length)} صنفًا نفد رصيدها بالكامل من المخزن.
                                         </p>
                                     </div>
                                 )}

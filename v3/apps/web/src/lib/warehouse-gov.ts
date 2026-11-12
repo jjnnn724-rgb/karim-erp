@@ -66,11 +66,7 @@ const healthSchema = z
         zeroStock: numeric,
         lowStock: numeric,
         anomalies: z
-            .array(
-                z
-                    .object({ name: z.string().nullable().optional(), issue: z.string().nullable().optional() })
-                    .passthrough(),
-            )
+            .array(z.object({ name: z.string().nullable().optional(), issue: z.string().nullable().optional() }).passthrough())
             .optional(),
     })
     .passthrough();
@@ -155,16 +151,12 @@ function recordValue(value: unknown): Record<string, unknown> {
     if (typeof value === 'string' && value.trim()) {
         try {
             const parsed: unknown = JSON.parse(value);
-            return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed)
-                ? (parsed as Record<string, unknown>)
-                : {};
+            return parsed !== null && typeof parsed === 'object' && !Array.isArray(parsed) ? (parsed as Record<string, unknown>) : {};
         } catch {
             return {};
         }
     }
-    return value !== null && typeof value === 'object' && !Array.isArray(value)
-        ? (value as Record<string, unknown>)
-        : {};
+    return value !== null && typeof value === 'object' && !Array.isArray(value) ? (value as Record<string, unknown>) : {};
 }
 
 export function fiscalYearToRow(raw: z.infer<typeof fiscalYearSchema>): FiscalYear {
@@ -279,13 +271,7 @@ export function validateFiscalYearForm(form: {
     return [];
 }
 
-export function normalizeFiscalYearForm(form: {
-    startDate: string;
-    endDate: string;
-    yearCode: string;
-    name: string;
-    notes: string;
-}) {
+export function normalizeFiscalYearForm(form: { startDate: string; endDate: string; yearCode: string; name: string; notes: string }) {
     const startDate = form.startDate.trim().slice(0, 10);
     const endDate = form.endDate.trim().slice(0, 10);
     const yearCode = form.yearCode.trim() || startDate.slice(0, 4);
@@ -316,9 +302,9 @@ export function fiscalWriteEnabled(search?: string, stored?: string | null): boo
 }
 
 export async function fetchFiscalYears(signal?: AbortSignal): Promise<FiscalYear[]> {
-    return (
-        await fetchJson(fiscalYearsSchema, '/api/warehouse/fiscal-years', getAccessToken(), signal ? { signal } : {})
-    ).map(fiscalYearToRow);
+    return (await fetchJson(fiscalYearsSchema, '/api/warehouse/fiscal-years', getAccessToken(), signal ? { signal } : {})).map(
+        fiscalYearToRow,
+    );
 }
 
 export async function createFiscalYear(form: ReturnType<typeof normalizeFiscalYearForm>): Promise<void> {
@@ -335,12 +321,7 @@ export async function closeFiscalYear(id: string): Promise<void> {
 }
 
 export async function createNextFiscalYear(id: string): Promise<void> {
-    await fetchJson(
-        z.unknown(),
-        `/api/warehouse/fiscal-years/${encodeURIComponent(id)}/create-next`,
-        getAccessToken(),
-        { method: 'POST' },
-    );
+    await fetchJson(z.unknown(), `/api/warehouse/fiscal-years/${encodeURIComponent(id)}/create-next`, getAccessToken(), { method: 'POST' });
 }
 
 export async function fetchOpeningBalanceReport(signal?: AbortSignal): Promise<OpeningInvoice[]> {
@@ -354,7 +335,5 @@ export async function fetchOpeningBalanceReport(signal?: AbortSignal): Promise<O
 }
 
 export async function fetchSystemHealth(signal?: AbortSignal): Promise<HealthSummary> {
-    return healthSummary(
-        await fetchJson(healthSchema, '/api/warehouse/system-health', getAccessToken(), signal ? { signal } : {}),
-    );
+    return healthSummary(await fetchJson(healthSchema, '/api/warehouse/system-health', getAccessToken(), signal ? { signal } : {}));
 }

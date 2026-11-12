@@ -4,7 +4,7 @@ import { cn } from './cn';
 /**
  * بطاقة — فوق **shadcn/ui**: نفس توكنز shadcn (`bg-card`/`text-card-foreground`/
  * `border-border`) مُعرَّفة في `styles.css` على بدائيات ERP، وهوية DESIGN.md:
- * أوفى بياضًا من الكانفس، حدّ شعرة، ظل دافئ منخفض.
+ * سطح أبيض على الكانفس، بحدّ رفيع وظل محايد منخفض الارتفاع.
  * مكوّنات مركّبة (`CardHeader`/`CardTitle`/`CardBody`/`CardFooter`) لأن
  * البطاقات في الشاشات تتفاوت: بعضها برأس وإجراءات، وبعضها جسم فقط.
  *
@@ -70,10 +70,7 @@ export interface CardDescriptionProps {
 
 export function CardDescription({ children, className }: CardDescriptionProps) {
     return (
-        <div
-            data-slot="card-description"
-            className={cn('text-body-sm text-muted', className)}
-        >
+        <div data-slot="card-description" className={cn('text-body-sm text-muted', className)}>
             {children}
         </div>
     );
@@ -99,10 +96,7 @@ export interface CardFooterProps {
 
 export function CardFooter({ children, className }: CardFooterProps) {
     return (
-        <div
-            data-slot="card-footer"
-            className={cn('flex items-center justify-between gap-sm border-t border-hairline p-md', className)}
-        >
+        <div data-slot="card-footer" className={cn('flex items-center justify-between gap-sm border-t border-hairline p-md', className)}>
             {children}
         </div>
     );

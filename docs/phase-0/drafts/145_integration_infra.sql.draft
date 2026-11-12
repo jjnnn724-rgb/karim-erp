@@ -1,0 +1,256 @@
+-- 145_integration_infra.sql — البنية التحتية للتكامل الحكومي
+-- ──────────────────────────────────────────────────────────────────────────────
+-- مسودة تصميم GATE 02 — غير مطبَّقة وغير مصرَّح بتطبيقها.
+-- الغرض: سجل مزوّدين + صندوق صادر معاملاتي + سجل محاولات append-only +
+--         اعتمادات مشفّرة. لا يمسّ أي جدول قائم، ولا يغيّر أي عقد API.
+-- الاعتماد: ADR-001, ADR-002, ADR-003, ADR-004, ADR-005, ADR-010.
+-- التطبيق في الإنتاج يحتاج: نسخة احتياطية موثقة + نافذة موافقة مالك + runbook
+-- رجوع (145_integration_infra_down.sql) + تحقق استعادة.
+--
+-- Additive فقط: CREATE ... IF NOT EXISTS / ON CONFLICT DO NOTHING.
+-- الأسماء كلها مسبوقة بـ integration_ لتفادي أي تصادم.
+
+BEGIN;
+
+-- ── 1. الأنواع ──────────────────────────────────────────────────────────────
+DO $$ BEGIN
+    CREATE TYPE integration_verification AS ENUM ('VERIFIED', 'INFERRED', 'UNVERIFIED', 'BLOCKED');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE integration_outbox_status AS ENUM ('pending', 'processing', 'delivered', 'failed', 'dead_letter', 'cancelled');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE integration_event_direction AS ENUM ('outbound', 'inbound', 'internal');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+DO $$ BEGIN
+    CREATE TYPE integration_event_outcome AS ENUM ('success', 'retryable_error', 'permanent_error', 'validation_error', 'rejected');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- ── 2. سجل المزوّدين (ADR-001) ───────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS integration_providers (
+    code              text PRIMARY KEY,
+    name_ar           text NOT NULL,
+    name_en           text NOT NULL,
+    verification      integration_verification NOT NULL DEFAULT 'UNVERIFIED',
+    evidence_url      text,
+    evidence_note     text,
+    last_verified_at  timestamptz,
+    is_enabled        boolean NOT NULL DEFAULT false,
+    created_at        timestamptz NOT NULL DEFAULT now(),
+    updated_at        timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT integration_provider_code_fmt
+        CHECK (code ~ '^[a-z][a-z0-9_]{1,31}$'),
+    -- VERIFIED بلا مصدر وتاريخ = ادعاء مرفوض في قاعدة البيانات نفسها
+    CONSTRAINT integration_provider_verified_evidence
+        CHECK (verification <> 'VERIFIED'
+               OR (evidence_url IS NOT NULL AND last_verified_at IS NOT NULL))
+);
+
+COMMENT ON TABLE integration_providers IS
+    'سجل المزوّدين الحكوميين وحالة التحقق (VERIFIED/INFERRED/UNVERIFIED/BLOCKED) — ADR-001';
+COMMENT ON COLUMN integration_providers.is_enabled IS
+    'بوابة تشغيل: لا إرسال حقيقي إلا مع is_enabled = true و verification = VERIFIED';
+
+CREATE OR REPLACE FUNCTION integration_touch_updated_at() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+    NEW.updated_at := now();
+    RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS integration_providers_touch ON integration_providers;
+CREATE TRIGGER integration_providers_touch
+    BEFORE UPDATE ON integration_providers
+    FOR EACH ROW EXECUTE FUNCTION integration_touch_updated_at();
+
+-- التصنيف الابتدائي من GATE 01 — كود ZATCA موجود لكن القبول الإنتاجي غير مُثبت
+INSERT INTO integration_providers (code, name_ar, name_en, verification, evidence_note)
+VALUES
+    ('zatca', 'هيئة الزكاة والضريبة والجمارك', 'ZATCA / FATOORA', 'UNVERIFIED',
+     'كود إعدادات وطابور قائم (VERIFIED كودًا)؛ لا إثبات قبول إنتاجي بعد — راجع ADR-006'),
+    ('mudad', 'نظام حماية الأجور', 'Mudad / WPS', 'BLOCKED',
+     'لا واجهة برمجية عامة موثّقة — راجع ADR-008'),
+    ('gosi', 'المؤسسة العامة للتأمينات الاجتماعية', 'GOSI', 'UNVERIFIED',
+     'لا تكامل قائم ولا وثيقة أسرار متاحة'),
+    ('qiwa', 'منصة قوى', 'QIWA', 'UNVERIFIED',
+     'لا تكامل قائم ولا وثيقة أسرار متاحة')
+ON CONFLICT (code) DO NOTHING;
+
+-- ── 3. الاعتمادات المشفّرة (ADR-004) ────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS integration_credentials (
+    id             bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    provider_code  text NOT NULL REFERENCES integration_providers(code) ON DELETE RESTRICT,
+    key_name       text NOT NULL,
+    -- v1:iv:tag:ciphertext — password-vault.js (AES-256-GCM). لا نص صريح أبدًا.
+    ciphertext     text NOT NULL,
+    key_version    text NOT NULL DEFAULT 'v1',
+    created_at     timestamptz NOT NULL DEFAULT now(),
+    rotated_at     timestamptz,
+    revoked_at     timestamptz,
+    created_by     bigint,
+    CONSTRAINT integration_cred_key_fmt
+        CHECK (key_name ~ '^[a-z][a-z0-9_.]{1,63}$'),
+    CONSTRAINT integration_cred_vault_prefix
+        CHECK (ciphertext LIKE 'v1:%'),
+    CONSTRAINT integration_cred_key_version_fmt
+        CHECK (key_version ~ '^v[0-9]+$')
+);
+
+COMMENT ON TABLE integration_credentials IS
+    'اعتمادات المزوّدين مشفّرة عبر password-vault (AES-256-GCM). كتابة فقط، لا مسار فك تشفير — ADR-004';
+COMMENT ON COLUMN integration_credentials.created_by IS
+    'users.id — بلا FK عمدًا حتى لا يمنع حذف/تعطيل مستخدم بقاءَ أثر التدقيق';
+
+-- اعتماد نشط واحد لكل (مزوّد، مفتاح)؛ الإصدارات القديمة تبقى للتدقيق
+CREATE UNIQUE INDEX IF NOT EXISTS integration_credentials_active_uk
+    ON integration_credentials (provider_code, key_name)
+    WHERE revoked_at IS NULL;
+
+CREATE INDEX IF NOT EXISTS integration_credentials_provider_idx
+    ON integration_credentials (provider_code, created_at DESC);
+
+-- ── 4. صندوق الصادر المعاملاتي (ADR-002/003) ───────────────────────────────
+CREATE TABLE IF NOT EXISTS integration_outbox (
+    id               bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    provider_code    text NOT NULL REFERENCES integration_providers(code) ON DELETE RESTRICT,
+    event_type       text NOT NULL,
+    aggregate_type   text NOT NULL,
+    aggregate_id     text NOT NULL,
+    idempotency_key  text NOT NULL,
+    payload          jsonb NOT NULL,
+    payload_sha256   text NOT NULL,
+    status           integration_outbox_status NOT NULL DEFAULT 'pending',
+    attempts         smallint NOT NULL DEFAULT 0,
+    max_attempts     smallint NOT NULL DEFAULT 8,
+    next_attempt_at  timestamptz NOT NULL DEFAULT now(),
+    locked_at        timestamptz,
+    locked_by        text,
+    last_error_code  text,
+    last_error_sha256 text,
+    delivered_at     timestamptz,
+    created_at       timestamptz NOT NULL DEFAULT now(),
+    created_by       bigint,
+    request_id       text,
+    CONSTRAINT integration_outbox_event_type_fmt
+        CHECK (event_type ~ '^[a-z][a-z0-9_.]{1,63}$'),
+    CONSTRAINT integration_outbox_aggregate_fmt
+        CHECK (aggregate_type ~ '^[a-z][a-z0-9_]{1,31}$' AND aggregate_id <> ''),
+    CONSTRAINT integration_outbox_idem_len
+        CHECK (char_length(idempotency_key) BETWEEN 8 AND 200),
+    CONSTRAINT integration_outbox_payload_hash_fmt
+        CHECK (payload_sha256 ~ '^[0-9a-f]{64}$'),
+    CONSTRAINT integration_outbox_attempts_range
+        CHECK (attempts >= 0 AND max_attempts BETWEEN 1 AND 32 AND attempts <= max_attempts),
+    CONSTRAINT integration_outbox_delivered_consistent
+        CHECK ((status = 'delivered') = (delivered_at IS NOT NULL)),
+    CONSTRAINT integration_outbox_lock_consistent
+        CHECK ((locked_at IS NULL) = (locked_by IS NULL))
+);
+
+COMMENT ON TABLE integration_outbox IS
+    'صندوق صادر معاملاتي: يُدرج في نفس معاملة الحدث المحاسبي، ويُرسل خارجها — ADR-002';
+
+-- مفتاح عدم التكرار هو الحماية الفعلية من الإبلاغ المزدوج (ADR-003)
+CREATE UNIQUE INDEX IF NOT EXISTS integration_outbox_idempotency_uk
+    ON integration_outbox (idempotency_key);
+
+-- مسار عامل الترحيل: الصفوف الجاهزة فقط
+CREATE INDEX IF NOT EXISTS integration_outbox_ready_idx
+    ON integration_outbox (next_attempt_at)
+    WHERE status IN ('pending', 'failed');
+
+CREATE INDEX IF NOT EXISTS integration_outbox_provider_idx
+    ON integration_outbox (provider_code, created_at DESC);
+
+CREATE INDEX IF NOT EXISTS integration_outbox_aggregate_idx
+    ON integration_outbox (aggregate_type, aggregate_id);
+
+-- حقول الجوهر تُجمَّد بعد الإدراج؛ الحالة/المحاولات/القفل فقط تتغير
+CREATE OR REPLACE FUNCTION integration_outbox_immutable_core() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+    IF NEW.provider_code   IS DISTINCT FROM OLD.provider_code
+       OR NEW.event_type      IS DISTINCT FROM OLD.event_type
+       OR NEW.aggregate_type  IS DISTINCT FROM OLD.aggregate_type
+       OR NEW.aggregate_id    IS DISTINCT FROM OLD.aggregate_id
+       OR NEW.idempotency_key IS DISTINCT FROM OLD.idempotency_key
+       OR NEW.payload         IS DISTINCT FROM OLD.payload
+       OR NEW.payload_sha256  IS DISTINCT FROM OLD.payload_sha256
+       OR NEW.created_at      IS DISTINCT FROM OLD.created_at
+    THEN
+        RAISE EXCEPTION 'integration_outbox core fields are immutable (id=%)', OLD.id
+            USING ERRCODE = 'check_violation';
+    END IF;
+    RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS integration_outbox_immutable ON integration_outbox;
+CREATE TRIGGER integration_outbox_immutable
+    BEFORE UPDATE ON integration_outbox
+    FOR EACH ROW EXECUTE FUNCTION integration_outbox_immutable_core();
+
+-- ── 5. سجل المحاولات (append-only) (ADR-002/010) ────────────────────────────
+CREATE TABLE IF NOT EXISTS integration_events (
+    id              bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    outbox_id       bigint REFERENCES integration_outbox(id) ON DELETE RESTRICT,
+    provider_code   text NOT NULL REFERENCES integration_providers(code) ON DELETE RESTRICT,
+    direction       integration_event_direction NOT NULL,
+    outcome         integration_event_outcome NOT NULL,
+    attempt         smallint,
+    http_status     smallint,
+    duration_ms     integer,
+    request_sha256  text,
+    response_sha256 text,
+    -- نسخة منقّاة من الرد، محدودة الطول؛ لا أسرار ولا حمولة كاملة
+    response_excerpt text,
+    error_code      text,
+    error_message   text,
+    occurred_at     timestamptz NOT NULL DEFAULT now(),
+    actor_user_id   bigint,
+    metadata        jsonb NOT NULL DEFAULT '{}'::jsonb,
+    CONSTRAINT integration_events_attempt_range
+        CHECK (attempt IS NULL OR attempt BETWEEN 0 AND 32),
+    CONSTRAINT integration_events_http_range
+        CHECK (http_status IS NULL OR http_status BETWEEN 100 AND 599),
+    CONSTRAINT integration_events_duration_range
+        CHECK (duration_ms IS NULL OR duration_ms >= 0),
+    CONSTRAINT integration_events_sha_fmt
+        CHECK ((request_sha256 IS NULL OR request_sha256 ~ '^[0-9a-f]{64}$')
+           AND (response_sha256 IS NULL OR response_sha256 ~ '^[0-9a-f]{64}$')),
+    CONSTRAINT integration_events_excerpt_len
+        CHECK (response_excerpt IS NULL OR char_length(response_excerpt) <= 2000),
+    CONSTRAINT integration_events_external_attempt
+        CHECK (direction <> 'outbound' OR attempt IS NOT NULL)
+);
+
+COMMENT ON TABLE integration_events IS
+    'سجل إثبات append-only لكل محاولة صادر/وارد وتغيير داخلي — ADR-010. لا UPDATE ولا DELETE';
+
+CREATE INDEX IF NOT EXISTS integration_events_outbox_idx
+    ON integration_events (outbox_id, occurred_at);
+
+CREATE INDEX IF NOT EXISTS integration_events_provider_idx
+    ON integration_events (provider_code, occurred_at DESC);
+
+-- منع التعديل والحذف والتفريغ على مستوى قاعدة البيانات لا الكود فقط
+CREATE OR REPLACE FUNCTION integration_events_append_only() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+    RAISE EXCEPTION 'integration_events is append-only (action=%)', TG_OP
+        USING ERRCODE = 'insufficient_privilege';
+END $$;
+
+DROP TRIGGER IF EXISTS integration_events_no_modify ON integration_events;
+CREATE TRIGGER integration_events_no_modify
+    BEFORE UPDATE OR DELETE ON integration_events
+    FOR EACH ROW EXECUTE FUNCTION integration_events_append_only();
+
+DROP TRIGGER IF EXISTS integration_events_no_truncate ON integration_events;
+CREATE TRIGGER integration_events_no_truncate
+    BEFORE TRUNCATE ON integration_events
+    FOR EACH STATEMENT EXECUTE FUNCTION integration_events_append_only();
+
+COMMIT;

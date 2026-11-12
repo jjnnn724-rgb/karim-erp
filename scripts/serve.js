@@ -47,6 +47,34 @@ const os = require('os');
     } catch (_) { /* لا نفشل إذا كان الفحص نفسه يحتوي على خطأ — استمر التشغيل العادي */ }
 })();
 
+/*
+ * منفذ واحد صالح لكل المشغّل: `getEnv('PORT')` قد يعيد `0` أو نصًّا تالفًا من
+ * `.env`، وNode عندها يستمع على منفذ عشوائي فلا تجد الحاوية ولا المتصفح شيئًا
+ * على 5001. نطبّع القيمة مرة واحدة، ونستخدمها في فحص الجاهزية والروابط.
+ */
+let resolvedPort = null;
+function resolvePort() {
+    if (resolvedPort) {
+        return resolvedPort;
+    }
+    const raw = String(getEnv('PORT', '5001')).trim();
+    const value = Number(raw);
+    if (/^\d+$/.test(raw) && value >= 1 && value <= 65535) {
+        resolvedPort = value;
+        return resolvedPort;
+    }
+    log.warn(`قيمة PORT غير صالحة (${raw || 'فارغة'}) — سيُستخدم 5001. صحّحها في .env.`);
+    resolvedPort = 5001;
+    return resolvedPort;
+}
+
+/** HTTPS مفعّل بنفس شرط `backend/server.js`: الملفان موجودان معًا. */
+function sslEnabled() {
+    const key = getEnv('SSL_KEY', '');
+    const cert = getEnv('SSL_CERT', '');
+    return Boolean(key && cert && fs.existsSync(key) && fs.existsSync(cert));
+}
+
 let backendProcess = null;
 const pgStartedByUs = false;
 // إحياء ذاتي: سقوط الخادم ≠ توقف النظام — إعادة تشغيل تلقائية مع سجل ملف
@@ -125,10 +153,11 @@ async function ensurePgRunning() {
 }
 
 async function checkBackendRunning() {
-    const port = getEnv('PORT', '5000');
-    if (await isPortInUse(parseInt(port, 10))) {
-        // Check if it's our backend
-        const health = await httpReq('GET', '/api/health');
+    const port = resolvePort();
+    if (await isPortInUse(port)) {
+        // Check if it's our backend — pass the resolved port and scheme explicitly;
+        // the helper otherwise defaults to `process.env.PORT` (which may be 0 or stale).
+        const health = await httpReq('GET', '/api/health', null, { port, useHttps: sslEnabled() });
         if (health.status === 200 || health.status === 503) {
             log.warn(`الخادم يعمل بالفعل على المنفذ ${port}`);
             log.warn('أوقفه أولاً أو استخدم منفذ آخر (PORT=xxxx في .env)');
@@ -280,13 +309,14 @@ async function main() {
 
     // Show network info — proto must match backend/server.js: HTTPS only when BOTH cert files exist
     const localIp = getLocalIp();
-    const port = getEnv('PORT', '5000');
+    const port = resolvePort();
     const sslKey = getEnv('SSL_KEY', '');
     const sslCert = getEnv('SSL_CERT', '');
     const sslOn = Boolean(sslKey && sslCert && fs.existsSync(sslKey) && fs.existsSync(sslCert));
     const proto = sslOn ? 'https' : 'http';
-    const localUrl = `${proto}://localhost:${port}/app/index.html`;
-    const networkUrl = `${proto}://${localIp}:${port}/app/index.html`;
+    // الجذر `/` هو المدخل الرسمي: يحوّل إلى V3 عند فعاليته، وإلا إلى V2 للطوارئ.
+    const localUrl = `${proto}://localhost:${port}/`;
+    const networkUrl = `${proto}://${localIp}:${port}/`;
 
     log.plain('  روابط الاتصال:');
     log.plain(`    محلي:  ${localUrl}`);
@@ -336,7 +366,7 @@ async function main() {
     for (let i = 0; i < 30; i++) {
         await new Promise(r => setTimeout(r, 1000));
         try {
-            const health = await httpReq('GET', '/api/health');
+            const health = await httpReq('GET', '/api/health', null, { port, useHttps: sslOn });
             if (health.status === 200) {
                 ready = true;
                 break;

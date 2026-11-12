@@ -54,26 +54,20 @@ export interface KpiTileProps {
     className?: string;
 }
 
-export function KpiTile({
-    label,
-    value,
-    unit,
-    delta,
-    trend,
-    tone,
-    hint,
-    icon,
-    loading = false,
-    className,
-}: KpiTileProps) {
+export function KpiTile({ label, value, unit, delta, trend, tone, hint, icon, loading = false, className }: KpiTileProps) {
     const badgeTone = tone ?? (trend ? TREND_TONE[trend] : undefined);
 
     return (
-        <div className={cn('flex flex-col gap-sm rounded-lg border border-hairline bg-surface p-md shadow-card', className)}>
+        <div
+            className={cn(
+                'flex min-w-0 flex-col gap-sm rounded-lg border border-hairline bg-surface p-md shadow-card [container-type:inline-size]',
+                className,
+            )}
+        >
             <div className="flex items-start justify-between gap-sm">
                 <p className="text-label-md text-muted">{label}</p>
                 {icon ? (
-                    <span className="grid size-8 shrink-0 place-items-center rounded-md bg-brass/15 text-brass-text" aria-hidden="true">
+                    <span className="grid size-8 shrink-0 place-items-center rounded-md bg-primary/15 text-brand-text" aria-hidden="true">
                         {icon}
                     </span>
                 ) : null}
@@ -81,13 +75,13 @@ export function KpiTile({
             {loading ? (
                 <Skeleton variant="rect" className="h-9" label={`جارٍ تحميل ${label}`} />
             ) : (
-                <p className="text-display-lg font-semibold tabular-nums text-ink">
-                    <span className="erp-numeric">{value}</span>
-                    {unit ? <span className="ms-xxs text-body-md font-medium text-muted">{unit}</span> : null}
+                <p className="flex min-w-0 flex-wrap items-baseline gap-x-xxs text-[clamp(1.125rem,7cqw,1.875rem)] font-semibold leading-tight tabular-nums text-ink">
+                    <span className="erp-numeric whitespace-nowrap">{value}</span>
+                    {unit ? <span className="text-body-sm font-medium text-muted">{unit}</span> : null}
                 </p>
             )}
             {delta && badgeTone ? (
-                <span
+                <output
                     className={cn(
                         'inline-flex w-fit items-center gap-xxs rounded-full border px-2 py-0.5 text-body-sm',
                         TONE_CLASS[badgeTone],
@@ -96,7 +90,7 @@ export function KpiTile({
                 >
                     {trend ? <span aria-hidden="true">{TREND_ICON[trend]}</span> : null}
                     <span className="erp-numeric">{delta}</span>
-                </span>
+                </output>
             ) : null}
             {hint ? <p className="text-caption text-faint">{hint}</p> : null}
         </div>

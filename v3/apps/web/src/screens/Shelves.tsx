@@ -2,8 +2,8 @@ import './Shelves.premium.css';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useConfirm } from '../components/ConfirmProvider';
-import { Card, StateEmpty, StateError, StateLoading, TableSkeleton } from '../components/TableState';
 import { PrintActions } from '../components/PrintActions';
+import { Card, StateEmpty, StateError, StateLoading, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { fetchCurrency } from '../lib/finance';
 import { formatMoney } from '../lib/format';
@@ -148,9 +148,7 @@ function ShelfCard({
                 <div>
                     <dt className="text-caption text-muted">القيمة</dt>
                     <dd className="erp-numeric text-ink" dir="ltr">
-                        {statsReady && items
-                            ? `${formatMoney(items.value.toFixed(2))}${currency ? ` ${currency}` : ''}`
-                            : '—'}
+                        {statsReady && items ? `${formatMoney(items.value.toFixed(2))}${currency ? ` ${currency}` : ''}` : '—'}
                     </dd>
                 </div>
                 <div>
@@ -280,12 +278,7 @@ function ShelfFormDialog({ open, editing, shelves, onClose, onSaved }: ShelfForm
                 </>
             }
         >
-            <form
-                id="erp-shelf-form"
-                ref={formRef}
-                onSubmit={(event) => void submit(event)}
-                className="flex flex-col gap-sm"
-            >
+            <form id="erp-shelf-form" ref={formRef} onSubmit={(event) => void submit(event)} className="flex flex-col gap-sm">
                 <Input
                     label="اسم الرف"
                     name="name"
@@ -443,9 +436,7 @@ export function Shelves() {
                             Shelves
                         </span>
                     </h1>
-                    <p className="text-body-sm text-muted">
-                        كل صنف يُعيَّن لرفٍ واحد من شاشة المخزن. إضافة وتعديل وحذف الرفوف.
-                    </p>
+                    <p className="text-body-sm text-muted">كل صنف يُعيَّن لرفٍ واحد من شاشة المخزن. إضافة وتعديل وحذف الرفوف.</p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>
                     {writable ? (
@@ -496,10 +487,7 @@ export function Shelves() {
 
             <Card className="p-sm">
                 <div className="flex flex-wrap items-end gap-sm">
-                    <label
-                        className="flex min-w-56 flex-1 flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-shelves-search"
-                    >
+                    <label className="flex min-w-56 flex-1 flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-shelves-search">
                         بحث
                         <input
                             id="erp-shelves-search"

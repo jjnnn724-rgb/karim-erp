@@ -69,7 +69,7 @@ describe('تسميات الحقول في النماذج', () => {
     test('أدوات الحضور: كل حقل معرّف وتسميته تشير إليه', () => {
         const src = read(path.join(V2, 'screens', 'attendance.js'));
         for (const id of ['res-type', 'res-in', 'res-out', 'res-with', 'res-reason',
-            'exc-emp', 'exc-date', 'exc-reason', 'cor-in', 'cor-out', 'cor-reason', 'sh-month']) {
+            'exc-emp', 'exc-date', 'exc-reason', 'cor-in', 'cor-out', 'cor-reason']) {
             expect(src).toContain(`for="v2att-${id}"`);
             expect(src).toContain(`id="v2att-${id}"`);
         }

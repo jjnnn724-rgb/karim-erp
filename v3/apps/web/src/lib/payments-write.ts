@@ -79,17 +79,12 @@ export async function createPayment(input: PaymentCreateInput): Promise<PaymentR
 }
 
 export async function updatePayment(id: string | number, input: PaymentUpdateInput): Promise<PaymentResult> {
-    return writeJson(
-        paymentResultSchema,
-        `/api/payments/${encodeURIComponent(String(id))}`,
-        'PUT',
-        {
-            ...(input.amount !== undefined ? { amount: Number(input.amount) } : {}),
-            ...(input.paymentDate !== undefined ? { payment_date: input.paymentDate } : {}),
-            ...(input.method !== undefined ? { method: input.method.trim() } : {}),
-            ...(input.notes !== undefined ? { notes: input.notes?.trim() || null } : {}),
-        },
-    );
+    return writeJson(paymentResultSchema, `/api/payments/${encodeURIComponent(String(id))}`, 'PUT', {
+        ...(input.amount !== undefined ? { amount: Number(input.amount) } : {}),
+        ...(input.paymentDate !== undefined ? { payment_date: input.paymentDate } : {}),
+        ...(input.method !== undefined ? { method: input.method.trim() } : {}),
+        ...(input.notes !== undefined ? { notes: input.notes?.trim() || null } : {}),
+    });
 }
 
 export async function deletePayment(id: string | number): Promise<void> {

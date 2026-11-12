@@ -130,6 +130,51 @@ describe('دليل الموظفين', () => {
         expect(screen.getByText('بصمة 77')).toBeTruthy();
     });
 
+    it('يفتح كشف الحضور من بطاقة الموظف ويطبع التقرير المحمّل في نافذة مستقلة', async () => {
+        const print = vi.fn();
+        const popup = {
+            document: document.implementation.createHTMLDocument(),
+            focus: vi.fn(),
+            print,
+        } as unknown as Window;
+        vi.spyOn(window, 'open').mockReturnValue(popup);
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (input: RequestInfo | URL) => {
+                const url = String(input);
+                if (url.includes('/api/employees')) return json({ data: employees, pagination: { totalPages: 1 } });
+                if (url.includes('/api/hrDepartments')) return json({ data: departments, pagination: { totalPages: 1 } });
+                if (url.includes('/api/hr/attendance/report')) {
+                    const params = new URL(url, window.location.origin).searchParams;
+                    return json({
+                        employee: { name: 'أحمد علي' },
+                        records: [{ date: params.get('from'), checkIn: '08:00', checkOut: '16:00', workMinutes: 480 }],
+                        summary: {
+                            from: params.get('from'),
+                            to: params.get('to'),
+                            daysPresent: 1,
+                            completeDays: 1,
+                            totalKarim: 8,
+                        },
+                    });
+                }
+                return json({ error: 'NOT_FOUND', message: 'مسار غير معروف' }, 404);
+            }),
+        );
+
+        renderScreen();
+        fireEvent.click(await screen.findByRole('button', { name: /أحمد علي/ }));
+
+        const printButton = await screen.findByRole('button', { name: 'طباعة الكشف' });
+        await waitFor(() => expect(printButton.hasAttribute('disabled')).toBe(false));
+        fireEvent.click(printButton);
+
+        expect(window.open).toHaveBeenCalledWith('', '_blank');
+        expect(popup.document.body.innerHTML).toContain('08:00');
+        expect(popup.document.body.innerHTML).toContain('16:00');
+        expect(print).toHaveBeenCalledOnce();
+    });
+
     it('البطاقات افتراضية والمبدّل يتحول للجدول', async () => {
         stubFetch();
         renderScreen();

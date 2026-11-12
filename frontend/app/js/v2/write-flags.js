@@ -14,6 +14,9 @@
  *   ?v2shelfwrite=1 | 0     → CRUD الرفوف (P2-5)
  *   ?v2weightwrite=1 | 0    → قراءات الميزان وإضافتها لصنف (P2-5)
  *   ?v2zkwrite=1 | 0        → أجهزة البصمة وربطها واستيرادها (P2-2)
+ *                             استثناءٌ: ظاهرةٌ افتراضيًا (قرار المالك 2026-11-06:
+ *                             «كل التحكم الكامل في البصمة والحضور من الواجهة»)،
+ *                             و`=0` وحده يُغلقها — والحكم الأمني للخادم بالدور.
  *   ?v2portalwrite=1 | 0    → البصمة الذاتية للموظف وتوثيق رفضها (P2-3)
  *                             استثناءٌ: ظاهرةٌ افتراضيًا (طلب المالك 2026-10-24:
  *                             «مفيش بصمة الوجه في v2 موجود في القديم»)
@@ -98,8 +101,15 @@ export function weightWriteEnabled(search, storage) {
     return readFlag(WEIGHT_WRITE_FLAG, 'karim_v2_weight_write', search, storage);
 }
 
+/**
+ * أجهزة البصمة — ظاهرةٌ افتراضيًا (قرار المالك 2026-11-06: «عايز أتحكم في كل
+ * شيء… حتى البصمة بتاعة الموظفين أقدر أغير وأصلح فيها»). كان العلم مغلقًا
+ * فبدت كل أزرار الشاشة معطّلة رغم أن الدور admin. الخادم يبقى الحاكم: كل باب
+ * كتابة يفحص الدور (WRITE_ROLES لعمليات الأجهزة، CONTROL_ROLES لمركز التحكم)
+ * والحمولة والسبب. و`=0` في الـURL أو المخزّن يُغلق الواجهة كما كان.
+ */
 export function zkWriteEnabled(search, storage) {
-    return readFlag(ZK_WRITE_FLAG, 'karim_v2_zk_write', search, storage);
+    return readFlagDefaultOn(ZK_WRITE_FLAG, 'karim_v2_zk_write', search, storage);
 }
 
 /**

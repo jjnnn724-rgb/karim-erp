@@ -56,7 +56,7 @@ describe('getMappedAccount', () => {
         await expect(getMappedAccount(null, 'assets', 'depreciation_run', 'expense_account')).resolves.toBe('6600');
     });
     test('كل الثوابت القديمة قيمها أكواد صحيحة النمط', () => {
-        for (const [k, v] of Object.entries(LEGACY_MAPPING)) {
+        for (const [, v] of Object.entries(LEGACY_MAPPING)) {
             expect(v).toMatch(/^[0-9]{3,4}$/);
         }
     });

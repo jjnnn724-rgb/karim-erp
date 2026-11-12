@@ -18,9 +18,9 @@
  *      (report-viewer) — لأن فتحه في تبويب جديد يسقط 401 بلا هيدر.
  *   5) «طباعة الاستعلام» → ورقة A4 من /yara-reports/item-sales/print بنفس
  *      فلترة الشاشة (فترة/كاشير/صنف) وبالهوية نفسها.
- *   6) الفارق (قبل الضريبة + الضريبة) − المحصَّل يُعرض صراحةً كخصم/تسوية
- *      في الإيصال وبطاقة التفاصيل: المصدر لا يسجّل الخصم في عمود مستقل،
- *      ولا يُصفَّر الفرق بالتقريب.
+ *   6) السجل مؤرشفٌ من نظام سابق: تُعرض أرقام المصدر (قبل الضريبة/الضريبة/
+ *      المحصَّل) كما وردت، بلا أي بند «تسوية/فرق». اختلافُها يُصنَّف بوسم
+ *      «سجل مؤرشف» للقراءة فقط — لا يُصفَّر بالتقريب ولا يُعاد تسويته.
  *
  * الأرقام حقيقية من مرآة yara فقط (ys_mirror_orders عبر jsonb) — لا
  * pos_orders ولا حساب محلي ولا تقدير. الأدوار يقررها الخادم
@@ -28,13 +28,13 @@
  * لا كتابة، ولا مساس بالمخزن، ولا معالجات inline، والرموز --erp-* فقط.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.301';
-import { formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.301';
-import { openInAppReport } from '../report-viewer.js?v=4.9.301';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.312';
+import { formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.312';
+import { openInAppReport } from '../report-viewer.js?v=4.9.312';
 import {
     fetchItemSales, fetchItemInvoices, fetchOrderDetail, fetchReceiptHtml,
     fetchItemSalesSheetHtml, rangeError, YARA_MAX_SPAN_DAYS,
-} from '../data/yara-reports-repo.js?v=4.9.301';
+} from '../data/yara-reports-repo.js?v=4.9.312';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -397,17 +397,14 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
             if (!alive || state.detailDoc !== docNo) { return; }
             const o = (data && data.order) || {};
             const lines = Array.isArray(o.lines) ? o.lines : [];
-            /* المرآة تسجّل المحصَّل في net وصافي ما قبل الضريبة في total،
-               والخصم الجُملي لا يُسجَّل في عمود مستقل (discount صفر دائمًا)
-               ⇒ الفرق (قبل الضريبة + الضريبة) − المحصَّل يُعرض صراحةً
-               بدل كتمانه بالتقريب: المحصَّل + التسوية = صافٍ + ضريبة. */
-            const adj = Math.round(((Number(o.total) || 0) + (Number(o.vat) || 0) - (Number(o.net) || 0)) * 100) / 100;
+            /* السجل مؤرشفٌ من نظام سابق: تُعرض أرقام المصدر كما وردت، ولا
+               يُضاف بند «تسوية/فرق». اختلافُها عن بعضها يُصنَّف بوسم
+               «سجل مؤرشف» للقراءة فقط، لا كرقم يُسوَّى أو يُخفى. */
             const gross = Math.round(((Number(o.total) || 0) + (Number(o.vat) || 0)) * 100) / 100;
-            const recon = Math.abs(adj) > 0.005
-                ? `<p class="erp-text-sm erp-text-muted">قبل الضريبة + الضريبة = ${money(gross)}، والمحصَّل ${money(o.net)}؛
-                    الفرق ${money(adj)} ${adj > 0
-                        ? 'خصمٌ أو تسويةُ كسورٍ لم يسجّلها المصدر في عمود مستقل — وبه تنطبق المعادلة: المحصَّل + التسوية = قبل الضريبة + الضريبة.'
-                        : 'زيادةٌ في المحصَّل عن المسعَّر — تُراجع مع سجل الكاشير.'}</p>`
+            const legacyArchive = o.legacy_adjustment === true
+                || Math.abs(gross - (Number(o.net) || 0)) >= 0.005;
+            const legacyNote = legacyArchive
+                ? '<p class="erp-text-sm erp-text-muted" data-v2-legacy>سجل مؤرشف من النظام السابق — الأرقام كما وردت في مصدرها، ولا تُعاد تسويتها هنا.</p>'
                 : '';
             const hits = hitLines(lines);
             const sumBy = (arr, k) => Math.round(arr.reduce((s, l) => s + (Number(l && l[k]) || 0), 0) * 100) / 100;
@@ -481,14 +478,13 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
                     <div class="erp-emp-stat"><span class="erp-emp-stat__l">قبل الضريبة</span><span class="erp-emp-stat__v">${money(o.total)}</span></div>
                     <div class="erp-emp-stat"><span class="erp-emp-stat__l">الضريبة</span><span class="erp-emp-stat__v">${money(o.vat)}</span></div>
                     ${Number(o.discount) > 0.005 ? `<div class="erp-emp-stat"><span class="erp-emp-stat__l">الخصم المسجَّل</span><span class="erp-emp-stat__v">${money(o.discount)}</span></div>` : ''}
-                    ${Math.abs(adj) > 0.005 ? `<div class="erp-emp-stat"><span class="erp-emp-stat__l">خصم / تسوية كسور</span><span class="erp-emp-stat__v">${money(adj)}</span></div>` : ''}
                     <div class="erp-emp-stat"><span class="erp-emp-stat__l">الإجمالي المحصَّل</span><span class="erp-emp-stat__v">${money(o.net)}</span></div>
                     <div class="erp-emp-stat"><span class="erp-emp-stat__l">المدفوع</span><span class="erp-emp-stat__v">${money(o.payed)}</span></div>
                     <div class="erp-emp-stat"><span class="erp-emp-stat__l">نقدًا</span><span class="erp-emp-stat__v">${money(o.pay_cash)}</span></div>
                     <div class="erp-emp-stat"><span class="erp-emp-stat__l">شبكة</span><span class="erp-emp-stat__v">${money(o.pay_network)}</span></div>
                     <div class="erp-emp-stat"><span class="erp-emp-stat__l">آجل / محفظة</span><span class="erp-emp-stat__v">${money(Number(o.pay_credit || 0) + Number(o.pay_mobile || 0))}</span></div>
                   </div>
-                  ${recon}
+                  ${legacyNote}
                   <div class="erp-tbl-wrap salesinq__scroll">
                     <table class="erp-tbl">
                       <thead><tr><th>#</th><th>الصنف</th><th>الكمية</th><th>السعر</th><th>قبل الضريبة</th><th>الضريبة</th><th>شامل الضريبة</th></tr></thead>

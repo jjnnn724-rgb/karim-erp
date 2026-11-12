@@ -11,6 +11,12 @@
  *     سجل البصمات    newest 200 raw punches + dated CSV export
  *     تغطية البصمات  /coverage?days=7 — who is missing, and why
  *
+ * ADMIN CONTROL (2026-11-06) — تبويب «التحكم» للأدمن وحده (والـowner فوقه):
+ *   حالة المحرك وأرقام اليوم، تشغيل/إيقاف/إعادة تشغيل ببسبب إلزامي، وإعادة
+ *   بناء أيامٍ من البصمات الخام (لا تُبنى من فراغ ولا تمسّ صفًّا يدويًّا أو
+ *   بوابةً، والفترة المغلقة محجوبة)، وآخر إجراءات التحكم. الخادم يعيد فحص
+ *   الدور والسبب في كل نداء، وللعلم المستقل `v2zkwrite` يبقى حاكم الرسم.
+ *
  * WRITES ARE DOUBLE-LOCKED
  *   Role (admin|hr, the server's own WRITE_ROLES) AND the independent
  *   `v2zkwrite` flag — OFF by default, query overrides storage. With either
@@ -22,28 +28,44 @@
  *   repo is the only door). It never touches inline handlers (CSP).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.296';
-import { statusBadge } from '../status.js?v=4.9.296';
-import { canWrite } from '../session.js?v=4.9.296';
-import { zkWriteEnabled } from '../write-flags.js?v=4.9.296';
-import { fetchHrDepartments } from '../data/hr-registers-repo.js?v=4.9.296';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.312';
+import { statusBadge } from '../status.js?v=4.9.312';
+import { canWrite } from '../session.js?v=4.9.312';
+import { zkWriteEnabled } from '../write-flags.js?v=4.9.312';
+import { fetchHrDepartments } from '../data/hr-registers-repo.js?v=4.9.312';
 import {
     fetchZkStatus, fetchZkDevices, deviceToRow, summarizeDevices,
     fetchZkMappings, mappingStats, fetchZkLogs, fetchZkCoverage, coverageStats,
     fetchStoredDeviceUsers, fetchLiveDeviceUsers,
     fetchZkReconciliation,
+    fetchZkControl, setZkEngine, rebuildZkDays, ignoreZkPunch, restoreZkPunch,
     validateDeviceForm, punchStateName, verifyTypeName,
-    ZK_WRITE_ROLES,
+    ZK_WRITE_ROLES, ZK_CONTROL_ROLES,
     testDevice, syncDevice, createDevice, updateDevice, deleteDevice,
     scanNetwork, saveMapping, autoLinkMappings, importDeviceUsers,
     downloadZkLogsCsv,
-} from '../data/zkteco-repo.js?v=4.9.296';
+} from '../data/zkteco-repo.js?v=4.9.312';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 
-const TABS = ['devices', 'mappings', 'logs', 'coverage', 'recon'];
+const TABS = ['devices', 'mappings', 'logs', 'coverage', 'recon', 'control'];
+
+/** أسماء إجراءات مركز التحكم كما يكتبها الخادم في zk_control_audit. */
+const CONTROL_ACTION_AR = {
+    'engine:start': 'تشغيل المحرك',
+    'engine:stop': 'إيقاف المحرك',
+    'engine:restart': 'إعادة تشغيل المحرك',
+    'rebuild-days': 'إعادة بناء أيام',
+};
+
+/** يوم ISO من تقويم الجهاز (نفس أساس التاريخ المخزَّن). */
+function todayIso() {
+    const d = new Date();
+    const p = (n) => String(n).padStart(2, '0');
+    return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
+}
 
 /** Device-local date+time, the legacy basis (features/zkteco.js:23-26). */
 function fmtDateTime(iso) {
@@ -82,7 +104,7 @@ function punchTone(state) {
     return 'info';
 }
 
-function template(writable) {
+function template(writable, admin) {
     return `
       <section class="erp-card erp-v2-zkteco">
         <div class="erp-card__head">
@@ -118,6 +140,7 @@ function template(writable) {
             <button type="button" class="erp-btn erp-btn--sm" role="tab" aria-selected="false" data-v2-tab="logs">سجل البصمات</button>
             <button type="button" class="erp-btn erp-btn--sm" role="tab" aria-selected="false" data-v2-tab="coverage">تغطية البصمات</button>
             <button type="button" class="erp-btn erp-btn--sm" role="tab" aria-selected="false" data-v2-tab="recon">مطابقة الجهاز بالنظام</button>
+            ${admin ? '<button type="button" class="erp-btn erp-btn--sm" role="tab" aria-selected="false" data-v2-tab="control">التحكم</button>' : ''}
           </div>
           <div data-v2-panel hidden></div>
           <div data-v2-pane="devices">
@@ -128,6 +151,7 @@ function template(writable) {
           <div data-v2-pane="logs" hidden></div>
           <div data-v2-pane="coverage" hidden></div>
           <div data-v2-pane="recon" hidden></div>
+          <div data-v2-pane="control" hidden></div>
         </div>
       </section>`;
 }
@@ -223,6 +247,9 @@ export function mountZktecoScreen(host, ctx = {}) {
     const confirmFn = typeof ctx.confirmFn === 'function' ? ctx.confirmFn
         : (m) => (typeof window !== 'undefined' && window.confirm ? window.confirm(m) : false);
     const writable = canWrite(ctx.role, ZK_WRITE_ROLES) && zkWriteEnabled();
+    /* مركز التحكم: الدور وحده يحكم الرسم (admin|owner)، والخادم يكرّر الفحص.
+       الكتابة داخله تبقى خلف writable — العلم لا يُلغى بصمت. */
+    const admin = canWrite(ctx.role, ZK_CONTROL_ROLES);
 
     let devices = [];
     let totals = {};
@@ -232,6 +259,8 @@ export function mountZktecoScreen(host, ctx = {}) {
     let logs = [];
     let coverage = null;
     let recon = null;
+    let control = null;
+    let controlLoaded = false;
     let reconFrom = '';
     let reconTo = '';
     let logFrom = '';
@@ -243,8 +272,9 @@ export function mountZktecoScreen(host, ctx = {}) {
 
     const loaded = { devices: false, mappings: false, logs: false, coverage: false, recon: false };
     const loading = { devices: false, mappings: false, logs: false, coverage: false, recon: false };
+    let controlLoading = false;
 
-    host.insertAdjacentHTML('beforeend', template(writable));
+    host.insertAdjacentHTML('beforeend', template(writable, admin));
     const el = host.lastElementChild;
     const q = (sel) => el.querySelector(sel);
     const pane = (name) => q(`[data-v2-pane="${name}"]`);
@@ -767,10 +797,19 @@ export function mountZktecoScreen(host, ctx = {}) {
     /* ── Logs tab ─────────────────────────────────────────────────────── */
     function renderLogs() {
         const target = pane('logs');
+        /* تصحيح بصمةٍ واحدة إصلاحٌ لا إدارة يومية: الأدمن وحده، وخلف العلم. */
+        const canFix = admin && writable;
         const rows = logs.map((l) => {
             const employee = l.employeeName
                 ? `<strong>${esc(l.employeeName)}</strong>`
                 : `<span class="erp-badge" data-tone="warning">غير مرتبط (${esc(l.deviceUserId)})</span>`;
+            const state = l.ignored
+                ? `<span class="erp-badge" data-tone="warning" title="${esc(l.ignoredReason || '')}">متجاهلة</span>`
+                + (l.ignoredReason ? ` <span class="erp-text-sm erp-text-muted">${esc(l.ignoredReason)}</span>` : '')
+                : '<span class="erp-badge" data-tone="success">محسوبة</span>';
+            const action = canFix ? `<td>${l.ignored
+                ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-punch-restore="${esc(l.id)}">استعادة</button>`
+                : `<button type="button" class="erp-btn erp-btn--sm erp-btn--danger" data-v2-punch-ignore="${esc(l.id)}">تجاهل</button>`}</td>` : '';
             return `<tr>
               <td>${esc(fmtDate(l.attendanceTime))}</td>
               <td><span class="erp-num" dir="ltr">${esc(fmtTime(l.attendanceTime))}</span></td>
@@ -779,23 +818,56 @@ export function mountZktecoScreen(host, ctx = {}) {
               <td><span class="erp-badge" data-tone="${punchTone(l.punchState)}">${esc(punchStateName(l.punchState))}</span></td>
               <td>${esc(verifyTypeName(l.verifyType))}</td>
               <td>${esc(l.deviceName || '—')}</td>
+              <td>${state}</td>
+              ${action}
             </tr>`;
         }).join('');
         target.innerHTML = `<div class="erp-zk__toolbar">
             <label class="erp-field"><span>من تاريخ</span><input class="erp-input erp-input--ltr" type="date" data-v2-log-from value="${esc(logFrom)}"></label>
             <label class="erp-field"><span>إلى تاريخ</span><input class="erp-input erp-input--ltr" type="date" data-v2-log-to value="${esc(logTo)}"></label>
+            ${canFix ? `<label class="erp-field" style="min-width:250px"><span>سبب تصحيح البصمة *</span>
+              <input class="erp-input" data-v2-punch-reason maxlength="500" placeholder="مثال: ساعة الجهاز كانت منحرفة">
+            </label>` : ''}
             <button type="button" class="erp-btn erp-btn--sm" data-v2-export>
               <i class="ji" data-i="download" aria-hidden="true"></i><span>تصدير CSV</span>
             </button>
-            <span class="erp-text-sm erp-text-muted">أحدث ${esc(intFmt(logs.length))} بصمة خام — التصدير يحترم التاريخين</span>
+            <span class="erp-text-sm erp-text-muted">أحدث ${esc(intFmt(logs.length))} بصمة خام — التصدير يحترم التاريخين${canFix ? ' · التجاهل يُبقي البصمة في الدفتر ويستثنيها من الحساب حتى تُستعاد' : ''}</span>
           </div>
           <div class="erp-table__scroll" tabindex="0" style="max-height:560px">
             <table class="erp-table__grid">
               <caption class="erp-sr-only">سجل البصمات الخام</caption>
-              <thead><tr><th>التاريخ</th><th>الوقت</th><th>الموظف</th><th>الرقم الوظيفي</th><th>الحركة</th><th>طريقة التحقق</th><th>الجهاز</th></tr></thead>
-              <tbody>${rows || '<tr><td colspan="7" class="erp-text-muted">لا توجد بصمات بعد — تأكد من فحص الجهاز وربطه</td></tr>'}</tbody>
+              <thead><tr><th>التاريخ</th><th>الوقت</th><th>الموظف</th><th>الرقم الوظيفي</th><th>الحركة</th><th>طريقة التحقق</th><th>الجهاز</th><th>الحساب</th>${canFix ? '<th>تصحيح</th>' : ''}</tr></thead>
+              <tbody>${rows || `<tr><td colspan="${canFix ? 9 : 8}" class="erp-text-muted">لا توجد بصمات بعد — تأكد من فحص الجهاز وربطه</td></tr>`}</tbody>
             </table>
           </div>`;
+    }
+
+    /** تجاهل بصمة خاطئة أو استعادتها — بسببٍ مكتوب، ثم يُعاد بناء يومها يدويًا. */
+    async function fixPunch(id, restore) {
+        if (!admin || !writable || saving) {return;}
+        const reason = String(q('[data-v2-punch-reason]')?.value || '').trim();
+        if (reason.length < 3) {
+            notify('اكتب سبب التصحيح في خانة «سبب تصحيح البصمة» أولًا (3 أحرف على الأقل)', 'error');
+            return;
+        }
+        const question = restore
+            ? 'استعادة هذه البصمة إلى الحساب؟ تظهر بعد إعادة بناء يومها.'
+            : 'تجاهل هذه البصمة من الحساب؟ تبقى في الدفتر الخام ولا تُحذف، وتُستثنى من بناء الحضور — أعد بناء يومها ليُصحَّح.';
+        if (!confirmFn(question)) {return;}
+        saving = true;
+        try {
+            const res = restore ? await restoreZkPunch(id, reason) : await ignoreZkPunch(id, reason);
+            if (!el.isConnected) {return;}
+            notify((res && res.message) || 'تم التصحيح');
+            invalidate('logs', 'coverage', 'recon');
+            controlLoaded = false;
+            await loadLogs(true);
+        } catch (e) {
+            if (!el.isConnected) {return;}
+            notify((e && e.message) || 'تعذّر تصحيح البصمة', 'error');
+        } finally {
+            saving = false;
+        }
     }
 
     async function loadLogs(force = false) {
@@ -1089,9 +1161,214 @@ export function mountZktecoScreen(host, ctx = {}) {
         }
     }
 
+    /* ── Admin control tab (admin|owner) ──────────────────────────────── */
+    function controlActionLabel(action) {
+        return CONTROL_ACTION_AR[String(action || '')] || String(action || '—');
+    }
+
+    function controlDetailText(detail) {
+        const d = detail && typeof detail === 'object' ? detail : {};
+        if (d.from || d.to) {
+            return `${esc(d.from || '')} → ${esc(d.to || '')} · ${esc(intFmt(d.punches))} بصمة`;
+        }
+        if (d.before !== undefined || d.after !== undefined) {
+            return `${d.before ? 'يعمل' : 'متوقف'} → ${d.after ? 'يعمل' : 'متوقف'}`;
+        }
+        return '';
+    }
+
+    function rebuildEmployeeOptions() {
+        const list = (mappings.employees || [])
+            .filter((e) => e && e.id !== undefined && e.id !== null)
+            .slice()
+            .sort((a, b) => String(a.name || '').localeCompare(String(b.name || ''), 'ar'));
+        if (!list.length) {return '<option value="">لا موظفون متاحون</option>';}
+        return list.map((e) => `<option value="${esc(e.id)}">${esc(e.name || `#${e.id}`)} — ${esc(e.employeeId || '—')}</option>`).join('');
+    }
+
+    function renderControl() {
+        const target = pane('control');
+        if (!target) {return;}
+        const c = control || {};
+        const t = c.totals || {};
+        const devices = c.devices || [];
+        const running = !!(c.engine && c.engine.running);
+        const online = devices.filter((d) => d.enabled && d.status === 'online').length;
+        const audit = c.audit || [];
+        const maxDays = Number(c.limits && c.limits.rebuildMaxDays) || 31;
+
+        const deviceRows = devices.map((d) => `<tr>
+          <td>${esc(d.name || '—')}</td>
+          <td><span class="erp-mono" dir="ltr">${esc(d.ipAddress || '')}${d.port ? `:${esc(d.port)}` : ''}</span></td>
+          <td>${statusBadge('device', d.status || 'unknown')}</td>
+          <td>${d.lastSyncAt ? esc(fmtDateTime(d.lastSyncAt)) : `<span class="erp-text-muted">—</span>`}</td>
+          <td><span class="erp-num" dir="ltr">${esc(intFmt(d.syncIntervalSeconds || 0))}</span></td>
+        </tr>`).join('');
+
+        const auditRows = audit.map((a) => `<tr>
+          <td>${esc(fmtDateTime(a.createdAt))}</td>
+          <td><span class="erp-badge" data-tone="info">${esc(controlActionLabel(a.action))}</span></td>
+          <td>${esc(a.actorName || '—')}</td>
+          <td class="erp-text-sm">${esc(a.reason || '—')}</td>
+          <td class="erp-text-sm">${controlDetailText(a.detail)}</td>
+        </tr>`).join('');
+
+        target.innerHTML = `<div class="erp-zk__facts">
+            <span class="erp-badge" data-tone="${running ? 'success' : 'danger'}">المحرك ${running ? 'يعمل' : 'متوقف'}</span>
+            <span class="erp-badge" data-tone="info">أجهزة متصلة ${esc(intFmt(online))} من ${esc(intFmt(devices.length))}</span>
+            <span class="erp-badge" data-tone="info">بصمات اليوم ${esc(intFmt(t.today))}</span>
+            <span class="erp-badge" data-tone="${t.unmapped ? 'warning' : 'success'}">بصمات بلا موظف ${esc(intFmt(t.unmapped))}</span>
+            <span class="erp-badge" data-tone="${t.openDays ? 'warning' : 'success'}">أيام بلا انصراف ${esc(intFmt(t.openDays))}</span>
+          </div>
+          <h4 class="erp-zk__section-title">محرك المزامنة</h4>
+          <p class="erp-text-sm erp-text-muted">
+            الإيقاف لا يُفقد بصمة: الجهاز يحتفظ بها، والتشغيل يسحبها كاملة. كل إجراء
+            يُسجَّل باسمك وسببه في سجل التحكم أدناه.
+          </p>
+          <div class="erp-zk__toolbar">
+            <label class="erp-field" style="min-width:280px"><span>سبب الإجراء *</span>
+              <input class="erp-input" data-v2-ctrl-reason maxlength="500" placeholder="مثال: صيانة شبكة المطبخ" ${writable ? '' : 'disabled'}>
+            </label>
+            <button type="button" class="erp-btn erp-btn--sm" data-v2-engine="start" ${writable ? '' : 'disabled'}>
+              <i class="ji" data-i="play" aria-hidden="true"></i><span>تشغيل</span>
+            </button>
+            <button type="button" class="erp-btn erp-btn--sm erp-btn--danger" data-v2-engine="stop" ${writable ? '' : 'disabled'}>
+              <i class="ji" data-i="pause" aria-hidden="true"></i><span>إيقاف</span>
+            </button>
+            <button type="button" class="erp-btn erp-btn--sm" data-v2-engine="restart" ${writable ? '' : 'disabled'}>
+              <i class="ji" data-i="refresh" aria-hidden="true"></i><span>إعادة تشغيل</span>
+            </button>
+          </div>
+          ${writable ? '' : '<p class="erp-text-sm erp-text-muted">الكتابة غير متاحة الآن — إما الصلاحية لا تسمح أو علم v2zkwrite مغلق.</p>'}
+          <h4 class="erp-zk__section-title">إعادة بناء أيام من البصمات الخام</h4>
+          <p class="erp-text-sm erp-text-muted">
+            يحذف صفوف الحضور الناتجة عن البصمة في المدى ويعيد بناءها من بصمات الجهاز
+            نفسها (أقدمها دخول وأحدثها انصراف). لا يمسّ صفًّا يدويًّا أو من بوابة
+            التطبيق، ولا يومًا في فترة محاسبية مغلقة، وأقصى مدى ${esc(intFmt(maxDays))} يومًا.
+            كل صفٍّ تغيّر يُسجَّل في تدقيق الحضور بسببك.
+          </p>
+          <div class="erp-zk__toolbar">
+            <label class="erp-field" style="min-width:260px"><span>الموظف</span>
+              <select class="erp-input" data-v2-ctrl-employee ${writable ? '' : 'disabled'}>${rebuildEmployeeOptions()}</select>
+            </label>
+            <label class="erp-field"><span>من</span>
+              <input class="erp-input erp-input--ltr" type="date" dir="ltr" data-v2-ctrl-from value="${esc(todayIso())}" ${writable ? '' : 'disabled'}>
+            </label>
+            <label class="erp-field"><span>إلى</span>
+              <input class="erp-input erp-input--ltr" type="date" dir="ltr" data-v2-ctrl-to value="${esc(todayIso())}" ${writable ? '' : 'disabled'}>
+            </label>
+            <label class="erp-field" style="min-width:260px"><span>السبب *</span>
+              <input class="erp-input" data-v2-ctrl-why maxlength="500" placeholder="مثال: ربط رقم بصمة متأخر" ${writable ? '' : 'disabled'}>
+            </label>
+            <button type="button" class="erp-btn erp-btn--sm erp-btn--primary" data-v2-rebuild ${writable ? '' : 'disabled'}>
+              <i class="ji" data-i="refresh" aria-hidden="true"></i><span>إعادة البناء</span>
+            </button>
+          </div>
+          <p class="erp-text-sm erp-text-danger" data-v2-ctrl-err role="alert" hidden></p>
+          <h4 class="erp-zk__section-title">أجهزة البصمة (${esc(intFmt(devices.length))})</h4>
+          <div class="erp-table__scroll" tabindex="0" style="max-height:300px">
+            <table class="erp-table__grid">
+              <caption class="erp-sr-only">أجهزة البصمة وحالتها</caption>
+              <thead><tr><th>الجهاز</th><th>العنوان</th><th>الحالة</th><th>آخر مزامنة</th><th>الفترة (ث)</th></tr></thead>
+              <tbody>${deviceRows || '<tr><td colspan="5" class="erp-text-muted">لا توجد أجهزة مسجلة</td></tr>'}</tbody>
+            </table>
+          </div>
+          <h4 class="erp-zk__section-title">آخر إجراءات التحكم (${esc(intFmt(audit.length))})</h4>
+          <div class="erp-table__scroll" tabindex="0" style="max-height:340px">
+            <table class="erp-table__grid">
+              <caption class="erp-sr-only">سجل إجراءات التحكم</caption>
+              <thead><tr><th>الوقت</th><th>الإجراء</th><th>المنفذ</th><th>السبب</th><th>التفصيل</th></tr></thead>
+              <tbody>${auditRows || '<tr><td colspan="5" class="erp-text-muted">لا إجراءات تحكم مسجلة بعد</td></tr>'}</tbody>
+            </table>
+          </div>`;
+    }
+
+    async function loadControl(force = false) {
+        if (!admin || controlLoading) {return;}
+        if (controlLoaded && !force) {return;}
+        controlLoading = true;
+        const target = pane('control');
+        paneState(target, 'جارٍ قراءة حالة التحكم…');
+        try {
+            control = await fetchZkControl();
+            if (!el.isConnected) {return;}
+            controlLoaded = true;
+            // قائمة الموظفين للبناء: من نفس باب الربط (لا باب جديد)
+            if (!mappings.employees.length) {
+                try {
+                    mappings = await fetchZkMappings();
+                } catch (_) { /* القائمة تبقى فارغة — والبناء يطلب اختيارًا */ }
+                if (!el.isConnected) {return;}
+            }
+            renderControl();
+        } catch (e) {
+            if (!el.isConnected) {return;}
+            controlLoaded = false;
+            paneError(target, e && e.code === 'FORBIDDEN'
+                ? 'مركز التحكم للأدمن وحده — القرار للخادم.'
+                : `تعذّر تحميل حالة التحكم: ${(e && e.message) || 'خطأ'}`);
+        } finally {
+            controlLoading = false;
+        }
+    }
+
+    function controlError(message) {
+        const box = q('[data-v2-ctrl-err]');
+        if (box) {box.textContent = message; box.hidden = false;}
+    }
+
+    async function runEngine(action) {
+        if (!writable || saving) {return;}
+        const reason = String(q('[data-v2-ctrl-reason]')?.value || '').trim();
+        if (reason.length < 3) {controlError('اكتب سبب الإجراء أولًا (3 أحرف على الأقل)'); return;}
+        const labels = { start: 'تشغيل', stop: 'إيقاف', restart: 'إعادة تشغيل' };
+        const warning = action === 'stop'
+            ? 'لن تُسحب بصمات جديدة حتى التشغيل — البصمات تبقى على الأجهزة ولا تضيع.' : '';
+        if (!confirmFn(`${labels[action] || action} محرك مزامنة البصمة؟ ${warning}`)) {return;}
+        saving = true;
+        try {
+            const res = await setZkEngine(action, reason);
+            if (!el.isConnected) {return;}
+            notify((res && res.message) || 'تم تنفيذ الإجراء');
+            invalidate('devices');
+            await loadControl(true);
+        } catch (e) {
+            if (!el.isConnected) {return;}
+            controlError((e && e.message) || 'تعذّر تنفيذ الإجراء');
+        } finally {
+            saving = false;
+        }
+    }
+
+    async function runRebuild() {
+        if (!writable || saving) {return;}
+        const employeeId = q('[data-v2-ctrl-employee]')?.value;
+        const from = q('[data-v2-ctrl-from]')?.value || todayIso();
+        const to = q('[data-v2-ctrl-to]')?.value || from;
+        const reason = String(q('[data-v2-ctrl-why]')?.value || '').trim();
+        if (!employeeId) {controlError('اختر الموظف أولًا'); return;}
+        if (!from || !to) {controlError('حدد المدى بالتاريخين'); return;}
+        if (reason.length < 5) {controlError('سبب إعادة البناء مطلوب (5 أحرف على الأقل)'); return;}
+        if (!confirmFn(`إعادة بناء حضور ${from === to ? from : `${from} → ${to}`} من بصمات الجهاز؟ الصفوف اليدوية والبوابة في هذه الأيام تمنع العملية — ولا تُمسّ.`)) {return;}
+        saving = true;
+        try {
+            const res = await rebuildZkDays({ employeeId, from, to, reason });
+            if (!el.isConnected) {return;}
+            notify((res && res.message) || 'أُعيد البناء');
+            invalidate('devices', 'mappings', 'logs', 'coverage', 'recon');
+            await loadControl(true);
+        } catch (e) {
+            if (!el.isConnected) {return;}
+            controlError((e && e.message) || 'تعذّر إعادة البناء');
+        } finally {
+            saving = false;
+        }
+    }
+
     /* ── Tab switching / refresh ──────────────────────────────────────── */
     function setTab(next) {
         if (!TABS.includes(next)) {return;}
+        if (next === 'control' && !admin) {return;}
         tab = next;
         for (const b of el.querySelectorAll('[data-v2-tab]')) {
             const on = b.dataset.v2Tab === next;
@@ -1107,6 +1384,7 @@ export function mountZktecoScreen(host, ctx = {}) {
         else if (next === 'mappings') {loadMappings();}
         else if (next === 'logs') {loadLogs();}
         else if (next === 'recon') {loadRecon();}
+        else if (next === 'control') {loadControl();}
         else {loadCoverage();}
     }
 
@@ -1115,6 +1393,7 @@ export function mountZktecoScreen(host, ctx = {}) {
         else if (tab === 'mappings') {loadMappings(true);}
         else if (tab === 'logs') {loadLogs(true);}
         else if (tab === 'recon') {loadRecon(true);}
+        else if (tab === 'control') {loadControl(true);}
         else {loadCoverage(true);}
     }
 
@@ -1384,6 +1663,13 @@ export function mountZktecoScreen(host, ctx = {}) {
         if (event.target.closest('[data-v2-export]')) {exportLogs(); return;}
         if (event.target.closest('[data-v2-recon-load]')) {loadRecon(true); return;}
         if (event.target.closest('[data-v2-goto-mappings]')) {setTab('mappings'); return;}
+        const engineBtn = event.target.closest('[data-v2-engine]');
+        if (engineBtn) {runEngine(engineBtn.dataset.v2Engine); return;}
+        if (event.target.closest('[data-v2-rebuild]')) {runRebuild(); return;}
+        const ignoreBtn = event.target.closest('[data-v2-punch-ignore]');
+        if (ignoreBtn) {fixPunch(ignoreBtn.dataset.v2PunchIgnore, false); return;}
+        const restoreBtn = event.target.closest('[data-v2-punch-restore]');
+        if (restoreBtn) {fixPunch(restoreBtn.dataset.v2PunchRestore, true); return;}
 
         const mapSave = event.target.closest('[data-v2-map-save]');
         if (mapSave) {saveMapRow(mapSave.dataset.id); return;}

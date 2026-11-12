@@ -3,6 +3,8 @@ import { useState } from 'react';
 import { PrintActions } from '../components/PrintActions';
 import { KpiCard, RangeControls, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
+import { useAllowedMenus } from '../lib/my-menus';
+import { availableReportDestinations } from '../lib/report-catalog';
 import { errorMessage, intOf, moneyOf, num, presetRange, qtyOf, rangeProblem } from '../lib/reporting';
 import {
     fetchSalesReport,
@@ -14,12 +16,15 @@ import {
     reportRowLabel,
     reportRowQty,
 } from '../lib/reports';
+import { enabledScreens } from '../lib/screens';
 
 /**
  * تقرير مبيعات نقطة البيع — تجميع الخادم حسب قسم أو كاشير أو صنف.
  * بيان الفترة من `summary`، والصفوف كما رتّبها الخادم (الأعلى صافيًا أولًا).
  */
 export function Reports() {
+    const allowedMenus = useAllowedMenus() ?? [];
+    const reportDestinations = availableReportDestinations(allowedMenus, enabledScreens());
     const [draft, setDraft] = useState(() => presetRange('month'));
     const [range, setRange] = useState(draft);
     const [groupBy, setGroupBy] = useState<GroupBy>('department');
@@ -56,6 +61,37 @@ export function Reports() {
             />
             <PrintActions title="التقارير — مبيعات نقطة البيع" />
 
+            <div data-erp-print-hide>
+                <SectionCard
+                    title="تقارير وأقسام النظام"
+                    english="More reports"
+                    actions={
+                        <span className="text-body-sm text-muted" role="status">
+                            {reportDestinations.length} متاح حسب صلاحيتك
+                        </span>
+                    }
+                >
+                    {reportDestinations.length ? (
+                        <ul className="grid list-none gap-sm p-sm sm:grid-cols-2 xl:grid-cols-3">
+                            {reportDestinations.map((destination) => (
+                                <li key={destination.key}>
+                                    <a
+                                        href={destination.href}
+                                        className="block h-full rounded-md border border-hairline bg-surface px-sm py-sm text-ink transition-colors hover:border-primary hover:bg-surface-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
+                                    >
+                                        <span className="block text-heading-sm">{destination.title}</span>
+                                        <span className="mt-xxs block text-body-sm text-muted">{destination.description}</span>
+                                        <span className="mt-xs block text-caption text-primary">{destination.output}</span>
+                                    </a>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="p-sm text-body-sm text-muted">لا توجد تقارير إضافية مفعّلة لهذا الحساب.</p>
+                    )}
+                </SectionCard>
+            </div>
+
             <SectionCard title="النطاق" english="Scope">
                 <div className="flex flex-col gap-sm p-sm">
                     <RangeControls
@@ -70,7 +106,7 @@ export function Reports() {
                         onApply={apply}
                         pending={reportQuery.isFetching}
                     />
-                    <div className="flex flex-wrap items-center gap-xs" role="group" aria-label="التجميع">
+                    <fieldset className="m-0 flex min-w-0 flex-wrap items-center gap-xs border-0 p-0" aria-label="التجميع">
                         {GROUP_OPTIONS.map((option) => (
                             <button
                                 key={option.key}
@@ -88,7 +124,7 @@ export function Reports() {
                                 {option.label}
                             </button>
                         ))}
-                    </div>
+                    </fieldset>
                     {problem ? (
                         <p role="alert" className="text-body-sm text-danger-text">
                             {problem}
@@ -110,10 +146,7 @@ export function Reports() {
 
             {report ? (
                 <>
-                    <ul
-                        className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4"
-                        aria-label="مؤشرات تقرير المبيعات"
-                    >
+                    <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4" aria-label="مؤشرات تقرير المبيعات">
                         <KpiCard
                             label="صافي المبيعات"
                             english="Net sales"
@@ -206,9 +239,7 @@ export function Reports() {
                                                 key={`${reportRowLabel(row, groupBy)}-${String(index)}`}
                                                 className="border-b border-hairline hover:bg-surface-hover"
                                             >
-                                                <td className="px-sm py-xxs text-ink">
-                                                    {reportRowLabel(row, groupBy)}
-                                                </td>
+                                                <td className="px-sm py-xxs text-ink">{reportRowLabel(row, groupBy)}</td>
                                                 <td className="erp-numeric px-sm py-xxs" dir="ltr">
                                                     {intOf(row.invoice_count)}
                                                 </td>
@@ -234,10 +265,7 @@ export function Reports() {
                             </TableScroll>
                         )}
                         {groupBy === 'item' && rows.length >= ITEM_ROWS_CAP ? (
-                            <p
-                                className="border-t border-hairline px-sm py-xs text-caption text-warning-text"
-                                role="status"
-                            >
+                            <p className="border-t border-hairline px-sm py-xs text-caption text-warning-text" role="status">
                                 {`النافذة مقصوصة عند ${intOf(ITEM_ROWS_CAP)} صنفًا — الأعلى صافيًا أولًا.`}
                             </p>
                         ) : null}

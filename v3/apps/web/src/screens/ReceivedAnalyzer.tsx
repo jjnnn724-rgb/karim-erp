@@ -1,17 +1,11 @@
 import './ReceivedAnalyzer.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { PrintActions } from '../components/PrintActions';
 import { KpiCard, RangeControls, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
-import {
-    DISPATCH_STATUS_AR,
-    fetchReceivedDispatches,
-    fetchReceivedItems,
-    receivedLabel,
-    YARA_MAX_DAYS,
-} from '../lib/yara-reports';
 import { errorMessage, intOf, presetRange, qtyOf, rangeProblem, textOf } from '../lib/reporting';
-import { PrintActions } from '../components/PrintActions';
+import { DISPATCH_STATUS_AR, fetchReceivedDispatches, fetchReceivedItems, receivedLabel, YARA_MAX_DAYS } from '../lib/yara-reports';
 
 const numOf = (value: unknown): number => {
     const parsed = Number(value ?? 0);
@@ -241,4 +235,3 @@ export function ReceivedAnalyzer() {
         </div>
     );
 }
-

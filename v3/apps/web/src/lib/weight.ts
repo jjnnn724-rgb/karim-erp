@@ -217,9 +217,7 @@ function tokenScore(token: string, row: WeightReadingRow): { score: number; fold
     }
     if (
         key &&
-        (arSearchKey(row.itemName).includes(key) ||
-            arSearchKey(row.notes).includes(key) ||
-            arSearchKey(row.recordedBy).includes(key))
+        (arSearchKey(row.itemName).includes(key) || arSearchKey(row.notes).includes(key) || arSearchKey(row.recordedBy).includes(key))
     ) {
         return { score: 1, folded: true };
     }

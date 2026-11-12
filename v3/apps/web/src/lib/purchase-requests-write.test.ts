@@ -75,8 +75,7 @@ function bodyOf(call: FetchCall | undefined): Record<string, unknown> {
 }
 
 const NAME = 'أمين مخزن';
-const SIGNATURE =
-    'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
+const SIGNATURE = 'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==';
 
 afterEach(() => {
     vi.unstubAllGlobals();
@@ -359,9 +358,7 @@ describe('طلبات الشراء — بوابات النداء السبعة (ا
     });
 
     it('خطأ الخادم يمرّ كـApiError برسالته العربية', async () => {
-        stubFetch(() =>
-            json({ error: 'PR_CHEF_APPROVAL_REQUIRED', message: 'طلب الشراء بانتظار توقيع الشيف أولًا' }, 409),
-        );
+        stubFetch(() => json({ error: 'PR_CHEF_APPROVAL_REQUIRED', message: 'طلب الشراء بانتظار توقيع الشيف أولًا' }, 409));
         const failure = await gmApprovePR(9, prNotesPayload('', SIGNATURE, NAME)).catch((error: unknown) => error);
         expect(failure).toBeInstanceOf(ApiError);
         expect(failure).toMatchObject({

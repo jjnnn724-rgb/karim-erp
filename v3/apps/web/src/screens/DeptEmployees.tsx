@@ -1,23 +1,23 @@
 import './DeptEmployees.premium.css';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { useAuthState } from '../lib/auth';
+import { PrintActions } from '../components/PrintActions';
 import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
+import { useAuthState } from '../lib/auth';
 import {
-    fetchDeptEmployees,
     canWriteDeptEmployees,
     createDeptEmployee,
+    type DeptEmployee,
+    type DeptEmployeeForm,
     deactivateDeptEmployee,
+    fetchDeptEmployees,
     searchDeptEmployees,
     statusLabel,
     updateDeptEmployee,
     validateDeptEmployeeForm,
-    type DeptEmployee,
-    type DeptEmployeeForm,
 } from '../lib/dept-employees';
 import { errorMessage, intOf } from '../lib/reporting';
-import { PrintActions } from '../components/PrintActions';
 
 /** حدّ الأقسام المعروض في بطاقة النطاق — بلا اقتطاع لاسم القسم نفسه. */
 const DEPT_SEPARATOR = ' + ';
@@ -39,7 +39,8 @@ export function DeptEmployees() {
     const rows = useMemo(() => searchDeptEmployees(employees, query), [employees, query]);
     const active = employees.filter((row) => String(row.status ?? '') === 'active').length;
     const saveMutation = useMutation({
-        mutationFn: ({ id, form }: { id?: string; form: DeptEmployeeForm }) => id ? updateDeptEmployee(id, form) : createDeptEmployee(form),
+        mutationFn: ({ id, form }: { id?: string; form: DeptEmployeeForm }) =>
+            id ? updateDeptEmployee(id, form) : createDeptEmployee(form),
         onSuccess: async () => {
             setFormRow(undefined);
             setFormError('');
@@ -65,38 +66,83 @@ export function DeptEmployees() {
             />
 
             <div className="flex gap-sm" data-erp-print-hide>
-                {canWrite ? <button type="button" onClick={() => { setFormError(''); setFormRow(null); }}>إضافة موظف</button> : null}
+                {canWrite ? (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setFormError('');
+                            setFormRow(null);
+                        }}
+                    >
+                        إضافة موظف
+                    </button>
+                ) : null}
                 <PrintActions title="موظفو القسم" />
             </div>
             {formRow !== undefined && canWrite ? (
-                <form className="grid gap-sm rounded-md border border-hairline p-md sm:grid-cols-2" data-erp-print-hide onSubmit={(event) => {
-                    event.preventDefault();
-                    const data = new FormData(event.currentTarget);
-                    const form: DeptEmployeeForm = { name: String(data.get('name') || ''), employeeId: String(data.get('employeeId') || ''), position: String(data.get('position') || ''), phone: String(data.get('phone') || '') };
-                    const errors = validateDeptEmployeeForm(form);
-                    if (errors.length) { setFormError(errors.join(' · ')); return; }
-                    if (formRow) {
-                        saveMutation.mutate({ id: formRow.id, form });
-                    } else {
-                        saveMutation.mutate({ form });
-                    }
-                }}>
-                    <label>الاسم *<input name="name" required maxLength={255} defaultValue={formRow?.name || ''} /></label>
-                    <label>الرقم الوظيفي *<input name="employeeId" required maxLength={50} readOnly={Boolean(formRow)} defaultValue={formRow?.employeeId || ''} /></label>
-                    <label>الوظيفة<input name="position" maxLength={255} defaultValue={formRow?.position || ''} /></label>
-                    <label>الهاتف<input name="phone" maxLength={50} inputMode="tel" defaultValue={formRow?.phone || ''} /></label>
-                    {formError ? <p role="alert" className="text-danger-text sm:col-span-2">{formError}</p> : null}
-                    <div className="flex gap-sm sm:col-span-2"><button type="submit" disabled={saveMutation.isPending}>{saveMutation.isPending ? 'جارٍ الحفظ…' : 'حفظ'}</button><button type="button" onClick={() => setFormRow(undefined)}>إلغاء</button></div>
+                <form
+                    className="grid gap-sm rounded-md border border-hairline p-md sm:grid-cols-2"
+                    data-erp-print-hide
+                    onSubmit={(event) => {
+                        event.preventDefault();
+                        const data = new FormData(event.currentTarget);
+                        const form: DeptEmployeeForm = {
+                            name: String(data.get('name') || ''),
+                            employeeId: String(data.get('employeeId') || ''),
+                            position: String(data.get('position') || ''),
+                            phone: String(data.get('phone') || ''),
+                        };
+                        const errors = validateDeptEmployeeForm(form);
+                        if (errors.length) {
+                            setFormError(errors.join(' · '));
+                            return;
+                        }
+                        if (formRow) {
+                            saveMutation.mutate({ id: formRow.id, form });
+                        } else {
+                            saveMutation.mutate({ form });
+                        }
+                    }}
+                >
+                    <label>
+                        الاسم *<input name="name" required maxLength={255} defaultValue={formRow?.name || ''} />
+                    </label>
+                    <label>
+                        الرقم الوظيفي *
+                        <input
+                            name="employeeId"
+                            required
+                            maxLength={50}
+                            readOnly={Boolean(formRow)}
+                            defaultValue={formRow?.employeeId || ''}
+                        />
+                    </label>
+                    <label>
+                        الوظيفة
+                        <input name="position" maxLength={255} defaultValue={formRow?.position || ''} />
+                    </label>
+                    <label>
+                        الهاتف
+                        <input name="phone" maxLength={50} inputMode="tel" defaultValue={formRow?.phone || ''} />
+                    </label>
+                    {formError ? (
+                        <p role="alert" className="text-danger-text sm:col-span-2">
+                            {formError}
+                        </p>
+                    ) : null}
+                    <div className="flex gap-sm sm:col-span-2">
+                        <button type="submit" disabled={saveMutation.isPending}>
+                            {saveMutation.isPending ? 'جارٍ الحفظ…' : 'حفظ'}
+                        </button>
+                        <button type="button" onClick={() => setFormRow(undefined)}>
+                            إلغاء
+                        </button>
+                    </div>
                 </form>
             ) : null}
 
             <ul className="grid list-none gap-sm sm:grid-cols-3" aria-label="مؤشرات موظفي القسم">
-                <KpiCard
-                    label="الموظفون"
-                    english="Employees"
-                    value={intOf(employees.length)}
-                    hint="كل موظفي القسم المسجلين"
-                />
+                <KpiCard label="الموظفون" english="Employees" value={intOf(employees.length)} hint="كل موظفي القسم المسجلين" />
                 <KpiCard label="النشطون" english="Active" value={intOf(active)} hint="حالة الخدمة نشطة" tone="success" />
                 <KpiCard
                     label="نطاق الأقسام"
@@ -173,7 +219,11 @@ export function DeptEmployees() {
                                     <th scope="col" className="px-sm py-xs text-start font-medium">
                                         الحالة
                                     </th>
-                                    {canWrite ? <th scope="col" data-erp-print-hide>إجراءات</th> : null}
+                                    {canWrite ? (
+                                        <th scope="col" data-erp-print-hide>
+                                            إجراءات
+                                        </th>
+                                    ) : null}
                                 </tr>
                             </thead>
                             <tbody>
@@ -183,24 +233,42 @@ export function DeptEmployees() {
                                         <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">
                                             {String(row.employeeId ?? '') || '—'}
                                         </td>
-                                        <td className="px-sm py-xxs text-body-sm text-muted">
-                                            {String(row.position ?? '') || '—'}
-                                        </td>
+                                        <td className="px-sm py-xxs text-body-sm text-muted">{String(row.position ?? '') || '—'}</td>
                                         <td className="erp-numeric px-sm py-xxs text-body-sm text-muted" dir="ltr">
                                             {String(row.phone ?? '') || '—'}
                                         </td>
                                         <td className="px-sm py-xxs text-body-sm">
-                                            <span
-                                                className={
-                                                    String(row.status ?? '') === 'active'
-                                                        ? 'text-success-text'
-                                                        : 'text-muted'
-                                                }
-                                            >
+                                            <span className={String(row.status ?? '') === 'active' ? 'text-success-text' : 'text-muted'}>
                                                 {statusLabel(String(row.status ?? ''))}
                                             </span>
                                         </td>
-                                        {canWrite ? <td data-erp-print-hide><button type="button" onClick={() => { setFormError(''); setFormRow(row); }}>تعديل</button>{' '}<button type="button" disabled={deactivateMutation.isPending} onClick={() => { if (window.confirm(`تعطيل الموظف «${row.name}»؟ سيختفي من القسم (سجلاته التاريخية تبقى محفوظة).`)) deactivateMutation.mutate(row.id); }}>تعطيل</button></td> : null}
+                                        {canWrite ? (
+                                            <td data-erp-print-hide>
+                                                <button
+                                                    type="button"
+                                                    onClick={() => {
+                                                        setFormError('');
+                                                        setFormRow(row);
+                                                    }}
+                                                >
+                                                    تعديل
+                                                </button>{' '}
+                                                <button
+                                                    type="button"
+                                                    disabled={deactivateMutation.isPending}
+                                                    onClick={() => {
+                                                        if (
+                                                            window.confirm(
+                                                                `تعطيل الموظف «${row.name}»؟ سيختفي من القسم (سجلاته التاريخية تبقى محفوظة).`,
+                                                            )
+                                                        )
+                                                            deactivateMutation.mutate(row.id);
+                                                    }}
+                                                >
+                                                    تعطيل
+                                                </button>
+                                            </td>
+                                        ) : null}
                                     </tr>
                                 ))}
                             </tbody>

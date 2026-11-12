@@ -3,9 +3,12 @@ import { definedProps } from './definedProps';
 
 describe('HeroUI native prop adapter', () => {
     it('removes explicit undefined without removing meaningful falsy values', () => {
-        expect(
-            definedProps({ optional: undefined, disabled: false, value: 0, placeholder: '', name: 'quantity' }),
-        ).toEqual({ disabled: false, value: 0, placeholder: '', name: 'quantity' });
+        expect(definedProps({ optional: undefined, disabled: false, value: 0, placeholder: '', name: 'quantity' })).toEqual({
+            disabled: false,
+            value: 0,
+            placeholder: '',
+            name: 'quantity',
+        });
     });
 
     it('preserves callback and ref identity without mutating caller props', () => {

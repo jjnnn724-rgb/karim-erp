@@ -136,10 +136,7 @@ export function calculatePosTotals(cart: readonly PosCartLine[], discount: PosDi
     const items: PosTotalsLine[] = base.map((row) => {
         let lineDiscount = 0;
         if (row.lineCents > 0 && discountCents > 0 && subtotalBeforeCents > 0) {
-            const share =
-                row === lastEligible
-                    ? remaining
-                    : divHalfUp(row.lineCents * discountCents, subtotalBeforeCents);
+            const share = row === lastEligible ? remaining : divHalfUp(row.lineCents * discountCents, subtotalBeforeCents);
             lineDiscount = Math.min(row.lineCents, remaining, share);
             remaining -= lineDiscount;
         }
@@ -184,8 +181,77 @@ export function buildPosSaleItems(cart: readonly PosCartLine[], discount: PosDis
     }));
 }
 
-/** تطبيع باركود القراءة: NFKC، أرقام لاتينية، وحذف الفراغات. */
-export function normalizeBarcode(value: string | null | undefined): string {
+/**
+ * سطرٌ من رد `/api/sales/quote` — الإجماليات المحسوبة على الخادم بنفس محرّك
+ * الفاتورة (`vat-engine.js`). `line_total` صافي، و`line_total_incl` شامل.
+ */
+export interface PosQuoteLine {
+    product_id: number | string;
+    quantity: number;
+    unit_price: number;
+    discount: number;
+    vat_rate: number;
+    line_total: number;
+    vat_amount: number;
+    line_total_incl: number;
+}
+
+export interface PosQuoteLike {
+    subtotal: number;
+    discount_total: number;
+    tax_total: number;
+    total_amount: number;
+    line_items: PosQuoteLine[];
+}
+
+function round2(value: number): number {
+    return Math.round(value * 100) / 100;
+}
+
+/**
+ * تحويل رد الخادم إلى شكل العرض نفسه (`PosTotals`) حتى تبقى السلة والمجاميع
+ * تقرأ من مصدر واحد. يُرجِع `null` إن كان الرد غير قابل للاستخدام (عدد سطور
+ * مختلف، أو فاتورة غير متوازنة) — فيبقى العرض المحلي ويعيد المحاولة.
+ */
+export function applyQuoteToPosTotals(quote: PosQuoteLike, cart: readonly PosCartLine[], discount: PosDiscount): PosTotals | null {
+    if (quote.line_items.length !== cart.length) {
+        return null;
+    }
+    // لا نعرض أرقامًا لا تُجمع: الخادم نفسه يرفض هذه الحالة، وهنا حرسٌ ثانٍ
+    // حتى لا يصل رقم غير متوازن إلى الشاشة لو تغيّر شكل الرد مستقبلًا.
+    if (Math.abs(quote.subtotal + quote.tax_total - quote.total_amount) >= 0.005) {
+        return null;
+    }
+    const items: PosTotalsLine[] = cart.map((row, index) => {
+        const line = quote.line_items[index];
+        return {
+            ...row,
+            discount: line ? line.discount : 0,
+            subtotal: line ? line.line_total : 0,
+            tax: line ? line.vat_amount : 0,
+        };
+    });
+    const value = discount.type ? parseDiscountValue(discount.value) : 0;
+    const valid =
+        !discount.type ||
+        (Number.isFinite(value) &&
+            value >= 0 &&
+            (discount.type !== 'percent' || value <= 100) &&
+            (discount.type === 'percent' || discount.type === 'fixed'));
+    return {
+        valid,
+        subtotalBeforeDiscount: round2(quote.subtotal + quote.discount_total),
+        discount: quote.discount_total,
+        subtotal: quote.subtotal,
+        tax: quote.tax_total,
+        total: quote.total_amount,
+        items,
+    };
+}
+
+/** تطبيع باركود القراءة: NFKC، أرقام لاتينية، وحذف الفراغات. */ export function normalizeBarcode(
+    value: string | null | undefined,
+): string {
     return String(value ?? '')
         .normalize('NFKC')
         .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))

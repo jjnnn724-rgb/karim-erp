@@ -10,6 +10,7 @@ const { ZATCA_QUEUE_NAME, SKIP_BULLMQ } = require('./zatca-queue');
 const axios = require('axios');
 const { logger } = require("../logger");
 const { reclaimStaleProcessing } = require('./zatca-reclaim');
+const { assertBalanced } = require('./vat-engine');
 const ZATCA_API_BASE = process.env.ZATCA_API_BASE || 'https://gw-fatoora.zatca.gov.sa/e-invoicing/developer-portal';
 const zatcaHttpClient = axios.create({ timeout: 30_000 });
 
@@ -184,6 +185,29 @@ async function submitInvoiceToZatca(orderId, config = null) {
         const itemsRes    = await client.query(`SELECT * FROM pos_order_items WHERE order_id = $1;`,    [orderId]);
         const paymentsRes = await client.query(`SELECT * FROM pos_invoice_payments WHERE order_id = $1;`, [orderId]);
 
+        // ── ZATCA balance guard (fail closed) ────────────────────────────────
+        // ZATCA requires TaxInclusiveAmount === TaxExclusiveAmount + TaxAmount.
+        // An invoice carrying a rounding "adjustment" (legacy data) must not be
+        // reported: the authority would reject it and our trail would claim a
+        // compliant sale. Park it in dead_letter with an explicit reason.
+        try {
+            assertBalanced({
+                subtotal: order.subtotal,
+                tax_total: order.tax_total,
+                total_amount: order.total_amount,
+                line_items: itemsRes.rows,
+            }, { order_id: orderId, phase: 'zatca-report' });
+        } catch (balanceErr) {
+            await client.query(
+                `UPDATE pos_zatca_invoice_queue
+                    SET status = 'dead_letter', last_error = $2, next_retry_at = NULL
+                  WHERE order_id = $1;`,
+                [orderId, `INVOICE_UNBALANCED: ${balanceErr.message}`]
+            );
+            balanceErr.retryable = false;
+            throw balanceErr;
+        }
+
         const ublXml = buildZatcaUblXml(order, itemsRes.rows, paymentsRes.rows, {
             name_ar: order.dept_name, vat_number: order.dept_vat,
         });
@@ -295,6 +319,12 @@ async function pollSqlQueue() {
                         [job.order_id]
                     );
                     return; // switch was flipped mid-cycle — stop the whole batch
+                }
+                // A financially unbalanced invoice was already parked in
+                // dead_letter by the guard; retrying cannot fix the amounts.
+                if (err.code === 'INVOICE_UNBALANCED') {
+                    logger.error(`[zatca-worker:poller] ${job.order_id} unbalanced invoice parked (no retry): ${err.message}`);
+                    continue;
                 }
                 const maxAttempts = cfg.max_attempts || MAX_ATTEMPTS;
                 const backoffMs = Math.min(2_000 * Math.pow(2, job.attempts), 5 * 60_000);

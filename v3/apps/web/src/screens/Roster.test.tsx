@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ConfirmProvider } from '../components/ConfirmProvider';
 import { ToastProvider } from '../ui/Toast';
 import { Roster } from './Roster';
 
@@ -21,7 +22,9 @@ function renderScreen() {
     return render(
         <QueryClientProvider client={client}>
             <ToastProvider>
-                <Roster />
+                <ConfirmProvider>
+                    <Roster />
+                </ConfirmProvider>
             </ToastProvider>
         </QueryClientProvider>,
     );

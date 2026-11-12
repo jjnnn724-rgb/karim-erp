@@ -9,12 +9,11 @@ describe('attendance delay engine', () => {
   test('counts both late arrival and early departure as one total shortfall for the shift', () => {
     const res = calculateDelayParts({ checkIn: '15:01', checkOut: '00:51' }, { shift_start: '15:00', shift_karim: 10 });
 
-    // قرار المالك (2026-09): الإتمام هو المعيار — دوام 15:00→01:00، وصل 14:30
-    // وخرج 00:30 (أكمل 10 ساعات) → صفر تأخير رغم الانصراف قبل نهاية الوردية.
+    // قرار المالك (2026-11-07): الإتمام هو المعيار — دوام 15:00→01:00، وصل 14:30
+    // وخرج 00:30 (أكمل 10 ساعات) → صفر تأخير، ولا «انصراف مبكر» وهمي.
     const completed = calculateDelayParts({ checkIn: '14:30', checkOut: '00:30' }, { shift_start: '15:00', shift_karim: 10 });
     expect(completed.arrivalLateMinutes).toBe(0);
-    // بلا سماحية (قرار المالك 2026-11-02): 30 دقيقة تبكير تُحسب كاملة.
-    expect(completed.earlyLeaveMinutes).toBe(30);
+    expect(completed.earlyLeaveMinutes).toBe(0);
     expect(completed.lateMinutes).toBe(0);
     expect(calculateLateMinutes({ checkIn: '14:30', checkOut: '00:30' }, { shift_start: '15:00', shift_karim: 10 })).toBe(0);
     // وتأخير الدخول مع تعويضه بالبقاء: وصل 15:30 وخرج 01:30 (10 ساعات) → صفر
@@ -48,36 +47,51 @@ describe('attendance delay engine', () => {
     });
   });
 
-  // طلب المالك 2026-10-29: «أقدر أعرف كل تأخير ولو دقيقة في بطاقة كل موظف».
-  // وقراره الحاسم 2026-11-05: التأخير من أول دقيقة بعد بداية دوام البطاقة —
-  // بلا سماحية ولا ميزانية مشتركة.
-  test('التأخير من أول دقيقة بعد بداية الدوام (بلا سماحية)', () => {
-    const oneMinute = calculateDelayParts({ checkIn: '15:01', checkOut: '01:01' }, { shift_start: '15:00', shift_karim: 10 });
-    expect(oneMinute.arrivalLateRawMinutes).toBe(1);
-    expect(oneMinute.arrivalLateMinutes).toBe(1);   // من أول دقيقة — بلا سماح
-    expect(oneMinute.lateMinutes).toBe(0);          // أكمل 10 ساعات
+  // قرار المالك 2026-11-07: العجز عن ساعات البطاقة وحده هو التأخير.
+  // من أكمل ساعاته — ولو دخل متأخرًا وعوّض بالبقاء — لا يُعرض عليه تأخير،
+  // ومن نقصت دقيقة واحدة تُحسب كاملة بلا سماحية.
+  test('التأخير = العجز عن ساعات الوردية، والدخول المتأخر المُعوَّض ليس تأخيرًا', () => {
+    const oneMinuteShort = calculateDelayParts({ checkIn: '15:01', checkOut: '01:00' }, { shift_start: '15:00', shift_karim: 10 });
+    expect(oneMinuteShort.arrivalLateRawMinutes).toBe(1);
+    expect(oneMinuteShort.lateMinutes).toBe(1);     // نقص دقيقة واحدة → تُحسب
 
-    const thirteen = calculateDelayParts({ checkIn: '15:13', checkOut: '01:13' }, { shift_start: '15:00', shift_karim: 10 });
-    expect(thirteen.arrivalLateRawMinutes).toBe(13);
-    expect(thirteen.arrivalLateMinutes).toBe(13);    // بلا سماحية إطلاقًا
-    expect(thirteen.lateMinutes).toBe(0);
+    // دخل متأخرًا وعوّض بالبقاء → أكمل 10 ساعات → صفر
+    for (const [checkIn, checkOut] of [['15:01', '01:01'], ['15:13', '01:13'], ['15:20', '01:20']]) {
+      const completed = calculateDelayParts({ checkIn, checkOut }, { shift_start: '15:00', shift_karim: 10 });
+      expect(completed.arrivalLateRawMinutes).toBe(0);
+      expect(completed.arrivalLateMinutes).toBe(0);
+      expect(completed.lateMinutes).toBe(0);
+    }
 
-    // 15:20 مقابل وردية 15:00 =20 دقيقة كاملة (لا اقتطاع)
-    const twenty = calculateDelayParts({ checkIn: '15:20', checkOut: '01:20' }, { shift_start: '15:00', shift_karim: 10 });
-    expect(twenty.arrivalLateRawMinutes).toBe(20);
-    expect(twenty.arrivalLateMinutes).toBe(20);
-    expect(twenty.lateMinutes).toBe(0); // أكمل 10 ساعات: العجز صفر رغم الدخول المتأخر
-
-    // مثال المالك حرفيًا: دوام 12:00، وصول 12:25، انصراف 00:25 (12 ساعة) → 25 دقيقة
+    // مثال المالك حرفيًا: دوام 12:00، وصول 12:25، انصراف 00:25 (12 ساعة) → صفر
     const owner = calculateDelayParts({ checkIn: '12:25', checkOut: '00:25' }, { shift_start: '12:00', shift_karim: 12 });
-    expect(owner.arrivalLateMinutes).toBe(25);
+    expect(owner.arrivalLateMinutes).toBe(0);
     expect(owner.lateMinutes).toBe(0);
 
-    // ومثال الانصراف: وردية تنتهي 00:00، خرج 23:30 → 30 دقيقة كاملة
+    // ومثال الانصراف: وردية تنتهي 00:00، خرج 23:30 → نقص 30 دقيقة كاملة
     const earlyOwner = calculateDelayParts({ checkIn: '12:00', checkOut: '23:30' }, { shift_start: '12:00', shift_karim: 12 });
     expect(earlyOwner.earlyLeaveRawMinutes).toBe(30);
     expect(earlyOwner.earlyLeaveMinutes).toBe(30);
     expect(earlyOwner.lateMinutes).toBe(30);
+  });
+
+  test('حالة كشف 2026-11-01: وردية 14:00 + 10 ساعات، حضور 13:43 وانصراف 23:45 → لا تأخير', () => {
+    const emp = { shift_start: '14:00', shift_karim: 10 };
+    // 13:43→23:45 = 602 دقيقة ≥ 600 → العجز صفر رغم الانصراف قبل 00:00 بـ15 دقيقة.
+    expect(calculateDelayParts({ checkIn: '13:43', checkOut: '23:45' }, emp)).toEqual({
+      arrivalLateMinutes: 0, earlyLeaveMinutes: 0, lateMinutes: 0,
+      arrivalLateRawMinutes: 0, earlyLeaveRawMinutes: 0,
+    });
+    // وصول مبكر 30 د وانصراف مبكر 40 د = نقص حقيقي 10 د فقط يُعرض
+    const genuinelyShort = calculateDelayParts({ checkIn: '13:30', checkOut: '23:20' }, emp);
+    expect(genuinelyShort.arrivalLateRawMinutes).toBe(0);
+    expect(genuinelyShort.earlyLeaveRawMinutes).toBe(10);
+    expect(genuinelyShort.lateMinutes).toBe(10);
+    // وصول متأخر 20 د وانصراف مبكر 15 د = نقص 35 د موزّعًا على الطرفين
+    const both = calculateDelayParts({ checkIn: '14:20', checkOut: '23:45' }, emp);
+    expect(both.arrivalLateRawMinutes).toBe(20);
+    expect(both.earlyLeaveRawMinutes).toBe(15);
+    expect(both.lateMinutes).toBe(35);
   });
 
   test('الانصراف المبكر بلا سماحية: ١٥ د تُحسب كاملة مثل ١٦ د (قرار 2026-11-05)', () => {
@@ -98,17 +112,17 @@ describe('attendance delay engine', () => {
       { checkIn: '15:01', checkOut: '00:51',
         arrivalLateRawMinutes: 1, arrivalLateMinutes: 1,
         earlyLeaveRawMinutes: 9, earlyLeaveMinutes: 9, lateMinutes: 10 },
-      // 14:30→00:30: أكمل 10 ساعات → لا عجز، والتبكير 30 دقيقة يُحسب كاملًا
+      // 14:30→00:30: أكمل 10 ساعات → لا عجز ولا تبكير معروض (قرار 2026-11-07)
       { checkIn: '14:30', checkOut: '00:30',
         arrivalLateRawMinutes: 0, arrivalLateMinutes: 0,
-        earlyLeaveRawMinutes: 30, earlyLeaveMinutes: 30, lateMinutes: 0 },
+        earlyLeaveRawMinutes: 0, earlyLeaveMinutes: 0, lateMinutes: 0 },
       // 15:30→00:30: 9 ساعات فقط → عجز 60 دقيقة كاملة، وتأخير الدخول 30 كاملة
       { checkIn: '15:30', checkOut: '00:30',
         arrivalLateRawMinutes: 30, arrivalLateMinutes: 30,
         earlyLeaveRawMinutes: 30, earlyLeaveMinutes: 30, lateMinutes: 60 },
-      // 15:30→01:30: تأخير مُعوَّض بالبقاء → 10 ساعات كاملة → عجز صفر
+      // 15:30→01:30: تأخير مُعوَّض بالبقاء → 10 ساعات كاملة → عجز صفر ولا تأخير معروض
       { checkIn: '15:30', checkOut: '01:30',
-        arrivalLateRawMinutes: 30, arrivalLateMinutes: 30,
+        arrivalLateRawMinutes: 0, arrivalLateMinutes: 0,
         earlyLeaveRawMinutes: 0, earlyLeaveMinutes: 0, lateMinutes: 0 },
     ];
     for (const t of table) {

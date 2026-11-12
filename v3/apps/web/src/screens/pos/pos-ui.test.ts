@@ -1,5 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { bestSellers, groupCatalog, orderCatalog, searchScore, soldQty, type CatalogItem } from './pos-ui';
+import { bestSellers, type CatalogItem, groupCatalog, orderCatalog, searchScore, soldQty } from './pos-ui';
 
 function item(overrides: Partial<CatalogItem> & Pick<CatalogItem, 'id' | 'name'>): CatalogItem {
     return {
@@ -67,10 +67,7 @@ describe('ترتيب كتالوج الكاشير الذكي', () => {
             item({ id: '3', name: 'شاي', yaraCode: 'C' }),
             item({ id: '4', name: 'ماء' }),
         ];
-        expect(bestSellers(items, { favorites: ['1'], sales: SALES, limit: 2 }).map((row) => row.id)).toEqual([
-            '2',
-            '3',
-        ]);
+        expect(bestSellers(items, { favorites: ['1'], sales: SALES, limit: 2 }).map((row) => row.id)).toEqual(['2', '3']);
         expect(bestSellers(items, { favorites: [] })).toEqual([]);
     });
 });

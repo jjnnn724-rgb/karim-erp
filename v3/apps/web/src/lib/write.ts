@@ -86,9 +86,7 @@ export type WriteMutationResult<TVars, TData> = UseMutationResult<TData, unknown
  * `useMutation` بعقد الكتابة الموحّد: توست نجاح عربي + إبطال الاستعلامات،
  * وتوست خطأ يحمل رسالة الخادم. مكوّنات الاختبار تُغلّفها بـ`ToastProvider`.
  */
-export function useWriteMutation<TVars, TData>(
-    options: WriteMutationOptions<TVars, TData>,
-): WriteMutationResult<TVars, TData> {
+export function useWriteMutation<TVars, TData>(options: WriteMutationOptions<TVars, TData>): WriteMutationResult<TVars, TData> {
     const queryClient = useQueryClient();
     const { toast } = useToast();
 
@@ -104,8 +102,7 @@ export function useWriteMutation<TVars, TData>(
                     variant: 'success',
                 });
             }
-            const keys =
-                typeof options.invalidate === 'function' ? options.invalidate(vars, data) : (options.invalidate ?? []);
+            const keys = typeof options.invalidate === 'function' ? options.invalidate(vars, data) : (options.invalidate ?? []);
             await Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
             await options.onSuccess?.(data, vars);
         },

@@ -83,10 +83,12 @@ export function cancelVisible(role: string | null | undefined, status: string | 
  * حتمًا على الخادم (pr-repo.js:245).
  */
 export function deleteVisible(role: string | null | undefined, status: string | null | undefined): boolean {
-    return (
-        isWriteRole(role, PR_GM_ROLES) &&
-        !['approved', 'partially_fulfilled', 'fulfilled'].includes(String(status ?? ''))
-    );
+    return isWriteRole(role, PR_GM_ROLES) && !['approved', 'partially_fulfilled', 'fulfilled'].includes(String(status ?? ''));
+}
+
+/* NEW: إرجاع الطلب إلى chef_approved للتعديل — المدير العام فقط */
+export function revertVisible(role: string | null | undefined, status: string | null | undefined): boolean {
+    return status === 'approved' && isWriteRole(role, PR_GM_ROLES);
 }
 
 /* ── نصوص V2 حرفيًّا ───────────────────────────────────────────────────── */
@@ -189,8 +191,8 @@ export function prCreateSuccess(requestNumber: string, chefSigned: boolean): str
         : `أُنشئ طلب الشراء ${requestNumber} — بانتظار توقيع الشيف`;
 }
 
-/** أنواع قرارات الطلب الأربعة. */
-export type PRDecisionKind = 'chef-approve' | 'chef-reject' | 'gm-approve' | 'gm-reject';
+/** أنواع قرارات الطلب الخمس. */
+export type PRDecisionKind = 'chef-approve' | 'chef-reject' | 'gm-approve' | 'gm-reject' | 'revert-to-chef-approved';
 
 /* ── تطبيع الاسم والتوقيع — مرآة الخادم (warehouse-routes.js:338-357) ──── */
 
@@ -202,9 +204,7 @@ export function normalizeSignerName(value: unknown): string {
 }
 
 /** اسم صاحب الحساب: name ثم username — نفس ترتيب الخادم. */
-export function accountSignatureName(
-    user: { name?: string | null; username?: string | null } | null | undefined,
-): string {
+export function accountSignatureName(user: { name?: string | null; username?: string | null } | null | undefined): string {
     return normalizeSignerName(user?.name) || normalizeSignerName(user?.username);
 }
 
@@ -273,10 +273,7 @@ function manualItemEntry(row: PRManualInput = {}): PRItemInput | null {
 }
 
 /** أصناف الإنشاء: النواقص المختارة ثم اليدوية — ترتيب القديم :517-527. */
-export function collectPRItems(
-    shortageRows: readonly PRShortageInput[] = [],
-    manualRows: readonly PRManualInput[] = [],
-): PRItemInput[] {
+export function collectPRItems(shortageRows: readonly PRShortageInput[] = [], manualRows: readonly PRManualInput[] = []): PRItemInput[] {
     const items: PRItemInput[] = [];
     for (const row of Array.isArray(shortageRows) ? shortageRows : []) {
         const entry = shortageItemEntry(row);
@@ -341,11 +338,7 @@ export interface PRNotesPayload {
 }
 
 /** حمولة قرار بملاحظات — chef-approve :554 وgm-approve :586. */
-export function prNotesPayload(
-    notes: unknown = '',
-    signatureData: string | null = null,
-    signerName: string | null = null,
-): PRNotesPayload {
+export function prNotesPayload(notes: unknown = '', signatureData: string | null = null, signerName: string | null = null): PRNotesPayload {
     return { notes: String(notes ?? '').trim(), signatureData, signerName };
 }
 
@@ -375,11 +368,7 @@ export function filterPRDeptOptions(
             parentCode: String(row.parentCode ?? ''),
         }))
         .filter(
-            (row) =>
-                !row.code.startsWith('ys_') &&
-                row.code !== 'kitchen' &&
-                row.code !== 'external_sales' &&
-                row.parentCode !== 'kitchen',
+            (row) => !row.code.startsWith('ys_') && row.code !== 'kitchen' && row.code !== 'external_sales' && row.parentCode !== 'kitchen',
         );
 }
 
@@ -430,7 +419,12 @@ export async function cancelPR(id: string | number): Promise<void> {
     await writeAck(prUrl(id, 'cancel'), 'POST', {});
 }
 
-/** حذف نهائي — DELETE /:id (pr-routes.js:607، والمعتمد/المستلم محمي). */
+/* NEW: إرجاع الطلب إلى chef_approved -- POST /:id/revert-to-chef-approved */
+export async function revertToChefApprovedPR(id: string | number): Promise<void> {
+    await writeAck(prUrl(id, 'revert-to-chef-approved'), 'POST', {});
+}
+
+/** حذف نهائي -- DELETE /:id (pr-routes.js:607، والمعتمد/المستلم محمي). */
 export async function deletePR(id: string | number): Promise<void> {
     await writeAck(prUrl(id), 'DELETE');
 }

@@ -50,7 +50,7 @@ describe('print.css — تنسيق الطباعة المشترك', () => {
         expect(CSS).not.toMatch(/size:\s*A4\s+landscape/);
         expect(CSS).toMatch(/@page\s*\{[^}]*margin:\s*14mm\s+12mm/s);
         expect(CSS).toMatch(/direction:\s*rtl/);
-        expect(CSS).toMatch(/font-family:\s*"IBM Plex Sans Arabic"/);
+        expect(CSS).toMatch(/font-family:\s*"Tajawal"/);
     });
 
     it('يخفي القشرة وأدوات الشاشة المعلنة', () => {
@@ -97,7 +97,7 @@ describe('print.css — تنسيق الطباعة المشترك', () => {
 
 /**
  * هوية المستند الطباعي — منقولة من `css/print-doc.css` عبر
- * `core/print-system.js`: ترويسة العلامة، تذييل واحد، ورأس جدول أخضر.
+ * `core/print-system.js`: ترويسة العلامة، تذييل واحد، ورأس جدول كحلي.
  * الحارس يمنع تراجع أي قاعدة منها؛ الترويسة نفسها مكوّن (`PrintBrand`).
  */
 describe('print.css — هوية المستند المنقولة من V2', () => {
@@ -107,27 +107,25 @@ describe('print.css — هوية المستند المنقولة من V2', () =>
         expect(CSS).toMatch(/\.erp-print-runner\s*\{[^}]*display:\s*flex/s);
     });
 
-    it('ترويسة العلامة: شعار + اسم + سطر إنجليزي بخط ذهبي', () => {
+    it('ترويسة العلامة: شعار + اسم + سطر إنجليزي بخط تركوازي', () => {
         expect(CSS).toMatch(/\.erp-print-brand__logo\s*\{[^}]*inline-size:\s*16mm/s);
-        expect(CSS).toMatch(/\.erp-print-brand__name\s*\{[^}]*color:\s*#17352b/s);
+        expect(CSS).toMatch(/\.erp-print-brand__name\s*\{[^}]*color:\s*#102a43/s);
         expect(CSS).toMatch(/\.erp-print-brand__name\s*\{[^}]*font-size:\s*15pt/s);
         expect(CSS).toMatch(/\.erp-print-brand__en\s*\{[^}]*letter-spacing:\s*0\.14em/s);
-        expect(CSS).toMatch(/border-bottom:\s*2\.5pt\s+solid\s+#b8912f/);
+        expect(CSS).toMatch(/border-bottom:\s*2\.5pt\s+solid\s+#0f766e/);
     });
 
     it('تذييل واحد ثابت في آخر المستند لا مكرر لكل صفحة', () => {
-        const runner = blocksMatching(/\.erp-print-runner\s*,?\s*$/).find((block) =>
-            /justify-content:\s*space-between/.test(block.body),
-        );
+        const runner = blocksMatching(/\.erp-print-runner\s*,?\s*$/).find((block) => /justify-content:\s*space-between/.test(block.body));
         expect(runner).toBeDefined();
         expect(runner?.body).toMatch(/position:\s*static/);
         expect(runner?.body).toMatch(/break-inside:\s*avoid/);
     });
 
-    it('جدول المستند: رأس أخضر متكرر، حدود ذهبية، وتظليل صفوف', () => {
-        expect(CSS).toMatch(/th\s*\{[^}]*background:\s*#17352b/s);
-        expect(CSS).toMatch(/th\s*\{[^}]*color:\s*#f6f1e2/s);
-        expect(CSS).toMatch(/tbody tr:nth-child\(even\)\s*>\s*td\s*\{[^}]*background:\s*#f8f7f2/s);
-        expect(CSS).toMatch(/border:\s*1px\s+solid\s+#ded7c6\s*!important/);
+    it('جدول المستند: رأس كحلي متكرر، حدود تركوازية، وتظليل صفوف', () => {
+        expect(CSS).toMatch(/th\s*\{[^}]*background:\s*#102a43/s);
+        expect(CSS).toMatch(/th\s*\{[^}]*color:\s*#f0f6fa/s);
+        expect(CSS).toMatch(/tbody tr:nth-child\(even\)\s*>\s*td\s*\{[^}]*background:\s*#f3f6fa/s);
+        expect(CSS).toMatch(/border:\s*1px\s+solid\s+#dce5ec\s*!important/);
     });
 });

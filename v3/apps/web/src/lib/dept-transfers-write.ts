@@ -137,7 +137,12 @@ export async function fetchDeptStock(deptCode: string, scope = 'month', signal?:
     if (scope) {
         params.set('scope', scope);
     }
-    return fetchJson(deptStockSchema, `/api/warehouse/dept-transfers/stock?${params.toString()}`, getAccessToken(), signal ? { signal } : {});
+    return fetchJson(
+        deptStockSchema,
+        `/api/warehouse/dept-transfers/stock?${params.toString()}`,
+        getAccessToken(),
+        signal ? { signal } : {},
+    );
 }
 
 export type TransferItemInput = { inventory_id: string | number; qty: number };
@@ -195,6 +200,8 @@ export const EXTERNAL_DESTINATIONS = [
 ] as const;
 
 export function isExternalDestination(code: string | null | undefined): boolean {
-    const want = String(code ?? '').trim().toLowerCase();
+    const want = String(code ?? '')
+        .trim()
+        .toLowerCase();
     return EXTERNAL_DESTINATIONS.some((d) => d.code.toLowerCase() === want);
 }

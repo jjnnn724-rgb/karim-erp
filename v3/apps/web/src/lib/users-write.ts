@@ -101,30 +101,51 @@ export async function createUser(input: UserCreateInput): Promise<UserResult> {
 }
 
 export async function updateUser(id: string | number, input: UserUpdateInput): Promise<UserResult> {
-    return writeJson(
-        userResultSchema,
-        `/api/users/${encodeURIComponent(String(id))}`,
-        'PUT',
-        {
-            name: input.name.trim(),
-            role: input.role.trim(),
-            dept_code: input.dept_code?.trim() || null,
-            ...(input.active !== undefined ? { active: input.active } : {}),
-        },
-    );
+    return writeJson(userResultSchema, `/api/users/${encodeURIComponent(String(id))}`, 'PUT', {
+        name: input.name.trim(),
+        role: input.role.trim(),
+        dept_code: input.dept_code?.trim() || null,
+        ...(input.active !== undefined ? { active: input.active } : {}),
+    });
 }
 
 export async function setUserActive(id: string | number, active: boolean): Promise<UserResult> {
-    return writeJson(
-        userResultSchema,
-        `/api/users/${encodeURIComponent(String(id))}`,
-        'PUT',
-        { active },
-    );
+    return writeJson(userResultSchema, `/api/users/${encodeURIComponent(String(id))}`, 'PUT', { active });
 }
 
 export async function deleteUser(id: string | number): Promise<void> {
     await writeAck(`/api/users/${encodeURIComponent(String(id))}`, 'DELETE');
+}
+
+/* ── رمز استعادة كلمة المرور (2026-11-11) ────────────────────────────────
+ * POST /api/auth/forgot-password/request-code (admin|manager) — الخادم
+ * يفرض الهرم: لا رمز لحساب ندٍّ أو أعلى، ولا لنفسك. الرمز يعود مرة واحدة
+ * ليقرأه المدير على الموظف، وصلاحيته 10 دقائق واستخدام واحد.
+ */
+
+export const USER_RESET_ROLES = ['admin', 'manager'] as const;
+
+export function userResetVisible(role: string | null | undefined): boolean {
+    return isWriteRole(role, USER_RESET_ROLES);
+}
+
+export const resetCodeSchema = z
+    .object({
+        ok: z.boolean().optional(),
+        username: z.string().optional(),
+        user_name: z.string().nullable().optional(),
+        code: z.string(),
+        expires_in_seconds: z.number().optional(),
+        message: z.string().optional(),
+    })
+    .passthrough();
+
+export type ResetCode = z.infer<typeof resetCodeSchema>;
+
+export async function issueResetCode(username: string): Promise<ResetCode> {
+    return writeJson(resetCodeSchema, '/api/auth/forgot-password/request-code', 'POST', {
+        username: username.trim(),
+    });
 }
 
 /* ── دوال تأكيد ───────────────────────────────────────────────────────── */

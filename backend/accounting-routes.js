@@ -492,7 +492,7 @@ async function ensureCostCenters(codes = []) {
 /** ترحيل صرف معتمد: idempotent بمفتاح (dispatch, id) — best-effort بعد COMMIT.
  *  سطر التكلفة يحمل cost_center_code = القسم الطالب (إن وُجد مركزُه) —
  *  فانقسام COGS لكل قسم يصبح ممكنًا من الأستاذ مباشرة. */
-async function postDispatchToLedger(dispatchId, { totalValue, date, deptCode } = {}) {
+async function postDispatchToLedger(dispatchId, { totalValue, date, deptCode, sourceId = dispatchId } = {}) {
     const v = round2(totalValue);
     if (!(v > 0)) {return { skipped: 'zero_total' };}
     const day = /^\d{4}-\d{2}-\d{2}$/.test(String(date || '').slice(0, 10))
@@ -506,10 +506,32 @@ async function postDispatchToLedger(dispatchId, { totalValue, date, deptCode } =
         date: day,
         memo: `صرف مخزون — إذن #${dispatchId}${deptCode ? ` (${deptCode})` : ''}`,
         source_type: 'dispatch',
-        source_id: String(dispatchId),
+        source_id: String(sourceId),
         lines: buildStockMoveLines(v, 'out', deptCode || null, accounts),
     });
     logger.info(`[LEDGER] صرف #${dispatchId}: ${out.replay ? 'مُرحّل مسبقًا' : `قيد ${out.entry.entry_no}`}`);
+    return out;
+}
+
+/** عكس اعتماد مخزن أُعيد قبل استلام القسم — قيد مستقل مرتبط بإذن الصرف. */
+async function postDispatchReopenToLedger(dispatchId, reopenId, { totalValue, date, deptCode } = {}, db = pool) {
+    const v = round2(totalValue);
+    if (!(v > 0)) {return { skipped: 'zero_total' };}
+    const day = /^\d{4}-\d{2}-\d{2}$/.test(String(date || '').slice(0, 10))
+        ? String(date).slice(0, 10) : riyadhToday();
+    if (deptCode) {await ensureCostCenters([deptCode]);}
+    const accounts = await resolveAccounts(db, 'inventory', 'stock_return', {
+        cogs_account: '5000',
+        inventory_account: '1200',
+    });
+    const out = await postJournal(db, {
+        date: day,
+        memo: `إرجاع اعتماد مخزن — إذن #${dispatchId}${deptCode ? ` (${deptCode})` : ''}`,
+        source_type: 'dispatch_reopen',
+        source_id: String(reopenId),
+        lines: buildStockMoveLines(v, 'in', deptCode || null, accounts),
+    });
+    logger.info(`[LEDGER] إرجاع اعتماد الصرف #${dispatchId}: ${out.replay ? 'مُرحّل مسبقًا' : `قيد ${out.entry.entry_no}`}`);
     return out;
 }
 
@@ -1035,4 +1057,4 @@ router.get('/cfo-summary', jwtAuth, requireRole(...READ_ROLES), async (req, res)
     }
 });
 
-module.exports = { router, postJournal, postSaleToLedger, buildSalePostingLines, postPurchaseToLedger, postOpeningToLedger, postDispatchToLedger, postReturnToLedger, buildStockMoveLines, buildVatSettlementPlan, normalizeCostCenterCode, ensureCostCenters, resetCcCache: () => { _ccReady = null; } };
+module.exports = { router, postJournal, postSaleToLedger, buildSalePostingLines, postPurchaseToLedger, postOpeningToLedger, postDispatchToLedger, postDispatchReopenToLedger, postReturnToLedger, buildStockMoveLines, buildVatSettlementPlan, normalizeCostCenterCode, ensureCostCenters, resetCcCache: () => { _ccReady = null; } };

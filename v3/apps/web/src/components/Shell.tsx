@@ -1,6 +1,8 @@
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { logout, useAuthState } from '../lib/auth';
+import { useHiddenNavKeys } from '../lib/hidden-nav';
+import { useAllowedMenus } from '../lib/my-menus';
 import {
     APP_NAME,
     groupForPath,
@@ -13,9 +15,7 @@ import {
     titleForPath,
     writeNavPrefs,
 } from '../lib/navigation';
-import { useHiddenNavKeys } from '../lib/hidden-nav';
 import { useDocumentMeta } from '../lib/page-meta';
-import { useAllowedMenus } from '../lib/my-menus';
 import { isV3Preview } from '../lib/rollout';
 import { enabledScreens, LEGACY_APP_URL } from '../lib/screens';
 import { ThemeProvider, useTheme } from '../ui/ThemeProvider';
@@ -28,12 +28,12 @@ import { ThemeToggle } from './ThemeToggle';
 import './shell-premium.css';
 
 /**
- * قشرة ليل الياقوت — تنقّل منطقي RTL، وتفضيلات محفوظة، وثيم من ui-kit.
+ * قشرة KARIM — تنقّل منطقي RTL، وتفضيلات محفوظة، وثيم من ui-kit.
  * كتلة NAV_ITEMS تبقى نصًا صريحًا لحرّاس التسجيل؛ الشاشات المعطّلة لا تظهر
  * في التنقّل أو البحث. الدرج مستقل عن الوضع المضغوط للشريط المكتبي.
  */
 
-// كتلة التنقّل الـ62 — نصّ صريح يحرسه registration.test.ts (لا تُولَّد آليًا).
+// كتلة التنقّل الـ63 — نصّ صريح يحرسه registration.test.ts (لا تُولَّد آليًا).
 export const NAV_ITEMS = [
     { to: '/accounts', label: 'شجرة الحسابات', hint: 'AccountsTree' },
     { to: '/journal', label: 'القيود اليومية', hint: 'JournalViewer' },
@@ -61,6 +61,7 @@ export const NAV_ITEMS = [
     { to: '/attendance', label: 'الحضور والانصراف', hint: 'Attendance' },
     { to: '/leaves', label: 'الإجازات', hint: 'Leaves' },
     { to: '/payroll', label: 'الرواتب', hint: 'Payroll' },
+    { to: '/mudad', label: 'مدد والتأمينات وقوى', hint: 'WPS · GOSI · Qiwa' },
     { to: '/roster', label: 'الدوام', hint: 'Roster' },
     { to: '/users', label: 'المستخدمون', hint: 'Users' },
     { to: '/branches', label: 'الفروع', hint: 'Branches' },
@@ -92,11 +93,13 @@ export const NAV_ITEMS = [
     { to: '/cashier-sales', label: 'مبيعات الكاشير', hint: 'Cashier Sales' },
     { to: '/cashier-monitor', label: 'متابعة الكاشير', hint: 'Cashier Monitor' },
     { to: '/pos-entry', label: 'نقطة البيع', hint: 'POS' },
+    { to: '/cashier', label: 'واجهة الكاشير', hint: 'Cashier Page' },
+    { to: '/integrations', label: 'مصدر البيانات', hint: 'Data Source' },
     { to: '/sales-analyzer', label: 'تحليل المبيعات', hint: 'Sales Analyzer' },
     { to: '/sales-inquiry', label: 'استعلام المبيعات', hint: 'Sales Inquiry' },
     { to: '/received-analyzer', label: 'تحليل المستلَم', hint: 'Received' },
     { to: '/wh-vs-pos', label: 'المخزن مقابل نقطة البيع', hint: 'WH vs POS' },
-    { to: '/yarasoft', label: 'إيرادات الكاشير', hint: 'Cashier Revenue' },
+    { to: '/yarasoft', label: 'تكامل قاعدة الكاشير', hint: 'YaraSoft' },
 ] as const;
 
 type NavItem = (typeof NAV_ITEMS)[number];
@@ -105,9 +108,22 @@ type NavItem = (typeof NAV_ITEMS)[number];
 export function Shell() {
     return (
         <ThemeProvider>
-            <ShellLayout />
+            <ShellRoute />
         </ThemeProvider>
     );
+}
+
+/** وضع الكاشير المستقل لا يرث قائمة الإدارة أو بياناتها. */
+function ShellRoute() {
+    const path = useRouterState({ select: (state) => state.location.pathname });
+    if (path.replace(/\/+$/, '') === '/cashier') {
+        return <Outlet />;
+    }
+    // نقطة البيع سطح تشغيل مستقل: بلا شريط تنقّل إداري ولا رأس متصفّح.
+    if (path.replace(/\/+$/, '') === '/pos-entry') {
+        return <Outlet />;
+    }
+    return <ShellLayout />;
 }
 
 function ShellLayout() {
@@ -217,8 +233,7 @@ function ShellLayout() {
         const drawer = drawerRef.current;
         if (!drawer) return;
         const restoreTarget =
-            drawerReturnFocusRef.current ??
-            (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+            drawerReturnFocusRef.current ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
         drawerReturnFocusRef.current = null;
         const openedPath = previousPathRef.current;
         const previousOverflow = document.body.style.overflow;
@@ -226,9 +241,7 @@ function ShellLayout() {
         drawerCloseRef.current?.focus();
 
         const focusable = () =>
-            Array.from(
-                drawer.querySelectorAll<HTMLElement>('a[href], button, input, select, textarea, [tabindex]'),
-            ).filter((element) => {
+            Array.from(drawer.querySelectorAll<HTMLElement>('a[href], button, input, select, textarea, [tabindex]')).filter((element) => {
                 const style = window.getComputedStyle(element);
                 return (
                     element.tabIndex >= 0 &&
@@ -251,16 +264,10 @@ function ShellLayout() {
             if (!first || !last) {
                 event.preventDefault();
                 drawer.focus();
-            } else if (
-                event.shiftKey &&
-                (document.activeElement === first || !drawer.contains(document.activeElement))
-            ) {
+            } else if (event.shiftKey && (document.activeElement === first || !drawer.contains(document.activeElement))) {
                 event.preventDefault();
                 last.focus();
-            } else if (
-                !event.shiftKey &&
-                (document.activeElement === last || !drawer.contains(document.activeElement))
-            ) {
+            } else if (!event.shiftKey && (document.activeElement === last || !drawer.contains(document.activeElement))) {
                 event.preventDefault();
                 first.focus();
             }
@@ -335,11 +342,7 @@ function ShellLayout() {
                 const isCollapsed = prefs.collapsed.includes(group.id);
                 const listId = `erp-nav-group-${group.id}-${suffix}`;
                 return (
-                    <div
-                        key={group.id}
-                        className="erp-shell__nav-group"
-                        data-current={currentGroup?.id === group.id || undefined}
-                    >
+                    <div key={group.id} className="erp-shell__nav-group" data-current={currentGroup?.id === group.id || undefined}>
                         <button
                             type="button"
                             aria-expanded={!isCollapsed}
@@ -352,9 +355,7 @@ function ShellLayout() {
                         >
                             <ShellIcon name={SHELL_GROUP_ICONS[group.id]} />
                             <span className={compact ? 'sr-only' : 'erp-shell__group-label'}>{group.label}</span>
-                            {compact ? null : (
-                                <ChevronIcon className={`erp-shell__chevron ${isCollapsed ? '-rotate-90' : ''}`} />
-                            )}
+                            {compact ? null : <ChevronIcon className={`erp-shell__chevron ${isCollapsed ? '-rotate-90' : ''}`} />}
                         </button>
                         {isCollapsed ? null : (
                             <ul id={listId} className="erp-shell__nav-list">
@@ -371,9 +372,7 @@ function ShellLayout() {
                                             className="erp-nav-item erp-shell__nav-link"
                                         >
                                             <ShellIcon name={shellIconForPath(item.to)} />
-                                            <span className={compact ? 'sr-only' : 'erp-shell__nav-label'}>
-                                                {item.label}
-                                            </span>
+                                            <span className={compact ? 'sr-only' : 'erp-shell__nav-label'}>{item.label}</span>
                                         </Link>
                                     </li>
                                 ))}
@@ -468,9 +467,7 @@ function ShellLayout() {
                                 className="erp-shell__compact-toggle"
                             >
                                 <ShellIcon name="panel" />
-                                <span className={prefs.compact ? 'sr-only' : undefined}>
-                                    {prefs.compact ? 'توسيع' : 'وضع مضغوط'}
-                                </span>
+                                <span className={prefs.compact ? 'sr-only' : undefined}>{prefs.compact ? 'توسيع' : 'وضع مضغوط'}</span>
                             </button>
                         </div>
                         {renderUser(prefs.compact)}
@@ -554,10 +551,7 @@ function ShellLayout() {
                                     <strong>{currentTitle ?? APP_NAME}</strong>
                                 </span>
                                 {chartReadOnly ? (
-                                    <span
-                                        className="erp-shell__screen-access"
-                                        title="صلاحية شاشة شجرة الحسابات: للقراءة فقط — بلا كتابة"
-                                    >
+                                    <span className="erp-shell__screen-access" title="صلاحية شاشة شجرة الحسابات: للقراءة فقط — بلا كتابة">
                                         للقراءة فقط — بلا كتابة
                                     </span>
                                 ) : null}
@@ -575,11 +569,7 @@ function ShellLayout() {
                                 ) : null}
                             </div>
                         </div>
-                        <Link
-                            to="/pos-entry"
-                            title="فتح نقطة البيع داخل النظام"
-                            className="erp-shell__command-trigger erp-shell__pos-link"
-                        >
+                        <Link to="/pos-entry" title="فتح نقطة البيع داخل النظام" className="erp-shell__command-trigger erp-shell__pos-link">
                             <ShellIcon name="monitor" />
                             <span>الكاشير</span>
                         </Link>
@@ -604,8 +594,7 @@ function ShellLayout() {
                             <div>
                                 <span className="erp-shell__session-name">{auth.user?.name ?? APP_NAME}</span>
                                 <span className="erp-shell__session-role">
-                                    {auth.user?.role ??
-                                        (auth.status === 'authenticated' ? 'جلسة مسجّلة' : 'إدارة المطاعم')}
+                                    {auth.user?.role ?? (auth.status === 'authenticated' ? 'جلسة مسجّلة' : 'إدارة المطاعم')}
                                 </span>
                             </div>
                         </div>

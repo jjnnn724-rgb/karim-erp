@@ -52,10 +52,10 @@
  *     in-flight response never touches a destroyed screen.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.296';
-import { statusBadge } from '../status.js?v=4.9.296';
-import { ensureXlsx } from '../vendor.js?v=4.9.296';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.296';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.312';
+import { statusBadge } from '../status.js?v=4.9.312';
+import { ensureXlsx } from '../vendor.js?v=4.9.312';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.312';
 import {
     attendanceToRow, ATTENDANCE_STATE_AR, PERIODS,
     fetchAttendanceRange, buildAttendanceKpis, buildAttendanceLegend,
@@ -72,10 +72,10 @@ import {
     fetchStrictAudit, summarizeAudit,
     fetchAttendanceAudit, auditEditRows,
     fetchMonthlyAttendance, buildMonthlySheet, minutesToHM,
-} from '../data/attendance-repo.js?v=4.9.296';
-import { fetchEmployees, employeeMap, fetchDepartments, departmentMap } from '../data/employees-repo.js?v=4.9.296';
-import { fetchLeaveWorkflow } from '../data/leaves-repo.js?v=4.9.296';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.296';
+} from '../data/attendance-repo.js?v=4.9.312';
+import { fetchEmployees, employeeMap, fetchDepartments, departmentMap } from '../data/employees-repo.js?v=4.9.312';
+import { fetchLeaveWorkflow } from '../data/leaves-repo.js?v=4.9.312';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.312';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -1083,8 +1083,24 @@ export function mountAttendanceScreen(host, ctx = {}) {
 
     /* نداء طباعة واحد في الشاشة كلها؛ الكشف الشهري يركب شارة body قبله
        وتُنزع بعده (afterprint + مهلة أمان) — نفس حركة بطاقة QR في W2-2. */
-    function printNow(monthly) {
-        if (monthly) {
+    /* التصدير: xlsx لا يُحمَّل في v2.html (قرار السرعة في vendor.js) — يُجلب عند
+       أول ضغطة فقط. المصفوفة من نفس الصفوف المعروضة بعد الفلاتر، فما يُصدَّر هو
+       ما تراه العين لا سجلٌّ آخر. */
+    async function doExport() {
+        const ready = await ensureXlsx();
+        if (!ready || typeof window.XLSX === 'undefined') {say('مكتبة Excel غير محمّلة — حدّث الصفحة'); return;}
+        const from = q('#v2att-from').value;
+        const to = q('#v2att-to').value;
+        const matrix = buildExportMatrix(rows);
+        const ws = window.XLSX.utils.aoa_to_sheet(matrix);
+        const wb = window.XLSX.utils.book_new();
+        window.XLSX.utils.book_append_sheet(wb, ws, 'الحضور');
+        prepareReportWorkbook(window.XLSX, wb, `تقرير الحضور ${from} إلى ${to}`);
+        window.XLSX.writeFile(wb, exportFileName(from, to));
+        say(`تم تصدير ${formatInt(rows.length)} سجل`);
+    }
+
+    function printNow(monthly) {        if (monthly) {
             document.body.classList.add('erp-v2-print-monthly');
             const cleanup = () => {
                 document.body.classList.remove('erp-v2-print-monthly');

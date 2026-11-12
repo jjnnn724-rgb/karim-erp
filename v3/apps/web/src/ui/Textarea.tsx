@@ -1,15 +1,15 @@
+import { type ComponentPropsWithRef, useId } from 'react';
 import { Label as ShadcnLabel } from '@/components/ui/label';
 import { Textarea as ShadcnTextarea } from '@/components/ui/textarea';
-import { useId, type ComponentPropsWithRef } from 'react';
 import { cn } from './cn';
+import { type ControlSize, controlClassName } from './Input';
 import { AlertCircleIcon } from './icons';
-import { controlClassName, type ControlSize } from './Input';
 
 /**
  * منطقة نصّ متعددة الأسطر — فوق **shadcn/ui** (`@/components/ui/textarea`):
  * نفس عقد الحقل النصّي: تسمية مرتبطة، خطأ `aria-invalid` + `aria-describedby`،
  * وتلميح. الارتفاع من `rows` لا من ارتفاع ثابت، وفشل التركيز نفسه (حلقة
- * الشامبانيا العامة).
+ * التركيز بلون الفعل العامة).
  */
 
 export interface TextareaProps extends Omit<ComponentPropsWithRef<'textarea'>, 'rows'> {

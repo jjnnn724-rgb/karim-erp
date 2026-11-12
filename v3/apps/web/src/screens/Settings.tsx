@@ -20,6 +20,7 @@ import { KotSection } from './settings/KotSection';
 import { MaintenanceSection } from './settings/MaintenanceSection';
 import { NavSection } from './settings/NavSection';
 import { PunchSection } from './settings/PunchSection';
+import { ServerControlSection } from './settings/ServerControlSection';
 import { ZatcaSection } from './settings/ZatcaSection';
 
 /**
@@ -29,7 +30,7 @@ import { ZatcaSection } from './settings/ZatcaSection';
  * بعدها حتى لا تُفقد مسودة غير محفوظة عند التنقل بين الأقسام.
  */
 
-type SectionKey = 'general' | 'nav' | 'zatca' | 'kot' | 'cards' | 'punch' | 'backup' | 'maintenance';
+type SectionKey = 'general' | 'nav' | 'zatca' | 'kot' | 'cards' | 'punch' | 'backup' | 'maintenance' | 'server';
 
 interface SectionDef {
     key: SectionKey;
@@ -47,6 +48,7 @@ const SECTION_DEFS: SectionDef[] = [
     { key: 'punch', label: 'البصمة الذاتية', english: 'Self Punch', render: () => <PunchSection /> },
     { key: 'backup', label: 'النسخ الاحتياطي', english: 'Backups', render: () => <BackupSection /> },
     { key: 'maintenance', label: 'التصدير والتصفير', english: 'Export & Reset', render: () => <MaintenanceSection /> },
+    { key: 'server', label: 'تحكم الخادم', english: 'Server Control', render: () => <ServerControlSection /> },
 ];
 
 export function Settings() {
@@ -73,6 +75,8 @@ export function Settings() {
                     return backupVisible(role);
                 case 'maintenance':
                     return settingsWriteVisible(role);
+                case 'server':
+                    return role === 'admin';
                 default:
                     return false;
             }

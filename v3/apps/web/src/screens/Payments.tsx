@@ -3,17 +3,21 @@ import { toCents } from '@karim/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { PrintActions } from '../components/PrintActions';
-import {
-    Card,
-    StateEmpty,
-    StateError,
-    StateLoading,
-    TableScroll,
-    TableSkeleton,
-} from '../components/TableState';
+import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
+import { useAuthState } from '../lib/auth';
 import { fetchCurrency, riyadhToday } from '../lib/finance';
 import { formatMoney } from '../lib/format';
-import { useAuthState } from '../lib/auth';
+import {
+    createPayment,
+    deletePayment,
+    PAYMENT_TEXT,
+    type PaymentCreateInput,
+    type PaymentUpdateInput,
+    paymentDeleteConfirm,
+    paymentDeleteVisible,
+    paymentWriteVisible,
+    updatePayment,
+} from '../lib/payments-write';
 import {
     fetchSupplierPayments,
     fetchSuppliers,
@@ -24,17 +28,6 @@ import {
     riyadhDaysAgo,
     sumMoney,
 } from '../lib/procurement';
-import {
-    createPayment,
-    deletePayment,
-    updatePayment,
-    paymentDeleteConfirm,
-    PAYMENT_TEXT,
-    type PaymentCreateInput,
-    type PaymentUpdateInput,
-    paymentWriteVisible,
-    paymentDeleteVisible,
-} from '../lib/payments-write';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
@@ -271,15 +264,7 @@ interface PaymentActionDialogProps {
     confirmLabel: string;
 }
 
-function PaymentActionDialog({
-    open,
-    title,
-    message,
-    onConfirm,
-    onClose,
-    pending,
-    confirmLabel,
-}: PaymentActionDialogProps) {
+function PaymentActionDialog({ open, title, message, onConfirm, onClose, pending, confirmLabel }: PaymentActionDialogProps) {
     return (
         <Dialog
             open={open}
@@ -353,9 +338,7 @@ export function Payments() {
 
     function toggleSort(key: SortKey) {
         setPage(1);
-        setSort((previous) =>
-            previous.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' },
-        );
+        setSort((previous) => (previous.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
     }
 
     function ariaSort(key: SortKey): 'ascending' | 'descending' | 'none' {
@@ -436,8 +419,8 @@ export function Payments() {
                         </span>
                     </h1>
                     <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        دفعات الموردين في الفترة المختارة — تسجيل وتعديل وحذف.
-                        القراءة من `/api/procurement/payments`، والكتابة لـ admin|manager|accountant والحذف للأدمن فقط.
+                        دفعات الموردين في الفترة المختارة — تسجيل وتعديل وحذف. القراءة من `/api/procurement/payments`، والكتابة لـ
+                        admin|manager|accountant والحذف للأدمن فقط.
                     </p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>
@@ -462,10 +445,7 @@ export function Payments() {
 
             <Card className="p-sm">
                 <div className="flex flex-wrap items-end gap-sm">
-                    <label
-                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-payments-supplier"
-                    >
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-payments-supplier">
                         المورد
                         <select
                             id="erp-payments-supplier"
@@ -484,10 +464,7 @@ export function Payments() {
                             ))}
                         </select>
                     </label>
-                    <label
-                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-payments-from"
-                    >
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-payments-from">
                         من
                         <input
                             id="erp-payments-from"
@@ -576,11 +553,7 @@ export function Payments() {
                             <table className="w-full border-collapse text-body-md">
                                 <thead>
                                     <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                        <th
-                                            scope="col"
-                                            aria-sort={ariaSort('date')}
-                                            className="px-sm py-xs text-center font-medium"
-                                        >
+                                        <th scope="col" aria-sort={ariaSort('date')} className="px-sm py-xs text-center font-medium">
                                             <button
                                                 type="button"
                                                 onClick={() => {
@@ -590,11 +563,7 @@ export function Payments() {
                                                 التاريخ
                                             </button>
                                         </th>
-                                        <th
-                                            scope="col"
-                                            aria-sort={ariaSort('supplierName')}
-                                            className="px-sm py-xs text-start font-medium"
-                                        >
+                                        <th scope="col" aria-sort={ariaSort('supplierName')} className="px-sm py-xs text-start font-medium">
                                             <button
                                                 type="button"
                                                 onClick={() => {
@@ -604,11 +573,7 @@ export function Payments() {
                                                 المورد
                                             </button>
                                         </th>
-                                        <th
-                                            scope="col"
-                                            aria-sort={ariaSort('amount')}
-                                            className="px-sm py-xs text-end font-medium"
-                                        >
+                                        <th scope="col" aria-sort={ariaSort('amount')} className="px-sm py-xs text-end font-medium">
                                             <button
                                                 type="button"
                                                 onClick={() => {
@@ -618,11 +583,7 @@ export function Payments() {
                                                 المبلغ
                                             </button>
                                         </th>
-                                        <th
-                                            scope="col"
-                                            aria-sort={ariaSort('method')}
-                                            className="px-sm py-xs text-start font-medium"
-                                        >
+                                        <th scope="col" aria-sort={ariaSort('method')} className="px-sm py-xs text-start font-medium">
                                             <button
                                                 type="button"
                                                 onClick={() => {
@@ -651,21 +612,15 @@ export function Payments() {
                                             <td className="px-sm py-xxs text-body-sm text-muted" dir="ltr">
                                                 {payment.date}
                                             </td>
-                                            <td className="px-sm py-xxs text-body-sm">
-                                                {supplierOf(payment)}
-                                            </td>
+                                            <td className="px-sm py-xxs text-body-sm">{supplierOf(payment)}</td>
                                             <td className="erp-numeric px-sm py-xxs text-end text-ink" dir="ltr">
                                                 {formatMoney(moneyOf(payment.amount))}
                                             </td>
-                                            <td className="px-sm py-xxs text-body-sm text-muted">
-                                                {paymentMethodLabel(payment.method)}
-                                            </td>
+                                            <td className="px-sm py-xxs text-body-sm text-muted">{paymentMethodLabel(payment.method)}</td>
                                             <td className="px-sm py-xxs text-body-sm text-muted" dir="ltr">
                                                 {payment.invoiceId ? `#${payment.invoiceId}` : '—'}
                                             </td>
-                                            <td className="px-sm py-xxs text-body-sm text-muted">
-                                                {String(payment.notes ?? '—')}
-                                            </td>
+                                            <td className="px-sm py-xxs text-body-sm text-muted">{String(payment.notes ?? '—')}</td>
                                             {(canWrite || canDelete) && (
                                                 <td className="px-sm py-xxs" data-erp-print-hide>
                                                     <div className="flex flex-wrap items-center gap-xs">

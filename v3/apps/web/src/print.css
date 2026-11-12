@@ -3,14 +3,14 @@
  *
  * المرجع السلوكي في V2:
  *   • frontend/app/js/v2/print-branding.js — `@page { margin: 14mm 12mm }`،
- *     خط IBM Plex Sans Arabic، `table { max-width: 100% }`،
+ *     خط Tajawal، `table { max-width: 100% }`،
  *     `tr { break-inside: avoid }`، و`print-color-adjust: exact` للجداول.
  *   • frontend/app/js/v2/report-viewer.js — الورقة A4 داخل عارض، وأزرار
  *     العارض ليست جزءًا من المستند المطبوع.
  *
  * ما ينقله هذا الملف إلى React V3:
  *   1. صفحة A4 رأسية بهوامش V2 نفسها واتجاه RTL وخط الواجهة نفسه
- *      (`styles.css` يستضيف IBM Plex Sans Arabic محليًا — لا شبكة).
+ *      (`styles.css` يستضيف Tajawal محليًا — لا شبكة).
  *   2. إخفاء هيكل التطبيق (الشريط الجانبي/الرأس/الدرج/شريط الجوال) وأدوات
  *      الشاشة (`.erp-print-action` و`[data-erp-print-hide]`) — ولا يُخفى
  *      أي جدول أو صف أو خلية بيانات.
@@ -29,6 +29,7 @@
 }
 
 @media print {
+    /* Print layout must override screen utility styles so reports are not clipped or hidden. */
     /*
      * الوضع الداكن يطبع نصًّا فاتحًا على ورق أبيض — V2 لا يعرف الوضع الداكن
      * أصلًا، فالورق دائمًا فاتح. نُثبّت البدائيات الفاتحة داخل الطباعة فقط،
@@ -40,18 +41,18 @@
         --erp-c-canvas: #ffffff;
         --erp-c-surface: #ffffff;
         --erp-c-surface-raised: #ffffff;
-        --erp-c-surface-sunken: #f6f1e6;
-        --erp-c-surface-hover: #f3ede1;
-        --erp-c-ink: #1f2633;
-        --erp-c-ink-secondary: #333d50;
-        --erp-c-muted: #535e70;
-        --erp-c-faint: #5f6a7e;
-        --erp-c-hairline: #ded7c6;
-        --erp-c-hairline-strong: #cbbfa8;
-        --erp-c-primary: #5b21b6;
-        --erp-c-on-primary: #fff9ee;
-        --erp-c-success-text: #0c624b;
-        --erp-c-danger-text: #8e241a;
+        --erp-c-surface-sunken: #eaf0f5;
+        --erp-c-surface-hover: #e7eef4;
+        --erp-c-ink: #172b3b;
+        --erp-c-ink-secondary: #31485a;
+        --erp-c-muted: #596e80;
+        --erp-c-faint: #526a7a;
+        --erp-c-hairline: #dce5ec;
+        --erp-c-hairline-strong: #c5d3df;
+        --erp-c-primary: #0f766e;
+        --erp-c-on-primary: #ffffff;
+        --erp-c-success-text: #0e6b3b;
+        --erp-c-danger-text: #8e1f16;
         color-scheme: light !important;
     }
 
@@ -66,7 +67,7 @@
         direction: rtl;
         background: #fff !important;
         color: #17231f !important;
-        font-family: "IBM Plex Sans Arabic", Tajawal, Tahoma, Arial, sans-serif !important;
+        font-family: "Tajawal", "Segoe UI", Tahoma, Arial, sans-serif !important;
         print-color-adjust: exact;
         -webkit-print-color-adjust: exact;
     }
@@ -173,7 +174,7 @@
         gap: 12px;
         margin: 0 0 12px;
         padding: 0 0 8px;
-        border-bottom: 2.5pt solid #b8912f;
+        border-bottom: 2.5pt solid #0f766e;
         direction: rtl;
         break-inside: avoid;
         page-break-inside: avoid;
@@ -194,14 +195,14 @@
     }
 
     .erp-print-brand__name {
-        color: #17352b;
+        color: #102a43;
         font-size: 15pt;
         font-weight: 700;
         line-height: 1.3;
     }
 
     .erp-print-brand__en {
-        color: #8a7c5c;
+        color: #596e80;
         font-size: 7.5pt;
         letter-spacing: 0.14em;
         direction: ltr;
@@ -217,8 +218,8 @@
         gap: 6mm;
         margin-top: 14px;
         padding-top: 4px;
-        border-top: 1px solid #e4dfd1;
-        color: #8a8577;
+        border-top: 1px solid #dce5ec;
+        color: #596e80;
         font-size: 7.5pt;
         direction: rtl;
         break-inside: avoid;
@@ -232,37 +233,37 @@
         text-overflow: ellipsis;
     }
 
-    /* رأس جدول أخضر متكرر وأشرطة ذهبية — هوية الجدول في print-doc.css. */
+    /* رأس جدول كحلي وحدّ تركوازي — هوية الجدول في print-doc.css. */
     table {
-        border: 1px solid #ded7c6 !important;
+        border: 1px solid #dce5ec !important;
         background: #fff;
         font-size: 9.5pt;
     }
 
     th,
     td {
-        border: 1px solid #ded7c6 !important;
+        border: 1px solid #dce5ec !important;
         padding: 5.5px 8px !important;
         vertical-align: middle;
     }
 
     th {
-        background: #17352b !important;
-        color: #f6f1e2 !important;
+        background: #102a43 !important;
+        color: #f0f6fa !important;
         font-size: 9pt;
         font-weight: 700;
         text-align: center;
         white-space: nowrap;
     }
 
-    tbody tr:nth-child(even) > td {
-        background: #f8f7f2;
+    tfoot td {
+        background: #eaf0f5 !important;
+        color: #172b3b !important;
+        font-weight: 700;
+        border-top: 1.5pt solid #0f766e !important;
     }
 
-    tfoot td {
-        background: #f6f1e2 !important;
-        color: #17352b !important;
-        font-weight: 700;
-        border-top: 1.5pt solid #b8912f !important;
+    tbody tr:nth-child(even) > td {
+        background: #f3f6fa;
     }
 }

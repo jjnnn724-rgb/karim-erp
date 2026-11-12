@@ -1,6 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider } from '@tanstack/react-router';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { validateAccountantDashboardSearch } from '../lib/accountant-search';
 import { AccountantDashboard } from './AccountantDashboard';
 
 function json(body: unknown, status = 200): Response {
@@ -10,13 +12,25 @@ function json(body: unknown, status = 200): Response {
     });
 }
 
-function renderScreen() {
+function renderScreen(initialEntry = '/accountant-dashboard') {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    return render(
+    const rootRoute = createRootRoute();
+    const dashboardRoute = createRoute({
+        getParentRoute: () => rootRoute,
+        path: '/accountant-dashboard',
+        validateSearch: validateAccountantDashboardSearch,
+        component: AccountantDashboard,
+    });
+    const router = createRouter({
+        routeTree: rootRoute.addChildren([dashboardRoute]),
+        history: createMemoryHistory({ initialEntries: [initialEntry] }),
+    });
+    const result = render(
         <QueryClientProvider client={client}>
-            <AccountantDashboard />
+            <RouterProvider router={router} />
         </QueryClientProvider>,
     );
+    return { ...result, router };
 }
 
 afterEach(() => {
@@ -99,7 +113,7 @@ describe('لوحة المحاسب', () => {
             }),
         );
 
-        renderScreen();
+        const { router } = renderScreen();
 
         await screen.findByText('كهرباء');
         await screen.findByText('ماء');
@@ -108,6 +122,7 @@ describe('لوحة المحاسب', () => {
 
         await screen.findByText('كهرباء');
         expect(screen.queryByText('ماء')).toBeNull();
+        expect(router.state.location.search.q).toBe('كهرباء');
     });
 
     it('تصفية الحركات بنطاق التاريخ من الواجهة الأمامية', async () => {
@@ -135,9 +150,7 @@ describe('لوحة المحاسب', () => {
                 }
                 if (url.includes('/api/expenses')) {
                     return json({
-                        data: [
-                            { id: 3, amount: 300, date: '2026-11-07', desc: 'كهرباء', category: 'تشغيل' },
-                        ],
+                        data: [{ id: 3, amount: 300, date: '2026-11-07', desc: 'كهرباء', category: 'تشغيل' }],
                     });
                 }
                 if (url.includes('/api/settings/main_settings')) {
@@ -147,7 +160,7 @@ describe('لوحة المحاسب', () => {
             }),
         );
 
-        renderScreen();
+        const { router } = renderScreen();
 
         await screen.findByText('كهرباء');
         await screen.findByText('تحويل');
@@ -163,10 +176,40 @@ describe('لوحة المحاسب', () => {
 
         await screen.findByText('كهرباء');
         expect(screen.queryByText('تحويل')).toBeNull();
+        expect(router.state.location.search).toMatchObject({ from: '2026-11-07', to: '2026-11-07' });
+    });
+
+    it('تستعيد المرشّحات من رابط قابل للمشاركة', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (input: RequestInfo | URL) => {
+                const url = typeof input === 'string' ? input : input.toString();
+                if (url.includes('/api/finance/pnl')) {
+                    return json({ statement: { revenue: {}, cogs: {}, operating: {}, net_profit: {} } });
+                }
+                if (url.includes('/api/revenues')) {
+                    return json({
+                        data: [
+                            { id: 1, amount: 1200, date: '2026-11-07', source: 'مبيعات' },
+                            { id: 2, amount: 800, date: '2026-11-01', source: 'تحويل' },
+                        ],
+                    });
+                }
+                if (url.includes('/api/expenses')) {
+                    return json({ data: [] });
+                }
+                if (url.includes('/api/settings/main_settings')) {
+                    return json({ currency: 'SAR' });
+                }
+                return json({ error: 'NOT_FOUND', message: 'مسار غير معروف' }, 404);
+            }),
+        );
+
+        renderScreen('/accountant-dashboard?from=2026-11-07&to=2026-11-07&q=%D9%85%D8%A8%D9%8A%D8%B9%D8%A7%D8%AA');
+
+        expect(((await screen.findByTestId('range-from')) as HTMLInputElement).value).toBe('2026-11-07');
+        expect((screen.getByTestId('accountant-filter-bar') as HTMLInputElement).value).toBe('مبيعات');
+        expect(await screen.findByText('مبيعات')).toBeTruthy();
+        expect(screen.queryByText('تحويل')).toBeNull();
     });
 });
-
-
-
-
-

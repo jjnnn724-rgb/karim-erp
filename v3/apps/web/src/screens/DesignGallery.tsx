@@ -1,5 +1,6 @@
 import { type ReactNode, useState } from 'react';
 import {
+    Alert,
     Badge,
     Button,
     Card,
@@ -17,6 +18,7 @@ import {
     Drawer,
     EmptyState,
     ErrorState,
+    FilterBar,
     IconButton,
     Input,
     KpiTile,
@@ -54,17 +56,7 @@ import { InfoIcon, SearchIcon, XIcon } from '../ui/icons';
 
 /* ─── عناصر العرض ─── */
 
-function Section({
-    id,
-    title,
-    description,
-    children,
-}: {
-    id: string;
-    title: string;
-    description?: string;
-    children: ReactNode;
-}) {
+function Section({ id, title, description, children }: { id: string; title: string; description?: string; children: ReactNode }) {
     const titleId = `${id}-title`;
     return (
         <section id={id} aria-labelledby={titleId} className="flex scroll-mt-lg flex-col gap-md">
@@ -87,10 +79,7 @@ function Modes({ children }: { children: ReactNode }) {
                 <span className="text-caption font-medium text-muted">الوضع الفاتح</span>
                 {children}
             </div>
-            <div
-                data-mode="dark"
-                className="dark flex flex-col gap-sm rounded-lg border border-hairline bg-canvas p-md"
-            >
+            <div data-mode="dark" className="dark flex flex-col gap-sm rounded-lg border border-hairline bg-canvas p-md">
                 <span className="text-caption font-medium text-muted">الوضع الداكن</span>
                 {children}
             </div>
@@ -139,12 +128,7 @@ function SearchDemo() {
 function CheckboxDemo() {
     const [checked, setChecked] = useState(true);
     return (
-        <Checkbox
-            label="تذكّرني"
-            description="يبقى الدخول فعّالًا"
-            checked={checked}
-            onCheckedChange={(next) => setChecked(next === true)}
-        />
+        <Checkbox label="تذكّرني" description="يبقى الدخول فعّالًا" checked={checked} onCheckedChange={(next) => setChecked(next === true)} />
     );
 }
 
@@ -309,14 +293,31 @@ const INVOICES_500: GalleryInvoice[] = Array.from({ length: 500 }, (_, index) =>
 }));
 
 const invoiceColumns: DataTableColumn<GalleryInvoice>[] = [
-    { key: 'id', header: 'الفاتورة', cell: (row) => row.id, numeric: true },
-    { key: 'customer', header: 'العميل', cell: (row) => row.customer },
+    { key: 'id', header: 'الفاتورة', cell: (row) => row.id, sortValue: (row) => row.id, exportValue: (row) => row.id, numeric: true },
+    {
+        key: 'customer',
+        header: 'العميل',
+        cell: (row) => row.customer,
+        sortValue: (row) => row.customer,
+        exportValue: (row) => row.customer,
+        hideable: true,
+    },
     {
         key: 'status',
         header: 'الحالة',
         cell: (row) => <Badge variant={row.status === 'مرحّل' ? 'success' : 'neutral'}>{row.status}</Badge>,
+        exportValue: (row) => row.status,
+        hideable: true,
     },
-    { key: 'total', header: 'الإجمالي', cell: (row) => row.total, numeric: true },
+    {
+        key: 'total',
+        header: 'الإجمالي',
+        cell: (row) => row.total,
+        sortValue: (row) => Number(row.total),
+        exportValue: (row) => Number(row.total),
+        hideable: true,
+        numeric: true,
+    },
 ];
 
 const CHART_DATA = [
@@ -337,17 +338,65 @@ const SECTIONS = [
     { id: 'tokens', title: 'الرموز' },
     { id: 'buttons', title: 'الأزرار' },
     { id: 'fields', title: 'الحقول' },
+    { id: 'filters', title: 'المرشّحات' },
     { id: 'choices', title: 'الاختيارات' },
     { id: 'badges', title: 'الشارات' },
+    { id: 'alerts', title: 'التنبيهات السطرية' },
     { id: 'cards', title: 'البطاقات والمؤشرات' },
     { id: 'navigation', title: 'التبويبات والترقيم' },
     { id: 'feedback', title: 'الحالات والهياكل' },
     { id: 'datatable', title: 'الجداول' },
     { id: 'datatable-virtual-demo', title: 'جدول 500 صف' },
     { id: 'overlays', title: 'النوافذ والدرج' },
-    { id: 'toast', title: 'التنبيهات' },
+    { id: 'toast', title: 'الإشعارات العابرة' },
     { id: 'charts', title: 'الرسوم' },
 ];
+
+function FilterBarDemo() {
+    const initialRange = { from: '2026-11-01', to: '2026-11-30' };
+    const [draft, setDraft] = useState(initialRange);
+    const [query, setQuery] = useState('');
+    const [status, setStatus] = useState('all');
+    const [summary, setSummary] = useState('لا توجد مرشّحات مطبّقة.');
+
+    function reset() {
+        setDraft(initialRange);
+        setQuery('');
+        setStatus('all');
+        setSummary('أُعيدت المرشّحات إلى القيم الافتراضية.');
+    }
+
+    return (
+        <div className="flex flex-col gap-sm">
+            <FilterBar
+                from={draft.from}
+                to={draft.to}
+                onFrom={(from) => setDraft((current) => ({ ...current, from }))}
+                onTo={(to) => setDraft((current) => ({ ...current, to }))}
+                onApply={() => setSummary(`الفترة ${draft.from} — ${draft.to} · الحالة ${status}`)}
+                searchValue={query}
+                onSearchChange={setQuery}
+                searchPlaceholder="بحث في عيّنة المعرض…"
+                advancedFilters={
+                    <Select
+                        label="الحالة"
+                        value={status}
+                        onValueChange={setStatus}
+                        options={[
+                            { value: 'all', label: 'الكل' },
+                            { value: 'posted', label: 'مرحّل' },
+                            { value: 'draft', label: 'مسوّدة' },
+                        ]}
+                    />
+                }
+                onReset={reset}
+            />
+            <p role="status" className="text-body-sm text-muted">
+                {summary}
+            </p>
+        </div>
+    );
+}
 
 function GalleryContent() {
     return (
@@ -356,9 +405,8 @@ function GalleryContent() {
                 <div className="flex flex-col gap-xxs">
                     <h1 className="text-display-lg text-ink">معرض نظام التصميم</h1>
                     <p className="max-w-2xl text-body-md text-muted">
-                        ليل الياقوت — مكوّنات ERP في الوضعين الفاتح والداكن. دمج HeroUI تدريجيًا في الأزرار والحقول
-                        والبطاقات والشارات، مع الحفاظ على المكونات المتخصصة. كل بيانات هذه الصفحة أمثلة توضيحية وليست
-                        بيانات المنشأة.
+                        KARIM — مكوّنات ERP في الوضعين الفاتح والداكن. دمج HeroUI تدريجيًا في الأزرار والحقول والبطاقات والشارات، مع الحفاظ
+                        على المكونات المتخصصة. كل بيانات هذه الصفحة أمثلة توضيحية وليست بيانات المنشأة.
                     </p>
                 </div>
                 <ThemeToggle />
@@ -385,8 +433,8 @@ function GalleryContent() {
                         <Swatch label="sunken" className="bg-surface-sunken" />
                         <Swatch label="primary" className="bg-primary" />
                         <Swatch label="brand-text" className="bg-brand-text" />
-                        <Swatch label="brass" className="bg-brass" />
-                        <Swatch label="copper" className="bg-copper" />
+                        <Swatch label="on-primary" className="bg-on-primary" />
+                        <Swatch label="info" className="bg-info" />
                         <Swatch label="success" className="bg-success" />
                         <Swatch label="warning" className="bg-warning" />
                         <Swatch label="danger" className="bg-danger" />
@@ -415,25 +463,25 @@ function GalleryContent() {
                         <span className="text-caption text-faint">caption 12/400 هامش</span>
                         <span className="erp-numeric text-ink">123,456.78 SAR — أرقام لاتينية</span>
                         <div className="flex flex-wrap items-center gap-xs">
-                            <span className="grid size-8 place-items-center rounded-sm border border-hairline bg-surface text-caption">
+                            <span className="grid size-8 place-items-center rounded-sm border border-hairline bg-surface text-caption text-ink">
                                 6
                             </span>
-                            <span className="grid size-8 place-items-center rounded-md border border-hairline bg-surface text-caption">
+                            <span className="grid size-8 place-items-center rounded-md border border-hairline bg-surface text-caption text-ink">
                                 10
                             </span>
-                            <span className="grid size-8 place-items-center rounded-lg border border-hairline bg-surface text-caption">
+                            <span className="grid size-8 place-items-center rounded-lg border border-hairline bg-surface text-caption text-ink">
                                 16
                             </span>
-                            <span className="grid size-8 place-items-center rounded-xl border border-hairline bg-surface text-caption">
+                            <span className="grid size-8 place-items-center rounded-xl border border-hairline bg-surface text-caption text-ink">
                                 20
                             </span>
-                            <span className="grid size-8 place-items-center rounded-full border border-hairline bg-surface text-caption">
+                            <span className="grid size-8 place-items-center rounded-full border border-hairline bg-surface text-caption text-ink">
                                 ∞
                             </span>
-                            <span className="rounded-md border border-hairline bg-surface px-sm py-xs text-caption shadow-card">
+                            <span className="rounded-md border border-hairline bg-surface px-sm py-xs text-caption text-ink shadow-card">
                                 shadow-card
                             </span>
-                            <span className="rounded-md border border-hairline bg-surface px-sm py-xs text-caption shadow-pop">
+                            <span className="rounded-md border border-hairline bg-surface px-sm py-xs text-caption text-ink shadow-pop">
                                 shadow-pop
                             </span>
                         </div>
@@ -441,11 +489,7 @@ function GalleryContent() {
                 </Modes>
             </Section>
 
-            <Section
-                id="buttons"
-                title="الأزرار"
-                description="idle · hover · focus-visible · active · disabled · loading."
-            >
+            <Section id="buttons" title="الأزرار" description="idle · hover · focus-visible · active · disabled · loading.">
                 <Modes>
                     <div className="flex flex-wrap items-center gap-xs">
                         <Button>أساسي</Button>
@@ -472,11 +516,7 @@ function GalleryContent() {
                 </Modes>
             </Section>
 
-            <Section
-                id="fields"
-                title="الحقول"
-                description="تسمية مرتبطة · تركيز شامبانيا · خطأ aria-invalid · disabled."
-            >
+            <Section id="fields" title="الحقول" description="تسمية مرتبطة · حلقة تركيز بالتركواز · خطأ aria-invalid · disabled.">
                 <Modes>
                     <div className="grid gap-sm">
                         <Input label="اسم العميل" placeholder="اكتب الاسم" />
@@ -491,11 +531,11 @@ function GalleryContent() {
                 </Modes>
             </Section>
 
-            <Section
-                id="choices"
-                title="الاختيارات"
-                description="Checkbox · Switch · Radio · SegmentedControl (أصول native/Radix)."
-            >
+            <Section id="filters" title="المرشّحات" description="FilterBar: نطاق تاريخ وبحث، مع مساحة مرشّحات إضافية وزر مسح اختياري.">
+                <FilterBarDemo />
+            </Section>
+
+            <Section id="choices" title="الاختيارات" description="Checkbox · Switch · Radio · SegmentedControl (أصول native/Radix).">
                 <Modes>
                     <div className="flex flex-col gap-md">
                         <CheckboxDemo />
@@ -528,28 +568,41 @@ function GalleryContent() {
             </Section>
 
             <Section
-                id="cards"
-                title="البطاقات والمؤشرات"
-                description="KPI: الرقم أكبر عنصر، والاتجاه سهم + نص لا لون وحده."
+                id="alerts"
+                title="التنبيهات السطرية"
+                description="Alert: نبرة + عنوان + جسم + إجراء. يبقى في مكانه، لا يختفي كالإشعار العابر."
             >
                 <Modes>
+                    <div className="flex flex-col gap-sm">
+                        <Alert variant="info" title="معلومة">
+                            الضريبة محتسبة من السعر شاملًا — لا تُضفها مرة ثانية.
+                        </Alert>
+                        <Alert variant="success" title="تمّت المزامنة">
+                            آخر نسخة احتياطية: اليوم 14:05.
+                        </Alert>
+                        <Alert variant="warning" title="إعداد ناقص">
+                            لم يُضبط الرقم الضريبي بعد، والفواتير ستُرفض من ZATCA.
+                        </Alert>
+                        <Alert
+                            variant="danger"
+                            title="تعذّر الحفظ"
+                            action={
+                                <Button size="sm" variant="secondary">
+                                    إعادة المحاولة
+                                </Button>
+                            }
+                        >
+                            لم يصل الخادم. تحقّق من الاتصال ثم أعد المحاولة.
+                        </Alert>
+                    </div>
+                </Modes>
+            </Section>
+
+            <Section id="cards" title="البطاقات والمؤشرات" description="KPI: الرقم أكبر عنصر، والاتجاه سهم + نص لا لون وحده.">
+                <Modes>
                     <div className="grid gap-sm sm:grid-cols-3">
-                        <KpiTile
-                            label="الإيراد"
-                            value="120,000.00"
-                            unit="SAR"
-                            delta="+12.5%"
-                            trend="up"
-                            icon={<InfoIcon />}
-                        />
-                        <KpiTile
-                            label="المصروف"
-                            value="80,000.00"
-                            unit="SAR"
-                            delta="-3.0%"
-                            trend="down"
-                            tone="success"
-                        />
+                        <KpiTile label="الإيراد" value="120,000.00" unit="SAR" delta="+12.5%" trend="up" icon={<InfoIcon />} />
+                        <KpiTile label="المصروف" value="80,000.00" unit="SAR" delta="-3.0%" trend="down" tone="success" />
                         <KpiTile label="قيد التحميل" value="0" loading />
                     </div>
                 </Modes>
@@ -586,11 +639,7 @@ function GalleryContent() {
                 </Tooltip>
             </Section>
 
-            <Section
-                id="feedback"
-                title="الحالات والهياكل"
-                description="loading · empty · error — لا منطقة فارغة أبدًا."
-            >
+            <Section id="feedback" title="الحالات والهياكل" description="loading · empty · error — لا منطقة فارغة أبدًا.">
                 <Modes>
                     <div className="flex flex-col gap-sm">
                         <Skeleton lines={3} label="جارٍ تحميل السجل" />
@@ -610,11 +659,7 @@ function GalleryContent() {
                 </Modes>
             </Section>
 
-            <Section
-                id="datatable"
-                title="الجداول"
-                description="DataTable: بيانات · loading · empty · error · بطاقات على الجوال."
-            >
+            <Section id="datatable" title="الجداول" description="DataTable: بيانات · loading · empty · error · بطاقات على الجوال.">
                 <DataTable<GalleryInvoice>
                     title="آخر الفواتير"
                     caption="آخر الفواتير — عيّنة المعرض"
@@ -622,6 +667,7 @@ function GalleryContent() {
                     rows={INVOICES_500.slice(0, 4)}
                     rowKey={(row) => row.id}
                     pagination={{ page: 1, pageSize: 4, total: 57, onPageChange: () => undefined }}
+                    columnPreferenceKey="design-gallery-invoices"
                 />
                 <div className="grid gap-md lg:grid-cols-2">
                     <DataTable<GalleryInvoice>
@@ -662,14 +708,11 @@ function GalleryContent() {
                     columns={invoiceColumns}
                     rows={INVOICES_500}
                     rowKey={(row) => row.id}
+                    columnPreferenceKey="design-gallery-invoices"
                 />
             </Section>
 
-            <Section
-                id="overlays"
-                title="النوافذ والدرج"
-                description="Dialog وDrawer على Radix: حبس تركيز، Esc، إعادة تركيز."
-            >
+            <Section id="overlays" title="النوافذ والدرج" description="Dialog وDrawer على Radix: حبس تركيز، Esc، إعادة تركيز.">
                 <Modes>
                     <div className="flex flex-wrap items-center gap-xs">
                         <DialogDemo />
@@ -685,11 +728,7 @@ function GalleryContent() {
                 </Modes>
             </Section>
 
-            <Section
-                id="charts"
-                title="الرسوم"
-                description="Chart غلاف كسول لـRecharts: جدول بيانات بديل لقارئ الشاشة، وألوان chart-1..6."
-            >
+            <Section id="charts" title="الرسوم" description="Chart غلاف كسول لـRecharts: جدول بيانات بديل لقارئ الشاشة، وألوان chart-1..6.">
                 <div className="grid gap-md lg:grid-cols-2">
                     <Chart
                         kind="line"
@@ -700,27 +739,15 @@ function GalleryContent() {
                         series={CHART_SERIES}
                     />
                     <Chart kind="bar" title="مقارنة شهرية" data={CHART_DATA} xKey="month" series={CHART_SERIES} />
-                    <Chart
-                        kind="area"
-                        title="اتجاه الإيراد"
-                        data={CHART_DATA}
-                        xKey="month"
-                        series={CHART_SERIES.slice(0, 1)}
-                    />
-                    <Chart
-                        kind="pie"
-                        title="توزيع الإيراد"
-                        data={CHART_DATA}
-                        xKey="month"
-                        series={CHART_SERIES.slice(0, 1)}
-                    />
+                    <Chart kind="area" title="اتجاه الإيراد" data={CHART_DATA} xKey="month" series={CHART_SERIES.slice(0, 1)} />
+                    <Chart kind="pie" title="توزيع الإيراد" data={CHART_DATA} xKey="month" series={CHART_SERIES.slice(0, 1)} />
                 </div>
             </Section>
 
             <footer className="border-t border-hairline pt-md text-caption text-faint">
                 <p>
-                    المعرض داخلي (مسار تطوير) — كل مكوّن هنا مصدره <span className="erp-numeric">src/ui</span>، والوثيقة
-                    المرافقة <span className="erp-numeric">docs/DESIGN-SYSTEM.md</span>.
+                    المعرض داخلي (مسار تطوير) — كل مكوّن هنا مصدره <span className="erp-numeric">src/ui</span>، والوثيقة المرافقة{' '}
+                    <span className="erp-numeric">docs/DESIGN-SYSTEM.md</span>.
                 </p>
             </footer>
         </div>

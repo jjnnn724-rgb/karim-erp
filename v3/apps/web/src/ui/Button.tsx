@@ -1,14 +1,14 @@
-import { Button as ShadcnButton } from '@/components/ui/button';
-import type { ComponentPropsWithRef, ReactNode } from 'react';
 import { Loader2 } from 'lucide-react';
+import type { ComponentPropsWithRef, ReactNode } from 'react';
+import { Button as ShadcnButton } from '@/components/ui/button';
 import { cn } from './cn';
 
 /**
  * زر الإجراء — فوق **shadcn/ui** (`@/components/ui/button`)، بهوية DESIGN.md:
- * الياقوت لون الفعل الوحيد، والزر تدرّج «حجرٌ مضاء» بحدّ ضوء لا مستطيل مسطّح.
+ * التركواز `--erp-primary` لون الفعل الوحيد، والزر مستطيل مسطّح بلا تدرّج.
  * (تعيين `--primary` من بدائيات ERP يمنح shadcn نفس الهوية تلقائيًا.)
  *
- * الحالات: idle / hover / focus-visible (حلقة الشامبانيا العامة) / active /
+ * الحالات: idle / hover / focus-visible (حلقة التركيز بلون الفعل) / active /
  * disabled / loading (`aria-busy` + تعطيل + مؤشر دوّار). `type` افتراضيًا
  * `button` حتى لا يُرسل نموذجًا بغير قصد.
  */
@@ -20,10 +20,8 @@ const BASE_CLASS =
     'erp-button inline-flex select-none items-center justify-center gap-xs whitespace-nowrap rounded-md font-semibold text-button-md transition-[background-color,border-color,color,box-shadow,opacity] duration-[var(--erp-motion-fast)] ease-standard disabled:cursor-not-allowed disabled:opacity-50';
 
 const ERP_VARIANT_CLASS: Record<ButtonVariant, string> = {
-    primary:
-        'border border-primary-active/40 bg-linear-to-b from-primary-hover to-primary-active text-on-primary shadow-card hover:from-primary hover:to-primary-hover active:from-primary-active active:to-primary-active',
-    secondary:
-        'border border-hairline-strong bg-surface text-ink shadow-card hover:bg-surface-hover active:bg-surface-sunken',
+    primary: 'border border-primary/60 bg-primary text-on-primary shadow-card hover:bg-primary-hover active:bg-primary-active',
+    secondary: 'border border-hairline-strong bg-surface text-ink shadow-card hover:bg-surface-hover active:bg-surface-sunken',
     ghost: 'border border-transparent bg-transparent text-ink-secondary hover:bg-surface-hover active:bg-surface-sunken',
     danger: 'border border-danger/50 bg-danger text-on-primary shadow-card hover:bg-danger/90 active:bg-danger',
 };

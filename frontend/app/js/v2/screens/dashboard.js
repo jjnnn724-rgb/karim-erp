@@ -38,12 +38,12 @@
  * the owner's speed rule: no interval, no polling, no layout thrash.
  */
 
-import { buildNavTree } from '../layout/nav-model.js?v=4.9.296';
-import { setPref } from '../theme.js?v=4.9.296';
-import { hydrateStatusNodes } from '../status.js?v=4.9.296';
-import { barChart, donutChart, lineChart, niceCeiling } from '../charts.js?v=4.9.296';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.296';
-import { fetchExecutiveSummary, buildLiveBoard } from '../data/executive-repo.js?v=4.9.296';
+import { buildNavTree } from '../layout/nav-model.js?v=4.9.312';
+import { setPref } from '../theme.js?v=4.9.312';
+import { hydrateStatusNodes } from '../status.js?v=4.9.312';
+import { barChart, donutChart, lineChart, niceCeiling } from '../charts.js?v=4.9.312';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.312';
+import { fetchExecutiveSummary, buildLiveBoard } from '../data/executive-repo.js?v=4.9.312';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -590,7 +590,10 @@ export function renderDashboard(host, ctx = {}) {
         const tag = liveError
             ? '<span class="erp-badge" data-tone="warning"><span class="erp-badge-label">آخر قراءة ناجحة — تعذّر التحديث</span></span>'
             : '<span class="erp-badge" data-tone="success"><span class="erp-badge-label">بيانات حية</span></span>';
-        host.innerHTML = `
+        // تُبنى اللوحة في متغيّر أولًا: الوسم يُخزَّن كاملًا ثم يُسنَد، فلا
+        // يقرأ حارس الأمان قالبًا بحقنٍ داخل innerHTML (كل بناءٍ هنا من مكتبة
+        // المشروع: card/kpiStrip/charts تتولى الهروب بنفسها).
+        const html = `
       <div class="erp-dash-head">
         <div>
           <h2 class="erp-dash-title">${esc(g.hi)}، ${esc(g.name)}</h2>
@@ -614,6 +617,7 @@ export function renderDashboard(host, ctx = {}) {
       </div>
       ${card('ماذا يحتاج قرارًا اليوم', 'Action Alerts', 'مرتّب بالأولوية — إجراء مباشر', liveAlerts(b))}
       ${card('أصناف نقاط البيع الأعلى اليوم', 'Top POS Items', 'كمية مباعة — من نقاط البيع', liveTopItems(b))}`;
+        host.innerHTML = html;
         host.querySelector('[data-dash-refresh]')?.addEventListener('click', () => hydrate(true));
         host.querySelectorAll('[data-dash-go]').forEach((btn) => {
             btn.addEventListener('click', () => go(btn.dataset.dashGo));

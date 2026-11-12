@@ -1,13 +1,19 @@
 /*
- * رموز التصميم — من `DESIGN.md` (عقد الهوية) لا من سمة شادصن.
+ * رموز التصميم — هوية KARIM، من `DESIGN.md` (عقد الهوية) لا من سمة شادصن.
  *
- * البنية: `DESIGN.md` يصف «بدائيات ودلالات» — طبقتان. البدائيات (لون خام)
- * تُصرَّح هنا في `:root` و`.dark`، والدلالات (`--erp-*`) تشير إليها. طبقة
- * `@theme inline` تربط دلالات تيلويند بالبدائيات، فيتبدّل الوضع الداكن
- * بتبديلPrimitive واحدة (قاعدة DESIGN.md: «الوضع الداكن يبدّل البدائيات فقط»).
+ * ثلاث طبقات صريحة:
+ *   ١) البدائيات  `--erp-c-*`  : لونٌ خام بصيغة OKLCH، يُصرَّح في `:root` و`.dark`.
+ *      إحداثيات OKLCH إدراكية (L للضوء، C للتشبّع، H للدرجة) فتُبنى السلالم
+ *      بتغيير L وحده دون انحراف الدرجة — وهو ما لا تضمنه HEX.
+ *   ٢) الدلالات   `--erp-*`     : الاسم بالوظيفة لا باللون (`--erp-ink` لا
+ *      `--erp-black`)، تشير إلى البدائيات، فتبديل الوضع الداكن يبدّل البدائيات
+ *      فقط ولا يمسّ أي مكوّن.
+ *   ٣) الرابط     `@theme inline`: يمنح تيلويند أدوات (`bg-surface`، `text-ink`،
+ *      `font-sans`، `rounded-lg`) تشير إلى الدلالات نفسها — لا قيمة خام تُنسخ.
  *
- * ممنوع: قيمة لونية خام داخل `@theme` (تكسر تبديل الوضع)، و`left/right`
- * (الواجهة RTL — الخصائص المنطقية فقط).
+ * ممنوع في هذا الملف: قيمة لونية خام داخل `@theme` (تكسر تبديل الوضع)،
+ * و`left/right` (الواجهة RTL — الخصائص المنطقية فقط)، وتدرّجٌ زخرفي أو
+ * `backdrop-filter` (`DESIGN.md`: «لا gradients ولا زجاج»).
  */
 
 @layer theme, base, components, utilities;
@@ -27,54 +33,67 @@
 
 /* ─── البدائيات: الوضع الفاتح ─── */
 :root {
-    --erp-c-canvas: #f6f1e6;
-    --erp-c-surface: #fffcf5;
-    --erp-c-surface-raised: #ffffff;
-    --erp-c-surface-sunken: #ede6d7;
-    --erp-c-surface-hover: #f3ede1;
-    --erp-c-ink: #1f2633;
-    --erp-c-ink-secondary: #333d50;
-    --erp-c-muted: #535e70;
-    --erp-c-faint: #5f6a7e;
-    --erp-c-hairline: #e2d9c7;
-    --erp-c-hairline-strong: #cbbfa8;
-    --erp-c-primary: #5b21b6;
-    --erp-c-primary-hover: #6d28d9;
-    --erp-c-primary-active: #4c1d95;
-    --erp-c-on-primary: #fff9ee;
-    --erp-c-brand-text: #5b21b6;
-    --erp-c-brass: #97742a;
-    --erp-c-brass-text: #6e5310;
-    --erp-c-brass-bright: #e4c078;
-    --erp-c-copper: #2563eb;
-    /* سلّم الرسوم: ياقوت ← شامبانيا ← أزرق ملكي ← بنفسجي ← نيلي ← حجر (DESIGN.md). */
-    --erp-c-chart-1: #5b21b6;
-    --erp-c-chart-2: #a87b2c;
-    --erp-c-chart-3: #2563eb;
-    --erp-c-chart-4: #6d28d9;
-    --erp-c-chart-5: #4338ca;
-    --erp-c-chart-6: #475569;
-    --erp-c-overlay: rgb(20 16 8 / 55%);
-    --erp-c-success: #13775e;
-    --erp-c-success-text: #0c624b;
-    --erp-c-warning: #c2410c;
-    --erp-c-warning-text: #9a3412;
-    --erp-c-danger: #b03428;
-    --erp-c-danger-text: #8e241a;
-    --erp-c-info: #2e5cc8;
-    --erp-c-info-text: #2348a3;
-    --erp-c-neutral: #5b6472;
-    --erp-c-neutral-text: #3f4754;
-    --erp-c-sidebar: #0e1128;
-    --erp-c-sidebar-ink: #f3efe4;
-    --erp-c-sidebar-accent: #e6c478;
-    --erp-c-sidebar-plaque: #fbf6e9;
-    --erp-c-sidebar-plaque-ink: #241c10;
+    /*
+     * الهوية: كحلي مؤسسي عميق وتركواز للإجراء، على أسطح فاتحة باردة. القيم بين
+     * قوسين هي أصل العقد في DESIGN.md، وإحداثيات OKLCH مشتقة منها وتُثبتها الاختبارات.
+     */
+    --erp-c-canvas: oklch(0.97201 0.00623 255.47); /* #F3F6FA */
+    --erp-c-surface: oklch(1 0 89.88); /* #FFFFFF */
+    --erp-c-surface-raised: oklch(1 0 89.88); /* #FFFFFF */
+    --erp-c-surface-sunken: oklch(0.95203 0.00931 242.84); /* #EAF0F5 */
+    --erp-c-surface-hover: oklch(0.94556 0.01104 243.66); /* #E7EEF4 */
+    --erp-c-ink: oklch(0.28012 0.03945 244); /* #172B3B */
+    --erp-c-ink-secondary: oklch(0.39053 0.04191 242.66); /* #31485A */
+    --erp-c-muted: oklch(0.528 0.03789 244.46); /* #596E80 */
+    --erp-c-faint: oklch(0.51116 0.0382 237.69); /* #526A7A */
+    --erp-c-hairline: oklch(0.91713 0.0136 240.96); /* #DCE5EC */
+    --erp-c-hairline-strong: oklch(0.85987 0.02257 243.84); /* #C5D3DF */
+    /* حدّ الحقول أغمق من الفاصل الزخرفي: WCAG 1.4.11 يطلب 3:1 لحدود المكوّن. */
+    --erp-c-field-border: oklch(0.60602 0.03259 240.53); /* #718594 */
+    --erp-c-primary: oklch(0.51094 0.08606 186.39); /* #0F766E */
+    --erp-c-primary-hover: oklch(0.45437 0.07658 186.28); /* #0B645D */
+    --erp-c-primary-active: oklch(0.40936 0.06863 186.45); /* #095650 */
+    --erp-c-on-primary: oklch(1 0 89.88); /* #FFFFFF */
+    --erp-c-brand-text: oklch(0.47687 0.08024 187.92); /* #0B6B65 */
+    /*
+     * `brass`/`copper` أسماء تاريخية محفوظة للتوافق مع الشاشات القائمة:
+     * تشير الآن إلى الإجراء الأساسي (#0F766E) والمعلومات (#1D4ED8)، فلا كود
+     * جديد يستخدمها — `bg-primary`/`text-brand-text`/`bg-info` هي الأسماء
+     * الدلالية (COMPONENTS.md).
+     */
+    --erp-c-brass: oklch(0.51094 0.08606 186.39); /* #0F766E */
+    --erp-c-brass-text: oklch(0.47687 0.08024 187.92); /* #0B6B65 */
+    --erp-c-brass-bright: oklch(0.72927 0.11693 184.99); /* #33BFB1 */
+    --erp-c-copper: oklch(0.4882 0.21717 264.38); /* #1D4ED8 */
+    /* سلّم الرسوم: تركواز ← كحلي ← أخضر ← أزرق ← عنبري ← رمادي. */
+    --erp-c-chart-1: oklch(0.51094 0.08606 186.39); /* #0F766E */
+    --erp-c-chart-2: oklch(0.28012 0.03945 244); /* #172B3B */
+    --erp-c-chart-3: oklch(0.5383 0.1284 153.99); /* #16834A */
+    --erp-c-chart-4: oklch(0.4882 0.21717 264.38); /* #1D4ED8 */
+    --erp-c-chart-5: oklch(0.5553 0.1455 49); /* #B45309 */
+    --erp-c-chart-6: oklch(0.554 0.032 263.3); /* #697386 */
+    --erp-c-overlay: rgb(18 20 24 / 55%);
+    --erp-c-success: oklch(0.5383 0.1284 153.99); /* #16834A */
+    --erp-c-success-text: oklch(0.4653 0.112 153.97); /* #0E6B3B */
+    --erp-c-warning: oklch(0.5553 0.1455 49); /* #B45309 */
+    --erp-c-warning-text: oklch(0.473 0.1204 50.27); /* #8F4308 */
+    --erp-c-danger: oklch(0.5013 0.1783 28.7); /* #B3261E */
+    --erp-c-danger-text: oklch(0.4254 0.148 29.38); /* #8E1F16 */
+    --erp-c-info: oklch(0.4882 0.2172 264.38); /* #1D4ED8 */
+    --erp-c-info-text: oklch(0.4367 0.2035 265.38); /* #1A3FBF */
+    --erp-c-neutral: oklch(0.5006 0.025 259.18); /* #5B6472 */
+    --erp-c-neutral-text: oklch(0.3958 0.0244 260.11); /* #3F4754 */
+    --erp-c-sidebar: oklch(0.27848 0.05638 249.75); /* #102A43 */
+    --erp-c-sidebar-ink: oklch(0.95385 0.01177 239.91); /* #E9F1F7 */
+    --erp-c-sidebar-accent: oklch(0.72927 0.11693 184.99); /* #33BFB1 */
+    --erp-c-sidebar-plaque: oklch(1 0 89.88); /* #FFFFFF */
+    --erp-c-sidebar-plaque-ink: oklch(0.27848 0.05638 249.75); /* #102A43 */
 
-    --erp-shadow-card: 0 2px 3px rgb(46 38 24 / 3%), 0 8px 26px rgb(46 38 24 / 4%);
-    --erp-shadow-pop: 0 8px 24px rgb(46 38 24 / 9%);
-    --erp-shadow-drawer: 0 18px 44px rgb(46 38 24 / 14%);
-    --erp-focus-ring: 2px solid var(--erp-c-brass);
+    /* ظلال باردة ومحايدة تكمل درجات الكحلي من دون وهج زخرفي. */
+    --erp-shadow-card: 0 1px 2px rgb(16 35 50 / 4%), 0 1px 3px rgb(16 35 50 / 6%);
+    --erp-shadow-pop: 0 4px 12px -2px rgb(16 35 50 / 10%), 0 2px 6px -2px rgb(16 35 50 / 6%);
+    --erp-shadow-drawer: 0 18px 40px -12px rgb(16 35 50 / 22%);
+    --erp-focus-ring: 2px solid var(--erp-c-primary);
 
     /*
      * شݟ رموز shadcn/ui — جسر يستند إلى الدلالات (`--erp-*`) فتنعكس في الوضع
@@ -97,7 +116,7 @@
     --destructive: var(--erp-danger);
     --destructive-foreground: var(--erp-on-primary);
     --border: var(--erp-hairline);
-    --input: var(--erp-hairline-strong);
+    --input: var(--erp-field-border);
     --ring: var(--erp-primary);
     --radius: 0.625rem;
     --chart-1: var(--erp-chart-1);
@@ -137,48 +156,55 @@
 
 /* ─── البدائيات: الوضع الداكن ─── */
 .dark {
-    --erp-c-canvas: #0b0d1f;
-    --erp-c-surface: #151a32;
-    --erp-c-surface-raised: #1d243f;
-    --erp-c-surface-sunken: #10142a;
-    --erp-c-surface-hover: #232b4a;
-    --erp-c-ink: #f5f0e6;
-    --erp-c-ink-secondary: #e6e1d6;
-    --erp-c-muted: #b0b9d2;
-    --erp-c-faint: #98a2bd;
-    --erp-c-hairline: #2a3252;
-    --erp-c-hairline-strong: #3b4468;
-    --erp-c-primary: #a78bfa;
-    --erp-c-primary-hover: #b9a3fb;
-    --erp-c-primary-active: #8b6ef0;
-    --erp-c-on-primary: #150f33;
-    --erp-c-brand-text: #c9b8ff;
-    --erp-c-brass: #e3b341;
-    --erp-c-brass-text: #f2cd72;
-    --erp-c-brass-bright: #f5d98a;
-    --erp-c-copper: #7aa2ff;
-    --erp-c-chart-1: #a78bfa;
-    --erp-c-chart-2: #e3b341;
-    --erp-c-chart-3: #7aa2ff;
-    --erp-c-chart-4: #b9a3fb;
-    --erp-c-chart-5: #9ea8ff;
-    --erp-c-chart-6: #94a3b8;
+    --erp-c-canvas: oklch(0.20005 0.02739 249.34); /* #0C1722 */
+    --erp-c-surface: oklch(0.23388 0.03346 249.43); /* #111F2D */
+    --erp-c-surface-raised: oklch(0.27618 0.03742 243.53); /* #172A39 */
+    --erp-c-surface-sunken: oklch(0.21718 0.02929 249.31); /* #0F1B27 */
+    --erp-c-surface-hover: oklch(0.31041 0.04023 241.31); /* #1D3343 */
+    --erp-c-ink: oklch(0.96976 0.00835 236.56); /* #F0F6FA */
+    --erp-c-ink-secondary: oklch(0.90231 0.01778 234.52); /* #D4E1E9 */
+    --erp-c-muted: oklch(0.76338 0.02734 239.2); /* #A3B5C2 */
+    --erp-c-faint: oklch(0.71137 0.03141 240.37); /* #91A5B4 */
+    --erp-c-hairline: oklch(0.35914 0.0388 237.88); /* #29404F */
+    --erp-c-hairline-strong: oklch(0.43845 0.0448 237.35); /* #3A5668 */
+    --erp-c-field-border: oklch(0.59014 0.04396 234.84); /* #648294 */
+    /* يزداد سطوع التركواز في الداكن للحفاظ على التباين مع الأسطح الكحلية. */
+    --erp-c-primary: oklch(0.79238 0.11403 185.16); /* #53D3C5 */
+    --erp-c-primary-hover: oklch(0.83761 0.10411 185.38); /* #71E0D3 */
+    --erp-c-primary-active: oklch(0.72844 0.118 183.65); /* #32BFAF */
+    --erp-c-on-primary: oklch(0.31915 0.05186 187.03); /* #073B37 */
+    --erp-c-brand-text: oklch(0.84093 0.10385 186.15); /* #72E1D5 */
+    --erp-c-brass: oklch(0.79238 0.11403 185.16); /* #53D3C5 */
+    --erp-c-brass-text: oklch(0.84093 0.10385 186.15); /* #72E1D5 */
+    --erp-c-brass-bright: oklch(0.88154 0.10123 186.13); /* #83EEE2 */
+    --erp-c-copper: oklch(0.73539 0.13684 260.38); /* #76A9FF */
+    --erp-c-chart-1: oklch(0.79238 0.11403 185.16); /* #53D3C5 */
+    --erp-c-chart-2: oklch(0.87453 0.02321 241.92); /* #C9D8E4 */
+    --erp-c-chart-3: oklch(0.7359 0.1642 155.38); /* #34C77B */
+    --erp-c-chart-4: oklch(0.73539 0.13684 260.38); /* #76A9FF */
+    --erp-c-chart-5: oklch(0.7734 0.1373 66.02); /* #F0A24B */
+    --erp-c-chart-6: oklch(0.716 0.0228 259.19); /* #9BA4B2 */
     --erp-c-overlay: rgb(0 0 0 / 62%);
-    --erp-c-success: #63d6b0;
-    --erp-c-success-text: #7ce4c2;
-    --erp-c-warning: #f2703a;
-    --erp-c-warning-text: #f79b74;
-    --erp-c-danger: #e26a5c;
-    --erp-c-danger-text: #f09284;
-    --erp-c-info: #6f9bf0;
-    --erp-c-info-text: #9bb9f7;
-    --erp-c-neutral: #7b8496;
-    --erp-c-neutral-text: #aeb6c6;
-    --erp-c-sidebar: #07091a;
-    --erp-c-sidebar-ink: #f3efe4;
-    --erp-c-sidebar-accent: #e3b341;
-    --erp-c-sidebar-plaque: #fbf6e9;
-    --erp-c-sidebar-plaque-ink: #241c10;
+    --erp-c-success: oklch(0.7359 0.1642 155.38); /* #34C77B */
+    --erp-c-success-text: oklch(0.7949 0.1385 159.38); /* #5FD79C */
+    --erp-c-warning: oklch(0.7734 0.1373 66.02); /* #F0A24B */
+    --erp-c-warning-text: oklch(0.8396 0.1025 68.03); /* #F7BE80 */
+    --erp-c-danger: oklch(0.7318 0.165 28.31); /* #FF7A6B */
+    --erp-c-danger-text: oklch(0.8119 0.1066 28.79); /* #FFA79A */
+    --erp-c-info: oklch(0.7237 0.1425 265.75); /* #7BA2FF */
+    --erp-c-info-text: oklch(0.8375 0.0803 263.66); /* #AFCAFF */
+    --erp-c-neutral: oklch(0.6609 0.0246 260.7); /* #8A93A2 */
+    --erp-c-neutral-text: oklch(0.7996 0.0217 261.76); /* #B6BECC */
+    --erp-c-sidebar: oklch(0.19861 0.03355 246.44); /* #081724 */
+    --erp-c-sidebar-ink: oklch(0.95385 0.01177 239.91); /* #E9F1F7 */
+    --erp-c-sidebar-accent: oklch(0.79238 0.11403 185.16); /* #53D3C5 */
+    --erp-c-sidebar-plaque: oklch(0.27618 0.03742 243.53); /* #172A39 */
+    --erp-c-sidebar-plaque-ink: oklch(0.96976 0.00835 236.56); /* #F0F6FA */
+
+    /* في الداكن يقلّ دور الظل ويزيد دور الحدّ — الظل الأسود لا يُقرأ على فحمي. */
+    --erp-shadow-card: 0 1px 2px rgb(0 0 0 / 45%);
+    --erp-shadow-pop: 0 6px 16px -4px rgb(0 0 0 / 55%);
+    --erp-shadow-drawer: 0 20px 44px -14px rgb(0 0 0 / 70%);
 }
 
 /* ─── الدلالات ─── */
@@ -195,6 +221,7 @@
     --erp-faint: var(--erp-c-faint);
     --erp-hairline: var(--erp-c-hairline);
     --erp-hairline-strong: var(--erp-c-hairline-strong);
+    --erp-field-border: var(--erp-c-field-border);
     --erp-primary: var(--erp-c-primary);
     --erp-primary-hover: var(--erp-c-primary-hover);
     --erp-primary-active: var(--erp-c-primary-active);
@@ -229,7 +256,7 @@
     --erp-overlay: var(--erp-c-overlay);
 
     /*
-     * الألوان اللينة — تلوين 15% فوق السطح الحالي (DESIGN.md: «-soft تلوين
+     * الألوان اللينة — تلوين 15% فوق السطح الحالي (`DESIGN.md`: «-soft تلوين
      * 14–16%»). تُشتق من اللون الدلالي نفسه بـ`color-mix` فترث تبديل الوضع
      * الداكن تلقائيًا، ولا تحتاج تصريحًا مكرّرًا في `.dark`.
      */
@@ -260,6 +287,7 @@
     --color-faint: var(--erp-faint);
     --color-hairline: var(--erp-hairline);
     --color-hairline-strong: var(--erp-hairline-strong);
+    --color-field-border: var(--erp-field-border);
     --color-primary: var(--erp-primary);
     --color-primary-hover: var(--erp-primary-hover);
     --color-primary-active: var(--erp-primary-active);
@@ -275,6 +303,15 @@
     --color-chart-5: var(--erp-chart-5);
     --color-chart-6: var(--erp-chart-6);
     --color-overlay: var(--erp-overlay);
+
+    /*
+     * الظلال كأدوات تيلويند: `shadow-card` / `shadow-pop` / `shadow-drawer`.
+     * بدون هذا التعيين يُقرأ `shadow-card` كـ«لون ظلّ» من `--color-card`
+     * فيولّد `--tw-shadow-color: white` بلا ظل — وهو ما كان يحدث قبل المرحلة 6.
+     */
+    --shadow-card: var(--erp-shadow-card);
+    --shadow-pop: var(--erp-shadow-pop);
+    --shadow-drawer: var(--erp-shadow-drawer);
     --color-success: var(--erp-success);
     --color-success-text: var(--erp-success-text);
     --color-success-soft: var(--erp-success-soft);
@@ -318,12 +355,7 @@
     --color-sidebar-border: var(--sidebar-border);
     --color-sidebar-ring: var(--sidebar-ring);
 
-    --radius-sm: calc(var(--radius) - 4px);
-    --radius-md: calc(var(--radius) - 2px);
-    --radius-lg: var(--radius);
-    --radius-xl: calc(var(--radius) + 4px);
-
-    --font-sans: "IBM Plex Sans Arabic", Tajawal, Cairo, "Segoe UI", system-ui, sans-serif;
+    --font-sans: Tajawal, "Inter", "Segoe UI Variable", "Segoe UI", system-ui, sans-serif;
     --font-mono: "IBM Plex Mono", ui-monospace, "Cascadia Mono", monospace;
 
     --text-display-lg: 30px;
@@ -387,7 +419,7 @@
     --destructive: var(--erp-danger);
     --destructive-foreground: var(--erp-on-primary);
     --border: var(--erp-hairline);
-    --input: var(--erp-hairline-strong);
+    --input: var(--erp-field-border);
     --ring: var(--erp-primary);
     --chart-1: var(--erp-chart-1);
     --chart-2: var(--erp-chart-2);
@@ -418,93 +450,108 @@
  * `max-width: 20px` — وهو ما كان يقصّ النوافذ الحوارية إلى شريط رفيع.
  * هذه القواعد خارج أي `@layer` فتغلب الأدوات المولّدة مهما كان ترتيبها.
  */
-.max-w-xs { max-inline-size: 20rem; }
-.max-w-sm { max-inline-size: 24rem; }
-.max-w-md { max-inline-size: 28rem; }
-.max-w-lg { max-inline-size: 32rem; }
-.max-w-xl { max-inline-size: 36rem; }
+.max-w-xs {
+    max-inline-size: 20rem;
+}
+.max-w-sm {
+    max-inline-size: 24rem;
+}
+.max-w-md {
+    max-inline-size: 28rem;
+}
+.max-w-lg {
+    max-inline-size: 32rem;
+}
+.max-w-xl {
+    max-inline-size: 36rem;
+}
 @media (min-width: 40rem) {
-    .sm\:max-w-sm { max-inline-size: min(24rem, calc(100% - 2rem)); }
-    .sm\:max-w-lg { max-inline-size: min(32rem, calc(100% - 2rem)); }
+    .sm\:max-w-sm {
+        max-inline-size: min(24rem, calc(100% - 2rem));
+    }
+    .sm\:max-w-lg {
+        max-inline-size: min(32rem, calc(100% - 2rem));
+    }
 }
 
-/* ─── الخطوط: مستضافة ذاتيًا من `frontend/app/fonts/v2` ─── */
+/* ─── الخطوط: مستضافة ذاتيًا من `frontend/app/fonts/menu` (Tajawal، بلا CDN) ─── */
 @font-face {
-    font-family: "IBM Plex Sans Arabic";
+    font-family: "Tajawal";
     font-style: normal;
     font-weight: 400;
     font-display: swap;
-    src: url("./assets/fonts/ibmplexsansarabic-normal-400-arabic.woff2") format("woff2");
+    src: url("./assets/fonts/tajawal-normal-400-arabic.woff2") format("woff2");
     unicode-range:
-        U+0600-06ff, U+0750-077f, U+0870-088e, U+0890-0891, U+08a0-08ff, U+200c-200e, U+2010-2011, U+204f, U+2e41,
-        U+fb50-fdff, U+fe70-feff;
+        U+0600-06ff, U+0750-077f, U+0870-088e, U+0890-0891, U+08a0-08ff, U+200c-200e, U+2010-2011, U+204f, U+2e41, U+fb50-fdff, U+fe70-feff;
 }
 @font-face {
-    font-family: "IBM Plex Sans Arabic";
+    font-family: "Tajawal";
     font-style: normal;
     font-weight: 400;
     font-display: swap;
-    src: url("./assets/fonts/ibmplexsansarabic-normal-400-latin.woff2") format("woff2");
+    src: url("./assets/fonts/tajawal-normal-400-latin.woff2") format("woff2");
     unicode-range:
-        U+0000-00ff, U+0131, U+0152-0153, U+02bb-02bc, U+02c6, U+02da, U+02dc, U+0304, U+0308, U+0329, U+2000-206f, U+20ac, U+2122, U+2191, U+2193, U+2212, U+2215, U+feff, U+fffd;
+        U+0000-00ff, U+0131, U+0152-0153, U+02bb-02bc, U+02c6, U+02da, U+02dc, U+0304, U+0308, U+0329, U+2000-206f, U+20ac, U+2122, U+2191,
+        U+2193, U+2212, U+2215, U+feff, U+fffd;
 }
 @font-face {
-    font-family: "IBM Plex Sans Arabic";
+    font-family: "Tajawal";
     font-style: normal;
     font-weight: 500;
     font-display: swap;
-    src: url("./assets/fonts/ibmplexsansarabic-normal-500-arabic.woff2") format("woff2");
+    src: url("./assets/fonts/tajawal-normal-500-arabic.woff2") format("woff2");
     unicode-range:
-        U+0600-06ff, U+0750-077f, U+0870-088e, U+0890-0891, U+08a0-08ff, U+200c-200e, U+2010-2011, U+204f, U+2e41,
-        U+fb50-fdff, U+fe70-feff;
+        U+0600-06ff, U+0750-077f, U+0870-088e, U+0890-0891, U+08a0-08ff, U+200c-200e, U+2010-2011, U+204f, U+2e41, U+fb50-fdff, U+fe70-feff;
 }
 @font-face {
-    font-family: "IBM Plex Sans Arabic";
+    font-family: "Tajawal";
     font-style: normal;
     font-weight: 500;
     font-display: swap;
-    src: url("./assets/fonts/ibmplexsansarabic-normal-500-latin.woff2") format("woff2");
+    src: url("./assets/fonts/tajawal-normal-500-latin.woff2") format("woff2");
     unicode-range:
-        U+0000-00ff, U+0131, U+0152-0153, U+02bb-02bc, U+02c6, U+02da, U+02dc, U+0304, U+0308, U+0329, U+2000-206f, U+20ac, U+2122, U+2191, U+2193, U+2212, U+2215, U+feff, U+fffd;
+        U+0000-00ff, U+0131, U+0152-0153, U+02bb-02bc, U+02c6, U+02da, U+02dc, U+0304, U+0308, U+0329, U+2000-206f, U+20ac, U+2122, U+2191,
+        U+2193, U+2212, U+2215, U+feff, U+fffd;
 }
 @font-face {
-    font-family: "IBM Plex Sans Arabic";
-    font-style: normal;
-    font-weight: 600;
-    font-display: swap;
-    src: url("./assets/fonts/ibmplexsansarabic-normal-600-arabic.woff2") format("woff2");
-    unicode-range:
-        U+0600-06ff, U+0750-077f, U+0870-088e, U+0890-0891, U+08a0-08ff, U+200c-200e, U+2010-2011, U+204f, U+2e41,
-        U+fb50-fdff, U+fe70-feff;
-}
-@font-face {
-    font-family: "IBM Plex Sans Arabic";
-    font-style: normal;
-    font-weight: 600;
-    font-display: swap;
-    src: url("./assets/fonts/ibmplexsansarabic-normal-600-latin.woff2") format("woff2");
-    unicode-range:
-        U+0000-00ff, U+0131, U+0152-0153, U+02bb-02bc, U+02c6, U+02da, U+02dc, U+0304, U+0308, U+0329, U+2000-206f, U+20ac, U+2122, U+2191, U+2193, U+2212, U+2215, U+feff, U+fffd;
-}
-@font-face {
-    font-family: "IBM Plex Sans Arabic";
+    font-family: "Tajawal";
     font-style: normal;
     font-weight: 700;
     font-display: swap;
-    src: url("./assets/fonts/ibmplexsansarabic-normal-700-arabic.woff2") format("woff2");
+    src: url("./assets/fonts/tajawal-normal-700-arabic.woff2") format("woff2");
     unicode-range:
-        U+0600-06ff, U+0750-077f, U+0870-088e, U+0890-0891, U+08a0-08ff, U+200c-200e, U+2010-2011, U+204f, U+2e41,
-        U+fb50-fdff, U+fe70-feff;
+        U+0600-06ff, U+0750-077f, U+0870-088e, U+0890-0891, U+08a0-08ff, U+200c-200e, U+2010-2011, U+204f, U+2e41, U+fb50-fdff, U+fe70-feff;
 }
 @font-face {
-    font-family: "IBM Plex Sans Arabic";
+    font-family: "Tajawal";
     font-style: normal;
     font-weight: 700;
     font-display: swap;
-    src: url("./assets/fonts/ibmplexsansarabic-normal-700-latin.woff2") format("woff2");
+    src: url("./assets/fonts/tajawal-normal-700-latin.woff2") format("woff2");
     unicode-range:
-        U+0000-00ff, U+0131, U+0152-0153, U+02bb-02bc, U+02c6, U+02da, U+02dc, U+0304, U+0308, U+0329, U+2000-206f, U+20ac, U+2122, U+2191, U+2193, U+2212, U+2215, U+feff, U+fffd;
+        U+0000-00ff, U+0131, U+0152-0153, U+02bb-02bc, U+02c6, U+02da, U+02dc, U+0304, U+0308, U+0329, U+2000-206f, U+20ac, U+2122, U+2191,
+        U+2193, U+2212, U+2215, U+feff, U+fffd;
 }
+@font-face {
+    font-family: "Tajawal";
+    font-style: normal;
+    font-weight: 800;
+    font-display: swap;
+    src: url("./assets/fonts/tajawal-normal-800-arabic.woff2") format("woff2");
+    unicode-range:
+        U+0600-06ff, U+0750-077f, U+0870-088e, U+0890-0891, U+08a0-08ff, U+200c-200e, U+2010-2011, U+204f, U+2e41, U+fb50-fdff, U+fe70-feff;
+}
+@font-face {
+    font-family: "Tajawal";
+    font-style: normal;
+    font-weight: 800;
+    font-display: swap;
+    src: url("./assets/fonts/tajawal-normal-800-latin.woff2") format("woff2");
+    unicode-range:
+        U+0000-00ff, U+0131, U+0152-0153, U+02bb-02bc, U+02c6, U+02da, U+02dc, U+0304, U+0308, U+0329, U+2000-206f, U+20ac, U+2122, U+2191,
+        U+2193, U+2212, U+2215, U+feff, U+fffd;
+}
+
 @font-face {
     font-family: "IBM Plex Mono";
     font-style: normal;
@@ -570,7 +617,7 @@
     }
 
     /*
-     * الأرقام لاتينية دائمًا وبجدولة (DESIGN.md): المال والكميات وأرقام
+     * الأرقام لاتينية دائمًا وبجدولة (`DESIGN.md`): المال والكميات وأرقام
      * التعريف تُطبع en-US، والخلية تعزل اتجاهها لأن الرقم لاتيني داخل
      * سطر عربي. `unicode-bidi: isolate` يمنع انقلاب الحدّ إلى الطرف الآخر.
      */
@@ -579,11 +626,13 @@
         font-variant-numeric: tabular-nums;
         direction: ltr;
         unicode-bidi: isolate;
+        /* الرقم لا يُكسر بين سطرين؛ الجدول يمرر أفقيًا داخل بطاقته. */
+        white-space: nowrap;
     }
 }
 
 /*
- * منطقة تمرير الجدول (DESIGN.md): الجدول وحده يمرر أفقيًا داخل بطاقته،
+ * منطقة تمرير الجدول (`DESIGN.md`): الجدول وحده يمرر أفقيًا داخل بطاقته،
  * والصفحة لا تمرر على 360px. `max-inline-size: 100%` يمنع الجدول من دفع
  * عرض البطاقة. المحور الأفقي محصور داخل البطاقة، أما الرأسي فيُسلَّم للصفحة
  * عند بلوغ حدّه — وإلا تجمّدت عجلة الفأرة فوق أي جدول ولم يبقَ للتمرير
@@ -611,9 +660,18 @@
     overflow: hidden;
     max-block-size: min(90dvh, 46rem);
 }
-.erp-dialog--sm { inline-size: min(92vw, 24rem); max-inline-size: min(92vw, 24rem); }
-.erp-dialog--md { inline-size: min(92vw, 32rem); max-inline-size: min(92vw, 32rem); }
-.erp-dialog--lg { inline-size: min(92vw, 44rem); max-inline-size: min(92vw, 44rem); }
+.erp-dialog--sm {
+    inline-size: min(92vw, 24rem);
+    max-inline-size: min(92vw, 24rem);
+}
+.erp-dialog--md {
+    inline-size: min(92vw, 32rem);
+    max-inline-size: min(92vw, 32rem);
+}
+.erp-dialog--lg {
+    inline-size: min(92vw, 44rem);
+    max-inline-size: min(92vw, 44rem);
+}
 .erp-dialog__head {
     flex-shrink: 0;
     display: flex;
@@ -640,8 +698,14 @@
     color: var(--erp-muted);
     cursor: pointer;
 }
-.erp-dialog__close:hover { background: var(--erp-surface-hover); color: var(--erp-ink); }
-.erp-dialog__close:focus-visible { outline: 2px solid var(--erp-primary); outline-offset: 2px; }
+.erp-dialog__close:hover {
+    background: var(--erp-surface-hover);
+    color: var(--erp-ink);
+}
+.erp-dialog__close:focus-visible {
+    outline: 2px solid var(--erp-primary);
+    outline-offset: 2px;
+}
 .erp-dialog__body {
     flex: 1 1 auto;
     min-block-size: 0;
@@ -665,16 +729,29 @@
     background: var(--erp-surface-raised);
 }
 @media (max-width: 639px) {
-    .erp-dialog__head { padding: 16px 16px 10px; }
-    .erp-dialog__body { padding: 10px 16px; }
-    .erp-dialog__foot { padding: 10px 16px 16px; }
+    .erp-dialog__head {
+        padding: 16px 16px 10px;
+    }
+    .erp-dialog__body {
+        padding: 10px 16px;
+    }
+    .erp-dialog__foot {
+        padding: 10px 16px 16px;
+    }
     .erp-dialog__foot button,
-    .erp-dialog__foot a { flex: 1 1 auto; }
+    .erp-dialog__foot a {
+        flex: 1 1 auto;
+    }
 }
 @media (max-width: 1023px) {
-    .erp-dialog__close { inline-size: 2.75rem; block-size: 2.75rem; }
+    .erp-dialog__close {
+        inline-size: 2.75rem;
+        block-size: 2.75rem;
+    }
     .erp-dialog__foot button,
-    .erp-dialog__foot a { min-block-size: 2.75rem; }
+    .erp-dialog__foot a {
+        min-block-size: 2.75rem;
+    }
 }
 
 /*
@@ -693,7 +770,7 @@
 }
 
 /*
- * النشط: لوحةٌ شامبانيا عاجية بحبر إسبريسو، وشريطٌ شامبانيا رفيع على
+ * النشط: لوحة الحافة الكحلية بحبر غامق، وشريطٌ تركوازي رفيع على
  * الحافة **المنطقية** الملاصقة للمحتوى (في RTL هي الحافة اليسرى).
  * والنشط لا يعتمد على اللون وحده: اللوحة الفاتحة والشريط معًا.
  * `data-status="active"` يضعه `Link` نفسه، فمصدرٌ واحد للحقيقة.
@@ -715,7 +792,7 @@
     border-end-end-radius: 3px;
 }
 
-/* الشريط السفلي: النص النشط ياقوتي، والخامل muted. */
+/* الشريط السفلي: النص النشط بلون الفعل، والخامل muted. */
 .erp-nav-bottom {
     color: var(--erp-muted);
 }
@@ -733,28 +810,22 @@
  */
 
 /*
- * الهيكل العظمي: لمعة أفقية 1.4s (DESIGN.md: Motion) فوق سطح غائر.
- * الجلب البصري بـ`background-position` لا `transform`: لا يحرّك التخطيط.
+ * الهيكل العظمي: نبضُ شفافية 1.4s فوق سطح غائر — بلا تدرّج لوني.
+ * (`DESIGN.md` يمنع التدرّجات؛ اللمعة المتدرّجة كانت التدرّج الوحيد في النظام.)
+ * النبض على `opacity` لا يحرّك التخطيط ولا يعيد الرسم باهظًا.
  */
 @keyframes erp-shimmer {
-    from {
-        background-position: 200% 0;
+    0%,
+    100% {
+        opacity: 1;
     }
-    to {
-        background-position: -200% 0;
+    50% {
+        opacity: 0.55;
     }
 }
 
 .erp-skeleton {
     background-color: var(--erp-surface-sunken);
-    background-image: linear-gradient(
-        90deg,
-        transparent 0%,
-        color-mix(in srgb, var(--erp-surface-raised) 55%, transparent) 50%,
-        transparent 100%
-    );
-    background-repeat: no-repeat;
-    background-size: 200% 100%;
     animation: erp-shimmer 1.4s var(--erp-ease-standard) infinite;
 }
 
@@ -838,7 +909,7 @@
 
 /*
  * احترام `prefers-reduced-motion`: كل الحركة تُخمد (لا تُلغى الحالات، فقط
- * المدة) — سكيلتون ساكن، ودرج يظهر فورًا. DESIGN.md يشترط هذا صراحة.
+ * المدة) — سكيلتون ساكن، ودرج يظهر فورًا. `DESIGN.md` يشترط هذا صراحة.
  */
 @media (prefers-reduced-motion: reduce) {
     html {
@@ -884,7 +955,7 @@
     --destructive: var(--erp-danger);
     --destructive-foreground: var(--erp-on-primary);
     --border: var(--erp-hairline);
-    --input: var(--erp-hairline-strong);
+    --input: var(--erp-field-border);
     --ring: var(--erp-primary);
     --radius: 0.625rem;
     --chart-1: var(--erp-chart-1);
@@ -909,7 +980,10 @@
     --surface-quaternary: var(--erp-surface-hover);
     --default: var(--erp-surface-sunken);
     --default-foreground: var(--erp-ink-secondary);
-    --muted: var(--erp-muted);
+}
+
+:root,
+.dark {
     --accent: var(--erp-primary);
     --accent-foreground: var(--erp-on-primary);
     --accent-hover: var(--erp-primary-hover);
@@ -932,7 +1006,7 @@
     --focus: var(--erp-brass);
     --field-background: var(--erp-surface);
     --field-foreground: var(--erp-ink);
-    --field-border: var(--erp-hairline-strong);
+    --field-border: var(--erp-field-border);
     --field-placeholder: var(--erp-faint);
     --field-hover: var(--erp-surface-hover);
     --field-focus: var(--erp-surface-raised);
@@ -989,13 +1063,17 @@
         min-inline-size: 0;
     }
 
-    .erp-grow { flex: 1; min-inline-size: 0; }
+    .erp-grow {
+        flex: 1;
+        min-inline-size: 0;
+    }
 
     .erp-button {
         min-inline-size: 0;
         font-family: var(--font-sans);
         letter-spacing: normal;
-        transition: transform var(--erp-motion-fast) var(--erp-ease-standard),
+        transition:
+            transform var(--erp-motion-fast) var(--erp-ease-standard),
             box-shadow var(--erp-motion-fast) var(--erp-ease-standard),
             background-color var(--erp-motion-fast) var(--erp-ease-standard);
     }
@@ -1066,10 +1144,18 @@
         background: color-mix(in srgb, var(--erp-brass) 60%, transparent);
     }
 
-    .erp-kpi[data-tone="info"]::before { background: var(--erp-primary); }
-    .erp-kpi[data-tone="success"]::before { background: var(--erp-success); }
-    .erp-kpi[data-tone="warning"]::before { background: var(--erp-warning); }
-    .erp-kpi[data-tone="danger"]::before { background: var(--erp-danger); }
+    .erp-kpi[data-tone="info"]::before {
+        background: var(--erp-primary);
+    }
+    .erp-kpi[data-tone="success"]::before {
+        background: var(--erp-success);
+    }
+    .erp-kpi[data-tone="warning"]::before {
+        background: var(--erp-warning);
+    }
+    .erp-kpi[data-tone="danger"]::before {
+        background: var(--erp-danger);
+    }
 
     .erp-kpi__head {
         display: flex;
@@ -1204,8 +1290,12 @@
 }
 
 @media (max-width: 639px) {
-    .erp-page-header h1 { font-size: 25px; }
-    .erp-kpi { padding: 16px; }
+    .erp-page-header h1 {
+        font-size: 25px;
+    }
+    .erp-kpi {
+        padding: 16px;
+    }
 }
 
 /* اللمس حتى عرض الجهاز اللوحي: أهداف الفعل لا تقل عن 44px ارتفاعًا.
@@ -1230,7 +1320,9 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    *, *::before, *::after {
+    *,
+    *::before,
+    *::after {
         animation-duration: 0.01ms !important;
         animation-iteration-count: 1 !important;
         transition-duration: 0.01ms !important;

@@ -1,6 +1,7 @@
 import './HrDepartments.premium.css';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useMemo, useState } from 'react';
+import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import {
@@ -17,7 +18,6 @@ import {
     withEmployeeCounts,
 } from '../lib/hr-departments';
 import { formatInt } from '../lib/inventory-register';
-import { PrintActions } from '../components/PrintActions';
 
 type FormState = { id: string | null; name: string; code: string; manager: string };
 const EMPTY_FORM: FormState = { id: null, name: '', code: '', manager: '' };
@@ -52,9 +52,7 @@ export function HrDepartments() {
     );
     const filteredRows = useMemo(() => {
         const query = search.trim().toLocaleLowerCase();
-        return query
-            ? rows.filter((row) => `${row.code} ${row.name} ${row.manager}`.toLocaleLowerCase().includes(query))
-            : rows;
+        return query ? rows.filter((row) => `${row.code} ${row.name} ${row.manager}`.toLocaleLowerCase().includes(query)) : rows;
     }, [rows, search]);
     const employeeTotal = rows.reduce((sum, row) => sum + row.employeeCount, 0);
 
@@ -74,13 +72,7 @@ export function HrDepartments() {
             return deleteHrDepartment(action.id);
         },
         onSuccess: async (_result, action) => {
-            setNotice(
-                action.kind === 'create'
-                    ? 'تمت إضافة القسم.'
-                    : action.kind === 'update'
-                      ? 'تم تحديث القسم.'
-                      : 'تم حذف القسم.',
-            );
+            setNotice(action.kind === 'create' ? 'تمت إضافة القسم.' : action.kind === 'update' ? 'تم تحديث القسم.' : 'تم حذف القسم.');
             setForm(null);
             setFormError('');
             await queryClient.invalidateQueries({ queryKey: ['hr-departments'] });
@@ -112,10 +104,7 @@ export function HrDepartments() {
         if (!form || !canManage) {
             return;
         }
-        const validated = validateHrDepartmentForm(
-            { name: form.name, code: form.code, manager: form.manager },
-            form.id !== null,
-        );
+        const validated = validateHrDepartmentForm({ name: form.name, code: form.code, manager: form.manager }, form.id !== null);
         if (!validated.ok) {
             setFormError(validated.message);
             return;
@@ -125,9 +114,7 @@ export function HrDepartments() {
             return;
         }
         mutation.mutate(
-            form.id === null
-                ? { kind: 'create', payload: validated.payload }
-                : { kind: 'update', id: form.id, payload: validated.payload },
+            form.id === null ? { kind: 'create', payload: validated.payload } : { kind: 'update', id: form.id, payload: validated.payload },
         );
     }
 
@@ -150,9 +137,7 @@ export function HrDepartments() {
                             HR Departments
                         </span>
                     </h1>
-                    <p className="text-body-sm text-muted">
-                        دليل أقسام الموارد البشرية وعدد الموظفين المرتبطين بكل قسم.
-                    </p>
+                    <p className="text-body-sm text-muted">دليل أقسام الموارد البشرية وعدد الموظفين المرتبطين بكل قسم.</p>
                 </div>
                 <div className="flex flex-wrap gap-xs">
                     <PrintActions title="أقسام الموظفين" />
@@ -201,9 +186,7 @@ export function HrDepartments() {
             {form ? (
                 <Card className="flex flex-col gap-sm p-md">
                     <div className="flex items-center justify-between gap-sm">
-                        <h2 className="text-heading-md text-ink">
-                            {form.id ? `تعديل قسم — ${form.name}` : 'إضافة قسم موارد بشرية'}
-                        </h2>
+                        <h2 className="text-heading-md text-ink">{form.id ? `تعديل قسم — ${form.name}` : 'إضافة قسم موارد بشرية'}</h2>
                         <button
                             type="button"
                             onClick={() => setForm(null)}
@@ -228,10 +211,7 @@ export function HrDepartments() {
                         {form.id ? (
                             <div className="flex flex-col gap-xxs text-label-md text-ink">
                                 كود القسم
-                                <span
-                                    className="rounded-md border border-hairline bg-surface-sunken px-sm py-xs font-mono"
-                                    dir="ltr"
-                                >
+                                <span className="rounded-md border border-hairline bg-surface-sunken px-sm py-xs font-mono" dir="ltr">
                                     {form.code}
                                 </span>
                             </div>
@@ -308,11 +288,7 @@ export function HrDepartments() {
                 ) : null}
                 {departmentsQuery.isError ? (
                     <StateError
-                        message={
-                            departmentsQuery.error instanceof Error
-                                ? departmentsQuery.error.message
-                                : 'تعذّر جلب الأقسام'
-                        }
+                        message={departmentsQuery.error instanceof Error ? departmentsQuery.error.message : 'تعذّر جلب الأقسام'}
                         onRetry={() => void departmentsQuery.refetch()}
                     />
                 ) : departmentsQuery.isLoading ? (
@@ -370,9 +346,7 @@ export function HrDepartments() {
                 ) : (
                     <StateEmpty
                         title={search ? 'لا توجد نتائج مطابقة' : 'لا توجد أقسام مسجلة'}
-                        hint={
-                            search ? 'غيّر كلمات البحث أو امسحها لعرض جميع الأقسام.' : 'ستظهر الأقسام هنا بعد إنشائها.'
-                        }
+                        hint={search ? 'غيّر كلمات البحث أو امسحها لعرض جميع الأقسام.' : 'ستظهر الأقسام هنا بعد إنشائها.'}
                     />
                 )}
             </Card>

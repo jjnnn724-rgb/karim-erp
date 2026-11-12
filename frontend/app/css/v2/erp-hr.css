@@ -909,55 +909,153 @@
    الشاشة بحجمٍ لا يبتلع اللوحة — الرمزان جنب بعض في صفٍّ واحد مضغوط، وكلاهما
    يمسح مساحةً ثابتة مهما اختلف محتواها. طلب المالك 2026-10-29: «الباركودات
    كبيرة جدًا». على الورق يرجع الرمز لحجم يُمسح بثقة من الكشك. */
+/* إعادة تصميم 2026-11-06 (طلب المالك: «الـ2 QR في المنتصف مش حلوين ومش
+   احترافية»): الرمزان لم يعودا عائمين في وسط صندوقٍ أبيض، بل صارا بطاقةَ
+   هوية: رأسٌ يعرّف صاحبه، إطارٌ أبيض لكل رمز (منطقة الهدوء اللازمة للمسح)،
+   بياناتهما كحقولٍ صريحة في شريطٍ غائر، وأفعالٌ في ذيلٍ مفصولٍ بخطٍّ رفيع. */
 .erp-v2-employees .erp-emp-qr-card {
   display: flex;
   flex-direction: column;
-  align-items: center;
   gap: var(--erp-space-3);
-  padding: var(--erp-space-3);
-  border: thin solid var(--erp-border);
-  border-radius: var(--erp-radius-md);
-  background: var(--erp-surface);
+  padding: var(--erp-space-4);
+  border: thin solid var(--erp-border-subtle);
+  border-radius: var(--erp-radius-lg);
+  background: linear-gradient(180deg, var(--erp-surface-raised), var(--erp-surface));
+  box-shadow: var(--erp-shadow-sm);
   max-inline-size: min(100%, 560px);
 }
-.erp-v2-employees .erp-emp-qr__pair {
+.erp-v2-employees .erp-emp-qr__head {
   display: flex;
-  flex-wrap: wrap;
+  align-items: center;
+  gap: var(--erp-space-3);
+  padding-block-end: var(--erp-space-3);
+  border-block-end: thin solid var(--erp-border-subtle);
+}
+.erp-v2-employees .erp-emp-qr__crest {
+  inline-size: 44px;
+  block-size: 44px;
+  flex: none;
+  border-radius: var(--erp-radius-full);
+  display: inline-flex;
+  align-items: center;
   justify-content: center;
-  align-items: flex-start;
-  gap: var(--erp-space-4);
+  background: var(--erp-brand-soft);
+  color: var(--erp-brand-text);
+  font-weight: var(--erp-fw-bold);
+}
+.erp-v2-employees .erp-emp-qr__who {
+  flex: 1 1 auto;
+  min-width: 0;
+  display: flex;
+  flex-direction: column;
+  gap: 2px;
+}
+.erp-v2-employees .erp-emp-qr__name {
+  font-size: var(--erp-text-md);
+  font-weight: var(--erp-fw-bold);
+  color: var(--erp-text-primary);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.erp-v2-employees .erp-emp-qr__sub {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+  font-family: var(--erp-font-mono);
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+.erp-v2-employees .erp-emp-qr__pair {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--erp-space-3);
+  align-items: start;
+  justify-items: center;
 }
 .erp-v2-employees .erp-emp-qr__one {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--erp-space-1);
-  flex: 0 1 auto;
-  inline-size: 168px;
+  gap: var(--erp-space-2);
+  inline-size: 100%;
+  margin: 0;
+}
+/* الأبيض هنا شرطُ مسحٍ لا ذوق: منطقة الهدوء حول الرمز لا تكون رمادية. */
+.erp-v2-employees .erp-emp-qr__frame {
+  display: grid;
+  place-items: center;
+  padding: var(--erp-space-2);
+  border: thin solid var(--erp-border-subtle);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-qr-paper);
 }
 .erp-v2-employees .erp-emp-qr__cap {
-  font-size: var(--erp-text-xs);
-  color: var(--erp-text-muted);
-  text-align: center;
-}
-.erp-v2-employees .erp-emp-qr__img {
-  inline-size: 144px;
-  block-size: auto;
-  border-radius: var(--erp-radius-sm);
-  background: var(--erp-surface-raised);
-}
-.erp-v2-employees .erp-emp-qr__meta {
   display: flex;
   flex-direction: column;
   align-items: center;
-  gap: var(--erp-space-1);
+  gap: 1px;
   text-align: center;
+}
+.erp-v2-employees .erp-emp-qr__cap b {
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-primary);
+}
+.erp-v2-employees .erp-emp-qr__cap span {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+}
+.erp-v2-employees .erp-emp-qr__img {
+  inline-size: 132px;
+  block-size: auto;
+  aspect-ratio: 1;
+  display: block;
+  border-radius: var(--erp-radius-sm);
+}
+.erp-v2-employees .erp-emp-qr__meta {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: var(--erp-space-2);
+  margin: 0;
+  padding: var(--erp-space-3);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface-sunken);
+}
+.erp-v2-employees .erp-emp-qr__meta > div {
+  display: flex;
+  flex-direction: column;
+  gap: 1px;
+  min-width: 0;
+}
+.erp-v2-employees .erp-emp-qr__meta dt {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+}
+.erp-v2-employees .erp-emp-qr__meta dd {
+  margin: 0;
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-primary);
+  overflow: hidden;
+  text-overflow: ellipsis;
+  white-space: nowrap;
+}
+.erp-v2-employees .erp-emp-qr__note {
+  margin: -4px 0 0;
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
 }
 .erp-v2-employees .erp-emp-qr__btns {
   display: flex;
   flex-wrap: wrap;
-  justify-content: center;
   gap: var(--erp-space-1);
+  padding-block-start: var(--erp-space-3);
+  border-block-start: thin solid var(--erp-border-subtle);
+}
+@media (max-width: 520px) {
+  .erp-v2-employees .erp-emp-qr__pair { grid-template-columns: minmax(0, 1fr); }
+  .erp-v2-employees .erp-emp-qr__meta { grid-template-columns: repeat(2, minmax(0, 1fr)); }
 }
 
 /* أقسام الكشف: كل كتلة عنوانٌ وجسمٌ بغلافٍ واحد، بدل تسع لفّات مختلفة
@@ -1096,7 +1194,31 @@
   font-size: var(--erp-text-xs);
   color: var(--erp-text-muted);
 }
-.erp-v2-employees .erp-emp-att__scroll { max-block-size: 380px; }
+.erp-v2-employees .erp-emp-att__scroll {
+  max-block-size: 380px;
+  border: thin solid var(--erp-border-subtle);
+  border-radius: var(--erp-radius-md);
+}
+.erp-v2-employees .erp-emp-att__scroll table { inline-size: 100%; }
+/* رأسٌ ثابت وظلٌّ يفصل الصفوف: جدولُ أيامٍ طويل يُقرأ بالتمرير بلا أن تفقد
+   اسمَ العمود. */
+.erp-v2-employees .erp-emp-att__scroll thead th {
+  position: sticky;
+  inset-block-start: 0;
+  z-index: 1;
+  background: var(--erp-surface-raised);
+}
+.erp-v2-employees .erp-emp-att__scroll tbody tr:nth-child(even) {
+  background: var(--erp-surface-sunken);
+}
+/* على الشاشة الضيقة تسقط الأعمدة القابلة للاستنتاج (اليوم من التاريخ، والتأخير
+   تفصيلُه في حالته) فيبقى الحضور والانصراف والساعات في العرض. */
+@media (max-width: 720px) {
+  .erp-v2-employees .erp-emp-att__scroll th:nth-child(2),
+  .erp-v2-employees .erp-emp-att__scroll td:nth-child(2),
+  .erp-v2-employees .erp-emp-att__scroll th:nth-child(6),
+  .erp-v2-employees .erp-emp-att__scroll td:nth-child(6) { display: none; }
+}
 
 /* ═══════════════ موظفو القسم (dept-employees) — طبقة الشاشة ═══════════════
    نفس أنماط لوحة الموظفين (W2-2) — النطاق محصور بالشاشة، صفر لمس للأساس. */

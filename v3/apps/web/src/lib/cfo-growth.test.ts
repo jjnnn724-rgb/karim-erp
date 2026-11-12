@@ -17,9 +17,7 @@ describe('عقود تبويبات المدير المالي السبعة', () =>
             ok: true,
             from: '2026-11-01',
             to: '2026-11-10',
-            centers: [
-                { cc: '—', cc_name: null, revenue: 941003.01, cogs: 0, expense: 0, net: 941003.01 },
-            ],
+            centers: [{ cc: '—', cc_name: null, revenue: 941003.01, cogs: 0, expense: 0, net: 941003.01 }],
         });
         expect(parsed.success).toBe(true);
     });
@@ -29,9 +27,7 @@ describe('عقود تبويبات المدير المالي السبعة', () =>
             ok: true,
             count: 4,
             total: 47812.22,
-            aging: [
-                { supplier: 'شركة اليسرة للأغذية', total: 47812.22, current: 47812.22, d30: 0, d60: 0, d90: 0, over90: 0 },
-            ],
+            aging: [{ supplier: 'شركة اليسرة للأغذية', total: 47812.22, current: 47812.22, d30: 0, d60: 0, d90: 0, over90: 0 }],
         });
         expect(parsed.success).toBe(true);
     });

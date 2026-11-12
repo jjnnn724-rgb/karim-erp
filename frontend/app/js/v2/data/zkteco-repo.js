@@ -39,7 +39,7 @@
  *   network — and returns a Blob; the screen only saves it.
  */
 
-import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.296';
+import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.312';
 
 /** @returns {Promise<{running:boolean,devices:any[],totals:object}>} */
 export async function fetchZkStatus() {
@@ -113,6 +113,76 @@ const num = (v) => {
 /** Device-operation write gates mirror the server (routes.js:30-31):
  *  reads admin|hr|manager|accountant, every write admin|hr. */
 export const ZK_WRITE_ROLES = ['admin', 'hr'];
+
+/** مركز التحكم mirror لثابت الخادم CONTROL_ROLES: الأدمن والـowner فوقه. */
+export const ZK_CONTROL_ROLES = ['admin', 'owner'];
+
+/**
+ * حالة مركز التحكم — بابٌ للقراءة فقط (admin|owner).
+ * @returns {Promise<{engine:{running:boolean,devices:any[]},devices:any[],totals:object,audit:any[],limits:object}>}
+ */
+export async function fetchZkControl() {
+    const res = await apiFetch('/zkteco/control');
+    const o = res && typeof res === 'object' ? res : {};
+    const engine = o.engine && typeof o.engine === 'object' ? o.engine : {};
+    const t = o.totals && typeof o.totals === 'object' ? o.totals : {};
+    return {
+        engine: {
+            running: !!engine.running,
+            devices: Array.isArray(engine.devices) ? engine.devices : [],
+        },
+        devices: Array.isArray(o.devices) ? o.devices : [],
+        totals: {
+            today: num(t.today),
+            unmapped: num(t.unmapped),
+            openDays: num(t.openDays),
+            manualToday: num(t.manualToday),
+        },
+        audit: Array.isArray(o.audit) ? o.audit : [],
+        limits: o.limits && typeof o.limits === 'object' ? o.limits : {},
+    };
+}
+
+const ENGINE_ACTIONS = ['start', 'stop', 'restart'];
+
+/** تشغيل/إيقاف/إعادة تشغيل محرك المزامنة — الخادم يفحص السبب والدور. */
+export async function setZkEngine(action, reason) {
+    const a = String(action || '');
+    if (!ENGINE_ACTIONS.includes(a)) {throw new Error('إجراء محرك غير معروف');}
+    return apiFetch(`/zkteco/engine/${a}`, {
+        method: 'POST',
+        body: JSON.stringify({ reason: String(reason || '').trim() }),
+    });
+}
+
+/** تصحيح بصمةٍ خام واحدة: تجاهلها من الحساب (admin|owner، سبب إلزامي). */
+export async function ignoreZkPunch(id, reason) {
+    return apiFetch(`/zkteco/logs/${encodeURIComponent(id)}/ignore`, {
+        method: 'POST',
+        body: JSON.stringify({ reason: String(reason || '').trim() }),
+    });
+}
+
+/** استعادة بصمةٍ متجاهلة إلى الحساب — نفس الباب معكوسًا. */
+export async function restoreZkPunch(id, reason) {
+    return apiFetch(`/zkteco/logs/${encodeURIComponent(id)}/restore`, {
+        method: 'POST',
+        body: JSON.stringify({ reason: String(reason || '').trim() }),
+    });
+}
+
+/** إعادة بناء أيامٍ من البصمات الخام — بسببٍ إلزامي (admin|owner). */
+export async function rebuildZkDays({ employeeId, from, to, reason } = {}) {
+    return apiFetch('/zkteco/rebuild-days', {
+        method: 'POST',
+        body: JSON.stringify({
+            employeeId,
+            from: String(from || ''),
+            to: String(to || from || ''),
+            reason: String(reason || '').trim(),
+        }),
+    });
+}
 
 /**
  * Database row → table row. commKey NEVER leaves this function.

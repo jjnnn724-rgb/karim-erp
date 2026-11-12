@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ToastProvider } from '../ui/Toast';
 import { CashierSales } from './CashierSales';
@@ -48,9 +48,7 @@ describe('مبيعات الكاشير', () => {
                             delta: 12.5,
                         },
                         series: [{ day: '2026-11-07', docs: 20, collected: 8000, ex_vat: 6956.52 }],
-                        cashiers: [
-                            { cashier_no: '101', cashier_name: 'سالم', docs: 70, collected: 30000, share: 62.5 },
-                        ],
+                        cashiers: [{ cashier_no: '101', cashier_name: 'سالم', docs: 70, collected: 30000, share: 62.5 }],
                         payments: [{ key: 'cash', label: 'نقد', amount: 20000, share: 41.67 }],
                         top_items: [{ code: 'SKU1', name: 'برجر', qty: 40, ex_vat: 6000, docs: 30, share: 14.4 }],
                     });

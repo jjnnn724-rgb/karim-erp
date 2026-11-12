@@ -61,9 +61,7 @@ function stubFetch(options: { fail?: boolean; catalogFails?: boolean } = {}): st
             const target = String(url);
             urls.push(target);
             if (target.includes('/api/pos/recipes/catalog')) {
-                return options.catalogFails
-                    ? json({ error: 'FORBIDDEN', message: 'لا صلاحية لكتالوج الكاشير' }, 403)
-                    : json(catalog);
+                return options.catalogFails ? json({ error: 'FORBIDDEN', message: 'لا صلاحية لكتالوج الكاشير' }, 403) : json(catalog);
             }
             if (target.includes('/api/recipes?')) {
                 return options.fail

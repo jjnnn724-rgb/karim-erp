@@ -147,12 +147,7 @@ const PURCHASE_REQUEST_READ_ROLES = ['admin', 'manager', 'warehouse', 'kitchen',
 export async function fetchWarehouseSnapshot(signal?: AbortSignal, role = ''): Promise<WarehouseView> {
     const canReadRequests = role === '' || PURCHASE_REQUEST_READ_ROLES.includes(role);
     const settled = await Promise.allSettled([
-        fetchJson(
-            inventoryPageSchema,
-            '/api/inventory?page=1&limit=1000&sort=id&order=asc',
-            getAccessToken(),
-            signal ? { signal } : {},
-        ),
+        fetchJson(inventoryPageSchema, '/api/inventory?page=1&limit=1000&sort=id&order=asc', getAccessToken(), signal ? { signal } : {}),
         fetchJson(
             dispatchPageSchema,
             '/api/dispatches?page=1&limit=500&sort=id&order=desc&v2_period=month',
@@ -160,12 +155,7 @@ export async function fetchWarehouseSnapshot(signal?: AbortSignal, role = ''): P
             signal ? { signal } : {},
         ),
         canReadRequests
-            ? fetchJson(
-                  purchaseRequestListSchema,
-                  '/api/warehouse/purchase-requests',
-                  getAccessToken(),
-                  signal ? { signal } : {},
-              )
+            ? fetchJson(purchaseRequestListSchema, '/api/warehouse/purchase-requests', getAccessToken(), signal ? { signal } : {})
             : Promise.resolve([]),
     ]);
     const items = settled[0]?.status === 'fulfilled' ? settled[0].value.data : [];
@@ -193,8 +183,7 @@ export async function fetchWarehouseSnapshot(signal?: AbortSignal, role = ''): P
         ok: Math.max(0, items.length - lowRows.length - outRows.length),
         lowRows: sorted,
         queues: {
-            chef: dispatches.filter((row) => String(row.status ?? '') === 'pending' && row.needsChefApproval === true)
-                .length,
+            chef: dispatches.filter((row) => String(row.status ?? '') === 'pending' && row.needsChefApproval === true).length,
             warehouse: dispatches.filter(
                 (row) =>
                     String(row.status ?? '') === 'chef_approved' ||
@@ -223,12 +212,7 @@ const panelSchema = z
             .object({
                 total: numLike,
                 count: numLike,
-                bySource: z
-                    .record(
-                        z.string(),
-                        z.object({ total: numLike, count: numLike }).passthrough(),
-                    )
-                    .optional(),
+                bySource: z.record(z.string(), z.object({ total: numLike, count: numLike }).passthrough()).optional(),
                 labels: z.record(z.string(), z.string()).optional(),
             })
             .passthrough()

@@ -66,9 +66,13 @@ export function validateBranchForm(form: Partial<BranchForm>, editing = false): 
 
 export function normalizeBranchPayload(form: Partial<BranchForm>): Record<string, unknown> {
     return {
-        code: clean(form.code), name_ar: clean(form.name_ar), name_en: nullableText(form.name_en),
-        currency: (clean(form.currency) || 'SAR').toUpperCase(), timezone: clean(form.timezone) || 'Asia/Riyadh',
-        phone: nullableText(form.phone), address: nullableText(form.address),
+        code: clean(form.code),
+        name_ar: clean(form.name_ar),
+        name_en: nullableText(form.name_en),
+        currency: (clean(form.currency) || 'SAR').toUpperCase(),
+        timezone: clean(form.timezone) || 'Asia/Riyadh',
+        phone: nullableText(form.phone),
+        address: nullableText(form.address),
     };
 }
 
@@ -79,7 +83,10 @@ export async function createBranch(form: Partial<BranchForm>): Promise<void> {
 export async function updateBranch(id: string, form: Partial<BranchForm>): Promise<void> {
     const payload = normalizeBranchPayload(form);
     delete payload.code;
-    await fetchJson(branchWriteResponse, `/api/branches/${encodeURIComponent(id)}`, getAccessToken(), { method: 'PATCH' as 'PUT', body: payload });
+    await fetchJson(branchWriteResponse, `/api/branches/${encodeURIComponent(id)}`, getAccessToken(), {
+        method: 'PATCH' as 'PUT',
+        body: payload,
+    });
 }
 
 export async function deactivateBranch(id: string): Promise<void> {
@@ -87,7 +94,10 @@ export async function deactivateBranch(id: string): Promise<void> {
 }
 
 export async function reactivateBranch(id: string): Promise<void> {
-    await fetchJson(branchWriteResponse, `/api/branches/${encodeURIComponent(id)}`, getAccessToken(), { method: 'PATCH' as 'PUT', body: { is_active: true } });
+    await fetchJson(branchWriteResponse, `/api/branches/${encodeURIComponent(id)}`, getAccessToken(), {
+        method: 'PATCH' as 'PUT',
+        body: { is_active: true },
+    });
 }
 
 /* ─── الصفّ ─────────────────────────────────────────────────────────────── */
@@ -201,9 +211,7 @@ export type BranchTotals = {
 };
 
 export function branchTotals(rows: readonly BranchRow[]): BranchTotals {
-    const currencies = [...new Set(rows.map((row) => row.currency).filter(Boolean))].sort((a, b) =>
-        a.localeCompare(b, 'en'),
-    );
+    const currencies = [...new Set(rows.map((row) => row.currency).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'en'));
     return {
         total: rows.length,
         active: rows.filter((row) => row.active).length,

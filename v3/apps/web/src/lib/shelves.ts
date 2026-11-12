@@ -150,12 +150,8 @@ export interface ShelfStats {
 }
 
 export function shelfStats(shelves: readonly Shelf[], items: readonly InventoryLite[]): ShelfStats {
-    const assignedItems = items.filter(
-        (item) => item.shelfId !== null && item.shelfId !== undefined && String(item.shelfId) !== '',
-    ).length;
-    const emptyShelves = shelves.filter(
-        (shelf) => !items.some((item) => String(item.shelfId ?? '') === shelf.id),
-    ).length;
+    const assignedItems = items.filter((item) => item.shelfId !== null && item.shelfId !== undefined && String(item.shelfId) !== '').length;
+    const emptyShelves = shelves.filter((shelf) => !items.some((item) => String(item.shelfId ?? '') === shelf.id)).length;
     return {
         shelves: shelves.length,
         assignedItems,

@@ -177,15 +177,12 @@ export function cardExtrasMap(employees: readonly Employee[]): Map<string, Emplo
             salary: Number.isFinite(raw) ? raw : null,
             photo: e.photo ? String(e.photo) : '',
             deviceUserId:
-                e.deviceUserId !== undefined && e.deviceUserId !== null && String(e.deviceUserId) !== ''
-                    ? String(e.deviceUserId)
-                    : '',
+                e.deviceUserId !== undefined && e.deviceUserId !== null && String(e.deviceUserId) !== '' ? String(e.deviceUserId) : '',
             shift_start: e.shift_start ? String(e.shift_start) : '',
             shift_karim: Number(e.shift_karim) > 0 ? Number(e.shift_karim) : 0,
             auto_checkout: e.auto_checkout === true || String(e.auto_checkout) === 'true' || Number(e.auto_checkout) === 1,
             auto_lock: e.auto_lock === true || String(e.auto_lock) === 'true' || Number(e.auto_lock) === 1,
-            day_off:
-                e.day_off === undefined || e.day_off === null || e.day_off === '' ? null : Number(e.day_off),
+            day_off: e.day_off === undefined || e.day_off === null || e.day_off === '' ? null : Number(e.day_off),
             email: e.email ? String(e.email) : '',
             joinDate: e.joinDate ? String(e.joinDate) : '',
             iqamaExpiry: e.iqamaExpiry ? String(e.iqamaExpiry) : '',
@@ -264,10 +261,7 @@ export type EmployeeRow = {
 
 /** `employees-repo.js:203-220` حرفيًا: الرمز '—'، ونصّ احتياطي `#id`،
  *  والقسم كوكبه الخام عند غياب الصلة بدليل HR. */
-export function employeeToRow(
-    employee: Employee,
-    deptByCode: ReadonlyMap<string, HrDepartment> = new Map(),
-): EmployeeRow {
+export function employeeToRow(employee: Employee, deptByCode: ReadonlyMap<string, HrDepartment> = new Map()): EmployeeRow {
     const deptCode = employee.department ? String(employee.department) : '';
     const dept = deptByCode.get(deptCode);
     const status = employee.status ? String(employee.status) : '';
@@ -449,9 +443,7 @@ export function deptCounts(rows: readonly EmployeeRow[]): DeptCount[] {
             });
         }
     }
-    return [...byCode.values()].sort(
-        (a, b) => b.count - a.count || (a.label || '—').localeCompare(b.label || '—', 'ar'),
-    );
+    return [...byCode.values()].sort((a, b) => b.count - a.count || (a.label || '—').localeCompare(b.label || '—', 'ar'));
 }
 
 export type EmployeeTotals = {

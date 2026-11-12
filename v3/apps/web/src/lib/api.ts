@@ -75,12 +75,7 @@ async function parseError(response: Response): Promise<ApiError> {
 /**
  * `fetcher` لـTanStack Query: يُعيد البيانات بعد التحقق، أو يرمي `ApiError`.
  */
-export async function fetchJson<T>(
-    schema: z.ZodType<T>,
-    url: string,
-    token: string | null,
-    options: FetchOptions = {},
-): Promise<T> {
+export async function fetchJson<T>(schema: z.ZodType<T>, url: string, token: string | null, options: FetchOptions = {}): Promise<T> {
     const headers = buildHeaders(token, options.body !== undefined, options.headers);
     const init: RequestInit = {
         headers,

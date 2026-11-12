@@ -34,6 +34,7 @@ const { writeAuditLog } = require('./audit-middleware');
 const { riyadhDateOf } = require('../riyadh-date');
 const { convertQuantity } = require('../unit-conversion');
 const { recordSale } = require('./metrics');
+const { computeInvoice } = require('./vat-engine');
 
 const ALLOWED_METHODS = new Set(['cash', 'card', 'wallet', 'bank_transfer', 'voucher', 'loyalty']);
 const MAX_ITEMS = 200;
@@ -259,35 +260,36 @@ function canonicalBodyHash(body) {
     return crypto.createHash('sha256').update(JSON.stringify(sortKeysDeep(body)), 'utf8').digest('hex');
 }
 
-function validateSalePayload(body) {
-    const errors = [];
-    if (!body || typeof body !== 'object') {return ['Body must be a JSON object.'];}
-
-    // ─── Coerce numeric inputs that may arrive as strings ──
-    // pg returns BIGINT columns (pos_products.id, pos_departments.id) as
-    // strings to preserve 64-bit precision. The frontend (pos.js) reuses
-    // those values verbatim in sale payloads, so we must accept either
-    // form here. We normalize to numbers in-place so downstream code can
-    // use Number.isInteger / numeric comparisons uniformly.
+/**
+ * Coerce numeric inputs that may arrive as strings — in place.
+ * pg returns BIGINT columns (pos_products.id, pos_departments.id) as strings
+ * to preserve 64-bit precision, and the V2/V3 clients reuse those values
+ * verbatim. Normalising here lets every downstream check use
+ * `Number.isInteger` / numeric comparisons uniformly.
+ * Shared by the sale (`/api/sales/complete`) and the preview (`/api/sales/quote`).
+ */
+function normalizeSaleNumbers(body) {
+    if (!body || typeof body !== 'object') {return;}
     if (body.department_id !== undefined && typeof body.department_id !== 'number') {
         const n = Number(body.department_id);
         if (Number.isFinite(n)) {body.department_id = n;}
     }
     if (Array.isArray(body.items)) {
         body.items.forEach((it) => {
-            if (it && it.product_id !== undefined && typeof it.product_id !== 'number') {
+            if (!it) {return;}
+            if (it.product_id !== undefined && typeof it.product_id !== 'number') {
                 const n = Number(it.product_id);
                 if (Number.isFinite(n)) {it.product_id = n;}
             }
-            if (it && typeof it.quantity !== 'number') {
+            if (typeof it.quantity !== 'number') {
                 const n = Number(it.quantity);
                 if (Number.isFinite(n)) {it.quantity = n;}
             }
-            if (it && typeof it.unit_price !== 'number') {
+            if (typeof it.unit_price !== 'number') {
                 const n = Number(it.unit_price);
                 if (Number.isFinite(n)) {it.unit_price = n;}
             }
-            if (it && typeof it.discount !== 'number') {
+            if (typeof it.discount !== 'number') {
                 const n = Number(it.discount);
                 if (Number.isFinite(n)) {it.discount = n;}
             }
@@ -301,6 +303,14 @@ function validateSalePayload(body) {
             }
         });
     }
+}
+
+function validateSalePayload(body) {
+    const errors = [];
+    if (!body || typeof body !== 'object') {return ['Body must be a JSON object.'];}
+
+    normalizeSaleNumbers(body);
+
 
     if (!Number.isInteger(body.department_id) || body.department_id <= 0) {errors.push('department_id must be a positive integer.');}
     if (!Array.isArray(body.items) || body.items.length === 0) {
@@ -376,8 +386,7 @@ function releaseSaleSlot() {
 }
 
 function computeTotalsServerSide(items, productsMap, actor = null) {
-    let subtotal = 0, discount_total = 0, tax_total = 0;
-    const lineItems = [];
+    const pricedLines = [];
     const overrides = [];
     const isApprover = isDiscountApprover(actor?.role);
     for (const it of items) {
@@ -422,28 +431,43 @@ function computeTotalsServerSide(items, productsMap, actor = null) {
                 percent: Number(discountPercent.toFixed(2)),
             });
         }
-        const lineTotal = Number(((it.quantity * it.unit_price) - (it.discount || 0)).toFixed(2));
-        if (lineTotal < 0) {
-            throw Object.assign(new Error(`Negative line total for product ${p.id}`), { code: 'NEGATIVE_LINE_TOTAL' });
-        }
         // A stored vat_rate of 0 is legitimate (zero-rated goods) — only a
         // missing value falls back to the standard 15% rate
         const vatRate = (p.vat_rate === null || p.vat_rate === undefined || Number.isNaN(Number(p.vat_rate))) ? 15.00 : Number(p.vat_rate);
-        const vatAmount = Number((lineTotal * vatRate / 100).toFixed(2));
-        subtotal += lineTotal;
-        discount_total += discount;
-        tax_total += vatAmount;
-        lineItems.push({
-            product_id: p.id, product_name: p.name_ar, product_barcode: p.barcode,
-            quantity: it.quantity, unit_price: it.unit_price, discount,
-            vat_rate: vatRate, line_total: lineTotal, vat_amount: vatAmount,
+        // The catalog stores VAT-EXCLUSIVE prices, so the line enters the
+        // engine in `net` mode. The engine still rounds exactly once per line
+        // and derives the invoice total as a SUM — never as a subtraction.
+        pricedLines.push({
+            line: {
+                unit_price_net: Number(it.unit_price),
+                quantity: Number(it.quantity),
+                discount,
+                vat_rate: vatRate,
+            },
+            meta: { product_id: p.id, product_name: p.name_ar, product_barcode: p.barcode },
         });
     }
+
+    // Single source of truth: every total below is produced by vat-engine,
+    // which asserts `sum(net) + sum(vat) === sum(inclusive)` before returning.
+    const invoice = computeInvoice({ lines: pricedLines.map((entry) => entry.line) });
+    const lineItems = invoice.line_items.map((line, i) => ({
+        ...pricedLines[i].meta,
+        quantity: line.quantity,
+        unit_price: line.unit_price,
+        discount: line.discount,
+        vat_rate: line.vat_rate,
+        // `pos_order_items.line_total` has always held the NET line total.
+        line_total: line.line_net,
+        vat_amount: line.vat_amount,
+        line_total_incl: line.line_total,
+    }));
+
     const totals = {
-        subtotal: Number(subtotal.toFixed(2)),
-        discount_total: Number(discount_total.toFixed(2)),
-        tax_total: Number(tax_total.toFixed(2)),
-        total_amount: Number((subtotal + tax_total).toFixed(2)),
+        subtotal: invoice.subtotal,
+        discount_total: invoice.discount_total,
+        tax_total: invoice.tax_total,
+        total_amount: invoice.total_amount,
         line_items: lineItems,
         // تجاوزات مصرّح بها (معتمد تجاوز الحد) — تُكتب في سجل التدقيق
         overrides,
@@ -452,6 +476,82 @@ function computeTotalsServerSide(items, productsMap, actor = null) {
         throw Object.assign(new Error('Sale total cannot be negative'), { code: 'NEGATIVE_TOTAL' });
     }
     return totals;
+}
+
+/**
+ * POST /api/sales/quote — read-only price preview.
+ * ---------------------------------------------------------------------------
+ * The cashier screen must never show one number and have the server store
+ * another. This endpoint runs the SAME engine (`computeTotalsServerSide`) and
+ * the SAME guards as the sale itself, but performs no writes: no order, no
+ * stock move, no ZATCA queue, no idempotency key.
+ */
+async function quoteSale(req, res) {
+    const requestId = req.headers['x-request-id'] || uuidv4();
+    try {
+        normalizeSaleNumbers(req.body);
+        const items = Array.isArray(req.body?.items) ? req.body.items : [];
+        if (!items.length) {
+            return res.status(400).json({ error: 'VALIDATION_FAILED', details: ['items must be a non-empty array.'], _request_id: requestId });
+        }
+        if (items.length > MAX_ITEMS) {
+            return res.status(400).json({ error: 'VALIDATION_FAILED', details: [`items length exceeds ${MAX_ITEMS}.`], _request_id: requestId });
+        }
+        const details = [];
+        items.forEach((it, i) => {
+            if (!it || typeof it !== 'object') { details.push(`items[${i}] must be an object.`); return; }
+            if (!Number.isInteger(it.product_id) || it.product_id <= 0) { details.push(`items[${i}].product_id invalid.`); }
+            if (typeof it.quantity !== 'number' || it.quantity <= 0) { details.push(`items[${i}].quantity must be > 0.`); }
+            if (typeof it.unit_price !== 'number' || it.unit_price < 0) { details.push(`items[${i}].unit_price must be ≥ 0.`); }
+            if (typeof it.discount !== 'number' || it.discount < 0) { details.push(`items[${i}].discount must be ≥ 0.`); }
+        });
+        if (details.length) {
+            return res.status(400).json({ error: 'VALIDATION_FAILED', details, _request_id: requestId });
+        }
+
+        const productIds = [...new Set(items.map((i) => i.product_id))];
+        const productRes = await pool.query(
+            `SELECT id, name_ar, barcode, price, vat_rate, is_active
+               FROM pos_products WHERE id = ANY($1::bigint[]);`,
+            [productIds]
+        );
+        const productsMap = new Map(productRes.rows.map((p) => [Number(p.id), p]));
+        for (const pid of productIds) {
+            if (!productsMap.has(pid)) {
+                return res.status(404).json({ error: 'PRODUCT_NOT_FOUND', product_id: pid, _request_id: requestId });
+            }
+            if (!productsMap.get(pid).is_active) {
+                return res.status(409).json({ error: 'PRODUCT_INACTIVE', product_id: pid, _request_id: requestId });
+            }
+        }
+
+        const totals = computeTotalsServerSide(items, productsMap, req.user || null);
+        return res.json({
+            quote: true,
+            subtotal: totals.subtotal,
+            discount_total: totals.discount_total,
+            tax_total: totals.tax_total,
+            total_amount: totals.total_amount,
+            line_items: totals.line_items,
+            _request_id: requestId,
+        });
+    } catch (err) {
+        if (err.code === 'INVOICE_UNBALANCED') {
+            logger.error({ err: { message: err.message, details: err.details }, requestId }, 'quote refused: unbalanced invoice');
+            return res.status(422).json({ error: 'INVOICE_UNBALANCED', message: err.message, details: err.details || null, _request_id: requestId });
+        }
+        if (err.code === 'DISCOUNT_APPROVAL_REQUIRED') {
+            return res.status(403).json({ error: 'DISCOUNT_APPROVAL_REQUIRED', message: err.message, _request_id: requestId });
+        }
+        if (err.code === 'PRICE_OVERRIDE_FORBIDDEN') {
+            return res.status(422).json({ error: 'PRICE_OVERRIDE_FORBIDDEN', message: err.message, _request_id: requestId });
+        }
+        if (err.code === 'PRODUCT_NOT_FOUND') {
+            return res.status(404).json({ error: 'PRODUCT_NOT_FOUND', message: err.message, _request_id: requestId });
+        }
+        logger.error({ err: { message: err.message, code: err.code }, requestId }, 'quote failed');
+        return res.status(500).json({ error: 'INTERNAL_ERROR', message: err.message, _request_id: requestId });
+    }
 }
 
 function reconcilePayments(payments, totalAmount) {
@@ -1231,6 +1331,42 @@ async function completeSale(req, res) {
         }
         const code = err.code || err.sqlState;
 
+        // ── VAT balance guard ────────────────────────────────────────────────
+        // An invoice where net + vat ≠ total must never be stored, printed or
+        // sent to ZATCA. The engine throws before any INSERT happens; here we
+        // turn that into a 422, record an audit trail and stop the sale.
+        if (err.code === 'INVOICE_UNBALANCED') {
+            try {
+                await writeAuditLog({
+                    action: 'INVOICE_UNBALANCED_REJECTED',
+                    tableName: 'pos_orders',
+                    reason: 'رفض إصدار فاتورة غير متوازنة (الصافي + الضريبة ≠ الإجمالي)',
+                    metadata: {
+                        details: err.details || null,
+                        items: Array.isArray(req.body?.items) ? req.body.items : null,
+                    },
+                    actor: {
+                        userId: req.user?.id || null,
+                        userName: req.user?.username || req.user?.name || null,
+                        role: req.user?.role || null,
+                        ip: req.ip || (req.socket && req.socket.remoteAddress) || '',
+                        requestId,
+                    },
+                });
+            } catch (auditErr) {
+                logger.error(`[${requestId}] unbalanced-invoice audit failed:`, auditErr.message);
+            }
+            return res.status(422).json({
+                error: 'INVOICE_UNBALANCED',
+                message: err.message,
+                details: err.details || null,
+                _request_id: requestId,
+            });
+        }
+        if (['INVALID_DISCOUNT', 'NEGATIVE_LINE_PRICE', 'INVALID_VAT_RATE', 'INVALID_MONEY_VALUE', 'INVALID_QUANTITY'].includes(err.code)) {
+            return res.status(422).json({ error: err.code, message: err.message, _request_id: requestId });
+        }
+
         if (code === '23505') {return res.status(409).json({ error: 'DUPLICATE', message: err.message, _request_id: requestId });}
         if (err.code === 'PRICE_OVERRIDE_FORBIDDEN') {return res.status(422).json({ error: 'PRICE_OVERRIDE_FORBIDDEN', message: err.message, _request_id: requestId });}
         if (err.code === 'DISCOUNT_APPROVAL_REQUIRED') {return res.status(403).json({ error: 'DISCOUNT_APPROVAL_REQUIRED', message: err.message, _request_id: requestId });}
@@ -1267,9 +1403,15 @@ async function completeSale(req, res) {
 function register(app) {
     app.post('/api/sales/complete',
         jwtAuth,
-        requireRole('cashier', 'manager', 'admin'),
+        requireRole('cashier', 'manager', 'admin', 'accountant'),
         completeSale
+    );
+    // Read-only price preview: same engine and guards as the sale, no writes.
+    app.post('/api/sales/quote',
+        jwtAuth,
+        requireRole('cashier', 'manager', 'admin', 'accountant'),
+        quoteSale
     );
 }
 
-module.exports = { register, completeSale, validateSalePayload, computeTotalsServerSide, computeCashChange, appendLegacyRevenueMirror, syncErpRevenueFromPosSale, resolveRecipeStockAvailability };
+module.exports = { register, completeSale, quoteSale, validateSalePayload, computeTotalsServerSide, computeCashChange, appendLegacyRevenueMirror, syncErpRevenueFromPosSale, resolveRecipeStockAvailability };

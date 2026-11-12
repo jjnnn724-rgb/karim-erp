@@ -2,7 +2,7 @@
  * V2 — POS doors. Writes use the established cashier routes; the server
  * remains authoritative for stock, VAT, shift ownership, ZATCA and printing.
  */
-import { API_BASE, apiFetch } from '../../core/api.js?v=4.9.296';
+import { API_BASE, apiFetch } from '../../core/api.js?v=4.9.312';
 
 const ORDER_ID = /^[0-9a-f]{8}-[0-9a-f]{4}-[1-8][0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i;
 
@@ -233,6 +233,23 @@ export async function exportPosOrders({
     const result = await apiFetch(`/pos/orders/export?${query.toString()}`);
     if (!result || !Array.isArray(result.data)) {throw new Error('صيغة تصدير فواتير الكاشير غير صالحة');}
     return result;
+}
+
+/**
+ * معاينة الخادم لنفس سطور البيع — نفس محرّك `/sales/complete` بلا كتابة.
+ * تُستخدم قبل إتمام البيع حتى لا يُحصَّل مبلغٌ يخالف ما سيُسجَّل.
+ */
+export async function quotePosSale({ departmentId, items }) {
+    const dept = Number(departmentId);
+    if (!Array.isArray(items) || !items.length) {throw new Error('أضف صنفًا واحدًا على الأقل');}
+    return apiFetch('/sales/quote', {
+        method: 'POST',
+        headers: deviceHeaders(dept),
+        body: JSON.stringify({
+            ...(Number.isInteger(dept) && dept > 0 ? { department_id: dept } : {}),
+            items,
+        }),
+    });
 }
 
 export async function completePosSale({ departmentId, sessionId, items, payments, idempotencyKey }) {

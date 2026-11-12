@@ -1,12 +1,6 @@
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-    CommandPalette,
-    foldArabic,
-    fuzzyScore,
-    PALETTE_RECENT_KEY,
-    rankCommandItems,
-} from './CommandPalette';
+import { CommandPalette, foldArabic, fuzzyScore, PALETTE_RECENT_KEY, rankCommandItems } from './CommandPalette';
 
 const items = [
     { to: '/warehouse', label: 'المخزون', hint: 'Inventory' },
@@ -56,9 +50,7 @@ describe('لوحة الأوامر', () => {
     });
 
     it('يحفظ آخر العناصر ويعرضها عند إعادة الفتح', () => {
-        const { rerender } = render(
-            <CommandPalette open items={items} onClose={vi.fn()} onSelect={vi.fn()} />,
-        );
+        const { rerender } = render(<CommandPalette open items={items} onClose={vi.fn()} onSelect={vi.fn()} />);
 
         const input = screen.getByLabelText('بحث الشاشات');
         fireEvent.keyDown(input, { key: 'ArrowDown' });

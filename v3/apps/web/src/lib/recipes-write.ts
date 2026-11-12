@@ -90,27 +90,17 @@ export async function createRecipe(input: RecipeCreateInput): Promise<RecipeResu
 }
 
 export async function updateRecipe(id: string | number, input: RecipeUpdateInput): Promise<RecipeResult> {
-    return writeJson(
-        recipeResultSchema,
-        `/api/recipes/${encodeURIComponent(String(id))}`,
-        'PUT',
-        {
-            ...(input.name !== undefined ? { name: input.name.trim() } : {}),
-            ...(input.selling_price !== undefined ? { selling_price: Number(input.selling_price) } : {}),
-            ...(input.total_cost !== undefined ? { total_cost: Number(input.total_cost) } : {}),
-            ...(input.department_code !== undefined ? { department_code: input.department_code?.trim() || null } : {}),
-            ...(input.active !== undefined ? { active: input.active } : {}),
-        },
-    );
+    return writeJson(recipeResultSchema, `/api/recipes/${encodeURIComponent(String(id))}`, 'PUT', {
+        ...(input.name !== undefined ? { name: input.name.trim() } : {}),
+        ...(input.selling_price !== undefined ? { selling_price: Number(input.selling_price) } : {}),
+        ...(input.total_cost !== undefined ? { total_cost: Number(input.total_cost) } : {}),
+        ...(input.department_code !== undefined ? { department_code: input.department_code?.trim() || null } : {}),
+        ...(input.active !== undefined ? { active: input.active } : {}),
+    });
 }
 
 export async function setRecipeActive(id: string | number, active: boolean): Promise<RecipeResult> {
-    return writeJson(
-        recipeResultSchema,
-        `/api/recipes/${encodeURIComponent(String(id))}`,
-        'PUT',
-        { active },
-    );
+    return writeJson(recipeResultSchema, `/api/recipes/${encodeURIComponent(String(id))}`, 'PUT', { active });
 }
 
 export async function deleteRecipe(id: string | number): Promise<void> {

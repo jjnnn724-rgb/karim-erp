@@ -2,8 +2,8 @@ import { act, fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it } from 'vitest';
 import { ThemeProvider } from './ThemeProvider';
 import { ThemeToggle } from './ThemeToggle';
-import { THEME_STORAGE_KEY } from './theme';
 import { clearTheme, expectNoAxeViolations, installDomPolyfills, mockMatchMedia } from './test-utils';
+import { THEME_STORAGE_KEY } from './theme';
 
 installDomPolyfills();
 

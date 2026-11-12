@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import './MenuBoard.premium.css';
-import { ReportHeader, SectionCard } from '../components/Reports';
 import { PrintActions } from '../components/PrintActions';
+import { ReportHeader, SectionCard } from '../components/Reports';
 
 /**
  * شاشات المنيو — مضيفةٌ لإدارة المنيو القديمة داخل إطار، كما في V2 حرفيًا
@@ -52,9 +52,7 @@ export function MenuBoard() {
                 </div>
             </SectionCard>
 
-            <p className="text-caption text-muted">
-                الصفحة المستضافة تعمل بقواعدها القديمة نفسها؛ التحديث يعيد تحميل الإطار فقط.
-            </p>
+            <p className="text-caption text-muted">الصفحة المستضافة تعمل بقواعدها القديمة نفسها؛ التحديث يعيد تحميل الإطار فقط.</p>
         </div>
     );
 }

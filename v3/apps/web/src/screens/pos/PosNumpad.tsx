@@ -43,7 +43,7 @@ function amountOf(value: string): number {
 
 export function PosNumpad({ value, due, fresh, disabled, onChange }: PosNumpadProps) {
     return (
-        <div className="pos-numpad" role="group" aria-label="لوحة الدفع السريع">
+        <fieldset className="pos-numpad m-0 min-w-0 border-0 p-0" aria-label="لوحة الدفع السريع">
             <div className="pos-numpad__head">
                 <span className="pos-numpad__label">النقدي المستلم</span>
                 <output className="pos-numpad__display" dir="ltr">
@@ -139,6 +139,6 @@ export function PosNumpad({ value, due, fresh, disabled, onChange }: PosNumpadPr
                     </button>
                 ))}
             </div>
-        </div>
+        </fieldset>
     );
 }

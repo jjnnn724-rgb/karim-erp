@@ -123,7 +123,16 @@ router.post('/dispatches/:id/approve', jwtAuth, requireRole(...APPROVAL_ROLES), 
         const transactions = [];
         const expenses = [];
 let totalValue = 0;
-        const mainLocation = await getWarehouseLocation(client, 'MAIN-WAREHOUSE', 'المخزن الرئيسي', 'warehouse');
+const reopenCount = Number((await client.query(
+    `SELECT COUNT(*)::int AS count FROM dispatch_workflow_events
+     WHERE dispatch_id=$1 AND event_type='warehouse_reopened'`,
+    [dispatch.id]
+)).rows[0]?.count || 0);
+const approvalCycle = reopenCount + 1;
+const journalSourceId = reopenCount > 0
+    ? `${dispatch.id}#r${approvalCycle}`
+    : String(dispatch.id);
+const mainLocation = await getWarehouseLocation(client, 'MAIN-WAREHOUSE', 'المخزن الرئيسي', 'warehouse');
 
         for (const requestedItem of requested) {
             const invResult = await client.query(
@@ -181,7 +190,9 @@ let totalValue = 0;
                 referenceType: 'dispatch',
                 referenceId: dispatchRef,
                 userId: req.user.id,
-                idempotencyKey: `dispatch:${dispatch.id}:approve:${inv.id}:${mainLocation.id}`,
+                idempotencyKey: approvalCycle === 1
+                    ? `dispatch:${dispatch.id}:approve:${inv.id}:${mainLocation.id}`
+                    : `dispatch:${dispatch.id}:approve:r${approvalCycle}:${inv.id}:${mainLocation.id}`,
                 reason: `اعتماد صرف ${inv.name} من المخزن الرئيسي`,
                 metadata: { dispatch_id: dispatch.id, location_id: mainLocation.id,
                     ...(isCatchWeight ? { packaging_qty: packagingQty, packaging_uom: packagingUom } : {}) },
@@ -258,6 +269,7 @@ let totalValue = 0;
         try {
             await require('../accounting-routes').postDispatchToLedger(dispatch.id, {
                 totalValue, date: dateOnly(dispatch.date), deptCode: dispatch.deptCode,
+                sourceId: journalSourceId,
             });
         } catch (ledgerErr) {
             /* Not silent on purpose: an approved dispatch that never reaches the GL
@@ -286,6 +298,162 @@ let totalValue = 0;
         res.status(status).json({ error: error.code || 'DISPATCH_APPROVE_FAILED', message });
     } finally {
         endDispatchOp(req.params.id, 'approve');
+        if (client) {client.release();}
+    }
+});
+
+// ─── إرجاع اعتماد المخازن للتعديل قبل استلام القسم ────────────────────────────
+// المدير/الأدمن فقط. يعكس المخزون والمصروف والقيد في معاملة واحدة، ثم يعيد
+// الإذن إلى سلسلة الاعتماد مع الاحتفاظ بأثر الاعتماد السابق في سجل الأحداث.
+router.post('/dispatches/:id/reopen', jwtAuth, requireRole('admin', 'manager'), async (req, res) => {
+    const reason = cleanName(req.body?.reason).slice(0, 500);
+    if (!reason) {return fail(res, 422, 'REOPEN_REASON_REQUIRED', 'سبب إرجاع الإذن للتعديل مطلوب');}
+    if (!beginDispatchOp(req.params.id, 'reopen')) {
+        return fail(res, 409, 'DISPATCH_REOPEN_IN_PROGRESS', 'إرجاع هذا الإذن قيد التنفيذ الآن — انتظر النتيجة ولا تُكرر الضغط');
+    }
+    let client = null;
+    try {
+        client = await pool.connect();
+        await client.query('BEGIN');
+        await client.query("SET LOCAL lock_timeout = '8000'");
+        const dispatch = (await client.query('SELECT * FROM dispatches WHERE id=$1 FOR UPDATE', [req.params.id])).rows[0];
+        if (!dispatch) {
+            await client.query('ROLLBACK');
+            return fail(res, 404, 'DISPATCH_NOT_FOUND', 'طلب الصرف غير موجود');
+        }
+        if (dispatch.status !== 'approved' || dispatch.kitchenReceivedAt || dispatch.kitchenReceivedBy ||
+            (Array.isArray(dispatch.receivedItems) && dispatch.receivedItems.length > 0)) {
+            await client.query('ROLLBACK');
+            return fail(res, 409, 'DISPATCH_NOT_REOPENABLE', 'يمكن إرجاع الإذن المعتمد للتعديل قبل تسجيل أي استلام من القسم فقط',
+                { status: dispatch.status, dispatchId: dispatch.id });
+        }
+
+        const approvedItems = Array.isArray(dispatch.approvedItems) ? dispatch.approvedItems : [];
+        if (!approvedItems.length) {
+            await client.query('ROLLBACK');
+            return fail(res, 409, 'DISPATCH_APPROVAL_ITEMS_MISSING', 'تعذر عكس الإذن لأن تفاصيل الأصناف المعتمدة غير متاحة');
+        }
+
+        const reopenId = id();
+        const mainLocation = await getWarehouseLocation(client, 'MAIN-WAREHOUSE', 'المخزن الرئيسي', 'warehouse');
+        const stockChanges = [];
+        const transactions = [];
+        const expenses = [];
+        let totalValue = 0;
+
+        for (const approved of approvedItems) {
+            const itemName = cleanName(approved.itemName || approved.name);
+            const approvedQty = n(approved.approvedQty ?? approved.qty);
+            if (!itemName || !(approvedQty > 0)) {
+                await client.query('ROLLBACK');
+                return fail(res, 409, 'DISPATCH_APPROVAL_ITEMS_INVALID', 'تعذر عكس الإذن لوجود صنف أو كمية معتمدة غير صالحة');
+            }
+            const invResult = approved.itemId
+                ? await client.query('SELECT * FROM inventory WHERE id=$1 FOR UPDATE', [approved.itemId])
+                : await client.query('SELECT * FROM inventory WHERE LOWER(name)=LOWER($1) FOR UPDATE', [itemName]);
+            const inv = invResult.rows[0];
+            if (!inv) {
+                await client.query('ROLLBACK');
+                return fail(res, 409, 'DISPATCH_APPROVAL_ITEM_MISSING', `تعذر العثور على الصنف المعتمد: ${itemName}`);
+            }
+            const cost = n(approved.avgCost, n(inv.avgCost));
+            const value = n(approved.approvedValue, round(approvedQty * cost, 2));
+            const packagingQty = n(approved.packagingQty) || null;
+            const packagingUom = approved.packagingUom || null;
+
+            await postInventoryLedgerEntry(client, {
+                transactionType: 'return',
+                inventoryId: Number(inv.id),
+                locationId: mainLocation.id,
+                quantityDelta: approvedQty,
+                unit: approved.unit || inv.unit || 'وحدة',
+                unitCost: cost,
+                destinationLocationId: mainLocation.id,
+                referenceType: 'dispatch_reopen',
+                referenceId: String(reopenId),
+                userId: req.user.id,
+                idempotencyKey: `dispatch-reopen:${dispatch.id}:${reopenId}:${inv.id}`,
+                reason: `إرجاع اعتماد إذن الصرف #${dispatch.id} قبل استلام القسم`,
+                metadata: { dispatch_id: dispatch.id, reopen_id: reopenId, reason },
+                catchWeightQty: packagingQty,
+                catchWeightUnit: packagingQty ? packagingUom : null,
+            });
+
+            const tx = (await client.query(
+                `INSERT INTO "inventoryTx" (id, "itemId", "itemName", qty, type, date, cost, "totalValue", notes, "dispatchId", catch_weight_qty, catch_weight_unit)
+                 VALUES ($1,$2,$3,$4,'return',$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+                [id(), inv.id, inv.name, approvedQty, dateOnly(dispatch.date), cost, value,
+                    `إرجاع اعتماد إذن #${dispatch.id} — ${reason}`, `DIS-${dispatch.id}`,
+                    packagingQty, packagingQty ? packagingUom : null]
+            )).rows[0];
+            const expense = (await client.query(
+                `INSERT INTO expenses (id, "deptId", "desc", amount, date, notes, "autoGenerated", category, "adjustmentType")
+                 VALUES ($1,$2,$3,$4,$5,$6,true,'مواد خام','dispatch_return') RETURNING *`,
+                [id(), dispatch.deptCode, `عكس صرف مخزون - ${inv.name} (${approvedQty} ${approved.unit || inv.unit || 'وحدة'})`,
+                    -value, dateOnly(dispatch.date), `إرجاع اعتماد إذن #${dispatch.id} — حركة مخزون ${tx.id} — ${reason}`]
+            )).rows[0];
+            stockChanges.push({ ...inv, qty: (await client.query('SELECT qty FROM inventory WHERE id=$1', [inv.id])).rows[0]?.qty });
+            transactions.push(tx);
+            expenses.push(expense);
+            totalValue += value;
+        }
+
+        const reopenCount = Number((await client.query(
+            `SELECT COUNT(*)::int AS count FROM dispatch_workflow_events
+             WHERE dispatch_id=$1 AND event_type='warehouse_reopened'`,
+            [dispatch.id]
+        )).rows[0]?.count || 0);
+        const previousCycle = reopenCount + 1;
+        const previousJournalId = reopenCount > 0
+            ? `${dispatch.id}#r${previousCycle}`
+            : String(dispatch.id);
+        const postedJournal = await client.query(
+            `SELECT COUNT(DISTINCT e.id)::int AS count, COALESCE(SUM(l.debit),0)::numeric(14,2) AS total_value
+             FROM journal_entries e LEFT JOIN journal_lines l ON l.entry_id=e.id
+             WHERE e.source_type='dispatch' AND e.source_id=$1 AND e.status='posted'`,
+            [previousJournalId]
+        );
+        const postedCount = Number(postedJournal.rows[0]?.count || 0);
+        const journalValue = Number(postedJournal.rows[0]?.total_value || 0);
+        if (postedCount > 0 && journalValue > 0) {
+            await require('../accounting-routes').postDispatchReopenToLedger(
+                dispatch.id,
+                reopenId,
+                { totalValue: journalValue, date: dateOnly(dispatch.date), deptCode: dispatch.deptCode },
+                client
+            );
+        }
+
+        const updated = (await client.query(
+            `UPDATE dispatches SET status='pending',
+               "approvedDate"=NULL, "approvedBy"=NULL, "approveNotes"=NULL, "approvedItems"='[]'::jsonb,
+               "warehouseApprovedAt"=NULL, "warehouseApprovedBy"=NULL,
+               "warehouseApprovalSignatureData"=NULL, "warehouseApprovalSignatureHash"=NULL,
+               "chefApprovedAt"=NULL, "chefApprovedBy"=NULL,
+               "chefApprovalSignatureData"=NULL, "chefApprovalSignatureHash"=NULL
+             WHERE id=$1 RETURNING *`,
+            [dispatch.id]
+        )).rows[0];
+        await appendDispatchEvent(client, dispatch.id, 'warehouse_reopened', dispatch.status, 'pending', req, null, {
+            reopenId,
+            reason,
+            reversedItems: approvedItems,
+            reversedValue: round(totalValue, 2),
+            accountingReversed: postedCount > 0 && journalValue > 0,
+        });
+        await client.query('COMMIT');
+
+        emit(req, 'dispatches', 'update', updated);
+        for (const item of stockChanges) {emit(req, 'inventory', 'update', item);}
+        for (const tx of transactions) {emit(req, 'inventoryTx', 'create', tx);}
+        for (const expense of expenses) {emit(req, 'expenses', 'create', expense);}
+        res.json({ ok: true, dispatch: updated, reopenId, totalValue: round(totalValue, 2) });
+    } catch (error) {
+        if (client) {await client.query('ROLLBACK').catch(() => {});}
+        logger.error('[warehouse_dispatch_reopen]', error);
+        res.status(500).json({ error: 'DISPATCH_REOPEN_FAILED', message: 'تعذر إرجاع الإذن للمخازن وعكس أثره' });
+    } finally {
+        endDispatchOp(req.params.id, 'reopen');
         if (client) {client.release();}
     }
 });

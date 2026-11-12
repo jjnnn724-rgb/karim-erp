@@ -9,15 +9,11 @@ import { buildFilename, canShareFiles, slicePages } from './pdf-share';
 
 describe('pdf-share — اسم الملف', () => {
     it('يبني الاسم بنفس صيغة V2: العنوان + التاريخ + الوقت', () => {
-        expect(buildFilename('تقرير المبيعات', new Date(2026, 10, 9, 2, 5))).toBe(
-            'تقرير المبيعات 2026-11-09 02-05.pdf',
-        );
+        expect(buildFilename('تقرير المبيعات', new Date(2026, 10, 9, 2, 5))).toBe('تقرير المبيعات 2026-11-09 02-05.pdf');
     });
 
     it('يستبدل محارف المسارات الممنوعة ويضغط المسافات', () => {
-        expect(buildFilename('  تقرير / أ*ب:c"د  ', new Date(2026, 0, 1, 23, 59))).toBe(
-            'تقرير أ ب c د 2026-01-01 23-59.pdf',
-        );
+        expect(buildFilename('  تقرير / أ*ب:c"د  ', new Date(2026, 0, 1, 23, 59))).toBe('تقرير أ ب c د 2026-01-01 23-59.pdf');
     });
 
     it('يعود إلى «تقرير» عند العنوان الفارغ ويقصّ الطويل', () => {

@@ -169,11 +169,7 @@ export function attendanceRecordToFacts(raw: AttendanceRecordRaw): AttendanceRec
  * `workMinutes` المخزَّن — الخوارزمية نفسها `attendance-repo.js:74-86`
  * (المنسوخة من `features/hr.js:254-261`).
  */
-export function attendanceMinutes(rec: {
-    checkIn?: string | null;
-    checkOut?: string | null;
-    workMinutes?: number | null;
-}): number | null {
+export function attendanceMinutes(rec: { checkIn?: string | null; checkOut?: string | null; workMinutes?: number | null }): number | null {
     const m = String(rec.checkIn || '').match(TIME_RE);
     const o = String(rec.checkOut || '').match(TIME_RE);
     if (m && o) {
@@ -342,11 +338,7 @@ export function summarizeAttendance(rows: readonly AttendanceRow[]): Record<Atte
  * `attendance-repo.js:177-186`: النسبة تحتاج مقامًا حقيقيًا — بلا سجلات
  * تعترف بذلك ولا تطبع «0%» من لا شيء.
  */
-export function sharePill(
-    count: number,
-    base: number,
-    label: string,
-): { text: string; on: boolean; aria: string; label: string } {
+export function sharePill(count: number, base: number, label: string): { text: string; on: boolean; aria: string; label: string } {
     if (!(base > 0)) {
         return { text: '—', on: false, aria: `لا سجلات في الفترة — لا نسبة تُحسب لـ${label}`, label };
     }
@@ -528,10 +520,7 @@ export function buildAttendanceLegend(rows: readonly AttendanceRow[]): {
  * المجموع والنطاق كما هما: المرشّح بالقسم يطابق `row.dept` (الاسم بعد
  * الصلة، أو الكود الخام حين تعذّرت).
  */
-export function applyAttendanceFilters(
-    rows: readonly AttendanceRow[],
-    filters: { dept?: string; state?: string } = {},
-): AttendanceRow[] {
+export function applyAttendanceFilters(rows: readonly AttendanceRow[], filters: { dept?: string; state?: string } = {}): AttendanceRow[] {
     const dept = filters.dept ?? '';
     const state = filters.state ?? '';
     const deptOn = Boolean(dept) && dept !== 'all';
@@ -555,10 +544,7 @@ export type PunchBar = {
  * تاريخٍ مُحلَّل — فلغةٌ محلية غيرها صامتة عن الصف الذي تلخّصه. ويُبقي
  * آخر `maxDays` يومًا (14) لأن الأعمدة تبقى مقروءة، الأقدم أولًا.
  */
-export function buildPunchBars(
-    rows: readonly AttendanceRow[],
-    { maxDays = 14 }: { maxDays?: number } = {},
-): PunchBar[] {
+export function buildPunchBars(rows: readonly AttendanceRow[], { maxDays = 14 }: { maxDays?: number } = {}): PunchBar[] {
     const byDay = new Map<string, PunchBar>();
     for (const row of rows) {
         const day = String(row.date || '');
@@ -653,10 +639,7 @@ export const PERIODS = {
 export type AttendancePeriodKind = keyof typeof PERIODS;
 
 /** `attendance-repo.js:320-327`: مدى شامل لنهايةٍ معطاة. */
-export function periodRange(
-    kind: AttendancePeriodKind,
-    endIso: string = todayIso(),
-): { from: string; to: string } | null {
+export function periodRange(kind: AttendancePeriodKind, endIso: string = todayIso()): { from: string; to: string } | null {
     const period = PERIODS[kind];
     if (!period) {
         return null;
@@ -965,12 +948,7 @@ export async function fetchAttendanceRange({
     if (String(from) > String(to)) {
         throw new Error('تاريخ البداية بعد تاريخ النهاية');
     }
-    const body = await fetchJson(
-        attendanceRangeSchema,
-        attendanceRangePath(from, to, limit),
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    const body = await fetchJson(attendanceRangeSchema, attendanceRangePath(from, to, limit), getAccessToken(), signal ? { signal } : {});
     return {
         rows: body.data.map(attendanceRecordToFacts),
         total: body.total === null || body.total === undefined ? body.data.length : body.total,

@@ -1,670 +1,670 @@
 {
-  "meta": {
-    "status": 200,
-    "url": "/api/accounting/journal?limit=20",
-    "captured_at": "2026-11-09T20:01:46.169Z",
-    "server": "karim-erp 4.9.2 @ 127.0.0.1:5100 (dev copy)"
-  },
-  "body": [
-    {
-      "id": "1794001627414356",
-      "entry_no": "JE-20261107-0021",
-      "date": "2026-11-06T21:00:00.000Z",
-      "memo": "مبيعات كاشير يارسوفت — كاشير 1",
-      "source_type": "yarasoft_revenue",
-      "source_id": "ora:CC:1338916",
-      "status": "posted",
-      "created_by": null,
-      "created_at": "2026-11-06T21:47:07.395Z",
-      "approved_by": null,
-      "approved_at": null,
-      "branch_id": 1,
-      "voided_at": null,
-      "voided_by": null,
-      "voided_by_name": null,
-      "void_reason": null,
-      "created_by_name": null,
-      "lines": [
-        {
-          "account_code": "4000",
-          "debit": 0,
-          "credit": 40,
-          "memo": "إيراد مبيعات (صافي)"
-        },
-        {
-          "account_code": "1000",
-          "debit": 40,
-          "credit": 0,
-          "memo": "تحصيل نقدي — كاشير يارسوفت"
-        }
-      ]
+    "meta": {
+        "status": 200,
+        "url": "/api/accounting/journal?limit=20",
+        "captured_at": "2026-11-09T20:01:46.169Z",
+        "server": "karim-erp 4.9.2 @ 127.0.0.1:5100 (dev copy)"
     },
-    {
-      "id": "1794001508414316",
-      "entry_no": "JE-20261107-0020",
-      "date": "2026-11-06T21:00:00.000Z",
-      "memo": "مبيعات كاشير يارسوفت — كاشير 4",
-      "source_type": "yarasoft_revenue",
-      "source_id": "ora:CC:1338915",
-      "status": "posted",
-      "created_by": null,
-      "created_at": "2026-11-06T21:45:07.568Z",
-      "approved_by": null,
-      "approved_at": null,
-      "branch_id": 1,
-      "voided_at": null,
-      "voided_by": null,
-      "voided_by_name": null,
-      "void_reason": null,
-      "created_by_name": null,
-      "lines": [
+    "body": [
         {
-          "account_code": "4000",
-          "debit": 0,
-          "credit": 20,
-          "memo": "إيراد مبيعات (صافي)"
+            "id": "1794001627414356",
+            "entry_no": "JE-20261107-0021",
+            "date": "2026-11-06T21:00:00.000Z",
+            "memo": "مبيعات كاشير يارسوفت — كاشير 1",
+            "source_type": "yarasoft_revenue",
+            "source_id": "ora:CC:1338916",
+            "status": "posted",
+            "created_by": null,
+            "created_at": "2026-11-06T21:47:07.395Z",
+            "approved_by": null,
+            "approved_at": null,
+            "branch_id": 1,
+            "voided_at": null,
+            "voided_by": null,
+            "voided_by_name": null,
+            "void_reason": null,
+            "created_by_name": null,
+            "lines": [
+                {
+                    "account_code": "4000",
+                    "debit": 0,
+                    "credit": 40,
+                    "memo": "إيراد مبيعات (صافي)"
+                },
+                {
+                    "account_code": "1000",
+                    "debit": 40,
+                    "credit": 0,
+                    "memo": "تحصيل نقدي — كاشير يارسوفت"
+                }
+            ]
         },
         {
-          "account_code": "1000",
-          "debit": 20,
-          "credit": 0,
-          "memo": "تحصيل نقدي — كاشير يارسوفت"
-        }
-      ]
-    },
-    {
-      "id": "1794001448497542",
-      "entry_no": "JE-20261107-0019",
-      "date": "2026-11-06T21:00:00.000Z",
-      "memo": "مبيعات كاشير يارسوفت — كاشير 4",
-      "source_type": "yarasoft_revenue",
-      "source_id": "ora:CC:1338914",
-      "status": "posted",
-      "created_by": null,
-      "created_at": "2026-11-06T21:44:08.209Z",
-      "approved_by": null,
-      "approved_at": null,
-      "branch_id": 1,
-      "voided_at": null,
-      "voided_by": null,
-      "voided_by_name": null,
-      "void_reason": null,
-      "created_by_name": null,
-      "lines": [
-        {
-          "account_code": "1000",
-          "debit": 69,
-          "credit": 0,
-          "memo": "تحصيل نقدي — كاشير يارسوفت"
+            "id": "1794001508414316",
+            "entry_no": "JE-20261107-0020",
+            "date": "2026-11-06T21:00:00.000Z",
+            "memo": "مبيعات كاشير يارسوفت — كاشير 4",
+            "source_type": "yarasoft_revenue",
+            "source_id": "ora:CC:1338915",
+            "status": "posted",
+            "created_by": null,
+            "created_at": "2026-11-06T21:45:07.568Z",
+            "approved_by": null,
+            "approved_at": null,
+            "branch_id": 1,
+            "voided_at": null,
+            "voided_by": null,
+            "voided_by_name": null,
+            "void_reason": null,
+            "created_by_name": null,
+            "lines": [
+                {
+                    "account_code": "4000",
+                    "debit": 0,
+                    "credit": 20,
+                    "memo": "إيراد مبيعات (صافي)"
+                },
+                {
+                    "account_code": "1000",
+                    "debit": 20,
+                    "credit": 0,
+                    "memo": "تحصيل نقدي — كاشير يارسوفت"
+                }
+            ]
         },
         {
-          "account_code": "4000",
-          "debit": 0,
-          "credit": 69,
-          "memo": "إيراد مبيعات (صافي)"
-        }
-      ]
-    },
-    {
-      "id": "1794001328283346",
-      "entry_no": "JE-20261107-0018",
-      "date": "2026-11-06T21:00:00.000Z",
-      "memo": "مبيعات كاشير يارسوفت — كاشير 4",
-      "source_type": "yarasoft_revenue",
-      "source_id": "ora:CC:1338913",
-      "status": "posted",
-      "created_by": null,
-      "created_at": "2026-11-06T21:42:08.215Z",
-      "approved_by": null,
-      "approved_at": null,
-      "branch_id": 1,
-      "voided_at": null,
-      "voided_by": null,
-      "voided_by_name": null,
-      "void_reason": null,
-      "created_by_name": null,
-      "lines": [
-        {
-          "account_code": "1000",
-          "debit": 142,
-          "credit": 0,
-          "memo": "تحصيل نقدي — كاشير يارسوفت"
+            "id": "1794001448497542",
+            "entry_no": "JE-20261107-0019",
+            "date": "2026-11-06T21:00:00.000Z",
+            "memo": "مبيعات كاشير يارسوفت — كاشير 4",
+            "source_type": "yarasoft_revenue",
+            "source_id": "ora:CC:1338914",
+            "status": "posted",
+            "created_by": null,
+            "created_at": "2026-11-06T21:44:08.209Z",
+            "approved_by": null,
+            "approved_at": null,
+            "branch_id": 1,
+            "voided_at": null,
+            "voided_by": null,
+            "voided_by_name": null,
+            "void_reason": null,
+            "created_by_name": null,
+            "lines": [
+                {
+                    "account_code": "1000",
+                    "debit": 69,
+                    "credit": 0,
+                    "memo": "تحصيل نقدي — كاشير يارسوفت"
+                },
+                {
+                    "account_code": "4000",
+                    "debit": 0,
+                    "credit": 69,
+                    "memo": "إيراد مبيعات (صافي)"
+                }
+            ]
         },
         {
-          "account_code": "4000",
-          "debit": 0,
-          "credit": 142,
-          "memo": "إيراد مبيعات (صافي)"
-        }
-      ]
-    },
-    {
-      "id": "1794000967473046",
-      "entry_no": "JE-20261107-0017",
-      "date": "2026-11-06T21:00:00.000Z",
-      "memo": "مبيعات كاشير يارسوفت — كاشير 1",
-      "source_type": "yarasoft_revenue",
-      "source_id": "ora:CC:1338912",
-      "status": "posted",
-      "created_by": null,
-      "created_at": "2026-11-06T21:36:06.542Z",
-      "approved_by": null,
-      "approved_at": null,
-      "branch_id": 1,
-      "voided_at": null,
-      "voided_by": null,
-      "voided_by_name": null,
-      "void_reason": null,
-      "created_by_name": null,
-      "lines": [
-        {
-          "account_code": "1000",
-          "debit": 5,
-          "credit": 0,
-          "memo": "تحصيل نقدي — كاشير يارسوفت"
+            "id": "1794001328283346",
+            "entry_no": "JE-20261107-0018",
+            "date": "2026-11-06T21:00:00.000Z",
+            "memo": "مبيعات كاشير يارسوفت — كاشير 4",
+            "source_type": "yarasoft_revenue",
+            "source_id": "ora:CC:1338913",
+            "status": "posted",
+            "created_by": null,
+            "created_at": "2026-11-06T21:42:08.215Z",
+            "approved_by": null,
+            "approved_at": null,
+            "branch_id": 1,
+            "voided_at": null,
+            "voided_by": null,
+            "voided_by_name": null,
+            "void_reason": null,
+            "created_by_name": null,
+            "lines": [
+                {
+                    "account_code": "1000",
+                    "debit": 142,
+                    "credit": 0,
+                    "memo": "تحصيل نقدي — كاشير يارسوفت"
+                },
+                {
+                    "account_code": "4000",
+                    "debit": 0,
+                    "credit": 142,
+                    "memo": "إيراد مبيعات (صافي)"
+                }
+            ]
         },
         {
-          "account_code": "4000",
-          "debit": 0,
-          "credit": 5,
-          "memo": "إيراد مبيعات (صافي)"
-        }
-      ]
-    },
-    {
-      "id": "1794000731986664",
-      "entry_no": "JE-20261107-0016",
-      "date": "2026-11-06T21:00:00.000Z",
-      "memo": "مبيعات كاشير يارسوفت — كاشير 4",
-      "source_type": "yarasoft_revenue",
-      "source_id": "ora:CC:1338910",
-      "status": "posted",
-      "created_by": null,
-      "created_at": "2026-11-06T21:32:11.951Z",
-      "approved_by": null,
-      "approved_at": null,
-      "branch_id": 1,
-      "voided_at": null,
-      "voided_by": null,
-      "voided_by_name": null,
-      "void_reason": null,
-      "created_by_name": null,
-      "lines": [
-        {
-          "account_code": "4000",
-          "debit": 0,
-          "credit": 116,
-          "memo": "إيراد مبيعات (صافي)"
+            "id": "1794000967473046",
+            "entry_no": "JE-20261107-0017",
+            "date": "2026-11-06T21:00:00.000Z",
+            "memo": "مبيعات كاشير يارسوفت — كاشير 1",
+            "source_type": "yarasoft_revenue",
+            "source_id": "ora:CC:1338912",
+            "status": "posted",
+            "created_by": null,
+            "created_at": "2026-11-06T21:36:06.542Z",
+            "approved_by": null,
+            "approved_at": null,
+            "branch_id": 1,
+            "voided_at": null,
+            "voided_by": null,
+            "voided_by_name": null,
+            "void_reason": null,
+            "created_by_name": null,
+            "lines": [
+                {
+                    "account_code": "1000",
+                    "debit": 5,
+                    "credit": 0,
+                    "memo": "تحصيل نقدي — كاشير يارسوفت"
+                },
+                {
+                    "account_code": "4000",
+                    "debit": 0,
+                    "credit": 5,
+                    "memo": "إيراد مبيعات (صافي)"
+                }
+            ]
         },
         {
-          "account_code": "1000",
-          "debit": 116,
-          "credit": 0,
-          "memo": "تحصيل نقدي — كاشير يارسوفت"
-        }
-      ]
-    },
-    {
-      "id": "1794000731135544",
-      "entry_no": "JE-20261107-0015",
-      "date": "2026-11-06T21:00:00.000Z",
-      "memo": "مبيعات كاشير يارسوفت — كاشير 4",
-      "source_type": "yarasoft_revenue",
-      "source_id": "ora:CC:1338911",
-      "status": "posted",
-      "created_by": null,
-      "created_at": "2026-11-06T21:32:10.876Z",
-      "approved_by": null,
-      "approved_at": null,
-      "branch_id": 1,
-      "voided_at": null,
-      "voided_by": null,
-      "voided_by_name": null,
-      "void_reason": null,
-      "created_by_name": null,
-      "lines": [
-        {
-          "account_code": "4000",
-          "debit": 0,
-          "credit": 15,
-          "memo": "إيراد مبيعات (صافي)"
+            "id": "1794000731986664",
+            "entry_no": "JE-20261107-0016",
+            "date": "2026-11-06T21:00:00.000Z",
+            "memo": "مبيعات كاشير يارسوفت — كاشير 4",
+            "source_type": "yarasoft_revenue",
+            "source_id": "ora:CC:1338910",
+            "status": "posted",
+            "created_by": null,
+            "created_at": "2026-11-06T21:32:11.951Z",
+            "approved_by": null,
+            "approved_at": null,
+            "branch_id": 1,
+            "voided_at": null,
+            "voided_by": null,
+            "voided_by_name": null,
+            "void_reason": null,
+            "created_by_name": null,
+            "lines": [
+                {
+                    "account_code": "4000",
+                    "debit": 0,
+                    "credit": 116,
+                    "memo": "إيراد مبيعات (صافي)"
+                },
+                {
+                    "account_code": "1000",
+                    "debit": 116,
+                    "credit": 0,
+                    "memo": "تحصيل نقدي — كاشير يارسوفت"
+                }
+            ]
         },
         {
-          "account_code": "1000",
-          "debit": 15,
-          "credit": 0,
-          "memo": "تحصيل نقدي — كاشير يارسوفت"
-        }
-      ]
-    },
-    {
-      "id": "1793999947773678",
-      "entry_no": "JE-20261107-0014",
-      "date": "2026-11-06T21:00:00.000Z",
-      "memo": "مبيعات كاشير يارسوفت — كاشير 9",
-      "source_type": "yarasoft_revenue",
-      "source_id": "ora:CC:1338909",
-      "status": "posted",
-      "created_by": null,
-      "created_at": "2026-11-06T21:19:07.705Z",
-      "approved_by": null,
-      "approved_at": null,
-      "branch_id": 1,
-      "voided_at": null,
-      "voided_by": null,
-      "voided_by_name": null,
-      "void_reason": null,
-      "created_by_name": null,
-      "lines": [
-        {
-          "account_code": "1000",
-          "debit": 150,
-          "credit": 0,
-          "memo": "تحصيل نقدي — كاشير يارسوفت"
+            "id": "1794000731135544",
+            "entry_no": "JE-20261107-0015",
+            "date": "2026-11-06T21:00:00.000Z",
+            "memo": "مبيعات كاشير يارسوفت — كاشير 4",
+            "source_type": "yarasoft_revenue",
+            "source_id": "ora:CC:1338911",
+            "status": "posted",
+            "created_by": null,
+            "created_at": "2026-11-06T21:32:10.876Z",
+            "approved_by": null,
+            "approved_at": null,
+            "branch_id": 1,
+            "voided_at": null,
+            "voided_by": null,
+            "voided_by_name": null,
+            "void_reason": null,
+            "created_by_name": null,
+            "lines": [
+                {
+                    "account_code": "4000",
+                    "debit": 0,
+                    "credit": 15,
+                    "memo": "إيراد مبيعات (صافي)"
+                },
+                {
+                    "account_code": "1000",
+                    "debit": 15,
+                    "credit": 0,
+                    "memo": "تحصيل نقدي — كاشير يارسوفت"
+                }
+            ]
         },
         {
-          "account_code": "4000",
-          "debit": 0,
-          "credit": 150,
-          "memo": "إيراد مبيعات (صافي)"
-        }
-      ]
-    },
-    {
-      "id": "1793999947769965",
-      "entry_no": "JE-20261107-0013",
-      "date": "2026-11-06T21:00:00.000Z",
-      "memo": "مبيعات كاشير يارسوفت — كاشير 1",
-      "source_type": "yarasoft_revenue",
-      "source_id": "ora:CC:1338908",
-      "status": "posted",
-      "created_by": null,
-      "created_at": "2026-11-06T21:19:07.442Z",
-      "approved_by": null,
-      "approved_at": null,
-      "branch_id": 1,
-      "voided_at": null,
-      "voided_by": null,
-      "voided_by_name": null,
-      "void_reason": null,
-      "created_by_name": null,
-      "lines": [
-        {
-          "account_code": "4000",
-          "debit": 0,
-          "credit": 46,
-          "memo": "إيراد مبيعات (صافي)"
+            "id": "1793999947773678",
+            "entry_no": "JE-20261107-0014",
+            "date": "2026-11-06T21:00:00.000Z",
+            "memo": "مبيعات كاشير يارسوفت — كاشير 9",
+            "source_type": "yarasoft_revenue",
+            "source_id": "ora:CC:1338909",
+            "status": "posted",
+            "created_by": null,
+            "created_at": "2026-11-06T21:19:07.705Z",
+            "approved_by": null,
+            "approved_at": null,
+            "branch_id": 1,
+            "voided_at": null,
+            "voided_by": null,
+            "voided_by_name": null,
+            "void_reason": null,
+            "created_by_name": null,
+            "lines": [
+                {
+                    "account_code": "1000",
+                    "debit": 150,
+                    "credit": 0,
+                    "memo": "تحصيل نقدي — كاشير يارسوفت"
+                },
+                {
+                    "account_code": "4000",
+                    "debit": 0,
+                    "credit": 150,
+                    "memo": "إيراد مبيعات (صافي)"
+                }
+            ]
         },
         {
-          "account_code": "1000",
-          "debit": 46,
-          "credit": 0,
-          "memo": "تحصيل نقدي — كاشير يارسوفت"
-        }
-      ]
-    },
-    {
-      "id": "1793999827250446",
-      "entry_no": "JE-20261107-0012",
-      "date": "2026-11-06T21:00:00.000Z",
-      "memo": "مبيعات كاشير يارسوفت — كاشير 4",
-      "source_type": "yarasoft_revenue",
-      "source_id": "ora:CC:1338907",
-      "status": "posted",
-      "created_by": null,
-      "created_at": "2026-11-06T21:17:06.695Z",
-      "approved_by": null,
-      "approved_at": null,
-      "branch_id": 1,
-      "voided_at": null,
-      "voided_by": null,
-      "voided_by_name": null,
-      "void_reason": null,
-      "created_by_name": null,
-      "lines": [
-        {
-          "account_code": "1000",
-          "debit": 10,
-          "credit": 0,
-          "memo": "تحصيل نقدي — كاشير يارسوفت"
+            "id": "1793999947769965",
+            "entry_no": "JE-20261107-0013",
+            "date": "2026-11-06T21:00:00.000Z",
+            "memo": "مبيعات كاشير يارسوفت — كاشير 1",
+            "source_type": "yarasoft_revenue",
+            "source_id": "ora:CC:1338908",
+            "status": "posted",
+            "created_by": null,
+            "created_at": "2026-11-06T21:19:07.442Z",
+            "approved_by": null,
+            "approved_at": null,
+            "branch_id": 1,
+            "voided_at": null,
+            "voided_by": null,
+            "voided_by_name": null,
+            "void_reason": null,
+            "created_by_name": null,
+            "lines": [
+                {
+                    "account_code": "4000",
+                    "debit": 0,
+                    "credit": 46,
+                    "memo": "إيراد مبيعات (صافي)"
+                },
+                {
+                    "account_code": "1000",
+                    "debit": 46,
+                    "credit": 0,
+                    "memo": "تحصيل نقدي — كاشير يارسوفت"
+                }
+            ]
         },
         {
-          "account_code": "4000",
-          "debit": 0,
-          "credit": 10,
-          "memo": "إيراد مبيعات (صافي)"
-        }
-      ]
-    },
-    {
-      "id": "1793999708306645",
-      "entry_no": "JE-20261107-0011",
-      "date": "2026-11-06T21:00:00.000Z",
-      "memo": "مبيعات كاشير يارسوفت — كاشير 4",
-      "source_type": "yarasoft_revenue",
-      "source_id": "ora:CC:1338906",
-      "status": "posted",
-      "created_by": null,
-      "created_at": "2026-11-06T21:15:07.528Z",
-      "approved_by": null,
-      "approved_at": null,
-      "branch_id": 1,
-      "voided_at": null,
-      "voided_by": null,
-      "voided_by_name": null,
-      "void_reason": null,
-      "created_by_name": null,
-      "lines": [
-        {
-          "account_code": "4000",
-          "debit": 0,
-          "credit": 30,
-          "memo": "إيراد مبيعات (صافي)"
+            "id": "1793999827250446",
+            "entry_no": "JE-20261107-0012",
+            "date": "2026-11-06T21:00:00.000Z",
+            "memo": "مبيعات كاشير يارسوفت — كاشير 4",
+            "source_type": "yarasoft_revenue",
+            "source_id": "ora:CC:1338907",
+            "status": "posted",
+            "created_by": null,
+            "created_at": "2026-11-06T21:17:06.695Z",
+            "approved_by": null,
+            "approved_at": null,
+            "branch_id": 1,
+            "voided_at": null,
+            "voided_by": null,
+            "voided_by_name": null,
+            "void_reason": null,
+            "created_by_name": null,
+            "lines": [
+                {
+                    "account_code": "1000",
+                    "debit": 10,
+                    "credit": 0,
+                    "memo": "تحصيل نقدي — كاشير يارسوفت"
+                },
+                {
+                    "account_code": "4000",
+                    "debit": 0,
+                    "credit": 10,
+                    "memo": "إيراد مبيعات (صافي)"
+                }
+            ]
         },
         {
-          "account_code": "1000",
-          "debit": 30,
-          "credit": 0,
-          "memo": "تحصيل نقدي — كاشير يارسوفت"
-        }
-      ]
-    },
-    {
-      "id": "1793999438606272",
-      "entry_no": "JE-20261107-0010",
-      "date": "2026-11-06T21:00:00.000Z",
-      "memo": "مبيعات كاشير يارسوفت — كاشير 4",
-      "source_type": "yarasoft_revenue",
-      "source_id": "ora:CC:1338905",
-      "status": "posted",
-      "created_by": null,
-      "created_at": "2026-11-06T21:10:38.579Z",
-      "approved_by": null,
-      "approved_at": null,
-      "branch_id": 1,
-      "voided_at": null,
-      "voided_by": null,
-      "voided_by_name": null,
-      "void_reason": null,
-      "created_by_name": null,
-      "lines": [
-        {
-          "account_code": "1000",
-          "debit": 5.2,
-          "credit": 0,
-          "memo": "تحصيل نقدي — كاشير يارسوفت"
+            "id": "1793999708306645",
+            "entry_no": "JE-20261107-0011",
+            "date": "2026-11-06T21:00:00.000Z",
+            "memo": "مبيعات كاشير يارسوفت — كاشير 4",
+            "source_type": "yarasoft_revenue",
+            "source_id": "ora:CC:1338906",
+            "status": "posted",
+            "created_by": null,
+            "created_at": "2026-11-06T21:15:07.528Z",
+            "approved_by": null,
+            "approved_at": null,
+            "branch_id": 1,
+            "voided_at": null,
+            "voided_by": null,
+            "voided_by_name": null,
+            "void_reason": null,
+            "created_by_name": null,
+            "lines": [
+                {
+                    "account_code": "4000",
+                    "debit": 0,
+                    "credit": 30,
+                    "memo": "إيراد مبيعات (صافي)"
+                },
+                {
+                    "account_code": "1000",
+                    "debit": 30,
+                    "credit": 0,
+                    "memo": "تحصيل نقدي — كاشير يارسوفت"
+                }
+            ]
         },
         {
-          "account_code": "4000",
-          "debit": 0,
-          "credit": 5.2,
-          "memo": "إيراد مبيعات (صافي)"
-        }
-      ]
-    },
-    {
-      "id": "1793999199632691",
-      "entry_no": "JE-20261107-0009",
-      "date": "2026-11-06T21:00:00.000Z",
-      "memo": "مبيعات كاشير يارسوفت — كاشير 4",
-      "source_type": "yarasoft_revenue",
-      "source_id": "ora:CC:1338904",
-      "status": "posted",
-      "created_by": null,
-      "created_at": "2026-11-06T21:06:38.779Z",
-      "approved_by": null,
-      "approved_at": null,
-      "branch_id": 1,
-      "voided_at": null,
-      "voided_by": null,
-      "voided_by_name": null,
-      "void_reason": null,
-      "created_by_name": null,
-      "lines": [
-        {
-          "account_code": "1000",
-          "debit": 65,
-          "credit": 0,
-          "memo": "تحصيل نقدي — كاشير يارسوفت"
+            "id": "1793999438606272",
+            "entry_no": "JE-20261107-0010",
+            "date": "2026-11-06T21:00:00.000Z",
+            "memo": "مبيعات كاشير يارسوفت — كاشير 4",
+            "source_type": "yarasoft_revenue",
+            "source_id": "ora:CC:1338905",
+            "status": "posted",
+            "created_by": null,
+            "created_at": "2026-11-06T21:10:38.579Z",
+            "approved_by": null,
+            "approved_at": null,
+            "branch_id": 1,
+            "voided_at": null,
+            "voided_by": null,
+            "voided_by_name": null,
+            "void_reason": null,
+            "created_by_name": null,
+            "lines": [
+                {
+                    "account_code": "1000",
+                    "debit": 5.2,
+                    "credit": 0,
+                    "memo": "تحصيل نقدي — كاشير يارسوفت"
+                },
+                {
+                    "account_code": "4000",
+                    "debit": 0,
+                    "credit": 5.2,
+                    "memo": "إيراد مبيعات (صافي)"
+                }
+            ]
         },
         {
-          "account_code": "4000",
-          "debit": 0,
-          "credit": 65,
-          "memo": "إيراد مبيعات (صافي)"
-        }
-      ]
-    },
-    {
-      "id": "1793999142965561",
-      "entry_no": "JE-20261107-0008",
-      "date": "2026-11-06T21:00:00.000Z",
-      "memo": "مبيعات كاشير يارسوفت — كاشير 4",
-      "source_type": "yarasoft_revenue",
-      "source_id": "ora:CC:1338902",
-      "status": "posted",
-      "created_by": null,
-      "created_at": "2026-11-06T21:05:42.262Z",
-      "approved_by": null,
-      "approved_at": null,
-      "branch_id": 1,
-      "voided_at": null,
-      "voided_by": null,
-      "voided_by_name": null,
-      "void_reason": null,
-      "created_by_name": null,
-      "lines": [
-        {
-          "account_code": "1000",
-          "debit": 80,
-          "credit": 0,
-          "memo": "تحصيل نقدي — كاشير يارسوفت"
+            "id": "1793999199632691",
+            "entry_no": "JE-20261107-0009",
+            "date": "2026-11-06T21:00:00.000Z",
+            "memo": "مبيعات كاشير يارسوفت — كاشير 4",
+            "source_type": "yarasoft_revenue",
+            "source_id": "ora:CC:1338904",
+            "status": "posted",
+            "created_by": null,
+            "created_at": "2026-11-06T21:06:38.779Z",
+            "approved_by": null,
+            "approved_at": null,
+            "branch_id": 1,
+            "voided_at": null,
+            "voided_by": null,
+            "voided_by_name": null,
+            "void_reason": null,
+            "created_by_name": null,
+            "lines": [
+                {
+                    "account_code": "1000",
+                    "debit": 65,
+                    "credit": 0,
+                    "memo": "تحصيل نقدي — كاشير يارسوفت"
+                },
+                {
+                    "account_code": "4000",
+                    "debit": 0,
+                    "credit": 65,
+                    "memo": "إيراد مبيعات (صافي)"
+                }
+            ]
         },
         {
-          "account_code": "4000",
-          "debit": 0,
-          "credit": 80,
-          "memo": "إيراد مبيعات (صافي)"
-        }
-      ]
-    },
-    {
-      "id": "1793999141523629",
-      "entry_no": "JE-20261107-0007",
-      "date": "2026-11-06T21:00:00.000Z",
-      "memo": "مبيعات كاشير يارسوفت — كاشير 4",
-      "source_type": "yarasoft_revenue",
-      "source_id": "ora:CC:1338903",
-      "status": "posted",
-      "created_by": null,
-      "created_at": "2026-11-06T21:05:40.693Z",
-      "approved_by": null,
-      "approved_at": null,
-      "branch_id": 1,
-      "voided_at": null,
-      "voided_by": null,
-      "voided_by_name": null,
-      "void_reason": null,
-      "created_by_name": null,
-      "lines": [
-        {
-          "account_code": "4000",
-          "debit": 0,
-          "credit": 10,
-          "memo": "إيراد مبيعات (صافي)"
+            "id": "1793999142965561",
+            "entry_no": "JE-20261107-0008",
+            "date": "2026-11-06T21:00:00.000Z",
+            "memo": "مبيعات كاشير يارسوفت — كاشير 4",
+            "source_type": "yarasoft_revenue",
+            "source_id": "ora:CC:1338902",
+            "status": "posted",
+            "created_by": null,
+            "created_at": "2026-11-06T21:05:42.262Z",
+            "approved_by": null,
+            "approved_at": null,
+            "branch_id": 1,
+            "voided_at": null,
+            "voided_by": null,
+            "voided_by_name": null,
+            "void_reason": null,
+            "created_by_name": null,
+            "lines": [
+                {
+                    "account_code": "1000",
+                    "debit": 80,
+                    "credit": 0,
+                    "memo": "تحصيل نقدي — كاشير يارسوفت"
+                },
+                {
+                    "account_code": "4000",
+                    "debit": 0,
+                    "credit": 80,
+                    "memo": "إيراد مبيعات (صافي)"
+                }
+            ]
         },
         {
-          "account_code": "1000",
-          "debit": 10,
-          "credit": 0,
-          "memo": "تحصيل نقدي — كاشير يارسوفت"
-        }
-      ]
-    },
-    {
-      "id": "1793999040371200",
-      "entry_no": "JE-20261107-0006",
-      "date": "2026-11-06T21:00:00.000Z",
-      "memo": "مبيعات كاشير يارسوفت — كاشير 4",
-      "source_type": "yarasoft_revenue",
-      "source_id": "ora:CC:1338901",
-      "status": "posted",
-      "created_by": null,
-      "created_at": "2026-11-06T21:03:59.482Z",
-      "approved_by": null,
-      "approved_at": null,
-      "branch_id": 1,
-      "voided_at": null,
-      "voided_by": null,
-      "voided_by_name": null,
-      "void_reason": null,
-      "created_by_name": null,
-      "lines": [
-        {
-          "account_code": "1000",
-          "debit": 10,
-          "credit": 0,
-          "memo": "تحصيل نقدي — كاشير يارسوفت"
+            "id": "1793999141523629",
+            "entry_no": "JE-20261107-0007",
+            "date": "2026-11-06T21:00:00.000Z",
+            "memo": "مبيعات كاشير يارسوفت — كاشير 4",
+            "source_type": "yarasoft_revenue",
+            "source_id": "ora:CC:1338903",
+            "status": "posted",
+            "created_by": null,
+            "created_at": "2026-11-06T21:05:40.693Z",
+            "approved_by": null,
+            "approved_at": null,
+            "branch_id": 1,
+            "voided_at": null,
+            "voided_by": null,
+            "voided_by_name": null,
+            "void_reason": null,
+            "created_by_name": null,
+            "lines": [
+                {
+                    "account_code": "4000",
+                    "debit": 0,
+                    "credit": 10,
+                    "memo": "إيراد مبيعات (صافي)"
+                },
+                {
+                    "account_code": "1000",
+                    "debit": 10,
+                    "credit": 0,
+                    "memo": "تحصيل نقدي — كاشير يارسوفت"
+                }
+            ]
         },
         {
-          "account_code": "4000",
-          "debit": 0,
-          "credit": 10,
-          "memo": "إيراد مبيعات (صافي)"
-        }
-      ]
-    },
-    {
-      "id": "1793998901715443",
-      "entry_no": "JE-20261107-0005",
-      "date": "2026-11-06T21:00:00.000Z",
-      "memo": "مبيعات كاشير يارسوفت — كاشير 4",
-      "source_type": "yarasoft_revenue",
-      "source_id": "ora:CC:1338898",
-      "status": "posted",
-      "created_by": null,
-      "created_at": "2026-11-06T21:01:41.252Z",
-      "approved_by": null,
-      "approved_at": null,
-      "branch_id": 1,
-      "voided_at": null,
-      "voided_by": null,
-      "voided_by_name": null,
-      "void_reason": null,
-      "created_by_name": null,
-      "lines": [
-        {
-          "account_code": "4000",
-          "debit": 0,
-          "credit": 30,
-          "memo": "إيراد مبيعات (صافي)"
+            "id": "1793999040371200",
+            "entry_no": "JE-20261107-0006",
+            "date": "2026-11-06T21:00:00.000Z",
+            "memo": "مبيعات كاشير يارسوفت — كاشير 4",
+            "source_type": "yarasoft_revenue",
+            "source_id": "ora:CC:1338901",
+            "status": "posted",
+            "created_by": null,
+            "created_at": "2026-11-06T21:03:59.482Z",
+            "approved_by": null,
+            "approved_at": null,
+            "branch_id": 1,
+            "voided_at": null,
+            "voided_by": null,
+            "voided_by_name": null,
+            "void_reason": null,
+            "created_by_name": null,
+            "lines": [
+                {
+                    "account_code": "1000",
+                    "debit": 10,
+                    "credit": 0,
+                    "memo": "تحصيل نقدي — كاشير يارسوفت"
+                },
+                {
+                    "account_code": "4000",
+                    "debit": 0,
+                    "credit": 10,
+                    "memo": "إيراد مبيعات (صافي)"
+                }
+            ]
         },
         {
-          "account_code": "1000",
-          "debit": 30,
-          "credit": 0,
-          "memo": "تحصيل نقدي — كاشير يارسوفت"
-        }
-      ]
-    },
-    {
-      "id": "1793998899894554",
-      "entry_no": "JE-20261107-0004",
-      "date": "2026-11-06T21:00:00.000Z",
-      "memo": "مبيعات كاشير يارسوفت — كاشير 4",
-      "source_type": "yarasoft_revenue",
-      "source_id": "ora:CC:1338900",
-      "status": "posted",
-      "created_by": null,
-      "created_at": "2026-11-06T21:01:39.807Z",
-      "approved_by": null,
-      "approved_at": null,
-      "branch_id": 1,
-      "voided_at": null,
-      "voided_by": null,
-      "voided_by_name": null,
-      "void_reason": null,
-      "created_by_name": null,
-      "lines": [
-        {
-          "account_code": "1000",
-          "debit": 30,
-          "credit": 0,
-          "memo": "تحصيل نقدي — كاشير يارسوفت"
+            "id": "1793998901715443",
+            "entry_no": "JE-20261107-0005",
+            "date": "2026-11-06T21:00:00.000Z",
+            "memo": "مبيعات كاشير يارسوفت — كاشير 4",
+            "source_type": "yarasoft_revenue",
+            "source_id": "ora:CC:1338898",
+            "status": "posted",
+            "created_by": null,
+            "created_at": "2026-11-06T21:01:41.252Z",
+            "approved_by": null,
+            "approved_at": null,
+            "branch_id": 1,
+            "voided_at": null,
+            "voided_by": null,
+            "voided_by_name": null,
+            "void_reason": null,
+            "created_by_name": null,
+            "lines": [
+                {
+                    "account_code": "4000",
+                    "debit": 0,
+                    "credit": 30,
+                    "memo": "إيراد مبيعات (صافي)"
+                },
+                {
+                    "account_code": "1000",
+                    "debit": 30,
+                    "credit": 0,
+                    "memo": "تحصيل نقدي — كاشير يارسوفت"
+                }
+            ]
         },
         {
-          "account_code": "4000",
-          "debit": 0,
-          "credit": 30,
-          "memo": "إيراد مبيعات (صافي)"
-        }
-      ]
-    },
-    {
-      "id": "1793998899393926",
-      "entry_no": "JE-20261107-0003",
-      "date": "2026-11-06T21:00:00.000Z",
-      "memo": "مبيعات كاشير يارسوفت — كاشير 4",
-      "source_type": "yarasoft_revenue",
-      "source_id": "ora:CC:1338899",
-      "status": "posted",
-      "created_by": null,
-      "created_at": "2026-11-06T21:01:38.558Z",
-      "approved_by": null,
-      "approved_at": null,
-      "branch_id": 1,
-      "voided_at": null,
-      "voided_by": null,
-      "voided_by_name": null,
-      "void_reason": null,
-      "created_by_name": null,
-      "lines": [
-        {
-          "account_code": "4000",
-          "debit": 0,
-          "credit": 30,
-          "memo": "إيراد مبيعات (صافي)"
+            "id": "1793998899894554",
+            "entry_no": "JE-20261107-0004",
+            "date": "2026-11-06T21:00:00.000Z",
+            "memo": "مبيعات كاشير يارسوفت — كاشير 4",
+            "source_type": "yarasoft_revenue",
+            "source_id": "ora:CC:1338900",
+            "status": "posted",
+            "created_by": null,
+            "created_at": "2026-11-06T21:01:39.807Z",
+            "approved_by": null,
+            "approved_at": null,
+            "branch_id": 1,
+            "voided_at": null,
+            "voided_by": null,
+            "voided_by_name": null,
+            "void_reason": null,
+            "created_by_name": null,
+            "lines": [
+                {
+                    "account_code": "1000",
+                    "debit": 30,
+                    "credit": 0,
+                    "memo": "تحصيل نقدي — كاشير يارسوفت"
+                },
+                {
+                    "account_code": "4000",
+                    "debit": 0,
+                    "credit": 30,
+                    "memo": "إيراد مبيعات (صافي)"
+                }
+            ]
         },
         {
-          "account_code": "1000",
-          "debit": 30,
-          "credit": 0,
-          "memo": "تحصيل نقدي — كاشير يارسوفت"
-        }
-      ]
-    },
-    {
-      "id": "1793998839114355",
-      "entry_no": "JE-20261107-0002",
-      "date": "2026-11-06T21:00:00.000Z",
-      "memo": "مبيعات كاشير يارسوفت — كاشير 4",
-      "source_type": "yarasoft_revenue",
-      "source_id": "ora:CC:1338897",
-      "status": "posted",
-      "created_by": null,
-      "created_at": "2026-11-06T21:00:39.081Z",
-      "approved_by": null,
-      "approved_at": null,
-      "branch_id": 1,
-      "voided_at": null,
-      "voided_by": null,
-      "voided_by_name": null,
-      "void_reason": null,
-      "created_by_name": null,
-      "lines": [
-        {
-          "account_code": "1000",
-          "debit": 35,
-          "credit": 0,
-          "memo": "تحصيل نقدي — كاشير يارسوفت"
+            "id": "1793998899393926",
+            "entry_no": "JE-20261107-0003",
+            "date": "2026-11-06T21:00:00.000Z",
+            "memo": "مبيعات كاشير يارسوفت — كاشير 4",
+            "source_type": "yarasoft_revenue",
+            "source_id": "ora:CC:1338899",
+            "status": "posted",
+            "created_by": null,
+            "created_at": "2026-11-06T21:01:38.558Z",
+            "approved_by": null,
+            "approved_at": null,
+            "branch_id": 1,
+            "voided_at": null,
+            "voided_by": null,
+            "voided_by_name": null,
+            "void_reason": null,
+            "created_by_name": null,
+            "lines": [
+                {
+                    "account_code": "4000",
+                    "debit": 0,
+                    "credit": 30,
+                    "memo": "إيراد مبيعات (صافي)"
+                },
+                {
+                    "account_code": "1000",
+                    "debit": 30,
+                    "credit": 0,
+                    "memo": "تحصيل نقدي — كاشير يارسوفت"
+                }
+            ]
         },
         {
-          "account_code": "4000",
-          "debit": 0,
-          "credit": 35,
-          "memo": "إيراد مبيعات (صافي)"
+            "id": "1793998839114355",
+            "entry_no": "JE-20261107-0002",
+            "date": "2026-11-06T21:00:00.000Z",
+            "memo": "مبيعات كاشير يارسوفت — كاشير 4",
+            "source_type": "yarasoft_revenue",
+            "source_id": "ora:CC:1338897",
+            "status": "posted",
+            "created_by": null,
+            "created_at": "2026-11-06T21:00:39.081Z",
+            "approved_by": null,
+            "approved_at": null,
+            "branch_id": 1,
+            "voided_at": null,
+            "voided_by": null,
+            "voided_by_name": null,
+            "void_reason": null,
+            "created_by_name": null,
+            "lines": [
+                {
+                    "account_code": "1000",
+                    "debit": 35,
+                    "credit": 0,
+                    "memo": "تحصيل نقدي — كاشير يارسوفت"
+                },
+                {
+                    "account_code": "4000",
+                    "debit": 0,
+                    "credit": 35,
+                    "memo": "إيراد مبيعات (صافي)"
+                }
+            ]
         }
-      ]
-    }
-  ]
+    ]
 }

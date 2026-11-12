@@ -1,5 +1,10 @@
-import { Tabs as ShadcnTabs, TabsContent as ShadcnContent, TabsList as ShadcnList, TabsTrigger as ShadcnTrigger } from '@/components/ui/tabs';
 import type { ComponentPropsWithRef, ReactNode } from 'react';
+import {
+    TabsContent as ShadcnContent,
+    TabsList as ShadcnList,
+    Tabs as ShadcnTabs,
+    TabsTrigger as ShadcnTrigger,
+} from '@/components/ui/tabs';
 import { cn } from './cn';
 
 /**

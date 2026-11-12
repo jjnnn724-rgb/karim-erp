@@ -1,22 +1,84 @@
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { ReportHeader, SectionCard } from '../components/Reports';
 import { PrintActions } from '../components/PrintActions';
-import { FilterBar, StatCard } from '../ui';
+import { ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
-import { fetchCashierRevenues, cashierLabel, cashierMatches } from '../lib/cashier-revenues';
+import { YarasoftWorkbench } from '../components/YarasoftWorkbench';
+import { cashierLabel, cashierMatches, fetchCashierRevenues } from '../lib/cashier-revenues';
 import { formatMoney } from '../lib/format';
 import { presetRange, rangeProblem } from '../lib/reporting';
+import { FilterBar, StatCard } from '../ui';
 
 /**
- * إيرادات الكاشير — قراءةٌ من PostgreSQL عندنا.
+ * شاشة يارسوفت — تبويبان كاملان:
  *
- * الشاشة **قراءة فقط**، ومصدرها جدول `revenues` في قاعدتنا عبر
- * `GET /api/cashier-revenues`. لا تستورد ولا تُسجّل أي شيء، ولا تعتمد على
- * محرّك مزامنة YarasoSoft: لو أُوقف الاستيراد (أو فُصل YaraSoft لاحقًا) تبقى
- * الشاشة تقرأ ما هو في قاعدتنا.
+ * 1. **تكامل قاعدة الكاشير** — كل تبويبات V2 الثمانية (`yarasoft.js`) عبر
+ *    نفس مسارات `/api/yarasoft/*` ونفس الأدوار (`admin|manager` يكتبان).
+ * 2. **الإيرادات المحلية** — تقرير قراءة فقط من جدول `revenues` عندنا عبر
+ *    `GET /api/cashier-revenues`؛ لا يعتمد على محرّك المزامنة، فلو أُوقف
+ *    الاستيراد أو فُصل YaraSoft تبقى القراءة من قاعدتنا.
  */
+
+type YarasoftTab = 'integration' | 'revenues';
+
+const TABS: readonly { key: YarasoftTab; label: string; hint: string }[] = [
+    { key: 'integration', label: 'تكامل قاعدة الكاشير', hint: 'YaraSoft Integration' },
+    { key: 'revenues', label: 'الإيرادات المحلية', hint: 'Cashier Revenue' },
+];
+
 export function Yarasoft() {
+    const [tab, setTab] = useState<YarasoftTab>('integration');
+
+    return (
+        <div className="flex flex-col gap-md">
+            <div className="flex flex-wrap gap-xs" role="tablist" aria-label="أقسام شاشة يارسوفت">
+                {TABS.map((item) => (
+                    <button
+                        key={item.key}
+                        type="button"
+                        role="tab"
+                        aria-selected={tab === item.key}
+                        data-testid={`yarasoft-tab-${item.key}`}
+                        onClick={() => setTab(item.key)}
+                        className={`shrink-0 whitespace-nowrap rounded-md border px-sm py-xs text-button-md ${
+                            tab === item.key
+                                ? 'border-primary bg-primary text-on-primary'
+                                : 'border-hairline-strong bg-surface text-ink hover:bg-surface-hover'
+                        }`}
+                    >
+                        {item.label}{' '}
+                        <span className="hidden text-caption opacity-75 sm:inline" dir="ltr" lang="en">
+                            {item.hint}
+                        </span>
+                    </button>
+                ))}
+            </div>
+
+            {tab === 'integration' ? <IntegrationConsole /> : <LocalRevenueReport />}
+        </div>
+    );
+}
+
+function IntegrationConsole() {
+    const queryClient = useQueryClient();
+
+    return (
+        <div className="flex flex-col gap-sm">
+            <ReportHeader
+                title="تكامل قاعدة الكاشير"
+                english="YaraSoft Integration"
+                description="حالة الاستيراد والمراجعة والأقسام والروابط وربط Oracle وجودة البيانات والمرآة — نفس عقود V2."
+                pending={false}
+                onRefresh={() => {
+                    void queryClient.invalidateQueries({ queryKey: ['yarasoft'] });
+                }}
+            />
+            <YarasoftWorkbench />
+        </div>
+    );
+}
+
+function LocalRevenueReport() {
     const [draft, setDraft] = useState(() => presetRange('month'));
     const [range, setRange] = useState(draft);
     const [problem, setProblem] = useState('');
@@ -29,10 +91,7 @@ export function Yarasoft() {
 
     const data = snapshot.data;
 
-    const rows = useMemo(
-        () => (data?.cashiers ?? []).filter((row) => cashierMatches(row, q)),
-        [data, q],
-    );
+    const rows = useMemo(() => (data?.cashiers ?? []).filter((row) => cashierMatches(row, q)), [data, q]);
 
     const days = useMemo(() => data?.byDay ?? [], [data]);
 
@@ -96,32 +155,14 @@ export function Yarasoft() {
                             hint="مجموع الفترة من قاعدة البيانات"
                             tone="success"
                         />
-                        <StatCard
-                            label="عدد الفواتير"
-                            english="Invoices"
-                            value={String(data.invoices)}
-                            hint="فاتورة متمايزة في الفترة"
-                        />
-                        <StatCard
-                            label="عدد الكاشير"
-                            english="Cashiers"
-                            value={String(data.cashiers.length)}
-                            hint="قسم إيراد فعّال"
-                        />
-                        <StatCard
-                            label="الفترة"
-                            english="Period"
-                            value={`${data.from} → ${data.to}`}
-                            hint="من وإلى"
-                        />
+                        <StatCard label="عدد الفواتير" english="Invoices" value={String(data.invoices)} hint="فاتورة متمايزة في الفترة" />
+                        <StatCard label="عدد الكاشير" english="Cashiers" value={String(data.cashiers.length)} hint="قسم إيراد فعّال" />
+                        <StatCard label="الفترة" english="Period" value={`${data.from} → ${data.to}`} hint="من وإلى" />
                     </ul>
 
                     <SectionCard title="إيرادات حسب الكاشير" english="By cashier">
                         {rows.length === 0 ? (
-                            <StateEmpty
-                                title="لا توجد إيرادات في هذه الفترة"
-                                hint="غيّر الفترة أو امسح البحث لعرض نتائج أخرى."
-                            />
+                            <StateEmpty title="لا توجد إيرادات في هذه الفترة" hint="غيّر الفترة أو امسح البحث لعرض نتائج أخرى." />
                         ) : (
                             <TableScroll label="جدول إيرادات الكاشير">
                                 <table className="w-full border-collapse text-body-md">

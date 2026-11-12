@@ -31,9 +31,7 @@ describe('أكواد الأخطاء القديمة', () => {
 
 describe('errorResponseSchema', () => {
     test('يقبل الشكل الملتقط 401', () => {
-        expect(errorResponseSchema.safeParse({ error: 'UNAUTHORIZED', message: 'Missing Bearer token.' }).success).toBe(
-            true,
-        );
+        expect(errorResponseSchema.safeParse({ error: 'UNAUTHORIZED', message: 'Missing Bearer token.' }).success).toBe(true);
     });
 
     test('يقبل الشكل الملتقط 403', () => {

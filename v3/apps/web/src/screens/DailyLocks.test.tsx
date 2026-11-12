@@ -130,9 +130,7 @@ describe('لوحة التقفيل اليومي', () => {
         fireEvent.change(screen.getByLabelText('اليوم'), { target: { value: '2026-11-01' } });
 
         await waitFor(() => {
-            expect(fetchMock.mock.calls.map((call) => String(call[0])).some((url) => url.includes('date=2026-11-01'))).toBe(
-                true,
-            );
+            expect(fetchMock.mock.calls.map((call) => String(call[0])).some((url) => url.includes('date=2026-11-01'))).toBe(true);
         });
         await waitFor(() => {
             expect(screen.getByText('2026-11-01')).toBeTruthy();

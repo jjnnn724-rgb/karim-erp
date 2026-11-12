@@ -1,11 +1,11 @@
 import './SalesInquiry.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { PrintActions } from '../components/PrintActions';
 import { KpiCard, RangeControls, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
-import { fetchOrders, YARA_MAX_DAYS } from '../lib/yara-reports';
 import { errorMessage, intOf, moneyOf, presetRange, rangeProblem, textOf } from '../lib/reporting';
-import { PrintActions } from '../components/PrintActions';
+import { fetchOrders, YARA_MAX_DAYS } from '../lib/yara-reports';
 
 const PAGE = 50;
 
@@ -23,7 +23,12 @@ export function SalesInquiry() {
     const ordersQuery = useQuery({
         queryKey: ['yara', 'orders', range.from, range.to, cashier, offset],
         queryFn: ({ signal }) =>
-            fetchOrders(cashier ? { from: range.from, to: range.to, cashier, limit: PAGE, offset } : { from: range.from, to: range.to, limit: PAGE, offset }, signal),
+            fetchOrders(
+                cashier
+                    ? { from: range.from, to: range.to, cashier, limit: PAGE, offset }
+                    : { from: range.from, to: range.to, limit: PAGE, offset },
+                signal,
+            ),
     });
 
     const page = ordersQuery.data;
@@ -177,9 +182,7 @@ export function SalesInquiry() {
                                                     {textOf(order.cashier_name) || textOf(order.cashier_no) || '—'}
                                                 </td>
                                                 <td className="px-sm py-xxs text-body-sm text-muted">
-                                                    {[textOf(order.table_name), textOf(order.zone_name)]
-                                                        .filter(Boolean)
-                                                        .join(' · ') || '—'}
+                                                    {[textOf(order.table_name), textOf(order.zone_name)].filter(Boolean).join(' · ') || '—'}
                                                 </td>
                                                 <td className="erp-numeric px-sm py-xxs" dir="ltr">
                                                     {moneyOf(order.net)}
@@ -230,4 +233,3 @@ export function SalesInquiry() {
         </div>
     );
 }
-

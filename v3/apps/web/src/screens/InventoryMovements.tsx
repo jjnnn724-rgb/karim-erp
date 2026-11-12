@@ -94,9 +94,7 @@ export function InventoryMovements() {
             if (!term) {
                 return true;
             }
-            return [row.itemName, row.ref, row.id]
-                .map((value) => value.toLowerCase())
-                .some((value) => value.includes(term));
+            return [row.itemName, row.ref, row.id].map((value) => value.toLowerCase()).some((value) => value.includes(term));
         });
     }, [allRows, from, to, search, type, rangeInvalid]);
 
@@ -119,9 +117,7 @@ export function InventoryMovements() {
                             Stock Movements
                         </span>
                     </h1>
-                    <p className="text-body-sm text-muted">
-                        سجل الوارد والصادر والتسويات لشهر الرياض الحالي.
-                    </p>
+                    <p className="text-body-sm text-muted">سجل الوارد والصادر والتسويات لشهر الرياض الحالي.</p>
                 </div>
 
                 <div className="flex items-center gap-xs">
@@ -140,24 +136,9 @@ export function InventoryMovements() {
 
             <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
                 <Kpi label="الحركات" english="Movements" value={formatInt(allRows.length)} hint="المحمّل من الشهر" />
-                <Kpi
-                    label="قيمة الوارد"
-                    english="Received"
-                    value={`${formatMoney(incoming)} ${currency}`.trim()}
-                    hint="مجموع type=in"
-                />
-                <Kpi
-                    label="قيمة الصادر"
-                    english="Issued"
-                    value={`${formatMoney(outgoing)} ${currency}`.trim()}
-                    hint="مجموع type=out"
-                />
-                <Kpi
-                    label="الصافي"
-                    english="Net Value"
-                    value={`${formatMoney(net)} ${currency}`.trim()}
-                    hint="وارد − صادر"
-                />
+                <Kpi label="قيمة الوارد" english="Received" value={`${formatMoney(incoming)} ${currency}`.trim()} hint="مجموع type=in" />
+                <Kpi label="قيمة الصادر" english="Issued" value={`${formatMoney(outgoing)} ${currency}`.trim()} hint="مجموع type=out" />
+                <Kpi label="الصافي" english="Net Value" value={`${formatMoney(net)} ${currency}`.trim()} hint="وارد − صادر" />
             </div>
 
             <Card className="p-sm">
@@ -190,10 +171,7 @@ export function InventoryMovements() {
                             className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
                         />
                     </label>
-                    <label
-                        className="flex min-w-56 flex-1 flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-moves-search"
-                    >
+                    <label className="flex min-w-56 flex-1 flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-moves-search">
                         بحث
                         <input
                             id="erp-moves-search"
@@ -265,14 +243,7 @@ export function InventoryMovements() {
                 ) : null}
 
                 {!movementsQuery.isPending && !movementsQuery.isError && rows.length === 0 ? (
-                    <StateEmpty
-                        title="لا حركات"
-                        hint={
-                            rangeInvalid
-                                ? 'صحّح التاريخين أولًا.'
-                                : 'لا حركة في هذه الفترة أو البحث.'
-                        }
-                    />
+                    <StateEmpty title="لا حركات" hint={rangeInvalid ? 'صحّح التاريخين أولًا.' : 'لا حركة في هذه الفترة أو البحث.'} />
                 ) : null}
 
                 {!movementsQuery.isPending && !movementsQuery.isError && rows.length > 0 ? (
@@ -307,10 +278,7 @@ export function InventoryMovements() {
                                 <tbody>
                                     {pageRows.map((row) => (
                                         <tr key={row.id} className="border-b border-hairline hover:bg-surface-hover">
-                                            <td
-                                                className="erp-numeric px-sm py-xxs text-center text-body-sm text-muted"
-                                                dir="ltr"
-                                            >
+                                            <td className="erp-numeric px-sm py-xxs text-center text-body-sm text-muted" dir="ltr">
                                                 {row.date}
                                             </td>
                                             <td className="px-sm py-xxs text-ink">{row.itemName}</td>
@@ -326,12 +294,8 @@ export function InventoryMovements() {
                                             <td className="erp-numeric px-sm py-xxs text-end text-ink" dir="ltr">
                                                 {formatQty(row.qty)}
                                             </td>
-                                            <td className="erp-numeric px-sm py-xxs text-end text-ink">
-                                                {formatMoney(row.cost)}
-                                            </td>
-                                            <td className="erp-numeric px-sm py-xxs text-end text-ink">
-                                                {formatMoney(row.totalValue)}
-                                            </td>
+                                            <td className="erp-numeric px-sm py-xxs text-end text-ink">{formatMoney(row.cost)}</td>
+                                            <td className="erp-numeric px-sm py-xxs text-end text-ink">{formatMoney(row.totalValue)}</td>
                                             <td className="px-sm py-xxs text-body-sm text-muted" dir="ltr">
                                                 {row.ref || '—'}
                                             </td>

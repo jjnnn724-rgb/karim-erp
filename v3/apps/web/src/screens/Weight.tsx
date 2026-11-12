@@ -1,10 +1,20 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import './Weight.premium.css';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { PrintActions } from '../components/PrintActions';
-import { formatInt, formatQty } from '../lib/inventory-register';
+import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
+import { formatInt, formatQty } from '../lib/inventory-register';
+import {
+    fetchWeightReadings,
+    localToday,
+    readingsSummary,
+    readingToRow,
+    searchWeightReadings,
+    WEIGHT_UNIT_LABELS,
+    WEIGHT_UNITS,
+    type WeightReadingRow,
+} from '../lib/weight';
 import {
     createWeightReading,
     deleteWeightReading,
@@ -18,16 +28,6 @@ import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
-import {
-    fetchWeightReadings,
-    localToday,
-    readingsSummary,
-    readingToRow,
-    searchWeightReadings,
-    WEIGHT_UNIT_LABELS,
-    WEIGHT_UNITS,
-    type WeightReadingRow,
-} from '../lib/weight';
 
 /**
  * الميزان — سجل قراءات الوزن، قراءة فقط من `/api/weightReadings`.
@@ -55,19 +55,7 @@ const UNIT_LABELS: Record<UnitFilter, string> = {
     ...WEIGHT_UNIT_LABELS,
 };
 
-function Kpi({
-    label,
-    english,
-    value,
-    suffix,
-    hint,
-}: {
-    label: string;
-    english: string;
-    value: string;
-    suffix?: string;
-    hint: string;
-}) {
+function Kpi({ label, english, value, suffix, hint }: { label: string; english: string; value: string; suffix?: string; hint: string }) {
     return (
         <div className="rounded-lg border border-hairline bg-surface p-md shadow-card">
             <p className="text-label-md text-muted">
@@ -191,9 +179,7 @@ export function Weight() {
 
     function toggleSort(key: SortKey) {
         setPage(1);
-        setSort((previous) =>
-            previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' },
-        );
+        setSort((previous) => (previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
     }
 
     function resetFilters() {
@@ -217,8 +203,8 @@ export function Weight() {
                         </span>
                     </h1>
                     <p className="text-body-sm text-muted">
-                        سجل قراءات الوزن بوحداتها وبالكيلوجرام — تسجيل وتعديل وحذف.
-                        المجاميع تُحوَّل للكيلوجرام أولًا، والقراءة بوحدة غير معروفة تُستبعد وتُعدّ ولا تُخمَّن.
+                        سجل قراءات الوزن بوحداتها وبالكيلوجرام — تسجيل وتعديل وحذف. المجاميع تُحوَّل للكيلوجرام أولًا، والقراءة بوحدة غير معروفة
+                        تُستبعد وتُعدّ ولا تُخمَّن.
                     </p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>
@@ -246,18 +232,8 @@ export function Weight() {
             ) : null}
 
             <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
-                <Kpi
-                    label="قراءات اليوم"
-                    english="Today"
-                    value={formatInt(summary.todayCount)}
-                    hint="بتاريخ اليوم المحلي"
-                />
-                <Kpi
-                    label="إجمالي القراءات"
-                    english="Readings"
-                    value={formatInt(summary.count)}
-                    hint="كل ما وصل من الخادم"
-                />
+                <Kpi label="قراءات اليوم" english="Today" value={formatInt(summary.todayCount)} hint="بتاريخ اليوم المحلي" />
+                <Kpi label="إجمالي القراءات" english="Readings" value={formatInt(summary.count)} hint="كل ما وصل من الخادم" />
                 <Kpi
                     label="إجمالي الوزن"
                     english="Total"
@@ -323,9 +299,7 @@ export function Weight() {
                     </span>
                 </div>
                 {search.folded ? (
-                    <p className="mt-sm text-body-sm text-muted">
-                        بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.
-                    </p>
+                    <p className="mt-sm text-body-sm text-muted">بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.</p>
                 ) : null}
             </Card>
 
@@ -349,11 +323,7 @@ export function Weight() {
                 {readingsQuery.isSuccess && sorted.length === 0 ? (
                     <StateEmpty
                         title={filtered ? 'لا قراءات تطابق المرشّحات' : 'لا قراءات مسجّلة'}
-                        hint={
-                            filtered
-                                ? 'لا نتائج مطابقة؛ عدّل المرشّحات أو امسحها.'
-                                : 'لم تُسجَّل قراءات بعد.'
-                        }
+                        hint={filtered ? 'لا نتائج مطابقة؛ عدّل المرشّحات أو امسحها.' : 'لم تُسجَّل قراءات بعد.'}
                     />
                 ) : null}
 
@@ -366,12 +336,7 @@ export function Weight() {
                                         <SortableTh label="التاريخ" sortKey="date" sort={sort} onToggle={toggleSort} />
                                         <SortableTh label="الوقت" sortKey="time" sort={sort} onToggle={toggleSort} />
                                         <SortableTh label="الوزن" sortKey="weight" sort={sort} onToggle={toggleSort} />
-                                        <SortableTh
-                                            label="بالكيلوجرام"
-                                            sortKey="kg"
-                                            sort={sort}
-                                            onToggle={toggleSort}
-                                        />
+                                        <SortableTh label="بالكيلوجرام" sortKey="kg" sort={sort} onToggle={toggleSort} />
                                         <SortableTh label="الصنف" sortKey="item" sort={sort} onToggle={toggleSort} />
                                         <th scope="col" className="px-sm py-xs text-start font-medium">
                                             ملاحظات
@@ -393,15 +358,10 @@ export function Weight() {
                                                 {row.time || '—'}
                                             </td>
                                             <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">
-                                                {formatQty(row.weight)}{' '}
-                                                <span className="text-caption text-faint">{row.unitAr}</span>
+                                                {formatQty(row.weight)} <span className="text-caption text-faint">{row.unitAr}</span>
                                             </td>
                                             <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">
-                                                {row.kg === null ? (
-                                                    <span className="text-muted">—</span>
-                                                ) : (
-                                                    formatQty(row.kg)
-                                                )}
+                                                {row.kg === null ? <span className="text-muted">—</span> : formatQty(row.kg)}
                                             </td>
                                             <td className="px-sm py-xxs text-ink">{row.itemName || '—'}</td>
                                             <td className="px-sm py-xxs text-body-sm text-muted">

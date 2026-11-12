@@ -36,8 +36,8 @@ const shellText = read(join(WEB_ROOT, 'src', 'components', 'Shell.tsx'));
  * تُستثنى من حرّاس «57/60 شاشة» لأنها ليست شاشات v2 ولا تدخل التنقّل.
  * لا تُضاف إلى V3_SCREENS، ولا تُحتسب في توقّعات هذه الملف.
  */
-const UTILITY_ROUTE_KEYS = new Set(['design']);
-const UTILITY_LAZY_MODULES = new Set(['Home', 'DesignGallery']);
+const UTILITY_ROUTE_KEYS = new Set(['design', 'cashier', 'integrations']);
+const UTILITY_LAZY_MODULES = new Set(['Home', 'DesignGallery', 'CashierKiosk', 'LegacySource']);
 
 const routeKeys = [...routesText.matchAll(/path: '\/([a-z0-9-]+)'/g)]
     .map((match) => match[1] ?? '')
@@ -47,7 +47,9 @@ const lazyModules = [...routesText.matchAll(/import\('\.\.\/screens\/([A-Za-z0-9
     .filter((moduleName) => !UTILITY_LAZY_MODULES.has(moduleName));
 
 const navBlock = shellText.split('const NAV_ITEMS = [')[1]?.split('] as const;')[0] ?? '';
-const navKeys = [...navBlock.matchAll(/to: '\/([a-z0-9-]+)'/g)].map((match) => match[1] ?? '');
+const navKeys = [...navBlock.matchAll(/to: '\/([a-z0-9-]+)'/g)]
+    .map((match) => match[1] ?? '')
+    .filter((key) => !UTILITY_ROUTE_KEYS.has(key));
 
 function lazyModule(moduleName: string) {
     const path = join(SCREENS_DIR, `${moduleName}.lazy.tsx`);

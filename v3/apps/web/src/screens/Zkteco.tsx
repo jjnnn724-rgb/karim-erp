@@ -1,9 +1,12 @@
 import './Zkteco.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { PrintActions } from '../components/PrintActions';
+import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
+import { ZktecoAdmin } from '../components/ZktecoAdmin';
+import { ZktecoControl } from '../components/ZktecoControl';
+import { ZktecoWorkbench } from '../components/ZktecoWorkbench';
 import { errorMessage, intOf, num } from '../lib/reporting';
 import { deviceToRow, fetchZkStatus, summarizeDevices } from '../lib/zkteco';
 
@@ -81,6 +84,10 @@ export function Zkteco() {
                         />
                     </ul>
 
+                    <ZktecoWorkbench devices={rows} running={running} />
+
+                    <ZktecoAdmin devices={rows} />
+
                     <SectionCard
                         title="الأجهزة"
                         english="Devices"
@@ -91,10 +98,7 @@ export function Zkteco() {
                         }
                     >
                         {rows.length === 0 ? (
-                            <StateEmpty
-                                title="لا أجهزة مسجلة"
-                                hint="لا أجهزة مسجّلة."
-                            />
+                            <StateEmpty title="لا أجهزة مسجلة" hint="لا أجهزة مسجّلة." />
                         ) : (
                             <TableScroll label="جدول أجهزة البصمة">
                                 <table className="w-full border-collapse text-body-md">
@@ -122,21 +126,13 @@ export function Zkteco() {
                                             <tr key={device.id} className="border-b border-hairline hover:bg-surface-hover">
                                                 <td className="px-sm py-xxs text-ink">
                                                     {device.name}
-                                                    {device.enabled ? null : (
-                                                        <span className="text-caption text-faint"> (معطّل)</span>
-                                                    )}
+                                                    {device.enabled ? null : <span className="text-caption text-faint"> (معطّل)</span>}
                                                 </td>
                                                 <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">
                                                     {device.ip ? `${device.ip}:${device.port}` : '—'}
                                                 </td>
                                                 <td className="px-sm py-xxs text-body-sm">
-                                                    <span
-                                                        className={
-                                                            device.status === 'متصل'
-                                                                ? 'text-success-text'
-                                                                : 'text-muted'
-                                                        }
-                                                    >
+                                                    <span className={device.status === 'متصل' ? 'text-success-text' : 'text-muted'}>
                                                         {device.syncing ? 'يزامن الآن' : device.status}
                                                     </span>
                                                     {device.failures > 0 ? (
@@ -160,10 +156,7 @@ export function Zkteco() {
                     </SectionCard>
 
                     {rows.some((device) => device.lastError) ? (
-                        <p
-                            className="rounded-md border border-warning bg-surface p-sm text-body-sm text-warning-text"
-                            role="alert"
-                        >
+                        <p className="rounded-md border border-warning bg-surface p-sm text-body-sm text-warning-text" role="alert">
                             {rows
                                 .filter((device) => device.lastError)
                                 .map((device) => `${device.name}: ${device.lastError}`)
@@ -174,6 +167,8 @@ export function Zkteco() {
                     <p className="text-caption text-muted" role="status">
                         {`الموظفون: ${intOf(totals.employees)} · المربوطون: ${intOf(totals.linkedEmployees)} · سجل البصمات: ${intOf(totals.logs)}`}
                     </p>
+
+                    <ZktecoControl />
                 </>
             ) : null}
 

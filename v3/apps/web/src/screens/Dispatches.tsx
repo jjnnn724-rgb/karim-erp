@@ -1,9 +1,9 @@
 import './Dispatches.premium.css';
 import { useQuery } from '@tanstack/react-query';
-import { type FormEvent, type PointerEvent as ReactPointerEvent, type ReactNode, useMemo, useRef, useState } from 'react';
+import { type FormEvent, type ReactNode, useMemo, useState } from 'react';
 import { useConfirm } from '../components/ConfirmProvider';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { PrintActions } from '../components/PrintActions';
+import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import {
     arSearchKey,
@@ -24,46 +24,48 @@ import {
     type ApproveBody,
     type ApproveDispatchResult,
     type ApproveDraft,
+    anyActionVisible,
     approveDispatch,
     approveDraftError,
     approveErrorText,
     approveItemsPayload,
     approveSuccessText,
     type ChefApproveBody,
+    type CreateDispatchPayload,
+    canCreateDispatch,
     chefActionsVisible,
     chefApproveDispatch,
     chefRejectDispatch,
-    canCreateDispatch,
-    type CreateDispatchPayload,
     createDispatch,
     createDispatchPayload,
     createErrorText,
     createRequestError,
     createSuccessText,
+    DISPATCH_TEXT,
+    type DispatchGateRow,
     decisionSignatureError,
     deleteConfirmText,
     deleteDispatch,
     deleteSuccessText,
     deleteVisible,
-    type DispatchGateRow,
-    DISPATCH_TEXT,
     dispatchGate,
     dispatchItemLines,
-    editDispatch,
     type EditDispatchPayload,
+    editDispatch,
     editDispatchPayload,
     editItemsError,
     editSuccessText,
     editVisible,
     type GateUser,
-    anyActionVisible,
+    type RejectBody,
     receiveDispatch,
     receiveDraftError,
     receivedItemsPayload,
     receiveSourceItems,
     receiveVisible,
-    type RejectBody,
     rejectDispatch,
+    reopenDispatch,
+    reopenVisible,
     type SignedDecision,
     warehouseActionsVisible,
 } from '../lib/dispatches-write';
@@ -73,6 +75,7 @@ import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
+import { SignaturePad } from '../ui/SignaturePad';
 import { Textarea } from '../ui/Textarea';
 import { useToast } from '../ui/Toast';
 
@@ -81,7 +84,8 @@ import { useToast } from '../ui/Toast';
  * افتراضيًا، وكل السجل عند الطلب) وبنفس سقفيه المعلنين، ودورة القرار كاملة
  * كما في V2 (`frontend/app/js/v2/screens/dispatch.js`):
  *
- *   إنشاء طلب صرف · تعديل قبل اعتماد المخازن · حذف (نهائي للأدمن موثّق) ·
+ *   إنشاء طلب صرف · تعديل قبل الاعتماد · إرجاع المعتمد قبل الاستلام للتعديل ·
+ *   حذف (نهائي للأدمن موثّق) ·
  *   اعتماد/رفض الشيف العمومي · اعتماد/رفض المخازن · استلام القسم بالتوقيع.
  *
  * الأزرار تظهر بقوائم أدوار V2 نفسها وبحالة الإذن وحدها (lib/dispatches-write)،
@@ -124,135 +128,6 @@ function Kpi({ label, english, value, hint }: { label: string; english: string; 
 
 function deptNameOf(dispatch: Dispatch | null): string {
     return String(dispatch?.deptName ?? dispatch?.deptCode ?? '');
-}
-
-/* ── لوحة التوقيع الإلكتروني ─────────────────────────────────────────────── */
-
-/**
- * توقيع بالحبر على canvas — نظير `signaturePadMarkup` في V2، بلا مكتبة خارجية.
- * الخادم لا يقبل قرارًا بلا `data:image/png;base64,…`، فالتوقيع هنا شرط نجاح
- * لا زينة: الاسم مقفول على حساب الجلسة (`signerName`) والخادم يطابقه.
- */
-function SignaturePad({ label, onChange }: { label: string; onChange: (dataUrl: string | null) => void }) {
-    const canvasRef = useRef<HTMLCanvasElement>(null);
-    const drawingRef = useRef(false);
-    const inkedRef = useRef(false);
-    const lastPointRef = useRef<{ x: number; y: number } | null>(null);
-    const [inked, setInked] = useState(false);
-
-    function context(): CanvasRenderingContext2D | null {
-        const canvas = canvasRef.current;
-        if (!canvas) {
-            return null;
-        }
-        try {
-            return canvas.getContext('2d');
-        } catch {
-            return null;
-        }
-    }
-
-    function emit(): void {
-        const canvas = canvasRef.current;
-        if (!canvas || !inkedRef.current) {
-            onChange(null);
-            return;
-        }
-        try {
-            onChange(canvas.toDataURL('image/png'));
-        } catch {
-            onChange(null);
-        }
-    }
-
-    function pointOf(event: ReactPointerEvent<HTMLCanvasElement>): { x: number; y: number } {
-        const rect = event.currentTarget.getBoundingClientRect();
-        return { x: event.clientX - rect.left, y: event.clientY - rect.top };
-    }
-
-    function start(event: ReactPointerEvent<HTMLCanvasElement>): void {
-        event.preventDefault();
-        drawingRef.current = true;
-        const point = pointOf(event);
-        lastPointRef.current = point;
-        const context2d = context();
-        if (context2d) {
-            context2d.lineWidth = 2;
-            context2d.strokeStyle = '#0f172a';
-            context2d.lineCap = 'round';
-            context2d.beginPath();
-            context2d.moveTo(point.x, point.y);
-            context2d.lineTo(point.x + 0.5, point.y + 0.5);
-            context2d.stroke();
-        }
-        inkedRef.current = true;
-        setInked(true);
-        emit();
-    }
-
-    function move(event: ReactPointerEvent<HTMLCanvasElement>): void {
-        if (!drawingRef.current) {
-            return;
-        }
-        const point = pointOf(event);
-        const last = lastPointRef.current ?? point;
-        const context2d = context();
-        if (context2d) {
-            context2d.beginPath();
-            context2d.moveTo(last.x, last.y);
-            context2d.lineTo(point.x, point.y);
-            context2d.stroke();
-        }
-        lastPointRef.current = point;
-        emit();
-    }
-
-    function end(): void {
-        drawingRef.current = false;
-    }
-
-    function clear(): void {
-        const canvas = canvasRef.current;
-        const context2d = context();
-        if (canvas && context2d) {
-            context2d.clearRect(0, 0, canvas.width, canvas.height);
-        }
-        inkedRef.current = false;
-        setInked(false);
-        lastPointRef.current = null;
-        onChange(null);
-    }
-
-    return (
-        <div className="flex flex-col gap-xs">
-            <span className="text-label-md text-ink-secondary">
-                {label}
-                <span aria-hidden="true" className="text-danger-text">
-                    {' *'}
-                </span>
-            </span>
-            <canvas
-                ref={canvasRef}
-                width={600}
-                height={140}
-                aria-label={label}
-                data-testid="dispatch-signature"
-                onPointerDown={start}
-                onPointerMove={move}
-                onPointerUp={end}
-                onPointerLeave={end}
-                className="h-28 w-full touch-none rounded-md border border-hairline-strong bg-surface"
-            />
-            <div className="flex flex-wrap items-center justify-between gap-xs">
-                <span className="text-caption text-faint">
-                    {inked ? 'التوقيع مرسوم — يُحفظ مع القرار' : 'ارسم توقيعك داخل المربع'}
-                </span>
-                <Button type="button" variant="ghost" size="sm" onClick={clear}>
-                    مسح التوقيع
-                </Button>
-            </div>
-        </div>
-    );
 }
 
 /* ── أدوات مشتركة للنماذج ───────────────────────────────────────────────── */
@@ -379,8 +254,7 @@ function RequestDialog({
     // كتالوج المخزون وأرصدته — بوابة «الصنف صفر لا يُعرض» كما في V2.
     const catalogQuery = useQuery({
         queryKey: ['inventory', 'dispatch-catalog'],
-        queryFn: ({ signal }) =>
-            fetchInventoryRegister({ q: '', category: 'all', stock: 'all' }, signal),
+        queryFn: ({ signal }) => fetchInventoryRegister({ q: '', category: 'all', stock: 'all' }, signal),
         staleTime: 60 * 1000,
     });
 
@@ -404,9 +278,7 @@ function RequestDialog({
             : catalog
                   .filter(
                       (item) =>
-                          item.mainQty > 0 &&
-                          !lines.some((line) => line.name === item.name) &&
-                          arSearchKey(item.name).includes(needle),
+                          item.mainQty > 0 && !lines.some((line) => line.name === item.name) && arSearchKey(item.name).includes(needle),
                   )
                   .slice(0, 8);
 
@@ -476,15 +348,13 @@ function RequestDialog({
         >
             {isEdit && dispatch?.status === 'chef_approved' ? (
                 <p className="rounded-md border border-warning/40 bg-warning-soft p-sm text-body-sm text-ink">
-                    ⚠ هذا الطلب معتمد من الشيف — الحفظ <strong>يلغي الاعتماد</strong> ويرجعه للمراجعة على
-                    الأرقام الجديدة
+                    ⚠ هذا الطلب معتمد من الشيف — الحفظ <strong>يلغي الاعتماد</strong> ويرجعه للمراجعة على الأرقام الجديدة
                 </p>
             ) : null}
 
             {role === 'dept_head' ? (
                 <p className="text-body-sm text-muted">
-                    القسم الطالب: <strong className="text-ink">قسم حسابك</strong> — رئيس القسم ينشئ ويعدّل
-                    لقسمه فقط، والخادم يفرضه.
+                    القسم الطالب: <strong className="text-ink">قسم حسابك</strong> — رئيس القسم ينشئ ويعدّل لقسمه فقط، والخادم يفرضه.
                 </p>
             ) : (
                 <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-dispatch-dept">
@@ -662,8 +532,7 @@ function ChefApproveDialog({
             onSubmit={(event) => void submit(event)}
         >
             <p className="rounded-md border border-info/40 bg-info-soft p-sm text-body-sm text-ink">
-                اعتمادك ينقل الطلب إلى <strong>المخازن</strong> للصرف والخصم — لا يُخصم أي مخزون بهذه
-                الخطوة.
+                اعتمادك ينقل الطلب إلى <strong>المخازن</strong> للصرف والخصم — لا يُخصم أي مخزون بهذه الخطوة.
             </p>
             <ul className="flex flex-col gap-xxs text-body-sm">
                 {lines.map((line) => (
@@ -684,7 +553,7 @@ function ChefApproveDialog({
                     setNotes(event.target.value);
                 }}
             />
-            <SignaturePad label="توقيع الشيف العمومي" onChange={setSignature} />
+            <SignaturePad label="توقيع الشيف العمومي" name={signerName} testId="dispatch-signature" onChange={setSignature} />
             <FormMessage message={error} />
         </ActionsDialog>
     );
@@ -730,9 +599,7 @@ function RejectDialog({
         try {
             await onSubmit({ reason: reason.trim(), signatureData: signature ?? '', signerName });
         } catch (cause) {
-            setError(
-                writeErrorMessage(cause, isChef ? DISPATCH_TEXT.chefRejectFailed : DISPATCH_TEXT.rejectFailed),
-            );
+            setError(writeErrorMessage(cause, isChef ? DISPATCH_TEXT.chefRejectFailed : DISPATCH_TEXT.rejectFailed));
         }
     }
 
@@ -770,6 +637,8 @@ function RejectDialog({
             />
             <SignaturePad
                 label={isChef ? 'توقيع الشيف العمومي على الرفض' : 'توقيع أمين المخزن على الرفض'}
+                name={signerName}
+                testId="dispatch-signature"
                 onChange={setSignature}
             />
             <FormMessage message={error} />
@@ -820,9 +689,7 @@ function ApproveDialog({
     const formId = 'erp-dispatch-approve-form';
 
     function update(index: number, field: 'approvedQty' | 'actualWeight' | 'boxes', value: string): void {
-        setRows((previous) =>
-            previous.map((row, position) => (position === index ? { ...row, [field]: value } : row)),
-        );
+        setRows((previous) => previous.map((row, position) => (position === index ? { ...row, [field]: value } : row)));
     }
 
     const drafts: ApproveDraft[] = rows.map((row) => ({
@@ -874,15 +741,12 @@ function ApproveDialog({
             onSubmit={(event) => void submit(event)}
         >
             <p className="rounded-md border border-warning/40 bg-warning-soft p-sm text-body-sm text-ink">
-                اعتماد المخزن <strong>يخصم الكمية من المخزون ويسجل تكلفة القسم في نفس المعاملة</strong> —
-                راجع الكميات والوزن الفعلي قبل التأكيد.
+                اعتماد المخزن <strong>يخصم الكمية من المخزون ويسجل تكلفة القسم في نفس المعاملة</strong> — راجع الكميات والوزن الفعلي قبل
+                التأكيد.
             </p>
             <ul className="flex flex-col gap-sm">
                 {rows.map((row, index) => (
-                    <li
-                        key={row.name}
-                        className="flex flex-col gap-xs rounded-md border border-hairline p-xs"
-                    >
+                    <li key={row.name} className="flex flex-col gap-xs rounded-md border border-hairline p-xs">
                         <span className="text-body-sm text-ink">
                             <strong>{row.name}</strong>{' '}
                             <span className="text-muted">
@@ -942,7 +806,7 @@ function ApproveDialog({
                     setNotes(event.target.value);
                 }}
             />
-            <SignaturePad label="توقيع أمين المخزن المعتمد" onChange={setSignature} />
+            <SignaturePad label="توقيع أمين المخزن المعتمد" name={signerName} testId="dispatch-signature" onChange={setSignature} />
             <FormMessage message={error} />
         </ActionsDialog>
     );
@@ -987,9 +851,7 @@ function ReceiveDialog({
     const formId = 'erp-dispatch-receive-form';
 
     function update(index: number, field: 'receivedQty' | 'receivedPackagingQty', value: string): void {
-        setRows((previous) =>
-            previous.map((row, position) => (position === index ? { ...row, [field]: value } : row)),
-        );
+        setRows((previous) => previous.map((row, position) => (position === index ? { ...row, [field]: value } : row)));
     }
 
     const drafts = rows.map((row) => ({
@@ -1039,22 +901,17 @@ function ReceiveDialog({
             onSubmit={(event) => void submit(event)}
         >
             <p className="rounded-md border border-info/40 bg-info-soft p-sm text-body-sm text-ink">
-                الاستلام والتوقيع باسم حسابك فقط (<strong>{signerName || '—'}</strong>) — لا يمكن توقيع
-                أي اسم آخر. راجع الكميات ثم أكّد. لا يمكن تسجيل الاستلام مرتين.
+                الاستلام والتوقيع باسم حسابك فقط (<strong>{signerName || '—'}</strong>) — لا يمكن توقيع أي اسم آخر. راجع الكميات ثم أكّد. لا
+                يمكن تسجيل الاستلام مرتين.
             </p>
             <ul className="flex flex-col gap-sm">
                 {rows.map((row, index) => (
-                    <li
-                        key={row.name}
-                        className="flex flex-wrap items-end gap-xs rounded-md border border-hairline p-xs"
-                    >
+                    <li key={row.name} className="flex flex-wrap items-end gap-xs rounded-md border border-hairline p-xs">
                         <div className="flex min-w-40 flex-1 flex-col gap-xxs">
                             <span className="text-body-sm text-ink">{row.name}</span>
                             <span className="text-caption text-muted">
                                 المعتمد: {formatQty(row.approvedQty)}
-                                {row.catchWeight && row.approvedPackagingQty > 0
-                                    ? ` (${formatQty(row.approvedPackagingQty)} كرتون)`
-                                    : ''}
+                                {row.catchWeight && row.approvedPackagingQty > 0 ? ` (${formatQty(row.approvedPackagingQty)} كرتون)` : ''}
                             </span>
                         </div>
                         <Input
@@ -1097,7 +954,12 @@ function ReceiveDialog({
                     setNotes(event.target.value);
                 }}
             />
-            <SignaturePad label={`توقيع المستلم — ${signerName || '—'}`} onChange={setSignature} />
+            <SignaturePad
+                label={`توقيع المستلم — ${signerName || '—'}`}
+                name={signerName}
+                testId="dispatch-signature"
+                onChange={setSignature}
+            />
             <FormMessage message={error} />
         </ActionsDialog>
     );
@@ -1112,7 +974,69 @@ type ActiveDialog =
     | { kind: 'chef-reject'; dispatch: Dispatch }
     | { kind: 'approve'; dispatch: Dispatch }
     | { kind: 'reject'; dispatch: Dispatch }
-    | { kind: 'receive'; dispatch: Dispatch };
+    | { kind: 'receive'; dispatch: Dispatch }
+    | { kind: 'reopen'; dispatch: Dispatch };
+
+function ReopenDialog({
+    dispatch,
+    pending,
+    onClose,
+    onSubmit,
+}: {
+    dispatch: Dispatch;
+    pending: boolean;
+    onClose: () => void;
+    onSubmit: (reason: string) => Promise<unknown>;
+}) {
+    const [reason, setReason] = useState('');
+    const [error, setError] = useState('');
+    const formId = 'erp-dispatch-reopen-form';
+
+    async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
+        event.preventDefault();
+        if (pending) {
+            return;
+        }
+        const cleanReason = reason.trim();
+        if (!cleanReason) {
+            setError(DISPATCH_TEXT.reopenReasonRequired);
+            return;
+        }
+        setError('');
+        try {
+            await onSubmit(cleanReason);
+        } catch (cause) {
+            setError(writeErrorMessage(cause, DISPATCH_TEXT.reopenFailed));
+        }
+    }
+
+    return (
+        <ActionsDialog
+            title={`إرجاع الإذن للمخازن للتعديل — #${dispatch.id}`}
+            formId={formId}
+            submitLabel="إرجاع للمخازن"
+            pending={pending}
+            onClose={onClose}
+            onSubmit={(event) => void submit(event)}
+        >
+            <p className="rounded-md border border-warning/40 bg-warning-soft p-sm text-body-sm text-ink">
+                سيُعكس خصم المخزون وتكلفة القسم ويُلغى اعتماد المخازن وتوقيعه. بعد الإرجاع يمكن تعديل الإذن وإعادة إرساله في دورة الاعتماد من
+                جديد. لا يمكن تنفيذ ذلك بعد تسجيل أي استلام.
+            </p>
+            <Textarea
+                label="سبب الإرجاع (إلزامي)"
+                name="reopen-reason"
+                rows={3}
+                maxLength={500}
+                value={reason}
+                onChange={(event) => {
+                    setReason(event.target.value);
+                }}
+            />
+            <FormMessage message={error} />
+        </ActionsDialog>
+    );
+}
 
 export function Dispatches() {
     const [scope, setScope] = useState<DispatchScope>('month');
@@ -1152,10 +1076,7 @@ export function Dispatches() {
         },
     });
 
-    const editMutation = useWriteMutation<
-        { dispatch: Dispatch; payload: EditDispatchPayload },
-        { chefApprovalReset: boolean }
-    >({
+    const editMutation = useWriteMutation<{ dispatch: Dispatch; payload: EditDispatchPayload }, { chefApprovalReset: boolean }>({
         mutationFn: ({ dispatch, payload }) => editDispatch(dispatch.id, payload),
         invalidate: [['dispatches']],
         silentError: true,
@@ -1228,12 +1149,19 @@ export function Dispatches() {
         },
     });
 
+    const reopenMutation = useWriteMutation<{ dispatch: Dispatch; reason: string }, void>({
+        mutationFn: ({ dispatch, reason }) => reopenDispatch(dispatch.id, reason),
+        successTitle: DISPATCH_TEXT.reopenSuccess,
+        invalidate: [['dispatches'], ['inventory'], ['expenses']],
+        silentError: true,
+        onSuccess: () => {
+            setActive(null);
+        },
+    });
+
     const rangeInvalid = Boolean(from && to && from > to);
     const allRows = useMemo(() => (dispatchesQuery.data ?? []).map(dispatchToRow), [dispatchesQuery.data]);
-    const rawById = useMemo(
-        () => new Map((dispatchesQuery.data ?? []).map((dispatch) => [dispatch.id, dispatch])),
-        [dispatchesQuery.data],
-    );
+    const rawById = useMemo(() => new Map((dispatchesQuery.data ?? []).map((dispatch) => [dispatch.id, dispatch])), [dispatchesQuery.data]);
 
     const rows = useMemo(() => {
         if (rangeInvalid) {
@@ -1301,6 +1229,22 @@ export function Dispatches() {
                     }}
                 >
                     تعديل
+                </Button>,
+            );
+        }
+        if (reopenVisible(role, row)) {
+            buttons.push(
+                <Button
+                    key="reopen"
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    aria-label={`إرجاع للمخازن للتعديل — إذن #${id}`}
+                    onClick={() => {
+                        setActive({ kind: 'reopen', dispatch });
+                    }}
+                >
+                    إرجاع للتعديل
                 </Button>,
             );
         }
@@ -1417,8 +1361,8 @@ export function Dispatches() {
                         </span>
                     </h1>
                     <p className="text-body-sm text-muted">
-                        سجل أذون الصرف ودورة قرارها كاملة (إنشاء · اعتماد الشيف · اعتماد المخازن · استلام
-                        بالتوقيع · تعديل · حذف).
+                        سجل أذون الصرف ودورة قرارها كاملة (إنشاء · اعتماد الشيف · اعتماد المخازن · استلام بالتوقيع · تعديل · إرجاع المعتمد
+                        قبل الاستلام للتعديل · حذف).
                     </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-xs" data-erp-print-hide>
@@ -1467,20 +1411,12 @@ export function Dispatches() {
                     value={formatInt(counts.approved ?? 0)}
                     hint={DISPATCH_STATUS.approved.label}
                 />
-                <Kpi
-                    label="مستلم ومغلق"
-                    english="Received"
-                    value={formatInt(counts.received ?? 0)}
-                    hint={DISPATCH_STATUS.received.label}
-                />
+                <Kpi label="مستلم ومغلق" english="Received" value={formatInt(counts.received ?? 0)} hint={DISPATCH_STATUS.received.label} />
             </div>
 
             <Card className="p-sm">
                 <div className="flex flex-wrap items-end gap-sm">
-                    <label
-                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-dispatch-scope"
-                    >
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-dispatch-scope">
                         النطاق
                         <select
                             id="erp-dispatch-scope"
@@ -1495,10 +1431,7 @@ export function Dispatches() {
                             <option value="all">كل السجل</option>
                         </select>
                     </label>
-                    <label
-                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-dispatch-from"
-                    >
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-dispatch-from">
                         من
                         <input
                             id="erp-dispatch-from"
@@ -1526,10 +1459,7 @@ export function Dispatches() {
                             className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
                         />
                     </label>
-                    <label
-                        className="flex min-w-56 flex-1 flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-dispatch-search"
-                    >
+                    <label className="flex min-w-56 flex-1 flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-dispatch-search">
                         بحث بالصنف
                         <input
                             id="erp-dispatch-search"
@@ -1543,10 +1473,7 @@ export function Dispatches() {
                             className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
                         />
                     </label>
-                    <label
-                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-dispatch-status"
-                    >
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-dispatch-status">
                         الحالة
                         <select
                             id="erp-dispatch-status"
@@ -1591,9 +1518,7 @@ export function Dispatches() {
 
                 {dispatchesQuery.isError ? (
                     <StateError
-                        message={
-                            dispatchesQuery.error instanceof Error ? dispatchesQuery.error.message : 'خطأ غير معروف'
-                        }
+                        message={dispatchesQuery.error instanceof Error ? dispatchesQuery.error.message : 'خطأ غير معروف'}
                         onRetry={() => {
                             void dispatchesQuery.refetch();
                         }}
@@ -1660,13 +1585,8 @@ export function Dispatches() {
                                                     #{row.id}
                                                 </td>
                                                 <td className="px-sm py-xxs text-ink">{row.dept}</td>
-                                                <td className="px-sm py-xxs text-body-sm text-ink-secondary">
-                                                    {row.itemsText || '—'}
-                                                </td>
-                                                <td
-                                                    className="erp-numeric px-sm py-xxs text-center text-body-sm text-muted"
-                                                    dir="ltr"
-                                                >
+                                                <td className="px-sm py-xxs text-body-sm text-ink-secondary">{row.itemsText || '—'}</td>
+                                                <td className="erp-numeric px-sm py-xxs text-center text-body-sm text-muted" dir="ltr">
                                                     {row.date || '—'}
                                                 </td>
                                                 <td className="px-sm py-xxs text-body-sm">
@@ -1679,14 +1599,10 @@ export function Dispatches() {
                                                             </span>
                                                         ) : null}
                                                     </span>
-                                                    {row.stage ? (
-                                                        <span className="block text-caption text-muted">{row.stage}</span>
-                                                    ) : null}
+                                                    {row.stage ? <span className="block text-caption text-muted">{row.stage}</span> : null}
                                                 </td>
                                                 <td className="px-sm py-xxs text-body-sm text-muted">{row.by}</td>
-                                                <td className="px-sm py-xxs text-body-sm text-muted">
-                                                    {row.receivedBy || '—'}
-                                                </td>
+                                                <td className="px-sm py-xxs text-body-sm text-muted">{row.receivedBy || '—'}</td>
                                                 {showActions ? (
                                                     <td className="px-sm py-xxs">
                                                         <div className="flex flex-wrap items-center justify-end gap-xxs">
@@ -1820,6 +1736,17 @@ export function Dispatches() {
                         setActive(null);
                     }}
                     onSubmit={(body) => receiveMutation.mutateAsync({ dispatch: active.dispatch, body })}
+                />
+            ) : null}
+
+            {active?.kind === 'reopen' ? (
+                <ReopenDialog
+                    dispatch={active.dispatch}
+                    pending={reopenMutation.isPending}
+                    onClose={() => {
+                        setActive(null);
+                    }}
+                    onSubmit={(reason) => reopenMutation.mutateAsync({ dispatch: active.dispatch, reason })}
                 />
             ) : null}
         </div>

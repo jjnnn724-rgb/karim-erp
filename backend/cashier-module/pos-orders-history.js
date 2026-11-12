@@ -8,6 +8,7 @@
  *   GET  /api/pos/orders/:id/receipt-html — browser-printable HTML receipt
  *   POST /api/pos/orders/:id/reprint  — queue reprint on thermal printer
  *   POST /api/pos/orders/:id/void     — void an invoice
+ *   POST /api/pos/orders/:id/returns/quote — credit-note preview (read-only)
  *
  * All queries target pos_orders, pos_order_items, pos_invoice_payments,
  * pos_departments, and pos_pending_prints — the real POS tables.
@@ -20,6 +21,7 @@ const { jwtAuth, requireRole } = require('./jwt-middleware');
 const { generalLimiter, crudLimiter } = require('../rate-limiter');
 const { buildEscPosReceipt } = require('./escpos-printer');
 const { buildReceiptHtml } = require('./receipt-html');
+const { buildCreditNote } = require('./returns-engine');
 const { postInventoryLedgerEntry } = require('../inventory-ledger');
 const { convertQuantity } = require('../unit-conversion');
 const QRCode = require('qrcode');
@@ -300,6 +302,10 @@ router.get('/ys/:docNo', jwtAuth, async (req, res) => {
             total_amount: Number(slip.total || 0),
             discount_amount: Number(slip.discount || 0),
             paid_amount: Number(slip.payed || 0),
+            /* تصنيف قراءة فقط لسجلات ما قبل الإصلاح: الرقم كما ورد من المصدر،
+               بلا حذف وبلا تسوية. لا يُستخدم في أي معادلة مالية. */
+            legacy_adjustment:
+                Math.abs(Number(slip.total || 0) + Number(slip.vat || 0) - Number(slip.net || 0)) >= 0.005,
             zatca: z.rows[0] || null,
         });
     } catch (err) {
@@ -336,15 +342,14 @@ router.get('/ys/:docNo/receipt-html', jwtAuth, requireRole('admin', 'manager', '
         const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;');
         const stamp = `${String(slip.day).slice(0, 10)} ${String(slip.doc_time || '').slice(0, 5)}`;
         const vatRate = items.length && items[0].vat_rate != null ? items[0].vat_rate : 15;
-        /* معنى عمودَي المرآة: net = المحصَّل شاملًا الضريبة بعد خصم السند،
-           total = قبل الضريبة. كان الإيصال يطبع net تحت «قبل الضريبة»
-           وtotal تحت «الإجمالي» فينقلب المعنى ولا ينطبق (صافٍ + ضريبة).
-           الخصم الجُملي لا يُسجَّل في عمود مستقل (discount = 0 دائمًا)
-           فيُطبع الفرق صراحةً كي تنطبق المعادلة على الورق. */
+        /* معنى عمودَي المرآة: net = المحصَّل شاملًا الضريبة، وtotal = قبل
+           الضريبة. الخصم الجُملي لا يُسجَّل في عمود مستقل (discount = 0
+           دائمًا)، فلا تُعاد تسوية الفرق ولا يُطبع بند «تسوية»: السجل مؤرشفٌ
+           من نظام سابق ويُعرض كما ورد في مصدره حرفًا برقمه. */
         const exVat = Number(slip.total || 0);
         const vatAmt = Number(slip.vat || 0);
         const collected = Number(slip.net || 0);
-        const adj = Math.round((exVat + vatAmt - collected) * 100) / 100;
+        const legacyArchive = Math.abs(exVat + vatAmt - collected) >= 0.005;
         const html = `<!DOCTYPE html>
 <html dir="rtl" lang="ar"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -384,8 +389,8 @@ router.get('/ys/:docNo/receipt-html', jwtAuth, requireRole('admin', 'manager', '
   <div class="row"><span class="label">قبل الضريبة</span><span>${num(exVat)}</span></div>
   <div class="row"><span class="label">ضريبة القيمة المضافة (${vatRate}%)</span><span>${num(vatAmt)}</span></div>
   ${Number(slip.discount || 0) > 0 ? `<div class="row"><span class="label">الخصم المسجَّل</span><span>${num(slip.discount)}</span></div>` : ''}
-  ${Math.abs(adj) > 0.005 ? `<div class="row"><span class="label">خصم / تسوية</span><span>${num(adj)}</span></div>` : ''}
   <div class="row total-row"><span>الإجمالي المحصَّل</span><span>${num(collected)}</span></div>
+  ${legacyArchive ? '<div class="sub" style="margin-top:4px">سجل مؤرشف من النظام السابق — الأرقام كما وردت في مصدرها</div>' : ''}
   <div class="row payment-row"><span class="label">المدفوع</span><span>${num(slip.payed)}</span></div>
   <div class="divider"></div>
   ${[['نقد', slip.pay_cash], ['شبكة', slip.pay_network], ['آجل', slip.pay_credit], ['جوال', slip.pay_mobile]]
@@ -400,6 +405,59 @@ router.get('/ys/:docNo/receipt-html', jwtAuth, requireRole('admin', 'manager', '
     } catch (err) {
         logger.error({ err: err.message }, '[pos-orders] receipt-html (ys) failed');
         res.status(500).json({ error: 'INTERNAL', message: err.message });
+    }
+});
+
+// ─── POST /api/pos/orders/:id/returns/quote — معاينة إشعار دائن (بلا كتابة) ──
+// كل مرتجع يمرّ من هنا: نفس محرّك `vat-engine` الذي أصدر الفاتورة، ومن نفس
+// الأرقام المخزَّنة (صافي السطر + ضريبة السطر) لا من إعادة تسعير الكتالوج.
+// `credit_note` سالب بالبناء، ومجموع إرجاع كل السطور يعادل الفاتورة بالهللة.
+router.post('/:id/returns/quote', jwtAuth, requireRole('admin', 'manager', 'accountant'), crudLimiter, async (req, res) => {
+    try {
+        const { id } = req.params;
+        const orderRes = await pool.query('SELECT * FROM pos_orders WHERE id = $1', [id]);
+        if (!orderRes.rows.length) {
+            return res.status(404).json({ error: 'NOT_FOUND', message: 'الفاتورة غير موجودة' });
+        }
+        const order = orderRes.rows[0];
+        if (order.status === 'cancelled') {
+            return res.status(409).json({
+                error: 'ALREADY_CANCELLED',
+                message: 'الفاتورة ملغاة بالكامل وتم رد قيمتها؛ لا يمكن إرجاع أصناف منها',
+            });
+        }
+        const items = (await pool.query(
+            `SELECT id, product_id, product_name, quantity, unit_price, discount, vat_rate, line_total, vat_amount
+               FROM pos_order_items WHERE order_id = $1 ORDER BY id`, [id])).rows;
+        const body = req.body || {};
+        const result = buildCreditNote(order, items, body.items || body.returns, {
+            alreadyReturned: body.already_returned,
+        });
+        return res.json({
+            quote: true,
+            order_id: id,
+            invoice_number: order.invoice_counter,
+            invoice: result.invoice,
+            credit_note: result.credit_note,
+        });
+    } catch (err) {
+        const clientError = Boolean(
+            err && (err.statusCode === 422 || err.code === 'INVOICE_UNBALANCED' || /^RETURN_/.test(String(err.code || '')))
+        );
+        if (clientError) {
+            logger.warn({
+                code: err.code,
+                order_id: req.params.id,
+                details: err.details || null,
+            }, '[pos-returns] credit note rejected');
+            return res.status(422).json({
+                error: err.code || 'INVOICE_UNBALANCED',
+                message: err.message,
+                details: err.details || null,
+            });
+        }
+        logger.error({ err: err.message }, '[pos-returns] credit note quote failed');
+        return res.status(500).json({ error: 'INTERNAL', message: err.message });
     }
 });
 
@@ -637,6 +695,14 @@ router.get('/:id/receipt-html', jwtAuth, requireRole('admin', 'manager', 'cashie
         // "[object Object]" instead of the receipt.
         res.json({ html });
     } catch (err) {
+        if (err.code === 'INVOICE_UNBALANCED') {
+            logger.error({ err: err.message, details: err.details }, '[pos-orders] receipt refused: unbalanced invoice');
+            return res.status(422).json({
+                error: 'INVOICE_UNBALANCED',
+                message: err.message,
+                details: err.details || null,
+            });
+        }
         logger.error({ err: err.message }, '[pos-orders] receipt-html failed');
         res.status(500).json({ error: 'INTERNAL', message: err.message });
     }
@@ -726,7 +792,7 @@ router.post('/:id/reprint', jwtAuth, requireRole('admin', 'manager', 'cashier'),
 });
 
 // ─── POST /api/pos/orders/:id/void — void an invoice ───────────────
-router.post('/:id/void', jwtAuth, requireRole('admin', 'manager'), crudLimiter, async (req, res) => {
+router.post('/:id/void', jwtAuth, requireRole('admin', 'manager', 'accountant'), crudLimiter, async (req, res) => {
     const client = await pool.connect();
     try {
         const { id } = req.params;

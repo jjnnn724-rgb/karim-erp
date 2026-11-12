@@ -46,27 +46,32 @@ export function Drawer({
                 <SheetPrimitive.Content
                     data-side={side}
                     className={cn(
-                        'erp-drawer fixed inset-y-0 z-[var(--erp-z-modal)] flex w-[min(92vw,24rem)] flex-col gap-md overflow-y-auto bg-surface-raised p-lg text-ink shadow-[0_24px_64px_rgb(0_0_0/0.30)]',
+                        'erp-drawer fixed inset-y-0 z-[var(--erp-z-modal)] flex w-[min(92vw,24rem)] flex-col gap-md overflow-y-auto bg-surface-raised p-lg text-ink shadow-drawer',
                         side === 'end' ? 'end-0 border-s border-hairline' : 'start-0 border-e border-hairline',
                         className,
                     )}
                 >
-                    <div className="flex items-start justify-between gap-md">
+                    <div data-erp-drawer-head className="flex items-start justify-between gap-md">
                         <div className="flex min-w-0 flex-col gap-xxs">
                             <SheetPrimitive.Title className="text-heading-lg text-ink">{title}</SheetPrimitive.Title>
                             {description ? (
-                                <SheetPrimitive.Description className="text-body-sm text-muted">
-                                    {description}
-                                </SheetPrimitive.Description>
+                                <SheetPrimitive.Description className="text-body-sm text-muted">{description}</SheetPrimitive.Description>
                             ) : null}
                         </div>
                         <SheetPrimitive.Close asChild>
                             <IconButton label={closeLabel} icon={<XIcon />} size="sm" />
                         </SheetPrimitive.Close>
                     </div>
-                    {children ? <div className="flex-1 text-body-md text-ink">{children}</div> : null}
+                    {children ? (
+                        <div data-erp-drawer-body className="flex-1 text-body-md text-ink">
+                            {children}
+                        </div>
+                    ) : null}
                     {footer ? (
-                        <div className="mt-auto flex flex-wrap items-center justify-end gap-xs border-t border-hairline pt-md">
+                        <div
+                            data-erp-drawer-foot
+                            className="mt-auto flex flex-wrap items-center justify-end gap-xs border-t border-hairline pt-md"
+                        >
                             {footer}
                         </div>
                     ) : null}

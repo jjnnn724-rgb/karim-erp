@@ -14,8 +14,8 @@ import {
     zatcaSettingsSchema,
 } from '../../lib/settings';
 import {
-    saveZatcaSettings,
     SETTINGS_TEXT,
+    saveZatcaSettings,
     zatcaApplyVat,
     zatcaGenerateCsr,
     zatcaManualCsid,
@@ -119,8 +119,7 @@ export function ZatcaSection() {
     });
     const queueQuery = useQuery({
         queryKey: ['settings', 'zatca-queue'],
-        queryFn: ({ signal }) =>
-            fetchJson(zatcaQueueSchema, '/api/zatca/queue?limit=20', getAccessToken(), { signal }),
+        queryFn: ({ signal }) => fetchJson(zatcaQueueSchema, '/api/zatca/queue?limit=20', getAccessToken(), { signal }),
         refetchOnWindowFocus: false,
     });
 
@@ -129,7 +128,10 @@ export function ZatcaSection() {
     const draft = useDraftForm<ZatcaForm>(data ? toForm(data.config) : null, signature);
     const config = data?.config ?? null;
 
-    const invalidate = [['settings', 'zatca'], ['settings', 'zatca-queue']] as const;
+    const invalidate = [
+        ['settings', 'zatca'],
+        ['settings', 'zatca-queue'],
+    ] as const;
 
     const save = useWriteMutation<ZatcaForm, void>({
         mutationFn: (form) =>
@@ -325,12 +327,8 @@ export function ZatcaSection() {
             >
                 <div className="flex flex-wrap items-center gap-xs">
                     <Badge variant="info">{config.environment_label || config.environment}</Badge>
-                    <Badge variant={config.has_csid ? 'success' : 'warning'}>
-                        {config.has_csid ? 'CSID جاهزة' : 'بلا CSID'}
-                    </Badge>
-                    <Badge variant="neutral">
-                        {config.poll_in_server ? 'مزامنة من الخادم' : 'مزامنة من العميل'}
-                    </Badge>
+                    <Badge variant={config.has_csid ? 'success' : 'warning'}>{config.has_csid ? 'CSID جاهزة' : 'بلا CSID'}</Badge>
+                    <Badge variant="neutral">{config.poll_in_server ? 'مزامنة من الخادم' : 'مزامنة من العميل'}</Badge>
                     {config.enabled ? (
                         <Button
                             variant="danger"
@@ -338,7 +336,9 @@ export function ZatcaSection() {
                             loading={toggle.isPending}
                             disabled={!canWrite || toggle.isPending}
                             onClick={async () => {
-                                const ok = await confirm('إيقاف الربط يجمّد الإبلاغ الضريبي مؤقتًا — الفواتير تبقى محفوظة وتُرسل عند إعادة التفعيل.');
+                                const ok = await confirm(
+                                    'إيقاف الربط يجمّد الإبلاغ الضريبي مؤقتًا — الفواتير تبقى محفوظة وتُرسل عند إعادة التفعيل.',
+                                );
                                 if (ok) {
                                     toggle.mutate(false);
                                 }
@@ -499,7 +499,13 @@ export function ZatcaSection() {
 
             <SectionCard title="الشهادة والإعدادات" english="Credentials" badge={<ReadOnlyBadge visible={canWrite} />}>
                 <div className="flex flex-wrap items-center gap-xs">
-                    <Button variant="secondary" size="sm" loading={csr.isPending} disabled={!canWrite || csr.isPending} onClick={() => csr.mutate()}>
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        loading={csr.isPending}
+                        disabled={!canWrite || csr.isPending}
+                        onClick={() => csr.mutate()}
+                    >
                         {config.has_csr ? 'إعادة توليد CSR' : 'توليد CSR'}
                     </Button>
                     <Button

@@ -11,7 +11,7 @@ function DevOnlyGallery() {
         if (!dev) {
             void navigate({ to: '/' });
         }
-    }, [dev, navigate]);
+    }, [navigate]);
 
     return dev ? <DesignGallery /> : null;
 }

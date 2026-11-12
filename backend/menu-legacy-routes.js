@@ -7,6 +7,7 @@ const fs = require('fs');
 const path = require('path');
 const express = require('express');
 const { logger } = require('./logger');
+const rollout = require('./rollout');
 const { jwtAuth } = require('./cashier-module/jwt-middleware');
 
 const BUFFET_DATA_FILE = path.resolve(__dirname, '..', 'database', 'data', 'buffet-menu.json');
@@ -83,10 +84,11 @@ function sanitizeBuffetPayload(payload) {
 function register(app, opts = {}) {
     const { io } = opts;
 
-    // Root redirect — V2 is the primary shell (2026-10-23); the legacy UI stays
-    // directly reachable at /app/index.html as a fallback.
+    // Root redirect — V2 today, V3 from the rollout date (frontend/v3/rollout.json),
+    // decided by backend/rollout.js so the switch needs no deploy. Both shells stay
+    // reachable directly: /v3/ and /app/v2.html.
     app.get('/', (req, res) => {
-        res.redirect(302, '/app/v2.html?live=1');
+        res.redirect(302, rollout.v3Entry() ? '/v3/' : '/app/v2.html?live=1');
     });
 
     // ─── مسارات شاشة المنيو والداشبورد السهلة ───

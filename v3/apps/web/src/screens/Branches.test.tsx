@@ -170,11 +170,16 @@ describe('فروع المنشأة', () => {
     it('يحرس الكتابة للأدمن وينشئ فرعًا ويستخدم القيم الافتراضية الموثقة', async () => {
         authMock.role = 'admin';
         const calls: Array<{ url: string; method: string }> = [];
-        vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-            const url = String(input); const method = init?.method || 'GET'; calls.push({ url, method });
-            if (method === 'POST') return json({ ok: true, data: branches[0] }, 201);
-            return json({ ok: true, data: branches });
-        }));
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+                const url = String(input);
+                const method = init?.method || 'GET';
+                calls.push({ url, method });
+                if (method === 'POST') return json({ ok: true, data: branches[0] }, 201);
+                return json({ ok: true, data: branches });
+            }),
+        );
         renderScreen();
         await screen.findByText('الفرع الرئيسي');
         fireEvent.click(screen.getByRole('button', { name: 'إضافة فرع' }));
@@ -184,7 +189,7 @@ describe('فروع المنشأة', () => {
         await waitFor(() => expect(calls.some((call) => call.method === 'POST')).toBe(true));
         const request = calls.find((call) => call.method === 'POST');
         expect(request?.url).toContain('/api/branches');
-        const body = JSON.parse(String((vi.mocked(fetch).mock.calls.find((call) => call[1]?.method === 'POST')?.[1] as RequestInit).body));
+        const body = JSON.parse(String(vi.mocked(fetch).mock.calls.find((call) => call[1]?.method === 'POST')?.[1]?.body ?? ''));
         expect(body).toMatchObject({ code: 'BR-2', name_ar: 'فرع جديد', currency: 'SAR', timezone: 'Asia/Riyadh' });
     });
 
@@ -195,18 +200,29 @@ describe('فروع المنشأة', () => {
         renderScreen();
         await screen.findByText('الفرع الرئيسي');
         expect(screen.queryByRole('button', { name: 'إضافة فرع' })).toBeNull();
-        expect(fetchMock.mock.calls.every((call) => !(call[1] as RequestInit | undefined)?.method || (call[1] as RequestInit).method === 'GET')).toBe(true);
+        expect(
+            fetchMock.mock.calls.every(
+                (call) => !(call[1] as RequestInit | undefined)?.method || (call[1] as RequestInit).method === 'GET',
+            ),
+        ).toBe(true);
     });
 
     it('لا يوقف MAIN، ويطلب التأكيد قبل الإيقاف ويحدّث القائمة بعده', async () => {
         authMock.role = 'admin';
         const calls: Array<{ method: string; url: string }> = [];
-        vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-            const method = init?.method || 'GET'; calls.push({ method, url: String(input) });
-            // فرعان مفعّلان على الخادم: الإيقاف متاح لكليهما، وMAIN وحده معطّل الزر.
-            return json(method === 'DELETE' ? { ok: true } : { ok: true, data: branches.map((branch) => ({ ...branch, is_active: true })) });
-        }));
-        renderScreen(); await screen.findByText('الفرع الرئيسي');
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+                const method = init?.method || 'GET';
+                calls.push({ method, url: String(input) });
+                // فرعان مفعّلان على الخادم: الإيقاف متاح لكليهما، وMAIN وحده معطّل الزر.
+                return json(
+                    method === 'DELETE' ? { ok: true } : { ok: true, data: branches.map((branch) => ({ ...branch, is_active: true })) },
+                );
+            }),
+        );
+        renderScreen();
+        await screen.findByText('الفرع الرئيسي');
         const stopButtons = screen.getAllByRole('button', { name: 'إيقاف' });
         expect(stopButtons[0]?.hasAttribute('disabled')).toBe(true);
         fireEvent.click(stopButtons[1]!);
@@ -218,12 +234,16 @@ describe('فروع المنشأة', () => {
     it('يعدّل الفرع دون إرسال الكود ويعيد تفعيل الفرع بـPATCH موثق', async () => {
         authMock.role = 'admin';
         const calls: Array<{ method: string; url: string; body?: unknown }> = [];
-        vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-            const method = init?.method || 'GET';
-            calls.push({ method, url: String(input), body: init?.body ? JSON.parse(String(init.body)) : undefined });
-            return json(method === 'PATCH' ? { ok: true, data: branches[1] } : { ok: true, data: branches });
-        }));
-        renderScreen(); await screen.findByText('الفرع الرئيسي');
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+                const method = init?.method || 'GET';
+                calls.push({ method, url: String(input), body: init?.body ? JSON.parse(String(init.body)) : undefined });
+                return json(method === 'PATCH' ? { ok: true, data: branches[1] } : { ok: true, data: branches });
+            }),
+        );
+        renderScreen();
+        await screen.findByText('الفرع الرئيسي');
         fireEvent.click(screen.getAllByRole('button', { name: 'تعديل' })[0]!);
         fireEvent.change(await screen.findByLabelText(/^الاسم بالعربية/), { target: { value: 'الفرع الرئيسي المعدل' } });
         fireEvent.click(screen.getByRole('button', { name: 'حفظ التعديل' }));
@@ -241,11 +261,18 @@ describe('فروع المنشأة', () => {
     it('ينفّذ soft-stop بعد الموافقة فقط ويعيد تحميل القائمة', async () => {
         authMock.role = 'admin';
         const calls: Array<{ method: string; url: string }> = [];
-        vi.stubGlobal('fetch', vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
-            const method = init?.method || 'GET'; calls.push({ method, url: String(input) });
-            return json(method === 'DELETE' ? { ok: true } : { ok: true, data: branches.map((branch) => ({ ...branch, is_active: true })) });
-        }));
-        renderScreen(); await screen.findByText('الفرع الرئيسي');
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
+                const method = init?.method || 'GET';
+                calls.push({ method, url: String(input) });
+                return json(
+                    method === 'DELETE' ? { ok: true } : { ok: true, data: branches.map((branch) => ({ ...branch, is_active: true })) },
+                );
+            }),
+        );
+        renderScreen();
+        await screen.findByText('الفرع الرئيسي');
         fireEvent.click(screen.getAllByRole('button', { name: 'إيقاف' })[1]!);
         expect(await screen.findByText('إيقاف فرع «فرع القاهرة»؟ يُخفى من القوائم، وسجلاته التاريخية تبقى كما هي.')).toBeTruthy();
         expect(calls.some((call) => call.method === 'DELETE')).toBe(false);

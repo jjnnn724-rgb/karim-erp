@@ -1,29 +1,14 @@
 import { describe, expect, test } from 'vitest';
-import {
-    addMoney,
-    fromCents,
-    isMoneyString,
-    MONEY_PATTERN,
-    MoneyFormatError,
-    roundHalfUp,
-    sumMoney,
-    toCents,
-} from './money.js';
+import { addMoney, fromCents, isMoneyString, MONEY_PATTERN, MoneyFormatError, roundHalfUp, sumMoney, toCents } from './money.js';
 
 describe('isMoneyString', () => {
-    test.each(['0', '0.00', '40', '-40', '12345678901234', '12345678901234.99', '0.05', '-0.99'])(
-        'يقبل %s',
-        (value) => {
-            expect(isMoneyString(value)).toBe(true);
-        },
-    );
+    test.each(['0', '0.00', '40', '-40', '12345678901234', '12345678901234.99', '0.05', '-0.99'])('يقبل %s', (value) => {
+        expect(isMoneyString(value)).toBe(true);
+    });
 
-    test.each(['', ' ', '1.', '.5', '1.234', '1,000', '1e5', '−40', '123456789012345', '12.3.4', ' 40 '])(
-        'يرفض «%s»',
-        (value) => {
-            expect(isMoneyString(value)).toBe(false);
-        },
-    );
+    test.each(['', ' ', '1.', '.5', '1.234', '1,000', '1e5', '−40', '123456789012345', '12.3.4', ' 40 '])('يرفض «%s»', (value) => {
+        expect(isMoneyString(value)).toBe(false);
+    });
 
     test('يرفض غير النصوص', () => {
         expect(isMoneyString(40)).toBe(false);

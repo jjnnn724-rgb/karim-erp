@@ -1,26 +1,81 @@
-.erp-premium-screen--recipes { min-width: 0; }
-.erp-premium-screen--recipes > header { align-items: flex-start; gap: 1rem; padding-block: .35rem .15rem; }
-.erp-premium-screen--recipes > header > div { max-width: 76ch; }
-.erp-premium-screen--recipes > header h1 { line-height: 1.35; letter-spacing: -.025em; }
-.erp-premium-screen--recipes > header p { margin-top: .45rem; line-height: 1.8; }
+.erp-premium-screen--recipes {
+    min-width: 0;
+}
+.erp-premium-screen--recipes > header {
+    align-items: flex-start;
+    gap: 1rem;
+    padding-block: 0.35rem 0.15rem;
+}
+.erp-premium-screen--recipes > header > div {
+    max-width: 76ch;
+}
+.erp-premium-screen--recipes > header h1 {
+    line-height: 1.35;
+    letter-spacing: -0.025em;
+}
+.erp-premium-screen--recipes > header p {
+    margin-top: 0.45rem;
+    line-height: 1.8;
+}
 .erp-premium-screen--recipes button:focus-visible,
 .erp-premium-screen--recipes input:focus-visible,
-.erp-premium-screen--recipes select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-.erp-premium-screen--recipes > div:nth-of-type(1) > div { min-width: 0; border-inline-start: 3px solid var(--accent); }
-.erp-premium-screen--recipes input[type="search"] { width: min(100%, 22rem); }
-.erp-premium-screen--recipes select { min-width: 10rem; }
-.erp-premium-screen--recipes table { min-width: 850px; }
-.erp-premium-screen--recipes th { white-space: nowrap; }
-.erp-premium-screen--recipes th button { border-radius: 4px; padding: .2rem .15rem; }
-.erp-premium-screen--recipes td { line-height: 1.65; }
-.erp-premium-screen--recipes img { flex: none; object-fit: cover; }
-@media (max-width: 640px) {
- .erp-premium-screen--recipes { gap: 1rem; }
- .erp-premium-screen--recipes > header { align-items: stretch; }
- .erp-premium-screen--recipes > header button { align-self: flex-start; }
- .erp-premium-screen--recipes input[type="search"], .erp-premium-screen--recipes select { width: 100%; }
- .erp-premium-screen--recipes fieldset { width: 100%; }
- .erp-premium-screen--recipes > div:nth-of-type(1) { gap: .65rem; }
- .erp-premium-screen--recipes > div:nth-of-type(1) > div { padding: .8rem; }
+.erp-premium-screen--recipes select:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
 }
-@media (prefers-reduced-motion: reduce) { .erp-premium-screen--recipes * { transition-duration: 0.01ms !important; } }
+.erp-premium-screen--recipes > div:nth-of-type(1) > div {
+    min-width: 0;
+    border-inline-start: 3px solid var(--accent);
+}
+.erp-premium-screen--recipes input[type="search"] {
+    width: min(100%, 22rem);
+}
+.erp-premium-screen--recipes select {
+    min-width: 10rem;
+}
+.erp-premium-screen--recipes table {
+    min-width: 850px;
+}
+.erp-premium-screen--recipes th {
+    white-space: nowrap;
+}
+.erp-premium-screen--recipes th button {
+    border-radius: 4px;
+    padding: 0.2rem 0.15rem;
+}
+.erp-premium-screen--recipes td {
+    line-height: 1.65;
+}
+.erp-premium-screen--recipes img {
+    flex: none;
+    object-fit: cover;
+}
+@media (max-width: 640px) {
+    .erp-premium-screen--recipes {
+        gap: 1rem;
+    }
+    .erp-premium-screen--recipes > header {
+        align-items: stretch;
+    }
+    .erp-premium-screen--recipes > header button {
+        align-self: flex-start;
+    }
+    .erp-premium-screen--recipes input[type="search"],
+    .erp-premium-screen--recipes select {
+        width: 100%;
+    }
+    .erp-premium-screen--recipes fieldset {
+        width: 100%;
+    }
+    .erp-premium-screen--recipes > div:nth-of-type(1) {
+        gap: 0.65rem;
+    }
+    .erp-premium-screen--recipes > div:nth-of-type(1) > div {
+        padding: 0.8rem;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .erp-premium-screen--recipes * {
+        transition-duration: 0.01ms !important;
+    }
+}

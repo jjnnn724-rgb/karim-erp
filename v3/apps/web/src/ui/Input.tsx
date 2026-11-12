@@ -1,6 +1,6 @@
+import { type ComponentPropsWithRef, useId } from 'react';
 import { Input as ShadcnInput } from '@/components/ui/input';
 import { Label as ShadcnLabel } from '@/components/ui/label';
-import { type ComponentPropsWithRef, useId } from 'react';
 import { cn } from './cn';
 import { definedProps } from './definedProps';
 import { AlertCircleIcon } from './icons';
@@ -8,14 +8,14 @@ import { AlertCircleIcon } from './icons';
 /**
  * حقل نصّي — فوق **shadcn/ui** (`@/components/ui/input` + `Label`)، تسمية مرتبطة
  * (`htmlFor`/`id`)، خطأ بـ`aria-invalid` + `aria-describedby`، وتلميح اختياري.
- * focus الحلقة الشامبانيا عامة من `styles.css` (لا تُحذف أبدًا — DESIGN.md).
+ * حلقة التركيز بلون الفعل عامة من `styles.css` (لا تُحذف أبدًا — DESIGN.md).
  *
  * `controlClassName` يُصدَّر لتشاركه Select/Textarea/Combobox، فيبقى مظهر
  * كل عناصر التحكم من مصدر واحد (قاعدة «لا زوايا مختلطة داخل المكوّن»).
  */
 
 export const controlClassName =
-    'erp-control block w-full rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink shadow-card transition-colors duration-[var(--erp-motion-fast)] ease-standard placeholder:text-faint hover:border-brass/60 focus-visible:border-brass disabled:cursor-not-allowed disabled:opacity-50 aria-[invalid=true]:border-danger aria-[invalid=true]:bg-danger-soft';
+    'erp-control block w-full rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink shadow-card transition-colors duration-[var(--erp-motion-fast)] ease-standard placeholder:text-faint hover:border-primary/60 focus-visible:border-primary disabled:cursor-not-allowed disabled:opacity-50 aria-[invalid=true]:border-danger aria-[invalid=true]:bg-danger-soft';
 
 export const controlSizeClassName = {
     sm: 'h-7.5 text-body-sm',
@@ -50,9 +50,7 @@ export function Input({
     const inputId = id ?? autoId;
     const hintId = hint ? `${inputId}-hint` : undefined;
     const errorId = error ? `${inputId}-error` : undefined;
-    const describedBy = [ariaDescribedBy, errorId ?? hintId]
-        .filter((value): value is string => Boolean(value))
-        .join(' ');
+    const describedBy = [ariaDescribedBy, errorId ?? hintId].filter((value): value is string => Boolean(value)).join(' ');
 
     return (
         <div className={cn('flex flex-col gap-xs', containerClassName)}>

@@ -31,10 +31,7 @@ export type MonthRow = z.infer<typeof monthRowSchema>;
 
 export const monthlyComparisonSchema = z
     .object({
-        period: z
-            .object({ from: text, to: text, months: numLike, label: text })
-            .passthrough()
-            .optional(),
+        period: z.object({ from: text, to: text, months: numLike, label: text }).passthrough().optional(),
         months: z.array(monthRowSchema).optional(),
         totals: z
             .object({

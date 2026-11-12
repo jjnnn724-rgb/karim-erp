@@ -5,5 +5,6 @@
  * فلا نسخة ثانية هنا: الملف موجود كي تشير القشرة إلى مسار ثابت داخل
  * `components/`، ولو غيّر ui-kit واجهته يتغيّر سطر واحد فقط.
  */
-export { ThemeToggle } from '../ui/ThemeToggle';
+
 export type { ThemeToggleProps } from '../ui/ThemeToggle';
+export { ThemeToggle } from '../ui/ThemeToggle';

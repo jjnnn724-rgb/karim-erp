@@ -1,6 +1,7 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useState } from 'react';
 import { useConfirm } from '../../components/ConfirmProvider';
+import { useAuthState } from '../../lib/auth';
 import { formatBytes, type ResetResult } from '../../lib/settings';
 import {
     clearAppState,
@@ -12,8 +13,6 @@ import {
     resetAllSystem,
     settingsWriteVisible,
 } from '../../lib/settings-write';
-import { useAuthState } from '../../lib/auth';
-import { useToast } from '../../ui/Toast';
 import { useWriteMutation, writeErrorMessage } from '../../lib/write';
 import { Badge } from '../../ui/Badge';
 import { Button } from '../../ui/Button';
@@ -21,6 +20,7 @@ import { Checkbox } from '../../ui/Checkbox';
 import { Dialog } from '../../ui/Dialog';
 import { Input } from '../../ui/Input';
 import { Textarea } from '../../ui/Textarea';
+import { useToast } from '../../ui/Toast';
 import { QueryBoundary, SectionCard } from './shared';
 
 /**
@@ -132,7 +132,11 @@ export function MaintenanceSection() {
             <SectionCard
                 title="تصدير البيانات"
                 english="JSON Export"
-                badge={<Badge variant="neutral" dot>{EXPORT_ENTITIES.length} مجموعة</Badge>}
+                badge={
+                    <Badge variant="neutral" dot>
+                        {EXPORT_ENTITIES.length} مجموعة
+                    </Badge>
+                }
                 actions={
                     <Button variant="secondary" size="sm" loading={exporting} onClick={() => void runExport()}>
                         تصدير JSON
@@ -209,9 +213,7 @@ export function MaintenanceSection() {
                     </Button>
                 }
             >
-                <p className="text-body-sm text-muted">
-                    يُفرّغ حركات المستودع والأرصدة ويُعيد الترقيم — البيانات المالية والفواتير تبقى.
-                </p>
+                <p className="text-body-sm text-muted">يُفرّغ حركات المستودع والأرصدة ويُعيد الترقيم — البيانات المالية والفواتير تبقى.</p>
             </SectionCard>
 
             <Dialog

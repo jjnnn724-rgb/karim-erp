@@ -130,20 +130,10 @@ export type DeptCostDetail = z.infer<typeof deptCostDetailSchema>;
 
 export async function fetchCostAnalysis(from: string, to: string, signal?: AbortSignal): Promise<CostAnalysis> {
     const query = from && to ? `?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}` : '';
-    return fetchJson(
-        costAnalysisSchema,
-        `/api/finance/cost-analysis${query}`,
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    return fetchJson(costAnalysisSchema, `/api/finance/cost-analysis${query}`, getAccessToken(), signal ? { signal } : {});
 }
 
-export async function fetchDeptCostDetail(
-    code: string,
-    from: string,
-    to: string,
-    signal?: AbortSignal,
-): Promise<DeptCostDetail> {
+export async function fetchDeptCostDetail(code: string, from: string, to: string, signal?: AbortSignal): Promise<DeptCostDetail> {
     const range = from && to ? `&from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}` : '';
     return fetchJson(
         deptCostDetailSchema,

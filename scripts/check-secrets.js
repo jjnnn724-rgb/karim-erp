@@ -76,7 +76,7 @@ function looksLikeCredential(value) {
     if (!/[A-Za-z]/.test(v)) {return false;}                  // لا بد من حرف
     // رمز إلزامي (underscore لا يُعدّ رمزًا: أسماء متغيّرات psql مثل
     // new_password تمرّ هنا بلا إيجابية كاذبة)
-    if (!/[0-9]/.test(v) && !/[\-!@#$%^&*]/.test(v)) {return false;}
+    if (!/[0-9]/.test(v) && !/[-!@#$%^&*]/.test(v)) {return false;}
     return true;
 }
 
@@ -128,6 +128,10 @@ function trackedFiles() {
 function scan() {
     const findings = [];
     for (const rel of trackedFiles()) {
+        // Vite's content-hashed bundles are derived from the scanned V3 source.
+        // Their minified property names (for example `has_private_key`) and
+        // runtime token variables are not credentials; scan their source instead.
+        if (/^frontend\/v3\/assets\/[^/]+-[A-Za-z0-9_-]{8,}\.js$/.test(rel)) {continue;}
         const abs = path.join(ROOT, rel);
         let stat;
         try { stat = fs.statSync(abs); } catch (_) { continue; }

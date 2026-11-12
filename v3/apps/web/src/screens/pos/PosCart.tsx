@@ -1,5 +1,5 @@
+import { type PosCartLine, type PosDiscount, type PosTotals, parsePosMoney } from '../../lib/pos-pricing';
 import { Badge, Button, Input, Select } from '../../ui';
-import { parsePosMoney, type PosCartLine, type PosDiscount, type PosTotals } from '../../lib/pos-pricing';
 import { PosNumpad } from './PosNumpad';
 import { moneyText, PAYMENT_FIELDS, type PaymentKey } from './pos-ui';
 
@@ -7,6 +7,8 @@ export type PaymentReferenceKey = 'card' | 'wallet' | 'bank_transfer';
 
 export interface PosCartProps {
     cart: readonly PosCartLine[];
+    /** صور الأصناف بمعرّفها — تُعرض مصغّرة في بنود السلة. */
+    images?: Record<string, string>;
     totals: PosTotals;
     discount: PosDiscount;
     onDiscount: (next: PosDiscount) => void;
@@ -28,6 +30,7 @@ export interface PosCartProps {
 /** السلة والخصم والدفع — الأرقام تقديرية، والخادم هو من يسجّل الفاتورة. */
 export function PosCart({
     cart,
+    images,
     totals,
     discount,
     onDiscount,
@@ -66,32 +69,49 @@ export function PosCart({
                     <h2 id="pos-cart-title" className="erp-card__title">
                         السلة <Badge variant="info">{count}</Badge>
                     </h2>
-                    <Button
-                        size="sm"
-                        variant="secondary"
-                        disabled={!cart.length || !canSell || busy}
-                        onClick={onHold}
-                    >
+                    <Button size="sm" variant="secondary" disabled={!cart.length || !canSell || busy} onClick={onHold}>
                         تعليق الطلب الحالي
                     </Button>
                 </div>
 
                 {cart.length === 0 ? (
-                    <p className="text-body-sm text-muted">
-                        {buffet ? 'السلة فارغة — اختر فئة وأضف فردًا للبدء.' : 'السلة فارغة — اختر صنفًا للبدء.'}
-                    </p>
+                    <div className="pos-cart__empty">
+                        <span className="pos-cart__empty-icon" aria-hidden="true">
+                            <svg
+                                aria-hidden="true"
+                                viewBox="0 0 24 24"
+                                width="20"
+                                height="20"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.6"
+                            >
+                                <path
+                                    d="M3 4h2l2.4 10.2a2 2 0 0 0 2 1.6h7.9a2 2 0 0 0 2-1.55L21 8H6"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                />
+                                <circle cx="10" cy="20" r="1.3" />
+                                <circle cx="18" cy="20" r="1.3" />
+                            </svg>
+                        </span>
+                        <p>{buffet ? 'السلة فارغة — اختر فئة وأضف فردًا للبدء.' : 'السلة فارغة — اختر صنفًا للبدء.'}</p>
+                    </div>
                 ) : (
                     <ul className="pos-cart__lines">
                         {cart.map((row) => (
                             <li key={row.id} className="pos-cart__line">
-                                <div className="min-w-0">
+                                {images?.[row.id] ? (
+                                    <img className="pos-cart__thumb" src={images[row.id]} alt="" loading="lazy" decoding="async" />
+                                ) : null}
+                                <div className="min-w-0 pos-cart__copy">
                                     <strong>{row.name}</strong>
                                     <small>
                                         {moneyText(row.price)} × {row.quantity}
                                         {buffet ? ' فرد' : ''}
                                     </small>
                                 </div>
-                                <div className="pos-qty" role="group" aria-label={`كمية ${row.name}`}>
+                                <fieldset className="pos-qty m-0 min-w-0 border-0 p-0" aria-label={`كمية ${row.name}`}>
                                     <button
                                         type="button"
                                         aria-label={`تقليل ${row.name}`}
@@ -113,7 +133,7 @@ export function PosCart({
                                     >
                                         +
                                     </button>
-                                </div>
+                                </fieldset>
                             </li>
                         ))}
                     </ul>
@@ -144,94 +164,94 @@ export function PosCart({
                     </div>
                 </dl>
 
-                {canSell ? (
-                    <fieldset className="pos-payments">
-                        <legend>طرق الدفع</legend>
-                        <div className="pos-payments__discount">
-                            <Select
-                                label="نوع الخصم"
-                                value={discount.type}
-                                options={[
-                                    { value: '', label: 'بدون خصم' },
-                                    { value: 'percent', label: 'نسبة مئوية' },
-                                    { value: 'fixed', label: 'مبلغ ثابت' },
-                                ]}
-                                onValueChange={(value) => {
-                                    onDiscount({ type: value as PosDiscount['type'], value: discount.value });
-                                }}
-                                disabled={busy}
-                            />
-                            <Input
-                                label="قيمة الخصم"
-                                inputMode="decimal"
-                                dir="ltr"
-                                value={discount.value}
-                                disabled={!discount.type || busy}
-                                onChange={(event) => {
-                                    onDiscount({ type: discount.type, value: event.target.value });
-                                }}
-                            />
-                        </div>
-                        {!totals.valid ? (
-                            <p className="text-body-sm text-danger" role="alert">
-                                قيمة الخصم غير صالحة؛ النسبة من 0 إلى 100.
-                            </p>
-                        ) : null}
+                {canSell && cart.length ? (
+                    <details className="pos-payments">
+                        <summary className="pos-payments__summary">
+                            <strong>الدفع</strong>
+                            <span className={`pos-payments__summary-state${invalid ? ' is-invalid' : ''}`} role="status" aria-live="polite">
+                                {paymentState}
+                            </span>
+                            <span className="pos-payments__summary-edit">تعديل</span>
+                        </summary>
+                        <div className="pos-payments__body">
+                            <div className="pos-payments__discount">
+                                <Select
+                                    label="نوع الخصم"
+                                    value={discount.type}
+                                    options={[
+                                        { value: '', label: 'بدون خصم' },
+                                        { value: 'percent', label: 'نسبة مئوية' },
+                                        { value: 'fixed', label: 'مبلغ ثابت' },
+                                    ]}
+                                    onValueChange={(value) => {
+                                        onDiscount({ type: value as PosDiscount['type'], value: discount.value });
+                                    }}
+                                    disabled={busy}
+                                />
+                                <Input
+                                    label="قيمة الخصم"
+                                    inputMode="decimal"
+                                    dir="ltr"
+                                    value={discount.value}
+                                    disabled={!discount.type || busy}
+                                    onChange={(event) => {
+                                        onDiscount({ type: discount.type, value: event.target.value });
+                                    }}
+                                />
+                            </div>
+                            {!totals.valid ? (
+                                <p className="text-body-sm text-danger" role="alert">
+                                    قيمة الخصم غير صالحة؛ النسبة من 0 إلى 100.
+                                </p>
+                            ) : null}
 
-                        <div className="pos-payments__grid">
-                            {PAYMENT_FIELDS.map((field) => (
-                                <div key={field.key} className="pos-payments__field">
-                                    <Input
-                                        label={field.label}
-                                        type="number"
-                                        min="0"
-                                        step="0.01"
-                                        inputMode="decimal"
-                                        dir="ltr"
-                                        value={payments[field.key]}
-                                        disabled={busy}
-                                        onChange={(event) => {
-                                            onPayment(field.key, event.target.value);
-                                        }}
-                                    />
-                                    {field.key === 'cash' ? null : (
+                            <div className="pos-payments__grid">
+                                {PAYMENT_FIELDS.map((field) => (
+                                    <div key={field.key} className="pos-payments__field">
                                         <Input
-                                            label={`مرجع ${field.label}`}
-                                            maxLength={120}
-                                            autoComplete="off"
+                                            label={field.label}
+                                            type="number"
+                                            min="0"
+                                            step="0.01"
+                                            inputMode="decimal"
                                             dir="ltr"
-                                            value={references[field.key]}
+                                            value={payments[field.key]}
                                             disabled={busy}
                                             onChange={(event) => {
-                                                onReference(field.key, event.target.value);
+                                                onPayment(field.key, event.target.value);
                                             }}
                                         />
-                                    )}
-                                </div>
-                            ))}
+                                        {field.key === 'cash' ? null : (
+                                            <Input
+                                                label={`مرجع ${field.label}`}
+                                                maxLength={120}
+                                                autoComplete="off"
+                                                dir="ltr"
+                                                value={references[field.key]}
+                                                disabled={busy}
+                                                onChange={(event) => {
+                                                    onReference(field.key, event.target.value);
+                                                }}
+                                            />
+                                        )}
+                                    </div>
+                                ))}
+                            </div>
+
+                            <PosNumpad
+                                value={payments.cash}
+                                due={totals.total}
+                                fresh={!paymentsTouched}
+                                disabled={busy}
+                                onChange={(value) => {
+                                    onPayment('cash', value);
+                                }}
+                            />
                         </div>
-
-                        <p
-                            className={`pos-payments__state${invalid ? ' is-invalid' : ''}`}
-                            role="status"
-                            aria-live="polite"
-                        >
-                            {paymentState}
-                        </p>
-
-                        <PosNumpad
-                            value={payments.cash}
-                            due={totals.total}
-                            fresh={!paymentsTouched}
-                            disabled={busy}
-                            onChange={(value) => {
-                                onPayment('cash', value);
-                            }}
-                        />
-                    </fieldset>
-                ) : (
+                    </details>
+                ) : !canSell ? (
                     <p className="text-body-sm text-muted">قراءة فقط — لا يمكن إتمام البيع بهذا الدور.</p>
-                )}
+                ) : null}
             </div>
             <div className="pos-cart__foot">
                 <div className="pos-cart__foot-main">
@@ -245,12 +265,7 @@ export function PosCart({
                         </strong>
                     </div>
                     {canSell ? (
-                        <Button
-                            variant="primary"
-                            loading={busy}
-                            disabled={!cart.length || !totals.valid}
-                            onClick={onComplete}
-                        >
+                        <Button variant="primary" loading={busy} disabled={!cart.length || !totals.valid} onClick={onComplete}>
                             إتمام البيع
                         </Button>
                     ) : null}

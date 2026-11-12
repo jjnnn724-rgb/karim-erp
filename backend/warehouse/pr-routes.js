@@ -329,6 +329,37 @@ router.post('/purchase-requests/:id/gm-approve', jwtAuth, requireRole(...PR_GM_R
     } finally { client.release(); }
 });
 
+// إعادة طلب معتمد إلى الشيف لاستكمال التعديل وإعادة دورة الاعتماد.
+router.post('/purchase-requests/:id/revert-to-chef-approved', jwtAuth, requireRole(...PR_GM_ROLES), async (req, res) => {
+    const client = await pool.connect();
+    try {
+        await ensurePurchaseRequestSchema();
+        await client.query('BEGIN');
+        const pr = (await client.query('SELECT * FROM purchase_requests WHERE id=$1 FOR UPDATE', [req.params.id])).rows[0];
+        if (!pr) { await client.query('ROLLBACK'); return fail(res, 404, 'PR_NOT_FOUND', 'طلب الشراء غير موجود'); }
+        if (pr.status !== 'approved') {
+            await client.query('ROLLBACK');
+            return fail(res, 409, 'PR_NOT_APPROVED', 'يمكن إعادة الطلب إلى chef_approved فقط إذا كان معتمدًا');
+        }
+        const updated = (await client.query(`UPDATE purchase_requests SET status='chef_approved',
+          chef_approved_by=NULL, chef_approved_name=NULL, chef_approved_at=NULL,
+          chef_signature_data=NULL, chef_signature_hash=NULL, chef_notes=NULL,
+          updated_at=CURRENT_TIMESTAMP WHERE id=$1 RETURNING *`, [pr.id])).rows[0];
+        await appendPREvent(client, pr.id, 'revert_to_chef_approved', pr.status, 'chef_approved', req, null, {
+            revertedBy: req.user.name || req.user.username,
+            reason: req.body?.reason || 'إعادة المدير العام للتصحيح',
+        });
+        await client.query('COMMIT');
+        emit(req, 'purchaseRequests', 'update', updated);
+        notifyRequestEvent(req, updated, 'revert_to_chef_approved');
+        res.json({ ok: true, request: updated, message: 'تمت إعادة الطلب إلى الشيف للتعديل' });
+    } catch (error) {
+        await client.query('ROLLBACK').catch(() => {});
+        logger.error('[pr_revert_to_chef_approved]', error);
+        res.status(500).json({ error: 'PR_REVERT_FAILED', message: 'تعذر إعادة الطلب إلى الشيف للتعديل' });
+    } finally { client.release(); }
+});
+
 router.post('/purchase-requests/:id/gm-reject', jwtAuth, requireRole(...PR_GM_ROLES), async (req, res) => {
     const signature = requireSignature(req, res);
     if (!signature) {return;}

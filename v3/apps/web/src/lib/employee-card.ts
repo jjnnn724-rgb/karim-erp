@@ -1,5 +1,6 @@
 import { z } from 'zod';
 import { fetchJson } from './api';
+import { weekdayAr } from './attendance';
 import { getAccessToken } from './auth';
 
 /**
@@ -30,14 +31,8 @@ export function rangeDays(from: string, to: string, max = MAX_RANGE_DAYS): strin
     }
     const out: string[] = [];
     const end = new Date(`${String(to).slice(0, 10)}T12:00:00`);
-    for (
-        let d = new Date(`${String(from).slice(0, 10)}T12:00:00`);
-        d <= end && out.length < max;
-        d.setDate(d.getDate() + 1)
-    ) {
-        out.push(
-            `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
-        );
+    for (let d = new Date(`${String(from).slice(0, 10)}T12:00:00`); d <= end && out.length < max; d.setDate(d.getDate() + 1)) {
+        out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
     }
     return out;
 }
@@ -169,6 +164,100 @@ export type RangeModel = {
     summary: RangeSummary;
 };
 
+export interface EmployeeAttendancePrintOptions {
+    employeeName: string;
+    employeeCode: string;
+    department: string;
+    position: string;
+    report: RangeModel;
+    generatedAt?: Date;
+}
+
+function escapeHtml(value: unknown): string {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
+function minutesToClock(value: number): string {
+    const minutes = Math.max(0, Math.round(Number(value) || 0));
+    return `${Math.floor(minutes / 60)}:${String(minutes % 60).padStart(2, '0')}`;
+}
+
+/** ورقة كشف البطاقة: تطبع المدى المحمّل فقط، ولا تعيد احتساب ملخص الخادم. */
+export function employeeAttendancePrintHtml(options: EmployeeAttendancePrintOptions): string {
+    const { employeeName, employeeCode, department, position, report } = options;
+    const { summary, rows } = report;
+    const generatedAt = options.generatedAt ?? new Date();
+    const pad = (value: number): string => String(value).padStart(2, '0');
+    const stamp = `${pad(generatedAt.getDate())}/${pad(generatedAt.getMonth() + 1)}/${generatedAt.getFullYear()} ${pad(generatedAt.getHours())}:${pad(generatedAt.getMinutes())}`;
+    const stat = (label: string, value: string | number): string =>
+        `<div class="stat"><strong>${escapeHtml(value)}</strong><span>${escapeHtml(label)}</span></div>`;
+    const body = rows
+        .map((row) => {
+            const state = ATT_STATE[row.state] ?? ATT_STATE.review;
+            const delay = [
+                row.arrivalLateRaw > 0 ? `دخول ${minutesCell(row.arrivalLateRaw)}` : '',
+                row.earlyLeaveRaw > 0 ? `انصراف ${minutesCell(row.earlyLeaveRaw)}` : '',
+            ]
+                .filter(Boolean)
+                .join(' · ');
+            const counted =
+                row.lateMinutes > 0 && row.lateMinutes !== row.arrivalLateRaw + row.earlyLeaveRaw
+                    ? `محسَب ${minutesCell(row.lateMinutes)}`
+                    : '';
+            const delayDetails = [delay, counted].filter(Boolean).map(escapeHtml).join(' · ');
+            return `<tr>
+                <td class="numeric">${escapeHtml(row.date)}</td>
+                <td>${escapeHtml(weekdayAr(row.date))}</td>
+                <td class="numeric">${escapeHtml(row.checkIn || '—')}</td>
+                <td class="numeric">${escapeHtml(row.checkOut || '—')}</td>
+                <td class="numeric">${escapeHtml(minutesToClock(row.minutes))}</td>
+                <td>${delayDetails || '—'}</td>
+                <td>${escapeHtml(state.label)}</td>
+            </tr>`;
+        })
+        .join('');
+    const totalHours = Number.isFinite(summary.totalKarim) ? summary.totalKarim.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—';
+    const title = `كشف حضور وانصراف — ${employeeName}`;
+
+    return `<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1"><title>${escapeHtml(title)}</title>
+<style>
+*{box-sizing:border-box}body{margin:0;padding:24px;color:#172b3b;background:#fff;font:14px 'Tajawal','Segoe UI',Tahoma,Arial,sans-serif}
+.sheet{max-width:1100px;margin:auto}.head{border-bottom:3px solid #0f766e;padding-bottom:14px;margin-bottom:16px}
+h1{margin:0 0 8px;color:#102a43;font-size:22px}.identity,.period,.stats{display:flex;flex-wrap:wrap;gap:8px 18px}
+.identity{color:#596e80}.identity strong{color:#172b3b}.period{justify-content:center;margin:14px 0;color:#102a43;font-weight:700}
+.stats{display:grid;grid-template-columns:repeat(auto-fit,minmax(125px,1fr));margin:12px 0}
+.stat{display:flex;flex-direction:column;gap:3px;border:1px solid #dce5ec;border-radius:8px;padding:8px 10px;background:#f3f6fa}
+.stat strong{font-size:17px;color:#102a43}.stat span{font-size:12px;color:#596e80}
+table{width:100%;border-collapse:collapse}th,td{border:1px solid #dce5ec;padding:7px 8px;text-align:right}
+th{background:#102a43;color:#f0f6fa;white-space:nowrap}tbody tr:nth-child(even){background:#f3f6fa}.numeric{direction:ltr;unicode-bidi:embed;text-align:center}
+.foot{margin-top:12px;color:#596e80;font-size:11px}.actions{margin:0 auto 16px;max-width:1100px}
+.actions button{border:0;border-radius:6px;padding:9px 18px;background:#0f766e;color:#fff;font:inherit;cursor:pointer}
+@media print{body{padding:0}.actions{display:none!important}.sheet{max-width:none}thead{display:table-header-group}tr{break-inside:avoid}}
+</style></head><body>
+<div class="actions"><button type="button" data-print>طباعة الكشف</button></div>
+<main class="sheet"><header class="head"><h1>${escapeHtml(title)}</h1>
+<div class="identity"><span>رقم الموظف: <strong>${escapeHtml(employeeCode || '—')}</strong></span>
+<span>القسم: <strong>${escapeHtml(department || '—')}</strong></span><span>الوظيفة: <strong>${escapeHtml(position || '—')}</strong></span></div></header>
+<div class="period">الفترة: <span class="numeric">${escapeHtml(summary.from)}</span> — <span class="numeric">${escapeHtml(summary.to)}</span></div>
+<section class="stats" aria-label="ملخص الحضور">
+${stat('أيام الحضور', summary.daysPresent)}${stat('أيام مكتملة', summary.completeDays)}
+${stat('عليها تأخير', summary.rawLateDays)}${stat('أيام التأخير المحتسب', summary.lateDays)}
+${stat('التأخير الفعلي', summary.totalRawLateMinutes > 0 ? minutesCell(summary.totalRawLateMinutes) : '—')}
+${stat('التأخير المحتسب', summary.totalLateMinutes > 0 ? minutesCell(summary.totalLateMinutes) : '—')}
+${stat('إجمالي الساعات', totalHours)}
+</section>
+<table><thead><tr><th>التاريخ</th><th>اليوم</th><th>الحضور</th><th>الانصراف</th><th>الساعات</th><th>التأخير</th><th>الحالة</th></tr></thead>
+<tbody>${body || '<tr><td colspan="7">لا أيام في هذه الفترة</td></tr>'}</tbody></table>
+<p class="foot">تاريخ إنشاء التقرير: ${escapeHtml(stamp)}${report.truncated ? ' · الكشف محدود بـ 62 يومًا' : ''}</p>
+</main></body></html>`;
+}
+
 function int(value: unknown): number {
     const n = Number(value ?? 0);
     return Number.isFinite(n) ? Math.round(n) : 0;
@@ -198,8 +287,7 @@ export function rangeReportRows(report: AttendanceReport, dayOff: number | null 
     const from = String(summary.from ?? '').slice(0, 10);
     const to = String(summary.to ?? '').slice(0, 10);
     let days = rangeDays(from, to);
-    const truncated =
-        days.length === MAX_RANGE_DAYS && rangeDays(from, to, MAX_RANGE_DAYS + 1).length > MAX_RANGE_DAYS;
+    const truncated = days.length === MAX_RANGE_DAYS && rangeDays(from, to, MAX_RANGE_DAYS + 1).length > MAX_RANGE_DAYS;
     if (!days.length) {
         days = [...byDate.keys()].sort();
     }

@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { PrintActions } from '../components/PrintActions';
+import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { fetchEmployees } from '../lib/employees';
 import {
@@ -18,17 +18,20 @@ import {
 import {
     createUser,
     deleteUser,
-    setUserActive,
-    updateUser,
     isStrongPassword,
-    userActivateConfirm,
-    userDeactivateConfirm,
-    userDeleteConfirm,
+    issueResetCode,
+    type ResetCode,
+    setUserActive,
     USER_TEXT,
     type UserCreateInput,
     type UserUpdateInput,
-    userWriteVisible,
+    updateUser,
+    userActivateConfirm,
+    userDeactivateConfirm,
+    userDeleteConfirm,
     userDeleteVisible,
+    userResetVisible,
+    userWriteVisible,
 } from '../lib/users-write';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
@@ -360,13 +363,7 @@ function EditDialog({ open, row, onClose, pending, onSave }: EditDialogProps) {
                 <p className="text-body-sm text-muted">
                     <strong className="text-ink">{row?.username ? `@${row.username}` : ''}</strong>
                 </p>
-                <Input
-                    label="الاسم الكامل"
-                    name="name"
-                    value={name}
-                    onChange={(e) => setName(e.target.value)}
-                    required
-                />
+                <Input label="الاسم الكامل" name="name" value={name} onChange={(e) => setName(e.target.value)} required />
                 <Select
                     label="الدور"
                     name="role"
@@ -458,11 +455,16 @@ export function Users() {
     const [actionType, setActionType] = useState<'activate' | 'deactivate' | 'delete'>('deactivate');
     const [actionTitle, setActionTitle] = useState('');
     const [actionMessage, setActionMessage] = useState('');
+    const [resetOpen, setResetOpen] = useState(false);
+    const [resetTarget, setResetTarget] = useState<UserRow | null>(null);
+    const [resetResult, setResetResult] = useState<ResetCode | null>(null);
+    const [resetError, setResetError] = useState('');
 
     const auth = useAuthState();
     const role = auth.user?.role;
     const canWrite = userWriteVisible(role);
     const canDelete = userDeleteVisible(role);
+    const canReset = userResetVisible(role);
 
     const usersQuery = useQuery({
         queryKey: ['users'],
@@ -516,9 +518,7 @@ export function Users() {
 
     function toggleSort(key: SortKey) {
         setPage(1);
-        setSort((previous) =>
-            previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' },
-        );
+        setSort((previous) => (previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
     }
 
     function resetFilters() {
@@ -573,6 +573,26 @@ export function Users() {
         },
     });
 
+    const resetMutation = useWriteMutation<string, ResetCode>({
+        mutationFn: (username) => issueResetCode(username),
+        invalidate: [['users']],
+        silentError: true,
+        onSuccess: (result) => {
+            setResetError('');
+            setResetResult(result);
+        },
+        onError: (cause) => {
+            setResetError(writeErrorMessage(cause, 'تعذّر إصدار رمز الاستعادة'));
+        },
+    });
+
+    function openReset(row: UserRow): void {
+        setResetTarget(row);
+        setResetResult(null);
+        setResetError('');
+        setResetOpen(true);
+    }
+
     async function openEdit(row: UserRow) {
         setEditRow(row);
         setEditOpen(true);
@@ -616,9 +636,8 @@ export function Users() {
                         </span>
                     </h1>
                     <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        من يدخل النظام وبأي دور، ومن هو موظفه المرتبط. إنشاء الحسابات وتعديل بياناتهم وإيقاف/
-                        تفعيل الحساب وحذفه. كلمة المرور لا تُعرض في أي صفّ.
-                        القراءة محجوزة في الخادم للأدوار الإدارية، والكتابة لـ admin|manager|hr والحذف للأدمن فقط.
+                        من يدخل النظام وبأي دور، ومن هو موظفه المرتبط. إنشاء الحسابات وتعديل بياناتهم وإيقاف/ تفعيل الحساب وحذفه. كلمة
+                        المرور لا تُعرض في أي صفّ. القراءة محجوزة في الخادم للأدوار الإدارية، والكتابة لـ admin|manager|hr والحذف للأدمن فقط.
                     </p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>
@@ -664,11 +683,7 @@ export function Users() {
                     label="رؤساء أقسام بلا قسم"
                     english="Heads w/o dept"
                     value={formatInt(totals.headWithoutDept)}
-                    hint={
-                        totals.headWithoutDept
-                            ? 'رئيس قسم بلا كود قسم مخزَّن'
-                            : `${formatInt(heads)} رئيس قسم — كلهم بأكواد`
-                    }
+                    hint={totals.headWithoutDept ? 'رئيس قسم بلا كود قسم مخزَّن' : `${formatInt(heads)} رئيس قسم — كلهم بأكواد`}
                 />
             </div>
 
@@ -707,10 +722,7 @@ export function Users() {
                             ))}
                         </select>
                     </label>
-                    <label
-                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-users-status"
-                    >
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-users-status">
                         الحالة
                         <select
                             id="erp-users-status"
@@ -754,9 +766,7 @@ export function Users() {
                     </span>
                 </div>
                 {search.folded ? (
-                    <p className="mt-sm text-body-sm text-muted">
-                        بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.
-                    </p>
+                    <p className="mt-sm text-body-sm text-muted">بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.</p>
                 ) : null}
             </Card>
 
@@ -780,10 +790,7 @@ export function Users() {
                                         )}
                                     </span>
                                     <span className="h-2 flex-1 overflow-hidden rounded-full bg-surface-sunken">
-                                        <span
-                                            className="block h-full rounded-full bg-primary"
-                                            style={{ width: `${share.toFixed(1)}%` }}
-                                        />
+                                        <span className="block h-full rounded-full bg-primary" style={{ width: `${share.toFixed(1)}%` }} />
                                     </span>
                                     <span className="erp-numeric w-16 shrink-0 text-end text-ink" dir="ltr">
                                         {formatInt(entry.count)}
@@ -818,11 +825,7 @@ export function Users() {
                 {usersQuery.isSuccess && sorted.length === 0 ? (
                     <StateEmpty
                         title={filtered ? 'لا حسابات تطابق المرشّحات' : 'دليل الحسابات فارغ'}
-                        hint={
-                            filtered
-                                ? 'لا نتائج مطابقة؛ عدّل المرشّحات أو امسحها.'
-                                : 'أضف أول مستخدم.'
-                        }
+                        hint={filtered ? 'لا نتائج مطابقة؛ عدّل المرشّحات أو امسحها.' : 'أضف أول مستخدم.'}
                     />
                 ) : null}
 
@@ -837,12 +840,7 @@ export function Users() {
                             <table className="w-full min-w-[760px] border-collapse text-body-md">
                                 <thead>
                                     <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                        <SortableTh
-                                            label="اسم المستخدم"
-                                            sortKey="username"
-                                            sort={sort}
-                                            onToggle={toggleSort}
-                                        />
+                                        <SortableTh label="اسم المستخدم" sortKey="username" sort={sort} onToggle={toggleSort} />
                                         <SortableTh label="الاسم" sortKey="name" sort={sort} onToggle={toggleSort} />
                                         <SortableTh label="الدور" sortKey="role" sort={sort} onToggle={toggleSort} />
                                         <th scope="col" className="px-sm py-xs text-start font-medium">
@@ -852,12 +850,7 @@ export function Users() {
                                         <th scope="col" className="px-sm py-xs text-start font-medium">
                                             الموظف المرتبط
                                         </th>
-                                        <SortableTh
-                                            label="آخر دخول"
-                                            sortKey="lastLogin"
-                                            sort={sort}
-                                            onToggle={toggleSort}
-                                        />
+                                        <SortableTh label="آخر دخول" sortKey="lastLogin" sort={sort} onToggle={toggleSort} />
                                         {(canWrite || canDelete) && (
                                             <th scope="col" className="px-sm py-xs text-start font-medium" data-erp-print-hide>
                                                 إجراءات
@@ -873,9 +866,7 @@ export function Users() {
                                             </td>
                                             <td className="px-sm py-xxs text-ink">{row.name}</td>
                                             <td className="px-sm py-xxs text-body-sm">
-                                                <span className={row.roleKnown ? 'text-ink' : 'text-muted'}>
-                                                    {row.roleLabel}
-                                                </span>
+                                                <span className={row.roleKnown ? 'text-ink' : 'text-muted'}>{row.roleLabel}</span>
                                                 {row.roleKnown ? null : (
                                                     <span className="text-caption text-faint" dir="ltr">
                                                         {' '}
@@ -883,16 +874,11 @@ export function Users() {
                                                     </span>
                                                 )}
                                             </td>
-                                            <td
-                                                className="px-sm py-xxs text-body-sm text-muted"
-                                                title={row.deptCode || 'بلا كود قسم'}
-                                            >
+                                            <td className="px-sm py-xxs text-body-sm text-muted" title={row.deptCode || 'بلا كود قسم'}>
                                                 {row.deptCode || '—'}
                                             </td>
                                             <td className="px-sm py-xxs text-body-sm">
-                                                <span className={row.active ? 'text-success-text' : 'text-muted'}>
-                                                    {row.statusLabel}
-                                                </span>
+                                                <span className={row.active ? 'text-success-text' : 'text-muted'}>{row.statusLabel}</span>
                                             </td>
                                             <td className="px-sm py-xxs text-body-sm">
                                                 {row.linked ? (
@@ -926,6 +912,20 @@ export function Users() {
                                                                 >
                                                                     تعديل
                                                                 </Button>
+                                                                {canReset &&
+                                                                row.active &&
+                                                                row.username &&
+                                                                String(row.id) !== String(auth.user?.id ?? '') ? (
+                                                                    <Button
+                                                                        type="button"
+                                                                        size="sm"
+                                                                        variant="secondary"
+                                                                        title="إصدار رمز استعادة (10 دقائق، استخدام واحد)"
+                                                                        onClick={() => openReset(row)}
+                                                                    >
+                                                                        رمز استعادة
+                                                                    </Button>
+                                                                ) : null}
                                                                 {row.active ? (
                                                                     <Button
                                                                         type="button"
@@ -1034,6 +1034,80 @@ export function Users() {
                 confirmLabel={actionType === 'activate' ? 'تفعيل' : actionType === 'deactivate' ? 'إيقاف' : 'حذف'}
                 variant={actionType === 'delete' ? 'danger' : 'secondary'}
             />
+            <Dialog
+                open={resetOpen}
+                onOpenChange={(open) => {
+                    setResetOpen(open);
+                    if (!open) {
+                        setResetTarget(null);
+                        setResetResult(null);
+                        setResetError('');
+                    }
+                }}
+                title="رمز استعادة كلمة المرور"
+                {...(resetTarget ? { description: `الحساب: @${resetTarget.username} — ${resetTarget.name}` } : {})}
+                footer={
+                    <>
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => {
+                                setResetOpen(false);
+                                setResetTarget(null);
+                                setResetResult(null);
+                                setResetError('');
+                            }}
+                        >
+                            إغلاق
+                        </Button>
+                        <Button
+                            type="button"
+                            loading={resetMutation.isPending}
+                            disabled={!resetTarget?.username || resetMutation.isPending}
+                            onClick={() => {
+                                if (resetTarget?.username) {
+                                    resetMutation.mutate(resetTarget.username);
+                                }
+                            }}
+                        >
+                            {resetResult ? 'إصدار رمز جديد' : 'إصدار الرمز'}
+                        </Button>
+                    </>
+                }
+            >
+                <div className="flex flex-col gap-sm">
+                    <p className="text-body-sm text-muted">صالح 10 دقائق · استخدام واحد · إصدار رمز جديد يُبطل السابق. أعطِه للموظف وحده.</p>
+                    {resetError ? (
+                        <p
+                            className="rounded-md border border-danger/40 bg-danger-soft px-sm py-xs text-body-sm text-danger-text"
+                            role="alert"
+                        >
+                            {resetError}
+                        </p>
+                    ) : null}
+                    {resetResult ? (
+                        <>
+                            <p
+                                className="rounded-md border border-hairline bg-surface-sunken px-md py-sm text-center text-display-lg font-bold tracking-[0.3em] text-ink"
+                                dir="ltr"
+                            >
+                                {resetResult.code}
+                            </p>
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                onClick={() => {
+                                    if (navigator.clipboard?.writeText) {
+                                        void navigator.clipboard.writeText(resetResult.code);
+                                    }
+                                }}
+                            >
+                                نسخ الرمز
+                            </Button>
+                        </>
+                    ) : null}
+                </div>
+            </Dialog>
         </div>
     );
 }

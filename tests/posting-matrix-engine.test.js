@@ -8,12 +8,8 @@
 const {
     round2,
     postPosCashSale,
-    postPosCardSale,
     postDeliveryPlatformSale,
     postFactoryTransfer,
-    postPurchaseInvoice,
-    postWasteAdjustment,
-    postMonthlyDepreciation,
 } = require('../backend/posting-matrix-engine');
 
 describe('PostingMatrixEngine — Unit & Integrity Tests', () => {

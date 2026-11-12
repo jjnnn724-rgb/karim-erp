@@ -4,7 +4,7 @@ import { fetchJson } from '../../lib/api';
 import { getAccessToken, useAuthState } from '../../lib/auth';
 import { NAV_GROUPS, NAV_TITLES } from '../../lib/navigation';
 import { hiddenNavKeys, joinHiddenNav, mainSettingsSchema } from '../../lib/settings';
-import { saveMainSettings, SETTINGS_TEXT, settingsWriteVisible } from '../../lib/settings-write';
+import { SETTINGS_TEXT, saveMainSettings, settingsWriteVisible } from '../../lib/settings-write';
 import { useWriteMutation, writeErrorMessage } from '../../lib/write';
 import { Badge } from '../../ui/Badge';
 import { Button } from '../../ui/Button';
@@ -26,9 +26,7 @@ const HIDDEN_LOCKED = new Set(['settings']);
 const NAV_ROWS = NAV_GROUPS.map((group) => ({
     id: group.id,
     label: group.label,
-    items: group.keys
-        .filter((key) => !HIDDEN_LOCKED.has(key))
-        .map((key) => ({ key, label: NAV_TITLES[`/${key}`] ?? key })),
+    items: group.keys.filter((key) => !HIDDEN_LOCKED.has(key)).map((key) => ({ key, label: NAV_TITLES[`/${key}`] ?? key })),
 }));
 
 export function NavSection() {
@@ -45,10 +43,7 @@ export function NavSection() {
     const data = query.data ?? null;
     const stored = useMemo(() => hiddenNavKeys(data?.hidden_nav_pages ?? ''), [data?.hidden_nav_pages]);
     const known = useMemo(() => new Set(NAV_ROWS.flatMap((group) => group.items.map((item) => item.key))), []);
-    const unknown = useMemo(
-        () => stored.filter((key) => !known.has(key) && !HIDDEN_LOCKED.has(key)),
-        [stored, known],
-    );
+    const unknown = useMemo(() => stored.filter((key) => !known.has(key) && !HIDDEN_LOCKED.has(key)), [stored, known]);
     const signature = JSON.stringify({ hidden: stored });
     const draft = useDraftForm<NavForm>(data ? { hidden: stored } : null, signature);
 
@@ -87,9 +82,7 @@ export function NavSection() {
         } else {
             selected.delete(key);
         }
-        const ordered = NAV_ROWS.flatMap((group) => group.items.map((item) => item.key)).filter((entry) =>
-            selected.has(entry),
-        );
+        const ordered = NAV_ROWS.flatMap((group) => group.items.map((item) => item.key)).filter((entry) => selected.has(entry));
         draft.set('hidden', ordered);
     };
 

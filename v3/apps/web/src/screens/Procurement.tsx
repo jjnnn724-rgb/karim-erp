@@ -2,11 +2,11 @@ import './Procurement.premium.css';
 import { toCents } from '@karim/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { PrintActions } from '../components/PrintActions';
+import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
+import { useAuthState } from '../lib/auth';
 import { fetchCurrency } from '../lib/finance';
 import { formatMoney } from '../lib/format';
-import { useAuthState } from '../lib/auth';
 import {
     fetchProcurementSummary,
     fetchSuppliers,
@@ -19,16 +19,16 @@ import {
 import {
     createSupplier,
     deleteSupplier,
-    setSupplierActive,
-    updateSupplier,
-    supplierActivateConfirm,
-    supplierDeactivateConfirm,
-    supplierDeleteConfirm,
     SUPPLIER_TEXT,
     type SupplierCreateInput,
     type SupplierUpdateInput,
-    supplierWriteVisible,
+    setSupplierActive,
+    supplierActivateConfirm,
+    supplierDeactivateConfirm,
+    supplierDeleteConfirm,
     supplierDeleteVisible,
+    supplierWriteVisible,
+    updateSupplier,
 } from '../lib/suppliers-write';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
@@ -265,16 +265,7 @@ interface SupplierActionDialogProps {
     variant: 'secondary' | 'danger';
 }
 
-function SupplierActionDialog({
-    open,
-    title,
-    message,
-    onConfirm,
-    onClose,
-    pending,
-    confirmLabel,
-    variant,
-}: SupplierActionDialogProps) {
+function SupplierActionDialog({ open, title, message, onConfirm, onClose, pending, confirmLabel, variant }: SupplierActionDialogProps) {
     return (
         <Dialog
             open={open}
@@ -350,14 +341,7 @@ export function Procurement() {
             if (!term) {
                 return true;
             }
-            return [
-                supplier.name,
-                supplier.name_en,
-                supplier.phone,
-                supplier.vat_number,
-                supplier.category,
-                supplier.id,
-            ]
+            return [supplier.name, supplier.name_en, supplier.phone, supplier.vat_number, supplier.category, supplier.id]
                 .map((value) => String(value ?? '').toLowerCase())
                 .some((value) => value.includes(term));
         });
@@ -372,9 +356,7 @@ export function Procurement() {
 
     function toggleSort(key: SortKey) {
         setPage(1);
-        setSort((previous) =>
-            previous.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'desc' },
-        );
+        setSort((previous) => (previous.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'desc' }));
     }
 
     function ariaSort(key: SortKey): 'ascending' | 'descending' | 'none' {
@@ -397,7 +379,10 @@ export function Procurement() {
     const createSupplierMutation = useWriteMutation<SupplierCreateInput, { id: string | number }>({
         mutationFn: (input) => createSupplier(input).then((r) => ({ id: r.id })),
         successTitle: () => SUPPLIER_TEXT.createSuccess,
-        invalidate: [['procurement', 'suppliers'], ['procurement', 'summary']],
+        invalidate: [
+            ['procurement', 'suppliers'],
+            ['procurement', 'summary'],
+        ],
         silentError: true,
         onSuccess: () => {
             setFormOpen(false);
@@ -408,7 +393,10 @@ export function Procurement() {
     const updateSupplierMutation = useWriteMutation<{ id: string | number; input: SupplierUpdateInput }, { id: string | number }>({
         mutationFn: ({ id, input }) => updateSupplier(id, input).then((r) => ({ id: r.id })),
         successTitle: () => SUPPLIER_TEXT.updateSuccess,
-        invalidate: [['procurement', 'suppliers'], ['procurement', 'summary']],
+        invalidate: [
+            ['procurement', 'suppliers'],
+            ['procurement', 'summary'],
+        ],
         silentError: true,
         onSuccess: () => {
             setFormOpen(false);
@@ -419,7 +407,10 @@ export function Procurement() {
     const setSupplierActiveMutation = useWriteMutation<{ id: string | number; active: boolean }, { id: string | number; active: boolean }>({
         mutationFn: ({ id, active }) => setSupplierActive(id, active).then((r) => ({ id: r.id, active })),
         successTitle: ({ active }) => (active ? SUPPLIER_TEXT.activateSuccess : SUPPLIER_TEXT.deactivateSuccess),
-        invalidate: [['procurement', 'suppliers'], ['procurement', 'summary']],
+        invalidate: [
+            ['procurement', 'suppliers'],
+            ['procurement', 'summary'],
+        ],
         silentError: true,
         onSuccess: () => {
             setActionOpen(false);
@@ -430,7 +421,10 @@ export function Procurement() {
     const deleteSupplierMutation = useWriteMutation<string | number, void>({
         mutationFn: (id) => deleteSupplier(id),
         successTitle: () => SUPPLIER_TEXT.deleteSuccess,
-        invalidate: [['procurement', 'suppliers'], ['procurement', 'summary']],
+        invalidate: [
+            ['procurement', 'suppliers'],
+            ['procurement', 'summary'],
+        ],
         silentError: true,
         onSuccess: () => {
             setActionOpen(false);
@@ -481,8 +475,8 @@ export function Procurement() {
                         </span>
                     </h1>
                     <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        دليل الموردين وملخص المشتريات — إضافة وتعديل وإيقاف وتفعيل وحذف.
-                        القراءة من `/api/procurement/suppliers`، والكتابة لـ admin|manager|accountant والحذف للأدمن فقط.
+                        دليل الموردين وملخص المشتريات — إضافة وتعديل وإيقاف وتفعيل وحذف. القراءة من `/api/procurement/suppliers`، والكتابة
+                        لـ admin|manager|accountant والحذف للأدمن فقط.
                     </p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>
@@ -509,9 +503,7 @@ export function Procurement() {
                 <Kpi
                     label="موردون نشطون"
                     english="Active Suppliers"
-                    value={
-                        summary ? `${formatInt(summary.activeSuppliers)} / ${formatInt(summary.totalSuppliers)}` : '—'
-                    }
+                    value={summary ? `${formatInt(summary.activeSuppliers)} / ${formatInt(summary.totalSuppliers)}` : '—'}
                     hint="من دليل الموردين"
                 />
                 <Kpi
@@ -557,10 +549,7 @@ export function Procurement() {
                             className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
                         />
                     </label>
-                    <label
-                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-procurement-tax"
-                    >
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-procurement-tax">
                         الحالة الضريبية
                         <select
                             id="erp-procurement-tax"
@@ -576,10 +565,7 @@ export function Procurement() {
                             <option value="NOT_REGISTERED">{TAX_STATUS_LABEL.NOT_REGISTERED}</option>
                         </select>
                     </label>
-                    <label
-                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-procurement-status"
-                    >
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-procurement-status">
                         الحالة
                         <select
                             id="erp-procurement-status"
@@ -624,10 +610,7 @@ export function Procurement() {
                 ) : null}
 
                 {suppliersQuery.isSuccess && rows.length === 0 ? (
-                    <StateEmpty
-                        title="لا موردون"
-                        hint="لا يوجد مورد مطابق للبحث أو المرشّحات — امسح البحث أو غيّر الحالة."
-                    />
+                    <StateEmpty title="لا موردون" hint="لا يوجد مورد مطابق للبحث أو المرشّحات — امسح البحث أو غيّر الحالة." />
                 ) : null}
 
                 {suppliersQuery.isSuccess && rows.length > 0 ? (
@@ -636,11 +619,7 @@ export function Procurement() {
                             <table className="w-full border-collapse text-body-md">
                                 <thead>
                                     <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                        <th
-                                            scope="col"
-                                            aria-sort={ariaSort('name')}
-                                            className="px-sm py-xs text-start font-medium"
-                                        >
+                                        <th scope="col" aria-sort={ariaSort('name')} className="px-sm py-xs text-start font-medium">
                                             <button
                                                 type="button"
                                                 onClick={() => {
@@ -656,11 +635,7 @@ export function Procurement() {
                                         <th scope="col" className="px-sm py-xs text-start font-medium">
                                             الفئة
                                         </th>
-                                        <th
-                                            scope="col"
-                                            aria-sort={ariaSort('purchasesTotal')}
-                                            className="px-sm py-xs text-end font-medium"
-                                        >
+                                        <th scope="col" aria-sort={ariaSort('purchasesTotal')} className="px-sm py-xs text-end font-medium">
                                             <button
                                                 type="button"
                                                 onClick={() => {
@@ -670,11 +645,7 @@ export function Procurement() {
                                                 المشتريات
                                             </button>
                                         </th>
-                                        <th
-                                            scope="col"
-                                            aria-sort={ariaSort('paymentsTotal')}
-                                            className="px-sm py-xs text-end font-medium"
-                                        >
+                                        <th scope="col" aria-sort={ariaSort('paymentsTotal')} className="px-sm py-xs text-end font-medium">
                                             <button
                                                 type="button"
                                                 onClick={() => {
@@ -684,11 +655,7 @@ export function Procurement() {
                                                 المدفوعات
                                             </button>
                                         </th>
-                                        <th
-                                            scope="col"
-                                            aria-sort={ariaSort('dueTotal')}
-                                            className="px-sm py-xs text-end font-medium"
-                                        >
+                                        <th scope="col" aria-sort={ariaSort('dueTotal')} className="px-sm py-xs text-end font-medium">
                                             <button
                                                 type="button"
                                                 onClick={() => {
@@ -724,26 +691,19 @@ export function Procurement() {
                                 </thead>
                                 <tbody>
                                     {pageRows.map((supplier) => (
-                                        <tr
-                                            key={supplier.id}
-                                            className="border-b border-hairline hover:bg-surface-hover"
-                                        >
+                                        <tr key={supplier.id} className="border-b border-hairline hover:bg-surface-hover">
                                             <td className="px-sm py-xxs">
                                                 <span className="block text-ink">{supplier.name}</span>
                                                 {supplier.name_en || supplier.vat_number ? (
                                                     <span className="block text-caption text-muted" dir="ltr">
-                                                        {supplier.vat_number
-                                                            ? `VAT ${supplier.vat_number}`
-                                                            : supplier.name_en}
+                                                        {supplier.vat_number ? `VAT ${supplier.vat_number}` : supplier.name_en}
                                                     </span>
                                                 ) : null}
                                             </td>
                                             <td className="erp-numeric px-sm py-xxs text-body-sm text-muted" dir="ltr">
                                                 {supplier.phone || '—'}
                                             </td>
-                                            <td className="px-sm py-xxs text-body-sm text-muted">
-                                                {supplier.category || '—'}
-                                            </td>
+                                            <td className="px-sm py-xxs text-body-sm text-muted">{supplier.category || '—'}</td>
                                             <td className="erp-numeric px-sm py-xxs text-end text-ink">
                                                 {formatMoney(moneyOf(supplier.purchasesTotal))}
                                             </td>
@@ -758,9 +718,7 @@ export function Procurement() {
                                             </td>
                                             <td className="px-sm py-xxs text-body-sm">
                                                 {isSupplierActive(supplier) ? (
-                                                    <span className="text-success-text">
-                                                        {supplierStatusLabel(supplier)}
-                                                    </span>
+                                                    <span className="text-success-text">{supplierStatusLabel(supplier)}</span>
                                                 ) : (
                                                     <span className="text-muted">{supplierStatusLabel(supplier)}</span>
                                                 )}
@@ -877,13 +835,7 @@ export function Procurement() {
                     setActionRow(null);
                 }}
                 pending={setSupplierActiveMutation.isPending || deleteSupplierMutation.isPending}
-                confirmLabel={
-                    actionType === 'activate'
-                        ? 'تفعيل'
-                        : actionType === 'deactivate'
-                          ? 'إيقاف'
-                          : 'حذف'
-                }
+                confirmLabel={actionType === 'activate' ? 'تفعيل' : actionType === 'deactivate' ? 'إيقاف' : 'حذف'}
                 variant={actionType === 'delete' ? 'danger' : 'secondary'}
             />
         </div>

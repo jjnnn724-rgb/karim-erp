@@ -58,10 +58,7 @@ export interface CashierRevenueQuery {
 }
 
 /** يجلب لقطة إيرادات الكاشير للفترة المطلوبة. */
-export async function fetchCashierRevenues(
-    query: CashierRevenueQuery,
-    signal?: AbortSignal,
-): Promise<CashierRevenueSnapshot> {
+export async function fetchCashierRevenues(query: CashierRevenueQuery, signal?: AbortSignal): Promise<CashierRevenueSnapshot> {
     const params = new URLSearchParams({ from: query.from, to: query.to });
     if (query.dept) {
         params.set('dept', query.dept);

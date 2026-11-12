@@ -1,18 +1,12 @@
 import { ApiError, fetchJson } from './api';
 import { getAccessToken } from './auth';
-import {
-    briefingResponseSchema,
-    parseNumericVal,
-    posStatsResponseSchema,
-    type BriefingResponse,
-    type PosStatsResponse,
-} from './briefing';
-import { fetchAccountantSnapshot, fetchWarehouseSnapshot, type AccountantView, type WarehouseView } from './dashboards';
-import { alertTone, buildExecutiveKpis, fetchExecutiveSummary, severityLabel, type ExecutiveSummary } from './executive';
+import { type BriefingResponse, briefingResponseSchema, type PosStatsResponse, parseNumericVal, posStatsResponseSchema } from './briefing';
+import { type AccountantView, fetchAccountantSnapshot, fetchWarehouseSnapshot, type WarehouseView } from './dashboards';
+import { alertTone, buildExecutiveKpis, type ExecutiveSummary, fetchExecutiveSummary, severityLabel } from './executive';
 import { formatCurrency, formatInt } from './format';
 import { titleForPath } from './navigation';
 import { buildPnlLines, type PnlResponse } from './pnl';
-import { errorMessage, moneyOf, num, pctOf, textOf, type DisplayTone } from './reporting';
+import { type DisplayTone, errorMessage, moneyOf, num, pctOf, textOf } from './reporting';
 
 /**
  * بيانات الصفحة الرئيسية — **قراءة من العقود القائمة فقط** (خطة §3.2):
@@ -159,20 +153,13 @@ function kpisFromExecutive(payload: ExecutiveSummary): HomeKpi[] {
     }));
 }
 
-function kpisFromBriefing(
-    briefing: BriefingResponse | null,
-    posStats: PosStatsResponse | null,
-): HomeKpi[] {
+function kpisFromBriefing(briefing: BriefingResponse | null, posStats: PosStatsResponse | null): HomeKpi[] {
     if (!briefing && !posStats) {
         return [];
     }
-    const totalSales = parseNumericVal(
-        firstValue(briefing?.pos.total, briefing?.cashiersTotal.total, posStats?.total_sales),
-    );
+    const totalSales = parseNumericVal(firstValue(briefing?.pos.total, briefing?.cashiersTotal.total, posStats?.total_sales));
     const totalExpenses = parseNumericVal(firstValue(briefing?.expenses.total));
-    const ordersCount =
-        (posStats?.orders_count ?? 0) ||
-        parseNumericVal(firstValue(briefing?.pos.count, briefing?.cashiersTotal.count));
+    const ordersCount = (posStats?.orders_count ?? 0) || parseNumericVal(firstValue(briefing?.pos.count, briefing?.cashiersTotal.count));
     const averageTicket = parseNumericVal(firstValue(posStats?.avg_ticket));
     return [
         {
@@ -362,11 +349,10 @@ function chartsFromPnl(pnl: PnlResponse | null): {
             english: 'Operating trend',
             points: rows.map((row) => ({ label: shortDay(row.date), primary: num(row.opex), secondary: 0 })),
         },
-        depts:
-            (pnl?.statement?.by_department ?? [])
-                .filter((row) => num(row.revenue) !== 0)
-                .map((row) => ({ name: textOf(row.name) || textOf(row.code) || '—', value: num(row.revenue) }))
-                .slice(0, 8),
+        depts: (pnl?.statement?.by_department ?? [])
+            .filter((row) => num(row.revenue) !== 0)
+            .map((row) => ({ name: textOf(row.name) || textOf(row.code) || '—', value: num(row.revenue) }))
+            .slice(0, 8),
         deptsTitle: 'الإيراد حسب القسم',
     };
 }
@@ -606,11 +592,7 @@ const ROLE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
  * وقوائم الدور المسموحة (`allowedMenus`: أساس الدور + المنح − الممنوعات).
  * `allowed = null` تعني «لا جلسة/لا دور» — عندها لا نفلتر بالقوائم.
  */
-export function quickActionsForRole(
-    role: string,
-    enabled: ReadonlySet<string>,
-    allowed?: readonly string[] | null,
-): HomeQuickAction[] {
+export function quickActionsForRole(role: string, enabled: ReadonlySet<string>, allowed?: readonly string[] | null): HomeQuickAction[] {
     const keys = ROLE_ACTIONS[role] ?? ROLE_ACTIONS.default ?? [];
     const allowedSet = allowed ? new Set(allowed) : null;
     return keys

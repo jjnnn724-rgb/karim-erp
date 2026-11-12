@@ -1,0 +1,76 @@
+/* مصدر البيانات — بطاقات حالة واضحة ومفتاح فصل واحد لا يلتبس. */
+
+.legacy-source {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    max-inline-size: 72rem;
+}
+
+.legacy-source__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.75rem;
+}
+
+.legacy-source__head p {
+    margin-block-start: 0.25rem;
+    max-inline-size: 46rem;
+    line-height: 1.6;
+}
+
+.legacy-source__grid {
+    display: grid;
+    gap: 0.85rem;
+    grid-template-columns: repeat(auto-fit, minmax(17rem, 1fr));
+    align-items: start;
+}
+
+.legacy-source__value {
+    margin: 0;
+    font-size: 1.05rem;
+    font-weight: 700;
+    color: var(--erp-ink);
+}
+
+.legacy-source__facts {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+    margin: 0.5rem 0 0;
+}
+
+.legacy-source__facts > div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.75rem;
+    font-size: 0.78rem;
+}
+
+.legacy-source__facts dt {
+    color: var(--erp-muted);
+}
+
+.legacy-source__facts dd {
+    margin: 0;
+    font-variant-numeric: tabular-nums;
+    color: var(--erp-ink);
+}
+
+.legacy-source__actions {
+    margin-block-start: 0.9rem;
+}
+
+.legacy-source__note {
+    margin: 0;
+    padding: 0.7rem 0.85rem;
+    border: 1px dashed var(--erp-hairline);
+    border-radius: 12px;
+    color: var(--erp-muted);
+    font-size: 0.78rem;
+    line-height: 1.6;
+    background: var(--erp-surface-sunken);
+}

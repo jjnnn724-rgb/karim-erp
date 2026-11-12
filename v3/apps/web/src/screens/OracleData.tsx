@@ -1,25 +1,25 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { PrintActions } from '../components/PrintActions';
 import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { formatInt } from '../lib/format';
 import {
-    ORACLE_PAGE_SIZE,
     cellText,
     fetchOracleTable,
     fetchOracleTables,
     knownRowsTotal,
     liveCountOf,
+    ORACLE_PAGE_SIZE,
+    type OracleRefreshResponse,
+    type OracleTable,
     refreshOracleTables,
     shortTableName,
     unknownCountTables,
-    type OracleRefreshResponse,
-    type OracleTable,
 } from '../lib/oracle-data';
 import { errorMessage } from '../lib/reporting';
 import { useWriteMutation } from '../lib/write';
 import { useToast } from '../ui/Toast';
-import { PrintActions } from '../components/PrintActions';
 
 /**
  * بيانات Oracle المنسوخة.
@@ -73,13 +73,7 @@ export function OracleData() {
     });
 
     const detailQuery = useQuery({
-        queryKey: [
-            'oracle-data',
-            'table',
-            detail?.name ?? '',
-            detail?.page ?? 1,
-            detail?.search ?? '',
-        ],
+        queryKey: ['oracle-data', 'table', detail?.name ?? '', detail?.page ?? 1, detail?.search ?? ''],
         queryFn: ({ signal }) =>
             fetchOracleTable(
                 detail?.name ?? '',
@@ -172,12 +166,7 @@ export function OracleData() {
             {tablesQuery.data ? (
                 <>
                     <ul className="grid list-none gap-sm sm:grid-cols-3" aria-label="مؤشرات بيانات Oracle">
-                        <KpiCard
-                            label="الجداول"
-                            english="Tables"
-                            value={formatInt(tables.length)}
-                            hint="جداول منسوخة معلنة في الخادم"
-                        />
+                        <KpiCard label="الجداول" english="Tables" value={formatInt(tables.length)} hint="جداول منسوخة معلنة في الخادم" />
                         <KpiCard
                             label="الصفوف المعروفة"
                             english="Known rows"
@@ -198,10 +187,7 @@ export function OracleData() {
                         english="Tables"
                         actions={
                             <div className="flex flex-wrap items-center gap-sm">
-                                <label
-                                    className="flex items-center gap-xxs text-body-sm text-muted"
-                                    htmlFor="ora-filter"
-                                >
+                                <label className="flex items-center gap-xxs text-body-sm text-muted" htmlFor="ora-filter">
                                     بحث في اسم الجدول
                                     <input
                                         id="ora-filter"
@@ -264,10 +250,7 @@ export function OracleData() {
                                                     <td className="px-sm py-xxs text-ink">
                                                         <b>{String(table.oracle_name ?? '—')}</b>
                                                     </td>
-                                                    <td
-                                                        className="erp-numeric px-sm py-xxs text-body-sm text-muted"
-                                                        dir="ltr"
-                                                    >
+                                                    <td className="erp-numeric px-sm py-xxs text-body-sm text-muted" dir="ltr">
                                                         {table.pg_name}
                                                     </td>
                                                     <td className="px-sm py-xxs">
@@ -313,15 +296,13 @@ export function OracleData() {
                     english="Table"
                     actions={
                         <div className="flex flex-wrap gap-xs">
-                            {content ? (
-                                <PrintActions title="بيانات Oracle المنسوخة" />
-                            ) : null}
+                            {content ? <PrintActions title="بيانات Oracle المنسوخة" /> : null}
                             <button
                                 type="button"
                                 onClick={closeDetail}
-                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                        >
-                            إغلاق الجدول
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                            >
+                                إغلاق الجدول
                             </button>
                         </div>
                     }
@@ -352,10 +333,7 @@ export function OracleData() {
                                         applyDetailSearch();
                                     }}
                                 >
-                                    <label
-                                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                                        htmlFor="ora-search"
-                                    >
+                                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="ora-search">
                                         بحث داخل الجدول
                                         <input
                                             id="ora-search"
@@ -375,8 +353,7 @@ export function OracleData() {
                                         بحث
                                     </button>
                                     <span className="text-body-sm text-muted">
-                                        {formatInt(content.total)} صف · صفحة {formatInt(content.page)} من{' '}
-                                        {formatInt(content.totalPages)}
+                                        {formatInt(content.total)} صف · صفحة {formatInt(content.page)} من {formatInt(content.totalPages)}
                                         {detail.search ? ` · بحث: ${detail.search}` : ''}
                                     </span>
                                 </form>
@@ -402,11 +379,7 @@ export function OracleData() {
                                         <thead>
                                             <tr className="bg-surface-sunken text-label-md text-ink-secondary">
                                                 {columns.map((column) => (
-                                                    <th
-                                                        key={column}
-                                                        scope="col"
-                                                        className="px-sm py-xs text-start font-medium"
-                                                    >
+                                                    <th key={column} scope="col" className="px-sm py-xs text-start font-medium">
                                                         <span className="erp-numeric" dir="ltr" lang="en">
                                                             {column}
                                                         </span>
@@ -429,9 +402,7 @@ export function OracleData() {
                                                                 dir="auto"
                                                                 title={value || undefined}
                                                             >
-                                                                <span className="block truncate">
-                                                                    {value || '—'}
-                                                                </span>
+                                                                <span className="block truncate">{value || '—'}</span>
                                                             </td>
                                                         );
                                                     })}

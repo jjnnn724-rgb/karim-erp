@@ -282,6 +282,17 @@ async function completeRequiredPasswordChange(result, currentPassword) {
     });
 }
 
+function safeProductImageUrl(value, productId) {
+    const url = String(value || '').trim();
+    if (url.startsWith('/uploads/menu/')) {
+        const id = String(productId == null ? '' : productId).trim();
+        if (!/^[0-9]+$/.test(id)) {return '';}
+        const name = url.slice('/uploads/menu/'.length).split(/[?#]/)[0] || '';
+        return new RegExp('(^|[^0-9])' + id + '([^0-9]|$)').test(name) ? url : '';
+    }
+    return /^https:\/\//i.test(url) ? url : '';
+}
+
 function productIcon(name, category) {
     const n = (name || '').toLowerCase();
     const c = (category || '').toLowerCase();
@@ -604,12 +615,13 @@ function renderProducts(filter = '') {
         const stockLabel = recipeManaged && stock <= 0 ? 'نفذ من مكونات المخزن' : recipeManaged && stock <= lowThreshold ? `${fmtQty(stock)} متبقي` : '';
         const outOfStock = recipeManaged && stock <= 0;
         const icon = productIcon(product.name_ar, product.category);
-        const image = product.image_url ? `<img src="${escapeHtml(product.image_url)}" alt="${escapeHtml(product.name_ar)}" loading="lazy">` : icon;
+        const image = safeProductImageUrl(product.image_url, product.id);
+        const imageContent = image ? `<img src="${escapeHtml(image)}" alt="" loading="lazy" decoding="async">` : icon;
 
         return `
             <button type="button" class="product-card ${outOfStock ? 'out-of-stock' : ''}" data-id="${product.id}" aria-disabled="${outOfStock ? 'true' : 'false'}" aria-label="${escapeHtml(product.name_ar)} — ${fmtMoney(product.price)} ${CURRENCY}${outOfStock ? ' — غير متاح' : ''}">
                 ${stockLabel ? `<div class="product-stock ${stockClass}">${stockLabel}</div>` : ''}
-                <div class="product-icon ${product.image_url ? 'has-product-image' : ''}">${image}</div>
+                <div class="product-icon ${image ? 'has-product-image' : ''}">${imageContent}</div>
                 <div class="product-name">${escapeHtml(product.name_ar)}</div>
                 <div class="product-price">${fmtMoney(product.price)} <span class="currency">${CURRENCY}</span></div>
                 ${product.barcode ? `<div class="product-meta">${escapeHtml(product.barcode)}</div>` : ''}

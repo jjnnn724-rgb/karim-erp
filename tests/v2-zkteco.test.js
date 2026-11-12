@@ -72,6 +72,8 @@ const EXPORTS = [
     'deviceToRow', 'mappingStats', 'coverageStats', 'validateDeviceForm',
     'punchStateName', 'verifyTypeName', 'downloadZkLogsCsv',
     'fetchZkReconciliation',
+    'fetchZkControl', 'setZkEngine', 'rebuildZkDays', 'ZK_CONTROL_ROLES',
+    'ignoreZkPunch', 'restoreZkPunch',
 ];
 
 describe('v2 شاشة 11 — أجهزة البصمة: مرآة الخادم', () => {
@@ -374,5 +376,105 @@ describe('v2 شاشة 11 — عقد المصدر (CSP/تأكيد/هدم/تبوي
         expect(src).toContain('URL.createObjectURL');
         expect(src).toMatch(/data-v2-log-from/);
         expect(src).toMatch(/data-v2-log-to/);
+    });
+});
+
+describe('مركز تحكم الأدمن — البصمة والحضور (2026-11-06)', () => {
+    const serverSrc = read(SERVER);
+    const src = read(SCREEN);
+
+    test('أدوار التحكم مرآة الخادم: admin|owner', () => {
+        const control = rolesOf(serverSrc, 'CONTROL_ROLES');
+        const ctx = loadEsm(REPO, {}, ['ZK_CONTROL_ROLES']);
+        expect(ctx.ZK_CONTROL_ROLES).toEqual(control);
+        expect(control).toEqual(['admin', 'owner']);
+    });
+
+    test('أبواب التحكم الثلاثة مطابقة للراوتر مسارًا وطريقة', async () => {
+        const { apiFetch, calls } = repoStub((p) => {
+            if (p === '/zkteco/control') {
+                return { engine: { running: true, devices: [] }, devices: [], totals: { today: 3, unmapped: 1 }, audit: [] };
+            }
+            return { ok: true };
+        });
+        const ctx = loadEsm(REPO, { apiFetch }, ['fetchZkControl', 'setZkEngine', 'rebuildZkDays']);
+        const state = await ctx.fetchZkControl();
+        expect(state.engine.running).toBe(true);
+        expect(state.totals.today).toBe(3);
+        expect(state.totals.unmapped).toBe(1);
+
+        await ctx.setZkEngine('stop', 'صيانة');
+        await ctx.rebuildZkDays({ employeeId: 5, from: '2026-11-01', to: '2026-11-02', reason: 'ربط متأخر' });
+
+        expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+            'GET /zkteco/control',
+            'POST /zkteco/engine/stop',
+            'POST /zkteco/rebuild-days',
+        ]);
+        expect(JSON.parse(calls[1].opts.body)).toEqual({ reason: 'صيانة' });
+        expect(JSON.parse(calls[2].opts.body)).toEqual({
+            employeeId: 5, from: '2026-11-01', to: '2026-11-02', reason: 'ربط متأخر',
+        });
+
+        for (const door of [
+            "router.get('/control'", "router.post('/engine/:action'", "router.post('/rebuild-days'",
+        ]) {
+            expect(serverSrc).toContain(door);
+        }
+    });
+
+    test('إجراء محرك مجهول يُرفض قبل أي رحلة شبكة', async () => {
+        const { apiFetch, calls } = repoStub(() => ({}));
+        const ctx = loadEsm(REPO, { apiFetch }, ['setZkEngine']);
+        await expect(ctx.setZkEngine('boom', 'سبب')).rejects.toThrow();
+        expect(calls).toHaveLength(0);
+    });
+
+    test('التبويب للأدمن وحده، وكل كتابة خلف writable', () => {
+        expect(src).toContain('data-v2-tab="control"');
+        expect(src).toContain('data-v2-pane="control"');
+        expect(src).toMatch(/canWrite\(ctx\.role, ZK_CONTROL_ROLES\)/);
+        expect(src).toMatch(/\$\{admin \? '<button[^`]*data-v2-tab="control"/);
+        expect(src).toMatch(/if \(next === 'control' && !admin\) \{return;\}/);
+        for (const fn of ['runEngine', 'runRebuild']) {
+            expect(src).toMatch(new RegExp(`async function ${fn}[\\s\\S]{0,80}if \\(!writable \\|\\| saving\\)`));
+        }
+        // السبب إلزامي ولا يُرسل إجراء بلا سبب
+        expect(src).toMatch(/reason\.length < 3/);
+        expect(src).toMatch(/reason\.length < 5/);
+    });
+
+    test('البوابات المؤسسية في الخادم: حماية اليدوي، الفترة المغلقة، والسقف', () => {
+        expect(serverSrc).toContain("error: 'ZK_REASON_REQUIRED'");
+        expect(serverSrc).toContain("COALESCE(source, 'manual') <> 'device'");
+        expect(serverSrc).toContain('attendancePeriodViolation');
+        expect(serverSrc).toContain('REBUILD_MAX_DAYS');
+        expect(serverSrc).toContain('ZK_REBUILD_NO_PUNCHES');
+        expect(serverSrc).toContain('restoreAttendanceRow');
+        expect(serverSrc).toContain('recordAttendanceEdit');
+        // الربط يُطبَّق على البصمات السابقة أيضًا
+        expect(serverSrc).toContain('UPDATE attendance_logs SET "employeeId" = $1');
+    });
+
+    test('تصحيح بصمةٍ واحدة: تجاهل/استعادة ببابين وحراسة الأدمن', async () => {
+        const { apiFetch, calls } = repoStub(() => ({ ok: true }));
+        const ctx = loadEsm(REPO, { apiFetch }, ['ignoreZkPunch', 'restoreZkPunch']);
+        await ctx.ignoreZkPunch(12, 'ساعة منحرفة');
+        await ctx.restoreZkPunch('12', 'خطأ في التجاهل');
+        expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
+            'POST /zkteco/logs/12/ignore',
+            'POST /zkteco/logs/12/restore',
+        ]);
+        expect(JSON.parse(calls[0].opts.body)).toEqual({ reason: 'ساعة منحرفة' });
+        expect(serverSrc).toContain("router.post('/logs/:id/ignore'");
+        expect(serverSrc).toContain("router.post('/logs/:id/restore'");
+        // البصمة المتجاهلة لا تُحذف ولا تدخل إعادة البناء
+        expect(serverSrc).toContain('AND NOT ignored');
+        expect(serverSrc).toContain('NOT l.ignored');
+        // الواجهة: السبب مطلوب والزر للأدمن فقط
+        expect(src).toContain('data-v2-punch-ignore');
+        expect(src).toContain('data-v2-punch-restore');
+        expect(src).toContain('data-v2-punch-reason');
+        expect(src).toMatch(/async function fixPunch[\s\S]{0,90}if \(!admin \|\| !writable \|\| saving\)/);
     });
 });

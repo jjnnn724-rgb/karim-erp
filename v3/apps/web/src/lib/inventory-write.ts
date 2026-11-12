@@ -217,20 +217,12 @@ export interface DirectEditResult {
 }
 
 /** PUT /warehouse/inventory/:id/direct — يرد `delta` الذي يظهر في نص النجاح. */
-export async function directEditInventoryItem(
-    id: string | number,
-    payload: DirectEditPayload,
-): Promise<DirectEditResult> {
-    const response = await writeJson(
-        directEditResultSchema,
-        `/api/warehouse/inventory/${encodeURIComponent(String(id))}/direct`,
-        'PUT',
-        {
-            qty: Number(payload?.qty),
-            avgCost: Number(payload?.avgCost),
-            reason: String(payload?.reason || '').trim(),
-        },
-    );
+export async function directEditInventoryItem(id: string | number, payload: DirectEditPayload): Promise<DirectEditResult> {
+    const response = await writeJson(directEditResultSchema, `/api/warehouse/inventory/${encodeURIComponent(String(id))}/direct`, 'PUT', {
+        qty: Number(payload?.qty),
+        avgCost: Number(payload?.avgCost),
+        reason: String(payload?.reason || '').trim(),
+    });
     return { delta: Number(response.delta) || 0 };
 }
 
@@ -311,10 +303,7 @@ export function duplicateGroups(rows: readonly DuplicateCandidate[]): DuplicateG
         .map((items) => ({
             key: mergeItemKey(items[0]?.name),
             items,
-            keepIdx: items.reduce(
-                (best, item, index) => (Number(item?.qty) > Number(items[best]?.qty) ? index : best),
-                0,
-            ),
+            keepIdx: items.reduce((best, item, index) => (Number(item?.qty) > Number(items[best]?.qty) ? index : best), 0),
         }));
 }
 
@@ -331,10 +320,7 @@ export interface MergeResult {
 }
 
 /** POST /warehouse/inventory/merge — يرد mergedCount/movedQty لنص النجاح. */
-export async function mergeInventoryItems(
-    keepId: string | number,
-    dupIds: readonly (string | number)[],
-): Promise<MergeResult> {
+export async function mergeInventoryItems(keepId: string | number, dupIds: readonly (string | number)[]): Promise<MergeResult> {
     const response = await writeJson(mergeResultSchema, '/api/warehouse/inventory/merge', 'POST', {
         keepId: Number(keepId),
         dupIds: (Array.isArray(dupIds) ? dupIds : []).map(Number),

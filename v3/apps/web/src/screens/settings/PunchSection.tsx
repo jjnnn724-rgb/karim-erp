@@ -7,12 +7,12 @@ import { getAccessToken, useAuthState } from '../../lib/auth';
 import {
     entityPageSchema,
     type PunchAttempts,
-    punchAttemptsSchema,
     type PunchDevice,
-    punchDevicesSchema,
     type PunchFace,
-    punchFacesSchema,
     type PunchSettings,
+    punchAttemptsSchema,
+    punchDevicesSchema,
+    punchFacesSchema,
     punchSettingsSchema,
 } from '../../lib/settings';
 import {
@@ -20,10 +20,10 @@ import {
     PUNCH_ROLES,
     punchVisible,
     removeFace,
+    roleIn,
     savePunchSettings,
     unbindPunchDevice,
 } from '../../lib/settings-write';
-import { roleIn } from '../../lib/settings-write';
 import { useWriteMutation, writeErrorMessage } from '../../lib/write';
 import { Badge } from '../../ui/Badge';
 import { Button } from '../../ui/Button';
@@ -137,20 +137,17 @@ export function PunchSection() {
 
     const settingsQuery = useQuery({
         queryKey: ['settings', 'punch'],
-        queryFn: ({ signal }) =>
-            fetchJson(punchSettingsSchema, '/api/attendance/portal/settings-admin', getAccessToken(), { signal }),
+        queryFn: ({ signal }) => fetchJson(punchSettingsSchema, '/api/attendance/portal/settings-admin', getAccessToken(), { signal }),
         refetchOnWindowFocus: false,
     });
     const devicesQuery = useQuery({
         queryKey: ['settings', 'punch-devices'],
-        queryFn: ({ signal }) =>
-            fetchJson(punchDevicesSchema, '/api/attendance/portal/punch-devices', getAccessToken(), { signal }),
+        queryFn: ({ signal }) => fetchJson(punchDevicesSchema, '/api/attendance/portal/punch-devices', getAccessToken(), { signal }),
         refetchOnWindowFocus: false,
     });
     const facesQuery = useQuery({
         queryKey: ['settings', 'punch-faces'],
-        queryFn: ({ signal }) =>
-            fetchJson(punchFacesSchema, '/api/attendance/portal/face/list', getAccessToken(), { signal }),
+        queryFn: ({ signal }) => fetchJson(punchFacesSchema, '/api/attendance/portal/face/list', getAccessToken(), { signal }),
         refetchOnWindowFocus: false,
     });
     const attemptsQuery = useQuery({
@@ -160,19 +157,13 @@ export function PunchSection() {
             if (filter) {
                 params.set('decision', filter);
             }
-            return fetchJson(
-                punchAttemptsSchema,
-                `/api/attendance/portal/attempts?${params.toString()}`,
-                getAccessToken(),
-                { signal },
-            );
+            return fetchJson(punchAttemptsSchema, `/api/attendance/portal/attempts?${params.toString()}`, getAccessToken(), { signal });
         },
         refetchOnWindowFocus: false,
     });
     const usersQuery = useQuery({
         queryKey: ['settings', 'punch-users'],
-        queryFn: ({ signal }) =>
-            fetchJson(entityPageSchema, '/api/users?limit=1000&page=1', getAccessToken(), { signal }),
+        queryFn: ({ signal }) => fetchJson(entityPageSchema, '/api/users?limit=1000&page=1', getAccessToken(), { signal }),
         enabled: isAdmin,
         refetchOnWindowFocus: false,
     });
@@ -329,12 +320,9 @@ export function PunchSection() {
             <SectionCard title="الموقع والتحقق" english="Location & Trust" badge={<ReadOnlyBadge visible={canWrite} />}>
                 <div className="grid grid-cols-1 gap-sm sm:grid-cols-2 xl:grid-cols-3">
                     {BOOL_FIELDS.filter((field) =>
-                        [
-                            'punch_geofence_enabled',
-                            'punch_teleport_check',
-                            'punch_geo_strict_multi_fix',
-                            'punch_strict_geofence',
-                        ].includes(field.key),
+                        ['punch_geofence_enabled', 'punch_teleport_check', 'punch_geo_strict_multi_fix', 'punch_strict_geofence'].includes(
+                            field.key,
+                        ),
                     ).map((field) => (
                         <Checkbox
                             key={field.key}
@@ -594,9 +582,7 @@ export function PunchSection() {
                                                 loading={dropFace.isPending}
                                                 disabled={!canWrite || dropFace.isPending}
                                                 onClick={async () => {
-                                                    const ok = await confirm(
-                                                        `حذف قالب وجه ${face.name || face.username || face.user_id}؟`,
-                                                    );
+                                                    const ok = await confirm(`حذف قالب وجه ${face.name || face.username || face.user_id}؟`);
                                                     if (ok) {
                                                         dropFace.mutate(face.user_id);
                                                     }
@@ -670,7 +656,10 @@ export function PunchSection() {
                             </thead>
                             <tbody>
                                 {attempts.attempts.map((attempt) => {
-                                    const decision = ATTEMPT_DECISION[attempt.decision] ?? { label: attempt.decision, tone: 'neutral' as const };
+                                    const decision = ATTEMPT_DECISION[attempt.decision] ?? {
+                                        label: attempt.decision,
+                                        tone: 'neutral' as const,
+                                    };
                                     return (
                                         <tr key={attempt.id}>
                                             <td>{formatStamp(attempt.attempted_at)}</td>
@@ -740,14 +729,7 @@ export function PunchSection() {
                             setTargetUser(next);
                         }}
                     />
-                    <Input
-                        label="لقطات الوجه"
-                        type="file"
-                        accept="image/*"
-                        capture="user"
-                        multiple
-                        onChange={pickFiles}
-                    />
+                    <Input label="لقطات الوجه" type="file" accept="image/*" capture="user" multiple onChange={pickFiles} />
                     {files.length ? <p className="text-body-sm text-muted">{String(files.length)} لقطة</p> : null}
                     {enrollError ? (
                         <p role="alert" className="text-body-sm text-danger-text">

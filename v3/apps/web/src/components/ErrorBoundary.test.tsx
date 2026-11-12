@@ -48,11 +48,7 @@ describe('حدود الخطأ', () => {
         expect(alert.textContent).toContain('لم تتأثر بياناتك');
         expect(screen.getByRole('button', { name: 'إعادة المحاولة' })).toBeTruthy();
         expect(screen.getByRole('button', { name: 'العودة إلى الرئيسية' })).toBeTruthy();
-        expect(console.error).toHaveBeenCalledWith(
-            '[v3] انهيار في العرض —',
-            expect.any(Error),
-            expect.anything(),
-        );
+        expect(console.error).toHaveBeenCalledWith('[v3] انهيار في العرض —', expect.any(Error), expect.anything());
     });
 
     it('«إعادة المحاولة» تعيد التركيب بعد إزالة سبب الانهيار', () => {

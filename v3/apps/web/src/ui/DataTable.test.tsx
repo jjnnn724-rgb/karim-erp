@@ -1,6 +1,6 @@
 import { fireEvent, render, screen, within } from '@testing-library/react';
 import { describe, expect, it, vi } from 'vitest';
-import { DataTable, type DataTableColumn } from './DataTable';
+import { DataTable, type DataTableColumn, dataTableCsv } from './DataTable';
 import { expectNoAxeViolations, installDomPolyfills } from './test-utils';
 
 installDomPolyfills();
@@ -24,6 +24,10 @@ interface Invoice {
     total: string;
 }
 
+interface TreeInvoice extends Invoice {
+    children: TreeInvoice[];
+}
+
 const rows: Invoice[] = [
     { id: 'INV-1', customer: 'شركة النخيل', total: '1,200.00' },
     { id: 'INV-2', customer: 'مطعم البحر', total: '980.50' },
@@ -33,6 +37,19 @@ const columns: DataTableColumn<Invoice>[] = [
     { key: 'id', header: 'الفاتورة', cell: (row) => row.id, numeric: true },
     { key: 'customer', header: 'العميل', cell: (row) => row.customer },
     { key: 'total', header: 'الإجمالي', cell: (row) => row.total, numeric: true },
+];
+
+const featureColumns: DataTableColumn<Invoice>[] = [
+    { key: 'id', header: 'الفاتورة', cell: (row) => row.id, exportValue: (row) => row.id },
+    {
+        key: 'customer',
+        header: 'العميل',
+        cell: (row) => row.customer,
+        sortValue: (row) => row.customer,
+        exportValue: (row) => row.customer,
+        hideable: true,
+    },
+    { key: 'total', header: 'الإجمالي', cell: (row) => row.total, exportValue: (row) => row.total },
 ];
 
 function rowKey(row: Invoice): string {
@@ -79,9 +96,7 @@ describe('DataTable', () => {
 
     it('حالة error: role=alert وإعادة المحاولة', () => {
         const onRetry = vi.fn();
-        render(
-            <DataTable<Invoice> {...BASE} rows={[]} state="error" errorMessage="تعذّر جلب الفواتير" onRetry={onRetry} />,
-        );
+        render(<DataTable<Invoice> {...BASE} rows={[]} state="error" errorMessage="تعذّر جلب الفواتير" onRetry={onRetry} />);
 
         expect(screen.getByRole('alert')).toBeTruthy();
         expect(screen.getByText('تعذّر جلب الفواتير')).toBeTruthy();
@@ -91,16 +106,90 @@ describe('DataTable', () => {
 
     it('يضيف ترقيم الصفحات عند تمريره', () => {
         const onPageChange = vi.fn();
-        render(
-            <DataTable<Invoice>
-                {...BASE}
-                rows={rows}
-                pagination={{ page: 1, pageSize: 10, total: 57, onPageChange }}
-            />,
-        );
+        render(<DataTable<Invoice> {...BASE} rows={rows} pagination={{ page: 1, pageSize: 10, total: 57, onPageChange }} />);
 
         fireEvent.click(screen.getByRole('button', { name: 'الصفحة 2' }));
         expect(onPageChange).toHaveBeenCalledWith(2);
+    });
+
+    it('يرتّب الصفوف محليًا ويحافظ على ثبات ترتيب القيم المتساوية', () => {
+        render(<DataTable<Invoice> {...BASE} columns={featureColumns} rows={rows} />);
+
+        const table = screen.getByRole('table', { name: 'فواتير المبيعات' });
+        const sortButton = screen.getByRole('button', { name: 'فرز حسب العميل' });
+        fireEvent.click(sortButton);
+        fireEvent.click(sortButton);
+
+        const renderedRows = within(table).getAllByTestId('datatable-row');
+        expect(renderedRows[0]?.textContent).toContain('مطعم البحر');
+        expect(screen.getByRole('columnheader', { name: /العميل/ }).getAttribute('aria-sort')).toBe('descending');
+    });
+
+    it('يفوّض الفرز الخادمي ولا يعيد ترتيب الصفحة الحالية محليًا', () => {
+        const onSortingChange = vi.fn();
+        render(
+            <DataTable<Invoice>
+                {...BASE}
+                columns={featureColumns}
+                rows={rows}
+                pagination={{ page: 1, pageSize: 2, total: 100, onPageChange: vi.fn() }}
+                onSortingChange={onSortingChange}
+            />,
+        );
+
+        fireEvent.click(screen.getByRole('button', { name: 'فرز حسب العميل' }));
+
+        expect(onSortingChange).toHaveBeenCalledWith({ key: 'customer', direction: 'asc' });
+        const renderedRows = within(screen.getByRole('table', { name: 'فواتير المبيعات' })).getAllByTestId('datatable-row');
+        expect(renderedRows[0]?.textContent).toContain('شركة النخيل');
+    });
+
+    it('يحفظ تفضيل إخفاء العمود ويستعيده عند إعادة فتح الجدول', () => {
+        const preferenceKey = 'datatable-preferences-test';
+        const props = { ...BASE, columns: featureColumns, rows, columnPreferenceKey: preferenceKey };
+        const firstRender = render(<DataTable<Invoice> {...props} />);
+        fireEvent.click(screen.getByText('الأعمدة'));
+        fireEvent.click(screen.getByLabelText('العميل'));
+
+        expect(screen.queryByRole('columnheader', { name: 'العميل' })).toBeNull();
+        expect(window.localStorage.getItem(`karim:datatable:${preferenceKey}`)).toBe('[]');
+        firstRender.unmount();
+
+        render(<DataTable<Invoice> {...props} />);
+        expect(screen.queryByRole('columnheader', { name: 'العميل' })).toBeNull();
+    });
+
+    it('ينشئ CSV مقتبسًا ويحمي القيم النصية التي قد تُفسّر كصيغ', () => {
+        const csv = dataTableCsv(
+            [
+                { key: 'customer', header: 'العميل', cell: (row: Invoice) => row.customer, exportValue: (row: Invoice) => row.customer },
+                { key: 'total', header: 'الإجمالي', cell: (row: Invoice) => row.total, exportValue: () => -4 },
+            ],
+            [{ id: 'INV-3', customer: '=1+1,"x"', total: '-4' }],
+        );
+
+        expect(csv).toBe('\uFEFF"العميل","الإجمالي"\r\n"\'=1+1,""x""","-4"');
+    });
+
+    it('يوضح أن التصدير الافتراضي يقتصر على الصفحة المحمّلة', () => {
+        render(
+            <DataTable<Invoice>
+                {...BASE}
+                columns={featureColumns}
+                rows={rows}
+                pagination={{ page: 1, pageSize: 2, total: 100, onPageChange: vi.fn() }}
+            />,
+        );
+
+        expect(screen.getByRole('button', { name: 'تصدير الصفحة الحالية CSV' })).toBeTruthy();
+    });
+
+    it('يفوّض التصدير الكامل للمالك عند توفير onExport', () => {
+        const onExport = vi.fn();
+        render(<DataTable<Invoice> {...BASE} rows={rows} onExport={onExport} />);
+
+        fireEvent.click(screen.getByRole('button', { name: 'تصدير CSV' }));
+        expect(onExport).toHaveBeenCalledTimes(1);
     });
 
     it('التمرير الافتراضي فوق 200 صف: يرسم جزءًا فقط ويحفظ العدّ', async () => {
@@ -134,6 +223,56 @@ describe('DataTable', () => {
 
         expect(screen.getByTestId('datatable').getAttribute('data-virtualized')).toBe('false');
         expect(screen.getAllByTestId('datatable-row').length).toBe(200);
+    });
+
+    it('يدعم الصفوف الشجرية والتمديد مع التفويض اليدوي للترشيح والترقيم', async () => {
+        const treeRows: TreeInvoice[] = [
+            {
+                id: 'ROOT',
+                customer: 'حساب رئيسي',
+                total: '0.00',
+                children: [{ id: 'CHILD', customer: 'حساب فرعي', total: '10.00', children: [] }],
+            },
+        ];
+        const treeColumns: DataTableColumn<TreeInvoice>[] = [
+            { key: 'id', header: 'الحساب', cell: (row) => row.id },
+            { key: 'customer', header: 'الاسم', cell: (row) => row.customer },
+        ];
+        const onPageChange = vi.fn();
+
+        render(
+            <DataTable<TreeInvoice>
+                caption="شجرة الحسابات"
+                columns={treeColumns}
+                rows={treeRows}
+                rowKey={(row) => row.id}
+                manualFiltering
+                manualPagination
+                pagination={{ page: 1, pageSize: 1, total: 3, onPageChange }}
+                tree={{
+                    getSubRows: (row) => row.children,
+                    columnKey: 'id',
+                    rowCount: 2,
+                    renderToggle: ({ row, canExpand, expanded, toggle }) =>
+                        canExpand ? (
+                            <button type="button" aria-expanded={expanded} aria-label={`فتح الحساب ${row.id}`} onClick={toggle}>
+                                فتح
+                            </button>
+                        ) : (
+                            <span aria-hidden="true" />
+                        ),
+                }}
+            />,
+        );
+
+        const table = screen.getByRole('table', { name: 'شجرة الحسابات' });
+        expect(table.getAttribute('data-manual-filtering')).toBe('true');
+        expect(table.getAttribute('data-manual-pagination')).toBe('true');
+        fireEvent.click(within(table).getByRole('button', { name: 'فتح الحساب ROOT' }));
+        expect(await within(table).findByText('CHILD')).toBeTruthy();
+
+        fireEvent.click(screen.getByRole('button', { name: 'الصفحة 2' }));
+        expect(onPageChange).toHaveBeenCalledWith(2);
     });
 
     it('بلا مخالفات axe', async () => {

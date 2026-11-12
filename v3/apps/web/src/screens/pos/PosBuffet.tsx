@@ -1,17 +1,10 @@
 import { useEffect, useState } from 'react';
-import { Badge, Button, Input } from '../../ui';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../../components/TableState';
 import type { BuffetInvoiceRow, BuffetReport, BuffetTier } from '../../lib/pos';
 import { parsePosMoney } from '../../lib/pos-pricing';
 import { intOf } from '../../lib/reporting';
-import {
-    buffetPriceKey,
-    escapeHtml,
-    moneyText,
-    openPrintWindow,
-    orderStatusLabel,
-    paymentMethodLabel,
-} from './pos-ui';
+import { Badge, Button, Input } from '../../ui';
+import { buffetPriceKey, escapeHtml, moneyText, openPrintWindow, orderStatusLabel, paymentMethodLabel } from './pos-ui';
 
 interface TierDraft {
     name: string;
@@ -115,8 +108,7 @@ export function PosBuffetPrices({ tiers, canManage, busy, onBack, onSave, onAdd,
             </div>
             <div className="erp-card__body erp-stack">
                 <p className="text-body-sm text-muted">
-                    التعديل يسري على الفواتير الجديدة فقط. فئات كبير/صغير/ضيافة أساسية يمكن تعديل سعرها فقط، وإضافة
-                    فئات جديدة متاحة دائمًا.
+                    التعديل يسري على الفواتير الجديدة فقط. فئات كبير/صغير/ضيافة أساسية يمكن تعديل سعرها فقط، وإضافة فئات جديدة متاحة دائمًا.
                 </p>
 
                 {tiers.length === 0 ? (
@@ -299,7 +291,9 @@ function reportHtml(report: BuffetReport, invoices: readonly BuffetInvoiceRow[])
     return (
         `<h1>تقرير البوفيه المفتوح — ${escapeHtml(report.date)}</h1>` +
         '<div class="cards">' +
-        cards.map(([label, value]) => `<div class="card"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`).join('') +
+        cards
+            .map(([label, value]) => `<div class="card"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`)
+            .join('') +
         '</div>' +
         '<h2>حسب الفئة</h2><table><thead><tr><th>الفئة</th><th>أفراد</th><th>الإيراد الصافي</th><th>متوسط الفرد</th><th>فواتير</th></tr></thead>' +
         `<tbody>${tierRows || '<tr><td colspan="5">لا مبيعات</td></tr>'}</tbody></table>` +
@@ -408,7 +402,10 @@ export function PosBuffetReport({ date, onDate, report, invoices, loading, error
                                 ['الفواتير', intOf(total?.invoices ?? 0)],
                                 ['متوسط الفرد', moneyText(total?.revenue_per_cover ?? 0)],
                                 ['ملغاة', `${intOf(total?.voided?.count ?? 0)} · ${moneyText(total?.voided?.amount ?? 0)}`],
-                                ['معلقة بالكاشير', `${intOf(total?.still_held?.count ?? 0)} · ${moneyText(total?.still_held?.amount ?? 0)}`],
+                                [
+                                    'معلقة بالكاشير',
+                                    `${intOf(total?.still_held?.count ?? 0)} · ${moneyText(total?.still_held?.amount ?? 0)}`,
+                                ],
                             ].map(([label, value]) => (
                                 <li key={label}>
                                     <span>{label}</span>
@@ -423,21 +420,39 @@ export function PosBuffetReport({ date, onDate, report, invoices, loading, error
                                 <table className="w-full border-collapse text-body-md">
                                     <thead>
                                         <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">الفئة</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">أفراد</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">الإيراد الصافي</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">متوسط الفرد</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">فواتير</th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الفئة
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                أفراد
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الإيراد الصافي
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                متوسط الفرد
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                فواتير
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {report.tiers.map((tier, index) => (
                                             <tr key={`${String(tier.name)}-${String(index)}`} className="border-b border-hairline">
                                                 <td className="px-sm py-xxs text-ink">{tier.name || '—'}</td>
-                                                <td className="erp-numeric px-sm py-xxs" dir="ltr">{intOf(tier.covers ?? 0)}</td>
-                                                <td className="erp-numeric px-sm py-xxs" dir="ltr">{moneyText(tier.revenue ?? 0)}</td>
-                                                <td className="erp-numeric px-sm py-xxs" dir="ltr">{moneyText(tier.avg_price ?? 0)}</td>
-                                                <td className="erp-numeric px-sm py-xxs" dir="ltr">{intOf(tier.invoices ?? 0)}</td>
+                                                <td className="erp-numeric px-sm py-xxs" dir="ltr">
+                                                    {intOf(tier.covers ?? 0)}
+                                                </td>
+                                                <td className="erp-numeric px-sm py-xxs" dir="ltr">
+                                                    {moneyText(tier.revenue ?? 0)}
+                                                </td>
+                                                <td className="erp-numeric px-sm py-xxs" dir="ltr">
+                                                    {moneyText(tier.avg_price ?? 0)}
+                                                </td>
+                                                <td className="erp-numeric px-sm py-xxs" dir="ltr">
+                                                    {intOf(tier.invoices ?? 0)}
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -453,10 +468,18 @@ export function PosBuffetReport({ date, onDate, report, invoices, loading, error
                                 <table className="w-full border-collapse text-body-md">
                                     <thead>
                                         <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">الساعة</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">فواتير</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">أفراد</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">الإيراد</th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الساعة
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                فواتير
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                أفراد
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الإيراد
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -465,9 +488,15 @@ export function PosBuffetReport({ date, onDate, report, invoices, loading, error
                                                 <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">
                                                     {`${String(row.hour ?? 0).padStart(2, '0')}:00`}
                                                 </td>
-                                                <td className="erp-numeric px-sm py-xxs" dir="ltr">{intOf(row.invoices ?? 0)}</td>
-                                                <td className="erp-numeric px-sm py-xxs" dir="ltr">{intOf(row.covers ?? 0)}</td>
-                                                <td className="erp-numeric px-sm py-xxs" dir="ltr">{moneyText(row.revenue ?? 0)}</td>
+                                                <td className="erp-numeric px-sm py-xxs" dir="ltr">
+                                                    {intOf(row.invoices ?? 0)}
+                                                </td>
+                                                <td className="erp-numeric px-sm py-xxs" dir="ltr">
+                                                    {intOf(row.covers ?? 0)}
+                                                </td>
+                                                <td className="erp-numeric px-sm py-xxs" dir="ltr">
+                                                    {moneyText(row.revenue ?? 0)}
+                                                </td>
                                             </tr>
                                         ))}
                                     </tbody>
@@ -485,17 +514,27 @@ export function PosBuffetReport({ date, onDate, report, invoices, loading, error
                                         <table className="w-full border-collapse text-body-md">
                                             <thead>
                                                 <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                                    <th scope="col" className="px-sm py-xs text-start font-medium">الطريقة</th>
-                                                    <th scope="col" className="px-sm py-xs text-start font-medium">عدد</th>
-                                                    <th scope="col" className="px-sm py-xs text-start font-medium">المبلغ</th>
+                                                    <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                        الطريقة
+                                                    </th>
+                                                    <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                        عدد
+                                                    </th>
+                                                    <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                        المبلغ
+                                                    </th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {report.payments.map((row, index) => (
                                                     <tr key={`${String(row.method)}-${String(index)}`} className="border-b border-hairline">
                                                         <td className="px-sm py-xxs text-ink">{paymentMethodLabel(row.method)}</td>
-                                                        <td className="erp-numeric px-sm py-xxs" dir="ltr">{intOf(row.count ?? 0)}</td>
-                                                        <td className="erp-numeric px-sm py-xxs" dir="ltr">{moneyText(row.total ?? 0)}</td>
+                                                        <td className="erp-numeric px-sm py-xxs" dir="ltr">
+                                                            {intOf(row.count ?? 0)}
+                                                        </td>
+                                                        <td className="erp-numeric px-sm py-xxs" dir="ltr">
+                                                            {moneyText(row.total ?? 0)}
+                                                        </td>
                                                     </tr>
                                                 ))}
                                             </tbody>
@@ -512,17 +551,30 @@ export function PosBuffetReport({ date, onDate, report, invoices, loading, error
                                         <table className="w-full border-collapse text-body-md">
                                             <thead>
                                                 <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                                    <th scope="col" className="px-sm py-xs text-start font-medium">الكاشير</th>
-                                                    <th scope="col" className="px-sm py-xs text-start font-medium">فواتير</th>
-                                                    <th scope="col" className="px-sm py-xs text-start font-medium">الإيراد</th>
+                                                    <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                        الكاشير
+                                                    </th>
+                                                    <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                        فواتير
+                                                    </th>
+                                                    <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                        الإيراد
+                                                    </th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {report.cashiers.map((row, index) => (
-                                                    <tr key={`${String(row.cashier)}-${String(index)}`} className="border-b border-hairline">
+                                                    <tr
+                                                        key={`${String(row.cashier)}-${String(index)}`}
+                                                        className="border-b border-hairline"
+                                                    >
                                                         <td className="px-sm py-xxs text-ink">{row.cashier || '—'}</td>
-                                                        <td className="erp-numeric px-sm py-xxs" dir="ltr">{intOf(row.invoices ?? 0)}</td>
-                                                        <td className="erp-numeric px-sm py-xxs" dir="ltr">{moneyText(row.revenue ?? 0)}</td>
+                                                        <td className="erp-numeric px-sm py-xxs" dir="ltr">
+                                                            {intOf(row.invoices ?? 0)}
+                                                        </td>
+                                                        <td className="erp-numeric px-sm py-xxs" dir="ltr">
+                                                            {moneyText(row.revenue ?? 0)}
+                                                        </td>
                                                     </tr>
                                                 ))}
                                             </tbody>
@@ -540,13 +592,27 @@ export function PosBuffetReport({ date, onDate, report, invoices, loading, error
                                 <table className="w-full border-collapse text-body-md">
                                     <thead>
                                         <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">رقم الفاتورة</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">التاريخ</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">أفراد</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">الفئات</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">الإجمالي</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">الحالة</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">الكاشير</th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                رقم الفاتورة
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                التاريخ
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                أفراد
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الفئات
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الإجمالي
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الحالة
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الكاشير
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -562,7 +628,9 @@ export function PosBuffetReport({ date, onDate, report, invoices, loading, error
                                                     {intOf(invoice.covers?.covers_total ?? 0)}
                                                 </td>
                                                 <td className="px-sm py-xxs text-muted">{coverSummary(invoice)}</td>
-                                                <td className="erp-numeric px-sm py-xxs" dir="ltr">{moneyText(invoice.total_amount)}</td>
+                                                <td className="erp-numeric px-sm py-xxs" dir="ltr">
+                                                    {moneyText(invoice.total_amount)}
+                                                </td>
                                                 <td className="px-sm py-xxs">
                                                     <Badge variant={invoice.status === 'cancelled' ? 'danger' : 'success'}>
                                                         {orderStatusLabel(invoice.status)}

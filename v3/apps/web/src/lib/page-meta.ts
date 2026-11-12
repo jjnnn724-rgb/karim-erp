@@ -61,11 +61,11 @@ export function usePageStatusReporter(status: PageStatus): void {
 
 /* ─── الأيقونة ──────────────────────────────────────────────────────────── */
 
-const FALLBACK_LIGHT_BG = '#5b21b6';
-const FALLBACK_LIGHT_FG = '#fff9ee';
-const FALLBACK_DARK_BG = '#a78bfa';
-const FALLBACK_DARK_FG = '#150f33';
-const FALLBACK_ACCENT = '#97742a';
+const FALLBACK_LIGHT_BG = '#0f766e';
+const FALLBACK_LIGHT_FG = '#ffffff';
+const FALLBACK_DARK_BG = '#53d3c5';
+const FALLBACK_DARK_FG = '#073b37';
+const FALLBACK_ACCENT = '#33bfb1';
 
 function tokenColor(name: string, fallback: string): string {
     try {
@@ -81,21 +81,23 @@ function tokenColor(name: string, fallback: string): string {
 
 function statusAccent(status: PageStatus): string {
     if (status === 'error') {
-        return tokenColor('--erp-c-danger', '#b03428');
+        return tokenColor('--erp-c-danger', '#b3261e');
     }
     if (status === 'loading') {
-        return tokenColor('--erp-c-brass', '#97742a');
+        return tokenColor('--erp-c-brass', '#0f766e');
     }
     if (status === 'success') {
-        return tokenColor('--erp-c-success', '#d97706');
+        return tokenColor('--erp-c-success', '#16834a');
     }
     return tokenColor('--erp-c-brass-bright', FALLBACK_ACCENT);
 }
 
 /** أيقونة SVG 32×32: حرف K على خلفية حسب الوضع + نقطة حالة. */
 export function faviconHref(resolved: ResolvedTheme, status: PageStatus): string {
-    const background = resolved === 'dark' ? tokenColor('--erp-c-primary', FALLBACK_DARK_BG) : tokenColor('--erp-c-primary', FALLBACK_LIGHT_BG);
-    const foreground = resolved === 'dark' ? tokenColor('--erp-c-on-primary', FALLBACK_DARK_FG) : tokenColor('--erp-c-on-primary', FALLBACK_LIGHT_FG);
+    const background =
+        resolved === 'dark' ? tokenColor('--erp-c-primary', FALLBACK_DARK_BG) : tokenColor('--erp-c-primary', FALLBACK_LIGHT_BG);
+    const foreground =
+        resolved === 'dark' ? tokenColor('--erp-c-on-primary', FALLBACK_DARK_FG) : tokenColor('--erp-c-on-primary', FALLBACK_LIGHT_FG);
     const accent = statusAccent(status);
     const svg = [
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img">',

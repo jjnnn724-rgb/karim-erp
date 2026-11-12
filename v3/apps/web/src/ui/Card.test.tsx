@@ -64,7 +64,13 @@ describe('Card', () => {
         const onClick = vi.fn();
         render(
             <Card>
-                <CardHeader actions={<button type="button" onClick={onClick}>إجراء</button>}>
+                <CardHeader
+                    actions={
+                        <button type="button" onClick={onClick}>
+                            إجراء
+                        </button>
+                    }
+                >
                     <CardTitle>عنوان</CardTitle>
                 </CardHeader>
             </Card>,

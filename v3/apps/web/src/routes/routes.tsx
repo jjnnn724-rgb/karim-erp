@@ -1,4 +1,5 @@
 import { createRoute } from '@tanstack/react-router';
+import { validateAccountantDashboardSearch } from '../lib/accountant-search';
 import { firstEnabledScreen, LEGACY_APP_URL } from '../lib/screens';
 import { rootRoute } from './root';
 
@@ -197,6 +198,13 @@ export const payrollRoute = createRoute({
 });
 payrollRoute.lazy(() => import('../screens/Payroll.lazy').then((module) => module.Route));
 
+/** مدد والتأمينات وقوى — جاهزية محلية وكشف مراجعة (GATE 06، ADR-008). */
+export const mudadRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/mudad',
+});
+mudadRoute.lazy(() => import('../screens/Mudad.lazy').then((module) => module.Route));
+
 /** شبكة الدوام الأسبوعية — للقراءة فقط. */
 export const rosterRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -334,6 +342,7 @@ warehouseDashboardRoute.lazy(() => import('../screens/WarehouseDashboard.lazy').
 export const accountantDashboardRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/accountant-dashboard',
+    validateSearch: validateAccountantDashboardSearch,
 });
 accountantDashboardRoute.lazy(() => import('../screens/AccountantDashboard.lazy').then((module) => module.Route));
 
@@ -370,9 +379,7 @@ export const inventoryInquiryProRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/inventory-inquiry-pro',
 });
-inventoryInquiryProRoute.lazy(() =>
-    import('../screens/InventoryInquiryPro.lazy').then((module) => module.Route),
-);
+inventoryInquiryProRoute.lazy(() => import('../screens/InventoryInquiryPro.lazy').then((module) => module.Route));
 
 /** الأرباح والخسائر — قائمة الدخل. */
 export const pnlRoute = createRoute({
@@ -395,7 +402,7 @@ export const monthlyComparisonRoute = createRoute({
 });
 monthlyComparisonRoute.lazy(() => import('../screens/MonthlyComparison.lazy').then((module) => module.Route));
 
-/** التقارير — تقرير مبيعات نقطة البيع. */
+/** التقارير — تقرير مبيعات POS وفهرس مخرجات التقارير المتاحة حسب الصلاحية. */
 export const reportsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/reports',
@@ -422,6 +429,20 @@ export const posEntryRoute = createRoute({
     path: '/pos-entry',
 });
 posEntryRoute.lazy(() => import('../screens/PosEntry.lazy').then((module) => module.Route));
+
+/** كشك الكاشير — نفس نقطة البيع بلا قائمة إدارة أو بيانات خارج الوردية. */
+export const cashierKioskRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/cashier',
+});
+cashierKioskRoute.lazy(() => import('../screens/CashierKiosk.lazy').then((module) => module.Route));
+
+/** مصدر البيانات — فصل Yarasoft/Oracle والاعتماد على PostgreSQL وحده. */
+export const legacySourceRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/integrations',
+});
+legacySourceRoute.lazy(() => import('../screens/LegacySource.lazy').then((module) => module.Route));
 
 /** تحليل مبيعات الأصناف (مرآة YaraSoft). */
 export const salesAnalyzerRoute = createRoute({
@@ -451,7 +472,7 @@ export const whVsPosRoute = createRoute({
 });
 whVsPosRoute.lazy(() => import('../screens/WhVsPos.lazy').then((module) => module.Route));
 
-/** إيرادات الكاشير — مرآة YaraSoft (قراءة فقط). */
+/** يارسوفت — تكامل قاعدة الكاشير (كل تبويبات V2) + الإيرادات المحلية. */
 export const yarasoftRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/yarasoft',
@@ -493,6 +514,7 @@ export const routeTree = rootRoute.addChildren([
     attendanceRoute,
     leavesRoute,
     payrollRoute,
+    mudadRoute,
     rosterRoute,
     usersRoute,
     branchesRoute,
@@ -525,6 +547,8 @@ export const routeTree = rootRoute.addChildren([
     cashierSalesRoute,
     cashierMonitorRoute,
     posEntryRoute,
+    cashierKioskRoute,
+    legacySourceRoute,
     salesAnalyzerRoute,
     salesInquiryRoute,
     receivedAnalyzerRoute,

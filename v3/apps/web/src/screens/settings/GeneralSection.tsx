@@ -2,16 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { type ChangeEvent, useRef, useState } from 'react';
 import { fetchJson } from '../../lib/api';
 import { getAccessToken, useAuthState } from '../../lib/auth';
-import {
-    type MainSettings,
-    mainSettingsSchema,
-    type PosLegacyMode,
-} from '../../lib/settings';
-import {
-    saveMainSettings,
-    SETTINGS_TEXT,
-    settingsWriteVisible,
-} from '../../lib/settings-write';
+import { type MainSettings, mainSettingsSchema, type PosLegacyMode } from '../../lib/settings';
+import { SETTINGS_TEXT, saveMainSettings, settingsWriteVisible } from '../../lib/settings-write';
 import { useWriteMutation, writeErrorMessage } from '../../lib/write';
 import { Button } from '../../ui/Button';
 import { Checkbox } from '../../ui/Checkbox';

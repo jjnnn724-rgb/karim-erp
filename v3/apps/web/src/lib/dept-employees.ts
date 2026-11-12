@@ -42,12 +42,7 @@ export interface DeptEmployeesPayload {
 }
 
 export async function fetchDeptEmployees(signal?: AbortSignal): Promise<DeptEmployeesPayload> {
-    const body = await fetchJson(
-        deptEmployeesResponseSchema,
-        '/api/hr/dept-employees',
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    const body = await fetchJson(deptEmployeesResponseSchema, '/api/hr/dept-employees', getAccessToken(), signal ? { signal } : {});
     return {
         depts: (body.depts ?? []).map((dept) => String(dept)),
         employees: body.employees ?? [],
@@ -111,7 +106,10 @@ export function validateDeptEmployeeForm(form: Partial<DeptEmployeeForm>): strin
     return errors;
 }
 function normalizeDeptEmployeeForm(form: DeptEmployeeForm) {
-    const cut = (value: unknown, length: number) => String(value || '').trim().slice(0, length);
+    const cut = (value: unknown, length: number) =>
+        String(value || '')
+            .trim()
+            .slice(0, length);
     return {
         name: cut(form.name, 255),
         employeeId: cut(form.employeeId, 50),
@@ -132,10 +130,19 @@ async function writeDeptEmployee(path: string, method: 'POST' | 'PUT' | 'DELETE'
     });
     if (!response.ok) {
         let message = `HTTP ${response.status}`;
-        try { const body = await response.json() as { message?: string }; message = body.message || message; } catch { /* non-JSON error */ }
+        try {
+            const body = (await response.json()) as { message?: string };
+            message = body.message || message;
+        } catch {
+            /* non-JSON error */
+        }
         throw new Error(message);
     }
-    try { return await response.json(); } catch { return null; }
+    try {
+        return await response.json();
+    } catch {
+        return null;
+    }
 }
 export function createDeptEmployee(form: DeptEmployeeForm): Promise<unknown> {
     return writeDeptEmployee('/hr/dept-employees', 'POST', form);

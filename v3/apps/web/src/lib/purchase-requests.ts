@@ -84,12 +84,7 @@ const listSchema = <T extends z.ZodTypeAny>(item: T) =>
 export const PR_LIST_CAP = 200;
 
 export async function fetchPurchaseRequests(signal?: AbortSignal): Promise<PurchaseRequest[]> {
-    return fetchJson(
-        listSchema(purchaseRequestSchema),
-        '/api/warehouse/purchase-requests',
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    return fetchJson(listSchema(purchaseRequestSchema), '/api/warehouse/purchase-requests', getAccessToken(), signal ? { signal } : {});
 }
 
 /** النواقص استشارية — فشلها يعيد [] ولا يعطّل الشاشة (عين القديم :82-88). */

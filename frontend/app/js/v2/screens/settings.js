@@ -12,15 +12,15 @@
  * dialogs become inline panels · no inline handlers (CSP contract).
  */
 
-import { canWrite } from '../session.js?v=4.9.296';
-import { formatInt } from '../data/reports-repo.js?v=4.9.296';
-import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.296';
-import { setV2PrintLogo } from '../print-branding.js?v=4.9.296';
-import { readMenuLabels } from '../layout/nav-model.js?v=4.9.296';
-import { captureFace } from '../portal-face.js?v=4.9.296';
-import { enrollFaceV1, enrollFaceV2 } from '../data/portal-repo.js?v=4.9.296';
-import { bindAdjacentLabels } from '../form-errors.js?v=4.9.296';
-import { fetchEmployees } from '../data/employees-repo.js?v=4.9.296';
+import { canWrite } from '../session.js?v=4.9.312';
+import { formatInt } from '../data/reports-repo.js?v=4.9.312';
+import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.312';
+import { setV2PrintLogo } from '../print-branding.js?v=4.9.312';
+import { readMenuLabels } from '../layout/nav-model.js?v=4.9.312';
+import { captureFace } from '../portal-face.js?v=4.9.312';
+import { enrollFaceV1, enrollFaceV2 } from '../data/portal-repo.js?v=4.9.312';
+import { bindAdjacentLabels } from '../form-errors.js?v=4.9.312';
+import { fetchEmployees } from '../data/employees-repo.js?v=4.9.312';
 import {
     ZATCA_WRITE_ROLES, KOT_WRITE_ROLES,
     fetchMainSettingsFull, updateMainSettings,
@@ -32,10 +32,11 @@ import {
     fetchBackups, doBackup, uploadBackup, restoreBackup,
     resetAllData, operationalReset,
     fetchServerControl, serverControlAction,
-} from '../data/settings-repo.js?v=4.9.296';
+} from '../data/settings-repo.js?v=4.9.312';
 // safeImgSrc: حارس <img src> ضد javascript: المخزَّن — الشاشة وحدة نظيفة
 // (no-undef: error) فلا تصلها globals، فتُستورد من المصدر الوحيد.
-import { safeImgSrc } from '../../core/utils.js?v=4.9.296';
+import { safeImgSrc } from '../../core/utils.js?v=4.9.312';
+import { mountComplianceSection } from './compliance.js?v=4.9.312';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -113,7 +114,7 @@ function sectionCard(key, icon, title, bodyAttr, refreshAttr) {
         + `<div data-v2-sec-body="${bodyAttr}"></div></div></section>`;
 }
 
-function template(isAdmin) {
+function template(isAdmin, canCompliance) {
     return `
       <div class="erp-v2-settings">
         <div class="erp-dash-head">
@@ -133,6 +134,7 @@ function template(isAdmin) {
         ${isAdmin ? `<div data-v2-nav></div>` : ''}
         <div data-v2-sections>
           ${sectionCard('zatca', 'landmark', 'ربط هيئة الزكاة', 'zatca', 'zatca')}
+          ${canCompliance ? sectionCard('compliance', 'shield-check', 'الامتثال السعودي', 'compliance', 'compliance') : ''}
           ${sectionCard('kot', 'printer', 'تذاكر المطبخ', 'kot', 'kot')}
           ${sectionCard('cards', 'id-card', 'بطاقات الموظفين', 'cards', 'cards')}
           ${sectionCard('punch', 'timer', 'البصمة الذاتية', 'punch', 'punch')}
@@ -155,9 +157,13 @@ export function mountSettingsScreen(host, ctx = {}) {
     const isAdmin = ctx.role === 'admin';
     const canZatca = canWrite(ctx.role, ZATCA_WRITE_ROLES);
     const canKot = canWrite(ctx.role, KOT_WRITE_ROLES);
+    const liveGrants = typeof window !== 'undefined' && window.STATE && window.STATE.permissions
+        && Array.isArray(window.STATE.permissions.grants) ? window.STATE.permissions.grants : [];
+    const canCompliance = isAdmin || liveGrants.includes('compliance.view');
 
     let main = null;
     let zatca = null;
+    let complianceSection = null;
     let loading = false;
     let busy = false;
     let zatcaTimer = null;
@@ -169,7 +175,7 @@ export function mountSettingsScreen(host, ctx = {}) {
     let scErr = '';
     let scPanelOpen = false;
 
-    host.insertAdjacentHTML('beforeend', template(isAdmin));
+    host.insertAdjacentHTML('beforeend', template(isAdmin, canCompliance));
     const el = host.lastElementChild;
     const q = (sel) => el.querySelector(sel);
     const noteEl = q('[data-v2-note]');
@@ -335,6 +341,20 @@ export function mountSettingsScreen(host, ctx = {}) {
             if (!el.isConnected) {return;}
             box.innerHTML = `<p class="erp-text-sm erp-text-muted">تعذر تحميل إعدادات التذاكر: ${esc((e && e.message) || '')}</p>`;
         }
+    }
+
+    /* ── الامتثال السعودي ────────────────────────────────────────────────── */
+
+    function loadCompliance() {
+        const box = secBody('compliance');
+        const empty = secEmpty('compliance');
+        if (empty) {empty.hidden = true;}
+        if (!complianceSection) {
+            complianceSection = mountComplianceSection(box, {
+                role: ctx.role, grants: liveGrants, notify, confirmFn,
+            });
+        }
+        complianceSection.load();
     }
 
     /* ── البطاقات ───────────────────────────────────────────────────────── */
@@ -908,6 +928,7 @@ export function mountSettingsScreen(host, ctx = {}) {
             });
         }
         else if (key === 'kot') {loadKot();}
+        else if (key === 'compliance') {loadCompliance();}
         else if (key === 'cards') {loadCards();}
         else if (key === 'punch') {loadPunch();}
         else if (key === 'server') {loadServerControl();}
@@ -1380,6 +1401,7 @@ export function mountSettingsScreen(host, ctx = {}) {
             stopZatcaQueueTimer();
             stopScTimer();
             labelObserver.disconnect();
+            if (complianceSection) {complianceSection.destroy(); complianceSection = null;}
             el.remove();
         },
     };

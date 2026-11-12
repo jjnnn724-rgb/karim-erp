@@ -84,7 +84,9 @@ const BUCKET_SAMPLE = 50;
  * (الأرقام النائبة $1… تعتمد على ترتيب الدفع، فإعادةُ الاستخدام خطأ).
  */
 function logFilters({ from, to, employeeId, deviceId }, params) {
-    const where = [];
+    /* البصمة المتجاهلة عمدًا (مركز التحكم، 2026-11-06) ليست فجوةً ولا شذوذًا:
+       تبقى في الدفتر الخام كأثر، وتُستثنى من كل مقارنةٍ مع النظام. */
+    const where = ['l.ignored = FALSE'];
     if (from) {
         params.push(from);
         where.push(`l."attendanceTime" >= ($${params.length}::date::timestamp AT TIME ZONE '${WORK_TZ}')`);

@@ -185,15 +185,11 @@ describe('فواتير الشراء — حمولة POST/PUT', () => {
     });
 
     it('paidAmount يُرسل فقط بعد لمس الحقل — قرار legacy', () => {
-        expect(purchaseInvoicePayload({ ...formWithItem, paidTouched: false, paidAmount: '5' })).not.toHaveProperty(
-            'paidAmount',
-        );
+        expect(purchaseInvoicePayload({ ...formWithItem, paidTouched: false, paidAmount: '5' })).not.toHaveProperty('paidAmount');
         expect(purchaseInvoicePayload({ ...formWithItem, paidTouched: true, paidAmount: '5.5' })).toMatchObject({
             paidAmount: 5.5,
         });
-        expect(purchaseInvoicePayload({ ...formWithItem, paidTouched: true, paidAmount: '' })).not.toHaveProperty(
-            'paidAmount',
-        );
+        expect(purchaseInvoicePayload({ ...formWithItem, paidTouched: true, paidAmount: '' })).not.toHaveProperty('paidAmount');
     });
 
     it('رقم فاتورة بديل بنفس بصمة V2', () => {
@@ -254,9 +250,7 @@ describe('فواتير الشراء — صفّ → نموذج', () => {
 describe('فواتير الشراء — تحقق الحفظ بنصوص V2', () => {
     it('الترتيب نفسه: بند ← كمية/سعر ← سداد ← خصم ← صلاحية', () => {
         expect(invoiceSaveError({ items: [] })).toBe('أضف صنفًا واحدًا على الأقل');
-        expect(invoiceSaveError({ items: [{ itemName: 'أرز', qty: '-1', price: '1' }] })).toBe(
-            'أضف صنفًا واحدًا على الأقل',
-        );
+        expect(invoiceSaveError({ items: [{ itemName: 'أرز', qty: '-1', price: '1' }] })).toBe('أضف صنفًا واحدًا على الأقل');
         expect(
             invoiceSaveError({
                 items: [
@@ -322,10 +316,7 @@ describe('فواتير الشراء — تقدير الإجمالي (مرآة pc
     });
 
     it('خصم نسبة يوزّع على الأسطر وضريبة 15% للمورد المسجل', () => {
-        const estimate = invoiceEstimate(
-            { items, supplierId: '10', discountType: 'percent', discountValue: '10' },
-            true,
-        );
+        const estimate = invoiceEstimate({ items, supplierId: '10', discountType: 'percent', discountValue: '10' }, true);
         expect(estimate).toMatchObject({ subtotal: 30, discount: 3, net: 27, vat: 4.05, grand: 31.05 });
     });
 
@@ -354,9 +345,7 @@ describe('فواتير الشراء — الرسائل الحرفية', () => {
     });
 
     it('الإلغاء: سطر المسدد الشرطي ثم النجاح مع الدفعات التلقائية', () => {
-        expect(voidConfirm('INV-1', '100.00 SAR')).toBe(
-            'حذف فاتورة الشراء INV-1 (100.00 SAR)؟\nسيُعكس أثرها على المخزون تلقائيًا.',
-        );
+        expect(voidConfirm('INV-1', '100.00 SAR')).toBe('حذف فاتورة الشراء INV-1 (100.00 SAR)؟\nسيُعكس أثرها على المخزون تلقائيًا.');
         expect(voidConfirm('INV-1', '100.00 SAR', '40.00 SAR')).toBe(
             'حذف فاتورة الشراء INV-1 (100.00 SAR)؟\nسيُعكس أثرها على المخزون تلقائيًا.\nعليها مبلغ مسدد 40.00 SAR — إن كانت دفعة تلقائية ستُعكس مع الإلغاء.',
         );
@@ -470,12 +459,7 @@ describe('فواتير الشراء — البوابات الست (المسار�
     });
 
     it('خطأ الخادم يمرّ كـApiError برسالته العربية', async () => {
-        stubFetch(() =>
-            json(
-                { error: 'INVOICE_HAS_PAYMENTS', message: 'الفاتورة مرتبطة بدفعات موردين يدوية — لا يمكن إلغاؤها' },
-                409,
-            ),
-        );
+        stubFetch(() => json({ error: 'INVOICE_HAS_PAYMENTS', message: 'الفاتورة مرتبطة بدفعات موردين يدوية — لا يمكن إلغاؤها' }, 409));
         const failure = await voidPurchaseInvoice('9').catch((error: unknown) => error);
         expect(failure).toBeInstanceOf(ApiError);
         expect(failure).toMatchObject({

@@ -130,9 +130,7 @@ function stubFetch(options: { fail?: boolean; shortagesFail?: boolean } = {}): s
                 return json({ error: 'FAILED', message: 'تعذر جلب طلبات الشراء' }, 500);
             }
             if (String(url).includes('/api/warehouse/purchase-requests/shortages')) {
-                return options.shortagesFail
-                    ? json({ error: 'FAILED', message: 'تعذر جلب النواقص' }, 500)
-                    : json(shortages);
+                return options.shortagesFail ? json({ error: 'FAILED', message: 'تعذر جلب النواقص' }, 500) : json(shortages);
             }
             if (String(url).includes('/api/warehouse/purchase-requests')) {
                 return json(requests);

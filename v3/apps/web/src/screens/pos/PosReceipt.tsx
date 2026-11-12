@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
-import { Badge, Button } from '../../ui';
 import type { PosSaleResult } from '../../lib/pos';
+import { Badge, Button } from '../../ui';
 import { escapeHtml, moneyText, openPrintWindow, qrDataUrl } from './pos-ui';
 
 export interface PosReceiptProps {
@@ -14,8 +14,7 @@ export interface PosReceiptProps {
 }
 
 function receiptPrintHtml(receipt: PosSaleResult, qr: string | null): string {
-    const row = (label: string, value: string) =>
-        `<tr><td>${escapeHtml(label)}</td><td dir="ltr">${escapeHtml(value)}</td></tr>`;
+    const row = (label: string, value: string) => `<tr><td>${escapeHtml(label)}</td><td dir="ltr">${escapeHtml(value)}</td></tr>`;
     const buffetRows = (receipt.buffet?.tiers ?? [])
         .map(
             (tier) =>

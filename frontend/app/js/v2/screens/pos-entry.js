@@ -3,23 +3,23 @@
  * Embedded checkout follows the host feature flag. The standalone POS stays
  * available as the fallback at all times.
  */
-import { dayCloseStatus, execDayClose, fetchOpenShifts } from '../data/cfo-repo.js?v=4.9.296';
-import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.296';
+import { dayCloseStatus, execDayClose, fetchOpenShifts } from '../data/cfo-repo.js?v=4.9.312';
+import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.312';
 import {
     closePosShift, completePosSale, deletePosHeldOrder, exportPosOrders, fetchActivePosShift, fetchPosDepartments,
     fetchPosHeldOrders, fetchPosKotPage, fetchPosOrderDetails, fetchPosOrders, fetchPosProducts, fetchPosShiftSummary,
-    holdPosOrder, openPosShift, recallPosHeldOrder, reprintPosOrder, voidPosOrder,
-} from '../data/pos-v2-repo.js?v=4.9.296';
+    holdPosOrder, openPosShift, quotePosSale, recallPosHeldOrder, reprintPosOrder, voidPosOrder,
+} from '../data/pos-v2-repo.js?v=4.9.312';
 import {
     addBuffetTier, buffetTierProducts, disableBuffetTier, fetchBuffetConfig, fetchBuffetInvoices, fetchBuffetLive,
     fetchBuffetReport, isBuffetDepartment, renameBuffetTier, saveBuffetPrices, setBuffetTierActive, BUFFET_ADMIN_ROLES,
-} from '../data/pos-buffet-repo.js?v=4.9.296';
-import { matchPosBarcode } from '../data/pos-barcode.js?v=4.9.296';
-import { buildPosSaleItems, calculatePosTotals } from '../data/pos-pricing.js?v=4.9.296';
-import { uploadProductImage } from '../data/recipes-edit-repo.js?v=4.9.296';
-import { ensureRealtimeSocket } from '../realtime.js?v=4.9.296';
-import { openInAppReport } from '../report-viewer.js?v=4.9.296';
-import { ensureQrCode } from '../vendor.js?v=4.9.296';
+} from '../data/pos-buffet-repo.js?v=4.9.312';
+import { matchPosBarcode } from '../data/pos-barcode.js?v=4.9.312';
+import { buildPosSaleItems, calculatePosTotals } from '../data/pos-pricing.js?v=4.9.312';
+import { uploadProductImage } from '../data/recipes-edit-repo.js?v=4.9.312';
+import { ensureRealtimeSocket } from '../realtime.js?v=4.9.312';
+import { openInAppReport } from '../report-viewer.js?v=4.9.312';
+import { ensureQrCode } from '../vendor.js?v=4.9.312';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -38,9 +38,16 @@ const PAYMENT_FIELDS = [
     { key: 'bank_transfer', label: 'تحويل بنكي' },
 ];
 
-function safeProductImageUrl(value) {
+function safeProductImageUrl(value, productId) {
     const url = String(value || '').trim();
-    return url.startsWith('/uploads/menu/') || /^https:\/\//i.test(url) ? url : '';
+    if (url.startsWith('/uploads/menu/')) {
+        const id = String(productId == null ? '' : productId).trim();
+        if (!/^[0-9]+$/.test(id)) {return '';}
+        const name = url.slice('/uploads/menu/'.length).split(/[?#]/)[0] || '';
+        // اسم الرفع يخص هذا الصنف فقط — لا تعرض صورة صنف آخر أبدًا.
+        return new RegExp('(^|[^0-9])' + id + '([^0-9]|$)').test(name) ? url : '';
+    }
+    return /^https:\/\//i.test(url) ? url : '';
 }
 
 function template(allowed, embedded, historyAllowed, salesEnabled) {
@@ -834,7 +841,7 @@ export function mountPosEntryScreen(host, ctx = {}) {
     }
 
     function productCard(p) {
-        const image = safeProductImageUrl(p.image_url);
+        const image = safeProductImageUrl(p.image_url, p.id);
         const imageContent = image
             ? `<img src="${esc(image)}" alt="${esc(p.name_ar || p.name_en || 'صنف')}" loading="lazy" decoding="async">`
             : '<span class="erp-pos-v2-product-placeholder" aria-hidden="true"><i class="ji" data-i="image"></i></span>';
@@ -1193,6 +1200,33 @@ export function mountPosEntryScreen(host, ctx = {}) {
         if (!canSell || busy || !activeShift || !cart.length) {return;}
         const t = totals();
         if (!t.valid) {notify('قيمة الخصم غير صالحة؛ تحقق من نوع الخصم وقيمته.', 'error'); return;}
+        let saleItems;
+        try {
+            saleItems = buildPosSaleItems(cart, cartDiscount);
+        } catch (error) {
+            notify(error.message || 'تعذّر تجهيز سطور الفاتورة.', 'error');
+            return;
+        }
+        /* الأرقام التي يدفع عليها العميل يجب أن تكون أرقام الخادم نفسها:
+           معاينة قراءة فقط بنفس محرّك الفاتورة، قبل أي كتابة. تعذّر الشبكة
+           لا يمنع البيع (الخادم سيحسب ويرفض غير المتوازن عند الإتمام)، لكن
+           فاتورةً غير متوازنة تُرفض هنا صراحةً بلا تحصيل. */
+        let effectiveTotal = t.total;
+        try {
+            const quote = await quotePosSale({ departmentId: activeShift.department_id, items: saleItems });
+            const serverTotal = Number(quote && quote.total_amount);
+            if (Number.isFinite(serverTotal)) {
+                if (Math.abs(serverTotal - t.total) >= 0.005) {
+                    notify(`الإجمالي المعتمد من الخادم ${moneyText(serverTotal)} بدل ${moneyText(t.total)}؛ حصّل على رقم الخادم.`, 'info');
+                }
+                effectiveTotal = serverTotal;
+            }
+        } catch (error) {
+            if (error && error.code === 'INVOICE_UNBALANCED') {
+                notify('الفاتورة غير متوازنة (الصافي + الضريبة ≠ الإجمالي) — لا يمكن إصدارها أو طباعتها. راجع المحاسبة.', 'error');
+                return;
+            }
+        }
         const enteredPayments = PAYMENT_FIELDS.map((f) => ({
             method: f.key,
             amount: parseMoneyInput(q(`[data-pos-payment="${f.key}"]`)?.value),
@@ -1205,9 +1239,9 @@ export function mountPosEntryScreen(host, ctx = {}) {
 
         const salePayments = enteredPayments.filter((p) => p.amount > 0);
         const paid = salePayments.reduce((sum, p) => sum + p.amount, 0);
-        if (paid + 0.009 < t.total) {notify('المبلغ المدفوع أقل من إجمالي الفاتورة.', 'error'); return;}
-        if (paid - t.total > 0.01) {
-            const ok = await (ctx.confirmFn || window.confirm)(`المدفوع ${moneyText(paid)} يزيد عن الإجمالي ${moneyText(t.total)}. سيتم احتساب الباقي للعميل؛ هل تتابع؟`);
+        if (paid + 0.009 < effectiveTotal) {notify('المبلغ المدفوع أقل من إجمالي الفاتورة.', 'error'); return;}
+        if (paid - effectiveTotal > 0.01) {
+            const ok = await (ctx.confirmFn || window.confirm)(`المدفوع ${moneyText(paid)} يزيد عن الإجمالي ${moneyText(effectiveTotal)}. سيتم احتساب الباقي للعميل؛ هل تتابع؟`);
             if (ok !== true) {return;}
         }
         if (!saleKey) {
@@ -1221,7 +1255,7 @@ export function mountPosEntryScreen(host, ctx = {}) {
             const result = await completePosSale({
                 departmentId: activeShift.department_id,
                 sessionId: activeShift.session_id || activeShift.id,
-                items: buildPosSaleItems(cart, cartDiscount),
+                items: saleItems,
                 payments: salePayments,
                 idempotencyKey: saleKey,
             });

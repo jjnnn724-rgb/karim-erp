@@ -15,9 +15,7 @@ export function ScreenGate({ screen, children }: { screen: V3Screen; children: R
         return (
             <section className="mx-auto max-w-xl rounded-lg border border-line bg-surface p-lg text-ink">
                 <h1 className="text-heading-md">هذه الشاشة ما زالت على النسخة القديمة</h1>
-                <p className="mt-xs text-body-md text-muted">
-                    لم تُقلب بعد في الإصدار الثالث. البيانات كاملة في القديم، ولا شيء ناقص هناك.
-                </p>
+                <p className="mt-xs text-body-md text-muted">لم تُقلب بعد في الإصدار الثالث. البيانات كاملة في القديم، ولا شيء ناقص هناك.</p>
                 <a className="mt-md inline-block rounded-md bg-primary px-md py-xs text-on-primary" href={LEGACY_APP_URL}>
                     انتقل إلى النسخة القديمة
                 </a>
@@ -30,8 +28,8 @@ export function ScreenGate({ screen, children }: { screen: V3Screen; children: R
             <section className="mx-auto max-w-xl rounded-lg border border-line bg-surface p-lg text-ink">
                 <h1 className="text-heading-md">لا تملك صلاحية الوصول إلى هذه الشاشة</h1>
                 <p className="mt-xs text-body-md text-muted">
-                    دورك الحالي لا يشمل هذه الشاشة في قوائم النظام. راجع مدير النظام إن كنت تعتقد أن
-                    لديك صلاحية، أو ارجع إلى لوحة الإدارة الخاصة بك.
+                    دورك الحالي لا يشمل هذه الشاشة في قوائم النظام. راجع مدير النظام إن كنت تعتقد أن لديك صلاحية، أو ارجع إلى لوحة الإدارة
+                    الخاصة بك.
                 </p>
                 <a className="mt-md inline-block rounded-md bg-primary px-md py-xs text-on-primary" href={LEGACY_APP_URL}>
                     انتقل إلى النسخة القديمة

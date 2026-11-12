@@ -1,8 +1,8 @@
 import './GoodsScan.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { PrintActions } from '../components/PrintActions';
+import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { ApiError } from '../lib/api';
 import { useAuthState } from '../lib/auth';
 import { arSearchKey } from '../lib/employees';
@@ -58,10 +58,7 @@ type CameraReader = {
 
 declare global {
     interface Window {
-        Html5Qrcode?: new (
-            elementId: string,
-            config: { verbose: boolean; useBarCodeDetectorIfSupported: boolean },
-        ) => CameraReader;
+        Html5Qrcode?: new (elementId: string, config: { verbose: boolean; useBarCodeDetectorIfSupported: boolean }) => CameraReader;
         Html5QrcodeSupportedFormats?: Record<string, number>;
     }
 }
@@ -124,22 +121,15 @@ function ItemSummary({ item }: { item: ScanItem }) {
     );
 }
 
-function ConfirmDialog({
-    message,
-    onCancel,
-    onConfirm,
-}: {
-    message: string;
-    onCancel: () => void;
-    onConfirm: () => void;
-}) {
+function ConfirmDialog({ message, onCancel, onConfirm }: { message: string; onCancel: () => void; onConfirm: () => void }) {
     return (
-        <div className="fixed inset-0 z-[100] grid place-items-center bg-overlay p-md">
+        <div className="fixed inset-0 z-[100] grid place-items-center bg-overlay p-md" data-erp-modal-overlay>
             <section
                 role="alertdialog"
                 aria-modal="true"
                 aria-labelledby="scan-confirm-title"
                 className="w-full max-w-lg rounded-lg border border-hairline bg-surface-raised p-lg shadow-[0_24px_64px_rgb(0_0_0/0.30)]"
+                data-erp-modal-panel
             >
                 <h2 id="scan-confirm-title" className="text-heading-md text-ink">
                     تأكيد ربط الباركود
@@ -153,11 +143,7 @@ function ConfirmDialog({
                     >
                         إلغاء
                     </button>
-                    <button
-                        type="button"
-                        onClick={onConfirm}
-                        className="rounded-md bg-primary px-md py-xs text-button-md text-on-primary"
-                    >
+                    <button type="button" onClick={onConfirm} className="rounded-md bg-primary px-md py-xs text-button-md text-on-primary">
                         تأكيد الربط
                     </button>
                 </div>
@@ -190,9 +176,7 @@ export function GoodsScan() {
     const [ambiguousItems, setAmbiguousItems] = useState<ScanItem[]>([]);
     const [inboundLines, setInboundLines] = useState<ScanLine[]>([]);
     const [outboundLines, setOutboundLines] = useState<ScanLine[]>([]);
-    const [outboundMeta, setOutboundMeta] = useState<Map<string, { name: string; unit: string; available: number }>>(
-        new Map(),
-    );
+    const [outboundMeta, setOutboundMeta] = useState<Map<string, { name: string; unit: string; available: number }>>(new Map());
     const [outboundSearch, setOutboundSearch] = useState('');
     const [outboundResults, setOutboundResults] = useState<ScanItem[]>([]);
     const [departmentCode, setDepartmentCode] = useState('');
@@ -319,13 +303,9 @@ export function GoodsScan() {
                 const item = found.items[0];
                 setStatus(`الكود مربوط أصلًا بـ«${item?.name || item?.id}». لتسجيل كمية افتح «وارد بالمسح».`);
             } else if (found.state === 'ambiguous') {
-                setStatus(
-                    `تحذير: ${String(found.items.length)} أصناف تحمل الكود نفسه — لا تربط مثله قبل إصلاح التكرار.`,
-                );
+                setStatus(`تحذير: ${String(found.items.length)} أصناف تحمل الكود نفسه — لا تربط مثله قبل إصلاح التكرار.`);
             } else if (!canWriteInventory) {
-                setStatus(
-                    `الكود غير مربوط. الربط لإدارة المخزن والمدير والمسؤول؛ حسابك (${role || 'بلا دور'}) لا يكتب.`,
-                );
+                setStatus(`الكود غير مربوط. الربط لإدارة المخزن والمدير والمسؤول؛ حسابك (${role || 'بلا دور'}) لا يكتب.`);
             } else {
                 const validation = validateGtin(code);
                 setStatus(validation.ok ? `الكود ${code} غير مربوط — اختر الصنف ثم اربطه.` : validation.reason);
@@ -345,10 +325,7 @@ export function GoodsScan() {
                 return;
             }
             const target = event.target;
-            if (
-                target instanceof HTMLElement &&
-                (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))
-            ) {
+            if (target instanceof HTMLElement && (target.isContentEditable || /^(INPUT|TEXTAREA|SELECT)$/.test(target.tagName))) {
                 wedgeRef.current.text = '';
                 return;
             }
@@ -391,9 +368,7 @@ export function GoodsScan() {
             return;
         }
         const key = String(item.id);
-        setOutboundMeta((previous) =>
-            new Map(previous).set(key, { name: item.name ?? key, unit: item.unit || '', available }),
-        );
+        setOutboundMeta((previous) => new Map(previous).set(key, { name: item.name ?? key, unit: item.unit || '', available }));
         setOutboundLines((lines) => bumpLine(lines, key));
         setStatus(
             scanned
@@ -535,9 +510,7 @@ export function GoodsScan() {
                 status: 'pending',
                 date,
             });
-            setStatus(
-                `أُرسل أذون صرف لقسم «${department?.name || departmentCode}» — ${String(items.length)} صنفًا، بانتظار الاعتماد.`,
-            );
+            setStatus(`أُرسل أذون صرف لقسم «${department?.name || departmentCode}» — ${String(items.length)} صنفًا، بانتظار الاعتماد.`);
             setOutboundLines([]);
             setOutboundMeta(new Map());
             setOutboundNotes('');
@@ -786,16 +759,8 @@ export function GoodsScan() {
                         {resolved?.state === 'unique' && resolved.items[0] ? (
                             <>
                                 <ItemSummary item={resolved.items[0]} />
-                                <p
-                                    className={
-                                        resolved.validation.ok
-                                            ? 'text-body-sm text-success-text'
-                                            : 'text-body-sm text-danger-text'
-                                    }
-                                >
-                                    {resolved.validation.checked
-                                        ? resolved.validation.reason
-                                        : 'لا فحص تحقق لهذا النوع من الأكواد'}
+                                <p className={resolved.validation.ok ? 'text-body-sm text-success-text' : 'text-body-sm text-danger-text'}>
+                                    {resolved.validation.checked ? resolved.validation.reason : 'لا فحص تحقق لهذا النوع من الأكواد'}
                                 </p>
                                 <button
                                     type="button"
@@ -807,9 +772,7 @@ export function GoodsScan() {
                             </>
                         ) : resolved?.state === 'ambiguous' ? (
                             <div role="alert" className="flex flex-col gap-xs">
-                                <p className="text-body-sm text-danger-text">
-                                    أكثر من صنف يحمل الكود نفسه؛ أصلح التكرار قبل ربطه.
-                                </p>
+                                <p className="text-body-sm text-danger-text">أكثر من صنف يحمل الكود نفسه؛ أصلح التكرار قبل ربطه.</p>
                                 {resolved.items.map((item) => (
                                     <ItemSummary key={String(item.id)} item={item} />
                                 ))}
@@ -817,12 +780,9 @@ export function GoodsScan() {
                         ) : pendingCode && canWriteInventory ? (
                             <div className="flex flex-col gap-xs">
                                 <p className="text-body-sm text-muted">
-                                    الكود {pendingCode} غير مربوط. ابحث عن الصنف، ثم أكّد الاستبدال أو فحص GS1 عند
-                                    الحاجة.
+                                    الكود {pendingCode} غير مربوط. ابحث عن الصنف، ثم أكّد الاستبدال أو فحص GS1 عند الحاجة.
                                 </p>
-                                {scanTruncated ? (
-                                    <p className="text-body-sm text-warning-text">بحث الخادم وصل إلى حدّ المشي.</p>
-                                ) : null}
+                                {scanTruncated ? <p className="text-body-sm text-warning-text">بحث الخادم وصل إلى حدّ المشي.</p> : null}
                                 <label htmlFor="goods-scan-bind-search" className="text-label-md text-ink">
                                     ابحث عن الصنف بالاسم
                                 </label>
@@ -869,15 +829,12 @@ export function GoodsScan() {
                 {mode === 'in' ? (
                     <div className="flex flex-col gap-sm">
                         <p className="text-body-sm text-muted">
-                            الوارد يمرّ بدفتر المخزون، ولا يكتب مباشرةً على الرصيد. الصلاحية اختيارية ويُقبل تاريخها بصيغة
-                            YYYY-MM-DD فقط.
+                            الوارد يمرّ بدفتر المخزون، ولا يكتب مباشرةً على الرصيد. الصلاحية اختيارية ويُقبل تاريخها بصيغة YYYY-MM-DD فقط.
                         </p>
                         {ambiguousItems.length ? (
                             <fieldset className="flex flex-col gap-xs">
                                 <legend className="text-body-sm text-danger-text">اختر الصنف للوارد</legend>
-                                <p className="text-body-sm text-danger-text">
-                                    الكود مكرر؛ اختر الصنف المقصود قبل إضافة الوارد.
-                                </p>
+                                <p className="text-body-sm text-danger-text">الكود مكرر؛ اختر الصنف المقصود قبل إضافة الوارد.</p>
                                 {ambiguousItems.map((item) => (
                                     <button
                                         key={String(item.id)}
@@ -918,9 +875,7 @@ export function GoodsScan() {
                                                             step="0.001"
                                                             value={line.qty}
                                                             onChange={(event) =>
-                                                                setInboundLines((lines) =>
-                                                                    setLineQty(lines, line.key, event.target.value),
-                                                                )
+                                                                setInboundLines((lines) => setLineQty(lines, line.key, event.target.value))
                                                             }
                                                             className="w-24 rounded-md border border-hairline-strong bg-surface px-xs py-xxs text-body-sm"
                                                         />
@@ -957,9 +912,7 @@ export function GoodsScan() {
                                                     <td>
                                                         <button
                                                             type="button"
-                                                            onClick={() =>
-                                                                setInboundLines((lines) => dropLine(lines, line.key))
-                                                            }
+                                                            onClick={() => setInboundLines((lines) => dropLine(lines, line.key))}
                                                             className="text-button-sm text-danger-text"
                                                         >
                                                             حذف
@@ -972,19 +925,13 @@ export function GoodsScan() {
                                 </table>
                             </TableScroll>
                         ) : (
-                            <StateEmpty
-                                title="لا توجد أصناف في الجلسة"
-                                hint="امسح كل كرتونة؛ تكرار مسح الصنف يزيد عدّ المسح والكمية."
-                            />
+                            <StateEmpty title="لا توجد أصناف في الجلسة" hint="امسح كل كرتونة؛ تكرار مسح الصنف يزيد عدّ المسح والكمية." />
                         )}
                         <p className="text-body-sm text-muted">
-                            {String(inboundTotals.lines)} صنفًا · {String(inboundTotals.scans)} مسحة ·{' '}
-                            {formatQty(inboundTotals.qty)} وحدة
+                            {String(inboundTotals.lines)} صنفًا · {String(inboundTotals.scans)} مسحة · {formatQty(inboundTotals.qty)} وحدة
                         </p>
                         {!canWriteInventory ? (
-                            <p className="text-body-sm text-danger-text">
-                                حسابك لا يكتب الوارد — أزرار التسجيل معطلة وقرار الخادم نهائي.
-                            </p>
+                            <p className="text-body-sm text-danger-text">حسابك لا يكتب الوارد — أزرار التسجيل معطلة وقرار الخادم نهائي.</p>
                         ) : null}
                         <div className="flex flex-wrap gap-sm">
                             <button
@@ -1009,27 +956,20 @@ export function GoodsScan() {
 
                 {mode === 'out' ? (
                     <div className="flex flex-col gap-sm">
-                        <p className="text-body-sm text-muted">
-                            الصرف ينشئ أذونًا معلّقة تدخل سلسلة الاعتماد.
-                        </p>
+                        <p className="text-body-sm text-muted">الصرف ينشئ أذونًا معلّقة تدخل سلسلة الاعتماد.</p>
                         {!canCreateDispatch ? (
                             <p className="text-body-sm text-danger-text">
                                 حسابك لا يُنشئ أذون صرف — الأدوار المسموحة: الشيف والمدير والمخازن ورئيس القسم.
                             </p>
                         ) : null}
                         {departmentsQuery.isError ? (
-                            <StateError
-                                message={errorText(departmentsQuery.error)}
-                                onRetry={() => void departmentsQuery.refetch()}
-                            />
+                            <StateError message={errorText(departmentsQuery.error)} onRetry={() => void departmentsQuery.refetch()} />
                         ) : null}
                         {departmentsQuery.isLoading ? <StateLoading label="جارٍ جلب الأقسام" /> : null}
                         {ambiguousItems.length ? (
                             <fieldset className="flex flex-col gap-xs">
                                 <legend className="text-body-sm text-danger-text">اختر الصنف للصرف</legend>
-                                <p className="text-body-sm text-danger-text">
-                                    الكود مكرر؛ اختر الصنف المقصود قبل إضافته.
-                                </p>
+                                <p className="text-body-sm text-danger-text">الكود مكرر؛ اختر الصنف المقصود قبل إضافته.</p>
                                 {ambiguousItems.map((item) => (
                                     <button
                                         key={String(item.id)}
@@ -1072,16 +1012,12 @@ export function GoodsScan() {
                                                             step="0.001"
                                                             value={line.qty}
                                                             onChange={(event) =>
-                                                                setOutboundLines((lines) =>
-                                                                    setLineQty(lines, line.key, event.target.value),
-                                                                )
+                                                                setOutboundLines((lines) => setLineQty(lines, line.key, event.target.value))
                                                             }
                                                             className="w-24 rounded-md border border-hairline-strong bg-surface px-xs py-xxs text-body-sm"
                                                         />
                                                         {over ? (
-                                                            <span className="ms-xs text-caption text-danger-text">
-                                                                فوق المتاح
-                                                            </span>
+                                                            <span className="ms-xs text-caption text-danger-text">فوق المتاح</span>
                                                         ) : null}
                                                     </td>
                                                     <td>
@@ -1107,10 +1043,7 @@ export function GoodsScan() {
                                 </table>
                             </TableScroll>
                         ) : (
-                            <StateEmpty
-                                title="لا توجد أصناف في جلسة الصرف"
-                                hint="امسح باركود صنف له رصيد رئيسي، أو أضفه يدويًا بالاسم."
-                            />
+                            <StateEmpty title="لا توجد أصناف في جلسة الصرف" hint="امسح باركود صنف له رصيد رئيسي، أو أضفه يدويًا بالاسم." />
                         )}
                         <p className="text-body-sm text-muted">
                             {String(outboundTotals.lines)} صنفًا · {formatQty(outboundTotals.qty)} وحدة
@@ -1203,10 +1136,7 @@ export function GoodsScan() {
                 {mode === 'campaign' ? (
                     <div className="flex flex-col gap-sm">
                         {campaignQuery.isError ? (
-                            <StateError
-                                message={errorText(campaignQuery.error)}
-                                onRetry={() => void campaignQuery.refetch()}
-                            />
+                            <StateError message={errorText(campaignQuery.error)} onRetry={() => void campaignQuery.refetch()} />
                         ) : campaignQuery.isLoading ? (
                             <TableSkeleton rows={5} columns={4} />
                         ) : (
@@ -1219,11 +1149,7 @@ export function GoodsScan() {
                                             `${String(campaignCoverage.pct)}% من السجل المعروض`,
                                         ],
                                         ['بلا كود', String(campaignCoverage.unassigned), 'قائمة العمل أدناه'],
-                                        [
-                                            'أكواد مكررة',
-                                            String(campaignCoverage.duplicates.length),
-                                            'لا يوجد قيد تفريد في قاعدة البيانات',
-                                        ],
+                                        ['أكواد مكررة', String(campaignCoverage.duplicates.length), 'لا يوجد قيد تفريد في قاعدة البيانات'],
                                         ['تحقق GS1 مكسور', String(campaignCoverage.suspect), 'يحتاج مراجعة يدوية'],
                                     ].map(([label, value, hint]) => (
                                         <div key={label} className="rounded-md border border-hairline bg-surface p-sm">
@@ -1237,8 +1163,7 @@ export function GoodsScan() {
                                 </div>
                                 {campaignQuery.data?.truncated ? (
                                     <p className="text-body-sm text-warning-text">
-                                        عُرض أول {String(campaignRows.length)} من {String(campaignQuery.data.total)} صنف
-                                        — حدّ المشي 2,000.
+                                        عُرض أول {String(campaignRows.length)} من {String(campaignQuery.data.total)} صنف — حدّ المشي 2,000.
                                     </p>
                                 ) : null}
                                 {campaignCoverage.duplicates.length ? (
@@ -1283,9 +1208,7 @@ export function GoodsScan() {
                                                         const state = stockState(item.qty, item.minQty);
                                                         return (
                                                             <tr key={String(item.id)}>
-                                                                <th scope="row">
-                                                                    {item.name || `#${String(item.id)}`}
-                                                                </th>
+                                                                <th scope="row">{item.name || `#${String(item.id)}`}</th>
                                                                 <td>{item.category || '—'}</td>
                                                                 <td>{item.unit || '—'}</td>
                                                                 <td dir="ltr">{formatQty(Number(item.qty) || 0)}</td>
@@ -1308,15 +1231,12 @@ export function GoodsScan() {
                                                     السابق
                                                 </button>
                                                 <span dir="ltr">
-                                                    {String(Math.min(campaignPage, campaignPageCount))}/
-                                                    {String(campaignPageCount)}
+                                                    {String(Math.min(campaignPage, campaignPageCount))}/{String(campaignPageCount)}
                                                 </span>
                                                 <button
                                                     type="button"
                                                     disabled={campaignPage >= campaignPageCount}
-                                                    onClick={() =>
-                                                        setCampaignPage((page) => Math.min(campaignPageCount, page + 1))
-                                                    }
+                                                    onClick={() => setCampaignPage((page) => Math.min(campaignPageCount, page + 1))}
                                                     className="rounded-md border border-hairline-strong px-sm py-xxs disabled:opacity-50"
                                                 >
                                                     التالي
@@ -1327,11 +1247,7 @@ export function GoodsScan() {
                                 ) : (
                                     <StateEmpty
                                         title={bindSearch ? 'لا صنف مطابق' : 'كل الأصناف مربوطة'}
-                                        hint={
-                                            bindSearch
-                                                ? 'امسح البحث أو راجع الإملاء.'
-                                                : 'اكتملت تغطية الباركود في السجل المقروء.'
-                                        }
+                                        hint={bindSearch ? 'امسح البحث أو راجع الإملاء.' : 'اكتملت تغطية الباركود في السجل المقروء.'}
                                     />
                                 )}
                             </>

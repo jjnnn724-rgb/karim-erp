@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Button, Input, Select } from '../../ui';
 import type { PosDepartment } from '../../lib/pos';
 import { parsePosMoney } from '../../lib/pos-pricing';
+import { Button, Input, Select } from '../../ui';
 import { moneyText } from './pos-ui';
 
 export interface PosOpenShiftProps {
@@ -52,17 +52,10 @@ export function PosOpenShift({ departments, canSell, busy, error, loading, onOpe
                     disabled={busy || !canSell}
                 />
                 <div className="flex flex-wrap items-center gap-sm">
-                    <Button
-                        variant="primary"
-                        loading={busy}
-                        disabled={!canSell || !valid}
-                        onClick={() => onOpen(departmentId, parsed)}
-                    >
+                    <Button variant="primary" loading={busy} disabled={!canSell || !valid} onClick={() => onOpen(departmentId, parsed)}>
                         فتح الوردية
                     </Button>
-                    {!canSell ? (
-                        <p className="text-body-sm text-muted">هذا الحساب للقراءة فقط ولا يمكنه فتح وردية أو البيع.</p>
-                    ) : null}
+                    {!canSell ? <p className="text-body-sm text-muted">هذا الحساب للقراءة فقط ولا يمكنه فتح وردية أو البيع.</p> : null}
                 </div>
                 {error ? (
                     <p className="text-body-sm text-danger" role="alert">

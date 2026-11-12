@@ -1,18 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { PrintActions } from '../components/PrintActions';
 import { KpiCard, RangeControls, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { buildPnlLines, fetchPnl } from '../lib/pnl';
-import {
-    errorMessage,
-    intOf,
-    moneyOf,
-    pctOf,
-    presetRange,
-    rangeProblem,
-    textOf,
-} from '../lib/reporting';
-import { PrintActions } from '../components/PrintActions';
+import { errorMessage, intOf, moneyOf, pctOf, presetRange, rangeProblem, textOf } from '../lib/reporting';
 
 /**
  * الأرباح والخسائر — بيان الخادم كما هو (`/api/finance/pnl`).
@@ -180,10 +172,7 @@ export function Pnl() {
                                         </thead>
                                         <tbody>
                                             {departments.map((dept) => (
-                                                <tr
-                                                    key={textOf(dept.code) || textOf(dept.name)}
-                                                    className="border-b border-hairline"
-                                                >
+                                                <tr key={textOf(dept.code) || textOf(dept.name)} className="border-b border-hairline">
                                                     <td className="px-sm py-xxs text-ink">
                                                         {textOf(dept.name) || textOf(dept.code) || '—'}
                                                         {(dept.subDepartments?.length ?? 0) > 0 ? (
@@ -267,4 +256,3 @@ export function Pnl() {
         </div>
     );
 }
-

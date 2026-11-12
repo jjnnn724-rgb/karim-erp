@@ -1035,8 +1035,6 @@ router.get('/item-sales/print', requireRole('sous_chef', 'admin', 'owner'), asyn
         const headVat = head ? hRound(head.vat) : 0;
         const collected = head ? hRound(head.collected) : 0;
         const headGross = hRound(headEx + headVat);
-        const adj = hRound(headGross - collected);
-        const lineVsHead = hRound(lineGross - headGross);
         const shown = rows.length;
 
         const period = `من ${hLtr(from)} إلى ${hLtr(to)}`;
@@ -1110,8 +1108,6 @@ router.get('/item-sales/print', requireRole('sous_chef', 'admin', 'owner'), asyn
                 ['المحصَّل فعليًا (رأس السند)', hMoney(collected, cur)],
                 ['قبل الضريبة (رأس السند)', hMoney(headEx, cur)],
                 ['الضريبة (رأس السند)', hMoney(headVat, cur)],
-                ['خصم / تسوية كسور', hMoney(adj, cur)],
-                ['فرق السطور عن رأس السند', hMoney(lineVsHead, cur)],
             ].map(([k, v]) => hCell(k, v)).join('');
 
             const max = Math.max(...rows.map((r) => Number(r.ex_vat) || 0), 1);
@@ -1148,12 +1144,10 @@ router.get('/item-sales/print', requireRole('sous_chef', 'admin', 'owner'), asyn
               <div class="note"><b>«فواتير الصنف»:</b> الفاتورة تُعدّ مرة لكل صنفٍ فيها، فمجموع العمود أكبر من عدد الفواتير في المؤشرات — والعدد الصحيح هو «عدد الفواتير» أعلى الورقة.</div>
               <div class="note"><b>المطابقة:</b> مجاميع السطور قبل الضريبة ${hLtr(hNum(lineEx))} وضريبتها ${hLtr(hNum(lineVat))} وشامل الضريبة ${hLtr(hNum(lineGross))}؛
                 ورأس السند قبل الضريبة ${hLtr(hNum(headEx))} وضريبته ${hLtr(hNum(headVat))} والمحصَّل ${hLtr(hNum(collected))}.
-                ${Math.abs(lineVsHead) > 0.005
-                    ? `السطور تخالف رأس السند بمقدار ${hLtr(hNum(lineVsHead))} — سنداتٌ بلا سطورٍ مسجَّلة أو سطورٌ لا تطابق رأس سندها؛ يُعرضان معًا ولا يُصفَّر أحدهما للآخر.`
-                    : 'السطور تطابق رأس السند.'}
-                ${Math.abs(adj) > 0.005
-                    ? ` و«خصم / تسوية كسور» ${hLtr(hNum(adj))} هو الفرق بين (قبل الضريبة + الضريبة) والمحصَّل فعليًا على مستوى السند — خصمٌ أو تسويةٌ لم يسجّله المصدر في عمود مستقل، فبه تنطبق المعادلة: المحصَّل + التسوية = شامل الضريبة.`
-                    : ' والمحصَّل يطابق (قبل الضريبة + الضريبة) تمامًا.'}
+                تُعرض المجاميع جنبًا إلى جنب ولا يُصفَّر أحدها للآخر، ولا يُطبع أي بند تسوية.
+                ${Math.abs(collected - headGross) > 0.005
+                    ? ' والأرقام مأخوذة كما وردت من النظام السابق دون أي تسوية.'
+                    : ''}
               </div>`;
         }
 

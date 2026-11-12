@@ -22,15 +22,15 @@
  * يُعلَن: سندٌ بلا سطور، أو إجماليٌ لا يساوي صافيًا + ضريبة، أو دفعٌ لم
  * يغطِّ الإجمالي — كلها تُعرض كما هي لأن إخفاءها يجعل الرقم أجمل وأكذب.
  */
-import { createDataTable } from '../data-display/data-table.js?v=4.9.296';
-import { barChart, donutChart, lineChart } from '../charts.js?v=4.9.296';
-import { openInAppReport } from '../report-viewer.js?v=4.9.296';
-import { trapFocus } from '../focus-trap.js?v=4.9.296';
-import { ensureRealtimeSocket } from '../realtime.js?v=4.9.296';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.312';
+import { barChart, donutChart, lineChart } from '../charts.js?v=4.9.312';
+import { openInAppReport } from '../report-viewer.js?v=4.9.312';
+import { trapFocus } from '../focus-trap.js?v=4.9.312';
+import { ensureRealtimeSocket } from '../realtime.js?v=4.9.312';
 import {
     fetchSummary, fetchOrders, fetchItems, fetchItem, fetchInvoice,
     fetchInvoiceHtml, fetchSheetHtml, money, count, qty, periodPresets, isoDay,
-} from '../data/cashier-sales-repo.js?v=4.9.296';
+} from '../data/cashier-sales-repo.js?v=4.9.312';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -113,14 +113,11 @@ function pulseHtml(s) {
     if (Number(t.no_time) > 0) {
         bits.push(`<span class="csales__pulseFlag" role="note" title="بلا طابع ساعة، فلا يظهر في منحنى الساعات">${esc(count(t.no_time))} سندًا بلا وقت</span>`);
     }
-    if (Number(t.drift_docs) > 0) {
-        const large = Number(t.drift_large_docs) || 0;
-        bits.push(`<span class="csales__pulseFlag" role="note" title="${large
-            ? esc(`${count(large)} منها بمقدارٍ ${money(t.drift_large_amount, '')} جاوزَ قدرَ تقريبِ السطور — المحصَّلُ لا يطابق المُسعَّر والمرآةُ لا تسجّل السبب`)
-            : 'تقريبُ التسعيرة لكل سطرٍ قبل الجمع — الإجمالي هو ما دُفع فعلًا'}">`
-            + `${esc(count(t.drift_docs))} سندًا إجماليه ≠ صافي + ضريبة (${esc(money(t.drift_amount, ''))})`
-            + (large ? ` — <span class="erp-num" dir="ltr">${esc(count(large))}</span> جاوزَ التقريب` : '')
-            + '</span>');
+    /* السجلُّ القديم غير المتوازن يُصنَّف عدديًّا بلا مبلغ: لا «فرق» ولا
+       «تسوية» في شريط الصدق ولا في أي عرض. */
+    const legacyDocs = Number(t.legacy_docs ?? t.drift_docs) || 0;
+    if (legacyDocs > 0) {
+        bits.push(`<span class="csales__pulseFlag" role="note" title="سجلات النظام السابق تُعرض بأرقامها كما وردت في مصدرها، بلا أي بند تسوية">${esc(count(legacyDocs))} سندًا مؤرشفًا</span>`);
     }
     if (Number(t.pay_unreconciled) > 0) {
         bits.push(`<span class="csales__pulseFlag" role="note" title="مجموع أعمدة الدفع لا يساوي الإجمالي المحصَّل">${esc(count(t.pay_unreconciled))} سندًا دفعه لا يغطّي إجماليه</span>`);
@@ -294,17 +291,6 @@ export function mountCashierSales(host) {
         },
         { key: 'pay', header: 'الدفع', width: '96px', render: payBadges },
         {
-            key: 'drift', header: 'فارق', width: '84px', align: 'end',
-            /* الفارقُ عن (صافي + ضريبة): الخادمُ قال هل يفسّره التقريبُ بقدر
-               عدد السطور، أم فارقٌ لا تسجّل المرآةُ سببَه — فلا نُنسبُه ههنا. */
-            render: (r) => (Math.abs(Number(r.drift) || 0) > 0.005
-                ? `<span class="csales__drift${r.drift_within_rounding ? '' : ' is-large'}" dir="ltr" `
-                  + `title="${esc(r.drift_within_rounding
-                      ? `تقريبُ التسعيرة عند الجمع: الإجمالي المحصَّل لا يساوي صافيًا + ضريبة (${money(r.drift, '')})`
-                      : `جاوزَ قدرَ تقريبِ السطور — المحصَّلُ لا يطابق المُسعَّر (${money(r.drift, '')})`)}">${esc(money(r.drift, ''))}</span>`
-                : '<span class="erp-text-faint" aria-hidden="true">·</span>'),
-        },
-        {
             key: 'go', header: '', width: '76px', align: 'center',
             render: (r) => `<span class="csales__rowTools">
               <button type="button" class="csales__open" data-sa-print="${esc(String(r.doc_no))}"
@@ -429,15 +415,14 @@ export function mountCashierSales(host) {
                 hint: `الضريبة ${money(t.vat, '')} ${unit}`,
             },
             {
-                /* خانة تجميع فارق الهلالات/الخصومات للفترة المختارة: الرقم نفسه
-                   الذي يعلنه شريط الصدق، مجموعه ومعه عدد السندات — فلا يُبحث
-                   عنه في جدول، ولا يُخفى في هامش. */
-                icon: 'scale', en: 'Adjustment', label: 'فارق التسوية', tone: 'neutral',
-                value: money(t.drift_amount, ''), unit,
-                hint: Number(t.drift_docs)
-                    ? `${count(t.drift_docs)} فاتورة · ${count(t.drift_large_docs)} جاوزَ التقريب`
-                    : 'المحصَّل يطابق قبل الضريبة + الضريبة',
-                title: 'المحصَّل + التسوية = قبل الضريبة + الضريبة. الفرق خصوماتُ سنداتٍ وتقريبُ ضريبة السطور (هلالات) — المصدر لا يسجّل الخصم في عمود مستقل.',
+                /* تصنيفٌ عدديّ لأرشيف النظام السابق: عددٌ بلا مبلغ. لا خانة
+                   «فارق تسوية» ولا معادلة «محصَّل + تسوية = صافي + ضريبة». */
+                icon: 'history', en: 'Archive', label: 'سجلات مؤرشفة', tone: 'neutral',
+                value: count(t.legacy_docs ?? t.drift_docs),
+                hint: Number(t.legacy_docs ?? t.drift_docs)
+                    ? 'أرقامها كما وردت من النظام السابق'
+                    : 'لا سجلاتٍ مؤرشفة في هذه الفترة',
+                title: 'سنداتٌ من النظام السابق غير متوازنة (الإجمالي ≠ صافي + ضريبة) تُعرض كما وردت بلا إعادة تسوية وبلا بند فرق.',
             },
             {
                 icon: 'calendar', en: 'Per day', label: 'متوسط اليوم', tone: 'brand',
@@ -590,9 +575,9 @@ export function mountCashierSales(host) {
             const r = data.reconcile;
             q('[data-sa-items-sum]').innerHTML = `<span class="erp-num" dir="ltr">${esc(count(data.totals.count))}</span> صنفًا · `
                 + `<span class="erp-num" dir="ltr">${esc(money(data.totals.ex_vat, currency))}</span>`
-                + (r && Math.abs(Number(r.gap) || 0) > 0.005
-                    ? `<span class="csales__amb" title="قيمةُ الأسطر لا تساوي صافيَ السندات في نفس المدى: ${esc(count(r.no_lines))} سندًا بلا سطور، ${esc(count(r.line_mismatch))} سندًا مجموعُ أسطره يخالف رأسه">`
-                      + `فرقٌ عن السندات ${esc(money(r.gap, currency))}</span>` : '');
+                + (r && (Number(r.no_lines) || Number(r.line_mismatch))
+                    ? `<span class="csales__amb" title="الأسطر وحدها لا تغطي كل السندات — يُقرأ مع كشف الفواتير ولا يُعاد تسويته">`
+                      + `${esc(count(r.no_lines))} سندًا بلا سطور · ${esc(count(r.line_mismatch))} سندًا مجموعُ أسطره يخالف رأسه</span>` : '');
         } catch (e) {
             itemsTable.setError((e && e.message) || 'تعذر تحميل الأصناف');
         }
@@ -779,16 +764,9 @@ export function mountCashierSales(host) {
             </tfoot>` : ''}
           </table>
 
-          ${Math.abs(Number(s.drift) || 0) > 0.005 ? `<p class="csales__note"><b>الفارق:</b> الإجمالي ${esc(money(s.collected, ''))} `
-            + `لا يساوي صافيًا + ضريبة (${esc(money((Number(s.ex_vat) || 0) + (Number(s.vat) || 0), ''))}) `
-            + `بمقدار <span class="erp-num" dir="ltr">${esc(money(s.drift, ''))}</span> — `
-            + (s.drift_within_rounding
-                ? 'قدرُ تقريبِ التسعيرة لكل سطرٍ قبل الجمع، والإجمالي هو ما دُفع فعلًا.'
-                : 'أكبرُ من أن يفسّره تقريبُ السطور: المحصَّلُ لا يطابق المُسعَّر، والمرآةُ لا تسجّل سببَ الفرق.')
-            + `</p>` : ''}
+          ${s.legacy_adjustment ? `<p class="csales__note"><b>سجل مؤرشف:</b> هذه الفاتورة من النظام السابق وغير متوازنة (الإجمالي ≠ صافي + ضريبة) — تُعرض أرقامها كما وردت في مصدرها، بلا بند تسوية وبلا إعادة حساب.</p>` : ''}
           ${lines.length && Math.abs((Number(s.line_sum) || 0) - (Number(s.ex_vat) || 0)) > 0.005
-            ? `<p class="csales__note"><b>رأسُ السند:</b> مجموعُ الأسطر ${esc(money(s.line_sum, ''))} يخالف «قبل الضريبة» `
-              + `المسجَّل على السند ${esc(money(s.ex_vat, ''))} — يُعرضان معًا ولا يُصفَّر أحدهما للآخر.</p>` : ''}
+            ? `<p class="csales__note"><b>سجل مؤرشف:</b> مجموعُ أسطر هذه الفاتورة لا يطابق رأسَها — يُعرضان كما وردا في مصدرهما، بلا تصفير أحدهما للآخر.</p>` : ''}
 
           ${d.zatca ? `<h3 class="csales__sec">الاعتماد الضريبي</h3>
             <div class="csales__zatca">

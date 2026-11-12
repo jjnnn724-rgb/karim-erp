@@ -713,7 +713,7 @@ router.get('/held-orders', jwtAuth, requireRole('cashier','manager','admin','aud
     } catch (e) { logger.error(e); res.status(500).json({ error: 'INTERNAL_ERROR' }); }
 });
 
-router.post('/held-orders', jwtAuth, requireRole('cashier','manager','admin'), async (req, res) => {
+router.post('/held-orders', jwtAuth, requireRole('cashier','manager','admin','accountant'), async (req, res) => {
     const sessionId = parsePositiveInt(req.body?.session_id, 'session_id');
     const departmentId = parsePositiveInt(req.body?.department_id, 'department_id');
     const rawItems = Array.isArray(req.body?.items) ? req.body.items : [];
@@ -760,7 +760,7 @@ router.post('/held-orders', jwtAuth, requireRole('cashier','manager','admin'), a
     } finally { client.release(); }
 });
 
-router.post('/held-orders/:id/recall', jwtAuth, requireRole('cashier','manager','admin'), async (req, res) => {
+router.post('/held-orders/:id/recall', jwtAuth, requireRole('cashier','manager','admin','accountant'), async (req, res) => {
     const sessionId = parsePositiveInt(req.body?.session_id, 'session_id');
     const id = String(req.params.id || '').trim();
     if (!sessionId || !id) {return res.status(422).json({ error: 'INVALID_HELD_ORDER' });}
@@ -781,7 +781,7 @@ router.post('/held-orders/:id/recall', jwtAuth, requireRole('cashier','manager',
     } finally { client.release(); }
 });
 
-router.delete('/held-orders/:id', jwtAuth, requireRole('cashier','manager','admin'), async (req, res) => {
+router.delete('/held-orders/:id', jwtAuth, requireRole('cashier','manager','admin','accountant'), async (req, res) => {
     const sessionId = parsePositiveInt(req.query.session_id, 'session_id');
     const id = String(req.params.id || '').trim();
     if (!sessionId || !id) {return res.status(422).json({ error: 'INVALID_HELD_ORDER' });}
@@ -800,7 +800,7 @@ router.delete('/held-orders/:id', jwtAuth, requireRole('cashier','manager','admi
 
 // ─── Open shift ─────────────────────────────────────────────────────────────
 router.post('/shifts/open',
-    jwtAuth, requireRole('cashier','manager','admin'),
+    jwtAuth, requireRole('cashier','manager','admin','accountant'),
     rateLimit({ windowMs: 60_000, max: 5, keyFn: r => `shift_open:${r.user.id}` }),
     async (req, res) => {
         const { department_id, opening_balance } = req.body;
@@ -871,7 +871,7 @@ router.post('/shifts/open',
 );
 
 // ─── Close shift ────────────────────────────────────────────────────────────
-router.post('/shifts/:id/close', jwtAuth, requireRole('cashier','manager','admin'), async (req, res) => {
+router.post('/shifts/:id/close', jwtAuth, requireRole('cashier','manager','admin','accountant'), async (req, res) => {
     const sessionId = parseInt(req.params.id, 10);
     if (!Number.isInteger(sessionId) || sessionId <= 0) {return res.status(422).json({ error: 'INVALID_SHIFT_SESSION_ID' });}
     const { actual_cash, notes } = req.body;

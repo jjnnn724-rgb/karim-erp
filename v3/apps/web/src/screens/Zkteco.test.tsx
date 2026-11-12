@@ -1,6 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ConfirmProvider } from '../components/ConfirmProvider';
+import { ToastProvider } from '../ui/Toast';
 import { Zkteco } from './Zkteco';
 
 function json(body: unknown, status = 200): Response {
@@ -14,7 +16,11 @@ function renderScreen() {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     return render(
         <QueryClientProvider client={client}>
-            <Zkteco />
+            <ToastProvider>
+                <ConfirmProvider>
+                    <Zkteco />
+                </ConfirmProvider>
+            </ToastProvider>
         </QueryClientProvider>,
     );
 }

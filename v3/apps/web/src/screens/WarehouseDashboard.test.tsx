@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { WarehouseDashboard } from './WarehouseDashboard';
 
@@ -47,7 +47,12 @@ describe('لوحة المخزن', () => {
                     });
                 }
                 if (url.includes('/api/warehouse/purchase-requests')) {
-                    return json({ data: [{ id: 20, status: 'pending' }, { id: 21, status: 'received' }] });
+                    return json({
+                        data: [
+                            { id: 20, status: 'pending' },
+                            { id: 21, status: 'received' },
+                        ],
+                    });
                 }
                 return json({ error: 'NOT_FOUND', message: 'مسار غير معروف' }, 404);
             }),
@@ -86,7 +91,12 @@ describe('لوحة المخزن', () => {
                     });
                 }
                 if (url.includes('/api/warehouse/purchase-requests')) {
-                    return json({ data: [{ id: 20, status: 'pending' }, { id: 21, status: 'received' }] });
+                    return json({
+                        data: [
+                            { id: 20, status: 'pending' },
+                            { id: 21, status: 'received' },
+                        ],
+                    });
                 }
                 return json({ error: 'NOT_FOUND', message: 'مسار غير معروف' }, 404);
             }),

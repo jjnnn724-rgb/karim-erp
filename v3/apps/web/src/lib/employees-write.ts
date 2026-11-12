@@ -96,27 +96,17 @@ export async function createEmployee(input: EmployeeCreateInput): Promise<Employ
 }
 
 export async function updateEmployee(id: string | number, input: EmployeeUpdateInput): Promise<EmployeeResult> {
-    return writeJson(
-        employeeResultSchema,
-        `/api/employees/${encodeURIComponent(String(id))}`,
-        'PUT',
-        {
-            name: input.name.trim(),
-            department: input.department?.trim() || null,
-            position: input.position.trim(),
-            phone: input.phone.trim(),
-            ...(input.status !== undefined ? { status: input.status } : {}),
-        },
-    );
+    return writeJson(employeeResultSchema, `/api/employees/${encodeURIComponent(String(id))}`, 'PUT', {
+        name: input.name.trim(),
+        department: input.department?.trim() || null,
+        position: input.position.trim(),
+        phone: input.phone.trim(),
+        ...(input.status !== undefined ? { status: input.status } : {}),
+    });
 }
 
 export async function setEmployeeActive(id: string | number, active: boolean): Promise<EmployeeResult> {
-    return writeJson(
-        employeeResultSchema,
-        `/api/employees/${encodeURIComponent(String(id))}`,
-        'PUT',
-        { active },
-    );
+    return writeJson(employeeResultSchema, `/api/employees/${encodeURIComponent(String(id))}`, 'PUT', { active });
 }
 
 export async function deleteEmployee(id: string | number): Promise<void> {

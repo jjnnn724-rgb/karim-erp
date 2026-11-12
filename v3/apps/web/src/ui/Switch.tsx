@@ -1,6 +1,6 @@
+import { useId } from 'react';
 import { Label as ShadcnLabel } from '@/components/ui/label';
 import { Switch as ShadcnSwitch } from '@/components/ui/switch';
-import { useId } from 'react';
 import { cn } from './cn';
 
 /**
@@ -21,17 +21,7 @@ export interface SwitchProps {
     className?: string;
 }
 
-export function Switch({
-    label,
-    description,
-    checked,
-    onCheckedChange,
-    disabled = false,
-    name,
-    value,
-    id,
-    className,
-}: SwitchProps) {
+export function Switch({ label, description, checked, onCheckedChange, disabled = false, name, value, id, className }: SwitchProps) {
     const autoId = useId();
     const switchId = id ?? autoId;
     const descriptionId = description ? `${switchId}-description` : undefined;

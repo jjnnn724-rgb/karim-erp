@@ -136,12 +136,7 @@ export async function fetchSupplierPayments(
         params.set('to', filters.to);
     }
     const query = params.toString();
-    return fetchJson(
-        paymentListSchema,
-        `/api/procurement/payments${query ? `?${query}` : ''}`,
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    return fetchJson(paymentListSchema, `/api/procurement/payments${query ? `?${query}` : ''}`, getAccessToken(), signal ? { signal } : {});
 }
 
 /* ─── عرض ─────────────────────────────────────────────────────────────── */

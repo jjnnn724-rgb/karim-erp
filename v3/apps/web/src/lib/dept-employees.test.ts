@@ -24,7 +24,13 @@ describe('V2 dept employee write contract', () => {
         const fetchMock = vi.fn(async () => new Response('{}', { status: 201 }));
         vi.stubGlobal('fetch', fetchMock);
         await createDeptEmployee({ name: ' A ', employeeId: 'EMP_01', position: '', phone: ' 050 ' });
-        expect(fetchMock).toHaveBeenCalledWith('/api/hr/dept-employees', expect.objectContaining({ method: 'POST', body: JSON.stringify({ name: 'A', employeeId: 'EMP_01', position: null, phone: '050' }) }));
+        expect(fetchMock).toHaveBeenCalledWith(
+            '/api/hr/dept-employees',
+            expect.objectContaining({
+                method: 'POST',
+                body: JSON.stringify({ name: 'A', employeeId: 'EMP_01', position: null, phone: '050' }),
+            }),
+        );
     });
     it('puts only the documented mutable fields and encodes ids', async () => {
         const fetchMock = vi.fn(async () => new Response('{}', { status: 200 }));
@@ -40,7 +46,10 @@ describe('V2 dept employee write contract', () => {
         expect(fetchMock).toHaveBeenCalledWith('/api/hr/dept-employees/17', expect.objectContaining({ method: 'DELETE' }));
     });
     it('surfaces server failures without hiding an unsuccessful write', async () => {
-        vi.stubGlobal('fetch', vi.fn(async () => new Response(JSON.stringify({ message: 'رفض الخادم' }), { status: 403 })));
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async () => new Response(JSON.stringify({ message: 'رفض الخادم' }), { status: 403 })),
+        );
         await expect(deactivateDeptEmployee('17')).rejects.toThrow('رفض الخادم');
     });
 });

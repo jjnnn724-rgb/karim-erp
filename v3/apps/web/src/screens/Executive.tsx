@@ -1,14 +1,9 @@
 import './Executive.premium.css';
 import { useQuery } from '@tanstack/react-query';
-import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { PrintActions } from '../components/PrintActions';
+import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
-import {
-    alertTone,
-    buildExecutiveKpis,
-    fetchExecutiveSummary,
-    severityLabel,
-} from '../lib/executive';
+import { alertTone, buildExecutiveKpis, fetchExecutiveSummary, severityLabel } from '../lib/executive';
 import { errorMessage, intOf, moneyOf, num, qtyOf, textOf } from '../lib/reporting';
 
 /**
@@ -103,10 +98,7 @@ export function Executive() {
                                         </thead>
                                         <tbody>
                                             {series.map((row) => (
-                                                <tr
-                                                    key={textOf(row.day)}
-                                                    className="border-b border-hairline hover:bg-surface-hover"
-                                                >
+                                                <tr key={textOf(row.day)} className="border-b border-hairline hover:bg-surface-hover">
                                                     <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">
                                                         {textOf(row.day).slice(0, 10)}
                                                     </td>
@@ -175,10 +167,7 @@ export function Executive() {
                                         </thead>
                                         <tbody>
                                             {items.map((item, index) => (
-                                                <tr
-                                                    key={`${textOf(item.name)}-${String(index)}`}
-                                                    className="border-b border-hairline"
-                                                >
+                                                <tr key={`${textOf(item.name)}-${String(index)}`} className="border-b border-hairline">
                                                     <td className="px-sm py-xxs text-ink">{textOf(item.name) || '—'}</td>
                                                     <td className="erp-numeric px-sm py-xxs" dir="ltr">
                                                         {qtyOf(item.qty)}
@@ -240,11 +229,7 @@ export function Executive() {
                                         key={`${textOf(alert.title)}-${String(index)}`}
                                         className="rounded-md border border-hairline bg-surface-sunken p-sm"
                                     >
-                                        <p
-                                            className={`text-body-md font-medium ${
-                                                TONE_CLASS[alertTone(textOf(alert.severity))]
-                                            }`}
-                                        >
+                                        <p className={`text-body-md font-medium ${TONE_CLASS[alertTone(textOf(alert.severity))]}`}>
                                             {severityLabel(textOf(alert.severity))} · {textOf(alert.title) || 'تنبيه'}
                                         </p>
                                         <p className="mt-xxs text-body-sm text-muted">{textOf(alert.detail)}</p>

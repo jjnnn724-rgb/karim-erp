@@ -59,6 +59,9 @@ body {
   --erp-surface-sunken:    var(--karim-bg-2,     #eceef1);
   --erp-surface-hover:     var(--karim-surface-hover, #f2f4f7);
   --erp-surface-active:    var(--karim-surface-active, #e9ecf1);
+  /* ورق الرمز: أبيض في الوضعين. منطقة الهدوء حول QR شرطُ مسحٍ لا يتبع
+     الثيم — رمزٌ على خلفيةٍ داكنة يُقرأ ببطء أو لا يُقرأ. */
+  --erp-qr-paper:          #ffffff;
 
   /* ── Text ─────────────────────────────────────────────────────────── */
   /* The fallbacks deliberately mirror the live light values in

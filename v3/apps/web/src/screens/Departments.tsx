@@ -1,29 +1,23 @@
 import './Departments.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { PrintActions } from '../components/PrintActions';
-import {
-    buildDepartmentRows,
-    compareDepartmentRows,
-    type DepartmentSortKey,
-    isMirrorDepartment,
-    monthTotals,
-} from '../lib/departments';
-import { fetchCurrency, fetchDepartments, fetchRegister } from '../lib/finance';
-import { formatMoney } from '../lib/format';
+import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
+import { buildDepartmentRows, compareDepartmentRows, type DepartmentSortKey, isMirrorDepartment, monthTotals } from '../lib/departments';
 import {
     createDepartment,
-    deleteDepartment,
-    updateDepartment,
-    departmentDeleteConfirm,
     DEPARTMENT_TEXT,
     type DepartmentCreateInput,
     type DepartmentUpdateInput,
-    departmentWriteVisible,
+    deleteDepartment,
+    departmentDeleteConfirm,
     departmentDeleteVisible,
+    departmentWriteVisible,
+    updateDepartment,
 } from '../lib/departments-write';
+import { fetchCurrency, fetchDepartments, fetchRegister } from '../lib/finance';
+import { formatMoney } from '../lib/format';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
@@ -47,9 +41,7 @@ function formatInt(value: number): string {
 }
 
 function monthLabel(): string {
-    return new Intl.DateTimeFormat('ar', { month: 'long', year: 'numeric', timeZone: 'Asia/Riyadh' }).format(
-        new Date(),
-    );
+    return new Intl.DateTimeFormat('ar', { month: 'long', year: 'numeric', timeZone: 'Asia/Riyadh' }).format(new Date());
 }
 
 function Kpi({ label, english, value, hint }: { label: string; english: string; value: string; hint: string }) {
@@ -202,15 +194,7 @@ interface DepartmentActionDialogProps {
     confirmLabel: string;
 }
 
-function DepartmentActionDialog({
-    open,
-    title,
-    message,
-    onConfirm,
-    onClose,
-    pending,
-    confirmLabel,
-}: DepartmentActionDialogProps) {
+function DepartmentActionDialog({ open, title, message, onConfirm, onClose, pending, confirmLabel }: DepartmentActionDialogProps) {
     return (
         <Dialog
             open={open}
@@ -278,10 +262,7 @@ export function Departments() {
         [departmentsQuery.data, revenuesQuery.data, expensesQuery.data],
     );
     const operationalRows = useMemo(() => allRows.filter((row) => !isMirrorDepartment(row.code)), [allRows]);
-    const totals = useMemo(
-        () => monthTotals(revenuesQuery.data ?? [], expensesQuery.data ?? []),
-        [revenuesQuery.data, expensesQuery.data],
-    );
+    const totals = useMemo(() => monthTotals(revenuesQuery.data ?? [], expensesQuery.data ?? []), [revenuesQuery.data, expensesQuery.data]);
 
     const rows = useMemo(() => {
         const term = search.trim().toLowerCase();
@@ -292,9 +273,7 @@ export function Departments() {
             if (!term) {
                 return true;
             }
-            return [row.code, row.name, row.parentName]
-                .map((value) => value.toLowerCase())
-                .some((value) => value.includes(term));
+            return [row.code, row.name, row.parentName].map((value) => value.toLowerCase()).some((value) => value.includes(term));
         });
         const sorted = [...filtered].sort((a, b) => compareDepartmentRows(a, b, sort.key));
         return sort.dir === 'asc' ? sorted : sorted.reverse();
@@ -309,9 +288,7 @@ export function Departments() {
 
     function toggleSort(key: DepartmentSortKey) {
         setPage(1);
-        setSort((previous) =>
-            previous.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'desc' },
-        );
+        setSort((previous) => (previous.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'desc' }));
     }
 
     function ariaSort(key: DepartmentSortKey): 'ascending' | 'descending' | 'none' {
@@ -333,7 +310,11 @@ export function Departments() {
     const createDepartmentMutation = useWriteMutation<DepartmentCreateInput, { id: string | number }>({
         mutationFn: (input) => createDepartment(input).then((r) => ({ id: r.id })),
         successTitle: () => DEPARTMENT_TEXT.createSuccess,
-        invalidate: [['departments', 'all'], ['finance', 'revenues', 'month'], ['finance', 'expenses', 'month']],
+        invalidate: [
+            ['departments', 'all'],
+            ['finance', 'revenues', 'month'],
+            ['finance', 'expenses', 'month'],
+        ],
         silentError: true,
         onSuccess: () => {
             setFormOpen(false);
@@ -344,7 +325,11 @@ export function Departments() {
     const updateDepartmentMutation = useWriteMutation<{ id: string | number; input: DepartmentUpdateInput }, { id: string | number }>({
         mutationFn: ({ id, input }) => updateDepartment(id, input).then((r) => ({ id: r.id })),
         successTitle: () => DEPARTMENT_TEXT.updateSuccess,
-        invalidate: [['departments', 'all'], ['finance', 'revenues', 'month'], ['finance', 'expenses', 'month']],
+        invalidate: [
+            ['departments', 'all'],
+            ['finance', 'revenues', 'month'],
+            ['finance', 'expenses', 'month'],
+        ],
         silentError: true,
         onSuccess: () => {
             setFormOpen(false);
@@ -355,7 +340,11 @@ export function Departments() {
     const deleteDepartmentMutation = useWriteMutation<string | number, void>({
         mutationFn: (id) => deleteDepartment(id),
         successTitle: () => DEPARTMENT_TEXT.deleteSuccess,
-        invalidate: [['departments', 'all'], ['finance', 'revenues', 'month'], ['finance', 'expenses', 'month']],
+        invalidate: [
+            ['departments', 'all'],
+            ['finance', 'revenues', 'month'],
+            ['finance', 'expenses', 'month'],
+        ],
         silentError: true,
         onSuccess: () => {
             setActionOpen(false);
@@ -390,8 +379,8 @@ export function Departments() {
                         </span>
                     </h1>
                     <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        سجل الأقسام وإيراد ومصروف {monthLabel()} — إضافة وتعديل وحذف.
-                        القراءة من `/api/departments`، والكتابة لـ admin|manager والحذف للأدمن فقط.
+                        سجل الأقسام وإيراد ومصروف {monthLabel()} — إضافة وتعديل وحذف. القراءة من `/api/departments`، والكتابة لـ
+                        admin|manager والحذف للأدمن فقط.
                     </p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>
@@ -434,12 +423,7 @@ export function Departments() {
                     value={`${formatMoney(totals.expense)} ${currency}`.trim()}
                     hint="كل الصفوف — صرف المخزون واليدوي والفرق معًا"
                 />
-                <Kpi
-                    label="الصافي"
-                    english="Net"
-                    value={`${formatMoney(totals.net)} ${currency}`.trim()}
-                    hint="الإيراد − المصروف"
-                />
+                <Kpi label="الصافي" english="Net" value={`${formatMoney(totals.net)} ${currency}`.trim()} hint="الإيراد − المصروف" />
             </div>
 
             <Card className="p-sm">
@@ -512,47 +496,27 @@ export function Departments() {
                             <table className="w-full border-collapse text-body-md">
                                 <thead>
                                     <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                        <th
-                                            scope="col"
-                                            aria-sort={ariaSort('code')}
-                                            className="px-sm py-xs text-start font-medium"
-                                        >
+                                        <th scope="col" aria-sort={ariaSort('code')} className="px-sm py-xs text-start font-medium">
                                             <button type="button" onClick={() => toggleSort('code')}>
                                                 الكود
                                             </button>
                                         </th>
-                                        <th
-                                            scope="col"
-                                            aria-sort={ariaSort('name')}
-                                            className="px-sm py-xs text-start font-medium"
-                                        >
+                                        <th scope="col" aria-sort={ariaSort('name')} className="px-sm py-xs text-start font-medium">
                                             <button type="button" onClick={() => toggleSort('name')}>
                                                 القسم
                                             </button>
                                         </th>
-                                        <th
-                                            scope="col"
-                                            aria-sort={ariaSort('revenue')}
-                                            className="px-sm py-xs text-end font-medium"
-                                        >
+                                        <th scope="col" aria-sort={ariaSort('revenue')} className="px-sm py-xs text-end font-medium">
                                             <button type="button" onClick={() => toggleSort('revenue')}>
                                                 الإيراد
                                             </button>
                                         </th>
-                                        <th
-                                            scope="col"
-                                            aria-sort={ariaSort('expense')}
-                                            className="px-sm py-xs text-end font-medium"
-                                        >
+                                        <th scope="col" aria-sort={ariaSort('expense')} className="px-sm py-xs text-end font-medium">
                                             <button type="button" onClick={() => toggleSort('expense')}>
                                                 المصروف
                                             </button>
                                         </th>
-                                        <th
-                                            scope="col"
-                                            aria-sort={ariaSort('net')}
-                                            className="px-sm py-xs text-end font-medium"
-                                        >
+                                        <th scope="col" aria-sort={ariaSort('net')} className="px-sm py-xs text-end font-medium">
                                             <button type="button" onClick={() => toggleSort('net')}>
                                                 الصافي
                                             </button>
@@ -576,9 +540,7 @@ export function Departments() {
                                             <td className="px-sm py-xxs">
                                                 <span className="block text-ink">{row.name}</span>
                                                 {row.parentName ? (
-                                                    <span className="block text-caption text-muted">
-                                                        تحت {row.parentName}
-                                                    </span>
+                                                    <span className="block text-caption text-muted">تحت {row.parentName}</span>
                                                 ) : null}
                                             </td>
                                             <td className="erp-numeric px-sm py-xxs text-end text-ink">

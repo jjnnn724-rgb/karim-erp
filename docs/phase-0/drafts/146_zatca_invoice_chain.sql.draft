@@ -1,0 +1,145 @@
+-- 146_zatca_invoice_chain.sql — سجل أجهزة الإصدار وسلسلة الفواتير
+-- ──────────────────────────────────────────────────────────────────────────────
+-- مسودة تصميم GATE 02 (ADR-006) — غير مطبَّقة وغير مصرَّح بتطبيقها.
+-- تعتمد على وجود جداول 145 (integration_providers/credentials/outbox).
+-- لا تمسّ pos_zatca_invoice_queue ولا أي جدول POS قائم.
+--
+-- الفكرة: سلسلة ICV/PIH لكل جهاز EGS، وسجل فاتورة موقّع دائم، وربط اختياري
+-- بصف الصادر. الإصدار داخل معاملة البيع مع قفل استشاري لكل جهاز.
+--
+-- التطبيق يحتاج: اعتماد ADR-006 + مراجعة محاسبية + نسخة احتياطية + runbook.
+
+BEGIN;
+
+DO $$ BEGIN
+    CREATE TYPE zatca_submission_status AS ENUM
+        ('draft', 'queued', 'reported', 'cleared', 'rejected', 'voided');
+EXCEPTION WHEN duplicate_object THEN NULL; END $$;
+
+-- ── 1. سجل أجهزة الإصدار (EGS) ──────────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS zatca_devices (
+    code                text PRIMARY KEY,
+    name_ar             text NOT NULL,
+    -- نفس قيم zatca_settings.environment القائمة (zatca-settings-routes.js)
+    environment         text NOT NULL DEFAULT 'developer_portal',
+    csid_credential_id  bigint REFERENCES integration_credentials(id) ON DELETE RESTRICT,
+    csid_expires_at     date,
+    is_active           boolean NOT NULL DEFAULT false,
+    created_at          timestamptz NOT NULL DEFAULT now(),
+    updated_at          timestamptz NOT NULL DEFAULT now(),
+    CONSTRAINT zatca_device_code_fmt
+        CHECK (code ~ '^[a-z][a-z0-9_-]{1,31}$'),
+    CONSTRAINT zatca_device_environment
+        CHECK (environment IN ('developer_portal', 'simulation', 'production')),
+    -- لا إنتاج بلا اعتماد CSID مسجّل (التشفير في integration_credentials)
+    CONSTRAINT zatca_device_production_needs_csid
+        CHECK (environment <> 'production' OR csid_credential_id IS NOT NULL)
+);
+
+COMMENT ON TABLE zatca_devices IS
+    'أجهزة الإصدار (EGS): لكل جهاز سلسلة ICV/PIH واعتماد CSID مستقل — ADR-006';
+
+DROP TRIGGER IF EXISTS zatca_devices_touch ON zatca_devices;
+CREATE TRIGGER zatca_devices_touch
+    BEFORE UPDATE ON zatca_devices
+    FOR EACH ROW EXECUTE FUNCTION integration_touch_updated_at();
+
+-- ── 2. سجل الفواتير وسلسلة التجزئة ─────────────────────────────────────────
+CREATE TABLE IF NOT EXISTS zatca_invoice_records (
+    id                     bigint GENERATED ALWAYS AS IDENTITY PRIMARY KEY,
+    uuid                   uuid NOT NULL,
+    device_code            text NOT NULL REFERENCES zatca_devices(code) ON DELETE RESTRICT,
+    source_type            text NOT NULL,
+    source_id              text NOT NULL,
+    icv                    bigint NOT NULL,
+    previous_invoice_hash  text NOT NULL,
+    invoice_hash           text NOT NULL,
+    qr_tlv                text NOT NULL,
+    signed_xml             bytea,
+    status                 zatca_submission_status NOT NULL DEFAULT 'draft',
+    submitted_at           timestamptz,
+    cleared_at             timestamptz,
+    rejection_code         text,
+    rejection_reason       text,
+    outbox_id              bigint REFERENCES integration_outbox(id) ON DELETE RESTRICT,
+    created_at             timestamptz NOT NULL DEFAULT now(),
+    created_by             bigint,
+    CONSTRAINT zatca_record_source_type
+        CHECK (source_type IN ('pos_order', 'manual', 'credit_note', 'debit_note')),
+    CONSTRAINT zatca_record_icv_positive
+        CHECK (icv > 0),
+    CONSTRAINT zatca_record_hash_fmt
+        CHECK (invoice_hash ~ '^[A-Za-z0-9+/=]{44}$'
+           AND previous_invoice_hash ~ '^[A-Za-z0-9+/=]{44}$'),
+    CONSTRAINT zatca_record_qr_len
+        CHECK (char_length(qr_tlv) BETWEEN 8 AND 2000),
+    CONSTRAINT zatca_record_xml_size
+        CHECK (signed_xml IS NULL OR octet_length(signed_xml) <= 2097152),
+    CONSTRAINT zatca_record_submitted_consistent
+        CHECK (status IN ('draft', 'queued') OR submitted_at IS NOT NULL),
+    CONSTRAINT zatca_record_cleared_consistent
+        CHECK ((status = 'cleared') = (cleared_at IS NOT NULL)),
+    CONSTRAINT zatca_record_rejection_consistent
+        CHECK ((status = 'rejected') = (rejection_code IS NOT NULL))
+);
+
+COMMENT ON TABLE zatca_invoice_records IS
+    'فاتورة ZATCA المُصدرة: UUID + ICV + PIH + تجزئة + XML موقّع. لا تعديل ولا حذف — ADR-006/010';
+
+-- سلسلة لكل جهاز: لا تكرار لرقم ICV
+CREATE UNIQUE INDEX IF NOT EXISTS zatca_record_device_icv_uk
+    ON zatca_invoice_records (device_code, icv);
+
+-- فاتورة واحدة لكل مستند مصدر (منع إصدار مزدوج لنفس البيع)
+CREATE UNIQUE INDEX IF NOT EXISTS zatca_record_source_uk
+    ON zatca_invoice_records (source_type, source_id);
+
+CREATE UNIQUE INDEX IF NOT EXISTS zatca_record_uuid_uk
+    ON zatca_invoice_records (uuid);
+
+CREATE INDEX IF NOT EXISTS zatca_record_status_idx
+    ON zatca_invoice_records (status, created_at DESC);
+
+-- حقول السلسلة تُجمَّد؛ الحالة والرفض فقط تتغير بعد الإصدار
+CREATE OR REPLACE FUNCTION zatca_record_immutable_chain() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+    IF NEW.uuid                  IS DISTINCT FROM OLD.uuid
+       OR NEW.device_code          IS DISTINCT FROM OLD.device_code
+       OR NEW.icv                  IS DISTINCT FROM OLD.icv
+       OR NEW.previous_invoice_hash IS DISTINCT FROM OLD.previous_invoice_hash
+       OR NEW.invoice_hash         IS DISTINCT FROM OLD.invoice_hash
+       OR NEW.qr_tlv               IS DISTINCT FROM OLD.qr_tlv
+       OR NEW.source_type          IS DISTINCT FROM OLD.source_type
+       OR NEW.source_id            IS DISTINCT FROM OLD.source_id
+       OR NEW.created_at           IS DISTINCT FROM OLD.created_at
+    THEN
+        RAISE EXCEPTION 'zatca_invoice_records chain fields are immutable (id=%)', OLD.id
+            USING ERRCODE = 'check_violation';
+    END IF;
+    RETURN NEW;
+END $$;
+
+DROP TRIGGER IF EXISTS zatca_record_immutable ON zatca_invoice_records;
+CREATE TRIGGER zatca_record_immutable
+    BEFORE UPDATE ON zatca_invoice_records
+    FOR EACH ROW EXECUTE FUNCTION zatca_record_immutable_chain();
+
+CREATE OR REPLACE FUNCTION zatca_record_no_delete() RETURNS trigger
+LANGUAGE plpgsql AS $$
+BEGIN
+    RAISE EXCEPTION 'zatca_invoice_records is append-only (action=%)', TG_OP
+        USING ERRCODE = 'insufficient_privilege';
+END $$;
+
+DROP TRIGGER IF EXISTS zatca_record_no_delete ON zatca_invoice_records;
+CREATE TRIGGER zatca_record_no_delete
+    BEFORE DELETE ON zatca_invoice_records
+    FOR EACH ROW EXECUTE FUNCTION zatca_record_no_delete();
+
+DROP TRIGGER IF EXISTS zatca_record_no_truncate ON zatca_invoice_records;
+CREATE TRIGGER zatca_record_no_truncate
+    BEFORE TRUNCATE ON zatca_invoice_records
+    FOR EACH STATEMENT EXECUTE FUNCTION zatca_record_no_delete();
+
+COMMIT;

@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { PrintActions } from '../components/PrintActions';
+import { Card, StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { fetchJson } from '../lib/api';
 import { getAccessToken } from '../lib/auth';
 import { formatInt } from '../lib/format';
@@ -13,17 +13,7 @@ import {
     sessionsResponseSchema,
 } from '../lib/sessions';
 
-function Kpi({
-    label,
-    english,
-    value,
-    hint,
-}: {
-    label: string;
-    english: string;
-    value: string;
-    hint: string;
-}) {
+function Kpi({ label, english, value, hint }: { label: string; english: string; value: string; hint: string }) {
     return (
         <li className="rounded-lg border border-hairline bg-surface p-md shadow-card">
             <p className="text-label-md text-muted">
@@ -81,19 +71,13 @@ export function Sessions() {
     });
 
     const data: SessionsResponse = sessionsQuery.data || { ok: true, current_session_id: null, sessions: [] };
-    const summary = useMemo(
-        () => computeSessionsSummary(data.sessions, data.current_session_id),
-        [data.sessions, data.current_session_id],
-    );
+    const summary = useMemo(() => computeSessionsSummary(data.sessions, data.current_session_id), [data.sessions, data.current_session_id]);
 
     const filteredSessions = useMemo(() => {
         const q = filter.trim().toLowerCase();
         if (!q) return data.sessions;
         return data.sessions.filter(
-            (s) =>
-                s.device.toLowerCase().includes(q) ||
-                (s.ip && s.ip.toLowerCase().includes(q)) ||
-                s.id.toLowerCase().includes(q),
+            (s) => s.device.toLowerCase().includes(q) || (s.ip && s.ip.toLowerCase().includes(q)) || s.id.toLowerCase().includes(q),
         );
     }, [data.sessions, filter]);
 
@@ -162,18 +146,8 @@ export function Sessions() {
                     value={formatInt(summary.total)}
                     hint="إجمالي الأجهزة المسجلة للدخول"
                 />
-                <Kpi
-                    label="جلسة هذا الجهاز"
-                    english="Current device"
-                    value={summary.currentDevice}
-                    hint="الجهاز الحالي المستخدم للتصفح"
-                />
-                <Kpi
-                    label="عنوان IP الحالي"
-                    english="Current IP"
-                    value={summary.currentIp}
-                    hint="العنوان الصادر منه اتصالك"
-                />
+                <Kpi label="جلسة هذا الجهاز" english="Current device" value={summary.currentDevice} hint="الجهاز الحالي المستخدم للتصفح" />
+                <Kpi label="عنوان IP الحالي" english="Current IP" value={summary.currentIp} hint="العنوان الصادر منه اتصالك" />
                 <Kpi
                     label="الجلسات الأخرى"
                     english="Other devices"
@@ -191,7 +165,9 @@ export function Sessions() {
                                 Devices list
                             </span>
                         </h2>
-                        <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">قائمة مفصلة بكل جلسة مع توقيت بدء الاتصال وآخر ظهور.</p>
+                        <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
+                            قائمة مفصلة بكل جلسة مع توقيت بدء الاتصال وآخر ظهور.
+                        </p>
                     </div>
                     <label className="flex w-full flex-col items-stretch gap-xs text-label-md text-ink-secondary sm:w-auto sm:flex-row sm:items-center">
                         البحث
@@ -208,10 +184,7 @@ export function Sessions() {
                 {sessionsQuery.isPending ? (
                     <StateLoading label="جارٍ تحميل سجل الجلسات…" />
                 ) : sessionsQuery.isError ? (
-                    <StateError
-                        message={sessionsQuery.error?.message || 'تعذّر جلب الجلسات'}
-                        onRetry={() => void sessionsQuery.refetch()}
-                    />
+                    <StateError message={sessionsQuery.error?.message || 'تعذّر جلب الجلسات'} onRetry={() => void sessionsQuery.refetch()} />
                 ) : filteredSessions.length === 0 ? (
                     <StateEmpty title="لا توجد جلسات مطابقة" hint="لم يُعثر على جلسات توافق معيار البحث المدخل." />
                 ) : (

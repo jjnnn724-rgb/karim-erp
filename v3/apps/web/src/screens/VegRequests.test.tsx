@@ -54,9 +54,7 @@ function stubFetch(fail = false): string[] {
             if (url.includes('/api/settings/main_settings')) {
                 return json({ currency: 'SAR' });
             }
-            const rows = url.includes('status=received')
-                ? requests.filter((request) => request.status === 'received')
-                : requests;
+            const rows = url.includes('status=received') ? requests.filter((request) => request.status === 'received') : requests;
             return json({ ok: true, requests: rows, summary });
         }),
     );

@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ApiError, fetchJson } from './api';
 import { getAccessToken, getAppKey } from './auth';
-import { dayCloseSchema, type DayClose } from './cfo';
+import { type DayClose, dayCloseSchema } from './cfo';
 import type { PosSaleItem } from './pos-pricing';
 
 /**
@@ -119,9 +119,26 @@ export interface ActiveShift {
     deptCode: string;
     openingBalance: number;
     openedAt: string;
+    /** يوم فتح الوردية بتوقيت الرياض (`YYYY-MM-DD`)، أو '' إن كان التاريخ غير صالح. */
+    openedOn: string;
+    /** وردية يوم سابق: الخادم يرفض البيع عليها بـ409 SHIFT_STALE حتى تُغلق. */
+    isStale: boolean;
+}
+
+/** يوم تقويمي بتوقيت الرياض — نافذة البيع اليومية يحكمها الخادم بهذا التوقيت. */
+export function posDayKey(value: string | null | undefined): string {
+    if (!value) {
+        return '';
+    }
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+        return '';
+    }
+    return parsed.toLocaleDateString('en-CA', { timeZone: 'Asia/Riyadh' });
 }
 
 export function activeShiftOf(row: ActiveShiftRow): ActiveShift {
+    const openedOn = posDayKey(row.opened_at);
     return {
         sessionId: String(row.session_id ?? row.id),
         departmentId: String(row.department_id),
@@ -129,6 +146,8 @@ export function activeShiftOf(row: ActiveShiftRow): ActiveShift {
         deptCode: String(row.dept_code ?? ''),
         openingBalance: row.opening_balance,
         openedAt: String(row.opened_at ?? ''),
+        openedOn,
+        isStale: Boolean(openedOn) && openedOn !== riyadhToday(),
     };
 }
 
@@ -401,8 +420,16 @@ export interface CompleteSaleInput {
 
 const BUFFET_CODES = ['erp_open_buffet', 'open_buffet'];
 
-export function isBuffetDepartment(department: { code?: string | null; deptCode?: string | null; deptName?: string | null; name_ar?: string | null; name_en?: string | null }): boolean {
-    const code = String(department.code ?? department.deptCode ?? '').trim().toLowerCase();
+export function isBuffetDepartment(department: {
+    code?: string | null;
+    deptCode?: string | null;
+    deptName?: string | null;
+    name_ar?: string | null;
+    name_en?: string | null;
+}): boolean {
+    const code = String(department.code ?? department.deptCode ?? '')
+        .trim()
+        .toLowerCase();
     if (BUFFET_CODES.includes(code)) {
         return true;
     }
@@ -440,11 +467,7 @@ export const buffetLiveSchema = z
                 covers_total: numOrNull,
                 revenue: numOrNull,
                 invoices_count: numOrNull,
-                voided: z
-                    .object({ count: numOrNull, amount: numOrNull })
-                    .passthrough()
-                    .nullable()
-                    .optional(),
+                voided: z.object({ count: numOrNull, amount: numOrNull }).passthrough().nullable().optional(),
             })
             .passthrough(),
         shift: z
@@ -547,12 +570,7 @@ export const buffetInvoiceRowSchema = z
         covers: z
             .object({
                 covers_total: numOrNull,
-                tiers: z
-                    .record(
-                        z.string(),
-                        z.object({ name: text, covers: numOrNull, amount: numOrNull }).passthrough(),
-                    )
-                    .optional(),
+                tiers: z.record(z.string(), z.object({ name: text, covers: numOrNull, amount: numOrNull }).passthrough()).optional(),
             })
             .passthrough()
             .nullable()
@@ -581,13 +599,7 @@ function deviceName(departmentId?: string): string {
     let device = 'POS terminal';
     try {
         const ua = typeof navigator === 'undefined' ? '' : navigator.userAgent;
-        device = /Android/i.test(ua)
-            ? 'Android'
-            : /iPhone|iPad/i.test(ua)
-              ? 'iOS'
-              : /Windows/i.test(ua)
-                ? 'Windows PC'
-                : device;
+        device = /Android/i.test(ua) ? 'Android' : /iPhone|iPad/i.test(ua) ? 'iOS' : /Windows/i.test(ua) ? 'Windows PC' : device;
     } catch {
         // webview بلا navigator
     }
@@ -614,8 +626,7 @@ export async function fetchPosProducts(departmentId: string, signal?: AbortSigna
 /** كميات الأصناف المباعة برمز Yara خلال نافذة أيام — أساس الترتيب الذكي للكتالوج. */
 export async function fetchSalesQuantities(days: number, signal?: AbortSignal): Promise<Record<string, number>> {
     const span = Math.max(1, Math.min(31, Math.trunc(days)));
-    const day = (d: Date) =>
-        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const day = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const to = day(new Date());
     const from = day(new Date(Date.now() - (span - 1) * 86_400_000));
     const result = await fetchJson(
@@ -666,6 +677,8 @@ export async function openPosShift(departmentId: string, openingBalance: number)
         deptCode: '',
         openingBalance: row.opening_balance,
         openedAt: '',
+        openedOn: riyadhToday(),
+        isStale: false,
     };
 }
 
@@ -777,7 +790,9 @@ export async function fetchPosOrders(filters: PosOrderFilters, signal?: AbortSig
     if (filters.status) {
         query.set('status', filters.status);
     }
-    const term = String(filters.search ?? '').trim().slice(0, 100);
+    const term = String(filters.search ?? '')
+        .trim()
+        .slice(0, 100);
     if (term) {
         query.set('search', term);
     }
@@ -795,9 +810,7 @@ export async function fetchPosOrder(orderId: string, signal?: AbortSignal): Prom
 const reprintAckSchema = z.object({ message: z.string().optional() }).passthrough();
 export type ReprintAck = z.infer<typeof reprintAckSchema>;
 
-const voidAckSchema = z
-    .object({ message: z.string().optional(), status: z.string().optional(), refund_total: numOrNull })
-    .passthrough();
+const voidAckSchema = z.object({ message: z.string().optional(), status: z.string().optional(), refund_total: numOrNull }).passthrough();
 export type VoidAck = z.infer<typeof voidAckSchema>;
 
 export async function reprintPosOrder(orderId: string): Promise<ReprintAck> {
@@ -848,6 +861,45 @@ export async function openPosDrawer(sessionId: string): Promise<DrawerAck> {
     return { printerId: String(row.printer_id), at: String(row.at ?? '') };
 }
 
+/**
+ * معاينة الفاتورة من الخادم — نفس محرّك `/api/sales/complete` ونفس حرّاسه
+ * (السعر، الخصم، التوازن) لكن بلا أي كتابة. الشاشة تعرض التقدير المحلي فورًا
+ * ثم تُطابقه بهذا الرد فلا يرى الكاشير رقمًا ثم يُسجَّل رقم آخر.
+ */
+export const posQuoteSchema = z.object({
+    quote: z.literal(true),
+    subtotal: z.number(),
+    discount_total: z.number(),
+    tax_total: z.number(),
+    total_amount: z.number(),
+    line_items: z.array(
+        z.object({
+            product_id: numberish,
+            quantity: z.number(),
+            unit_price: z.number(),
+            discount: z.number(),
+            vat_rate: z.number(),
+            line_total: z.number(),
+            vat_amount: z.number(),
+            line_total_incl: z.number(),
+        }),
+    ),
+});
+
+export type PosQuote = z.infer<typeof posQuoteSchema>;
+
+export async function fetchPosQuote(departmentId: string | number, items: PosSaleItem[], signal?: AbortSignal): Promise<PosQuote> {
+    const dept = Number(departmentId);
+    return fetchJson(posQuoteSchema, '/api/sales/quote', token(), {
+        method: 'POST',
+        body: {
+            ...(Number.isInteger(dept) && dept > 0 ? { department_id: dept } : {}),
+            items,
+        },
+        ...(signal ? { signal } : {}),
+    });
+}
+
 export async function completePosSale(input: CompleteSaleInput): Promise<PosSaleResult> {
     const dept = Number(input.departmentId);
     const shift = Number(input.sessionId);
@@ -894,7 +946,9 @@ export async function fetchPosOrdersExport(filters: PosOrderExportFilters, signa
     if (filters.status) {
         query.set('status', filters.status);
     }
-    const term = String(filters.search ?? '').trim().slice(0, 100);
+    const term = String(filters.search ?? '')
+        .trim()
+        .slice(0, 100);
     if (term) {
         query.set('search', term);
     }
@@ -997,7 +1051,10 @@ export async function uploadPosProductImage(productId: string, file: File): Prom
         }
         throw new Error(message);
     }
-    const parsed = z.object({ id: idText, image_url: z.string() }).passthrough().safeParse(await response.json());
+    const parsed = z
+        .object({ id: idText, image_url: z.string() })
+        .passthrough()
+        .safeParse(await response.json());
     if (!parsed.success) {
         throw new Error('لم يرجع الخادم رابط الصورة بعد الحفظ');
     }

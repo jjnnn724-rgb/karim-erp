@@ -14,6 +14,8 @@
 
 'use strict';
 
+const { assertBalanced } = require('./vat-engine');
+
 const METHOD_LABELS = {
     cash: 'نقدي',
     card: 'شبكة / بطاقة',
@@ -110,6 +112,17 @@ function metaRow(label, value) {
  * @returns {string}
  */
 function buildReceiptHtml({ order = {}, items = [], payments = [], qrImageDataUrl = null, isBuffet = false } = {}) {
+    // ── Never print an unbalanced invoice ────────────────────────────────────
+    // Printing net/vat/total that do not add up is a compliance failure and it
+    // used to be "fixed" by printing a "تسوية" line, which is now forbidden.
+    // Legacy rows are parked here; accounting must correct them first.
+    assertBalanced({
+        subtotal: order.subtotal,
+        tax_total: order.tax_total,
+        total_amount: order.total_amount,
+        line_items: items,
+    }, { phase: 'receipt-print', order_id: order.id || null });
+
     const currency = order.currency_code || 'SAR';
     const currencyLabel = currency === 'SAR' ? 'ر.س' : currency;
     const date = new Date(order.created_at || Date.now()).toLocaleString('ar-SA-u-ca-gregory', {

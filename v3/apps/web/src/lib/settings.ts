@@ -510,9 +510,10 @@ export const backupListSchema = z.unknown().transform((body): BackupList => {
         files: rows
             .map((entry): BackupFile => {
                 const row = (entry && typeof entry === 'object' ? entry : {}) as Record<string, unknown>;
-                const manifestRow = (row.manifest && typeof row.manifest === 'object' ? row.manifest : null) as
-                    | Record<string, unknown>
-                    | null;
+                const manifestRow = (row.manifest && typeof row.manifest === 'object' ? row.manifest : null) as Record<
+                    string,
+                    unknown
+                > | null;
                 return {
                     file: text(row.file),
                     bytes: int(row.bytes, 0),
@@ -524,9 +525,7 @@ export const backupListSchema = z.unknown().transform((body): BackupList => {
                               createdAt: text(manifestRow.createdAt),
                               by: text(manifestRow.by),
                               db: text(manifestRow.db),
-                              includes: Array.isArray(manifestRow.includes)
-                                  ? manifestRow.includes.map((item) => text(item))
-                                  : [],
+                              includes: Array.isArray(manifestRow.includes) ? manifestRow.includes.map((item) => text(item)) : [],
                               uploaded: text(manifestRow.uploaded),
                           }
                         : null,
@@ -575,10 +574,7 @@ export const resetResultSchema = z.unknown().transform((body): ResetResult => {
 
 export const entityPageSchema = z.unknown().transform((body) => {
     const root = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
-    const pagination = (root.pagination && typeof root.pagination === 'object' ? root.pagination : {}) as Record<
-        string,
-        unknown
-    >;
+    const pagination = (root.pagination && typeof root.pagination === 'object' ? root.pagination : {}) as Record<string, unknown>;
     return {
         data: Array.isArray(root.data) ? root.data : [],
         totalPages: int(pagination.totalPages, 1),

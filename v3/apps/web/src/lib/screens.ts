@@ -39,6 +39,7 @@ export const V3_SCREENS = [
     'attendance',
     'leaves',
     'payroll',
+    'mudad',
     'roster',
     'sessions',
     'whatsapp',

@@ -55,9 +55,7 @@ const livePayload = {
                 operating: 0,
                 net: -176133.32,
                 margin_pct: null,
-                subDepartments: [
-                    { code: 'sweets', name: 'قسم الحلواني', revenue: 0, operating: 0, net: -8496.59 },
-                ],
+                subDepartments: [{ code: 'sweets', name: 'قسم الحلواني', revenue: 0, operating: 0, net: -8496.59 }],
             },
             {
                 code: 'sweets',

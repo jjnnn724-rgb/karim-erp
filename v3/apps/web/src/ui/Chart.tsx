@@ -1,4 +1,4 @@
-import { Suspense, lazy, useId } from 'react';
+import { lazy, Suspense, useId } from 'react';
 import { cn } from './cn';
 import { Skeleton } from './Skeleton';
 
@@ -86,14 +86,7 @@ export function Chart({ kind, title, description, data, xKey, series, height = 2
             </figcaption>
             <Suspense fallback={<Skeleton variant="rect" label={`جارٍ تحميل رسم ${title}`} />}>
                 <div aria-hidden="true" className="w-full">
-                    <LazyChartImpl
-                        kind={kind}
-                        title={title}
-                        data={data}
-                        xKey={xKey}
-                        series={series}
-                        height={height}
-                    />
+                    <LazyChartImpl kind={kind} title={title} data={data} xKey={xKey} series={series} height={height} />
                 </div>
             </Suspense>
             <ChartDataTable title={title} xKey={xKey} series={series} data={data} />

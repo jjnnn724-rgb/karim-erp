@@ -1,8 +1,8 @@
-import { cn } from './cn';
-import { useTheme } from './ThemeProvider';
-import { MonitorIcon, MoonIcon, SunIcon } from './icons';
-import type { Theme } from './theme';
 import type { ReactNode } from 'react';
+import { cn } from './cn';
+import { MonitorIcon, MoonIcon, SunIcon } from './icons';
+import { useTheme } from './ThemeProvider';
+import type { Theme } from './theme';
 
 /**
  * مبدّل المظهر — ثلاثة أوضاع صريحة (فاتح/داكن/النظام) كمجموعة أزرار
@@ -32,10 +32,12 @@ export function ThemeToggle({ className, iconOnly = false }: ThemeToggleProps) {
     const { theme, setTheme } = useTheme();
 
     return (
-        <div
-            role="group"
+        <fieldset
             aria-label="مظهر الواجهة"
-            className={cn('inline-flex items-center gap-xxs rounded-md border border-hairline bg-surface p-xxs shadow-card', className)}
+            className={cn(
+                'm-0 inline-flex min-w-0 items-center gap-xxs rounded-md border border-hairline bg-surface p-xxs shadow-card',
+                className,
+            )}
         >
             {OPTIONS.map((option) => {
                 const active = theme === option.value;
@@ -57,6 +59,6 @@ export function ThemeToggle({ className, iconOnly = false }: ThemeToggleProps) {
                     </button>
                 );
             })}
-        </div>
+        </fieldset>
     );
 }

@@ -25,10 +25,13 @@ const { pool } = require('../shared-pool');
 const { jwtAuth, requireRole } = require('../cashier-module/jwt-middleware');
 const { logger } = require('../logger');
 const { ZKError } = require('./client');
+const { instantToWall } = require('../attendance-engine');
 
 const router = express.Router();
 const READ_ROLES = ['admin', 'hr', 'manager', 'accountant', 'owner'];
 const WRITE_ROLES = ['admin', 'hr'];
+/** مركز التحكم: الأدمن، والـowner أعلى سلطةٍ منه — لا سلطةَ أعلى تُقصيه. */
+const CONTROL_ROLES = ['admin', 'owner'];
 
 const IP_RE = /^(\d{1,3}\.){3}\d{1,3}$/;
 
@@ -104,7 +107,7 @@ router.get('/status', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
                     COUNT(*) FILTER (WHERE "employeeId" IS NULL)::int AS unmapped,
                     COUNT(*) FILTER (WHERE "attendanceTime" >=
                         date_trunc('day', NOW() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh')::int AS today
-             FROM attendance_logs`
+             FROM attendance_logs WHERE ignored = false`
         )).rows[0];
         // مؤشر الربط: موظفون نشطون مربوطون برقم بصمة مقابل غير المربوطين
         const link = (await pool.query(
@@ -435,6 +438,7 @@ router.put('/mappings/:employeeId', jwtAuth, requireRole(...WRITE_ROLES), async 
             [deviceUserId, employeeId]
         );
         if (!rows[0]) {return res.status(404).json({ error: 'EMPLOYEE_NOT_FOUND', message: 'الموظف غير موجود' });}
+        let attached = 0;
         if (deviceUserId) {
             // من كان يتوهّم أن هذا الرقم بديلُه يفقده الآن: صار معرّفًا أساسيًا لموظفٍ آخر
             await pool.query(
@@ -444,8 +448,23 @@ router.put('/mappings/:employeeId', jwtAuth, requireRole(...WRITE_ROLES), async 
                     AND btrim("deviceUserIdAlt") = $2`,
                 [employeeId, deviceUserId]
             );
+            // الربط يُطبَّق على التاريخ أيضًا: بصماتُ هذا الرقم الخام التي وصلت قبل
+            // الربط بقيت بلا موظف، فكان الربط وعدًا لا يتحقق. تُنسب إليه الآن
+            // (المعرّف له وحده — الربط المزدوج ممنوع أعلاه)، ثم يُعاد بناء أيامها
+            // من مركز التحكم. صفوفُ الحضور لا تُلمس هنا: النسبةُ فقط.
+            const linked = await pool.query(
+                `UPDATE attendance_logs SET "employeeId" = $1
+                  WHERE "employeeId" IS NULL
+                    AND (
+                        btrim("deviceUserId") = $2
+                        OR ($2 ~ '^[0-9]+$' AND btrim("deviceUserId") ~ '^[0-9]+$'
+                            AND btrim("deviceUserId")::numeric = $2::numeric)
+                    )`,
+                [employeeId, deviceUserId]
+            );
+            attached = linked.rowCount || 0;
         }
-        res.json(rows[0]);
+        res.json({ ...rows[0], attached });
     } catch (error) {
         logger.error('[zkteco/mappings:update]', error);
         res.status(500).json({ error: 'ZK_MAPPING_FAILED', message: 'تعذر حفظ الربط' });
@@ -492,6 +511,17 @@ router.post('/mappings/auto', jwtAuth, requireRole(...WRITE_ROLES), async (req, 
                     AND btrim("deviceUserIdAlt") = $2`,
                 [emp.id, String(emp.employeeId)]
             );
+            // نفس قاعدة الربط اليدوي: بصماتُ الرقم التي وصلت قبل الربط تُنسب إليه
+            await pool.query(
+                `UPDATE attendance_logs SET "employeeId" = $1
+                  WHERE "employeeId" IS NULL
+                    AND (
+                        btrim("deviceUserId") = $2
+                        OR ($2 ~ '^[0-9]+$' AND btrim("deviceUserId") ~ '^[0-9]+$'
+                            AND btrim("deviceUserId")::numeric = $2::numeric)
+                    )`,
+                [emp.id, String(emp.employeeId)]
+            );
             linked += 1;
             linkedNames.push(emp.name);
         }
@@ -517,7 +547,9 @@ router.get('/logs', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
         const { rows } = await pool.query(
             `SELECT l.id, l."deviceUserId", l."employeeId", e.name AS "employeeName",
                     e."employeeId" AS "employeeNumber", l."attendanceTime", l."verifyType",
-                    l."punchState", l."syncedAt", d.name AS "deviceName", d."ipAddress"
+                    l."punchState", l."syncedAt", d.name AS "deviceName", d."ipAddress",
+                    COALESCE(l.ignored, false) AS ignored,
+                    l."ignoredReason", l."ignoredBy", l."ignoredAt"
              FROM attendance_logs l
              LEFT JOIN attendance_devices d ON d.id = l."deviceId"
              LEFT JOIN employees e ON e.id = l."employeeId"
@@ -531,6 +563,72 @@ router.get('/logs', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
         res.status(500).json({ error: 'ZK_LOGS_FAILED', message: 'تعذر جلب سجل البصمات' });
     }
 });
+
+// ─── تصحيح بصمةٍ خام واحدة: تجاهل / استعادة (2026-11-06) ───────────────────
+/**
+ * البصمة الخاطئة (ساعة جهاز منحرفة، إصبع زميل، ضغطة عابرة) لا تُحذف: الحذفُ
+ * لا يصمد — الجهاز يعيد إرسالها في نافذة إعادة المعالجة فتعود من جديد.
+ * تُعلَّم `ignored` فتبقى في الدفتر الخام (أثرٌ دائمٌ قابل للعكس)، وتُستثنى
+ * من بناء الحضور ومن المطابقة. وبعدها يُعاد بناء يومها من مركز التحكم —
+ * قرارٌ صريح بسببٍ مكتوب، لا تصحيحٌ صامت.
+ */
+async function togglePunchIgnore(req, res, ignored) {
+    try {
+        const id = Number(req.params.id);
+        if (!Number.isFinite(id) || id <= 0) {
+            return res.status(422).json({ error: 'ZK_PUNCH_ID_INVALID', message: 'معرّف البصمة غير صالح' });
+        }
+        const reason = String(req.body?.reason || '').trim().slice(0, REBUILD_MAX_REASON);
+        if (reason.length < 3) {
+            return res.status(422).json({ error: 'ZK_REASON_REQUIRED', message: 'سبب التصحيح مطلوب (3 أحرف على الأقل)' });
+        }
+        const { rows } = await pool.query(
+            `SELECT id, "employeeId", "deviceUserId", "attendanceTime",
+                    COALESCE(ignored, false) AS ignored
+               FROM attendance_logs WHERE id = $1`,
+            [id]
+        );
+        const log = rows[0];
+        if (!log) {
+            return res.status(404).json({ error: 'ZK_PUNCH_NOT_FOUND', message: 'البصمة غير موجودة' });
+        }
+        if (Boolean(log.ignored) === ignored) {
+            return res.json({
+                ok: true, changed: false, ignored,
+                message: ignored ? 'هذه البصمة متجاهلة بالفعل' : 'هذه البصمة غير متجاهلة أصلًا',
+            });
+        }
+        await pool.query(
+            `UPDATE attendance_logs
+                SET ignored = $2::boolean,
+                    "ignoredReason" = CASE WHEN $2::boolean THEN $3::text ELSE NULL END,
+                    "ignoredBy" = CASE WHEN $2::boolean THEN $4::text ELSE NULL END,
+                    "ignoredAt" = CASE WHEN $2::boolean THEN NOW() ELSE NULL END
+              WHERE id = $1`,
+            [id, ignored, reason, String(req.user.username || req.user.name || '').slice(0, 120)]
+        );
+        await auditControl({
+            action: ignored ? 'punch:ignore' : 'punch:restore', actor: req.user, reason,
+            detail: { logId: log.id, employeeId: log.employeeId, attendanceTime: log.attendanceTime },
+        });
+        logger.info(`[zkteco/control] بصمة #${id} ${ignored ? 'تُجوهلت' : 'استُعيدت'} بواسطة ${req.user.username} — ${reason}`);
+        res.json({
+            ok: true, changed: true, ignored,
+            message: ignored
+                ? 'تُجوهلت البصمة من الحساب — أعد بناء يومها من تبويب التحكم ليُصحَّح الحضور'
+                : 'استُعيدت البصمة — أعد بناء يومها من تبويب التحكم لتظهر من جديد',
+            log: { id: log.id, employeeId: log.employeeId, attendanceTime: log.attendanceTime },
+        });
+    } catch (error) {
+        logger.error('[zkteco/logs:ignore]', error);
+        res.status(500).json({ error: 'ZK_PUNCH_UPDATE_FAILED', message: `تعذر تصحيح البصمة: ${error.message}` });
+    }
+}
+
+router.post('/logs/:id/ignore', jwtAuth, requireRole(...CONTROL_ROLES),
+    (req, res) => togglePunchIgnore(req, res, true));
+router.post('/logs/:id/restore', jwtAuth, requireRole(...CONTROL_ROLES),
+    (req, res) => togglePunchIgnore(req, res, false));
 
 // ─── تصدير سجل البصمات CSV (فلاتر + حد أقصى 100 ألف صف) ────────────────────────
 router.get('/logs/export', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
@@ -581,7 +679,7 @@ router.get('/fingerprints', jwtAuth, requireRole(...READ_ROLES), async (req, res
             `SELECT l.id, TO_CHAR(l."attendanceTime" AT TIME ZONE 'Asia/Riyadh', 'YYYY-MM-DD HH24:MI:SS') AS "punchTime",
                     COALESCE(e.name, 'غير مربوط') AS "employeeName", COALESCE(e."employeeId",'') AS "employeeNumber",
                     COALESCE(l."deviceUserId",'') AS "fingerprint", l."punchState", l."verifyType",
-                    COALESCE(d.name,'') AS "deviceName"
+                    COALESCE(d.name,'') AS "deviceName", COALESCE(l.ignored, false) AS ignored
              FROM attendance_logs l
              LEFT JOIN attendance_devices d ON d.id = l."deviceId"
              LEFT JOIN employees e ON e.id = l."employeeId"
@@ -608,7 +706,7 @@ router.get('/my-punches', jwtAuth, async (req, res) => {
         const punches = (await pool.query(
             `SELECT l."attendanceTime", l."punchState", l."verifyType", d.name AS "deviceName"
              FROM attendance_logs l LEFT JOIN attendance_devices d ON d.id = l."deviceId"
-             WHERE l."employeeId" = $1
+             WHERE l."employeeId" = $1 AND NOT l.ignored
                AND l."attendanceTime" >=
                    date_trunc('day', NOW() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh'
              ORDER BY l."attendanceTime" ASC LIMIT 50`,
@@ -653,11 +751,11 @@ router.get('/coverage', jwtAuth, requireRole(...READ_ROLES), async (req, res) =>
         )).rows;
         const rawByEmp = new Map((await pool.query(
             `SELECT "employeeId", MAX("attendanceTime") AS last_at, COUNT(*)::int AS raw
-               FROM attendance_logs WHERE "employeeId" IS NOT NULL GROUP BY 1`
+               FROM attendance_logs WHERE "employeeId" IS NOT NULL AND NOT ignored GROUP BY 1`
         )).rows.map(r => [String(r.employeeId), r]));
         const recentSet = new Set((await pool.query(
             `SELECT DISTINCT "employeeId" FROM attendance_logs
-              WHERE "employeeId" IS NOT NULL
+              WHERE "employeeId" IS NOT NULL AND NOT ignored
                 AND "attendanceTime" >= NOW() - ($1 || ' days')::interval`,
             [String(days)]
         )).rows.map(r => String(r.employeeId)));
@@ -706,7 +804,7 @@ router.get('/coverage', jwtAuth, requireRole(...READ_ROLES), async (req, res) =>
 
         const unmappedDeviceUsers = (await pool.query(
             `SELECT l."deviceUserId", COUNT(*)::int AS raw, MAX(l."attendanceTime") AS last_at
-               FROM attendance_logs l WHERE l."employeeId" IS NULL GROUP BY 1 ORDER BY 2 DESC`
+               FROM attendance_logs l WHERE l."employeeId" IS NULL AND NOT l.ignored GROUP BY 1 ORDER BY 2 DESC`
         )).rows.map(r => ({ ...r, device_name: deviceUsers.get(norm(r.deviceUserId)) || null }));
 
         res.json({
@@ -868,6 +966,357 @@ router.post('/scan', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
     } catch (error) {
         logger.error('[zkteco/scan]', error);
         res.status(500).json({ error: 'ZK_SCAN_FAILED', message: 'تعذر مسح الشبكة: ' + error.message });
+    }
+});
+
+// ═══════════════════════════════════════════════════════════════════════════
+// مركز تحكم الأدمن (2026-11-06) — «التحكم الكامل» أدواتُ صيانةٍ مُقيَّدة، لا سلطةً
+// على البصمة:
+//   • المحرك يُوقَف ويُشغَّل ويُعاد تشغيله — بسببٍ مكتوب وسطرُ تدقيقٍ دائم.
+//   • إعادة بناء أيام الموظف من بصماته الخام: لا تُبنى من فراغ (بصمةٌ واحدة على
+//     الأقل)، ولا تمسّ صفًّا يدويًّا أو من بوابة التطبيق (source ≠ device)، ولا
+//     يومًا في فترةٍ محاسبية مغلقة، ولا تتجاوز 31 يومًا في الطلب الواحد. وكلُّ
+//     صفٍّ تغيّر يُسجَّل في attendance_edit_log بمن فعله ولماذا — نفس حوكمة
+//     تصحيح الحضور، فلا تصحيحَ صامتًا.
+//   • القراءة للأدمن وحده؛ HR يبقى على أبوابه الحالية بلا توسيع.
+// ═══════════════════════════════════════════════════════════════════════════
+const ENGINE_ACTIONS = ['start', 'stop', 'restart'];
+const REBUILD_MAX_DAYS = 31;
+const REBUILD_MAX_PUNCHES = 2000;
+const REBUILD_MAX_REASON = 500;
+const _rebuildBusy = new Set();
+
+const DAY_MS = 86400000;
+const RIYADH_OFFSET = '+03:00';
+
+/** 'YYYY-MM-DD' → لحظةُ منتصف ليل الرياض (UTC+3 بلا تغيير موسمي). */
+function dayStart(dateStr) {
+    return new Date(`${dateStr}T00:00:00${RIYADH_OFFSET}`);
+}
+
+/** إزاحةُ يومٍ على تقويم ISO (بلا مناطق زمنية: التاريخ نصٌّ). */
+function shiftIsoDay(dateStr, days) {
+    const d = new Date(`${dateStr}T00:00:00Z`);
+    d.setUTCDate(d.getUTCDate() + days);
+    return d.toISOString().slice(0, 10);
+}
+
+function isValidIsoDay(value) {
+    const s = String(value || '');
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(s)) { return false; }
+    const d = new Date(`${s}T00:00:00Z`);
+    if (Number.isNaN(d.getTime())) { return false; }
+    // 2026-02-31 يُدحرج إلى مارس — التاريخ يجب أن يعود كما هو
+    return d.toISOString().slice(0, 10) === s;
+}
+
+/** سطر تدقيق لإجراءات التحكم — لا يُفشل الإجراء إن تعذّر تسجيله، لكنه يُصرَخ. */
+async function auditControl({ action, actor, reason, detail = {} }) {
+    try {
+        await require('./schema').ensureZktecoSchema();
+        await pool.query(
+            `INSERT INTO zk_control_audit (action, "actorId", "actorName", "actorRole", reason, detail)
+             VALUES ($1, $2, $3, $4, $5, $6::jsonb)`,
+            [
+                String(action).slice(0, 32),
+                actor && actor.id != null ? actor.id : null,
+                actor ? String(actor.username || actor.name || '').slice(0, 120) : null,
+                actor && actor.role ? String(actor.role).slice(0, 40) : null,
+                reason ? String(reason).slice(0, REBUILD_MAX_REASON) : null,
+                JSON.stringify(detail || {}),
+            ]
+        );
+    } catch (error) {
+        logger.warn('[zkteco/control] تعذر تسجيل إجراء التحكم: ' + (error && error.message ? error.message : error));
+    }
+}
+
+/** استرجاع صفِّ حضور كما كان — أفضل جهدٍ عند فشل إعادة البناء في منتصفه. */
+async function restoreAttendanceRow(row) {
+    if (!row) { return; }
+    try {
+        await pool.query('DELETE FROM attendance WHERE "employeeId" = $1 AND date = $2', [row.employeeId, row.date]);
+        await pool.query(
+            `INSERT INTO attendance
+                (id, "employeeId", date, "checkIn", "checkOut", "checkInAt", "checkOutAt",
+                 "workMinutes", late, early_leave, on_leave, notes, source)
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12,$13)`,
+            [row.id, row.employeeId, row.date, row.checkIn, row.checkOut, row.checkInAt, row.checkOutAt,
+                row.workMinutes, row.late, row.early_leave, row.on_leave, row.notes, row.source]
+        );
+    } catch (error) {
+        logger.error('[zkteco/control] تعذر استرجاع صف الحضور بعد فشل البناء: ' +
+            `attendanceId=${row.id} date=${row.date} :: ${error.message}`);
+    }
+}
+
+/** حالة مركز التحكم: المحرك + الأجهزة + أرقام اليوم + آخر الإجراءات. */
+router.get('/control', jwtAuth, requireRole(...CONTROL_ROLES), async (req, res) => {
+    try {
+        // جدول تدقيق التحكم يُنشأ مع مخطط البصمة — نضمنه قبل القراءة
+        await require('./schema').ensureZktecoSchema();
+        const engine = req.app.locals.attendanceEngine;
+        const status = engine && typeof engine.getStatus === 'function'
+            ? engine.getStatus()
+            : { running: false, devices: [] };
+        const devices = (await pool.query(
+            `SELECT id, name, "ipAddress", port, enabled, status, "lastSyncAt", "lastError", "syncIntervalSeconds"
+               FROM attendance_devices ORDER BY id`
+        )).rows;
+        const totals = (await pool.query(
+            `SELECT
+                (SELECT COUNT(*)::int FROM attendance_logs
+                  WHERE NOT ignored AND "attendanceTime" >=
+                        date_trunc('day', NOW() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh') AS today,
+                (SELECT COUNT(*)::int FROM attendance_logs WHERE NOT ignored AND "employeeId" IS NULL) AS unmapped,
+                (SELECT COUNT(*)::int FROM attendance
+                  WHERE "checkIn" IS NOT NULL AND "checkOut" IS NULL) AS "openDays",
+                (SELECT COUNT(*)::int FROM attendance
+                  WHERE date = TO_CHAR(NOW() AT TIME ZONE 'Asia/Riyadh', 'YYYY-MM-DD')
+                    AND COALESCE(source, 'manual') <> 'device') AS "manualToday"`
+        )).rows[0] || {};
+        const audit = (await pool.query(
+            `SELECT id, action, "actorName", "actorRole", reason, detail, "createdAt"
+               FROM zk_control_audit ORDER BY "createdAt" DESC, id DESC LIMIT 30`
+        )).rows;
+        res.json({
+            engine: { running: Boolean(status.running), devices: status.devices || [] },
+            devices,
+            totals: {
+                today: Number(totals.today) || 0,
+                unmapped: Number(totals.unmapped) || 0,
+                openDays: Number(totals.open_days ?? totals.openDays) || 0,
+                manualToday: Number(totals.manual_today ?? totals.manualToday) || 0,
+            },
+            audit,
+            limits: { rebuildMaxDays: REBUILD_MAX_DAYS },
+        });
+    } catch (error) {
+        logger.error('[zkteco/control]', error);
+        res.status(500).json({ error: 'ZK_CONTROL_FAILED', message: 'تعذر جلب حالة التحكم' });
+    }
+});
+
+/** تشغيل/إيقاف/إعادة تشغيل محرك المزامنة — بسببٍ إلزامي. */
+router.post('/engine/:action', jwtAuth, requireRole(...CONTROL_ROLES), async (req, res) => {
+    const action = String(req.params.action || '');
+    if (!ENGINE_ACTIONS.includes(action)) {
+        return res.status(422).json({ error: 'ZK_ENGINE_ACTION_INVALID', message: 'إجراء غير معروف — المتاح: start | stop | restart' });
+    }
+    const engine = req.app.locals.attendanceEngine;
+    if (!engine) {
+        return res.status(503).json({ error: 'ZK_ENGINE_MISSING', message: 'محرك المزامنة غير محمّل في هذه العملية' });
+    }
+    const reason = String(req.body?.reason || '').trim().slice(0, REBUILD_MAX_REASON);
+    if (reason.length < 3) {
+        return res.status(422).json({ error: 'ZK_REASON_REQUIRED', message: 'سبب الإجراء مطلوب (3 أحرف على الأقل)' });
+    }
+    try {
+        const before = Boolean(engine.getStatus().running);
+        if (action === 'stop') { engine.stop(); }
+        else if (action === 'start') { engine.start(req.io || engine.io || null); }
+        else { engine.stop(); engine.start(req.io || engine.io || null); }
+        const running = Boolean(engine.getStatus().running);
+        await auditControl({
+            action: `engine:${action}`, actor: req.user, reason,
+            detail: { before, after: running },
+        });
+        logger.info(`[zkteco/control] محرك المزامنة: ${action} (${before} → ${running}) بواسطة ${req.user.username} — السبب: ${reason}`);
+        const message = action === 'stop'
+            ? 'أُوقف المحرك — البصمات تبقى على الأجهزة وتُسحب كاملةً عند التشغيل'
+            : (action === 'restart' ? 'أُعيد تشغيل المحرك — أول دورة بعد 3 ثوانٍ' : 'المحرك يعمل — أول دورة بعد 3 ثوانٍ');
+        res.json({ ok: true, running, message });
+    } catch (error) {
+        logger.error('[zkteco/engine:action]', error);
+        res.status(500).json({ error: 'ZK_ENGINE_FAILED', message: `تعذر تنفيذ الإجراء: ${error.message}` });
+    }
+});
+
+/**
+ * إعادة بناء أيامٍ من البصمات الخام.
+ *
+ * لماذا حذفٌ ثم إعادةُ تشغيل؟ لأن المحرك نفسه لا يعيد حساب يومٍ تمّ: يضيف
+ * البصمة إلى أطراف اليوم (أقدمها دخول، أحدثها انصراف). فإعادةُ البصمات كلها
+ * على يومٍ محذوفٍ تُنتج بالضبط ما كان سينتج لو وصلت في وقتها — بلا معادلةٍ
+ * ثانيةٍ تُخالف المحرك.
+ */
+router.post('/rebuild-days', jwtAuth, requireRole(...CONTROL_ROLES), async (req, res) => {
+    const employeeId = Number(req.body?.employeeId);
+    const from = String(req.body?.from || '');
+    const to = String(req.body?.to || from);
+    const reason = String(req.body?.reason || '').trim().slice(0, REBUILD_MAX_REASON);
+
+    if (!Number.isFinite(employeeId) || employeeId <= 0) {
+        return res.status(422).json({ error: 'ZK_EMPLOYEE_REQUIRED', message: 'اختر الموظف أولًا' });
+    }
+    if (!isValidIsoDay(from) || !isValidIsoDay(to)) {
+        return res.status(422).json({ error: 'ZK_DATE_INVALID', message: 'التاريخ بصيغة YYYY-MM-DD' });
+    }
+    if (to < from) {
+        return res.status(422).json({ error: 'ZK_RANGE_INVALID', message: 'تاريخ البداية بعد النهاية' });
+    }
+    const span = Math.round((dayStart(to) - dayStart(from)) / DAY_MS) + 1;
+    if (span > REBUILD_MAX_DAYS) {
+        return res.status(422).json({
+            error: 'ZK_RANGE_TOO_WIDE',
+            message: `أقصى مدى للبناء ${REBUILD_MAX_DAYS} يومًا في الطلب الواحد`,
+        });
+    }
+    if (reason.length < 5) {
+        return res.status(422).json({ error: 'ZK_REASON_REQUIRED', message: 'سبب إعادة البناء مطلوب (5 أحرف على الأقل)' });
+    }
+    if (_rebuildBusy.has(employeeId)) {
+        return res.status(409).json({ error: 'ZK_REBUILD_BUSY', message: 'هناك إعادة بناء جارية لهذا الموظف — انتظر انتهاءها' });
+    }
+    const engine = req.app.locals.attendanceEngine;
+    if (!engine) {
+        return res.status(503).json({ error: 'ZK_ENGINE_MISSING', message: 'محرك المزامنة غير محمّل في هذه العملية' });
+    }
+
+    _rebuildBusy.add(employeeId);
+    try {
+        const employee = (await pool.query(
+            'SELECT id, name, "employeeId" FROM employees WHERE id = $1', [employeeId]
+        )).rows[0];
+        if (!employee) {
+            return res.status(404).json({ error: 'EMPLOYEE_NOT_FOUND', message: 'الموظف غير موجود' });
+        }
+
+        const guardFrom = shiftIsoDay(from, -1);
+        const guardTo = shiftIsoDay(to, 1);
+        const gov = require('../attendance-governance');
+
+        // ١) الفترة المحاسبية: كل يومٍ قد يُمسّ يجب أن يكون مفتوحًا
+        for (let d = guardFrom; d <= guardTo; d = shiftIsoDay(d, 1)) {
+            const block = await gov.attendancePeriodViolation({ date: d });
+            if (block) {
+                return res.status(block.status).json({ error: block.error, message: block.message });
+            }
+        }
+
+        // ٢) صفٌّ يدوي أو من بوابة التطبيق في المدى الممسوس: لا يُلمس أبدًا
+        const protectedRows = (await pool.query(
+            `SELECT date, COALESCE(source, 'manual') AS source FROM attendance
+              WHERE "employeeId" = $1 AND date BETWEEN $2 AND $3
+                AND COALESCE(source, 'manual') <> 'device'
+              ORDER BY date LIMIT 40`,
+            [employeeId, guardFrom, guardTo]
+        )).rows;
+        if (protectedRows.length) {
+            const days = protectedRows.map((r) => r.date).join(' · ');
+            return res.status(409).json({
+                error: 'ZK_REBUILD_PROTECTED',
+                message: `لا يمكن البناء: أيامٌ لها صفٌّ غير ناتج عن البصمة (${days}) — صحّحها من شاشة الحضور أو أزل التصحيح أولًا`,
+                protectedDays: protectedRows,
+            });
+        }
+
+        // ٣) بصماتٌ خام في نافذة البناء (يوم قبل ويوم بعد: الوردية الليلية)
+        // السقف يُفحص بالعدّ لا بقصّ النتيجة: قصُّ البصمات بعد حذف الصفوف
+        // يعني صفًّا محذوفًا لا يُعاد بناؤه — فقدانُ بيانات لا صيانة.
+        const window = [employeeId, dayStart(guardFrom), dayStart(shiftIsoDay(to, 2))];
+        const punchTotal = (await pool.query(
+            `SELECT COUNT(*)::int AS c FROM attendance_logs
+              WHERE "employeeId" = $1 AND NOT ignored
+                AND "attendanceTime" >= $2 AND "attendanceTime" < $3`,
+            window
+        )).rows[0].c;
+        if (!punchTotal) {
+            return res.status(409).json({
+                error: 'ZK_REBUILD_NO_PUNCHES',
+                message: 'لا بصماتٍ خام لهذا الموظف في هذا المدى — لا يُبنى حضورٌ من فراغ',
+            });
+        }
+        if (punchTotal > REBUILD_MAX_PUNCHES) {
+            return res.status(422).json({
+                error: 'ZK_REBUILD_TOO_MANY',
+                message: `البصمات في المدى ${punchTotal} وأقصى ما يُعاد بناؤه ${REBUILD_MAX_PUNCHES} — قسّم المدى إلى فترات أقصر`,
+            });
+        }
+        const punches = (await pool.query(             `SELECT l.id, l."attendanceTime", l."deviceId", d.name AS "deviceName"
+               FROM attendance_logs l
+               LEFT JOIN attendance_devices d ON d.id = l."deviceId"
+              WHERE l."employeeId" = $1 AND NOT l.ignored
+                AND l."attendanceTime" >= $2 AND l."attendanceTime" < $3
+              ORDER BY l."attendanceTime" ASC`,
+            window
+        )).rows;
+        if (!punches.length) {
+            return res.status(409).json({
+                error: 'ZK_REBUILD_NO_PUNCHES',
+                message: 'لا بصماتٍ خام لهذا الموظف في هذا المدى — لا يُبنى حضورٌ من فراغ',
+            });
+        }
+
+        // ٤) لقطة ما سيُحذف (صفوف device فقط داخل المدى)
+        const beforeRows = (await pool.query(
+            'SELECT * FROM attendance WHERE "employeeId" = $1 AND date BETWEEN $2 AND $3 ORDER BY date',
+            [employeeId, from, to]
+        )).rows;
+
+        // ٥) حذف صفوف المدى وإعادة تشغيل البصمات نفسها على المحرك الواحد
+        await pool.query(
+            'DELETE FROM attendance WHERE "employeeId" = $1 AND date BETWEEN $2 AND $3',
+            [employeeId, from, to]
+        );
+        let replayed = 0;
+        try {
+            for (const p of punches) {
+                const instant = new Date(p.attendanceTime);
+                await engine.processPunch({
+                    employeeId,
+                    instant,
+                    wall: instantToWall(instant),
+                    source: 'device',
+                    device: { name: p.deviceName || 'جهاز البصمة' },
+                });
+                replayed += 1;
+            }
+        } catch (error) {
+            for (const row of beforeRows) { await restoreAttendanceRow(row); }
+            throw error;
+        }
+
+        // ٦) التدقيق: صفٌّ لكل يومٍ تغيّر — نفس سجلّ حوكمة الحضور
+        const afterRows = (await pool.query(
+            'SELECT * FROM attendance WHERE "employeeId" = $1 AND date BETWEEN $2 AND $3',
+            [employeeId, from, to]
+        )).rows;
+        const beforeByDate = new Map(beforeRows.map((r) => [r.date, r]));
+        const afterByDate = new Map(afterRows.map((r) => [r.date, r]));
+        let created = 0, updated = 0, removed = 0;
+        for (let d = from; d <= to; d = shiftIsoDay(d, 1)) {
+            const before = beforeByDate.get(d) || null;
+            const after = afterByDate.get(d) || null;
+            if (!before && !after) { continue; }
+            const action = before && after ? 'update' : (after ? 'create' : 'delete');
+            await gov.recordAttendanceEdit({
+                action, before, after: after || before,
+                actor: req.user, source: 'admin-rebuild', reason,
+            });
+            if (action === 'update') { updated += 1; }
+            else if (action === 'create') { created += 1; }
+            else { removed += 1; }
+        }
+
+        await auditControl({
+            action: 'rebuild-days', actor: req.user, reason,
+            detail: { employeeId, from, to, punches: replayed, created, updated, removed },
+        });
+        logger.info(`[zkteco/control] إعادة بناء ${employee.name} ${from}→${to}: بصمات ${replayed} — جديد ${created} — محدّث ${updated} — محذوف ${removed} بواسطة ${req.user.username}`);
+
+        const tail = String(from) === String(to) ? from : `${from} → ${to}`;
+        res.json({
+            ok: true,
+            employee: { id: employee.id, name: employee.name, employeeId: employee.employeeId },
+            from, to, punches: replayed, created, updated, removed,
+            message: `أُعيد بناء ${tail}: ${replayed} بصمة — صفوف جديدة ${created}، محدَّثة ${updated}، بلا صف ${removed}`,
+        });
+    } catch (error) {
+        logger.error('[zkteco/rebuild-days]', error);
+        res.status(500).json({ error: 'ZK_REBUILD_FAILED', message: `تعذر إعادة البناء: ${error.message}` });
+    } finally {
+        _rebuildBusy.delete(employeeId);
     }
 });
 

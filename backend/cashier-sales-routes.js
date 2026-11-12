@@ -18,14 +18,11 @@
  *   · net    = ما دُفع فعلًا شاملًا الضريبة            → يُبلَّغ باسم `collected`
  *   · total  = صافي الأصناف قبل الضريبة (= Σ سطور الفاتورة) → `ex_vat`
  *   · vat    = الضريبة المحسوبة على كل سطر
- *   و `collected ≠ ex_vat + vat` في أغلب السندات. جزءٌ من ذلك تقريبُ تسعيرةٍ
- *   لكل سطرٍ قبل الجمع، لكن القياسَ (أكتوبر 2026) أظهر أن الغالبية العظمى
- *   تجاوزُ قدرَ ذلك التقريب: 15,563 سندًا من 17,043 فارقُها أكبرُ من هللتين
- *   لكل سطر، بمجموع −7,597.79 من −7,601.10 — أي أن المحصَّلَ لا يطابق
- *   المُسعَّرَ في المرآة. المرآةُ لا تسجّل سببَ الفرق، فلا يُنسَبُ إلى سببٍ
- *   مجهولة: يُبلَّغ العددُ والمجموعُ وقدرُ ما جاوزَ التقريب
- *   (`drift_docs`, `drift_amount`, `drift_large_docs`, `drift_large_amount`)
- *   ولا يُدارى الانحراف بجمعٍ «نظيف» في الواجهة.
+ *   القاعدة (Phase 4): لا بند «تسوية/فرق/adjustment» يُعرض أو يُصدَّر أو
+ *   يُطبع. السندات القديمة غير المتوازنة تُصنَّف عدديًّا بـ`legacy_docs` /
+ *   `legacy_adjustment` وتُعرض أرقامها كما وردت من مصدرها، وتُقرأ ضريبتها من
+ *   سطور الفاتورة (`SUM(line_vat)`) لا من طرح (الإجمالي − الصافي). الحقول
+ *   `drift_*` باقية في الاستجابة للتوافق فقط، ولا تعرضها الواجهة.
  *
  * كلُّ مشتقٍّ يُحسب هنا: النسب والمجاميع والمتوسطات والاسم العربي للكاشير
  * والعملة. الواجهة تعرض ولا تحسب. والترقيم صادق: `totals.count` هو عدد
@@ -320,6 +317,12 @@ router.get('/summary', jwtAuth, requireRole(...READ_ROLES), generalLimiter, asyn
                    COALESCE(SUM(o.net),0)::float      AS collected,
                    COALESCE(SUM(o.total),0)::float    AS ex_vat,
                    COALESCE(SUM(o.vat),0)::float      AS vat,
+                   /* الضريبة من سطور الفاتورة لا من طرح (الإجمالي − الصافي):
+                      هي مرجع التقارير الضريبية بعد Phase 4. */
+                   COALESCE((SELECT SUM((e->>'vat')::numeric)
+                       FROM ys_mirror_orders o, jsonb_array_elements(
+                         CASE WHEN jsonb_typeof(o.lines) = 'array' THEN o.lines ELSE '[]'::jsonb END) e
+                       ${f.clause}),0)::float AS line_vat,
                    COALESCE(SUM(o.discount),0)::float AS discount,
                    COALESCE(SUM(o.payed),0)::float    AS payed,
                    COALESCE(SUM(o.pay_cash),0)::float    AS cash,
@@ -429,6 +432,12 @@ router.get('/summary', jwtAuth, requireRole(...READ_ROLES), generalLimiter, asyn
                 avg_items: docs ? round2((Number(t.lines) || 0) / docs) : 0,
                 no_lines: Number(t.no_lines) || 0,
                 no_time: Number(t.no_time) || 0,
+                /* تصنيف عدديّ بلا مبلغ: كم سندًا مؤرشفًا من النظام السابق، وهل
+                   توجد سجلات غير متوازنة في الفترة. الحقول drift_* باقية
+                   للتوافق فقط ولا تعرضها الواجهة ولا تُصدَّر. */
+                legacy_docs: Number(t.drift_docs) || 0,
+                legacy_adjustment: (Number(t.drift_docs) || 0) > 0,
+                line_vat: round2(t.line_vat),
                 drift_docs: Number(t.drift_docs) || 0,
                 drift_amount: round2(t.drift_amount),
                 drift_large_docs: Number(t.drift_large_docs) || 0,
@@ -484,6 +493,7 @@ router.get('/orders', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async
                    o.pay_cash::float AS cash, o.pay_network::float AS network,
                    o.pay_mobile::float AS mobile, o.pay_credit::float AS credit,
                    (o.net - (o.total + o.vat))::float AS drift,
+                   (ABS(o.net - (o.total + o.vat)) > 0.005) AS legacy_adjustment,
                    /* قدرُ التقريب يُقدَّر من عدد السطور عند الخادم، فالصفحةُ
                       لا تنسب فارقًا إلى التقريبِ على حدسٍ من العرض. */
                    (ABS(o.net - (o.total + o.vat)) <= 0.01 * ${LINES_LEN} + 0.005) AS drift_within_rounding
@@ -495,7 +505,8 @@ router.get('/orders', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async
         const totalsQ = await pool.query(`
             SELECT COUNT(*)::int AS docs, COALESCE(SUM(o.net),0)::float AS collected,
                    COALESCE(SUM(o.total),0)::float AS ex_vat, COALESCE(SUM(o.vat),0)::float AS vat,
-                   COALESCE(SUM(${LINES_LEN}),0)::int AS items
+                   COALESCE(SUM(${LINES_LEN}),0)::int AS items,
+                   COUNT(*) FILTER (WHERE ABS(o.net - (o.total + o.vat)) > 0.005)::int AS legacy_docs
               FROM ys_mirror_orders o ${f.clause}
         `, f.params);
 
@@ -510,12 +521,15 @@ router.get('/orders', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async
                 day: r.day, time: hhmm(r.doc_time),
                 collected: round2(r.collected), ex_vat: round2(r.ex_vat), vat: round2(r.vat),
                 payed: round2(r.payed), discount: round2(r.discount), drift: round2(r.drift),
+                legacy_adjustment: Boolean(r.legacy_adjustment),
                 share: shareOf(r.collected, collected),
             })),
             totals: {
                 count: Number(t.docs) || 0, docs: Number(t.docs) || 0,
                 collected, ex_vat: round2(t.ex_vat), vat: round2(t.vat),
                 items: Number(t.items) || 0,
+                legacy_docs: Number(t.legacy_docs) || 0,
+                legacy_adjustment: (Number(t.legacy_docs) || 0) > 0,
             },
             page: { limit, offset },
         });
@@ -609,6 +623,10 @@ router.get('/items', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async 
                 order_docs: Number(o.docs) || 0,
                 no_lines: Number(o.no_lines) || 0,
                 line_mismatch: Number(o.line_mismatch) || 0,
+                /* تصنيفٌ عدديّ بلا مبلغ: الواجهة لا تعرض فرقًا، بل تقول كم
+                   سندًا ناقص السطور. `gap` باقٍ للتوافق فقط. */
+                legacy_docs: (Number(o.no_lines) || 0) + (Number(o.line_mismatch) || 0),
+                legacy_adjustment: ((Number(o.no_lines) || 0) + (Number(o.line_mismatch) || 0)) > 0,
             };
         }
 
@@ -939,13 +957,9 @@ async function honestyNote(f) {
         parts.push(`${ltr(t.no_lines)} سندًا بلا سطور أصناف في هذه الفترة (مبلغه محسوبٌ في المجاميع وأصنافه غير مسجَّلة في المرآة)`);
     }
     if (Number(t.drift_docs) > 0) {
-        /* قدرُ التقريب من عدد السطور؛ ما جاوزَه فارقُ سعرٍ في الكاشيرية،
-           فلا يُنسَب إلى التقريبِ ما كبر عليه. */
-        const large = Number(t.drift_large_docs) || 0;
-        parts.push(`${ltr(t.drift_docs)} سندًا يختلف فيه «الإجمالي» عن «صافٍ + ضريبة» بمجموع ${ltr(num(t.drift_amount))} — `
-            + (large
-                ? `منها ${ltr(large)} بمقدار ${ltr(num(t.drift_large_amount))} جاوزَ قدرَ تقريبِ السطور — المحصَّلُ لا يطابق المُسعَّر، والمرآةُ لا تسجّل سببَ الفرق`
-                : 'تسعيرة قاعدة الكاشير تُقرَّب لكل سطرٍ قبل الجمع، والفارق كلُّه في قدر ذلك التقريب'));
+        /* لا مبلغ ولا نسبة إلى تقريب: سجلٌّ مؤرشفٌ من النظام السابق يُعرض
+           برقمه كما ورد، ولا يُعاد تسويته على الورق. */
+        parts.push(`${ltr(t.drift_docs)} سندًا من سجلات النظام السابق (أرشيف) — تُعرض أرقامها كما وردت في مصدرها`);
     }
     const mirror = `المرآة تبدأ من ${ltr(t.first_day || '—')}؛ آخر مزامنة ${ltr(stamp(t.synced_at))}`;
     return {
@@ -1071,7 +1085,12 @@ router.get('/invoice/:docNo', jwtAuth, requireRole(...READ_ROLES), generalLimite
                 drift: round2(round2(slip.collected) - (round2(slip.ex_vat) + round2(slip.vat))),
                 drift_within_rounding: Math.abs(round2(slip.collected) - (round2(slip.ex_vat) + round2(slip.vat)))
                     <= 0.01 * lines.length + 0.005,
+                /* تصنيف قراءة فقط للسجل القديم: الواجهة تعرض وسمًا بلا مبلغ
+                   ولا تُعيد التسوية. */
+                legacy_adjustment: Math.abs(round2(slip.collected) - (round2(slip.ex_vat) + round2(slip.vat)))
+                    > 0.005,
                 line_sum: round2(lines.reduce((s, l) => s + l.total, 0)),
+                line_vat: round2(lines.reduce((s, l) => s + l.vat, 0)),
             },
             lines,
             zatca: zatca && {
@@ -1132,14 +1151,10 @@ router.get('/invoice/:docNo/html', jwtAuth, requireRole(...READ_ROLES), generalL
         }).join('');
         const methods = [['نقد', slip.cash], ['شبكة', slip.network], ['جوال', slip.mobile], ['آجل', slip.credit]]
             .filter(([, v]) => Number(v || 0) > 0);
-        const drift = round2((slip.collected || 0) - ((slip.ex_vat || 0) + (slip.vat || 0)));
-        const lineCount = Array.isArray(slip.lines) ? slip.lines.length : 0;
+        /* الإيصالُ نسخةُ عميل: لا يُطبع بند «تسوية» ولا مبلغ فرق. السجلُ
+           القديم غير المتوازن يُوسم أرشيفيًّا بلا رقم تسوية. */
+        const legacy = Math.abs(round2((slip.collected || 0) - ((slip.ex_vat || 0) + (slip.vat || 0)))) > 0.005;
         const rate = (Array.isArray(slip.lines) && slip.lines[0] && slip.lines[0].vat_rate != null) ? slip.lines[0].vat_rate : 15;
-
-        /* الإيصالُ نسخةُ عميل: لا يُثقل بأسطرِ انضباطٍ تُقرأ على كل فاتورة.
-           فارقُ التقريب (هللةٌ أو هللتان لكل سطرٍ) طبعٌ لا قيمة له للشاري
-           وأما ما جاوزَ قدرَ التقريب فخطرٌ محاسبيٌّ يُطبع سطرًا واحدًا. */
-        const driftLarge = Math.abs(drift) > 0.01 * lineCount + 0.005;
         const html = `<!DOCTYPE html>
 <html dir="rtl" lang="ar"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -1164,11 +1179,10 @@ router.get('/invoice/:docNo/html', jwtAuth, requireRole(...READ_ROLES), generalL
     <tr><td class="l">الإجمالي قبل الضريبة</td><td class="v">${esc(num(slip.ex_vat))}</td></tr>
     <tr><td class="l">ضريبة القيمة المضافة (${esc(String(rate))}%)</td><td class="v">${esc(num(slip.vat))}</td></tr>
     ${Number(slip.discount || 0) > 0 ? `<tr><td class="l">الخصم</td><td class="v">${esc(num(slip.discount))}</td></tr>` : ''}
-    ${Math.abs(drift) > 0.005 ? `<tr><td class="l">تسوية (فرق المحصَّل عن صافٍ + ضريبة)</td><td class="v">${esc(num(drift))}</td></tr>` : ''}
     <tr class="big"><td class="l">الإجمالي شامل الضريبة</td><td class="v">${esc(num(slip.collected))} ${esc(brand.currency)}</td></tr>
   </table>
   ${methods.length ? `<p class="pay">الدفع: ${methods.map(([m, v]) => `${esc(m)} <span class="ltr">${esc(num(v))}</span>`).join(' · ')}</p>` : ''}
-  ${Math.abs(drift) > 0.005 && driftLarge ? `<p class="fine">ملاحظة محاسبية: الإجمالي المحصَّل لا يطابق «صافي + ضريبة» بمقدار <span class="ltr">${esc(num(drift))}</span>، وهو جاوزَ قدرَ تقريبِ التسعيرة — يُراجع مع سجلّ الكاشير.</p>` : ''}
+  ${legacy ? '<p class="fine">سجل مؤرشف من النظام السابق — الأرقام كما وردت في مصدرها.</p>' : ''}
   ${qrImage ? `<div class="qr"><img src="${esc(qrImage)}" alt="رمز الفاتورة"><p>${zatca && zatca.isvalid === true ? 'فاتورة مُعتمدة لدى الهيئة' : 'غير مُعتمدة لدى الهيئة'}${zatca && zatca.pih ? ` · بصمة <span class="ltr">${esc(String(zatca.pih).slice(0, 16))}</span>` : ''}</p></div>` : ''}
   <footer class="foot">
     <p class="thanks">شكرًا لزيارتكم</p>
@@ -1287,7 +1301,7 @@ router.get('/html', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async (
                 <td></td><td class="n">${esc(num(rowsQ.rows.reduce((s, r) => s + (Number(r.ex_vat) || 0), 0)))}</td>
                 <td class="n">${esc(num(rowsQ.rows.reduce((s, r) => s + (Number(r.vat) || 0), 0)))}</td><td colspan="2"></td></tr></tfoot>
               </table>`;
-            table += `<div class="note"><b>المطابقة:</b> مجاميع هذا الكشف من سطور الأصناف، ${ltr(note.no_lines)} سندًا في الفترة بلا سطورٍ مسجَّلة — لذلك لا يساوي «قبل الضريبة» هنا بالضرورة مجموعَ فواتير نفس الفترة؛ الفارق من السندات الناقصة لا من خطأٍ في الجمع.</div>`;
+            table += `<div class="note"><b>المطابقة:</b> مجاميع هذا الكشف من سطور الأصناف وحدها، و${ltr(note.no_lines)} سندًا في الفترة بلا سطورٍ مسجَّلة — تُقرأ هذه المجاميع مع كشف الفواتير لا بدلًا منه.</div>`;
         } else {
             const w = buildWhere(f);
             const rowsQ = await pool.query(`

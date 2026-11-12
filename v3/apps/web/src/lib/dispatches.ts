@@ -19,6 +19,7 @@ const dispatchItemSchema = z
         name: z.string().nullable().optional(),
         qty: z.union([z.string(), z.number()]).nullable().optional(),
         approvedQty: z.union([z.string(), z.number()]).nullable().optional(),
+        receivedQty: z.union([z.string(), z.number()]).nullable().optional(),
         unit: z.string().nullable().optional(),
     })
     .passthrough();
@@ -32,7 +33,10 @@ export const dispatchSchema = z
         status: z.string().nullable().optional(),
         date: z.string().nullable().optional(),
         createdBy: z.string().nullable().optional(),
+        creatorUserId: z.union([z.string(), z.number()]).nullable().optional(),
         kitchenReceivedBy: z.string().nullable().optional(),
+        kitchenReceivedAt: z.string().nullable().optional(),
+        receivedItems: z.array(dispatchItemSchema).nullable().optional(),
         needsChefApproval: z.boolean().nullable().optional(),
     })
     .passthrough();
@@ -70,12 +74,7 @@ export async function fetchDispatches(scope: DispatchScope, signal?: AbortSignal
         if (scope !== 'all') {
             params.set('v2_period', 'month');
         }
-        const body = await fetchJson(
-            pageSchema,
-            `/api/dispatches?${params.toString()}`,
-            getAccessToken(),
-            signal ? { signal } : {},
-        );
+        const body = await fetchJson(pageSchema, `/api/dispatches?${params.toString()}`, getAccessToken(), signal ? { signal } : {});
         rows.push(...body.data);
         const totalPages = body.pagination?.totalPages ?? 0;
         if (body.data.length < PAGE_SIZE || (totalPages > 0 && page >= totalPages)) {
@@ -236,10 +235,7 @@ export function matchDispatchProduct(row: DispatchRow, query: string): boolean {
 }
 
 /** تجميع المسحوب لصنف البحث: عدد الأذون وكميات الأصناف المطابقة. */
-export function summarizeProductWithdrawal(
-    rows: readonly DispatchRow[],
-    query: string,
-): { vouchers: number; byName: Map<string, number> } {
+export function summarizeProductWithdrawal(rows: readonly DispatchRow[], query: string): { vouchers: number; byName: Map<string, number> } {
     const key = arSearchKey(query);
     const byName = new Map<string, number>();
     let vouchers = 0;

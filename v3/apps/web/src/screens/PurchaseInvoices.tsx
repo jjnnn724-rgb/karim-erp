@@ -3,8 +3,8 @@ import { toCents } from '@karim/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useConfirm } from '../components/ConfirmProvider';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { PrintActions } from '../components/PrintActions';
+import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { fetchCurrency, firstOfMonth, riyadhToday } from '../lib/finance';
 import { formatMoney } from '../lib/format';
@@ -156,8 +156,7 @@ function compare(a: PurchaseInvoiceRow, b: PurchaseInvoiceRow, key: SortKey): nu
     return a.statusLabel.localeCompare(b.statusLabel, 'ar');
 }
 
-const fieldClass =
-    'h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink disabled:opacity-60';
+const fieldClass = 'h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink disabled:opacity-60';
 const labelClass = 'flex flex-col gap-xxs text-label-md text-ink-secondary';
 
 /** بند نموذج بمعرّف عرض ثابت (لا يُرسل للخادم) حتى لا يتغيّر مفتاح React. */
@@ -223,17 +222,11 @@ function InvoiceFormDialog({ open, editing, suppliers, currency, saving, onClose
         setError('');
     }, [editing, open]);
 
-    const selectedSupplier = form.supplierId
-        ? suppliers.find((supplier) => String(supplier.id) === String(form.supplierId))
-        : undefined;
+    const selectedSupplier = form.supplierId ? suppliers.find((supplier) => String(supplier.id) === String(form.supplierId)) : undefined;
     const registered = String(selectedSupplier?.tax_registration_status ?? '').toUpperCase() === 'REGISTERED';
     const estimate = invoiceEstimate({ ...form, items }, registered);
     // V2 يعبّئ المسدد تلقائيًا ما لم يلمسه المشغّل: نقدي/بنكي = الإجمالي، آجل = 0.
-    const paidValue = paidTouched
-        ? String(form.paidAmount ?? '')
-        : form.paymentMethod === 'credit'
-          ? '0'
-          : estimate.grand.toFixed(2);
+    const paidValue = paidTouched ? String(form.paidAmount ?? '') : form.paymentMethod === 'credit' ? '0' : estimate.grand.toFixed(2);
     const supplierOptions = suppliers.filter(
         (supplier) => isSupplierActive(supplier) || String(supplier.id) === String(form.supplierId ?? ''),
     );
@@ -795,12 +788,7 @@ export function PurchaseInvoices() {
     const payMutation = useWriteMutation<PurchaseInvoiceRow, void>({
         mutationFn: (row) => payInvoiceFull(row.id, { method: 'cash' }),
         successTitle: (row) => payFullSuccess(row.number, moneyWithUnit(row.remaining, currency)),
-        invalidate: [
-            ['purchase-invoices'],
-            ['procurement', 'payments'],
-            ['procurement', 'suppliers'],
-            ['procurement', 'summary'],
-        ],
+        invalidate: [['purchase-invoices'], ['procurement', 'payments'], ['procurement', 'suppliers'], ['procurement', 'summary']],
         silentError: true,
         onError: (cause) => {
             toast({ title: `${INVOICE_TEXT.payFailedPrefix}${writeErrorMessage(cause)}`, variant: 'error' });
@@ -813,21 +801,12 @@ export function PurchaseInvoices() {
     >({
         mutationFn: ({ row, amount, method, date, notes }) =>
             payInvoicePartial(row.id, { supplierId: row.supplierId ?? '', amount, method, date, notes }),
-        invalidate: [
-            ['purchase-invoices'],
-            ['procurement', 'payments'],
-            ['procurement', 'suppliers'],
-            ['procurement', 'summary'],
-        ],
+        invalidate: [['purchase-invoices'], ['procurement', 'payments'], ['procurement', 'suppliers'], ['procurement', 'summary']],
         silentError: true,
         onSuccess: (due, variables) => {
             const shown = moneyWithUnit(variables.amount, currency);
             toast({
-                title: payPartialSuccess(
-                    shown,
-                    variables.row.number,
-                    due === null ? null : moneyWithUnit(due, currency),
-                ),
+                title: payPartialSuccess(shown, variables.row.number, due === null ? null : moneyWithUnit(due, currency)),
                 variant: 'success',
             });
             setPartialTarget(null);
@@ -857,9 +836,7 @@ export function PurchaseInvoices() {
 
     function toggleSort(key: SortKey) {
         setPage(1);
-        setSort((previous) =>
-            previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' },
-        );
+        setSort((previous) => (previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
     }
 
     function applyPreset(preset: '30' | 'month' | 'all') {
@@ -1016,9 +993,7 @@ export function PurchaseInvoices() {
                             Purchase Invoices
                         </span>
                     </h1>
-                    <p className="text-body-sm text-muted">
-                        كل فواتير الموردين — الإجمالي والمسدد والمتبقي بحسب الفترة المحددة.
-                    </p>
+                    <p className="text-body-sm text-muted">كل فواتير الموردين — الإجمالي والمسدد والمتبقي بحسب الفترة المحددة.</p>
                 </div>
                 <div className="flex flex-wrap items-center gap-xs" data-erp-print-hide>
                     {canCreate ? (
@@ -1100,10 +1075,7 @@ export function PurchaseInvoices() {
                             كل الفترات
                         </button>
                     </fieldset>
-                    <label
-                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-invoices-from"
-                    >
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-invoices-from">
                         من
                         <input
                             id="erp-invoices-from"
@@ -1170,9 +1142,7 @@ export function PurchaseInvoices() {
                 {invoicesQuery.isSuccess && rows.length === 0 ? (
                     <StateEmpty
                         title="لا توجد فواتير في الفترة المحددة"
-                        hint={
-                            rangeInvalid ? 'صحّح التاريخين أولًا.' : 'وسّع الفترة أو اختر «كل الفترات» لرؤية السجل كاملًا.'
-                        }
+                        hint={rangeInvalid ? 'صحّح التاريخين أولًا.' : 'وسّع الفترة أو اختر «كل الفترات» لرؤية السجل كاملًا.'}
                     />
                 ) : null}
 
@@ -1188,46 +1158,12 @@ export function PurchaseInvoices() {
                             <table className="w-full border-collapse text-body-md">
                                 <thead>
                                     <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                        <SortableTh
-                                            label="رقم الفاتورة"
-                                            sortKey="number"
-                                            sort={sort}
-                                            onToggle={toggleSort}
-                                        />
-                                        <SortableTh
-                                            label="المورد"
-                                            sortKey="supplier"
-                                            sort={sort}
-                                            onToggle={toggleSort}
-                                        />
-                                        <SortableTh
-                                            label="التاريخ"
-                                            sortKey="date"
-                                            sort={sort}
-                                            onToggle={toggleSort}
-                                            align="center"
-                                        />
-                                        <SortableTh
-                                            label="الإجمالي"
-                                            sortKey="total"
-                                            sort={sort}
-                                            onToggle={toggleSort}
-                                            align="end"
-                                        />
-                                        <SortableTh
-                                            label="المسدد"
-                                            sortKey="paid"
-                                            sort={sort}
-                                            onToggle={toggleSort}
-                                            align="end"
-                                        />
-                                        <SortableTh
-                                            label="المتبقي"
-                                            sortKey="remaining"
-                                            sort={sort}
-                                            onToggle={toggleSort}
-                                            align="end"
-                                        />
+                                        <SortableTh label="رقم الفاتورة" sortKey="number" sort={sort} onToggle={toggleSort} />
+                                        <SortableTh label="المورد" sortKey="supplier" sort={sort} onToggle={toggleSort} />
+                                        <SortableTh label="التاريخ" sortKey="date" sort={sort} onToggle={toggleSort} align="center" />
+                                        <SortableTh label="الإجمالي" sortKey="total" sort={sort} onToggle={toggleSort} align="end" />
+                                        <SortableTh label="المسدد" sortKey="paid" sort={sort} onToggle={toggleSort} align="end" />
+                                        <SortableTh label="المتبقي" sortKey="remaining" sort={sort} onToggle={toggleSort} align="end" />
                                         <SortableTh label="الدفع" sortKey="method" sort={sort} onToggle={toggleSort} />
                                         <SortableTh label="الحالة" sortKey="status" sort={sort} onToggle={toggleSort} />
                                         {showActions ? (
@@ -1254,15 +1190,10 @@ export function PurchaseInvoices() {
                                                     {row.supplier}
                                                 </span>
                                             </td>
-                                            <td
-                                                className="erp-numeric px-sm py-xxs text-center text-body-sm text-muted"
-                                                dir="ltr"
-                                            >
+                                            <td className="erp-numeric px-sm py-xxs text-center text-body-sm text-muted" dir="ltr">
                                                 {row.date || '—'}
                                             </td>
-                                            <td className="erp-numeric px-sm py-xxs text-end text-ink">
-                                                {formatMoney(row.total)}
-                                            </td>
+                                            <td className="erp-numeric px-sm py-xxs text-end text-ink">{formatMoney(row.total)}</td>
                                             <td className="erp-numeric px-sm py-xxs text-end text-body-sm text-muted">
                                                 {formatMoney(row.paid)}
                                             </td>
@@ -1272,11 +1203,7 @@ export function PurchaseInvoices() {
                                             <td className="px-sm py-xxs text-body-sm text-muted">{row.methodLabel}</td>
                                             <td className="px-sm py-xxs text-body-sm">
                                                 <span
-                                                    className={
-                                                        row.statusKnown
-                                                            ? (STATUS_TONE[row.status] ?? 'text-muted')
-                                                            : 'text-muted'
-                                                    }
+                                                    className={row.statusKnown ? (STATUS_TONE[row.status] ?? 'text-muted') : 'text-muted'}
                                                 >
                                                     {row.statusLabel}
                                                 </span>
@@ -1442,9 +1369,7 @@ export function PurchaseInvoices() {
                         closePartialPayment();
                     }
                 }}
-                title={
-                    partialTarget ? `${INVOICE_TEXT.partialTitle} — ${partialTarget.number}` : INVOICE_TEXT.partialTitle
-                }
+                title={partialTarget ? `${INVOICE_TEXT.partialTitle} — ${partialTarget.number}` : INVOICE_TEXT.partialTitle}
                 size="sm"
                 footer={
                     <>

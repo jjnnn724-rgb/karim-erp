@@ -35,7 +35,8 @@ function current() {
     const v1 = jsNames(V1_DIR);
     // registry.js بنيةٌ تحميلية لا شاشة (جدول راويات) — لا صف ترحيل لها ولا
     // دورةَ حياة؛ إدخالها في فحص «الشاشات» يقيس البنية بمقياس الواجهات.
-    const screens = jsNames(SCREENS_DIR).filter((n) => n !== 'registry');
+    // compliance.js is a reusable settings section, not a standalone screen.
+    const screens = jsNames(SCREENS_DIR).filter((n) => !['registry', 'compliance'].includes(n));
     const registrySrc = fs.readFileSync(path.join(SCREENS_DIR, 'registry.js'), 'utf8');
     const md = fs.readFileSync(MIGRATION_MD, 'utf8');
     // الـcorpus يُبنى مرة واحدة — لا داخل فلتر الشاشات الـ62 (٦٢ قراءة متكرّرة

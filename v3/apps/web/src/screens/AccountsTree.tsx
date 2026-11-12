@@ -1,135 +1,134 @@
-import type { V3ChartAccount } from '@karim/shared';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useMemo, useState } from 'react';
+import { type AccountChartFilterDraft, SearchToolbar } from '../components/AccountingChartFilters';
 import { ChevronIcon } from '../components/icons';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { PrintActions } from '../components/PrintActions';
-import { accountTypeLabel } from '../lib/format';
-import { fetchChart } from '../lib/queries';
+import type { AccountChartNode } from '../lib/account-chart';
+import { mockAccountChartPageService } from '../lib/account-chart';
+import { accountTypeLabel, formatInt } from '../lib/format';
 import { queryKeys } from '../lib/queryKeys';
+import type { DataTableColumn, DataTableTreeRow } from '../ui';
+import { DataTable, useToast } from '../ui';
 
-/**
- * شجرة الحسابات — قراءة فقط (`/api/v3/accounting/chart`).
- *
- * الشجرة مبنية من `parent_code` لا من ترتيب النتيجة: حسابٌ بلا أبٍ موجودٍ في
- * القائمة يُعرض جذرًا (لا يختفي شيء)، والعمق يُحسب بالعدّ.
- */
+const PAGE_SIZE = 4;
+const EMPTY_PAGE_ITEMS: AccountChartNode[] = [];
 
-interface TreeNode {
-    account: V3ChartAccount;
-    children: TreeNode[];
-    depth: number;
+const EMPTY_FILTERS: AccountChartFilterDraft = {
+    search: '',
+    type: 'all',
+    level: null,
+};
+
+function getAccountChildren(node: AccountChartNode): AccountChartNode[] {
+    return node.children;
 }
 
-function buildTree(accounts: readonly V3ChartAccount[]): TreeNode[] {
-    const nodes = new Map<string, TreeNode>();
-    for (const account of accounts) {
-        nodes.set(account.code, { account, children: [], depth: 0 });
+function renderTreeToggle({ row, expanded, canExpand, toggle }: DataTableTreeRow<AccountChartNode>) {
+    if (!canExpand) {
+        return <span aria-hidden="true" className="inline-block w-5 shrink-0" />;
     }
-    const roots: TreeNode[] = [];
-    for (const account of accounts) {
-        const node = nodes.get(account.code);
-        if (!node) {
-            continue;
-        }
-        const parentCode = account.parent_code;
-        const parent = parentCode ? nodes.get(parentCode) : undefined;
-        if (parent && parent.account.code !== account.code) {
-            parent.children.push(node);
-        } else {
-            roots.push(node);
-        }
-    }
-    const assignDepth = (node: TreeNode, depth: number): void => {
-        node.depth = depth;
-        for (const child of node.children) {
-            assignDepth(child, depth + 1);
-        }
-    };
-    for (const root of roots) {
-        assignDepth(root, 0);
-    }
-    return roots;
+
+    return (
+        <button
+            type="button"
+            onClick={toggle}
+            aria-expanded={expanded}
+            aria-label={`${expanded ? 'طيّ' : 'فتح'} حساب ${row.account.code}`}
+            className="grid size-5 shrink-0 place-items-center rounded-sm text-muted hover:bg-surface-sunken hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+        >
+            <ChevronIcon className={`size-4 ${expanded ? '' : 'rotate-90'}`} />
+        </button>
+    );
 }
 
-/**
- * يسرد الصفوف المرئية.
- *
- * أثناء البحث تُفتح كل المستويات: الشجرة المُصفَّاة فيها الطريق إلى المطابقة
- * فقط، فإخفاؤه خلف عقد الطيّ يُخفي المطابقة نفسها.
- */
-function flatten(
-    nodes: readonly TreeNode[],
-    expanded: ReadonlySet<string>,
-    expandAll: boolean,
-    out: TreeNode[] = [],
-): TreeNode[] {
-    for (const node of nodes) {
-        out.push(node);
-        if (node.children.length > 0 && (expandAll || expanded.has(node.account.code))) {
-            flatten(node.children, expanded, expandAll, out);
-        }
-    }
-    return out;
-}
-
-/** يبقى المرشّح مع أسلافه: الطريق إلى المطابقة يبقى مرئيًا. */
-function keepMatching(node: TreeNode, needle: string): TreeNode | null {
-    const children = node.children
-        .map((child) => keepMatching(child, needle))
-        .filter((child): child is TreeNode => child !== null);
-    const selfMatch = node.account.code.toLowerCase().includes(needle) || node.account.name_ar.includes(needle);
-    if (!selfMatch && children.length === 0) {
-        return null;
-    }
-    return { account: node.account, children, depth: node.depth };
-}
+const ACCOUNT_COLUMNS: DataTableColumn<AccountChartNode>[] = [
+    {
+        key: 'account',
+        header: 'الحساب',
+        cell: (node) => (
+            <span className="flex items-center gap-xs">
+                <span className="erp-numeric text-body-md text-ink">{node.account.code}</span>
+                {!node.account.is_active ? (
+                    <span className="rounded-full border border-neutral px-xs py-xxs text-caption text-neutral-text">غير نشط</span>
+                ) : null}
+            </span>
+        ),
+        sortValue: (node) => node.account.code,
+        exportValue: (node) => node.account.code,
+    },
+    {
+        key: 'name',
+        header: 'الاسم',
+        cell: (node) => node.account.name_ar,
+        sortValue: (node) => node.account.name_ar,
+        exportValue: (node) => node.account.name_ar,
+    },
+    {
+        key: 'type',
+        header: 'النوع',
+        cell: (node) => accountTypeLabel(node.account.type),
+        sortValue: (node) => node.account.type,
+        exportValue: (node) => accountTypeLabel(node.account.type),
+    },
+    {
+        key: 'postable',
+        header: 'قابل للترحيل',
+        cell: (node) => (node.account.is_postable ? 'نعم' : 'لا'),
+        exportValue: (node) => (node.account.is_postable ? 'نعم' : 'لا'),
+    },
+];
 
 export function AccountsTree() {
-    const [search, setSearch] = useState('');
-    const [expanded, setExpanded] = useState<ReadonlySet<string>>(new Set());
-    const initialized = useRef(false);
+    const { toast } = useToast();
+    const [draft, setDraft] = useState<AccountChartFilterDraft>(EMPTY_FILTERS);
+    const [filters, setFilters] = useState<AccountChartFilterDraft>(EMPTY_FILTERS);
+    const [page, setPage] = useState(1);
+    const request = useMemo(() => ({ ...filters, page, pageSize: PAGE_SIZE }), [filters, page]);
 
     const query = useQuery({
-        queryKey: queryKeys.chart,
-        queryFn: ({ signal }) => fetchChart(signal),
+        queryKey: queryKeys.chartPage(request.page, request.pageSize, request.search, request.type, request.level),
+        queryFn: ({ signal }) => mockAccountChartPageService(request, signal),
     });
 
-    const accounts = useMemo(() => query.data ?? [], [query.data]);
-    const tree = useMemo(() => buildTree(accounts), [accounts]);
-
-    useEffect(() => {
-        if (initialized.current || accounts.length === 0) {
-            return;
-        }
-        initialized.current = true;
-        // الجذور مفتوحة افتراضيًا: البنية تظهر دون نقر.
-        const rootsWithChildren = tree.filter((node) => node.children.length > 0).map((node) => node.account.code);
-        setExpanded(new Set(rootsWithChildren));
-    }, [accounts.length, tree]);
-
-    const needle = search.trim();
-    const visibleTree = useMemo(() => {
-        if (!needle) {
-            return tree;
-        }
-        const lower = needle.toLowerCase();
-        return tree.map((node) => keepMatching(node, lower)).filter((node): node is TreeNode => node !== null);
-    }, [needle, tree]);
-
-    const visible = useMemo(() => flatten(visibleTree, expanded, needle !== ''), [expanded, needle, visibleTree]);
-    const activeCount = accounts.filter((account) => account.is_active).length;
-
-    function toggle(code: string) {
-        setExpanded((previous) => {
-            const next = new Set(previous);
-            if (next.has(code)) {
-                next.delete(code);
-            } else {
-                next.add(code);
+    const pageItems = query.data?.items ?? EMPTY_PAGE_ITEMS;
+    const hasActiveFilters = filters.search.trim() !== '' || filters.type !== 'all' || filters.level !== null;
+    const defaultExpanded = useMemo(() => {
+        const expanded: Record<string, boolean> = {};
+        const visit = (nodes: readonly AccountChartNode[], rootsOnly: boolean) => {
+            for (const node of nodes) {
+                if (node.children.length > 0 && (!rootsOnly || node.depth === 0)) {
+                    expanded[node.account.code] = true;
+                }
+                visit(node.children, rootsOnly);
             }
-            return next;
-        });
+        };
+        visit(pageItems, !hasActiveFilters);
+        return expanded;
+    }, [hasActiveFilters, pageItems]);
+
+    const tree = useMemo(
+        () => ({
+            getSubRows: getAccountChildren,
+            columnKey: 'account',
+            renderToggle: renderTreeToggle,
+            defaultExpanded,
+            rowCount: query.data?.rowCount ?? 0,
+            indentSize: 18,
+        }),
+        [defaultExpanded, query.data?.rowCount],
+    );
+
+    function applyFilters() {
+        setFilters({ ...draft, search: draft.search.trim() });
+        setPage(1);
+        toast({ title: 'تم تطبيق المرشّحات', variant: 'success' });
+    }
+
+    function resetFilters() {
+        setDraft(EMPTY_FILTERS);
+        setFilters(EMPTY_FILTERS);
+        setPage(1);
+        toast({ title: 'تم مسح المرشّحات', variant: 'success' });
     }
 
     return (
@@ -137,133 +136,58 @@ export function AccountsTree() {
             <header className="flex flex-wrap items-end justify-between gap-sm">
                 <div>
                     <h1 className="text-display-lg text-ink">شجرة الحسابات</h1>
-                    <p className="text-body-sm text-muted">
-                        {accounts.length > 0
-                            ? `${String(accounts.length)} حسابًا · ${String(activeCount)} نشطًا`
-                            : 'لا توجد حسابات معروضة'}
+                    <p className="text-body-sm text-muted" aria-live="polite">
+                        {query.isSuccess
+                            ? `${formatInt(query.data.matchedAccounts)} حساب مطابق · ${formatInt(query.data.total)} مجموعة حساب رئيسية`
+                            : 'عرض شجري للحسابات مع البحث والمرشّحات'}
                     </p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>
                     <PrintActions title="شجرة الحسابات" />
-                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-v3-chart-search">
-                        بحث
-                        <input
-                            id="erp-v3-chart-search"
-                            type="search"
-                            value={search}
-                            placeholder="رمز الحساب أو اسمه"
-                            onChange={(event) => {
-                                setSearch(event.target.value);
-                            }}
-                            className="h-9 w-56 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
-                        />
-                    </label>
                 </div>
             </header>
 
-            <Card>
-                {query.isPending ? (
-                    <div aria-busy="true">
-                        <StateLoading label="جارٍ تحميل شجرة الحسابات" />
-                        <TableSkeleton rows={6} columns={4} />
-                    </div>
-                ) : null}
+            <SearchToolbar
+                value={draft}
+                levels={query.data?.availableLevels ?? []}
+                onChange={setDraft}
+                onApply={applyFilters}
+                onReset={resetFilters}
+            />
 
-                {query.isError ? (
-                    <StateError
-                        message={query.error instanceof Error ? query.error.message : 'خطأ غير معروف'}
-                        onRetry={() => {
-                            void query.refetch();
-                        }}
-                    />
-                ) : null}
-
-                {query.isSuccess && accounts.length === 0 ? (
-                    <StateEmpty
-                        title="لا توجد حسابات"
-                        hint="لم تُستورد الحسابات بعد."
-                    />
-                ) : null}
-
-                {query.isSuccess && accounts.length > 0 && visible.length === 0 ? (
-                    <StateEmpty title="لا نتائج" hint="لا حساب يطابق البحث — جرّب رمزًا آخر أو امسح البحث." />
-                ) : null}
-
-                {query.isSuccess && visible.length > 0 ? (
-                    <TableScroll label="جدول شجرة الحسابات">
-                        <table className="w-full border-collapse text-body-md">
-                            <thead>
-                                <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                    <th scope="col" className="px-sm py-xs text-start font-medium">
-                                        الحساب
-                                    </th>
-                                    <th scope="col" className="px-sm py-xs text-start font-medium">
-                                        الاسم
-                                    </th>
-                                    <th scope="col" className="px-sm py-xs text-start font-medium">
-                                        النوع
-                                    </th>
-                                    <th scope="col" className="px-sm py-xs text-start font-medium">
-                                        قابل للترحيل
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {visible.map((node) => {
-                                    const hasChildren = node.children.length > 0;
-                                    const isOpen = expanded.has(node.account.code);
-                                    return (
-                                        <tr
-                                            key={node.account.code}
-                                            className="border-b border-hairline last:border-b-0 hover:bg-surface-hover"
-                                        >
-                                            <td className="px-sm py-xxs">
-                                                <span
-                                                    className="flex items-center gap-xxs"
-                                                    style={{ paddingInlineStart: `${String(node.depth * 18)}px` }}
-                                                >
-                                                    {hasChildren ? (
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => {
-                                                                toggle(node.account.code);
-                                                            }}
-                                                            aria-expanded={isOpen}
-                                                            aria-label={`${isOpen ? 'طيّ' : 'فتح'} حساب ${node.account.code}`}
-                                                            className="grid size-5 place-items-center rounded-sm text-muted hover:bg-surface-sunken hover:text-ink"
-                                                        >
-                                                            <ChevronIcon
-                                                                className={`size-4 ${isOpen ? '' : 'rotate-90'}`}
-                                                            />
-                                                        </button>
-                                                    ) : (
-                                                        <span aria-hidden="true" className="inline-block w-5" />
-                                                    )}
-                                                    <span className="erp-numeric text-body-md text-ink">
-                                                        {node.account.code}
-                                                    </span>
-                                                    {node.account.is_active ? null : (
-                                                        <span className="rounded-full border border-neutral px-xs py-xxs text-caption text-neutral-text">
-                                                            غير نشط
-                                                        </span>
-                                                    )}
-                                                </span>
-                                            </td>
-                                            <td className="px-sm py-xxs text-ink">{node.account.name_ar}</td>
-                                            <td className="px-sm py-xxs text-body-sm text-muted">
-                                                {accountTypeLabel(node.account.type)}
-                                            </td>
-                                            <td className="px-sm py-xxs text-body-sm text-muted">
-                                                {node.account.is_postable ? 'نعم' : 'لا'}
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </TableScroll>
-                ) : null}
-            </Card>
+            <DataTable<AccountChartNode>
+                title="الحسابات"
+                caption="جدول شجرة الحسابات"
+                columns={ACCOUNT_COLUMNS}
+                rows={pageItems}
+                rowKey={(node) => node.account.code}
+                state={query.isPending ? 'loading' : query.isError ? 'error' : pageItems.length === 0 ? 'empty' : 'data'}
+                loadingRows={6}
+                emptyTitle={hasActiveFilters ? 'لا نتائج' : 'لا توجد حسابات'}
+                emptyDescription={hasActiveFilters ? 'لا يوجد حساب يطابق هذه المرشّحات. جرّب تغييرها أو مسحها.' : 'لم تُستورد الحسابات بعد.'}
+                errorMessage={query.error instanceof Error ? query.error.message : 'خطأ غير معروف'}
+                onRetry={() => {
+                    void query.refetch();
+                }}
+                manualFiltering
+                manualPagination
+                tree={tree}
+                {...(query.isSuccess && query.data.total > 0
+                    ? {
+                          pagination: {
+                              page,
+                              pageSize: PAGE_SIZE,
+                              total: query.data.total,
+                              onPageChange: setPage,
+                              labels: {
+                                  summary: (from: number, to: number, total: number) =>
+                                      `${formatInt(from)}–${formatInt(to)} من ${formatInt(total)} مجموعة حساب رئيسية`,
+                              },
+                          },
+                      }
+                    : {})}
+                exportFilename="شجرة-الحسابات"
+            />
         </div>
     );
 }

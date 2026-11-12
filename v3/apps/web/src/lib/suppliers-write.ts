@@ -90,27 +90,17 @@ export async function createSupplier(input: SupplierCreateInput): Promise<Suppli
 }
 
 export async function updateSupplier(id: string | number, input: SupplierUpdateInput): Promise<SupplierResult> {
-    return writeJson(
-        supplierResultSchema,
-        `/api/procurement/suppliers/${encodeURIComponent(String(id))}`,
-        'PUT',
-        {
-            name: input.name.trim(),
-            phone: input.phone.trim(),
-            address: input.address?.trim() || null,
-            tax_number: input.tax_number?.trim() || null,
-            ...(input.active !== undefined ? { active: input.active } : {}),
-        },
-    );
+    return writeJson(supplierResultSchema, `/api/procurement/suppliers/${encodeURIComponent(String(id))}`, 'PUT', {
+        name: input.name.trim(),
+        phone: input.phone.trim(),
+        address: input.address?.trim() || null,
+        tax_number: input.tax_number?.trim() || null,
+        ...(input.active !== undefined ? { active: input.active } : {}),
+    });
 }
 
 export async function setSupplierActive(id: string | number, active: boolean): Promise<SupplierResult> {
-    return writeJson(
-        supplierResultSchema,
-        `/api/procurement/suppliers/${encodeURIComponent(String(id))}`,
-        'PUT',
-        { active },
-    );
+    return writeJson(supplierResultSchema, `/api/procurement/suppliers/${encodeURIComponent(String(id))}`, 'PUT', { active });
 }
 
 export async function deleteSupplier(id: string | number): Promise<void> {

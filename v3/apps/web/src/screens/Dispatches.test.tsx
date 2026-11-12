@@ -24,6 +24,7 @@ const mocks = vi.hoisted(() => ({
     approveDispatch: vi.fn(),
     rejectDispatch: vi.fn(),
     receiveDispatch: vi.fn(),
+    reopenDispatch: vi.fn(),
 }));
 
 vi.mock('../lib/auth', () => ({
@@ -48,6 +49,7 @@ vi.mock('../lib/dispatches-write', async (importOriginal) => {
         approveDispatch: mocks.approveDispatch,
         rejectDispatch: mocks.rejectDispatch,
         receiveDispatch: mocks.receiveDispatch,
+        reopenDispatch: mocks.reopenDispatch,
     };
 });
 
@@ -223,6 +225,7 @@ beforeEach(() => {
     mocks.approveDispatch.mockResolvedValue({ totalValue: 50 });
     mocks.rejectDispatch.mockResolvedValue(undefined);
     mocks.receiveDispatch.mockResolvedValue(undefined);
+    mocks.reopenDispatch.mockResolvedValue(undefined);
     vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:image/png;base64,AAAA');
 });
 
@@ -369,6 +372,7 @@ describe('أذون الصرف — الأزرار حسب الدور والحال�
         expect(within(rowOf('101')).queryByRole('button', { name: /اعتماد الشيف/ })).toBeNull();
         expect(within(rowOf('104')).queryByRole('button', { name: /استلام/ })).toBeNull();
         expect(within(rowOf('104')).queryByRole('button', { name: /حذف/ })).toBeNull();
+        expect(within(rowOf('104')).queryByRole('button', { name: /إرجاع للمخازن للتعديل/ })).toBeNull();
     });
 
     it('شيف: قرار الشيف على المعلّق المحوَّل واستلام المعتمد، بلا قرار مخازن', async () => {
@@ -389,6 +393,24 @@ describe('أذون الصرف — الأزرار حسب الدور والحال�
         expect(within(rowOf('102')).getByRole('button', { name: /اعتماد وصرف/ })).toBeTruthy();
         expect(within(rowOf('104')).getByRole('button', { name: /استلام/ })).toBeTruthy();
         expect(within(rowOf('104')).getByRole('button', { name: /حذف/ })).toBeTruthy();
+        expect(within(rowOf('104')).getByRole('button', { name: /إرجاع للمخازن للتعديل/ })).toBeTruthy();
+    });
+
+    it('المدير يستطيع إرجاع المعتمد قبل الاستلام مع تسجيل السبب', async () => {
+        mocks.role = 'manager';
+        await ready();
+        expect(within(rowOf('104')).getByRole('button', { name: /إرجاع للمخازن للتعديل/ })).toBeTruthy();
+        expect(within(rowOf('104')).queryByRole('button', { name: 'تعديل' })).toBeNull();
+        clickRowAction('104', /إرجاع للمخازن للتعديل/);
+        const dialog = screen.getByRole('dialog');
+        expect(within(dialog).getByText(/سيُعكس خصم المخزون وتكلفة القسم/)).toBeTruthy();
+        fireEvent.change(within(dialog).getByLabelText('سبب الإرجاع (إلزامي)'), {
+            target: { value: 'تصحيح الكمية' },
+        });
+        submitForm('erp-dispatch-reopen-form');
+        await waitFor(() => {
+            expect(mocks.reopenDispatch).toHaveBeenCalledWith('104', 'تصحيح الكمية');
+        });
     });
 
     it('رئيس قسم: إنشاء، وتعديل طلبه المعلّق فقط', async () => {

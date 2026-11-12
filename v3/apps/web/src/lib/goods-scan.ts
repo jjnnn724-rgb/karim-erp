@@ -145,9 +145,7 @@ export function resolveScan(
 }
 
 function barcodeHolders(rows: readonly ScanItem[], code: string, exceptId?: string | number): ScanItem[] {
-    return rows.filter(
-        (row) => normalizeCode(row.barcode) === code && (exceptId === undefined || String(row.id) !== String(exceptId)),
-    );
+    return rows.filter((row) => normalizeCode(row.barcode) === code && (exceptId === undefined || String(row.id) !== String(exceptId)));
 }
 
 export type AssignDecision = {
@@ -359,12 +357,7 @@ function normalizedExpiryDate(value: string | null): string | null {
     const month = Number(match[2]);
     const day = Number(match[3]);
     const date = new Date(Date.UTC(year, month - 1, day));
-    if (
-        year < 1900 ||
-        date.getUTCFullYear() !== year ||
-        date.getUTCMonth() !== month - 1 ||
-        date.getUTCDate() !== day
-    ) {
+    if (year < 1900 || date.getUTCFullYear() !== year || date.getUTCMonth() !== month - 1 || date.getUTCDate() !== day) {
         return null;
     }
     return `${match[1]}-${match[2]}-${match[3]}`;
@@ -394,12 +387,10 @@ export function receiptPayload(item: ScanItem, line: ScanLine) {
 }
 
 export async function receiveInventoryItem(itemId: string | number, payload: ReturnType<typeof receiptPayload>) {
-    await fetchJson(
-        unknownResponse,
-        `/api/warehouse/inventory/${encodeURIComponent(String(itemId))}/receipt`,
-        getAccessToken(),
-        { method: 'POST', body: payload },
-    );
+    await fetchJson(unknownResponse, `/api/warehouse/inventory/${encodeURIComponent(String(itemId))}/receipt`, getAccessToken(), {
+        method: 'POST',
+        body: payload,
+    });
 }
 
 export async function fetchScanDepartments(signal?: AbortSignal): Promise<ScanDepartment[]> {

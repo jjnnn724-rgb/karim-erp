@@ -3,13 +3,7 @@ import { useMemo, useState } from 'react';
 import { PrintActions } from '../components/PrintActions';
 import { BarList, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
-import {
-    buildHrKpis,
-    departmentDistribution,
-    fetchHrSnapshot,
-    pendingLeaveRows,
-    weeklyAttendance,
-} from '../lib/hr-dashboard';
+import { buildHrKpis, departmentDistribution, fetchHrSnapshot, pendingLeaveRows, weeklyAttendance } from '../lib/hr-dashboard';
 import { errorMessage, intOf, presetRange, rangeProblem, shareOf } from '../lib/reporting';
 import { FilterBar, StatCard } from '../ui';
 
@@ -93,10 +87,7 @@ export function HrDashboard() {
 
             {snapshot ? (
                 <>
-                    <ul
-                        className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4"
-                        aria-label="مؤشرات الموارد البشرية"
-                    >
+                    <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4" aria-label="مؤشرات الموارد البشرية">
                         {kpis.map((kpi) => (
                             <StatCard
                                 key={kpi.id}
@@ -172,10 +163,7 @@ export function HrDashboard() {
                                     </thead>
                                     <tbody>
                                         {filteredPending.map((leave) => (
-                                            <tr
-                                                key={leave.id}
-                                                className="border-b border-hairline hover:bg-surface-hover"
-                                            >
+                                            <tr key={leave.id} className="border-b border-hairline hover:bg-surface-hover">
                                                 <td className="px-sm py-xxs text-ink">{leave.employee}</td>
                                                 <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">
                                                     {leave.start || '—'}
@@ -192,10 +180,7 @@ export function HrDashboard() {
                     </SectionCard>
 
                     {snapshot.failures.length > 0 ? (
-                        <p
-                            className="rounded-md border border-warning bg-surface p-sm text-body-sm text-warning-text"
-                            role="alert"
-                        >
+                        <p className="rounded-md border border-warning bg-surface p-sm text-body-sm text-warning-text" role="alert">
                             {`تعذّر قراءة: ${snapshot.failures.join(' · ')}`}
                         </p>
                     ) : null}

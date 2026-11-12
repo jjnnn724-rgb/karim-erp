@@ -162,9 +162,7 @@ export function WhVsPos() {
                                                 className="border-b border-hairline hover:bg-surface-hover"
                                             >
                                                 <td className="px-sm py-xxs text-ink">{textOf(row.name) || '—'}</td>
-                                                <td className="px-sm py-xxs text-body-sm text-muted">
-                                                    {textOf(row.dept) || '—'}
-                                                </td>
+                                                <td className="px-sm py-xxs text-body-sm text-muted">{textOf(row.dept) || '—'}</td>
                                                 <td className="erp-numeric px-sm py-xxs" dir="ltr">
                                                     {qtyOf(row.wh_qty)}
                                                 </td>
@@ -189,14 +187,10 @@ export function WhVsPos() {
                                                 <td className="px-sm py-xxs text-body-sm">
                                                     <span
                                                         className={
-                                                            Math.abs(numOf(row.diff)) <= 0.0001
-                                                                ? 'text-success-text'
-                                                                : 'text-warning-text'
+                                                            Math.abs(numOf(row.diff)) <= 0.0001 ? 'text-success-text' : 'text-warning-text'
                                                         }
                                                     >
-                                                        {WH_VS_POS_STATUS_AR[textOf(row.status)] ??
-                                                            textOf(row.status) ??
-                                                            '—'}
+                                                        {WH_VS_POS_STATUS_AR[textOf(row.status)] ?? textOf(row.status) ?? '—'}
                                                     </span>
                                                 </td>
                                                 <td className="erp-numeric px-sm py-xxs text-body-sm" dir="ltr">

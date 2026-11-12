@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { PrintActions } from '../components/PrintActions';
 import { BarList, KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { fetchMonthlyComparison, latestMonth, MONTH_OPTIONS, topMonth } from '../lib/monthly-comparison';
 import { errorMessage, intOf, moneyOf, pctOf, shareOf } from '../lib/reporting';
-import { PrintActions } from '../components/PrintActions';
 
 /**
  * المقارنة الشهرية — شهور النافذة كما يرتّبها الخادم، مع مجاميعه.
@@ -23,9 +23,7 @@ export function MonthlyComparison() {
     const latest = latestMonth(data);
     const best = topMonth(data);
     const bestRevenue = Number(best?.revenue ?? 0);
-    const chart = [...rows]
-        .sort((a, b) => Number(b.revenue ?? 0) - Number(a.revenue ?? 0))
-        .slice(0, 8);
+    const chart = [...rows].sort((a, b) => Number(b.revenue ?? 0) - Number(a.revenue ?? 0)).slice(0, 8);
 
     return (
         <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-lg">
@@ -41,7 +39,7 @@ export function MonthlyComparison() {
             <PrintActions title="المقارنة الشهرية" />
 
             <SectionCard title="النافذة" english="Window">
-                <div className="flex flex-wrap items-center gap-xs p-sm" role="group" aria-label="عدد الشهور">
+                <fieldset className="m-0 flex min-w-0 flex-wrap items-center gap-xs border-0 p-sm" aria-label="عدد الشهور">
                     {MONTH_OPTIONS.map((option) => (
                         <button
                             key={option}
@@ -59,7 +57,7 @@ export function MonthlyComparison() {
                             {`${String(option)} شهرًا`}
                         </button>
                     ))}
-                </div>
+                </fieldset>
             </SectionCard>
 
             {comparisonQuery.isPending ? <StateLoading label="جارٍ قراءة المقارنة الشهرية…" /> : null}
@@ -181,4 +179,3 @@ export function MonthlyComparison() {
         </div>
     );
 }
-

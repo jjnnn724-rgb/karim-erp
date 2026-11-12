@@ -8,13 +8,7 @@ installDomPolyfills();
 describe('Checkbox', () => {
     it('يربط التسمية والوصف ويُبلّغ بالتغيير', () => {
         const onCheckedChange = vi.fn();
-        render(
-            <Checkbox
-                label="تذكّرني"
-                description="يبقى الدخول فعّالًا على هذا الجهاز"
-                onCheckedChange={onCheckedChange}
-            />,
-        );
+        render(<Checkbox label="تذكّرني" description="يبقى الدخول فعّالًا على هذا الجهاز" onCheckedChange={onCheckedChange} />);
 
         const checkbox = screen.getByRole('checkbox', { name: 'تذكّرني' });
         expect(checkbox.getAttribute('data-state')).toBe('unchecked');

@@ -119,12 +119,7 @@ export async function fetchDepartments(signal?: AbortSignal): Promise<Department
 }
 
 export async function fetchCurrency(signal?: AbortSignal): Promise<string> {
-    const body = await fetchJson(
-        settingsSchema,
-        '/api/settings/main_settings',
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    const body = await fetchJson(settingsSchema, '/api/settings/main_settings', getAccessToken(), signal ? { signal } : {});
     return body.currency ?? '';
 }
 
@@ -179,14 +174,7 @@ export function noteText(raw: string | null | undefined): string {
     return ['مبيعات الكاشير', ...facts].join(' · ');
 }
 
-const STOCK_TYPES = [
-    'dispatch',
-    'dispatch_return',
-    'receipt',
-    'stock_transfer',
-    'inventory_transfer',
-    'kitchen_return',
-];
+const STOCK_TYPES = ['dispatch', 'dispatch_return', 'receipt', 'stock_transfer', 'inventory_transfer', 'kitchen_return'];
 
 export function expenseKind(row: ExpenseRow): 'count' | 'return' | 'stock' | 'auto' | 'manual' {
     const type = String(row.adjustmentType ?? '').toLowerCase();

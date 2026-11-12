@@ -151,7 +151,21 @@ const fs = require('fs'); // FIX 2026-10-11: moved to module scope — was block
     }
 }
 
-const PORT = process.env.PORT || 5000;
+/*
+ * المنفذ: `PORT=0` أو قيمة غير رقمية تعني «أي منفذ يختاره النظام» في Node،
+ * فيستمع الخادم على منفذ عشوائي بينما المشغّل والمتصفح ينتظران 5001 — فيبدو
+ * النظام متوقفًا رغم أنه يعمل. نرفض هذا الإعداد بدل الاستماع في مكان لا
+ * يعرفه أحد: القيمة الصالحة وحدها تُستخدم، وما عداها يرجع للمنفذ الرسمي 5001.
+ */
+const RAW_PORT = String(process.env.PORT ?? '').trim();
+const PORT_NUMBER = Number(RAW_PORT);
+const PORT =
+    /^\d+$/.test(RAW_PORT) && PORT_NUMBER >= 1 && PORT_NUMBER <= 65535 ? PORT_NUMBER : 5001;
+if (RAW_PORT !== '' && String(PORT) !== RAW_PORT) {
+    logger.warn(
+        `[PORT] قيمة PORT غير صالحة (${RAW_PORT}) — استُخدم ${PORT} بدلًا منها. صحّح PORT في .env.`,
+    );
+}
 
 // -------------------------------------------------------
 // Unified CORS source-of-truth (B.5)
@@ -673,6 +687,10 @@ app.use('/api/finance', (req, res, next) => { req.io = io; next(); }, financeRou
 // Accounting dept: chart of accounts + double-entry journal + CFO summary.
 const { router: accountingRouter } = require('./accounting-routes');
 app.use('/api/accounting', (req, res, next) => { req.io = io; next(); }, accountingRouter);
+// قراءة V3 (شجرة الحسابات/القيود) بعقدها النصي المعلن — إضافة محضة بجانب
+// القديم: نفس سلسلة jwtAuth+requireRole، ولا كتابة هنا (الكتابة في القديم).
+const { createV3AccountingReadRouter } = require('./v3-accounting-read');
+app.use('/api/v3/accounting', createV3AccountingReadRouter());
 // Accounting controls (isolated): period lock + draft/approve + balance-sheet + cash-flow.
 // Guarded load — any failure here never takes the core ledger down.
 try {
@@ -761,7 +779,11 @@ app.use('/api/zkteco', (req, res, next) => { req.io = io; req.app.locals.attenda
 
 // ─── Yarasoft POS invoice import (inside the ERP process) ───
 // استيراد فواتير نقاط البيع من مشاركة الشبكة — قراءة فقط من Yarasoft
+app.locals.io = io;
+app.locals.yarasoftEngine = yarasoftEngine;
 app.use('/api/yarasoft', (req, res, next) => { req.io = io; req.app.locals.yarasoftEngine = yarasoftEngine; next(); }, yarasoftRouter);
+// ─── مصدر البيانات القديم: وضع «مستقل» يوقف Yarasoft/Oracle ويُبقي PostgreSQL وحده ───
+app.use('/api/integrations', require('./legacy-source-routes').router(app));
 // ─── Oracle Data Browser (جداول Oracle المنسوخة) ──────────────────────────
 const oracleDataRouter = require('./yarasoft/oracle-data-routes');
 app.use('/api/oracle-data', oracleDataRouter);
@@ -775,6 +797,11 @@ app.use('/api/cashier-monitor', (req, res, next) => { req.io = io; next(); }, re
 // ─── النسخ الاحتياطي الكامل والاستعادة بزر واحد (مدير فقط) ─────────────
 const systemRouter = require('./system-routes');
 app.use('/api/system', (req, res, next) => { req.io = io; next(); }, systemRouter);
+// ─── الامتثال السعودي: حالة المزوّدين والصادر والاعتمادات (GATE 03) ──────────
+// لا إرسال خارجي هنا؛ الصفوف تُنشأ وتُدار فقط. الحمولة والاعتماد لا يخرجان.
+app.use('/api/integration', require('./integration/routes'));
+// ─── مدد/التأمينات/قوى: جاهزية وكشوف مراجعة فقط — بلا نداء خارجي (GATE 06) ──
+app.use('/api/integration', require('./integration/wps-routes'));
 // ─── مركز التحكم بالسيرفر: بروكسي محروس إلى الخدمة المرافقة (مدير فقط) ──
 require('./server-control-routes').register(app);
 // ─── محرك واتساب (Baileys — معطّل حتى WHATSAPP_ENABLED=true) ─────────────
@@ -3004,7 +3031,12 @@ app.get('/app/sw.js', (req, res) => {
     try {
         let js = fs.readFileSync(path.join(APP_DIR, 'sw.js'), 'utf8');
         const v = frontendVersion();
-        js = js.replace(/const CACHE_VERSION = '[^']*';/, `const CACHE_VERSION = '${v}';`);
+        /* كانت المسافة حول `=` مشروطةً: `const CACHE_VERSION = '...'`. وملف
+           sw.js يكتبها بلا مسافات (`CACHE_VERSION='...'`)، فلم يطابق التعبيرُ
+           شيئًا ظلّ الكاشُ على نسخته الأولى منذ 2026-10-17 — أي أن كل إصدار
+           جديد يُبنى بينما المتصفح يحتفظ بكاشٍ لا يتغيّر اسمه، ولهذا ظلّت
+           الشاشات القديمة تظهر بعد التحديث. التعبير الآن يتحمّل المسافات. */
+        js = js.replace(/const CACHE_VERSION\s*=\s*'[^']*';/, `const CACHE_VERSION = '${v}';`);
         js = js.replace(/\?v=[\d.]+/g, `?v=${v}`);
         res.setHeader('Content-Type', 'application/javascript; charset=utf-8');
         res.setHeader('Cache-Control', 'no-store, must-revalidate');
@@ -3064,11 +3096,44 @@ appBrotliCache.start(); // كنستة أولى بعد التسخين ثم دور
    القديم فورًا. في الإنتاج لا يُنشأ مراقب، والإبطال عبر BROTLI_POLICY_VERSION
    أو POST /api/system/brotli-cache/invalidate (admin). */
 appBrotli.watch();
-app.use((req, res, next) => {
-    if (req.path === '/app/v2.html') {
-        res.setHeader('Content-Security-Policy', buildV2Csp());
+// ─── إعلان الانتقال إلى V3 داخل V2 ─────────────────────────────────────
+// حقنٌ من الخادم لا تعديلٌ في ملفات V2: شجرة frontend/app تحمل تعديلات جلسةٍ
+// أخرى غير مُودَعة (2026-11-07)، وأي لمسٍ لها يستلزم ترقيم الواجهة ويمزج
+// تغييرين في diff واحد. الحقن معزول ومؤقّت: حذف هذا الوسيط يُلغي الإعلان
+// كله، ولا يمسّ كاش الإصدار ولا Service Worker.
+const rollout = require('./rollout');
+const V2_PAGE = path.join(APP_DIR, 'v2.html');
+const V3_ANNOUNCE =
+    '<link rel="stylesheet" href="/v3/v2-announce.css" />\n' +
+    '<script src="/v3/v2-announce.js" defer></script>\n';
+let v2PageCache = { mtimeMs: -1, html: '' };
+function v2PageHtml(primary) {
+    const stat = fs.statSync(V2_PAGE);
+    if (stat.mtimeMs !== v2PageCache.mtimeMs) {
+        v2PageCache = {
+            mtimeMs: stat.mtimeMs,
+            html: fs.readFileSync(V2_PAGE, 'utf8').replace(
+                '</head>',
+                `<meta name="v3-rollout" content="preview" />\n${V3_ANNOUNCE}</head>`,
+            ),
+        };
     }
-    next();
+    // حالة القلب تتغيّر دون تغيّر الملف: تُستبدل في النسخة المخزّنة.
+    return v2PageCache.html.replace(
+        '<meta name="v3-rollout" content="preview" />',
+        `<meta name="v3-rollout" content="${primary ? 'primary' : 'preview'}" />`,
+    );
+}
+app.get('/app/v2.html', (req, res) => {
+    res.setHeader('Content-Security-Policy', buildV2Csp());
+    res.setHeader('Cache-Control', 'no-cache, must-revalidate, proxy-revalidate');
+    res.setHeader('Vary', 'Accept-Encoding');
+    try {
+        res.type('html').send(v2PageHtml(rollout.v3Entry()));
+    } catch (err) {
+        logger.error('[v3] تعذّر تقديم صفحة V2 المعدّلة —', err.message);
+        res.status(500).type('text').send('V2 page unavailable');
+    }
 });
 // شاشة البوفيه القديمة (Tailwind CDN) محجوبة بسياسة CSP الحالية
 // (script-src 'self' يمنع cdn.tailwindcss.com) ⇒ كانت صفحة ميتة: سكربتها
@@ -3087,14 +3152,17 @@ app.get(['/login', '/login.html', '/index.html'], (req, res) => {
     res.redirect(302, '/');
 });
 
-// ─── اعتماد V2 كواجهة رسمية (2026-10-23) ─────────────────────────────────
-// قرار المالك بعد مقارنة القديم/الجديد: كل قوائم القديم (43) لها مسار في V2
-// (tests/v2-adoption.test.js يثبّت التكافؤ). جذر /app/ يحوّل إلى V2 مباشرة،
-// والقديمة تبقى على /app/index.html للطوارئ — داخلها زر V2، وداخل V2 رابط
-// «الرجوع للواجهة القديمة» (preview.js). لا تُمس pos.html / menu.html /
-// menu-board.html — شاشات تشغيلية مستقلة بمداخلها.
+// ─── اعتماد V3 كواجهة رسمية (2026-11-09) بعد V2 (2026-10-23) ─────────────
+// قرار المالك: V3 هو التحديث القادم، ومدخل /app/ يحوّل إليه مباشرة. الجلسة
+// واحدة بين الواجهات (نفس الأصل ونفس مفاتيح localStorage)، وV2 يبقى كاملًا
+// على /app/v2.html للطوارئ — داخله رابط «الواجهة الكلاسيكية»، وداخل V3
+// أمر «فتح الواجهة القديمة». لا تُمس pos.html / menu.html / menu-board.html
+// — شاشات تشغيلية مستقلة بمداخلها.
+// الموعد في `frontend/v3/rollout.json` (backend/rollout.js): قبل 16 نوفمبر
+// يبقى V2 هو المدخل، وبعده يتحوّل تلقائيًا بلا نشرٍ جديد. V3 متاح دائمًا
+// للمعاينة على /v3/، والإعلان داخل V2 يفتح /v3-preview.
 app.get(['/app', '/app/'], (req, res) => {
-    res.redirect(302, '/app/v2.html?live=1');
+    res.redirect(302, rollout.v3Entry() ? '/v3/' : '/app/v2.html?live=1');
 });
 
 app.use('/app', appBrotli);
@@ -3109,6 +3177,16 @@ app.use('/app', express.static(APP_DIR, {
     lastModified: true,
     setHeaders: (res, filePath) => setStaticCacheHeaders(res, filePath),
 }));
+
+// ─── الواجهة الثالثة (React) تحت /v3 ────────────────────────────────────
+// الخدمة + CSP + قلب الشاشات (v3-screens) في وحدة واحدة — راجع v3-static.js.
+try {
+    require('./v3-static').register(app, { buildCsp: buildV2Csp });
+    logger.info('[v3] الواجهة الثالثة مركّبة على /v3');
+} catch (err) {
+    // فشل تركيب V3 لا يُسقط V2: المدخل يعود إلى V2 تلقائيًا عبر fallback.
+    logger.error('[v3] تعذّر تركيب /v3 —', err.message);
+}
 
 // -------------------------------------------------------
 // OmniTrack POS — Institutional Smart Cashier Module
@@ -3299,7 +3377,15 @@ async function onServerListening() {
     } catch (error) { logger.warn('[callout-escalation] تعذر بدء عامل التصعيد (سيستمر الخادم بدونه):', error.message); }
     // ─── استيراد فواتير Yarasoft داخل النظام: المخطط ثم المحرك (معطّل حتى YARASOFT_ENABLED=true) ───
     ensureYarasoftSchema()
-        .then(() => yarasoftEngine.start(io))
+        .then(async () => {
+            // الوضع المستقل يعني PostgreSQL وحده: لا تُستأنف مزامنة Yarasoft بعد إعادة التشغيل.
+            const { isStandalone } = require('./legacy-source-routes');
+            if (await isStandalone()) {
+                logger.info('[legacy-source] الوضع المستقل: تخطّي تشغيل مزامنة Yarasoft عند الإقلاع.');
+                return;
+            }
+            return yarasoftEngine.start(io);
+        })
         .catch((error) => logger.error('[YARASOFT] تعذر تهيئة استيراد الفواتير (سيستمر الخادم بدونها):', error.message));
     // ─── الربط المباشر Oracle (معطّل حتى YARASOFT_ORACLE_ENABLED=true) ───
     // الدورة تُنفَّذ في عملية قصيرة العمر (scripts/oracle-poll-worker.js): خيوط
@@ -3312,7 +3398,12 @@ async function onServerListening() {
         if (oraCfg.enabled) {
             const pollMs = Math.max(1, oraCfg.pollMinutes || 1) * 60 * 1000;
             let activeOracleWorker = null;
-            const runOracleWorker = () => {
+            const runOracleWorker = async () => {
+                // الوضع المستقل: لا دورة Oracle إطلاقًا، ولو بقي المتغيّر البيئي مفعّلًا.
+                try {
+                    const { isStandalone } = require('./legacy-source-routes');
+                    if (await isStandalone()) {return;}
+                } catch (_) { /* القراءة فشلت — نكمل بالسلوك السابق */ }
                 if (activeOracleWorker) {
                     logger.warn('[YARASOFT_ORACLE] تخطي دورة Oracle جديدة — الدورة السابقة ما زالت تعمل');
                     return;

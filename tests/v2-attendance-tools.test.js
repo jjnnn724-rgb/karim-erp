@@ -19,17 +19,19 @@ const read = (p) => fs.readFileSync(p, 'utf8');
 describe('الحضور — أدوات الكتابة في الشاشة', () => {
     const src = () => read(SCREEN);
 
-    test('النواقص والمعالجة والعذر والتصحيح والكشك والتصدير حاضرة', () => {
+    test('النواقص والمعالجة والعذر والتصحيح والتصدير حاضرة', () => {
         const s = src();
         for (const k of ['data-v2-tool', 'data-v2-gaps', 'data-v2-gaps-q',
             'data-v2-resolve', 'data-v2-res-go', 'data-v2-exc-go', 'data-v2-cor-go',
             'buildAttendanceGaps', 'filterGaps', 'updateAttendance', 'createAttendance',
             'createApprovedLeave', 'buildExcusePayload', 'calcPunchTimes',
-            'parseScanPayload', 'scanAttendance', 'scanResultText',
-            'buildExportMatrix', 'exportFileName', 'revertInferred',
-            'attToolsFor', 'openResolve', 'openExcuse', 'openCorrect', 'doScan', 'doExport']) {
+            'buildExportMatrix', 'exportFileName',
+            'attToolsFor', 'openResolve', 'openExcuse', 'openCorrect', 'doExport']) {
             expect(s).toContain(k);
         }
+        // زر التصدير موجود في ATT_TOOL_DEFS ⇒ لا بد أن تكون دالته معرَّفة في
+        // الشاشة نفسها. غيابها كان يرمي «doExport is not defined» عند أول ضغطة.
+        expect(s).toMatch(/async function doExport\(\)/);
     });
 
     test('الأدوار تحسم الظهور — والخادم يحسم التنفيذ', () => {
@@ -57,33 +59,37 @@ describe('الحضور — أدوات الكتابة في الشاشة', () => {
         expect(s).not.toMatch(/data-v2-tr-(save|delete|write)/);
     });
 
-    test('W2-3: الورديات والكشف الشهري والتدقيق الصارم حاضرة بأبوابها', () => {        const s = src();
-        for (const k of ['data-v2-sh-month', 'data-v2-sh-text', 'data-v2-sh-suggest',
-            'data-v2-sh-go', 'data-v2-sh-result', 'data-v2-mo-month', 'data-v2-mo-load',
+    test('W2-3: الكشف الشهري والتدقيق الصارم حاضران؛ الورديات وQR أُزيلا بقرار المالك', () => {
+        const s = src();
+        for (const k of ['data-v2-mo-month', 'data-v2-mo-load',
             'data-v2-mo-print', 'data-v2-mo-body', 'data-v2-au-month', 'data-v2-au-load',
-            'data-v2-au-body', 'validateShiftsText', 'suggestShiftLines',
-            'withSuggestedLines', 'formatShiftsResult', 'fetchShiftsAnalysis', 'applyShifts',
+            'data-v2-au-body',
             'fetchStrictAudit', 'summarizeAudit', 'fetchMonthlyAttendance',
-            'buildMonthlySheet', 'minutesToHM', 'openShifts', 'submitShifts',
+            'buildMonthlySheet', 'minutesToHM',
             'openMonthly', 'loadMonthly', 'openAudit', 'loadAudit', 'printNow']) {
             expect(s).toContain(k);
         }
+        // قرار المالك 2026-11-05: مصدران فقط للبصمة (جهاز + كاميرا التطبيق)،
+        // والدوام من بطاقة الموظف — فأُزيلت لوحة «الورديات من البصمة» وزر
+        // «إلغاء الاستكمال». الحارس هنا يمنع عودتها صامتة، لا يمنع قرارًا جديدًا.
+        for (const gone of ['data-v2-sh-', 'openShifts', 'submitShifts', 'revertInferred']) {
+            expect(s).not.toContain(gone);
+        }
     });
 
-    test('الكشك V2-native: Html5Qrcode من vendor — لا scanner.js ولا بقايا openScanner', () => {
+    test('لا كشك QR داخل الشاشة: المصدر جهاز البصمة أو كاميرا التطبيق فقط', () => {
         const s = src();
-        expect(s).toContain('ensureHtml5Qrcode');
-        expect(s).toMatch(/new window\.Html5Qrcode\('v2att-scan'/);
+        expect(s).not.toContain('Html5Qrcode');
+        expect(s).not.toContain('ensureHtml5Qrcode');
         expect(s).not.toContain('openScanner');
         const code = s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');
         expect(code).not.toMatch(/scanner\.js/);
     });
 
-    test('الكاميرا تخص اللوحة: الفتح والإغلاق واستقبال المسحة والهدم يوقفون العدسة', () => {
+    test('لا عدسة كاميرا مفتوحة في الشاشة (أُزيل الكشك)', () => {
         const s = src();
-        expect(s).toMatch(/function stopScan\(\)/);
-        expect((s.match(/stopScan\(\);/g) || []).length).toBeGreaterThanOrEqual(8);
-        expect(s).toMatch(/destroy\(\)\s*\{\s*stopScan\(\);/);
+        expect(s).not.toMatch(/function stopScan\(\)/);
+        expect(s).not.toMatch(/stopScan\(\);/);
     });
 
     test('نداء طباعة واحد: الكشف يلبس الصنف قبل النداء وينزعه بعده', () => {

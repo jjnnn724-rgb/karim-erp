@@ -318,12 +318,13 @@ describe('طباعة الاستعلام — ورقة A4 من الخادم', () =
         expect(d).not.toMatch(/YaraSoft|يارا/);
     });
 
-    test('الإجماليات قبل LIMIT، ورأس السند مقابل السطور يُعرضان معًا', () => {
+    test('الإجماليات قبل LIMIT، ورأس السند مقابل السطور يُعرضان معًا بلا بند فرق', () => {
         const d = sheetDoor();
         expect(d).toMatch(/COUNT\(DISTINCT o\.doc_no\)/);
         expect(d).toMatch(/SUM\(o\.net\)/);
-        expect(d).toMatch(/خصم \/ تسوية كسور/);
-        expect(d).toMatch(/فرق السطور عن رأس السند/);
+        expect(d).toMatch(/تُعرض المجاميع جنبًا إلى جنب/);
+        expect(d).not.toMatch(/فرق السطور عن رأس السند|السطور تخالف رأس السند بمقدار/);
+        expect(d).not.toMatch(/خصم \/ تسوية كسور/);
     });
 
     test('ورقة الصنف تطبع فواتيره بكميته وسعره ومحصَّل كل فاتورة', () => {
@@ -360,22 +361,26 @@ describe('فارق الهلالات — التسميات والمعادلة', ()
         expect(block).not.toMatch(/قبل الضريبة<\/span><span>\$\{num\(slip\.net\)\}/);
     });
 
-    test('الإيصال يطبع خصم/تسوية صريحًا كي تنطبق المعادلة', () => {
+    test('الإيصال يوسم السجل القديم أرشيفيًّا بدل بند تسوية', () => {
         const block = receiptRoute.slice(receiptRoute.indexOf('const exVat = Number(slip.total'));
-        expect(block).toMatch(/const adj = Math\.round\(\(exVat \+ vatAmt - collected\)/);
-        expect(block).toMatch(/خصم \/ تسوية/);
+        expect(block).toMatch(/const legacyArchive = Math\.abs\(exVat \+ vatAmt - collected\)/);
+        expect(block).toMatch(/سجل مؤرشف من النظام السابق/);
+        expect(block).not.toMatch(/const adj =|خصم \/ تسوية/);
     });
 
-    test('إيصال مبيعات الكاشير يعرض سطر التسوية أيضًا', () => {
-        expect(cashierSalesRoutes).toMatch(/تسوية \(فرق المحصَّل عن صافٍ \+ ضريبة\)/);
+    test('إيصال مبيعات الكاشير لا يطبع سطر تسوية', () => {
+        expect(cashierSalesRoutes).not.toMatch(/تسوية \(فرق المحصَّل عن صافٍ \+ ضريبة\)/);
+        expect(cashierSalesRoutes).toMatch(/سجل مؤرشف من النظام السابق/);
         expect(cashierSalesRoutes).toMatch(/الإجمالي قبل الضريبة/);
     });
 
-    test('بطاقة تفاصيل الفاتورة في الشاشة تعرض قبل الضريبة والمحصَّل والتسوية', () => {
+    test('بطاقة تفاصيل الفاتورة تعرض قبل الضريبة والمحصَّل ووسم الأرشيف بلا تسوية', () => {
         expect(screen).toMatch(/قبل الضريبة<\/span><span class="erp-emp-stat__v">\$\{money\(o\.total\)\}/);
         expect(screen).toMatch(/الإجمالي المحصَّل<\/span><span class="erp-emp-stat__v">\$\{money\(o\.net\)\}/);
-        expect(screen).toMatch(/خصم \/ تسوية كسور/);
-        expect(screen).toMatch(/المحصَّل \+ التسوية = قبل الضريبة \+ الضريبة/);
+        expect(screen).toMatch(/legacy_adjustment/);
+        expect(screen).toMatch(/سجل مؤرشف من النظام السابق/);
+        expect(screen).not.toMatch(/خصم \/ تسوية كسور/);
+        expect(screen).not.toMatch(/المحصَّل \+ التسوية =/);
     });
 
     test('عناوين الجداول لا تسمّي قبل الضريبة «صافيًا»', () => {

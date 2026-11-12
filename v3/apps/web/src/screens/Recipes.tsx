@@ -1,12 +1,12 @@
 import './Recipes.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { PrintActions } from '../components/PrintActions';
+import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
+import { useAuthState } from '../lib/auth';
 import { fetchCurrency, fetchDepartments } from '../lib/finance';
 import { formatMoney } from '../lib/format';
 import { formatInt } from '../lib/inventory-register';
-import { useAuthState } from '../lib/auth';
 import {
     costRatioText,
     fetchRecipes,
@@ -20,13 +20,13 @@ import {
 import {
     createRecipe,
     deleteRecipe,
-    updateRecipe,
-    recipeDeleteConfirm,
     RECIPE_TEXT,
     type RecipeCreateInput,
     type RecipeUpdateInput,
-    recipeWriteVisible,
+    recipeDeleteConfirm,
     recipeDeleteVisible,
+    recipeWriteVisible,
+    updateRecipe,
 } from '../lib/recipes-write';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
@@ -277,15 +277,7 @@ interface RecipeActionDialogProps {
     confirmLabel: string;
 }
 
-function RecipeActionDialog({
-    open,
-    title,
-    message,
-    onConfirm,
-    onClose,
-    pending,
-    confirmLabel,
-}: RecipeActionDialogProps) {
+function RecipeActionDialog({ open, title, message, onConfirm, onClose, pending, confirmLabel }: RecipeActionDialogProps) {
     return (
         <Dialog
             open={open}
@@ -394,9 +386,7 @@ export function Recipes() {
 
     function toggleSort(key: SortKey) {
         setPage(1);
-        setSort((previous) =>
-            previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' },
-        );
+        setSort((previous) => (previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
     }
 
     function resetFilters() {
@@ -459,8 +449,7 @@ export function Recipes() {
     }
 
     const deptOptions = useMemo(
-        () =>
-            departmentsQuery.data?.map((d) => ({ code: String(d.code), name: String(d.name) })) ?? [],
+        () => departmentsQuery.data?.map((d) => ({ code: String(d.code), name: String(d.name) })) ?? [],
         [departmentsQuery.data],
     );
 
@@ -504,27 +493,13 @@ export function Recipes() {
                     value={formatInt(totals.total)}
                     hint={filtered ? `بعد المرشّحات: ${formatInt(sorted.length)}` : 'كل ما وصل من الخادم'}
                 />
-                <Kpi
-                    label="مرتبطة بالكاشير"
-                    english="Linked"
-                    value={formatInt(totals.linked)}
-                    hint="لها صنف POS في كتالوج الكاشير"
-                />
-                <Kpi
-                    label="بدون ربط"
-                    english="Unlinked"
-                    value={formatInt(totals.unlinked)}
-                    hint="وصفات لم تُزامَن مع الكاشير"
-                />
+                <Kpi label="مرتبطة بالكاشير" english="Linked" value={formatInt(totals.linked)} hint="لها صنف POS في كتالوج الكاشير" />
+                <Kpi label="بدون ربط" english="Unlinked" value={formatInt(totals.unlinked)} hint="وصفات لم تُزامَن مع الكاشير" />
                 <Kpi
                     label="الأقسام"
                     english="Departments"
                     value={formatInt(totals.departmentCodes.length)}
-                    hint={
-                        totals.ingredients
-                            ? `${formatInt(totals.ingredients)} مكوّنًا في الكتالوج`
-                            : 'لا مكوّنات في الكتالوج'
-                    }
+                    hint={totals.ingredients ? `${formatInt(totals.ingredients)} مكوّنًا في الكتالوج` : 'لا مكوّنات في الكتالوج'}
                 />
             </div>
 
@@ -544,10 +519,7 @@ export function Recipes() {
                             className="h-10 w-full min-w-0 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:w-72"
                         />
                     </label>
-                    <label
-                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-recipes-dept"
-                    >
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-recipes-dept">
                         القسم
                         <select
                             id="erp-recipes-dept"
@@ -608,9 +580,7 @@ export function Recipes() {
                     </span>
                 </div>
                 {search.folded ? (
-                    <p className="mt-sm text-body-sm text-muted">
-                        بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.
-                    </p>
+                    <p className="mt-sm text-body-sm text-muted">بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.</p>
                 ) : null}
             </Card>
 
@@ -634,11 +604,7 @@ export function Recipes() {
                 {recipesQuery.isSuccess && sorted.length === 0 ? (
                     <StateEmpty
                         title={filtered ? 'لا وصفات تطابق المرشّحات' : 'لا وصفات مسجّلة'}
-                        hint={
-                            filtered
-                                ? 'لا نتائج مطابقة؛ عدّل المرشّحات أو امسحها.'
-                                : 'أضف أول وصفة.'
-                        }
+                        hint={filtered ? 'لا نتائج مطابقة؛ عدّل المرشّحات أو امسحها.' : 'أضف أول وصفة.'}
                     />
                 ) : null}
 
@@ -648,37 +614,12 @@ export function Recipes() {
                             <table className="w-full border-collapse text-body-md">
                                 <thead>
                                     <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                        <SortableTh
-                                            label="اسم الوصفة"
-                                            sortKey="name"
-                                            sort={sort}
-                                            onToggle={toggleSort}
-                                        />
+                                        <SortableTh label="اسم الوصفة" sortKey="name" sort={sort} onToggle={toggleSort} />
                                         <SortableTh label="القسم" sortKey="dept" sort={sort} onToggle={toggleSort} />
-                                        <SortableTh
-                                            label="سعر البيع"
-                                            sortKey="sellingPrice"
-                                            sort={sort}
-                                            onToggle={toggleSort}
-                                        />
-                                        <SortableTh
-                                            label="التكلفة"
-                                            sortKey="totalCost"
-                                            sort={sort}
-                                            onToggle={toggleSort}
-                                        />
-                                        <SortableTh
-                                            label="نسبة التكلفة"
-                                            sortKey="costRatio"
-                                            sort={sort}
-                                            onToggle={toggleSort}
-                                        />
-                                        <SortableTh
-                                            label="مكوّنات"
-                                            sortKey="ingredients"
-                                            sort={sort}
-                                            onToggle={toggleSort}
-                                        />
+                                        <SortableTh label="سعر البيع" sortKey="sellingPrice" sort={sort} onToggle={toggleSort} />
+                                        <SortableTh label="التكلفة" sortKey="totalCost" sort={sort} onToggle={toggleSort} />
+                                        <SortableTh label="نسبة التكلفة" sortKey="costRatio" sort={sort} onToggle={toggleSort} />
+                                        <SortableTh label="مكوّنات" sortKey="ingredients" sort={sort} onToggle={toggleSort} />
                                         <th scope="col" className="px-sm py-xs text-center font-medium">
                                             ربط POS
                                         </th>
@@ -707,9 +648,7 @@ export function Recipes() {
                                                     <span>{row.name}</span>
                                                 </span>
                                             </td>
-                                            <td className="px-sm py-xxs text-body-sm text-muted">
-                                                {row.deptName || '—'}
-                                            </td>
+                                            <td className="px-sm py-xxs text-body-sm text-muted">{row.deptName || '—'}</td>
                                             <td className="erp-numeric px-sm py-xxs text-end text-ink" dir="ltr">
                                                 <Money value={row.sellingPrice} currency={currency} />
                                             </td>
@@ -720,18 +659,12 @@ export function Recipes() {
                                                 {costRatioText(row.costRatio)}
                                             </td>
                                             <td className="erp-numeric px-sm py-xxs text-end text-ink" dir="ltr">
-                                                {row.ingredients ? (
-                                                    formatInt(row.ingredients)
-                                                ) : (
-                                                    <span className="text-muted">—</span>
-                                                )}
+                                                {row.ingredients ? formatInt(row.ingredients) : <span className="text-muted">—</span>}
                                             </td>
                                             <td className="px-sm py-xxs text-center">
                                                 <span
                                                     className={
-                                                        row.productLinked
-                                                            ? 'text-body-sm text-success-text'
-                                                            : 'text-body-sm text-muted'
+                                                        row.productLinked ? 'text-body-sm text-success-text' : 'text-body-sm text-muted'
                                                     }
                                                 >
                                                     {row.productLinked ? 'مرتبط' : 'بدون'}

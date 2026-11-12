@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-    buildPosSaleItems,
-    calculatePosTotals,
-    matchPosBarcode,
-    normalizeBarcode,
-    parsePosMoney,
-    type PosCartLine,
-} from './pos-pricing';
+import { buildPosSaleItems, calculatePosTotals, matchPosBarcode, normalizeBarcode, type PosCartLine, parsePosMoney } from './pos-pricing';
 
 /**
  * حاسبة الكاشير — تُطابق `v2/data/pos-pricing.js` حرفيًّا في الأرقام الشائعة
@@ -47,13 +40,10 @@ describe('calculatePosTotals', () => {
     });
 
     it('خصم نسبة 10% يوزّع تناسبيًّا والضريبة بعد الخصم', () => {
-        const totals = calculatePosTotals(
-            [
-                line({ id: '1', price: 10, quantity: 2 }),
-                line({ id: '2', price: 2.5, quantity: 3 }),
-            ],
-            { type: 'percent', value: '10' },
-        );
+        const totals = calculatePosTotals([line({ id: '1', price: 10, quantity: 2 }), line({ id: '2', price: 2.5, quantity: 3 })], {
+            type: 'percent',
+            value: '10',
+        });
         expect(totals.subtotalBeforeDiscount).toBe(27.5);
         expect(totals.discount).toBe(2.75);
         expect(totals.subtotal).toBe(24.75);
@@ -72,14 +62,10 @@ describe('calculatePosTotals', () => {
     });
 
     it('خصم ثابت يتوزّع ويُرحّل الباقي إلى آخر بند مؤهّل', () => {
-        const totals = calculatePosTotals(
-            [
-                line({ id: '1', price: 10 }),
-                line({ id: '2', price: 10 }),
-                line({ id: '3', price: 10 }),
-            ],
-            { type: 'fixed', value: '10' },
-        );
+        const totals = calculatePosTotals([line({ id: '1', price: 10 }), line({ id: '2', price: 10 }), line({ id: '3', price: 10 })], {
+            type: 'fixed',
+            value: '10',
+        });
         expect(totals.items.map((row) => row.discount)).toEqual([3.33, 3.33, 3.34]);
         expect(totals.subtotal).toBe(20);
         expect(totals.tax).toBe(3);
@@ -87,10 +73,7 @@ describe('calculatePosTotals', () => {
     });
 
     it('البند صفري القيمة لا يأخذ خصمًا ولا يكون آخر مؤهّل', () => {
-        const totals = calculatePosTotals(
-            [line({ id: '1', price: 10 }), line({ id: '2', price: 0 })],
-            { type: 'fixed', value: '1' },
-        );
+        const totals = calculatePosTotals([line({ id: '1', price: 10 }), line({ id: '2', price: 0 })], { type: 'fixed', value: '1' });
         expect(totals.items.map((row) => row.discount)).toEqual([1, 0]);
         expect(totals.items[1]?.tax).toBe(0);
     });
@@ -141,10 +124,10 @@ describe('calculatePosTotals', () => {
 
 describe('buildPosSaleItems', () => {
     it('يرسل بندًا لكل سطر بخصمه المحسوب', () => {
-        const items = buildPosSaleItems(
-            [line({ id: '7', price: 10, quantity: 2 }), line({ id: '9', price: 5 })],
-            { type: 'fixed', value: '5' },
-        );
+        const items = buildPosSaleItems([line({ id: '7', price: 10, quantity: 2 }), line({ id: '9', price: 5 })], {
+            type: 'fixed',
+            value: '5',
+        });
         expect(items).toEqual([
             { product_id: 7, quantity: 2, unit_price: 10, discount: 4 },
             { product_id: 9, quantity: 1, unit_price: 5, discount: 1 },
@@ -152,9 +135,7 @@ describe('buildPosSaleItems', () => {
     });
 
     it('يرفض خصمًا غير صالح قبل أي نداء', () => {
-        expect(() => buildPosSaleItems([line({ price: 10 })], { type: 'percent', value: '-1' })).toThrow(
-            'قيمة الخصم غير صالحة',
-        );
+        expect(() => buildPosSaleItems([line({ price: 10 })], { type: 'percent', value: '-1' })).toThrow('قيمة الخصم غير صالحة');
     });
 });
 

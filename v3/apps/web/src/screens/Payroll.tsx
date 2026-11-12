@@ -1,6 +1,8 @@
 import './Payroll.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { PayrollSuite } from '../components/PayrollSuite';
+import { PayrollWorkbench } from '../components/PayrollWorkbench';
 import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { fetchHrDepartments } from '../lib/employees';
@@ -15,6 +17,8 @@ import {
     sheetRow,
     sheetSummary,
 } from '../lib/payroll';
+import { payrollSheetCsv } from '../lib/payroll-suite';
+import { downloadBlob } from '../lib/pdf-share';
 
 type PayrollView = 'all' | 'approved' | 'other';
 
@@ -83,10 +87,7 @@ export function Payroll() {
     );
     const search = useMemo(() => searchSheetRows(sheetRows, query), [sheetRows, query]);
     const filteredRuns = useMemo(
-        () =>
-            view === 'all'
-                ? runs
-                : runs.filter((run) => (view === 'approved' ? run.status === 'approved' : run.status !== 'approved')),
+        () => (view === 'all' ? runs : runs.filter((run) => (view === 'approved' ? run.status === 'approved' : run.status !== 'approved'))),
         [runs, view],
     );
     const visibleSheetSummary = useMemo(() => sheetSummary(search.rows), [search.rows]);
@@ -101,11 +102,10 @@ export function Payroll() {
                             Payroll
                         </span>
                     </h1>
-                    <p className="text-body-sm text-muted">
-                        سجل المسيرات وكشف الموظفين.
-                    </p>
+                    <p className="text-body-sm text-muted">سجل المسيرات وكشف الموظفين.</p>
                 </div>
                 <div className="flex items-center gap-xs">
+                    <PayrollWorkbench month={month} />
                     <PrintActions title="الرواتب" />
                     <button
                         type="button"
@@ -122,30 +122,15 @@ export function Payroll() {
             </header>
 
             <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4" aria-label="مؤشرات مسيرات الرواتب">
-                <Kpi
-                    label="عدد المسيرات"
-                    english="Payroll runs"
-                    value={formatInt(summary.count)}
-                    hint="المسيرات التي أرسلها الخادم"
-                />
+                <Kpi label="عدد المسيرات" english="Payroll runs" value={formatInt(summary.count)} hint="المسيرات التي أرسلها الخادم" />
                 <Kpi
                     label="عدد الموظفين"
                     english="Employees"
                     value={formatInt(summary.employees)}
                     hint="مجموع أعداد الموظفين في المسيرات"
                 />
-                <Kpi
-                    label="إجمالي الأساسي"
-                    english="Basic total"
-                    value={summary.basic}
-                    hint="مجموع القيمة الأساسية المسجلة"
-                />
-                <Kpi
-                    label="إجمالي الصافي"
-                    english="Net total"
-                    value={summary.net}
-                    hint="مجموع الصافي المسجل في المسيرات"
-                />
+                <Kpi label="إجمالي الأساسي" english="Basic total" value={summary.basic} hint="مجموع القيمة الأساسية المسجلة" />
+                <Kpi label="إجمالي الصافي" english="Net total" value={summary.net} hint="مجموع الصافي المسجل في المسيرات" />
             </ul>
 
             <Card>
@@ -157,9 +142,7 @@ export function Payroll() {
                                 Payroll runs
                             </span>
                         </h2>
-                        <p className="text-body-sm text-muted">
-                            المجاميع من أعمدة المسير المخزّنة، لا تُعاد صياغة مبالغ الخادم.
-                        </p>
+                        <p className="text-body-sm text-muted">المجاميع من أعمدة المسير المخزّنة، لا تُعاد صياغة مبالغ الخادم.</p>
                     </div>
                     <label className="flex flex-col gap-xxs text-label-md text-ink-secondary">
                         الحالة
@@ -258,10 +241,7 @@ export function Payroll() {
                             </table>
                         </TableScroll>
                     ) : (
-                        <StateEmpty
-                            title="لا مسيرات في هذا العرض"
-                            hint="غيّر مرشّح الحالة أو أعد المحاولة لاحقًا."
-                        />
+                        <StateEmpty title="لا مسيرات في هذا العرض" hint="غيّر مرشّح الحالة أو أعد المحاولة لاحقًا." />
                     )
                 ) : null}
             </Card>
@@ -288,6 +268,18 @@ export function Payroll() {
                             className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
                         />
                     </label>
+                    <button
+                        type="button"
+                        data-erp-print-hide
+                        disabled={search.rows.length === 0}
+                        onClick={() => {
+                            const csv = payrollSheetCsv(search.rows);
+                            downloadBlob(new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }), `payroll_${month}.csv`);
+                        }}
+                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                    >
+                        تصدير CSV
+                    </button>
                 </div>
                 <div className="flex flex-wrap items-end gap-sm px-sm pb-sm">
                     <label className="flex flex-col gap-xxs text-label-md text-ink-secondary">
@@ -303,9 +295,7 @@ export function Payroll() {
                         {formatInt(search.hits)} موظفًا مطابقًا من {formatInt(sheetRows.length)}
                     </span>
                     {search.folded ? (
-                        <span className="text-caption text-muted">
-                            البحث طابق بعض الأسماء بعد تطبيع الحروف العربية.
-                        </span>
+                        <span className="text-caption text-muted">البحث طابق بعض الأسماء بعد تطبيع الحروف العربية.</span>
                     ) : null}
                 </div>
                 {departmentsQuery.isError ? (
@@ -330,9 +320,7 @@ export function Payroll() {
                 ) : null}
                 {sheetQuery.isError ? (
                     <StateError
-                        message={
-                            sheetQuery.error instanceof Error ? sheetQuery.error.message : 'تعذّر تحميل كشف الرواتب'
-                        }
+                        message={sheetQuery.error instanceof Error ? sheetQuery.error.message : 'تعذّر تحميل كشف الرواتب'}
                         onRetry={() => {
                             void sheetQuery.refetch();
                         }}
@@ -344,16 +332,12 @@ export function Payroll() {
                             الإجمالي الظاهر: <Money value={visibleSheetSummary.total} />
                             {' · '}
                             {formatInt(visibleSheetSummary.shown)} راتبًا مرئيًا
-                            {visibleSheetSummary.hidden
-                                ? ` · ${formatInt(visibleSheetSummary.hidden)} مخفي بقرار الخادم`
-                                : ''}
+                            {visibleSheetSummary.hidden ? ` · ${formatInt(visibleSheetSummary.hidden)} مخفي بقرار الخادم` : ''}
                         </p>
                         {search.rows.length ? (
                             <TableScroll label="كشف رواتب الموظفين">
                                 <table className="w-full border-collapse text-body-md">
-                                    <caption className="sr-only">
-                                        رواتب الموظفين النشطين وأيام الحضور
-                                    </caption>
+                                    <caption className="sr-only">رواتب الموظفين النشطين وأيام الحضور</caption>
                                     <thead>
                                         <tr className="bg-surface-sunken text-label-md text-ink-secondary">
                                             <th scope="col" className="px-sm py-xs text-start">
@@ -375,10 +359,7 @@ export function Payroll() {
                                     </thead>
                                     <tbody>
                                         {search.rows.map((row) => (
-                                            <tr
-                                                key={row.id}
-                                                className="border-b border-hairline hover:bg-surface-hover"
-                                            >
+                                            <tr key={row.id} className="border-b border-hairline hover:bg-surface-hover">
                                                 <td className="px-sm py-xxs text-ink">{row.name}</td>
                                                 <td className="px-sm py-xxs text-muted">{row.dept}</td>
                                                 <td className="px-sm py-xxs text-muted">{row.position}</td>
@@ -399,6 +380,8 @@ export function Payroll() {
                     </>
                 ) : null}
             </Card>
+
+            <PayrollSuite month={month} />
         </div>
     );
 }

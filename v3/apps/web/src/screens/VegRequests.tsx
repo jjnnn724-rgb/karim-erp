@@ -2,9 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
+import { useAuthState } from '../lib/auth';
 import { fetchCurrency } from '../lib/finance';
 import { formatMoney } from '../lib/format';
-import { useAuthState } from '../lib/auth';
+import { openBlankTab, writeHtmlDocument } from '../lib/print-document';
+import { vegRequestPrintHtml } from '../lib/veg-print';
 import {
     fetchVegRequests,
     priorityLabel,
@@ -21,22 +23,24 @@ import {
     createVegRequest,
     editVegItems,
     fetchVegCatalog,
+    markVegPrinted,
     priceVegRequest,
     receiveVegRequest,
-    vegCancelConfirm,
-    vegReceiveConfirm,
-    vegCreateVisible,
-    vegPriceVisible,
-    vegReceiveVisible,
     VEG_TEXT,
     type VegCatalog,
     type VegItemInput,
+    vegCancelConfirm,
+    vegCreateVisible,
+    vegPriceVisible,
+    vegReceiveConfirm,
+    vegReceiveVisible,
 } from '../lib/veg-requests-write';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
+import { useToast } from '../ui/Toast';
 
 /**
  * طلبات شراء الخضار — CRUD كامل مثل V2:
@@ -45,7 +49,7 @@ import { Select } from '../ui/Select';
  *  • تسعير (POST /api/veg-requests/:id/price — warehouse|admin|owner|manager)
  *  • تعديل الكميات (PUT /api/veg-requests/:id/items — sous_chef|admin|owner)
  *  • إلغاء (POST /api/veg-requests/:id/cancel — صاحب الطلب أو الإدارة)
- *  • طباعة (PrintActions)
+ *  • طباعة الطلب (ورقة A4 من صفّه + POST /api/veg-requests/:id/printed) وطباعة الشاشة (PrintActions)
  *
  * القراءة من `/api/veg-requests`، والكتابة محجوزة للأدوار أعلاه والخادم يحسم.
  */
@@ -243,13 +247,7 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
                         value={qty}
                         onChange={(e) => setQty(e.target.value)}
                     />
-                    <Input
-                        label="الوحدة"
-                        name="unit"
-                        value={unit}
-                        onChange={(e) => setUnit(e.target.value)}
-                        placeholder="كجم"
-                    />
+                    <Input label="الوحدة" name="unit" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="كجم" />
                 </div>
                 <div>
                     <Button type="button" variant="secondary" size="sm" onClick={addLine}>
@@ -393,9 +391,7 @@ function EditItemsDialog({ open, row, items, pending, onClose, onSubmit }: EditI
                                 min={0.001}
                                 step={0.001}
                                 value={qtys[item.name] ?? ''}
-                                onChange={(e) =>
-                                    setQtys((previous) => ({ ...previous, [item.name]: e.target.value }))
-                                }
+                                onChange={(e) => setQtys((previous) => ({ ...previous, [item.name]: e.target.value }))}
                             />
                         </li>
                     ))}
@@ -495,9 +491,7 @@ function PriceDialog({ open, row, items, pending, onClose, onSubmit }: PriceDial
                                 min={0}
                                 step={0.01}
                                 value={prices[item.name] ?? ''}
-                                onChange={(e) =>
-                                    setPrices((previous) => ({ ...previous, [item.name]: e.target.value }))
-                                }
+                                onChange={(e) => setPrices((previous) => ({ ...previous, [item.name]: e.target.value }))}
                             />
                         </li>
                     ))}
@@ -550,6 +544,7 @@ function ConfirmDialog({ open, title, message, pending, onConfirm, onClose }: Co
 
 export function VegRequests() {
     const auth = useAuthState();
+    const { toast } = useToast();
     const canCreate = vegCreateVisible(auth.user?.role);
     const canReceive = vegReceiveVisible(auth.user?.role);
     const canPrice = vegPriceVisible(auth.user?.role);
@@ -558,6 +553,7 @@ export function VegRequests() {
     const [status, setStatus] = useState<VegStatusFilter>('all');
     const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' } | null>(null);
     const [page, setPage] = useState(1);
+    const [printingId, setPrintingId] = useState<string | null>(null);
 
     const [createOpen, setCreateOpen] = useState(false);
     const [editOpen, setEditOpen] = useState(false);
@@ -608,9 +604,7 @@ export function VegRequests() {
 
     function toggleSort(key: SortKey) {
         setPage(1);
-        setSort((previous) =>
-            previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' },
-        );
+        setSort((previous) => (previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
     }
 
     function resetFilters() {
@@ -730,6 +724,44 @@ export function VegRequests() {
         }
     }
 
+    function printRequest(row: VegRequestRow) {
+        if (printingId) return;
+        const raw = vegQuery.data?.requests.find((request) => request.id === row.id);
+        if (!raw) {
+            toast({
+                variant: 'error',
+                title: 'تعذّرت طباعة الطلب',
+                description: 'أعد تحميل السجل ثم حاول مرة أخرى.',
+            });
+            return;
+        }
+        const win = openBlankTab(`طلب شراء خضار ${row.number}`);
+        if (!win) {
+            toast({
+                variant: 'error',
+                title: 'تعذّرت طباعة الطلب',
+                description: 'منع المتصفح فتح نافذة الطباعة — اسمح بالنوافذ المنبثقة ثم أعد المحاولة.',
+            });
+            return;
+        }
+        setPrintingId(row.id);
+        try {
+            writeHtmlDocument(
+                win,
+                vegRequestPrintHtml(raw, {
+                    byName: String(auth.user?.name ?? auth.user?.username ?? ''),
+                    currency,
+                }),
+            );
+            win.document.querySelector('[data-veg-print]')?.addEventListener('click', () => win.print());
+            win.document.querySelector('[data-veg-close]')?.addEventListener('click', () => win.close());
+            win.print();
+            void markVegPrinted(row.id).catch(() => undefined);
+        } finally {
+            setPrintingId(null);
+        }
+    }
+
     return (
         <div className="mx-auto flex w-full min-w-0 flex-col gap-lg">
             <header className="flex flex-wrap items-end justify-between gap-md border-b border-hairline pb-md">
@@ -741,8 +773,8 @@ export function VegRequests() {
                         </span>
                     </h1>
                     <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        طلبات المطبخ إلى المخازن — الإنشاء والاستلام والتسعير وتعديل الكميات والإلغاء مثل الشاشة
-                        القديمة. الخادم يقرّر أدوار الكتابة ويُعرض رفضه كما هو.
+                        طلبات المطبخ إلى المخازن — الإنشاء والاستلام والتسعير وتعديل الكميات والإلغاء مثل الشاشة القديمة. الخادم يقرّر أدوار
+                        الكتابة ويُعرض رفضه كما هو.
                     </p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>
@@ -772,12 +804,7 @@ export function VegRequests() {
                     value={formatInt(summary.pendingToday)}
                     hint="بانتظار المعالجة ومُنشأة اليوم"
                 />
-                <Kpi
-                    label="طلبات اليوم"
-                    english="Today"
-                    value={formatInt(summary.today)}
-                    hint="كل الحالات المُنشأة اليوم"
-                />
+                <Kpi label="طلبات اليوم" english="Today" value={formatInt(summary.today)} hint="كل الحالات المُنشأة اليوم" />
                 <Kpi
                     label="عاجل في العرض"
                     english="Urgent"
@@ -840,9 +867,7 @@ export function VegRequests() {
                     {counts.cancelled ? ` · ${formatInt(counts.cancelled)} ملغي` : ''}
                 </p>
                 {search.folded ? (
-                    <p className="mt-sm text-body-sm text-muted">
-                        بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.
-                    </p>
+                    <p className="mt-sm text-body-sm text-muted">بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.</p>
                 ) : null}
             </Card>
 
@@ -866,11 +891,7 @@ export function VegRequests() {
                 {vegQuery.isSuccess && sorted.length === 0 ? (
                     <StateEmpty
                         title={filtered ? 'لا طلبات تطابق المرشّحات' : 'لا طلبات مسجّلة'}
-                        hint={
-                            filtered
-                                ? 'لا نتائج مطابقة؛ عدّل المرشّحات أو امسحها.'
-                                : 'أنشئ أول طلب.'
-                        }
+                        hint={filtered ? 'لا نتائج مطابقة؛ عدّل المرشّحات أو امسحها.' : 'أنشئ أول طلب.'}
                     />
                 ) : null}
 
@@ -880,37 +901,12 @@ export function VegRequests() {
                             <table className="w-full border-collapse text-body-md">
                                 <thead>
                                     <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                        <SortableTh
-                                            label="رقم الطلب"
-                                            sortKey="number"
-                                            sort={sort}
-                                            onToggle={toggleSort}
-                                        />
-                                        <SortableTh
-                                            label="الأصناف"
-                                            sortKey="itemsCount"
-                                            sort={sort}
-                                            onToggle={toggleSort}
-                                        />
-                                        <SortableTh
-                                            label="الأولوية"
-                                            sortKey="priority"
-                                            sort={sort}
-                                            onToggle={toggleSort}
-                                        />
-                                        <SortableTh
-                                            label="الإجمالي"
-                                            sortKey="total"
-                                            sort={sort}
-                                            onToggle={toggleSort}
-                                        />
+                                        <SortableTh label="رقم الطلب" sortKey="number" sort={sort} onToggle={toggleSort} />
+                                        <SortableTh label="الأصناف" sortKey="itemsCount" sort={sort} onToggle={toggleSort} />
+                                        <SortableTh label="الأولوية" sortKey="priority" sort={sort} onToggle={toggleSort} />
+                                        <SortableTh label="الإجمالي" sortKey="total" sort={sort} onToggle={toggleSort} />
                                         <SortableTh label="أنشأها" sortKey="by" sort={sort} onToggle={toggleSort} />
-                                        <SortableTh
-                                            label="التاريخ"
-                                            sortKey="created"
-                                            sort={sort}
-                                            onToggle={toggleSort}
-                                        />
+                                        <SortableTh label="التاريخ" sortKey="created" sort={sort} onToggle={toggleSort} />
                                         <SortableTh label="الحالة" sortKey="status" sort={sort} onToggle={toggleSort} />
                                         <th scope="col" className="px-sm py-xs text-start font-medium" data-erp-print-hide>
                                             إجراءات
@@ -939,9 +935,7 @@ export function VegRequests() {
                                                 ) : (
                                                     <>
                                                         {formatMoney(row.total)}
-                                                        {currency ? (
-                                                            <span className="text-caption text-faint"> {currency}</span>
-                                                        ) : null}
+                                                        {currency ? <span className="text-caption text-faint"> {currency}</span> : null}
                                                     </>
                                                 )}
                                             </td>
@@ -950,12 +944,19 @@ export function VegRequests() {
                                                 {row.created || '—'}
                                             </td>
                                             <td className="px-sm py-xxs">
-                                                <span className={`text-body-sm ${statusTone(row.status)}`}>
-                                                    {row.statusLabel}
-                                                </span>
+                                                <span className={`text-body-sm ${statusTone(row.status)}`}>{row.statusLabel}</span>
                                             </td>
                                             <td className="px-sm py-xxs" data-erp-print-hide>
                                                 <div className="flex flex-wrap items-center gap-xs">
+                                                    <Button
+                                                        type="button"
+                                                        size="sm"
+                                                        variant="secondary"
+                                                        title="طباعة ورقة الطلب"
+                                                        onClick={() => printRequest(row)}
+                                                    >
+                                                        طباعة
+                                                    </Button>
                                                     {row.status === 'pending' && (
                                                         <>
                                                             {canCreate ? (
