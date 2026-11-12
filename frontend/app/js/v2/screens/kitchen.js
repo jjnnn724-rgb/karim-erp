@@ -30,10 +30,10 @@
  *   (:327). كل رقم على الصفحة محسوب على نافذته، وcapNote() تقولها حين تمتلئ.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.312';
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.312';
-import { formatInt, formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.312';
-import { openInAppReport } from '../report-viewer.js?v=4.9.312';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.313';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.313';
+import { formatInt, formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.313';
+import { openInAppReport } from '../report-viewer.js?v=4.9.313';
 import {
     fetchKitchenOverview, batchToRow, exceptionToRow, policyToRow, distributionToRow,
     summarizeKitchen, buildKitchenKpis, topDistributions,
@@ -46,11 +46,11 @@ import {
     legacyQty, productionPayload, validateProductionForm, transferPayload,
     validateAuditPeriod, auditPayload, countPayload, distributionsInRange,
     auditToRow, documentToRow,
-} from '../data/kitchen-repo.js?v=4.9.312';
+} from '../data/kitchen-repo.js?v=4.9.313';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.312';
+} from '../signature.js?v=4.9.313';
 
 const SIGN_KINDS = new Set(['audit-approve']);
 const SIG_IDS = {

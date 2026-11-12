@@ -18,9 +18,9 @@
  *   • الكشف المطبوع بنفس عائلة الأخضر الفاخرة الموثقة (4.9.221).
  */
 
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.312';
-import { openInAppReport } from '../report-viewer.js?v=4.9.312';
-import { formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.312';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.313';
+import { openInAppReport } from '../report-viewer.js?v=4.9.313';
+import { formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.313';
 import {
     fetchDeptTransfers, fetchDeptStock, fetchDeptOptions, deptNameByCode,
     fetchTransferSummary,
@@ -28,7 +28,7 @@ import {
     transferBadge, transferToRow, summarizeTransfers, canCreate, canApprove, mySourceDeptCode,
     canExternalSale, canChooseSourceDept, isExternalDestination, EXTERNAL_SALE_DEPT, EXTERNAL_DESTINATIONS,
     factoryLinks, saveFactoryLink, fetchFactoryVariance, closeFactoryVariance,
-} from '../data/transfer-repo.js?v=4.9.312';
+} from '../data/transfer-repo.js?v=4.9.313';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

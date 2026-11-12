@@ -16,9 +16,9 @@
  *     evaluator} (:894-974)
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.312';
-import { fetchEmployees } from './employees-repo.js?v=4.9.312';
-import { fetchAttendanceRange } from './attendance-repo.js?v=4.9.312';
+import { apiFetch } from '../../core/api.js?v=4.9.313';
+import { fetchEmployees } from './employees-repo.js?v=4.9.313';
+import { fetchAttendanceRange } from './attendance-repo.js?v=4.9.313';
 
 /** الكتابة مرآة القديم (hr.js:779): admin/manager/hr. */
 export const PAYROLL_WRITE_ROLES = ['admin', 'manager', 'hr'];
