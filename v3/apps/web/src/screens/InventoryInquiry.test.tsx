@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { rangeProblem } from '../lib/reporting';
 import { ToastProvider } from '../ui/Toast';
 import { InventoryInquiry } from './InventoryInquiry';
 
@@ -27,6 +28,12 @@ afterEach(() => {
 });
 
 describe('محرك استعلامات المخزون', () => {
+    it('يرفض التواريخ غير الموجودة بالتقويم ويقبل اليوم الكبيس الصحيح', () => {
+        expect(rangeProblem('2026-02-31', '2026-03-02')).toContain('YYYY-MM-DD');
+        expect(rangeProblem('2025-02-29', '2025-03-02')).toContain('YYYY-MM-DD');
+        expect(rangeProblem('2024-02-29', '2024-03-02')).toBe('');
+    });
+
     it('يعرض الإجماليات والأصناف وتكلفة الأقسام', async () => {
         vi.stubGlobal(
             'fetch',

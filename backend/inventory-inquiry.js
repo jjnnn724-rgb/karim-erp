@@ -96,8 +96,19 @@ const router = express.Router();
 const READ_ROLES = ['admin', 'sous_chef'];
 const READ_PERM = 'inventory-inquiry.view';
 
-const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
 const MAX_SPAN_DAYS = 93;
+
+function isValidDay(value) {
+    const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
+    if (!match) {return false;}
+
+    const year = Number(match[1]), month = Number(match[2]), day = Number(match[3]);
+    if (year < 1 || month < 1 || month > 12) {return false;}
+
+    const leapYear = year % 4 === 0 && (year % 100 !== 0 || year % 400 === 0);
+    const daysInMonth = [31, leapYear ? 29 : 28, 31, 30, 31, 30, 31, 31, 30, 31, 30, 31];
+    return day >= 1 && day <= (daysInMonth[month - 1] || 0);
+}
 
 /** عائلة مراجع فاتورة الشراء — الاستلام وعكوسه جميعًا (انظر أعلى الملف). */
 const PURCHASE_REFS = `('purchase_invoice','purchase_invoice_void','purchase_invoice_edit','purchase_invoice_edit_reversal')`;
@@ -139,8 +150,13 @@ function fail(res, status, code, message) {
  * @returns {{ok:boolean, from?:string, to?:string, code?:string, message?:string}}
  */
 function readRange(query) {
-    const from = DAY_RE.test(String(query.from || '')) ? String(query.from) : riyadhDay(-29);
-    const to = DAY_RE.test(String(query.to || '')) ? String(query.to) : riyadhDay(0);
+    const fromValue = query.from == null ? '' : String(query.from).trim();
+    const toValue = query.to == null ? '' : String(query.to).trim();
+    if ((fromValue && !isValidDay(fromValue)) || (toValue && !isValidDay(toValue))) {
+        return { ok: false, code: 'INVALID_RANGE', message: 'تاريخ غير صالح — استخدم تاريخًا حقيقيًا بصيغة YYYY-MM-DD' };
+    }
+    const from = fromValue || riyadhDay(-29);
+    const to = toValue || riyadhDay(0);
     if (from > to) {return { ok: false, code: 'INVALID_RANGE', message: 'المدى معكوس — «من» بعد «إلى»' };}
     const span = Math.round((new Date(`${to}T12:00:00Z`) - new Date(`${from}T12:00:00Z`)) / 86400000) + 1;
     if (span > MAX_SPAN_DAYS) {return { ok: false, code: 'RANGE_TOO_WIDE', message: `الحد الأقصى ${MAX_SPAN_DAYS} يومًا — طُلب ${span} يومًا` };}
