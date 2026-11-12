@@ -110,6 +110,7 @@ module.exports = [
       'playwright-report/',
       'frontend/app/vendor/',
       'frontend/app/js/vendor/',
+      'frontend/v3/assets/',
       'frontend/app/js/app.js',
       // مساحة عمل V3 كاملة: تُفحص بأدواتها (biome + tsc + vitest) لا بـeslint الجذر،
       // ومخرجات حزمها (packages/*/dist) ليست كودًا مصدريًا.

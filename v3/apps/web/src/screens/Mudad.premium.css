@@ -1,0 +1,1698 @@
+/*
+ * شاشة مدد/التأمينات/قوى — طبقة الصقل البصري.
+ *
+ * كل القيم من توكنات ERP (`--erp-*`) والخصائص المنطقية (`inset-inline-*`)
+ * حتى يعمل الاتجاهان، ونفس الهوية في الوضع الفاتح والداكن. لا ألوان صلبة
+ * خارج التوكنات إلا لخلفيات حسابية شفافة عبر `color-mix`.
+ *
+ * الحركة على `transform`/`opacity` فقط، وتُلغى بالكامل مع
+ * `prefers-reduced-motion`.
+ */
+/* biome-ignore-all lint/complexity/noImportantStyles: Reduced-motion overrides must win over component animation and transition rules. */
+
+.mudad-premium {
+	--mudad-accent: var(--erp-primary, var(--accent));
+	--mudad-brand: var(--erp-brand-text, var(--erp-primary, var(--accent)));
+	--mudad-brass: var(--erp-brass, #0f766e);
+	--mudad-brass-text: var(--erp-brass-text, #0b6b65);
+	--mudad-line: var(--erp-hairline, var(--hairline));
+	--mudad-line-strong: var(--erp-hairline-strong, var(--hairline));
+	--mudad-surface: var(--erp-surface, var(--card));
+	--mudad-raised: var(--erp-surface-raised, var(--popover));
+	--mudad-sunken: var(--erp-surface-sunken, var(--muted));
+	--mudad-hover: var(--erp-surface-hover, var(--accent));
+	--mudad-ink: var(--erp-ink, var(--foreground));
+	--mudad-ink-soft: var(--erp-ink-secondary, var(--foreground));
+	--mudad-muted: var(--erp-muted, var(--muted-foreground));
+	--mudad-faint: var(--erp-faint, var(--muted-foreground));
+	--mudad-success: var(--erp-success-text, var(--erp-success, #0e6b3b));
+	--mudad-warning: var(--erp-warning-text, var(--erp-warning, #8f4308));
+	--mudad-danger: var(--erp-danger-text, var(--erp-danger, #8e1f16));
+	--mudad-mono: var(--font-mono, ui-monospace, SFMono-Regular, monospace);
+
+	display: flex;
+	flex-direction: column;
+	gap: clamp(1rem, 2vw, 1.5rem);
+	min-inline-size: 0;
+}
+
+.mudad-premium > * {
+	min-inline-size: 0;
+}
+
+/* ── الترويسة المؤسسية ─────────────────────────────────────────── */
+
+.mudad-hero {
+	position: relative;
+	isolation: isolate;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: clamp(1rem, 2vw, 1.75rem);
+	overflow: hidden;
+	padding: clamp(1.15rem, 2.4vw, 1.9rem);
+	border: 1px solid var(--mudad-line);
+	border-radius: 20px;
+	background: linear-gradient(
+		135deg,
+		color-mix(in srgb, var(--mudad-accent) 8%, var(--mudad-surface)),
+		var(--mudad-surface) 52%,
+		color-mix(in srgb, var(--mudad-brass) 9%, var(--mudad-surface))
+	);
+	box-shadow: var(--erp-shadow-card, 0 8px 26px rgb(46 38 24 / 4%));
+}
+
+.mudad-hero::after {
+	content: "";
+	position: absolute;
+	inset-block-start: -55%;
+	inset-inline-start: -12%;
+	z-index: -1;
+	inline-size: 46%;
+	aspect-ratio: 1;
+	border-radius: 50%;
+	background: radial-gradient(
+		circle,
+		color-mix(in srgb, var(--mudad-accent) 16%, transparent),
+		transparent 70%
+	);
+	pointer-events: none;
+}
+
+.mudad-hero__text {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-inline-size: 0;
+	max-inline-size: 76ch;
+}
+
+.mudad-eyebrow {
+	display: inline-flex;
+	align-items: center;
+	gap: 7px;
+	margin: 0;
+	color: var(--mudad-brass-text);
+	font-size: 12px;
+	font-weight: 600;
+	line-height: 1.5;
+}
+
+.mudad-eyebrow__mark {
+	display: grid;
+	place-items: center;
+	inline-size: 24px;
+	block-size: 24px;
+	border-radius: 8px;
+	border: 1px solid color-mix(in srgb, var(--mudad-brass) 34%, transparent);
+	background: color-mix(in srgb, var(--mudad-brass) 12%, transparent);
+	color: var(--mudad-brass-text);
+}
+
+.mudad-eyebrow__icon {
+	inline-size: 15px;
+	block-size: 15px;
+}
+
+.mudad-hero__title {
+	margin: 0;
+	color: var(--mudad-ink);
+	font-size: clamp(1.55rem, 3.1vw, 2.2rem);
+	font-weight: 700;
+	line-height: 1.3;
+	letter-spacing: -0.025em;
+	text-wrap: balance;
+}
+
+.mudad-hero__english {
+	display: inline-flex;
+	align-items: center;
+	margin-inline-start: 8px;
+	padding: 3px 10px;
+	border: 1px solid var(--mudad-line);
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--mudad-sunken) 70%, transparent);
+	color: var(--mudad-muted);
+	font-family: var(--mudad-mono);
+	font-size: 11px;
+	font-weight: 500;
+	letter-spacing: 0.02em;
+	vertical-align: middle;
+}
+
+.mudad-hero__lead {
+	margin: 2px 0 0;
+	max-inline-size: 66ch;
+	color: var(--mudad-ink-soft);
+	font-size: 13.5px;
+	line-height: 1.85;
+}
+
+.mudad-hero__meta {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px clamp(0.85rem, 2vw, 1.6rem);
+	margin: 8px 0 0;
+	padding: 0;
+	list-style: none;
+}
+
+.mudad-hero__meta li {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	padding-inline-start: 11px;
+	border-inline-start: 2px solid
+		color-mix(in srgb, var(--mudad-brass) 45%, transparent);
+}
+
+.mudad-hero__meta span {
+	color: var(--mudad-faint);
+	font-size: 11px;
+	line-height: 1.5;
+}
+
+.mudad-hero__meta strong {
+	color: var(--mudad-ink);
+	font-size: 12.5px;
+	font-weight: 600;
+	line-height: 1.5;
+}
+
+.mudad-hero__meta strong[data-tone="warning"] {
+	color: var(--mudad-warning);
+}
+
+.mudad-hero__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+}
+
+/* ── أزرار موحّدة ─────────────────────────────────────────────── */
+
+.mudad-btn {
+	display: inline-flex;
+	align-items: center;
+	justify-content: center;
+	gap: 6px;
+	min-block-size: 38px;
+	padding-inline: 15px;
+	border: 1px solid var(--mudad-line-strong);
+	border-radius: 10px;
+	background: var(--mudad-surface);
+	color: var(--mudad-ink);
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.2;
+	cursor: pointer;
+	transition:
+		background-color 160ms var(--erp-ease-standard, ease),
+		border-color 160ms var(--erp-ease-standard, ease),
+		transform 160ms var(--erp-ease-standard, ease),
+		box-shadow 160ms var(--erp-ease-standard, ease);
+}
+
+.mudad-btn:hover:not(:disabled) {
+	background: var(--mudad-hover);
+	border-color: color-mix(
+		in srgb,
+		var(--mudad-accent) 42%,
+		var(--mudad-line-strong)
+	);
+}
+
+.mudad-btn:active:not(:disabled) {
+	transform: translateY(1px);
+}
+
+.mudad-btn:disabled {
+	opacity: 0.5;
+	cursor: not-allowed;
+}
+
+.mudad-btn--primary {
+	border-color: transparent;
+	background: var(--mudad-accent);
+	color: var(--erp-on-primary, #ffffff);
+	box-shadow: 0 8px 18px
+		color-mix(in srgb, var(--mudad-accent) 22%, transparent);
+}
+
+.mudad-btn--primary:hover:not(:disabled) {
+	border-color: transparent;
+	background: var(--erp-primary-hover, var(--mudad-accent));
+}
+
+.mudad-btn--small {
+	min-block-size: 32px;
+	padding-inline: 11px;
+	font-size: 12px;
+}
+
+/* ── شريط الحالة (BLOCKED) ────────────────────────────────────── */
+
+.mudad-notice {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr);
+	align-items: start;
+	gap: 12px 14px;
+	padding: 14px 16px;
+	border: 1px solid
+		color-mix(in srgb, var(--erp-warning, #b45309) 38%, transparent);
+	border-radius: 16px;
+	background: linear-gradient(
+		100deg,
+		color-mix(in srgb, var(--erp-warning, #b45309) 9%, var(--mudad-surface)),
+		var(--mudad-surface) 62%
+	);
+}
+
+.mudad-notice__icon {
+	display: grid;
+	place-items: center;
+	inline-size: 38px;
+	block-size: 38px;
+	border-radius: 12px;
+	background: var(
+		--erp-warning-soft,
+		color-mix(in srgb, #b45309 15%, transparent)
+	);
+	color: var(--mudad-warning);
+}
+
+.mudad-notice__icon svg {
+	inline-size: 20px;
+	block-size: 20px;
+}
+
+.mudad-notice__body {
+	min-inline-size: 0;
+}
+
+.mudad-notice__title {
+	margin: 0;
+	color: var(--mudad-ink);
+	font-size: 13.5px;
+	font-weight: 600;
+	line-height: 1.55;
+}
+
+.mudad-notice__title strong {
+	display: inline-block;
+	padding: 1px 7px;
+	border-radius: 6px;
+	background: var(
+		--erp-warning-soft,
+		color-mix(in srgb, #b45309 15%, transparent)
+	);
+	color: var(--mudad-warning);
+	font-family: var(--mudad-mono);
+	font-size: 11.5px;
+	letter-spacing: 0.04em;
+}
+
+.mudad-notice__text {
+	margin: 3px 0 0;
+	color: var(--mudad-muted);
+	font-size: 12.5px;
+	line-height: 1.8;
+}
+
+.mudad-notice__chips {
+	grid-column: 1 / -1;
+	display: flex;
+	flex-wrap: wrap;
+	gap: 6px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.mudad-notice__chips li {
+	padding: 2px 9px;
+	border: 1px solid var(--mudad-line);
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--mudad-sunken) 55%, transparent);
+	color: var(--mudad-ink-soft);
+	font-size: 11px;
+	line-height: 1.6;
+}
+
+/* ── عناوين الأقسام ───────────────────────────────────────────── */
+
+.mudad-premium h2,
+.mudad-premium h3 {
+	text-wrap: balance;
+}
+
+.mudad-section__head {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	justify-content: space-between;
+	gap: 12px 16px;
+	padding: 15px 18px;
+	border-block-end: 1px solid var(--mudad-line);
+	background: linear-gradient(
+		180deg,
+		color-mix(in srgb, var(--mudad-sunken) 34%, transparent),
+		transparent
+	);
+}
+
+.mudad-section__titles {
+	display: flex;
+	flex-direction: column;
+	gap: 2px;
+	min-inline-size: 0;
+}
+
+.mudad-section__kicker {
+	margin: 0;
+	color: var(--mudad-faint);
+	font-family: var(--mudad-mono);
+	font-size: 10.5px;
+	font-weight: 600;
+	letter-spacing: 0.06em;
+	text-transform: uppercase;
+}
+
+.mudad-section__title {
+	margin: 0;
+	color: var(--mudad-ink);
+	font-size: 16.5px;
+	font-weight: 700;
+	line-height: 1.45;
+	letter-spacing: -0.015em;
+}
+
+.mudad-section__desc {
+	margin: 2px 0 0;
+	max-inline-size: 76ch;
+	color: var(--mudad-muted);
+	font-size: 12.5px;
+	line-height: 1.75;
+}
+
+.mudad-section__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: flex-end;
+	gap: 10px;
+}
+
+.mudad-section__body {
+	display: flex;
+	flex-direction: column;
+	gap: 16px;
+	min-inline-size: 0;
+	padding: 18px;
+}
+
+/* ── حقول ─────────────────────────────────────────────────────── */
+
+.mudad-field {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	min-inline-size: 0;
+	color: var(--mudad-ink-soft);
+	font-size: 12px;
+	font-weight: 500;
+}
+
+.mudad-field :is(input, select) {
+	min-block-size: 38px;
+	max-inline-size: 100%;
+	min-inline-size: 0;
+	padding-inline: 10px;
+	border: 1px solid var(--mudad-line-strong);
+	border-radius: 10px;
+	background: var(--mudad-surface);
+	color: var(--mudad-ink);
+	font-size: 13px;
+	transition:
+		border-color 160ms var(--erp-ease-standard, ease),
+		box-shadow 160ms var(--erp-ease-standard, ease);
+}
+
+.mudad-field :is(input, select):focus {
+	border-color: var(--mudad-accent);
+}
+
+.mudad-premium :is(input, select, button, a, [tabindex]):focus-visible {
+	outline: 2px solid color-mix(in srgb, var(--mudad-accent) 72%, transparent);
+	outline-offset: 2px;
+}
+
+.mudad-hint {
+	margin: 0;
+	color: var(--mudad-faint);
+	font-size: 11.5px;
+	line-height: 1.65;
+}
+
+/* ── شبكة المؤشرات ────────────────────────────────────────────── */
+
+.mudad-metrics {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(180px, 1fr));
+	gap: 12px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.mudad-metric {
+	--mudad-tone: var(--mudad-muted);
+	position: relative;
+	isolation: isolate;
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	min-inline-size: 0;
+	padding: 15px 16px 13px;
+	overflow: hidden;
+	border: 1px solid var(--mudad-line);
+	border-radius: 14px;
+	background: color-mix(in srgb, var(--mudad-raised) 88%, transparent);
+	box-shadow: 0 1px 2px rgb(46 38 24 / 3%);
+}
+
+.mudad-metric::before {
+	content: "";
+	position: absolute;
+	inset-block-start: 0;
+	inset-inline-start: 16px;
+	inline-size: 34px;
+	block-size: 3px;
+	border-end-start-radius: 3px;
+	border-end-end-radius: 3px;
+	background: var(--mudad-tone);
+}
+
+.mudad-metric[data-tone="success"] {
+	--mudad-tone: var(--erp-success, #16834a);
+}
+.mudad-metric[data-tone="warning"] {
+	--mudad-tone: var(--erp-warning, #b45309);
+}
+.mudad-metric[data-tone="danger"] {
+	--mudad-tone: var(--erp-danger, #b3261e);
+}
+.mudad-metric[data-tone="neutral"] {
+	--mudad-tone: var(--mudad-accent);
+}
+
+.mudad-metric__label {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 6px;
+	margin: 0;
+	color: var(--mudad-ink-soft);
+	font-size: 12px;
+	font-weight: 500;
+	line-height: 1.6;
+}
+
+.mudad-metric__english {
+	color: var(--mudad-faint);
+	font-family: var(--mudad-mono);
+	font-size: 10px;
+	font-weight: 400;
+	letter-spacing: 0.02em;
+}
+
+.mudad-metric__value {
+	margin: 0;
+	color: var(--mudad-ink);
+	font-size: clamp(1.4rem, 2.2vw, 1.85rem);
+	font-weight: 700;
+	line-height: 1.25;
+	letter-spacing: -0.035em;
+}
+
+.mudad-metric__meter {
+	display: block;
+	block-size: 4px;
+	overflow: hidden;
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--mudad-sunken) 85%, transparent);
+}
+
+.mudad-metric__meter::after {
+	content: "";
+	display: block;
+	block-size: 100%;
+	border-radius: inherit;
+	background: var(--mudad-tone);
+	transform: scaleX(var(--mudad-progress, 0));
+	transform-origin: var(--mudad-origin, left) center;
+	transition: transform 480ms var(--erp-ease-out, ease);
+}
+
+[dir="rtl"] .mudad-metric__meter::after {
+	--mudad-origin: right;
+}
+
+.mudad-metric__hint {
+	margin: 0;
+	color: var(--mudad-faint);
+	font-size: 11.5px;
+	line-height: 1.65;
+}
+
+/* ── لوحة الجاهزية: مقياس + مسار + موانع ──────────────────────── */
+
+.mudad-deck {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(232px, 1fr));
+	gap: 14px;
+	align-items: stretch;
+}
+
+.mudad-panel {
+	display: flex;
+	flex-direction: column;
+	gap: 10px;
+	min-inline-size: 0;
+	padding: 14px 16px;
+	border: 1px solid var(--mudad-line);
+	border-radius: 14px;
+	background: color-mix(in srgb, var(--mudad-sunken) 30%, var(--mudad-surface));
+}
+
+.mudad-panel__title {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: baseline;
+	gap: 6px;
+	margin: 0;
+	color: var(--mudad-ink-soft);
+	font-size: 12.5px;
+	font-weight: 600;
+}
+
+.mudad-panel__english {
+	color: var(--mudad-faint);
+	font-family: var(--mudad-mono);
+	font-size: 10px;
+	font-weight: 400;
+}
+
+/* المقياس الدائري */
+.mudad-gauge {
+	display: flex;
+	flex: 1 1 auto;
+	flex-direction: column;
+	align-items: center;
+	justify-content: center;
+	gap: 10px;
+	block-size: 100%;
+	text-align: center;
+}
+
+.mudad-gauge__ring {
+	display: grid;
+	place-content: center;
+	align-items: center;
+	inline-size: clamp(120px, 14vw, 150px);
+	aspect-ratio: 1;
+	border-radius: 50%;
+	background: conic-gradient(
+		var(--mudad-accent) calc(var(--mudad-progress, 0) * 1turn),
+		color-mix(in srgb, var(--mudad-sunken) 88%, transparent) 0
+	);
+	position: relative;
+}
+
+.mudad-gauge__ring::before {
+	content: "";
+	position: absolute;
+	inset: 11px;
+	border-radius: 50%;
+	background: var(--mudad-surface);
+	box-shadow: inset 0 0 0 1px var(--mudad-line);
+}
+
+.mudad-gauge__value {
+	position: relative;
+	z-index: 1;
+	color: var(--mudad-ink);
+	font-size: clamp(1.25rem, 2.4vw, 1.7rem);
+	font-weight: 700;
+	letter-spacing: -0.03em;
+	line-height: 1.1;
+}
+
+.mudad-gauge__caption {
+	position: relative;
+	z-index: 1;
+	color: var(--mudad-faint);
+	font-size: 10.5px;
+	line-height: 1.4;
+}
+
+.mudad-gauge__meta {
+	margin: 0;
+	color: var(--mudad-muted);
+	font-size: 11.5px;
+	line-height: 1.7;
+}
+
+.mudad-gauge__meta strong {
+	color: var(--mudad-ink);
+	font-weight: 600;
+}
+
+/* مسار الملف */
+.mudad-pipeline {
+	display: flex;
+	flex-direction: column;
+	gap: 7px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.mudad-step {
+	display: grid;
+	grid-template-columns: auto minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 9px;
+	padding: 7px 9px;
+	border: 1px solid transparent;
+	border-radius: 10px;
+	background: color-mix(in srgb, var(--mudad-raised) 62%, transparent);
+}
+
+.mudad-step[data-state="done"] {
+	border-color: color-mix(
+		in srgb,
+		var(--erp-success, #16834a) 30%,
+		transparent
+	);
+	background: color-mix(
+		in srgb,
+		var(--erp-success, #16834a) 7%,
+		var(--mudad-surface)
+	);
+}
+
+.mudad-step[data-state="pending"] {
+	border-color: color-mix(
+		in srgb,
+		var(--erp-warning, #b45309) 26%,
+		transparent
+	);
+}
+
+.mudad-step[data-state="locked"] {
+	border-style: dashed;
+	border-color: var(--mudad-line-strong);
+	background: transparent;
+}
+
+.mudad-step__index {
+	display: grid;
+	place-items: center;
+	inline-size: 25px;
+	block-size: 25px;
+	border-radius: 8px;
+	background: var(--mudad-sunken);
+	color: var(--mudad-faint);
+	font-family: var(--mudad-mono);
+	font-size: 10.5px;
+	font-weight: 600;
+}
+
+.mudad-step[data-state="done"] .mudad-step__index {
+	background: var(
+		--erp-success-soft,
+		color-mix(in srgb, #16834a 15%, transparent)
+	);
+	color: var(--mudad-success);
+}
+
+.mudad-step[data-state="pending"] .mudad-step__index {
+	background: var(
+		--erp-warning-soft,
+		color-mix(in srgb, #b45309 15%, transparent)
+	);
+	color: var(--mudad-warning);
+}
+
+.mudad-step__body {
+	display: flex;
+	flex-direction: column;
+	gap: 0;
+	min-inline-size: 0;
+}
+
+.mudad-step__label {
+	color: var(--mudad-ink);
+	font-size: 12.5px;
+	font-weight: 600;
+	line-height: 1.55;
+}
+
+.mudad-step__hint {
+	color: var(--mudad-faint);
+	font-size: 11px;
+	line-height: 1.55;
+}
+
+.mudad-step__state {
+	padding: 1px 8px;
+	border-radius: 999px;
+	background: var(--mudad-sunken);
+	color: var(--mudad-muted);
+	font-size: 10px;
+	font-weight: 600;
+	white-space: nowrap;
+}
+
+.mudad-step[data-state="done"] .mudad-step__state {
+	background: var(
+		--erp-success-soft,
+		color-mix(in srgb, #16834a 15%, transparent)
+	);
+	color: var(--mudad-success);
+}
+
+.mudad-step[data-state="pending"] .mudad-step__state {
+	background: var(
+		--erp-warning-soft,
+		color-mix(in srgb, #b45309 15%, transparent)
+	);
+	color: var(--mudad-warning);
+}
+
+/* نداءات الحالة */
+.mudad-callout {
+	--mudad-callout: var(--mudad-muted);
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	min-inline-size: 0;
+	padding: 13px 15px;
+	border: 1px solid color-mix(in srgb, var(--mudad-callout) 34%, transparent);
+	border-radius: 14px;
+	background: color-mix(in srgb, var(--mudad-callout) 6%, var(--mudad-surface));
+}
+
+.mudad-callout[data-tone="danger"] {
+	--mudad-callout: var(--erp-danger, #b3261e);
+}
+.mudad-callout[data-tone="warning"] {
+	--mudad-callout: var(--erp-warning, #b45309);
+}
+.mudad-callout[data-tone="success"] {
+	--mudad-callout: var(--erp-success, #16834a);
+}
+
+.mudad-callout__title {
+	display: flex;
+	align-items: center;
+	gap: 7px;
+	margin: 0;
+	color: var(--mudad-callout);
+	font-size: 12.5px;
+	font-weight: 600;
+	line-height: 1.55;
+}
+
+.mudad-callout__list {
+	display: flex;
+	flex-direction: column;
+	gap: 5px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.mudad-callout__list li {
+	padding-inline-start: 14px;
+	position: relative;
+	color: var(--mudad-ink-soft);
+	font-size: 12px;
+	line-height: 1.7;
+}
+
+.mudad-callout__list li::before {
+	content: "";
+	position: absolute;
+	inset-block-start: 0.62em;
+	inset-inline-start: 2px;
+	inline-size: 5px;
+	block-size: 5px;
+	border-radius: 50%;
+	background: var(--mudad-callout);
+}
+
+.mudad-callout__code {
+	margin-inline-start: 6px;
+	color: var(--mudad-faint);
+	font-family: var(--mudad-mono);
+	font-size: 10.5px;
+}
+
+.mudad-callout p {
+	margin: 0;
+	font-size: 12.5px;
+	line-height: 1.75;
+}
+
+/* ── الجداول ──────────────────────────────────────────────────── */
+
+.mudad-table {
+	overflow: hidden;
+	min-inline-size: 0;
+	border: 1px solid var(--mudad-line);
+	border-radius: 14px;
+	background: var(--mudad-surface);
+}
+
+.mudad-table .erp-table__scroll {
+	border-radius: 0;
+}
+
+.mudad-table table {
+	inline-size: 100%;
+	border-collapse: collapse;
+	font-size: 13px;
+}
+
+.mudad-table caption {
+	padding: 0;
+}
+
+.mudad-table thead th {
+	position: sticky;
+	inset-block-start: 0;
+	z-index: 1;
+	padding: 10px 12px;
+	border-block-end: 1px solid var(--mudad-line);
+	background: color-mix(in srgb, var(--mudad-sunken) 78%, var(--mudad-surface));
+	color: var(--mudad-ink-soft);
+	font-size: 11.5px;
+	font-weight: 600;
+	line-height: 1.5;
+	text-align: start;
+	white-space: nowrap;
+}
+
+.mudad-table tbody th,
+.mudad-table tbody td {
+	padding: 10px 12px;
+	border-block-end: 1px solid
+		color-mix(in srgb, var(--mudad-line) 72%, transparent);
+	color: var(--mudad-ink);
+	line-height: 1.65;
+	text-align: start;
+	vertical-align: middle;
+}
+
+.mudad-table tbody tr:last-child th,
+.mudad-table tbody tr:last-child td {
+	border-block-end: 0;
+}
+
+.mudad-table tbody tr:nth-child(even) {
+	background: color-mix(in srgb, var(--mudad-sunken) 26%, transparent);
+}
+
+.mudad-table tbody tr {
+	transition: background-color 140ms var(--erp-ease-standard, ease);
+}
+
+.mudad-table tbody tr:hover {
+	background: color-mix(in srgb, var(--mudad-accent) 5%, var(--mudad-surface));
+}
+
+.mudad-person {
+	display: flex;
+	align-items: center;
+	gap: 9px;
+	min-inline-size: 0;
+}
+
+.mudad-avatar {
+	display: grid;
+	place-items: center;
+	flex-shrink: 0;
+	inline-size: 30px;
+	block-size: 30px;
+	border-radius: 9px;
+	border: 1px solid color-mix(in srgb, var(--mudad-accent) 18%, transparent);
+	background: color-mix(in srgb, var(--mudad-accent) 10%, var(--mudad-surface));
+	color: var(--mudad-brand);
+	font-size: 11px;
+	font-weight: 700;
+	line-height: 1;
+}
+
+.mudad-person__text {
+	display: flex;
+	flex-direction: column;
+	min-inline-size: 0;
+}
+
+.mudad-person__name {
+	display: block;
+	color: var(--mudad-ink);
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.5;
+}
+
+.mudad-person__id {
+	display: block;
+	color: var(--mudad-faint);
+	font-family: var(--mudad-mono);
+	font-size: 10.5px;
+	line-height: 1.5;
+}
+
+.mudad-mono {
+	font-family: var(--mudad-mono);
+	font-size: 12px;
+}
+
+/* ── الشارات ──────────────────────────────────────────────────── */
+
+.mudad-badge {
+	--mudad-badge: var(--mudad-muted);
+	display: inline-flex;
+	align-items: center;
+	gap: 4px;
+	padding: 1px 9px;
+	border: 1px solid color-mix(in srgb, var(--mudad-badge) 30%, transparent);
+	border-radius: 999px;
+	background: color-mix(in srgb, var(--mudad-badge) 9%, transparent);
+	color: var(--mudad-badge);
+	font-size: 11px;
+	font-weight: 600;
+	line-height: 1.6;
+	white-space: nowrap;
+}
+
+.mudad-badge[data-tone="success"] {
+	--mudad-badge: var(--erp-success-text, #0e6b3b);
+}
+.mudad-badge[data-tone="warning"] {
+	--mudad-badge: var(--erp-warning-text, #8f4308);
+}
+.mudad-badge[data-tone="danger"] {
+	--mudad-badge: var(--erp-danger-text, #8e1f16);
+}
+.mudad-badge[data-tone="neutral"] {
+	--mudad-badge: var(--mudad-muted);
+}
+
+.mudad-issues {
+	display: flex;
+	flex-wrap: wrap;
+	gap: 4px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+/* ── نموذج بيانات الصرف ───────────────────────────────────────── */
+
+.mudad-form {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+	gap: 12px 14px;
+	padding: 16px;
+	border: 1px solid
+		color-mix(in srgb, var(--mudad-accent) 26%, var(--mudad-line));
+	border-radius: 16px;
+	background: linear-gradient(
+		150deg,
+		color-mix(in srgb, var(--mudad-accent) 6%, var(--mudad-surface)),
+		var(--mudad-surface) 60%
+	);
+	box-shadow: inset 0 0 0 1px
+		color-mix(in srgb, var(--mudad-accent) 6%, transparent);
+}
+
+.mudad-form__head {
+	grid-column: 1 / -1;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	justify-content: space-between;
+	gap: 10px;
+	padding-block-end: 10px;
+	border-block-end: 1px dashed var(--mudad-line-strong);
+}
+
+.mudad-form__title {
+	margin: 0;
+	color: var(--mudad-ink);
+	font-size: 14px;
+	font-weight: 700;
+	line-height: 1.5;
+}
+
+.mudad-form__id {
+	margin-inline-start: 6px;
+	color: var(--mudad-faint);
+	font-family: var(--mudad-mono);
+	font-size: 11px;
+	font-weight: 400;
+}
+
+.mudad-form__full {
+	grid-column: 1 / -1;
+}
+
+.mudad-form__footer {
+	grid-column: 1 / -1;
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+}
+
+.mudad-form__error {
+	grid-column: 1 / -1;
+	margin: 0;
+	padding: 8px 11px;
+	border: 1px solid
+		color-mix(in srgb, var(--erp-danger, #b3261e) 32%, transparent);
+	border-radius: 10px;
+	background: var(
+		--erp-danger-soft,
+		color-mix(in srgb, #b3261e 12%, transparent)
+	);
+	color: var(--mudad-danger);
+	font-size: 12px;
+	line-height: 1.6;
+}
+
+.mudad-form__notice {
+	margin: 0;
+	color: var(--erp-success-text, #0e6b3b);
+	font-size: 12.5px;
+	line-height: 1.65;
+}
+
+/* ── مجموعات نسب التأمينات ────────────────────────────────────── */
+
+.mudad-rates {
+	display: flex;
+	flex-direction: column;
+	gap: 8px;
+	margin: 0;
+	padding: 0;
+	border: 0;
+	min-inline-size: 0;
+}
+
+.mudad-rates__legend {
+	padding: 0;
+	color: var(--mudad-ink-soft);
+	font-size: 12px;
+	font-weight: 600;
+}
+
+.mudad-rates__grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+	gap: 12px;
+}
+
+.mudad-rate {
+	position: relative;
+	display: flex;
+	gap: 10px;
+	padding: 13px 15px;
+	border: 1px solid var(--mudad-line);
+	border-radius: 14px;
+	background: color-mix(in srgb, var(--mudad-raised) 72%, transparent);
+	cursor: pointer;
+	transition:
+		border-color 160ms var(--erp-ease-standard, ease),
+		background-color 160ms var(--erp-ease-standard, ease),
+		box-shadow 160ms var(--erp-ease-standard, ease);
+}
+
+.mudad-rate:hover {
+	border-color: color-mix(in srgb, var(--mudad-accent) 38%, var(--mudad-line));
+}
+
+.mudad-rate[data-active="true"] {
+	border-color: var(--mudad-accent);
+	background: color-mix(in srgb, var(--mudad-accent) 6%, var(--mudad-surface));
+	box-shadow: 0 0 0 3px color-mix(in srgb, var(--mudad-accent) 15%, transparent);
+}
+
+.mudad-rate:focus-within {
+	outline: 2px solid color-mix(in srgb, var(--mudad-accent) 72%, transparent);
+	outline-offset: 2px;
+}
+
+.mudad-rate__input {
+	position: absolute;
+	inline-size: 1px;
+	block-size: 1px;
+	opacity: 0;
+	pointer-events: none;
+}
+
+.mudad-rate__dot {
+	flex-shrink: 0;
+	inline-size: 16px;
+	block-size: 16px;
+	margin-block-start: 2px;
+	border: 2px solid var(--mudad-line-strong);
+	border-radius: 50%;
+	background: var(--mudad-surface);
+	transition: border-color 140ms var(--erp-ease-standard, ease);
+}
+
+.mudad-rate[data-active="true"] .mudad-rate__dot {
+	border-color: var(--mudad-accent);
+	box-shadow: inset 0 0 0 3px var(--mudad-accent);
+}
+
+.mudad-rate__body {
+	display: flex;
+	flex-direction: column;
+	gap: 6px;
+	min-inline-size: 0;
+}
+
+.mudad-rate__title {
+	color: var(--mudad-ink);
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.55;
+}
+
+.mudad-rate__grid {
+	display: grid;
+	grid-template-columns: 1fr;
+	gap: 4px;
+	margin: 0;
+}
+
+.mudad-rate__pair {
+	display: flex;
+	align-items: baseline;
+	justify-content: space-between;
+	gap: 10px;
+	padding-block: 1px;
+	border-block-end: 1px dotted
+		color-mix(in srgb, var(--mudad-line) 80%, transparent);
+}
+
+.mudad-rate__pair:last-child {
+	border-block-end: 0;
+}
+
+.mudad-rate__pair-label {
+	color: var(--mudad-muted);
+	font-size: 11.5px;
+}
+
+.mudad-rate__pair-value {
+	color: var(--mudad-ink);
+	font-family: var(--mudad-mono);
+	font-size: 11.5px;
+	font-weight: 600;
+}
+
+.mudad-rate__note {
+	margin: 0;
+	color: var(--mudad-faint);
+	font-size: 11px;
+	line-height: 1.6;
+}
+
+/* ── نتيجة الكشف ──────────────────────────────────────────────── */
+
+.mudad-result {
+	display: flex;
+	flex-direction: column;
+	gap: 12px;
+	padding: 16px;
+	border: 1px solid
+		color-mix(in srgb, var(--erp-success, #16834a) 38%, transparent);
+	border-radius: 16px;
+	background: linear-gradient(
+		140deg,
+		color-mix(in srgb, var(--erp-success, #16834a) 7%, var(--mudad-surface)),
+		var(--mudad-surface) 68%
+	);
+}
+
+.mudad-result__head {
+	display: flex;
+	align-items: center;
+	gap: 10px;
+}
+
+.mudad-result__icon {
+	display: grid;
+	place-items: center;
+	flex-shrink: 0;
+	inline-size: 34px;
+	block-size: 34px;
+	border-radius: 11px;
+	background: var(
+		--erp-success-soft,
+		color-mix(in srgb, #16834a 15%, transparent)
+	);
+	color: var(--erp-success-text, #0e6b3b);
+	font-size: 16px;
+	font-weight: 700;
+}
+
+.mudad-result__title {
+	margin: 0;
+	color: var(--mudad-ink);
+	font-size: 13.5px;
+	font-weight: 700;
+	line-height: 1.5;
+}
+
+.mudad-result__sub {
+	margin: 1px 0 0;
+	color: var(--mudad-muted);
+	font-size: 11.5px;
+	line-height: 1.6;
+}
+
+.mudad-result__grid {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(170px, 1fr));
+	gap: 10px 14px;
+	margin: 0;
+}
+
+.mudad-result__grid dt {
+	color: var(--mudad-faint);
+	font-size: 11px;
+	line-height: 1.5;
+}
+
+.mudad-result__grid dd {
+	margin: 1px 0 0;
+	color: var(--mudad-ink);
+	font-size: 12.5px;
+	font-weight: 500;
+	line-height: 1.6;
+}
+
+.mudad-result__wide {
+	grid-column: 1 / -1;
+}
+
+.mudad-hash {
+	display: block;
+	padding: 8px 10px;
+	border: 1px dashed var(--mudad-line-strong);
+	border-radius: 9px;
+	background: color-mix(in srgb, var(--mudad-sunken) 42%, transparent);
+	color: var(--mudad-ink);
+	font-family: var(--mudad-mono);
+	font-size: 11px;
+	line-height: 1.7;
+	overflow-wrap: anywhere;
+}
+
+.mudad-result__actions {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 10px;
+}
+
+/* ── فحوص قوى ─────────────────────────────────────────────────── */
+
+.mudad-checks {
+	margin: 0;
+	padding: 0;
+	overflow: hidden;
+	border: 1px solid var(--mudad-line);
+	border-radius: 14px;
+	background: var(--mudad-surface);
+	list-style: none;
+}
+
+.mudad-checks li {
+	display: grid;
+	grid-template-columns: minmax(0, 1fr) auto;
+	align-items: center;
+	gap: 3px 12px;
+	padding: 11px 14px;
+	border-block-end: 1px solid
+		color-mix(in srgb, var(--mudad-line) 72%, transparent);
+}
+
+.mudad-checks li:last-child {
+	border-block-end: 0;
+}
+
+.mudad-checks li:nth-child(even) {
+	background: color-mix(in srgb, var(--mudad-sunken) 24%, transparent);
+}
+
+.mudad-checks__label {
+	color: var(--mudad-ink);
+	font-size: 12.5px;
+	font-weight: 600;
+	line-height: 1.55;
+}
+
+.mudad-checks__id {
+	margin-inline-start: 6px;
+	color: var(--mudad-faint);
+	font-family: var(--mudad-mono);
+	font-size: 10px;
+	font-weight: 400;
+}
+
+.mudad-checks__detail {
+	grid-column: 1 / -1;
+	color: var(--mudad-muted);
+	font-size: 11.5px;
+	line-height: 1.65;
+}
+
+.mudad-inline-status {
+	display: flex;
+	flex-wrap: wrap;
+	align-items: center;
+	gap: 8px;
+	margin: 0;
+	padding: 11px 14px;
+	border: 1px solid var(--mudad-line);
+	border-radius: 13px;
+	background: color-mix(in srgb, var(--mudad-sunken) 30%, var(--mudad-surface));
+	color: var(--mudad-ink-soft);
+	font-size: 12.5px;
+}
+
+/* ── البوابات الرسمية ─────────────────────────────────────────── */
+
+.mudad-portals {
+	display: grid;
+	grid-template-columns: repeat(auto-fit, minmax(210px, 1fr));
+	gap: 12px;
+	margin: 0;
+	padding: 0;
+	list-style: none;
+}
+
+.mudad-portal {
+	display: flex;
+	align-items: center;
+	justify-content: space-between;
+	gap: 12px;
+	min-inline-size: 0;
+	padding: 14px 16px;
+	border: 1px solid var(--mudad-line);
+	border-radius: 14px;
+	background: color-mix(in srgb, var(--mudad-raised) 74%, transparent);
+	color: var(--mudad-ink);
+	text-decoration: none;
+	transition:
+		transform 160ms var(--erp-ease-standard, ease),
+		border-color 160ms var(--erp-ease-standard, ease),
+		box-shadow 160ms var(--erp-ease-standard, ease),
+		background-color 160ms var(--erp-ease-standard, ease);
+}
+
+.mudad-portal:hover {
+	transform: translateY(-2px);
+	border-color: color-mix(in srgb, var(--mudad-accent) 40%, var(--mudad-line));
+	background: color-mix(in srgb, var(--mudad-accent) 4%, var(--mudad-surface));
+	box-shadow: var(--erp-shadow-pop, 0 8px 24px rgb(46 38 24 / 9%));
+}
+
+.mudad-portal__text {
+	display: flex;
+	flex-direction: column;
+	gap: 1px;
+	min-inline-size: 0;
+}
+
+.mudad-portal__label {
+	color: var(--mudad-ink);
+	font-size: 13px;
+	font-weight: 600;
+	line-height: 1.5;
+}
+
+.mudad-portal__url {
+	color: var(--mudad-faint);
+	font-family: var(--mudad-mono);
+	font-size: 10.5px;
+	line-height: 1.5;
+	overflow-wrap: anywhere;
+}
+
+.mudad-portal__arrow {
+	display: grid;
+	place-items: center;
+	flex-shrink: 0;
+	inline-size: 28px;
+	block-size: 28px;
+	border-radius: 9px;
+	background: var(--mudad-sunken);
+	color: var(--mudad-muted);
+	font-size: 13px;
+	transition:
+		background-color 160ms var(--erp-ease-standard, ease),
+		color 160ms var(--erp-ease-standard, ease);
+}
+
+.mudad-portal:hover .mudad-portal__arrow {
+	background: color-mix(in srgb, var(--mudad-accent) 13%, transparent);
+	color: var(--mudad-brand);
+}
+
+.mudad-footnote {
+	margin: 0;
+	padding-inline-start: 12px;
+	border-inline-start: 2px solid var(--mudad-line-strong);
+	color: var(--mudad-faint);
+	font-size: 11.5px;
+	line-height: 1.8;
+}
+
+/* ملاحظات الخادم الحرة — قائمة نقطية مستقلة عن نداءات الحالة. */
+.mudad-notes {
+	display: flex;
+	flex-direction: column;
+	gap: 4px;
+	margin: 0;
+	padding-inline-start: 16px;
+	color: var(--mudad-faint);
+	font-size: 11.5px;
+	line-height: 1.8;
+}
+
+.mudad-notes li::marker {
+	color: color-mix(in srgb, var(--mudad-muted) 70%, transparent);
+}
+
+/* ── الحركة ───────────────────────────────────────────────────── */
+
+@keyframes mudad-rise {
+	from {
+		opacity: 0;
+		transform: translateY(14px);
+	}
+	to {
+		opacity: 1;
+		transform: translateY(0);
+	}
+}
+
+.mudad-premium > * {
+	animation: mudad-rise 420ms var(--erp-ease-out, cubic-bezier(0, 0, 0.2, 1))
+		both;
+}
+
+.mudad-premium > *:nth-child(2) {
+	animation-delay: 40ms;
+}
+.mudad-premium > *:nth-child(3) {
+	animation-delay: 80ms;
+}
+.mudad-premium > *:nth-child(4) {
+	animation-delay: 120ms;
+}
+.mudad-premium > *:nth-child(5) {
+	animation-delay: 160ms;
+}
+.mudad-premium > *:nth-child(6) {
+	animation-delay: 200ms;
+}
+.mudad-premium > *:nth-child(7) {
+	animation-delay: 240ms;
+}
+.mudad-premium > *:nth-child(n + 8) {
+	animation-delay: 280ms;
+}
+
+/* ── الاستجابة ────────────────────────────────────────────────── */
+
+@media (max-width: 767px) {
+	.mudad-hero {
+		align-items: stretch;
+	}
+
+	.mudad-hero__actions {
+		inline-size: 100%;
+	}
+
+	.mudad-hero__actions > * {
+		flex: 1 1 auto;
+	}
+
+	.mudad-deck {
+		grid-template-columns: 1fr;
+	}
+
+	.mudad-gauge {
+		flex-direction: row;
+		justify-content: flex-start;
+		gap: 16px;
+		text-align: start;
+	}
+
+	.mudad-gauge__meta {
+		max-inline-size: 22ch;
+	}
+}
+
+@media (max-width: 639px) {
+	.mudad-premium {
+		gap: 1rem;
+	}
+
+	.mudad-hero {
+		padding: 15px;
+		border-radius: 16px;
+	}
+
+	.mudad-hero__title {
+		font-size: clamp(1.35rem, 7vw, 1.7rem);
+	}
+
+	.mudad-hero__english {
+		display: inline-flex;
+		margin-inline-start: 0;
+		margin-block-start: 4px;
+	}
+
+	.mudad-hero__meta li {
+		flex: 1 1 45%;
+	}
+
+	.mudad-section__head {
+		padding: 13px 14px;
+	}
+
+	.mudad-section__actions {
+		inline-size: 100%;
+	}
+
+	.mudad-section__actions > * {
+		flex: 1 1 auto;
+	}
+
+	.mudad-field {
+		inline-size: 100%;
+	}
+
+	.mudad-field :is(input, select) {
+		inline-size: 100%;
+	}
+
+	.mudad-section__body {
+		padding: 14px;
+		gap: 14px;
+	}
+
+	.mudad-metrics {
+		grid-template-columns: repeat(auto-fit, minmax(145px, 1fr));
+	}
+
+	.mudad-metric {
+		padding: 13px 13px 11px;
+	}
+
+	.mudad-notice {
+		grid-template-columns: auto minmax(0, 1fr);
+		padding: 12px 13px;
+	}
+
+	.mudad-table table {
+		min-inline-size: 620px;
+	}
+
+	.mudad-table thead th,
+	.mudad-table tbody th,
+	.mudad-table tbody td {
+		padding-inline: 10px;
+	}
+
+	.mudad-rates__grid,
+	.mudad-portals {
+		grid-template-columns: 1fr;
+	}
+
+	.mudad-btn {
+		min-block-size: 42px;
+	}
+}
+
+/* ── الطباعة ──────────────────────────────────────────────────── */
+
+@media print {
+	.mudad-hero {
+		background: none;
+		box-shadow: none;
+	}
+
+	.mudad-hero::after,
+	.mudad-notice__icon {
+		display: none;
+	}
+
+	.mudad-premium > * {
+		animation: none;
+	}
+
+	.mudad-premium {
+		gap: 12px;
+	}
+}
+
+/* ── تقليل الحركة ─────────────────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+	.mudad-premium > * {
+		animation: none !important;
+	}
+
+	.mudad-premium *,
+	.mudad-premium *::before,
+	.mudad-premium *::after {
+		transition-duration: 0.01ms !important;
+		animation-duration: 0.01ms !important;
+		animation-iteration-count: 1 !important;
+	}
+}

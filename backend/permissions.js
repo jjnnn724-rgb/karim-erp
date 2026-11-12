@@ -76,6 +76,15 @@ const PERMISSIONS = [
       menus: ['cashier-monitor'], entitiesRead: [], entitiesWrite: [] },
     { key: 'whatsapp.use', ar: 'استخدام واتساب', group: 'التكامل',
       menus: ['whatsapp'], entitiesRead: [], entitiesWrite: [] },
+    // الامتثال السعودي — مفاتيح إضافية فقط، بلا أدوار جديدة (ADR-005)
+    { key: 'compliance.view', ar: 'عرض حالة الامتثال وسجل التسليم', group: 'الامتثال السعودي',
+      menus: [], entitiesRead: [], entitiesWrite: [] },
+    { key: 'compliance.configure', ar: 'إدارة إعدادات المزوّدين واعتماداتهم', group: 'الامتثال السعودي',
+      menus: [], entitiesRead: [], entitiesWrite: [] },
+    { key: 'compliance.submit', ar: 'إرسال وإعادة محاولة التسليم', group: 'الامتثال السعودي',
+      menus: [], entitiesRead: [], entitiesWrite: [] },
+    { key: 'compliance.review', ar: 'مراجعة الميت واعتماد الاستثناءات', group: 'الامتثال السعودي',
+      menus: [], entitiesRead: [], entitiesWrite: [] },
     // النظام (عرض فقط — الكتابة الحساسة تبقى للأدوار)
     { key: 'users.view', ar: 'عرض المستخدمين', group: 'النظام',
       menus: ['users', 'settings'], entitiesRead: [], entitiesWrite: [] },
@@ -176,7 +185,23 @@ function requireRoleOrPerm(roles, permKey) {
     };
 }
 
+// ─── فصل المهام: مجموعات لا يجتمع مفتاحاها لمستخدم غير admin (ADR-005) ─────
+const SOD_CONFLICTS = Object.freeze([
+    ['compliance.configure', 'compliance.submit'],
+    ['compliance.configure', 'compliance.review'],
+    ['compliance.submit', 'compliance.review'],
+]);
+
+function sodConflict(grants) {
+    const set = new Set(Array.isArray(grants) ? grants : []);
+    for (const [a, b] of SOD_CONFLICTS) {
+        if (set.has(a) && set.has(b)) {return [a, b];}
+    }
+    return null;
+}
+
 module.exports = {
     PERMISSIONS, PERM_MAP, ENTITY_PERMS, permForEntity, menusForGrants, menusForDenies,
     getUserPerms, getUserGrants, invalidateUser, userHasPerm, requireRoleOrPerm,
+    SOD_CONFLICTS, sodConflict,
 };

@@ -58,3 +58,14 @@
 * **Entries (Overage):**
   * Debit: `1000` (POS Treasury)
   * Credit: `6900` (Cash Overage / Other Operating Income)
+
+### 7. VAT review workspace (internal draft)
+* **API:** `GET /api/accounting/vat-return` reads posted journal entries only.
+* **Reconciliation:** POS void debits are shown as output-tax reversals; monthly
+  settlement entries are excluded from period tax movement. Purchase invoices
+  are cross-checked only when a matching posted `purchase_invoice` journal exists.
+* **Review gate:** other output-account debits and input-account credits are
+  surfaced as unclassified movements instead of being silently netted.
+* **Limitation:** this is an internal review, not a ZATCA submission or legal
+  compliance certification. Review original tax documents and unclassified
+  movements before using figures in a filing.

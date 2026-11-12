@@ -1,5 +1,15 @@
 # Engineering Progress
 
+## 2026-11-12 — Final closure and production-readiness review
+
+- **Automation:** Added a Riyadh-time worker for residency/contract reminders, manually configured ZATCA deadlines, and nightly posted-journal integrity checks. Migration 148 is required; it has not been applied to production, so the worker is not active on `karimeg.online`.
+- **Bank file limitation:** Automatic SIF generation remains blocked because the official bank-specific template is not in the repository. The existing WPS CSV is for human review only and must not be presented as SIF.
+- **Validation:** V3 typecheck/build passed, 955 tests in 145 files passed, public desktop/mobile E2E passed (6/6), and bundle budgets passed (total JS 718.5 KiB gzip; CSS 55.9/60 KiB gzip). Focused Biome checks passed on 20 changed V3 files. Targeted compliance/VAT Jest tests passed (8/8) without database access. Root regular/strict TypeScript and targeted ESLint passed.
+- **Lint limitation:** The full lint gates remain red: ESLint reports 17 errors and 14 warnings; V3 Biome reports 745 errors and 175 warnings across 594 files. Generated V3 build assets are excluded from ESLint, but unrelated repository debt was not bulk-rewritten or baselined.
+- **Live check:** Health returned HTTP 200 with healthy database/realtime components, but reports `commit: null`. The public V3 asset version is `4.9.312` while the local candidate is `4.9.297`; the candidate is not safe to deploy until that source/version divergence is reconciled. A fresh V3 page load also logged a CSP violation for Cloudflare's injected inline challenge script under `script-src 'self'`.
+- **Release pipeline:** The `release/v3-masterpiece` branch triggers CI, not deployment. Release preparation is manual and only runs on `main`; production update requires a source ZIP and SHA-256, administrator rights, a verified database backup, and the server-side update script. No migration or production deployment was run.
+- **Disposition:** **NOT READY for production deployment.** The unresolved CSP, version divergence, unapplied migration, and repository lint failures are explicit release blockers.
+
 ## 2026-11-12 — V3 inventory inquiry date validation
 
 - **Scope:** Reject impossible calendar dates in inventory inquiry ranges before querying PostgreSQL. Preserve the existing default range, leap-day behavior, reversed-range error, and 93-day limit.

@@ -6,8 +6,8 @@
  * والحسابات — والخادم يحسم الصلاحية.
  */
 
-import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.296';
-import { fetchDailyLocks } from '../data/oracle-repo.js?v=4.9.296';
+import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.297';
+import { fetchDailyLocks } from '../data/oracle-repo.js?v=4.9.297';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

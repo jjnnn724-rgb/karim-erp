@@ -94,7 +94,7 @@
  *   direct edit cost). See inventory-repo.js.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.296';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.297';
 import {
     fetchInventory, fetchShelves, shelfMap, inventoryToRow,
     buildInventoryKpis, categoryCounts, shortageRows,
@@ -114,21 +114,21 @@ import {
     startAuditSession, saveAuditCount, clearAuditCount,
     submitAuditSession, approveAuditSession, cancelAuditSession,
     auditToRow, auditItemToRow, auditSummaryOf, scopePreviewText,
-} from '../data/inventory-repo.js?v=4.9.296';
-import { formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.296';
-import { checkExpiryOnLines, normalizeExpiryDate } from '../data/expiry-policy.js?v=4.9.296';
-import { hasGovernanceRead } from '../data/warehouse-gov-repo.js?v=4.9.296';
+} from '../data/inventory-repo.js?v=4.9.297';
+import { formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.297';
+import { checkExpiryOnLines, normalizeExpiryDate } from '../data/expiry-policy.js?v=4.9.297';
+import { hasGovernanceRead } from '../data/warehouse-gov-repo.js?v=4.9.297';
 import {
     OPENING_NET_ROLES, OPENING_WRITE_ROLES, createOpeningInvoice,
     fetchOpeningIssuedTotals, openingNetQuantity, parseOpeningSheetRows,
     validateOpeningRows,
-} from '../data/opening-balance-repo.js?v=4.9.296';
-import { ensureXlsx } from '../vendor.js?v=4.9.296';
+} from '../data/opening-balance-repo.js?v=4.9.297';
+import { ensureXlsx } from '../vendor.js?v=4.9.297';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.296';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.296';
+} from '../signature.js?v=4.9.297';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.297';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

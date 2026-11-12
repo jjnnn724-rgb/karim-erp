@@ -94,6 +94,7 @@ const { apiCacheMiddleware, apiCacheInvalidator } = require('./api-cache');
 let lastBackupAt = 0;
 let pendingBackupTimer = null;
 let stopDailyReportScheduler = () => {};
+let stopComplianceAutomation = () => {};
 const BACKUP_MIN_INTERVAL_MS = 15_000; // نسخة احتياطية كل 15 ثانية كحد أقصى
 
 function scheduleBackup() {
@@ -701,6 +702,8 @@ try {
 // User permission grants (admin assigns; additive over roles).
 const { router: permissionRouter } = require('./permission-routes');
 app.use('/api/permissions', (req, res, next) => { req.io = io; next(); }, permissionRouter);
+app.use('/api/integration', require('./integration/routes'));
+app.use('/api/integration', require('./integration/wps-routes'));
 
 // Task 20: صندوق إشعارات كل مستخدم — جرس حي بعدّاد غير المقروء + إشعارات سلسلة الصرف
 ensureNotificationsSchema().catch((error) => logger.error('[NOTIFICATIONS_SCHEMA] initialization failed:', error.message));
@@ -3159,6 +3162,7 @@ installProcessShields({
     shutdownTimeoutMs: 15_000,
     onFatal: async (/* err */) => {
         stopDailyReportScheduler();
+        stopComplianceAutomation();
         try { attendanceEngine.stop(); } catch (_) {}
         try { yarasoftEngine.stop();   } catch (_) {}
         try { const { oracleEngine: oe } = require('./yarasoft/oracle-link'); oe.stop(); } catch (_) {}
@@ -3180,6 +3184,7 @@ initGracefulShutdown({
         logger.info(`\n${'='.repeat(50)}`);
         logger.info(`🛑 Received ${signal}. Starting graceful shutdown...`);
         stopDailyReportScheduler();
+        stopComplianceAutomation();
         attendanceEngine.stop(); // إيقاف مزامنة البصمة قبل إغلاق قاعدة البيانات
         yarasoftEngine.stop();   // إيقاف استيراد Yarasoft قبل إغلاق قاعدة البيانات
         try { require('./yarasoft/oracle-link').oracleEngine.stop(); } catch (_) {} // إيقاف الربط المباشر
@@ -3275,6 +3280,19 @@ async function onServerListening() {
     }
 
     stopDailyReportScheduler = startDailyReportScheduler(pool);
+    ensureNotificationsSchema()
+        .then(async () => {
+            const schema = await pool.query(
+                `SELECT to_regclass('public.compliance_deadlines') AS deadlines,
+                        to_regclass('public.compliance_alert_events') AS events`);
+            if (!schema.rows[0]?.deadlines || !schema.rows[0]?.events) {
+                throw new Error('Migration 148_compliance_automation.sql is not applied');
+            }
+            const { startComplianceAutomation } = require('./compliance-automation');
+            stopComplianceAutomation = startComplianceAutomation({ pool, io, log: logger });
+            logger.info('[compliance-automation] daily Riyadh 02:15 reminders and ledger integrity check scheduled');
+        })
+        .catch((error) => logger.error('[compliance-automation] worker disabled:', error.message));
     // ─── مزامنة البصمة داخل النظام: طبّق المخطط ثم ابدأ المحرك ───
     ensureZktecoSchema()
         .then(() => attendanceEngine.start(io))

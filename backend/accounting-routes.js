@@ -21,6 +21,7 @@ const express = require('express');
 const { pool } = require('./shared-pool');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { logger } = require('./logger');
+const { calculateVatMovement, isValidDateOnly } = require('./vat-reporting');
 
 const router = express.Router();
 const READ_ROLES = ['admin', 'accountant', 'manager', 'auditor'];
@@ -546,20 +547,16 @@ async function postReturnToLedger(returnId, { totalValue, date, deptCode } = {})
 // الترحيل على أساس الأرصدة لا حركة الشهر، فأول تصفية تُنظّف التراكم التاريخي
 // ثم تُبقي كل شهر لاحق الأرصدة متطابقة — idempotent بمفتاح (vat_settlement, month).
 
-/** حركة الضريبة داخل فترة (للإقرار فقط): 2100 دائن − 1150 مدين. */
+/** حركة ضريبية للمراجعة من القيود المرحّلة، مع فصل العكس والحركات غير المصنّفة. */
 async function vatMovement(db, from, to, accounts) {
     const posted = await db.query(
-        `SELECT l.account_code,
+        `SELECT l.account_code, e.source_type,
                 ROUND(COALESCE(SUM(l.debit),0),2)::float AS debit,
                 ROUND(COALESCE(SUM(l.credit),0),2)::float AS credit
          FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'posted'
          WHERE e.date >= $1::date AND e.date <= $2::date AND l.account_code IN ($3,$4)
-         GROUP BY 1`, [from, to, accounts.payable_account, accounts.recoverable_account]);
-    const byCode = {};
-    for (const r of posted.rows) {byCode[r.account_code] = r;}
-    const outputVat = round2(byCode[accounts.payable_account]?.credit || 0);
-    const inputVat = round2(byCode[accounts.recoverable_account]?.debit || 0);
-    return { output_vat: outputVat, input_vat: inputVat, net_payable: round2(outputVat - inputVat) };
+         GROUP BY 1, 2`, [from, to, accounts.payable_account, accounts.recoverable_account]);
+    return calculateVatMovement(posted.rows, accounts);
 }
 
 /** أرصدة الضريبة المرحّلة حتى تاريخ: موجب = مستحق (2100) / قابل للاسترداد (1150). */
@@ -600,13 +597,14 @@ function buildVatSettlementPlan({ payableBalance, recoverableBalance, accounts =
 
 router.get('/vat-return', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
     try {
-        const dayRe = /^\d{4}-\d{2}-\d{2}$/;
         // FIX (Enterprise 2026-10-21): الشهر واليوم بتوقيت الرياض — لا
         // التوقيت المحلي للخادم ولا UTC (كانا ينزلقان شهرًا/يومًا).
         const monthStart = `${riyadhMonth()}-01`;
-        const from = dayRe.test(String(req.query.from || '')) ? String(req.query.from) : monthStart;
-        const to = dayRe.test(String(req.query.to || '')) ? String(req.query.to) : riyadhToday();
-        if (from > to) {return res.status(422).json({ error: 'LEDGER_PERIOD_INVALID', message: 'بداية الفترة بعد نهايتها' });}
+        const from = req.query.from ? String(req.query.from) : monthStart;
+        const to = req.query.to ? String(req.query.to) : riyadhToday();
+        if (!isValidDateOnly(from) || !isValidDateOnly(to) || from > to) {
+            return res.status(422).json({ error: 'LEDGER_PERIOD_INVALID', message: 'فترة التقرير غير صالحة' });
+        }
         const accounts = await resolveAccounts(pool, 'tax', 'vat_return', {
             payable_account: '2100',
             recoverable_account: '1150',
@@ -616,15 +614,26 @@ router.get('/vat-return', jwtAuth, requireRole(...READ_ROLES), async (req, res) 
         const purchases = (await pool.query(
             `SELECT COUNT(*)::int AS n, COALESCE(ROUND(SUM(subtotal_net),2),0)::float AS net,
                     COALESCE(ROUND(SUM(vat_total),2),0)::float AS vat
-             FROM "purchaseInvoices" WHERE date >= $1 AND date <= $2`, [from, to])).rows[0];
+             FROM "purchaseInvoices" p
+             WHERE p.date >= $1 AND p.date <= $2
+               AND COALESCE(p."invoiceNumber",'') NOT LIKE 'OPEN-%'
+               AND COALESCE(p.notes,'') NOT LIKE 'رصيد افتتاحي%'
+               AND EXISTS (
+                   SELECT 1 FROM journal_entries e
+                   WHERE e.source_type = 'purchase_invoice' AND e.status = 'posted'
+                     AND (e.source_id = p.id::text OR e.source_id LIKE p.id::text || ':revision:%')
+               )`, [from, to])).rows[0];
         res.json({
             from, to,
             output_vat: movement.output_vat,
+            output_vat_reversals: movement.output_vat_reversals,
             input_vat: movement.input_vat,
-            net_payable: movement.net_payable >= 0 ? movement.net_payable : 0,
-            carry_forward_credit: movement.net_payable < 0 ? round2(-movement.net_payable) : 0,
+            input_vat_adjustments: movement.input_vat_adjustments,
+            net_payable: movement.net_payable,
+            carry_forward_credit: movement.carry_forward_credit,
             payable_balance: balances.payable,
             recoverable_balance: balances.recoverable,
+            unclassified_vat_movements: movement.unclassified_vat_movements,
             purchases_crosscheck: { count: Number(purchases.n), net: Number(purchases.net), vat: Number(purchases.vat) },
         });
     } catch (error) {
