@@ -328,7 +328,7 @@ export function ProductArt({ item }: { item: { name: string; nameEn?: string | u
     const gradient = `linear-gradient(160deg, ${art.from} 0%, ${art.to} 100%)`;
     return (
         <span className="pos-product__art" style={{ background: gradient }} aria-hidden="true">
-            <svg viewBox="0 0 24 24" className="pos-product__art-icon" color={art.glyph} width="46%" height="46%" focusable="false">
+            <svg viewBox="0 0 24 24" className="pos-product__art-icon" color={art.glyph} width="40%" height="40%" focusable="false">
                 {FAMILY_PATHS[family]}
             </svg>
         </span>

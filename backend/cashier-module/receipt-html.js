@@ -172,11 +172,11 @@ function buildReceiptHtml({ order = {}, items = [], payments = [], qrImageDataUr
   body {
     font-family: 'Tajawal', 'Cairo', 'Segoe UI', Tahoma, sans-serif;
     color: var(--ink);
-    font-size: 12px;
-    line-height: 1.55;
+    font-size: 13px;
+    line-height: 1.6;
     max-width: 80mm;
     margin: 0 auto;
-    padding: 8mm 6mm 8mm;
+    padding: 7mm 5mm 7mm;
     font-variant-numeric: tabular-nums;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
@@ -189,36 +189,36 @@ function buildReceiptHtml({ order = {}, items = [], payments = [], qrImageDataUr
   .rule.solid { border-top: 1.6px solid var(--gold-deep); }
 
   .inv-strip {
-    display: flex; align-items: center; justify-content: center; gap: 6mm;
+    display: flex; align-items: center; justify-content: center; gap: 7mm;
     background: var(--gold-deep); color: #ffe9c7;
-    border-radius: 8px; padding: 2mm 4mm; margin: 5px 0 6px;
+    border-radius: 10px; padding: 3mm 4mm; margin: 5px 0 7px;
   }
-  .inv-strip .lbl { font-size: 8px; font-weight: 700; letter-spacing: 1.2px; opacity: .92; }
-  .inv-strip .num { font-size: 19px; font-weight: 900; letter-spacing: .5px; line-height: 1; }
+  .inv-strip .lbl { font-size: 9px; font-weight: 800; letter-spacing: 1.4px; opacity: .92; }
+  .inv-strip .num { font-size: 24px; font-weight: 900; letter-spacing: .5px; line-height: 1; }
 
   .item-ar { display: block; font-weight: 700; }
   .item-en { display: block; font-size: 7.5px; color: var(--ink-soft); letter-spacing: .3px; margin-top: 1px; }
 
-  .brand { text-align: center; padding: 2px 0 6px; }
+  .brand { text-align: center; padding: 2px 0 8px; }
   .brand-mark {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 62px; height: 62px; border: 1px solid var(--gold);
-    border-radius: 50%; outline: 3px double var(--gold-deep); outline-offset: 3px;
+    width: 74px; height: 74px; border: 1.5px solid var(--gold);
+    border-radius: 50%; outline: 3.5px double var(--gold-deep); outline-offset: 4px;
     background: var(--gold-pale);
   }
   .brand-logo {
-    width: 48px; height: 48px; object-fit: contain;
+    width: 58px; height: 58px; object-fit: contain;
   }
-  .brand h1 { font-size: 15.5px; font-weight: 900; margin-top: 8px; letter-spacing: 0; line-height: 1.3; }
+  .brand h1 { font-size: 18px; font-weight: 900; margin-top: 10px; letter-spacing: 0; line-height: 1.3; }
   .brand .en {
-    font-size: 8.5px; color: var(--gold-deep); letter-spacing: 1.6px;
-    text-transform: uppercase; margin-top: 2px; font-weight: 700;
+    font-size: 10px; color: var(--gold-deep); letter-spacing: 2px;
+    text-transform: uppercase; margin-top: 3px; font-weight: 800;
   }
   .doc-type {
-    display: inline-block; margin-top: 6px; padding: 3px 14px 4px;
-    border: 1.6px solid var(--gold-deep); border-radius: 999px;
-    color: var(--gold-deep); font-size: 9.5px; font-weight: 800;
-    letter-spacing: .4px; background: var(--gold-soft);
+    display: inline-block; margin-top: 7px; padding: 4px 16px 5px;
+    border: 1.8px solid var(--gold-deep); border-radius: 999px;
+    color: var(--gold-deep); font-size: 10.5px; font-weight: 800;
+    letter-spacing: .5px; background: var(--gold-soft);
   }
   .shop-meta {
     display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;
@@ -232,28 +232,28 @@ function buildReceiptHtml({ order = {}, items = [], payments = [], qrImageDataUr
 
   /* ═══ لوحة بيانات الفاتورة ═════════════════════════════════════════════════ */
   .meta-panel {
-    margin: 8px 0 6px; padding: 6px 8px;
+    margin: 9px 0 7px; padding: 7px 10px;
     background: var(--gold-pale);
     border: 1px solid var(--line-soft);
-    border-inline-start: 3px solid var(--gold);
-    border-radius: 8px;
+    border-inline-start: 3.5px solid var(--gold);
+    border-radius: 9px;
   }
-  .m-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 10.5px; padding: 1.5px 0; }
-  .m-label { color: var(--ink-soft); font-size: 8.5px; letter-spacing: .3px; }
-  .m-value { font-weight: 700; text-align: left; direction: ltr; }
+  .m-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 11.5px; padding: 2px 0; }
+  .m-label { color: var(--ink-soft); font-size: 9px; letter-spacing: .3px; }
+  .m-value { font-weight: 800; text-align: left; direction: ltr; font-size: 11px; }
   .m-value.rtl { direction: rtl; }
   .uuid { font-size: 8px; color: #8a857c; letter-spacing: .4px; font-family: 'IBM Plex Mono', Consolas, monospace; }
 
   /* ═══ جدول الأصناف ════════════════════════════════════════════════════════ */
   table { width: 100%; border-collapse: collapse; }
   .items th {
-    font-size: 8.5px; font-weight: 800; color: #fff; background: var(--gold-deep);
-    padding: 5px 5px; text-align: right; letter-spacing: .4px;
+    font-size: 9.5px; font-weight: 800; color: #fff; background: var(--gold-deep);
+    padding: 6px 5px; text-align: right; letter-spacing: .5px;
   }
   .items th.qty, .items td.qty { width: 11%; text-align: center; }
   .items th.price, .items td.price { width: 19%; text-align: center; }
   .items th.total, .items td.total { width: 24%; text-align: left; }
-  .items td { padding: 5px 5px; border-bottom: 1px solid var(--line-soft); font-size: 11px; vertical-align: top; }
+  .items td { padding: 6px 5px; border-bottom: 1px solid var(--line-soft); font-size: 12px; vertical-align: top; }
   .items tbody tr:nth-child(even) td { background: var(--gold-pale); }
   .items tr:last-child td { border-bottom: none; }
   .items td.item { font-weight: 700; }
@@ -286,9 +286,9 @@ function buildReceiptHtml({ order = {}, items = [], payments = [], qrImageDataUr
     color: #fff; border: 1px solid #6d2c05;
     box-shadow: 0 2px 0 #6d2c05 inset, 0 -1px 0 rgb(255 255 255 / 30%) inset;
   }
-  .grand .k { font-size: 11px; font-weight: 800; opacity: .95; letter-spacing: .3px; }
-  .grand .v { font-size: 22px; font-weight: 900; letter-spacing: .2px; }
-  .grand .v .cur { color: #ffe3ae; font-size: 10px; }
+  .grand .k { font-size: 12px; font-weight: 800; opacity: .95; letter-spacing: .4px; }
+  .grand .v { font-size: 26px; font-weight: 900; letter-spacing: .3px; }
+  .grand .v .cur { color: #ffe3ae; font-size: 11px; }
 
   .pay-title { font-size: 9px; font-weight: 800; color: var(--gold-deep); letter-spacing: 1px; margin-bottom: 4px; text-transform: uppercase; }
   .pay-row { display: flex; justify-content: space-between; font-size: 11px; padding: 2px 0; border-bottom: 1px dotted var(--line-soft); }
@@ -303,7 +303,7 @@ function buildReceiptHtml({ order = {}, items = [], payments = [], qrImageDataUr
     border: 1.6px solid var(--gold-deep); outline: 3px double var(--gold-deep); outline-offset: 2px;
     border-radius: 10px; background: #fff;
   }
-  .qr-section img { width: 104px; height: 104px; display: block; }
+  .qr-section img { width: 132px; height: 132px; display: block; }
   .qr-cap { font-size: 8.5px; color: var(--ink-soft); margin-top: 6px; letter-spacing: .4px; font-weight: 600; }
 
   .footer { text-align: center; margin-top: 12px; padding-top: 10px; border-top: 3px double var(--gold); }

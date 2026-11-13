@@ -146,7 +146,7 @@ export function PosReceipt({ receipt, buffet, canReprint, busy, onReprint, onKot
                             fetchPosOrderReceiptHtml(receipt.order_id)
                                 .then((html) => {
                                     setPrintPending(false);
-                                    const opened = openServerHtmlWindow(html, `فاتورة — #${String(receipt.invoice_counter ?? '')}`);
+                                    const opened = openServerHtmlWindow(html, `فاتورة — #${String(receipt.invoice_counter ?? '')}`, 'width=460,height=840,noopener');
                                     if (!opened) {
                                         setPrintError('حجب المتصفح نافذة الطباعة؛ اسمح بالنوافذ المنبثقة ثم أعد المحاولة.');
                                     }

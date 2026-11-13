@@ -303,8 +303,8 @@ export function openPrintWindow(title: string, html: string): boolean {
 }
 
 /** صفحة HTML كاملة أرسلها الخادم (تذاكر المطبخ) — تُعرض كما هي بلا تغليف. */
-export function openServerHtmlWindow(html: string, title = ''): boolean {
-    const win = window.open('', '_blank', 'noopener');
+export function openServerHtmlWindow(html: string, title = '', features = ''): boolean {
+    const win = window.open('', '_blank', features || 'noopener');
     if (!win) {
         return false;
     }

@@ -5,12 +5,12 @@
 /* ─── الجذر ─────────────────────────────────────────────────────────────── */
 
 .pos-entry--light {
-    --pos-bg: #f3f5f9;
+    --pos-bg: #f7f7f9;
     --pos-surface: #ffffff;
-    --pos-sunken: #eef1f6;
+    --pos-sunken: #efeef2;
     --pos-ink: #1f2937;
     --pos-muted: #5b6470;
-    --pos-line: #e2e8f0;
+    --pos-line: #e9e9ee;
     --pos-emerald: #059669;
     --pos-amber: #d97706;
     --pos-crimson: #dc2626;
@@ -18,7 +18,7 @@
 }
 
 .pos-entry.pos-entry--light {
-    background: #f3f5f9;
+    background: #f7f7f9;
     color: #1f2937;
 }
 
@@ -28,8 +28,8 @@
     border-color: var(--pos-line);
     background: #ffffff;
     box-shadow:
-        0 1px 0 rgb(15 23 42 / 4%) inset,
-        0 6px 18px -14px rgb(15 23 42 / 30%);
+        0 1px 0 rgb(24 24 27 / 4%) inset,
+        0 6px 18px -14px rgb(24 24 27 / 30%);
 }
 
 .pos-entry--light .pos-cmdbar__copy strong {
@@ -37,11 +37,11 @@
 }
 
 .pos-entry--light .pos-cmdbar__copy small {
-    color: #475569;
+    color: #52525b;
 }
 
 .pos-entry--light .pos-cmdbar__shift {
-    color: #475569;
+    color: #52525b;
 }
 
 .pos-entry--light .pos-cmdbar__status {
@@ -55,9 +55,9 @@
 }
 
 .pos-entry--light .pos-tab {
-    border-color: #e2e8f0;
+    border-color: #e9e9ee;
     background: #f8fafc;
-    color: #334155;
+    color: #3f3f46;
 }
 
 .pos-entry--light .pos-tab.is-active {
@@ -87,9 +87,9 @@
 }
 
 .pos-entry--light .pos-icon-btn {
-    border-color: #e2e8f0;
+    border-color: #e9e9ee;
     background: #ffffff;
-    color: #334155;
+    color: #3f3f46;
 }
 
 .pos-entry--light .pos-icon-btn:hover {
@@ -103,7 +103,7 @@
 }
 
 .pos-entry--light .pos-menu__trigger {
-    border-color: #e2e8f0;
+    border-color: #e9e9ee;
     background: #ffffff;
     color: #0f172a;
 }
@@ -115,8 +115,8 @@
 
 .pos-entry--light .pos-menu__panel {
     background: #ffffff;
-    border-color: #e2e8f0;
-    box-shadow: 0 18px 40px -18px rgb(15 23 42 / 28%);
+    border-color: #e9e9ee;
+    box-shadow: 0 18px 40px -18px rgb(24 24 27 / 28%);
 }
 
 .pos-entry--light .pos-menu__item {
@@ -130,31 +130,31 @@
 /* ─── مبدّل اللوحتين ─────────────────────────────────────────────────────── */
 
 .pos-entry--light .pos-pane-switch {
-    border-color: #e2e8f0;
-    background: #eef1f6;
+    border-color: #e9e9ee;
+    background: #efeef2;
 }
 
 .pos-entry--light .pos-pane-switch__btn {
-    color: #475569;
+    color: #52525b;
 }
 
 .pos-entry--light .pos-pane-switch__btn.is-active {
     background: #ffffff;
     border-color: var(--pos-emerald);
     color: #065f46;
-    box-shadow: 0 1px 4px rgb(15 23 42 / 10%);
+    box-shadow: 0 1px 4px rgb(24 24 27 / 10%);
 }
 
 /* ─── الكتالوج ──────────────────────────────────────────────────────────── */
 
 .pos-entry--light .pos-catalog {
-    border-color: #e2e8f0;
+    border-color: #e9e9ee;
     background: #ffffff;
-    box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
+    box-shadow: 0 1px 2px rgb(24 24 27 / 5%);
 }
 
 .pos-entry--light .pos-catalog__toolbar {
-    border-color: #eef1f6;
+    border-color: #efeef2;
     background: #ffffff;
 }
 
@@ -164,7 +164,7 @@
 }
 
 .pos-entry--light .pos-search__input {
-    border-color: #e2e8f0;
+    border-color: #e9e9ee;
     background: #f8fafc;
     color: #0f172a;
 }
@@ -185,9 +185,9 @@
 }
 
 .pos-entry--light .pos-category {
-    border-color: #e2e8f0;
+    border-color: #e9e9ee;
     background: #ffffff;
-    color: #475569;
+    color: #52525b;
 }
 
 .pos-entry--light .pos-category.is-active {
@@ -215,7 +215,7 @@
 .pos-entry--light .pos-product {
     border-color: #e5e9f0;
     background: #ffffff;
-    box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
+    box-shadow: 0 1px 2px rgb(24 24 27 / 5%);
 }
 
 .pos-entry--light .pos-product:hover {
@@ -225,22 +225,22 @@
 }
 
 .pos-entry--light .pos-product__media {
-    background: linear-gradient(160deg, #eef1f6, #e2e8f0);
+    background: linear-gradient(160deg, #efeef2, #e9e9ee);
 }
 
 .pos-entry--light .pos-product__media::after {
     height: 55%;
-    background: linear-gradient(to top, rgb(15 23 42 / 55%), transparent);
+    background: linear-gradient(to top, rgb(24 24 27 / 55%), transparent);
 }
 
 .pos-entry--light .pos-product__glyph {
-    color: rgb(15 23 42 / 22%);
+    color: rgb(24 24 27 / 22%);
 }
 
 .pos-entry--light .pos-product__category-badge {
     background: rgb(255 255 255 / 88%);
-    border-color: #e2e8f0;
-    color: #334155;
+    border-color: #e9e9ee;
+    color: #3f3f46;
 }
 
 .pos-entry--light .pos-product__stock {
@@ -265,9 +265,9 @@
 }
 
 .pos-entry--light .pos-product__pin {
-    border-color: #e2e8f0;
+    border-color: #e9e9ee;
     background: rgb(255 255 255 / 88%);
-    color: #475569;
+    color: #52525b;
 }
 
 .pos-entry--light .pos-product__pin.is-on {
@@ -278,8 +278,8 @@
 
 .pos-entry--light .pos-product__image-action {
     background: rgb(255 255 255 / 92%);
-    border-color: #e2e8f0;
-    color: #334155;
+    border-color: #e9e9ee;
+    color: #3f3f46;
 }
 
 .pos-entry--light .pos-add-symbol {
@@ -291,7 +291,7 @@
     border-color: rgb(5 150 105 / 45%);
     background: #ffffff;
     color: var(--pos-emerald);
-    box-shadow: 0 6px 16px -8px rgb(15 23 42 / 35%);
+    box-shadow: 0 6px 16px -8px rgb(24 24 27 / 35%);
 }
 
 .pos-entry--light .pos-tools-toggle:hover {
@@ -299,13 +299,13 @@
 }
 
 .pos-entry--light .pos-tools-scrim {
-    background: rgb(15 23 42 / 35%);
+    background: rgb(24 24 27 / 35%);
 }
 
 .pos-entry--light .pos-tools-panel {
     background: #ffffff;
-    border-color: #e2e8f0;
-    box-shadow: 0 18px 40px -18px rgb(15 23 42 / 30%);
+    border-color: #e9e9ee;
+    box-shadow: 0 18px 40px -18px rgb(24 24 27 / 30%);
 }
 
 .pos-entry--light .pos-tools-panel__title {
@@ -313,7 +313,7 @@
 }
 
 .pos-entry--light .pos-tools-group__label {
-    color: #475569;
+    color: #52525b;
 }
 
 .pos-entry--light .pos-tools-chips .pos-category {
@@ -321,9 +321,9 @@
 }
 
 .pos-entry--light .pos-tools-close {
-    border-color: #e2e8f0;
+    border-color: #e9e9ee;
     background: #f1f5f9;
-    color: #334155;
+    color: #3f3f46;
 }
 
 .pos-entry--light .pos-tools-close:hover {
@@ -358,7 +358,7 @@
 }
 
 .pos-entry--light .pos-favorites__label {
-    color: #475569;
+    color: #52525b;
 }
 
 .pos-entry--light .pos-favorite strong {
@@ -368,13 +368,13 @@
 /* ─── السلة ─────────────────────────────────────────────────────────────── */
 
 .pos-entry--light .pos-cart {
-    border-color: #e2e8f0;
+    border-color: #e9e9ee;
     background: #ffffff;
-    box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
+    box-shadow: 0 1px 2px rgb(24 24 27 / 5%);
 }
 
 .pos-entry--light .pos-cart__head {
-    border-color: #eef1f6;
+    border-color: #efeef2;
 }
 
 .pos-entry--light .pos-cart__head h2,
@@ -387,7 +387,7 @@
 }
 
 .pos-entry--light .pos-cart__line {
-    border-color: #eef1f6;
+    border-color: #efeef2;
 }
 
 .pos-entry--light .pos-cart__copy strong {
@@ -401,7 +401,7 @@
 }
 
 .pos-entry--light .pos-qty button {
-    border-color: #e2e8f0;
+    border-color: #e9e9ee;
     background: #f8fafc;
     color: #0f172a;
 }
@@ -433,7 +433,7 @@
 }
 
 .pos-entry--light .pos-cart__foot {
-    border-color: #eef1f6;
+    border-color: #efeef2;
     background: #ffffff;
     box-shadow: none;
 }
@@ -481,7 +481,7 @@
 }
 
 .pos-entry--light .pos-payments__state {
-    color: #475569;
+    color: #52525b;
 }
 
 .pos-entry--light .pos-payments__state.is-invalid {
@@ -489,9 +489,9 @@
 }
 
 .pos-entry--light .pos-method {
-    border-color: #e2e8f0;
+    border-color: #e9e9ee;
     background: #f8fafc;
-    color: #334155;
+    color: #3f3f46;
 }
 
 .pos-entry--light .pos-method svg {
@@ -534,14 +534,14 @@
 }
 
 .pos-entry--light .pos-numpad button {
-    border-color: #e2e8f0;
+    border-color: #e9e9ee;
     background: #f8fafc;
     color: #0f172a;
-    box-shadow: 0 1px 0 rgb(15 23 42 / 5%);
+    box-shadow: 0 1px 0 rgb(24 24 27 / 5%);
 }
 
 .pos-entry--light .pos-numpad button:hover:not(:disabled) {
-    background: #eef1f6;
+    background: #efeef2;
 }
 
 .pos-entry--light .pos-numpad__display,
@@ -567,9 +567,9 @@
 }
 
 .pos-entry--light .pos-card__brand {
-    border-color: #e2e8f0;
+    border-color: #e9e9ee;
     background: #ffffff;
-    color: #334155;
+    color: #3f3f46;
 }
 
 .pos-entry--light .pos-card__brand:hover:not(:disabled) {
@@ -592,7 +592,7 @@
 .pos-entry--light .pos-price-editor {
     background: #ffffff;
     border-color: #fde68a;
-    box-shadow: 0 16px 36px -14px rgb(15 23 42 / 30%);
+    box-shadow: 0 16px 36px -14px rgb(24 24 27 / 30%);
 }
 
 .pos-entry--light .pos-price-delta.is-down {
@@ -604,8 +604,8 @@
 .pos-entry--light .pos-price-delta.is-up,
 .pos-entry--light .pos-price-delta.is-flat {
     background: #f1f5f9;
-    color: #475569;
-    border-color: #e2e8f0;
+    color: #52525b;
+    border-color: #e9e9ee;
 }
 
 .pos-entry--light .pos-price-error {
@@ -624,9 +624,9 @@
 
 .pos-entry--light .pos-price-cancel,
 .pos-entry--light .pos-price-reset {
-    border-color: #e2e8f0;
+    border-color: #e9e9ee;
     background: #ffffff;
-    color: #334155;
+    color: #3f3f46;
 }
 
 .pos-entry--light .pos-price-cancel:hover,
@@ -668,7 +668,7 @@
 /* ─── حقول مشتركة ───────────────────────────────────────────────────────── */
 
 .pos-entry--light :where(.erp-control) {
-    border-color: #e2e8f0;
+    border-color: #e9e9ee;
     background: #ffffff;
     color: #0f172a;
     box-shadow: none;
@@ -712,13 +712,13 @@
 
 .pos-entry--light .pos-person__mark {
     background: #f1f5f9;
-    color: #475569;
+    color: #52525b;
 }
 
 /* ─── الإيصال (شاشة بعد البيع) ──────────────────────────────────────────── */
 
 .pos-entry--light .pos-receipt {
-    border-color: #e2e8f0;
+    border-color: #e9e9ee;
     background: #ffffff;
 }
 
@@ -735,12 +735,12 @@
 /* ─── نوافذ منبثقة ──────────────────────────────────────────────────────── */
 
 .pos-entry--light .pos-overlay__body .erp-card {
-    border-color: #e2e8f0;
+    border-color: #e9e9ee;
     background: #ffffff;
 }
 
 .pos-entry--light .pos-overlay__body :where(th) {
-    color: #475569;
+    color: #52525b;
 }
 
 .pos-entry--light .pos-overlay__body :where(td) {
@@ -748,7 +748,7 @@
 }
 
 .pos-entry--light .pos-open {
-    border-color: #e2e8f0;
+    border-color: #e9e9ee;
     background: #ffffff;
     color: #0f172a;
 }
@@ -813,7 +813,7 @@
 .pos-entry--light .catalog-price-edit {
     background: #ffffff;
     border-color: #fde68a;
-    box-shadow: 0 22px 48px -16px rgb(15 23 42 / 30%);
+    box-shadow: 0 22px 48px -16px rgb(24 24 27 / 30%);
 }
 
 .pos-entry--light .catalog-price-edit__head strong {
@@ -822,8 +822,8 @@
 
 .pos-entry--light .catalog-price-edit__close {
     background: #f8fafc;
-    border-color: #e2e8f0;
-    color: #334155;
+    border-color: #e9e9ee;
+    color: #3f3f46;
 }
 
 .pos-entry--light .catalog-price-edit__close:hover {
@@ -862,7 +862,7 @@
 .pos-entry--light .pos-customer-panel {
     background: #ffffff;
     border-color: #a7f3d0;
-    box-shadow: 0 22px 48px -16px rgb(15 23 42 / 28%);
+    box-shadow: 0 22px 48px -16px rgb(24 24 27 / 28%);
 }
 
 .pos-entry--light .pos-customer-panel__title {
