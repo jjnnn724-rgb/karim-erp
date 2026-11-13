@@ -4,7 +4,7 @@ import type { PosSaleResult } from '../../lib/pos';
 import { PosReceipt } from './PosReceipt';
 
 const mocks = vi.hoisted(() => ({
-    openServerHtmlWindow: vi.fn((html: string, _title?: string) => true),
+    openServerHtmlWindow: vi.fn((_html: string, _title?: string) => true),
     qrDataUrl: vi.fn(async (_payload: string) => 'data:image/png;base64,AAAA' as string | null),
 }));
 

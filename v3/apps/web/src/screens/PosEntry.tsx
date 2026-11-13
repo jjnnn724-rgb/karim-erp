@@ -1,5 +1,6 @@
 import './PosEntry.premium.css';
 import './PosEntry.midnight.css';
+import './PosEntry.light.css';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useConfirm } from '../components/ConfirmProvider';
@@ -178,6 +179,13 @@ export function PosEntry() {
 
     const [view, setView] = useState<View>('cashier');
     const [busy, setBusy] = useState(false);
+    const [posTheme, setPosTheme] = useState<'dark' | 'light'>(() => {
+        try {
+            return window.localStorage.getItem('v3.pos.theme') === 'dark' ? 'dark' : 'light';
+        } catch {
+            return 'light';
+        }
+    });
     const [openError, setOpenError] = useState('');
     const [query, setQuery] = useState('');
     const [selectedCategory, setSelectedCategory] = useState('');
@@ -458,6 +466,19 @@ export function PosEntry() {
     function resetSale() {
         updateActiveTab((tab) => freshPosTab(tab));
         setMobilePane('catalog');
+    }
+
+    /** فاتح/داكن — يُحفظ محليًا على جهاز الكاشير؛ النسخة الفاتحة هي الافتراضية. */
+    function togglePosTheme() {
+        setPosTheme((current) => {
+            const next = current === 'dark' ? 'light' : 'dark';
+            try {
+                window.localStorage.setItem('v3.pos.theme', next);
+            } catch {
+                /* بلا ذاكرة محلية، التبديل يعمل للجلسة */
+            }
+            return next;
+        });
     }
 
     function openCloseShiftDialog() {
@@ -1289,7 +1310,7 @@ export function PosEntry() {
     };
 
     return (
-        <div className={`flex flex-col premium-screen pos-entry pos-entry--workspace pos-entry--pane-${mobilePane}`}>
+        <div className={`flex flex-col premium-screen pos-entry pos-entry--workspace${posTheme === 'light' ? ' pos-entry--light' : ''} pos-entry--pane-${mobilePane}`}>
             <h1 className="sr-only">الكاشير — نقطة البيع</h1>
             {shift ? (
                 <section className="pos-cmdbar" aria-label="شريط الكاشير">
@@ -1363,6 +1384,25 @@ export function PosEntry() {
                     </div>
 
                     <div className="pos-cmdbar__end">
+                        <button
+                            type="button"
+                            className="pos-icon-btn"
+                            aria-label={posTheme === 'light' ? 'الوضع الداكن' : 'الوضع الفاتح'}
+                            title={posTheme === 'light' ? 'الوضع الداكن' : 'الوضع الفاتح'}
+                            aria-pressed={posTheme === 'light'}
+                            onClick={togglePosTheme}
+                        >
+                            {posTheme === 'light' ? (
+                                <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                                    <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
+                                </svg>
+                            ) : (
+                                <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                                    <circle cx="12" cy="12" r="4.2" />
+                                    <path d="M12 2.5v2.6M12 18.9v2.6M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M2.5 12h2.6M18.9 12h2.6M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" />
+                                </svg>
+                            )}
+                        </button>
                         <button
                             type="button"
                             className="pos-icon-btn"
