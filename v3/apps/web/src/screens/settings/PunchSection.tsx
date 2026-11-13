@@ -111,11 +111,35 @@ const ATTEMPT_DECISION: Record<string, { label: string; tone: 'success' | 'dange
     rejected: { label: 'مرفوضة', tone: 'danger' },
 };
 
+/**
+ * قراءة صورة الوجه لرفعها — تُصغَّر إلى 480px كحد أقصى وتُضغط JPEG ‎0.85.
+ * الصورة الأصلية من كاميرا الهاتف (عدة MB) + base64 تتجاوز حد جسم الطلب العام
+ * (2MB) فيفشل التسجيل بـ HTTP 413 قبل أن يصل إلى الخادم.
+ */
 function readFile(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
+        if (!/^image\//.test(file.type)) {
+            reject(new Error('الملف المختار ليس صورة — اختر صورة واضحة للوجه'));
+            return;
+        }
         const reader = new FileReader();
-        reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
         reader.onerror = () => reject(new Error('تعذّرت قراءة الصورة'));
+        reader.onload = () => {
+            const image = new Image();
+            image.onerror = () => reject(new Error('تعذّرت قراءة الصورة'));
+            image.onload = () => {
+                const max = 480;
+                const scale = Math.min(1, max / Math.max(image.width || max, image.height || max));
+                const w = Math.max(1, Math.round((image.width || max) * scale));
+                const h = Math.max(1, Math.round((image.height || max) * scale));
+                const canvas = document.createElement('canvas');
+                canvas.width = w;
+                canvas.height = h;
+                canvas.getContext('2d')?.drawImage(image, 0, 0, w, h);
+                resolve(canvas.toDataURL('image/jpeg', 0.85));
+            };
+            image.src = String(reader.result || '');
+        };
         reader.readAsDataURL(file);
     });
 }
