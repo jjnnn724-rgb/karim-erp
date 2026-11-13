@@ -1,3 +1,4 @@
+import type { ReactElement } from 'react';
 import { type PosCartLine, type PosDiscount, type PosTotals, parsePosMoney } from '../../lib/pos-pricing';
 import { Badge, Button, Input, Select } from '../../ui';
 import { PosNumpad } from './PosNumpad';
@@ -66,6 +67,92 @@ function TrashIcon() {
     );
 }
 
+function CashIcon() {
+    return (
+        <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <rect x="3" y="7" width="18" height="10" rx="2" />
+            <circle cx="12" cy="12" r="2.4" />
+            <path d="M6.5 10.2v.01M17.5 13.8v.01" />
+        </svg>
+    );
+}
+
+function CardIcon() {
+    return (
+        <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <rect x="3" y="6" width="18" height="12" rx="2" />
+            <path d="M3 10h18M7 14h4" />
+        </svg>
+    );
+}
+
+function WalletIcon() {
+    return (
+        <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M4 7a2 2 0 0 1 2-2h13v3" />
+            <path d="M4 7v11a2 2 0 0 0 2 2h14a1 1 0 0 0 1-1v-7a1 1 0 0 0-1-1H6a2 2 0 0 1-2-2Z" />
+            <path d="M16.5 13.5h.01" />
+        </svg>
+    );
+}
+
+function BankIcon() {
+    return (
+        <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            width="20"
+            height="20"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.6"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M4 9.5 12 5l8 4.5M5 10v8M9.5 10v8M14.5 10v8M19 10v8M3 20h18" />
+        </svg>
+    );
+}
+
+const METHOD_ICONS: Record<PaymentKey, () => ReactElement> = {
+    cash: CashIcon,
+    card: CardIcon,
+    wallet: WalletIcon,
+    bank_transfer: BankIcon,
+};
+
+const CASH_BILLS = [5, 10, 20, 50, 100, 200, 500] as const;
+
 /** السلة والخصم والدفع — الأرقام تقديرية، والخادم هو من يسجّل الفاتورة. */
 export function PosCart({
     cart,
@@ -111,6 +198,22 @@ export function PosCart({
     // نسبة الضريبة المعروضة تتغيّر مع سلّة مختلطة النسب؛ لا نطبع 15% إن لم تكن كذلك.
     const rates = [...new Set(cart.map((row) => row.vatRate))];
     const vatLabel = rates.length === 1 ? `الضريبة (${String(Math.round((rates[0] ?? 0) * 100))}%)` : 'الضريبة';
+
+    /** تعبئة «المتبقي» في طريقة دفع واحدة — ضغطة واحدة وتمتلئ الطريقة. */
+    const otherPaidFor = (key: PaymentKey) =>
+        PAYMENT_FIELDS.reduce((sum, field) => {
+            if (field.key === key) {
+                return sum;
+            }
+            const value = parsePosMoney(payments[field.key]);
+            return sum + (Number.isFinite(value) ? value : 0);
+        }, 0);
+
+    const remainingFor = (key: PaymentKey) => Math.max(0, totals.total - otherPaidFor(key));
+
+    const fillRemaining = (key: PaymentKey) => {
+        onPayment(key, remainingFor(key).toFixed(2));
+    };
 
     return (
         <section className="erp-card pos-cart" aria-labelledby="pos-cart-title">
@@ -244,15 +347,61 @@ export function PosCart({
                 )}
 
                 {canSell && cart.length ? (
-                    <details className="pos-payments">
-                        <summary className="pos-payments__summary">
-                            <strong>الدفع</strong>
-                            <span className={`pos-payments__summary-state${invalid ? ' is-invalid' : ''}`} role="status" aria-live="polite">
+                    <section className="pos-payments" aria-label="الدفع">
+                        <div className="pos-payments__head">
+                            <strong className="pos-payments__title">الدفع</strong>
+                            <span className={`pos-payments__state${invalid ? ' is-invalid' : ''}`} role="status" aria-live="polite">
                                 {paymentState}
                             </span>
-                            <span className="pos-payments__summary-edit">تعديل</span>
-                        </summary>
+                        </div>
                         <div className="pos-payments__body">
+                            <div className="pos-methods" role="group" aria-label="تعبئة المتبقي في طريقة الدفع">
+                                {PAYMENT_FIELDS.map((field) => {
+                                    const Icon = METHOD_ICONS[field.key];
+                                    const filled = parsePosMoney(payments[field.key]) > 0;
+                                    return (
+                                        <button
+                                            key={field.key}
+                                            type="button"
+                                            className={`pos-method${filled ? ' is-active' : ''}`}
+                                            aria-pressed={filled}
+                                            disabled={busy}
+                                            title={`تعبئة المتبقي ${moneyText(remainingFor(field.key))} في «${field.label}»`}
+                                            onClick={() => {
+                                                fillRemaining(field.key);
+                                            }}
+                                        >
+                                            <Icon />
+                                            <span>{field.label}</span>
+                                        </button>
+                                    );
+                                })}
+                            </div>
+                            <div className="pos-bills" role="group" aria-label="فئات نقدية سريعة">
+                                {CASH_BILLS.map((bill) => (
+                                    <button
+                                        key={bill}
+                                        type="button"
+                                        className="pos-bill"
+                                        disabled={busy}
+                                        onClick={() => {
+                                            onPayment('cash', bill.toFixed(2));
+                                        }}
+                                    >
+                                        {bill}
+                                    </button>
+                                ))}
+                                <button
+                                    type="button"
+                                    className="pos-bill pos-bill--exact"
+                                    disabled={busy}
+                                    onClick={() => {
+                                        onPayment('cash', remainingFor('cash').toFixed(2));
+                                    }}
+                                >
+                                    المبلغ بالظبط
+                                </button>
+                            </div>
                             <div className="pos-payments__discount">
                                 <Select
                                     label="نوع الخصم"
@@ -390,7 +539,7 @@ export function PosCart({
                                 }}
                             />
                         </div>
-                    </details>
+                    </section>
                 ) : !canSell ? (
                     <p className="text-body-sm text-muted">قراءة فقط — لا يمكن إتمام البيع بهذا الدور.</p>
                 ) : null}

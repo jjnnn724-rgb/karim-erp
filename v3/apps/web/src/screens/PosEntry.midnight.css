@@ -142,9 +142,9 @@
     display: flex;
     flex: 0 0 auto;
     align-items: center;
-    gap: 0.75rem;
-    block-size: 3.5rem;
-    padding-inline: 0.75rem;
+    gap: 0.5rem;
+    block-size: 2.85rem;
+    padding-inline: 0.6rem;
     border: 1px solid var(--pos-line);
     border-radius: var(--pos-radius);
     background: linear-gradient(180deg, #131c2e, #0f172a);
@@ -157,9 +157,9 @@
     display: flex;
     flex: 0 1 auto;
     align-items: center;
-    gap: 0.6rem;
+    gap: 0.45rem;
     min-inline-size: 0;
-    max-inline-size: 30%;
+    max-inline-size: 34%;
 }
 
 .pos-cmdbar__status {
@@ -186,9 +186,9 @@
 .pos-cmdbar__copy strong {
     overflow: hidden;
     color: #f8fafc;
-    font-size: 0.92rem;
+    font-size: 0.84rem;
     font-weight: 700;
-    line-height: 1.25;
+    line-height: 1.2;
     white-space: nowrap;
     text-overflow: ellipsis;
 }
@@ -196,10 +196,10 @@
 .pos-cmdbar__copy small {
     display: flex;
     align-items: center;
-    gap: 0.4rem;
+    gap: 0.35rem;
     overflow: hidden;
-    font-size: 0.68rem;
-    line-height: 1.2;
+    font-size: 0.62rem;
+    line-height: 1.15;
     white-space: nowrap;
 }
 
@@ -1215,6 +1215,138 @@
     border-block-start-color: rgb(148 163 184 / 12%);
 }
 
+/* رأس الدفع الاحترافي — دائم الظهور بلا «تعديل» */
+.pos-entry .pos-payments__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.32rem 0.45rem 0;
+}
+
+.pos-entry .pos-payments__title {
+    color: #f8fafc;
+    font-size: 0.8rem;
+    font-weight: 800;
+}
+
+.pos-entry .pos-payments__state {
+    color: #94a3b8;
+    font-size: 0.68rem;
+    font-weight: 600;
+    font-variant-numeric: tabular-nums;
+}
+
+.pos-entry .pos-payments__state.is-invalid {
+    color: #fca5a5;
+}
+
+/* أزرار طرق الدفع الأربع — ضغطة تعبئ المتبقي */
+.pos-entry .pos-methods {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.35rem;
+}
+
+.pos-entry .pos-method {
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.15rem;
+    padding: 0.32rem 0.2rem;
+    border: 1px solid rgb(148 163 184 / 18%);
+    border-radius: 9px;
+    background: #0b1120;
+    color: #cbd5e1;
+    font-size: 0.66rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        border-color 120ms ease,
+        background-color 120ms ease,
+        color 120ms ease,
+        transform 75ms ease;
+}
+
+.pos-entry .pos-method svg {
+    color: #94a3b8;
+    transition: color 120ms ease;
+}
+
+.pos-entry .pos-method:hover:not(:disabled) {
+    border-color: rgb(16 185 129 / 55%);
+    background: rgb(16 185 129 / 12%);
+    color: #6ee7b7;
+}
+
+.pos-entry .pos-method:hover:not(:disabled) svg {
+    color: #34d399;
+}
+
+.pos-entry .pos-method:active:not(:disabled) {
+    transform: scale(0.96);
+}
+
+.pos-entry .pos-method.is-active {
+    border-color: rgb(16 185 129 / 65%);
+    background: rgb(16 185 129 / 18%);
+    color: #6ee7b7;
+    box-shadow: 0 0 0 1px rgb(16 185 129 / 35%) inset;
+}
+
+.pos-entry .pos-method.is-active svg {
+    color: #34d399;
+}
+
+.pos-entry .pos-method:focus-visible {
+    outline: 2px solid var(--pos-emerald);
+    outline-offset: 1px;
+}
+
+/* فئات نقدية سريعة */
+.pos-entry .pos-bills {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.28rem;
+}
+
+.pos-entry .pos-bill {
+    padding: 0.22rem 0.55rem;
+    border: 1px solid rgb(245 158 11 / 32%);
+    border-radius: 7px;
+    background: rgb(245 158 11 / 8%);
+    color: #fcd34d;
+    font-size: 0.68rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    transition:
+        border-color 120ms ease,
+        background-color 120ms ease,
+        transform 75ms ease;
+}
+
+.pos-entry .pos-bill:hover:not(:disabled) {
+    border-color: rgb(245 158 11 / 60%);
+    background: rgb(245 158 11 / 16%);
+}
+
+.pos-entry .pos-bill:active:not(:disabled) {
+    transform: scale(0.95);
+}
+
+.pos-entry .pos-bill--exact {
+    border-color: rgb(16 185 129 / 40%);
+    background: rgb(16 185 129 / 12%);
+    color: #6ee7b7;
+}
+
+.pos-entry .pos-bill--exact:hover:not(:disabled) {
+    border-color: rgb(16 185 129 / 65%);
+    background: rgb(16 185 129 / 20%);
+}
+
 .pos-entry .pos-payments label {
     color: #94a3b8;
 }
@@ -1456,10 +1588,15 @@
 .pos-entry .pos-pane-switch {
     border-color: var(--pos-line);
     background: #0b1120;
+    padding: 0.18rem;
+    gap: 0.25rem;
 }
 
 .pos-entry .pos-pane-switch__btn {
     color: #94a3b8;
+    min-block-size: 2rem;
+    font-size: 0.78rem;
+    padding: 0.25rem 0.6rem;
 }
 
 .pos-entry .pos-pane-switch__btn.is-active {
@@ -1544,9 +1681,9 @@
     .pos-cmdbar {
         flex-wrap: wrap;
         block-size: auto;
-        min-block-size: 3.5rem;
-        row-gap: 0.4rem;
-        padding-block: 0.45rem;
+        min-block-size: 2.4rem;
+        row-gap: 0.25rem;
+        padding-block: 0.28rem;
     }
 
     .pos-cmdbar__identity {

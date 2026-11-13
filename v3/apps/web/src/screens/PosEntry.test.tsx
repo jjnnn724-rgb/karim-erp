@@ -720,7 +720,6 @@ describe('نقطة البيع', () => {
         renderScreen();
 
         fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
-        fireEvent.click(screen.getByText('تعديل'));
         const cash = screen.getByLabelText('نقدي') as HTMLInputElement;
         await waitFor(() => {
             expect(cash.value).toBe('11.50');
@@ -773,7 +772,6 @@ describe('نقطة البيع', () => {
         renderScreen();
 
         fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
-        fireEvent.click(screen.getByText('تعديل'));
         fireEvent.change(screen.getByLabelText('نقدي'), { target: { value: '5' } });
         fireEvent.change(screen.getByLabelText('بطاقة'), { target: { value: '6.5' } });
         fireEvent.change(screen.getByLabelText('مرجع / رقم الموافقة'), { target: { value: 'AUTH-1234' } });
@@ -821,7 +819,6 @@ describe('نقطة البيع', () => {
         renderScreen();
 
         fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
-        fireEvent.click(screen.getByText('تعديل'));
 
         fireEvent.click(screen.getByRole('combobox', { name: 'نوع الخصم' }));
         fireEvent.click(await screen.findByRole('option', { name: 'نسبة مئوية' }));
@@ -847,7 +844,6 @@ describe('نقطة البيع', () => {
         renderScreen();
 
         fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
-        fireEvent.click(screen.getByText('تعديل'));
         fireEvent.click(screen.getByRole('combobox', { name: 'نوع الخصم' }));
         fireEvent.click(await screen.findByRole('option', { name: 'نسبة مئوية' }));
         fireEvent.change(screen.getByLabelText('قيمة الخصم'), { target: { value: '140' } });
@@ -863,7 +859,6 @@ describe('نقطة البيع', () => {
         renderScreen();
 
         fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
-        fireEvent.click(screen.getByText('تعديل'));
 
         fireEvent.change(screen.getByLabelText('نقدي'), { target: { value: '5' } });
         fireEvent.change(screen.getByLabelText('بطاقة'), { target: { value: '6.5' } });
@@ -892,7 +887,6 @@ describe('نقطة البيع', () => {
         renderScreen();
 
         fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
-        fireEvent.click(screen.getByText('تعديل'));
         fireEvent.change(screen.getByLabelText('نقدي'), { target: { value: '5' } });
 
         fireEvent.click(screen.getByRole('button', { name: /إتمام البيع/ }));
