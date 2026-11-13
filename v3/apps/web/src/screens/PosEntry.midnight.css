@@ -1721,6 +1721,44 @@
     }
 }
 
+/* ═══ إلغاء وضع «الصفحة الطويلة» على الشاشات ≤1100px — طاولة كاشير ثابتة ═══ */
+@media (max-width: 1100px) {
+    .pos-entry.pos-entry--workspace {
+        block-size: 100dvh;
+        max-block-size: 100dvh;
+        overflow: hidden;
+        padding-block-end: 0.35rem;
+    }
+
+    .pos-entry.pos-entry--workspace .pos-entry__layout {
+        flex: 1 1 auto;
+        align-items: stretch;
+        overflow: hidden;
+    }
+
+    .pos-entry.pos-entry--workspace .pos-pane-switch {
+        position: static;
+        inset: auto;
+        margin-block: 0;
+    }
+
+    .pos-entry.pos-entry--workspace .pos-catalog__body,
+    .pos-entry.pos-entry--workspace .pos-cart__body {
+        overflow-y: auto;
+    }
+
+    .pos-entry.pos-entry--workspace .pos-cart__foot {
+        position: static;
+        inset: auto;
+        flex: 0 0 auto;
+    }
+
+    /* شريط «عرض السلة» العائم يغطي الشبكة — يكفي مبدل «الأصناف/السلة» الثابت */
+    .pos-entry.pos-entry--workspace .pos-pane-dock {
+        display: none;
+    }
+}
+
 /* ═══ كثافة لمس كاملة — كل حاجة تحت الإيد بلا فوارغ (شاشات ≤1100px) ═══════════ */
 @media (max-width: 1100px) {
     .pos-entry.pos-entry--workspace {
