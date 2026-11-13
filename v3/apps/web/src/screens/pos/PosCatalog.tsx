@@ -2,6 +2,7 @@ import { memo, type RefObject, useCallback, useEffect, useMemo, useRef, useState
 import type { BuffetLive, HeldOrder } from '../../lib/pos';
 import { intOf } from '../../lib/reporting';
 import { Badge, Button, SearchInput } from '../../ui';
+import { CatalogPriceEdit } from './CatalogPriceEdit';
 import { ProductArt } from './pos-art';
 import { bestSellers, type CatalogItem, moneyText, orderCatalog, qtyText, type SalesIndex, soldQty } from './pos-ui';
 
@@ -24,6 +25,9 @@ export interface PosCatalogProps {
     onToggleFavorite: (item: CatalogItem) => void;
     canSell: boolean;
     canManageCatalog: boolean;
+    /** manager/admin فقط — يفتح محرر سعر البيع من البطاقة. */
+    canEditProductPrice: boolean;
+    onProductPriceSaved: (productId: string, price: number) => void;
     imagePending: boolean;
     onUploadImage: (item: CatalogItem, file: File) => void;
     onRemoveImage: (item: CatalogItem) => void;
@@ -79,10 +83,13 @@ interface ProductCardProps {
     busy: boolean;
     canManageCatalog: boolean;
     imagePending: boolean;
+    /** manager/admin فقط */
+    canEditProductPrice: boolean;
     onAdd: (item: CatalogItem) => void;
     onToggleFavorite: (item: CatalogItem) => void;
     onPickImage: (item: CatalogItem) => void;
     onRemoveImage: (item: CatalogItem) => void;
+    onEditPrice: (item: CatalogItem) => void;
 }
 
 /**
@@ -96,10 +103,12 @@ const ProductCard = memo(function ProductCard({
     busy,
     canManageCatalog,
     imagePending,
+    canEditProductPrice,
     onAdd,
     onToggleFavorite,
     onPickImage,
     onRemoveImage,
+    onEditPrice,
 }: ProductCardProps) {
     return (
         <article className={`pos-product${pinned ? ' is-pinned' : ''}`}>
@@ -113,21 +122,21 @@ const ProductCard = memo(function ProductCard({
                 }}
             >
                 <span className="pos-product__media">
-                    {item.imageUrl.startsWith('/uploads/menu/') ? (
+                    <ProductArt item={item} />
+                    {item.imageUrl ? (
                         <img
+                            className="pos-product__photo"
                             src={item.imageUrl}
                             alt=""
                             loading="lazy"
                             decoding="async"
                             fetchPriority="low"
                             onError={(event) => {
-                                // صورة تالفة أو مفقودة: أخفِها بدل أيقونة مكسورة، تبقى مساحة التدرّج.
+                                // صورة تالفة أو مفقودة: أخفِها فتظهر أيقونة العائلة خلفها.
                                 event.currentTarget.style.visibility = 'hidden';
                             }}
                         />
-                    ) : (
-                        <ProductArt item={item} />
-                    )}
+                    ) : null}
                     {item.category ? <span className="pos-product__category-badge">{item.category}</span> : null}
                     {item.stock !== null && item.stock <= 5 ? (
                         <span className="pos-product__stock">{`متبقي ${qtyText(item.stock)}`}</span>
@@ -163,6 +172,33 @@ const ProductCard = memo(function ProductCard({
                     }}
                 >
                     {pinned ? '★' : '☆'}
+                </button>
+            ) : null}
+            {canEditProductPrice ? (
+                <button
+                    type="button"
+                    className="pos-product__price-edit"
+                    aria-label={`تعديل سعر ${item.name}`}
+                    title="تعديل سعر البيع"
+                    disabled={busy}
+                    onClick={() => {
+                        onEditPrice(item);
+                    }}
+                >
+                    <svg
+                        aria-hidden="true"
+                        viewBox="0 0 24 24"
+                        width="13"
+                        height="13"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    >
+                        <path d="M12.6 3.7a2 2 0 0 1 1.4-.6h.6a2 2 0 0 1 1.4.6l4.3 4.3a2 2 0 0 1 0 2.8l-8.5 8.5a2 2 0 0 1-2.8 0l-4.3-4.3a2 2 0 0 1 0-2.8l8.5-8.5Z" />
+                        <path d="M13 7l4 4M8.5 12.5l3 3" />
+                    </svg>
                 </button>
             ) : null}
             {canManageCatalog ? (
@@ -222,9 +258,12 @@ function PosCatalogView({
     onRecall,
     onDeleteHeld,
     busy,
+    canEditProductPrice,
+    onProductPriceSaved,
 }: PosCatalogProps) {
     const fileRef = useRef<HTMLInputElement | null>(null);
     const [imageTarget, setImageTarget] = useState<CatalogItem | null>(null);
+    const [priceEditTarget, setPriceEditTarget] = useState<CatalogItem | null>(null);
     const needle = query.trim().toLocaleLowerCase();
 
     useEffect(() => {
@@ -349,10 +388,12 @@ function PosCatalogView({
                 busy={busy}
                 canManageCatalog={canManageCatalog}
                 imagePending={imagePending}
+                canEditProductPrice={canEditProductPrice}
                 onAdd={onAdd}
                 onToggleFavorite={onToggleFavorite}
                 onPickImage={pickImage}
                 onRemoveImage={onRemoveImage}
+                onEditPrice={setPriceEditTarget}
             />
         );
     }
@@ -638,6 +679,15 @@ function PosCatalogView({
                     )}
                 </section>
             </div>
+            {!buffet ? (
+                <CatalogPriceEdit
+                    product={priceEditTarget}
+                    onClose={() => {
+                        setPriceEditTarget(null);
+                    }}
+                    onSaved={onProductPriceSaved}
+                />
+            ) : null}
         </section>
     );
 }

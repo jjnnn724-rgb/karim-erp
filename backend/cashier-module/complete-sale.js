@@ -894,6 +894,9 @@ async function completeSale(req, res) {
 
         // ── Insert order (draft) ──────────────────────────────────────────────
         const orderId = uuidv4();
+        // اسم العميل اختياري — يُسجَّل في pos_orders.notes كما هو، ويطبع الإيصال
+        // صف «العميل / Customer» متى كان موجودًا (بيلخص عميل نقدي وآجل ومناسبات بوفيه).
+        const partyName = String(req.body.party_name ?? req.body.notes ?? '').trim().slice(0, 140) || null;
         await client.query(
             `INSERT INTO pos_orders
                 (id, session_id, department_id, cashier_id, status,
@@ -902,7 +905,7 @@ async function completeSale(req, res) {
              RETURNING *;`,
             [orderId, sessionId, req.body.department_id, cashier.id,
              totals.subtotal, totals.discount_total, totals.tax_total, totals.total_amount,
-             req.body.notes || null]
+             partyName]
         );
         await client.query(`SELECT set_config('app.order_id', $1, true);`, [orderId]);
 
@@ -1196,7 +1199,7 @@ async function completeSale(req, res) {
                     amount: Number(li.line_total || 0),
                 })),
             } : null,
-            party_name: isBuffetDept ? (req.body.notes || null) : null,
+            party_name: partyName || (isBuffetDept ? req.body.notes || null : null),
             erp_revenue_id: erpSync?.revenueId || null,
             erp_dept_code: erpSync?.legacyDeptCode || null,
             zatca_vat_number_placeholder: vatNumberPlaceholder,

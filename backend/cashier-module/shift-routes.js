@@ -615,6 +615,41 @@ router.post('/products', jwtAuth, requireRole('manager','admin','kitchen','sous_
     }
 });
 
+/**
+ * POST /api/pos/products/:id/price — تعديل سعر البيع من شاشة الكاشير.
+ * manager/admin فقط، ومُسجَّل في سجل التدقيق بالسعر القديم والجديد.
+ * يُسمح بسعر صفر (هدايا/ولاء)؛ لا تُسمح بقيمة سالبة أو حقل مفقود.
+ */
+router.post('/products/:id/price', jwtAuth, requireRole('manager', 'admin'), async (req, res) => {
+    const productId = parseInt(req.params.id, 10);
+    const price = Number(req.body?.price);
+    if (!Number.isInteger(productId) || productId <= 0 || !Number.isFinite(price) || price < 0) {
+        return res.status(422).json({ error: 'VALIDATION_FAILED', message: 'سعر البيع غير صحيح' });
+    }
+    try {
+        const before = await pool.query('SELECT price, name_ar FROM pos_products WHERE id = $1', [productId]);
+        if (!before.rows.length) {return res.status(404).json({ error: 'NOT_FOUND' });}
+        const prev = Number(before.rows[0].price);
+        const r = await pool.query(
+            `UPDATE pos_products SET price = $1, updated_at = CURRENT_TIMESTAMP WHERE id = $2 RETURNING id, name_ar, price`,
+            [price, productId],
+        );
+        res.json(r.rows[0]);
+        emitCatalogChanged(req, 'price', r.rows[0]);
+        writeAuditLog({
+            action: 'PRODUCT_PRICE_CHANGE',
+            tableName: 'pos_products',
+            rowPk: productId,
+            reason: 'تعديل سعر البيع من شاشة الكاشير',
+            metadata: { price_before: prev, price_after: price, name_ar: before.rows[0].name_ar },
+            actor: { userId: req.user?.id, userName: req.user?.username, role: req.user?.role, ip: req.ip, requestId: null },
+        }).catch(() => {});
+    } catch (e) {
+        logger.error(e);
+        res.status(500).json({ error: 'INTERNAL_ERROR' });
+    }
+});
+
 router.put('/products/:id', jwtAuth, requireRole('manager','admin','kitchen','sous_chef'), async (req, res) => {
     const productId = parseInt(req.params.id, 10);
     if (!Number.isInteger(productId) || productId <= 0) {return res.status(422).json({ error: 'INVALID_PRODUCT_ID' });}

@@ -1,4 +1,4 @@
-import { type ReactElement, useState } from 'react';
+import { type ReactElement, useEffect, useState } from 'react';
 import { type PosCartLine, type PosDiscount, type PosTotals, parsePosMoney } from '../../lib/pos-pricing';
 import { Badge, Button, Input, Select } from '../../ui';
 import { PosNumpad } from './PosNumpad';
@@ -25,6 +25,12 @@ export interface PosCartProps {
     canSell: boolean;
     busy: boolean;
     buffet: boolean;
+    /** اسم العميل ورقم تليفونه — تُسجَّل على الفاتورة وتُطبع على الإيصال. */
+    customerName: string;
+    customerPhone: string;
+    onCustomerName: (value: string) => void;
+    onCustomerPhone: (value: string) => void;
+    onClearCustomer: () => void;
     /** صلاحية تعديل سعر البند (الخادم يفرض manager/admin فقط). */
     canEditPrice: boolean;
     onQty: (id: string, delta: number) => void;
@@ -194,6 +200,11 @@ export function PosCart({
     canSell,
     busy,
     buffet,
+    customerName,
+    customerPhone,
+    onCustomerName,
+    onCustomerPhone,
+    onClearCustomer,
     canEditPrice,
     onQty,
     onPrice,
@@ -202,6 +213,23 @@ export function PosCart({
     onComplete,
 }: PosCartProps) {
     const [editPrice, setEditPrice] = useState<{ id: string; value: string } | null>(null);
+    const [customerOpen, setCustomerOpen] = useState(false);
+
+    useEffect(() => {
+        if (!customerOpen) {
+            return undefined;
+        }
+        const onKey = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                event.preventDefault();
+                setCustomerOpen(false);
+            }
+        };
+        window.addEventListener('keydown', onKey);
+        return () => {
+            window.removeEventListener('keydown', onKey);
+        };
+    }, [customerOpen]);
     const count = cart.reduce((sum, row) => sum + row.quantity, 0);
     const amounts = PAYMENT_FIELDS.map((field) => parsePosMoney(payments[field.key]));
     const invalid = amounts.some((amount) => !Number.isFinite(amount));
@@ -251,23 +279,107 @@ export function PosCart({
                     <span className="pos-cart__order">طلب #{orderNumber}</span>
                 </div>
                 <div className="pos-cart__head-tools">
-                    <span className="pos-cart__customer" title="بيع مباشر دون بيانات عميل">
-                        <svg
-                            aria-hidden="true"
-                            viewBox="0 0 24 24"
-                            width="14"
-                            height="14"
-                            fill="none"
-                            stroke="currentColor"
-                            strokeWidth="1.8"
-                            strokeLinecap="round"
-                            strokeLinejoin="round"
+                    <div className="pos-cart__customer-wrap">
+                        <button
+                            type="button"
+                            className={`pos-cart__customer${customerName.trim() ? ' is-set' : ''}`}
+                            aria-expanded={customerOpen}
+                            aria-controls="pos-customer-panel"
+                            title={customerName.trim() ? `العميل: ${customerName.trim()}` : 'بيع مباشر دون بيانات عميل — اضغط لإضافة عميل'}
+                            onClick={() => {
+                                setCustomerOpen((open) => !open);
+                            }}
                         >
-                            <circle cx="12" cy="8" r="3.4" />
-                            <path d="M5 20a7 7 0 0 1 14 0" />
-                        </svg>
-                        عميل نقدي
-                    </span>
+                            <svg
+                                aria-hidden="true"
+                                viewBox="0 0 24 24"
+                                width="14"
+                                height="14"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.8"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                            >
+                                <circle cx="12" cy="8" r="3.4" />
+                                <path d="M5 20a7 7 0 0 1 14 0" />
+                            </svg>
+                            <span>{customerName.trim() || 'عميل نقدي'}</span>
+                            {customerPhone.trim() ? (
+                                <span className="pos-cart__customer-phone" dir="ltr">
+                                    {customerPhone.trim()}
+                                </span>
+                            ) : null}
+                            <svg
+                                aria-hidden="true"
+                                viewBox="0 0 24 24"
+                                width="12"
+                                height="12"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="2"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
+                                className={`pos-cart__customer-chev${customerOpen ? ' is-open' : ''}`}
+                            >
+                                <path d="m6 9 6 6 6-6" />
+                            </svg>
+                        </button>
+                        {customerOpen ? (
+                            <div className="pos-customer-panel" id="pos-customer-panel" role="dialog" aria-label="بيانات العميل">
+                                <h3 className="pos-customer-panel__title">
+                                    بيانات العميل <span className="pos-customer-panel__hint">— تُطبع على الإيصال</span>
+                                </h3>
+                                <Input
+                                    label="اسم العميل"
+                                    value={customerName}
+                                    autoFocus
+                                    maxLength={80}
+                                    placeholder="مثال: أحمد محمد"
+                                    disabled={busy}
+                                    onChange={(event) => {
+                                        onCustomerName(event.target.value);
+                                    }}
+                                />
+                                <Input
+                                    label="التليفون (اختياري)"
+                                    dir="ltr"
+                                    inputMode="tel"
+                                    value={customerPhone}
+                                    maxLength={20}
+                                    placeholder="05xxxxxxxx"
+                                    disabled={busy}
+                                    onChange={(event) => {
+                                        onCustomerPhone(event.target.value);
+                                    }}
+                                />
+                                <div className="pos-customer-panel__actions">
+                                    {customerName.trim() || customerPhone.trim() ? (
+                                        <button
+                                            type="button"
+                                            className="pos-customer-clear"
+                                            disabled={busy}
+                                            onClick={() => {
+                                                onClearCustomer();
+                                            }}
+                                        >
+                                            مسح العميل
+                                        </button>
+                                    ) : null}
+                                    <button
+                                        type="button"
+                                        className="pos-customer-done"
+                                        disabled={busy}
+                                        onClick={() => {
+                                            setCustomerOpen(false);
+                                        }}
+                                    >
+                                        تم
+                                    </button>
+                                </div>
+                            </div>
+                        ) : null}
+                    </div>
                     <button
                         type="button"
                         className="pos-icon-btn pos-icon-btn--sm"

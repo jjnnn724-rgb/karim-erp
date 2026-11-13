@@ -354,7 +354,8 @@ function buildReceiptHtml({ order = {}, items = [], payments = [], qrImageDataUr
   <hr class="rule double">
 
   <div class="meta-panel">
-  ${metaRow('التاريخ والوقت', `<span class="m-value">${escHtml(date)}</span>`)}
+   ${metaRow('التاريخ والوقت', `<span class="m-value">${escHtml(date)}</span>`)}
+  ${order.notes ? metaRow(isBuffet ? 'العائلة / المناسبة' : 'العميل / Customer', `<span class="m-value rtl">${escHtml(order.notes)}</span>`) : ''}
   ${metaRow('الكاشير / Cashier', `<span class="m-value rtl">${escHtml(order.cashier_name || '—')}${order.cashier_id ? ` (#${escHtml(order.cashier_id)})` : ''}</span>`)}
   ${order.session_id ? metaRow('الوردية', `<span class="m-value">${escHtml(order.session_id)}</span>`) : ''}
   ${order.invoice_uuid ? `<div class="m-row"><span class="m-label">UUID</span><span class="uuid">${escHtml(String(order.invoice_uuid).slice(0, 36))}</span></div>` : ''}
@@ -363,7 +364,6 @@ function buildReceiptHtml({ order = {}, items = [], payments = [], qrImageDataUr
 
   <hr class="rule thin">
   ${itemsHtml}
-  ${isBuffet && order.notes ? `<div class="m-row"><span class="m-label">العائلة / المناسبة</span><span class="m-value rtl">${escHtml(order.notes)}</span></div>` : ''}
 
   <hr class="rule">
   <div class="totals">

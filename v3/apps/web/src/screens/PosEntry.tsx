@@ -121,6 +121,8 @@ interface PosTab {
     paymentsTouched: boolean;
     receipt: PosSaleResult | null;
     saleKey: string;
+    /** اسم العميل + تليفونه اختياريين — يُسجَّلان كملاحظة على الفاتورة ويطبعان على الإيصال. */
+    customer: { name: string; phone: string };
 }
 
 function blankTab(id: string): PosTab {
@@ -134,6 +136,7 @@ function blankTab(id: string): PosTab {
         paymentsTouched: false,
         receipt: null,
         saleKey: '',
+        customer: { name: '', phone: '' },
     };
 }
 
@@ -167,6 +170,8 @@ export function PosEntry() {
     const canSell = roleIn(role, SELL_ROLES);
     /** تعديل سعر بند بالسلة — صلاحيات تتفق مع الخادم (manager/admin فقط). */
     const canEditPrice = role === 'manager' || role === 'admin';
+    /** تعديل سعر المنتج في الكتالوج — manager/admin فقط (سجل تدقيق بالخادم). */
+    const canEditProductPrice = role === 'manager' || role === 'admin';
     const canHistory = roleIn(role, HISTORY_ROLES);
     const canVoid = roleIn(role, VOID_ROLES);
     const canManageCatalog = roleIn(role, CATALOG_IMAGE_ROLES);
@@ -245,6 +250,7 @@ export function PosEntry() {
     const cardMeta = activeTab.cardMeta;
     const paymentsTouched = activeTab.paymentsTouched;
     const receipt = activeTab.receipt;
+    const customer = activeTab.customer;
     const cartCount = cart.reduce((sum, row) => sum + row.quantity, 0);
 
     const [historyFilters, setHistoryFilters] = useState<PosHistoryFiltersState>(EMPTY_FILTERS);
@@ -360,6 +366,22 @@ export function PosEntry() {
         }
         return map;
     }, [items]);
+
+    /** بعد حفظ سعر جديد بالخادم: حدّث الكاش محليًا حتى لا تعيد الواجهة التحميل. */
+    const handleProductPriceSaved = useCallback(
+        (productId: string, price: number) => {
+            queryClient.setQueryData(['pos-products', shift?.departmentId ?? ''], (old: unknown) => {
+                if (!Array.isArray(old)) {
+                    return old;
+                }
+                return old.map((product) => {
+                    const row = product as { id?: string | number; price?: number };
+                    return String(row.id) === productId ? { ...row, price } : product;
+                });
+            });
+        },
+        [queryClient, shift?.departmentId],
+    );
 
     // مراجع مستقرة لأحداث الكتالوج: إضافة صنف أو تعديل المفضلة لا يجب أن يعيد
     // رسم 322 بطاقة صنف — البطاقة تُعاد فقط عندما يتغيّر صنفها فعليًا.
@@ -569,6 +591,17 @@ export function PosEntry() {
         }));
     }
 
+    function setCustomerField(field: 'name' | 'phone', value: string) {
+        updateActiveTab((tab) => ({
+            ...tab,
+            customer: { ...tab.customer, [field]: value },
+        }));
+    }
+
+    function clearCustomer() {
+        updateActiveTab((tab) => ({ ...tab, customer: { name: '', phone: '' } }));
+    }
+
     function setDiscountValue(next: PosDiscount) {
         updateActiveTab((tab) => ({ ...tab, discount: next, saleKey: '' }));
     }
@@ -695,6 +728,9 @@ export function PosEntry() {
             }
         }
         const saleKey = activeTab.saleKey || newIdempotencyKey(shift.sessionId);
+        const partyLabel = customer.name.trim()
+            ? `${customer.name.trim()}${customer.phone.trim() ? ` · ${customer.phone.trim()}` : ''}`
+            : undefined;
         const settledTabId = activeTab.id;
         if (!activeTab.saleKey) {
             setTabs((current) => current.map((tab) => (tab.id === settledTabId ? { ...tab, saleKey } : tab)));
@@ -707,6 +743,7 @@ export function PosEntry() {
                 items: buildPosSaleItems(cart, discount),
                 payments: salePayments,
                 idempotencyKey: saleKey,
+                partyName: partyLabel,
             });
             // الإيصال يُطبع من قالب الخادم المشترك — لا حاجة للقطة محلية.
             setTabs((current) => current.map((tab) => (tab.id === settledTabId ? { ...freshPosTab(tab), receipt: result } : tab)));
@@ -1316,7 +1353,10 @@ export function PosEntry() {
     const ROLE_LABELS: Record<string, string> = { admin: 'مدير النظام', manager: 'مدير', cashier: 'كاشير', accountant: 'محاسب' };
     const roleLabel = ROLE_LABELS[role] ?? role;
     const cashierInitials = (() => {
-        const parts = String(auth.user?.name ?? '').trim().split(/\s+/).filter(Boolean);
+        const parts = String(auth.user?.name ?? '')
+            .trim()
+            .split(/\s+/)
+            .filter(Boolean);
         if (!parts.length) {
             return 'كش';
         }
@@ -1333,7 +1373,9 @@ export function PosEntry() {
     };
 
     return (
-        <div className={`flex flex-col premium-screen pos-entry pos-entry--workspace${posTheme === 'light' ? ' pos-entry--light' : ''} pos-entry--pane-${mobilePane}`}>
+        <div
+            className={`flex flex-col premium-screen pos-entry pos-entry--workspace${posTheme === 'light' ? ' pos-entry--light' : ''} pos-entry--pane-${mobilePane}`}
+        >
             <h1 className="sr-only">الكاشير — نقطة البيع</h1>
             {shift ? (
                 <section className="pos-topbar" aria-label="شريط الكاشير">
@@ -1348,23 +1390,55 @@ export function PosEntry() {
                     </div>
 
                     <div className="pos-topbar__pod" title={`القسم: ${shift.deptName || 'نقطة البيع'}`}>
-                        <svg aria-hidden="true" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                        <svg
+                            aria-hidden="true"
+                            viewBox="0 0 24 24"
+                            width="17"
+                            height="17"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.7"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
                             <path d="M4 10.5 5.5 5h13L20 10.5M4 10.5h16M5.5 10.5V19a1.5 1.5 0 0 0 1.5 1.5h10a1.5 1.5 0 0 0 1.5-1.5v-8.5M9.5 14h5" />
                         </svg>
                         <span className="pos-topbar__pod-copy">
                             <strong>{shift.deptName || 'الفرع الرئيسي'}</strong>
-                            <small>وردية #{shift.sessionId}{buffet ? <em className="pos-topbar__flag" title="قسم البوفيه المفتوح">بوفيه</em> : null}{shift.isStale ? <em className="pos-topbar__flag pos-topbar__flag--warn">يوم {shift.openedOn}</em> : null}</small>
+                            <small>
+                                وردية #{shift.sessionId}
+                                {buffet ? (
+                                    <em className="pos-topbar__flag" title="قسم البوفيه المفتوح">
+                                        بوفيه
+                                    </em>
+                                ) : null}
+                                {shift.isStale ? <em className="pos-topbar__flag pos-topbar__flag--warn">يوم {shift.openedOn}</em> : null}
+                            </small>
                         </span>
                     </div>
 
                     <div className="pos-topbar__pod pos-topbar__clock" title="التوقيت المحلي" role="timer">
-                        <svg aria-hidden="true" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                        <svg
+                            aria-hidden="true"
+                            viewBox="0 0 24 24"
+                            width="17"
+                            height="17"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.7"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
                             <circle cx="12" cy="12" r="9" />
                             <path d="M12 7v5l3.2 2" />
                         </svg>
                         <span className="pos-topbar__pod-copy">
-                            <time className="erp-numeric" dir="ltr">{clockText}</time>
-                            <small className="erp-numeric" dir="ltr">{dateText}</small>
+                            <time className="erp-numeric" dir="ltr">
+                                {clockText}
+                            </time>
+                            <small className="erp-numeric" dir="ltr">
+                                {dateText}
+                            </small>
                         </span>
                     </div>
 
@@ -1427,11 +1501,31 @@ export function PosEntry() {
                             onClick={togglePosTheme}
                         >
                             {posTheme === 'light' ? (
-                                <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                                <svg
+                                    aria-hidden="true"
+                                    viewBox="0 0 24 24"
+                                    width="18"
+                                    height="18"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="1.7"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                >
                                     <path d="M21 12.8A9 9 0 1 1 11.2 3a7 7 0 0 0 9.8 9.8Z" />
                                 </svg>
                             ) : (
-                                <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                                <svg
+                                    aria-hidden="true"
+                                    viewBox="0 0 24 24"
+                                    width="18"
+                                    height="18"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="1.7"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                >
                                     <circle cx="12" cy="12" r="4.2" />
                                     <path d="M12 2.5v2.6M12 18.9v2.6M4.9 4.9l1.8 1.8M17.3 17.3l1.8 1.8M2.5 12h2.6M18.9 12h2.6M4.9 19.1l1.8-1.8M17.3 6.7l1.8-1.8" />
                                 </svg>
@@ -1464,7 +1558,9 @@ export function PosEntry() {
                         </button>
                         <details ref={menuRef} className="pos-menu pos-cashier-menu">
                             <summary className="pos-cashier" aria-label={`${auth.user?.name ?? 'الكاشير'} — قائمة الحساب`}>
-                                <span className="pos-cashier__avatar" aria-hidden="true">{cashierInitials}</span>
+                                <span className="pos-cashier__avatar" aria-hidden="true">
+                                    {cashierInitials}
+                                </span>
                                 <span className="pos-cashier__copy">
                                     <strong>{auth.user?.name ?? 'الكاشير'}</strong>
                                     <small>{roleLabel}</small>
@@ -1710,6 +1806,8 @@ export function PosEntry() {
                                         onToggleFavorite={handleToggleFavorite}
                                         canSell={canSell}
                                         canManageCatalog={canManageCatalog}
+                                        canEditProductPrice={canEditProductPrice}
+                                        onProductPriceSaved={handleProductPriceSaved}
                                         imagePending={imagePending}
                                         onUploadImage={handleUploadImage}
                                         onRemoveImage={handleRemoveImage}
@@ -1735,6 +1833,15 @@ export function PosEntry() {
                                             canSell={canSell}
                                             busy={busy}
                                             buffet={buffet}
+                                            customerName={customer.name}
+                                            customerPhone={customer.phone}
+                                            onCustomerName={(value) => {
+                                                setCustomerField('name', value);
+                                            }}
+                                            onCustomerPhone={(value) => {
+                                                setCustomerField('phone', value);
+                                            }}
+                                            onClearCustomer={clearCustomer}
                                             canEditPrice={canEditPrice}
                                             onQty={changeQuantity}
                                             onPrice={setLinePrice}

@@ -740,23 +740,32 @@
     background: rgb(4 33 26 / 18%);
 }
 
-/* الشبكة */
+/* الشبكة — كثيفة: أكبر عدد من الأصناف في الشاشة بطريقة محترفة.
+   في 768–1100px (لوحتان جنبي بعض) يُوازن الكتالوج إلى 4 أعمدة */
 .pos-entry .pos-grid {
     display: grid;
-    grid-template-columns: repeat(4, minmax(0, 1fr));
-    gap: 0.5rem;
+    grid-template-columns: repeat(5, minmax(0, 1fr));
+    gap: 0.4rem;
+}
+
+@media (max-width: 1100px) {
+    .pos-entry .pos-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+        gap: 0.35rem;
+    }
 }
 
 @media (min-width: 1180px) {
     .pos-entry .pos-grid {
-        grid-template-columns: repeat(5, minmax(0, 1fr));
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 0.35rem;
     }
 }
 
 @media (min-width: 1460px) {
     .pos-entry .pos-grid {
-        grid-template-columns: repeat(6, minmax(0, 1fr));
-        gap: 0.4rem;
+        grid-template-columns: repeat(7, minmax(0, 1fr));
+        gap: 0.3rem;
     }
 }
 
@@ -793,7 +802,7 @@
     position: relative;
     flex: 0 0 auto;
     inline-size: 100%;
-    block-size: 3.15rem;
+    block-size: 2.3rem;
     border-radius: 10px 10px 0 0;
     background: linear-gradient(160deg, #1e293b, #0b1120);
 }
@@ -816,19 +825,28 @@
     font-size: 1.15rem;
 }
 
+.pos-entry .pos-product__photo {
+    position: absolute;
+    z-index: 1;
+    inset: 0;
+    inline-size: 100%;
+    block-size: 100%;
+    object-fit: cover;
+}
+
 .pos-entry .pos-product__info {
     display: flex;
     flex-direction: column;
-    gap: 0.08rem;
-    padding: 0.28rem 0.4rem 0.34rem;
+    gap: 0.06rem;
+    padding: 0.3rem 0.4rem 0.36rem;
 }
 
 .pos-entry .pos-product__info strong {
-    min-block-size: 1.35em;
-    color: #e2e8f0;
-    font-size: 0.64rem;
-    font-weight: 600;
-    line-height: 1.28;
+    min-block-size: 1.2em;
+    color: #f1f5f9;
+    font-size: 0.7rem;
+    font-weight: 700;
+    line-height: 1.3;
     white-space: nowrap;
     overflow: hidden;
     text-overflow: ellipsis;
@@ -839,9 +857,9 @@
 
 .pos-entry .pos-product__name-en {
     overflow: hidden;
-    color: #64748b;
-    font-size: 0.53rem;
-    font-weight: 500;
+    color: #7d8aa0;
+    font-size: 0.56rem;
+    font-weight: 600;
     line-height: 1.2;
     letter-spacing: 0.1px;
     text-overflow: ellipsis;
@@ -860,14 +878,15 @@
 
 .pos-entry .pos-product__price {
     color: var(--pos-amber);
-    font-size: 0.76rem;
+    font-size: 0.9rem;
     font-weight: 800;
     font-variant-numeric: tabular-nums;
 }
 
 .pos-entry .pos-product__unit {
-    color: #64748b;
-    font-size: 0.53rem;
+    color: #8b97a8;
+    font-size: 0.56rem;
+    font-weight: 600;
 }
 
 .pos-entry .pos-product__category-badge {
@@ -2330,4 +2349,233 @@
     z-index: 2;
     inset-block-end: 0.4rem;
     inset-inline-end: 0.4rem;
+}
+
+/* زر تعديل سعر المنتج في الكتالوج — للمدير/المسؤول */
+.pos-entry .pos-product__price-edit {
+    position: absolute;
+    z-index: 3;
+    inset-block-start: 0.4rem;
+    inset-inline-start: 0.4rem;
+    display: grid;
+    place-items: center;
+    inline-size: 1.7rem;
+    block-size: 1.7rem;
+    border: 1px solid rgb(245 158 11 / 45%);
+    border-radius: 999px;
+    background: rgb(2 6 23 / 72%);
+    color: #fcd34d;
+    cursor: pointer;
+    transition:
+        background-color 120ms ease,
+        border-color 120ms ease,
+        transform 75ms ease;
+}
+
+.pos-entry .pos-product__price-edit:hover {
+    background: #d97706;
+    border-color: #d97706;
+    color: #241600;
+}
+
+.pos-entry .pos-product__price-edit:active:not(:disabled) {
+    transform: scale(0.94);
+}
+
+.pos-entry .pos-product__price-edit:focus-visible {
+    outline: 2px solid var(--pos-amber);
+    outline-offset: 1px;
+}
+
+/* لوحة تعديل سعر المنتج */
+.pos-entry .catalog-price-edit {
+    position: absolute;
+    z-index: 60;
+    inset-block-start: 50%;
+    inset-inline-start: 50%;
+    inline-size: min(18rem, calc(100% - 2rem));
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.6rem;
+    translate: -50% -50%;
+    border: 1px solid rgb(245 158 11 / 45%);
+    border-radius: 12px;
+    background: #1e293b;
+    box-shadow: 0 22px 48px -16px rgb(0 0 0 / 75%);
+}
+
+.pos-entry .catalog-price-edit__head {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.pos-entry .catalog-price-edit__head strong {
+    color: #fbbf24;
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.pos-entry .catalog-price-edit__close {
+    inline-size: 1.6rem;
+    block-size: 1.6rem;
+    border: 1px solid rgb(148 163 184 / 20%);
+    border-radius: 6px;
+    background: #0b1120;
+    color: #e2e8f0;
+    font-size: 0.9rem;
+    line-height: 1;
+    cursor: pointer;
+}
+
+.pos-entry .catalog-price-edit__close:hover {
+    border-color: var(--pos-emerald);
+    color: #6ee7b7;
+}
+
+.pos-entry .catalog-price-edit__name {
+    margin: 0;
+    color: #e2e8f0;
+    font-size: 0.8rem;
+    font-weight: 700;
+    line-height: 1.3;
+}
+
+.pos-entry .catalog-price-edit__current {
+    margin: 0;
+    color: #94a3b8;
+    font-size: 0.7rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.pos-entry .catalog-price-edit__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.4rem;
+}
+
+.pos-entry .catalog-price-edit__note {
+    margin: 0;
+    color: #64748b;
+    font-size: 0.6rem;
+}
+
+/* بيانات العميل — زر + لوحة منبثقة */
+.pos-entry .pos-cart__customer-wrap {
+    position: relative;
+}
+
+.pos-entry .pos-cart__customer {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    padding: 0.28rem 0.55rem;
+    border: 1px solid rgb(148 163 184 / 18%);
+    border-radius: 999px;
+    background: rgb(5 150 105 / 12%);
+    color: #6ee7b7;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        border-color 120ms ease,
+        background-color 120ms ease,
+        transform 75ms ease;
+}
+
+.pos-entry .pos-cart__customer:hover {
+    border-color: var(--pos-emerald);
+    background: rgb(5 150 105 / 18%);
+}
+
+.pos-entry .pos-cart__customer:active {
+    transform: scale(0.97);
+}
+
+.pos-entry .pos-cart__customer.is-set {
+    border-color: var(--pos-emerald);
+    background: var(--pos-emerald);
+    color: #04211a;
+}
+
+.pos-entry .pos-cart__customer-phone {
+    font-variant-numeric: tabular-nums;
+    font-size: 0.66rem;
+    opacity: 0.85;
+}
+
+.pos-entry .pos-cart__customer-chev {
+    transition: transform 150ms ease;
+}
+
+.pos-entry .pos-cart__customer-chev.is-open {
+    transform: rotate(180deg);
+}
+
+.pos-entry .pos-customer-panel {
+    position: absolute;
+    z-index: 50;
+    inset-block-start: calc(100% + 0.4rem);
+    inset-inline-end: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.45rem;
+    inline-size: min(21rem, calc(100vw - 2rem));
+    padding: 0.6rem;
+    border: 1px solid rgb(16 185 129 / 40%);
+    border-radius: 12px;
+    background: #1e293b;
+    box-shadow: 0 22px 48px -16px rgb(0 0 0 / 75%);
+}
+
+.pos-entry .pos-customer-panel__title {
+    margin: 0;
+    color: #f8fafc;
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+.pos-entry .pos-customer-panel__hint {
+    color: #94a3b8;
+    font-size: 0.62rem;
+    font-weight: 500;
+}
+
+.pos-entry .pos-customer-panel__actions {
+    display: flex;
+    justify-content: flex-end;
+    gap: 0.35rem;
+}
+
+.pos-entry .pos-customer-clear {
+    border: 1px solid rgb(239 68 68 / 40%);
+    background: rgb(239 68 68 / 10%);
+    color: #fca5a5;
+    border-radius: 7px;
+    padding: 0.32rem 0.6rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    cursor: pointer;
+}
+
+.pos-entry .pos-customer-clear:hover {
+    border-color: #ef4444;
+    color: #fecaca;
+}
+
+.pos-entry .pos-customer-done {
+    border: 1px solid var(--pos-emerald);
+    background: var(--pos-emerald);
+    color: #04211a;
+    border-radius: 7px;
+    padding: 0.32rem 0.7rem;
+    font-size: 0.68rem;
+    font-weight: 800;
+    cursor: pointer;
+}
+
+.pos-entry .pos-customer-done:hover {
+    background: #34d399;
 }

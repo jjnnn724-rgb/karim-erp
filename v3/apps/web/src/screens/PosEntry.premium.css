@@ -1329,8 +1329,8 @@
     font-size: 0.8rem;
 }
 
-/* اللمس والأجهزة الضيقة */
-@media (max-width: 1100px) {
+/* اللمس والأجهزة الضيقة — أقل من 768px: لوحة واحدة في كل مرة */
+@media (max-width: 767px) {
     .pos-entry__layout {
         grid-template-columns: minmax(0, 1fr);
     }
@@ -1339,8 +1339,6 @@
         position: static;
     }
 
-    /* لوحة واحدة في كل مرة: الأصناف أو السلة، لا تمرير طويل بينهما.
-     الشريط الثابت أسفل السلة يبقى داخل لوحة السلة وحدها. */
     .pos-pane-switch {
         display: flex;
         position: sticky;
@@ -1482,6 +1480,35 @@
 
     .pos-favorite small {
         white-space: nowrap;
+    }
+}
+
+/* من 768 إلى 1100px: السلة والأصناف معًا في صفحة واحدة — السلة أصغر من ديسكتوب */
+@media (min-width: 768px) and (max-width: 1100px) {
+    .pos-entry__layout {
+        grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
+    }
+
+    .pos-entry__side,
+    .pos-entry--pane-catalog .pos-entry__side,
+    .pos-entry--pane-cart .pos-entry__side {
+        position: static;
+        display: flex;
+    }
+
+    .pos-entry--pane-cart .pos-entry__layout {
+        grid-template-columns: minmax(0, 1fr) minmax(240px, 280px);
+    }
+
+    .pos-catalog,
+    .pos-entry--pane-cart .pos-entry__layout > .pos-catalog {
+        display: block;
+    }
+
+    .pos-pane-switch,
+    .pos-entry--pane-catalog .pos-pane-dock,
+    .pos-entry--pane-cart .pos-pane-dock {
+        display: none;
     }
 }
 

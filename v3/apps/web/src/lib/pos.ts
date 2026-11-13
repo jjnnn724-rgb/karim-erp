@@ -422,6 +422,8 @@ export interface CompleteSaleInput {
     items: PosSaleItem[];
     payments: PosPaymentInput[];
     idempotencyKey: string;
+    /** اسم العميل اختياري — يُطبع على الإيصال وتُسجَّل الملاحظة على الأوردر. */
+    partyName?: string | null | undefined;
 }
 
 /* ─── البوفيه ──────────────────────────────────────────────────────────── */
@@ -951,6 +953,7 @@ export async function completePosSale(input: CompleteSaleInput): Promise<PosSale
             items: input.items,
             payments: input.payments,
             printer_id: `pos-${String(dept)}`,
+            ...(input.partyName ? { party_name: input.partyName } : {}),
         },
     });
 }
@@ -1033,6 +1036,18 @@ export async function execDayClose(date: string): Promise<DayCloseResult> {
     return fetchJson(dayCloseResultSchema, '/api/pos/day-close', token(), {
         method: 'POST',
         body: { date, counts: {}, manager_approve: true },
+    });
+}
+
+/** تعديل سعر البيع لكتالوج المنتجات — manager/admin فقط، ويُسجَّل في سجل التدقيق. */
+export async function updatePosProductPrice(productId: string, price: number): Promise<{ id: string; name_ar: string; price: number }> {
+    const id = Number(productId);
+    if (!Number.isInteger(id) || id <= 0 || !Number.isFinite(price) || price < 0) {
+        throw new Error('سعر البيع غير صالح');
+    }
+    return fetchJson(z.object({ id: idText, name_ar: z.string(), price: num }), `/api/pos/products/${String(id)}/price`, token(), {
+        method: 'POST',
+        body: { price },
     });
 }
 

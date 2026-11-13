@@ -278,6 +278,10 @@ function stubFetch(options: StubOptions = {}) {
                 },
             );
         }
+        if (href.includes('/api/pos/products/501/price') && init?.method === 'POST') {
+            const payload = typeof init?.body === 'string' ? (JSON.parse(init.body) as { price?: number }) : {};
+            return json({ id: 501, name_ar: 'شاي', price: Number(payload.price ?? 0) });
+        }
         if (href.includes('/api/pos/products')) {
             return json(options.products ?? [TEA, COFFEE]);
         }
@@ -810,8 +814,8 @@ describe('نقطة البيع', () => {
 
         fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
 
-        // الزر موجود للمدير — يفتح المحرر، ونوع السعر الجديد يُرسل للخادم.
-        fireEvent.click(screen.getByRole('button', { name: /تعديل سعر شاي/ }));
+        // زر السلة للمدير يفتح محرر سطر السلة — السعر الجديد يُرسل للخادم في نفس الفاتورة.
+        fireEvent.click(screen.getByRole('button', { name: /تعديل سعر شاي — السعر الحالي/ }));
         fireEvent.change(screen.getByLabelText('سعر الوحدة'), { target: { value: '3' } });
         fireEvent.click(screen.getByRole('button', { name: 'حفظ السعر' }));
         expect(screen.getByText('معدّل')).toBeTruthy();
@@ -824,6 +828,32 @@ describe('نقطة البيع', () => {
             items: Array<{ product_id: number; unit_price: number }>;
         };
         expect(body.items[0]!.unit_price).toBe(3);
+    });
+
+    it('المدير يعدّل سعر المنتج من الكتالوج — يُرسل للخادم ويُحدِّث البطاقة', async () => {
+        mocks.role = 'manager';
+        const mock = stubFetch({ activeShift: SHIFT });
+        renderScreen();
+
+        // الزر موجود على بطاقة المنتج للمدير — يفتح محرر السعر.
+        fireEvent.click(await screen.findByRole('button', { name: 'تعديل سعر شاي' }));
+        fireEvent.change(screen.getByLabelText('السعر الجديد'), { target: { value: '15' } });
+        fireEvent.click(screen.getByRole('button', { name: 'حفظ السعر' }));
+
+        // طلب POST للمسار الجديد مسجل بالسعر الجديد.
+        await waitFor(() => {
+            expect(
+                mock.mock.calls.some(
+                    (call) =>
+                        String(call[0]).includes('/api/pos/products/501/price') &&
+                        (call[1] as RequestInit | undefined)?.method === 'POST' &&
+                        JSON.parse(String((call[1] as RequestInit | undefined)?.body ?? '{}')).price === 15,
+                ),
+            ).toBe(true);
+        });
+
+        // البطاقة تعكس السعر الجديد بدون إعادة تحميل.
+        expect(await screen.findByText('15.00')).toBeTruthy();
     });
 
     it('الكاشير لا يرى زر تعديل السعر في السلة', async () => {
