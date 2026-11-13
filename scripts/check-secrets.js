@@ -128,10 +128,9 @@ function trackedFiles() {
 function scan() {
     const findings = [];
     for (const rel of trackedFiles()) {
-        // Vite's content-hashed bundles are derived from the scanned V3 source.
-        // Their minified property names (for example `has_private_key`) and
-        // runtime token variables are not credentials; scan their source instead.
-        if (/^frontend\/v3\/assets\/[^/]+-[A-Za-z0-9_-]{8,}\.js$/.test(rel)) {continue;}
+        // Vite's content-hashed bundles, including retained snapshots, are derived
+        // from the scanned V3 source. Scan source instead of minified token names.
+        if (/^frontend\/v3(?:\.bak-[^/]+)?\/assets\/[^/]+-[A-Za-z0-9_-]{8,}\.js$/.test(rel)) {continue;}
         const abs = path.join(ROOT, rel);
         let stat;
         try { stat = fs.statSync(abs); } catch (_) { continue; }
