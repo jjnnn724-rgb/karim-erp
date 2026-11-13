@@ -255,6 +255,22 @@ function PosCatalogView({
 
     // تحميل تدريجي للبطاقات: تركيب 322 بطاقة معًا يكلّف أول رسم وتذكيرات لا داعي لها.
     const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
+    const [toolsOpen, setToolsOpen] = useState(false);
+
+    useEffect(() => {
+        if (!toolsOpen) {
+            return undefined;
+        }
+        const onKey = (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                setToolsOpen(false);
+            }
+        };
+        window.addEventListener('keydown', onKey);
+        return () => {
+            window.removeEventListener('keydown', onKey);
+        };
+    }, [toolsOpen]);
     const sentinelRef = useRef<HTMLDivElement | null>(null);
 
     // biome-ignore lint/correctness/useExhaustiveDependencies: filter changes intentionally reset the visible page.
@@ -339,25 +355,175 @@ function PosCatalogView({
 
     return (
         <section className="erp-card pos-catalog" aria-labelledby="pos-catalog-title">
-            <div className="pos-catalog__toolbar">
-                <div className="pos-catalog__head">
-                    <h2 id="pos-catalog-title" className="erp-card__title">
-                        {buffet ? 'فئات البوفيه' : 'الأصناف'} <Badge variant="info">{intOf(filtered.length)}</Badge>
-                        {buffet ? (
-                            <Badge variant="info" className="ms-xs">
-                                بوفيه مفتوح
-                            </Badge>
-                        ) : null}
-                    </h2>
-                    <p className="text-body-sm text-muted">
-                        {buffet
-                            ? 'اختر فئة لإضافة فرد'
-                            : hasSales
-                              ? 'المفضلة ثم الأكثر مبيعًا — واختر فئة للتصفية'
-                              : 'اضغط الصنف أو امسح الباركود ثم Enter'}
-                    </p>
-                </div>
+            <h2 id="pos-catalog-title" className="sr-only">
+                الأصناف
+            </h2>
 
+            {!buffet ? (
+                <button
+                    type="button"
+                    className="pos-tools-toggle"
+                    aria-expanded={toolsOpen}
+                    aria-controls="pos-tools-panel"
+                    aria-label="الفئات والمفضلة والأكثر مبيعًا"
+                    title="الفئات والمفضلة والأكثر مبيعًا"
+                    onClick={() => {
+                        setToolsOpen((open) => !open);
+                    }}
+                >
+                    <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="M4 6h16M7 12h10M10 18h4" />
+                    </svg>
+                </button>
+            ) : null}
+            {toolsOpen && !buffet ? (
+                <>
+                    <button
+                        type="button"
+                        className="pos-tools-scrim"
+                        aria-label="إغلاق أدوات الكتالوج"
+                        onClick={() => {
+                            setToolsOpen(false);
+                        }}
+                    />
+                    <div className="pos-tools-panel" id="pos-tools-panel" role="dialog" aria-label="أدوات الكتالوج">
+                        <header className="pos-tools-panel__head">
+                            <strong className="pos-tools-panel__title">الكتالوج</strong>
+                            <Badge variant="info">{intOf(filtered.length)} صنف</Badge>
+                            <button
+                                type="button"
+                                className="pos-tools-close"
+                                aria-label="إغلاق"
+                                onClick={() => {
+                                    setToolsOpen(false);
+                                }}
+                            >
+                                ×
+                            </button>
+                        </header>
+
+                        {categories.length ? (
+                            <div className="pos-tools-group" role="group" aria-label="الفئات">
+                                <span className="pos-tools-group__label">الفئات</span>
+                                <div className="pos-tools-chips">
+                                    <button
+                                        type="button"
+                                        className={`pos-category${selectedCategory ? '' : ' is-active'}`}
+                                        aria-pressed={!selectedCategory}
+                                        onClick={() => {
+                                            onCategory('');
+                                            setToolsOpen(false);
+                                        }}
+                                    >
+                                        الكل
+                                    </button>
+                                    {categories.map((category) => (
+                                        <button
+                                            key={category.name}
+                                            type="button"
+                                            className={`pos-category${selectedCategory === category.name ? ' is-active' : ''}`}
+                                            aria-pressed={selectedCategory === category.name}
+                                            onClick={() => {
+                                                onCategory(category.name);
+                                                setToolsOpen(false);
+                                            }}
+                                        >
+                                            {category.name}
+                                            <span className="pos-category__count" aria-hidden="true">
+                                                {intOf(category.count)}
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : null}
+
+                        {favoriteItems.length ? (
+                            <div className="pos-tools-group" role="group" aria-label="الأصناف المفضلة">
+                                <span className="pos-tools-group__label">المفضلة</span>
+                                <div className="pos-tools-quick">
+                                    {favoriteItems.map((item) => (
+                                        <button
+                                            key={`fav-${String(item.id)}`}
+                                            type="button"
+                                            className="pos-favorite"
+                                            aria-label={`إضافة ${item.name} إلى السلة من المفضلة`}
+                                            disabled={!canSell || busy}
+                                            onClick={() => {
+                                                onAdd(item);
+                                            }}
+                                        >
+                                            {item.imageUrl ? (
+                                                <img
+                                                    className="pos-favorite__thumb"
+                                                    src={item.imageUrl}
+                                                    alt=""
+                                                    loading="lazy"
+                                                    decoding="async"
+                                                    onError={(event) => {
+                                                        event.currentTarget.style.visibility = 'hidden';
+                                                    }}
+                                                />
+                                            ) : null}
+                                            <span className="pos-favorite__copy">
+                                                <strong>{item.name}</strong>
+                                                <small>{moneyText(item.price)}</small>
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : null}
+
+                        {topSellers.length ? (
+                            <div className="pos-tools-group" role="group" aria-label="الأكثر مبيعًا">
+                                <span className="pos-tools-group__label">الأكثر مبيعًا</span>
+                                <div className="pos-tools-quick">
+                                    {topSellers.map((item) => (
+                                        <button
+                                            key={`best-${String(item.id)}`}
+                                            type="button"
+                                            className="pos-favorite pos-favorite--best"
+                                            aria-label={`إضافة ${item.name} إلى السلة من الأكثر مبيعًا`}
+                                            disabled={!canSell || busy}
+                                            onClick={() => {
+                                                onAdd(item);
+                                            }}
+                                        >
+                                            {item.imageUrl ? (
+                                                <img
+                                                    className="pos-favorite__thumb"
+                                                    src={item.imageUrl}
+                                                    alt=""
+                                                    loading="lazy"
+                                                    decoding="async"
+                                                    onError={(event) => {
+                                                        event.currentTarget.style.visibility = 'hidden';
+                                                    }}
+                                                />
+                                            ) : null}
+                                            <span className="pos-favorite__copy">
+                                                <strong>{item.name}</strong>
+                                                <small>
+                                                    {moneyText(item.price)} · {qtyText(soldQty(item, sales))} مبيعًا
+                                                </small>
+                                            </span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        ) : null}
+                    </div>
+                </>
+            ) : null}
+
+            <div className="pos-catalog__toolbar">
+                {buffet ? (
+                    <div className="pos-catalog__head">
+                        <span className="erp-card__title">فئات البوفيه</span>
+                        <Badge variant="info">بوفيه مفتوح</Badge>
+                    </div>
+                ) : null}
                 <SearchInput
                     inputRef={searchInputRef}
                     label={buffet ? 'بحث الفئات' : 'بحث الأصناف'}
@@ -375,117 +541,10 @@ function PosCatalogView({
                         }
                     }}
                 />
-
-                {!buffet && categories.length ? (
-                    <fieldset className="pos-categories m-0 min-w-0 border-0 p-0" aria-label="تصنيف الأصناف">
-                        <button
-                            type="button"
-                            className={`pos-category${selectedCategory ? '' : ' is-active'}`}
-                            aria-pressed={!selectedCategory}
-                            onClick={() => {
-                                onCategory('');
-                            }}
-                        >
-                            الكل
-                        </button>
-                        {categories.map((category) => (
-                            <button
-                                key={category.name}
-                                type="button"
-                                className={`pos-category${selectedCategory === category.name ? ' is-active' : ''}`}
-                                aria-pressed={selectedCategory === category.name}
-                                onClick={() => {
-                                    onCategory(category.name);
-                                }}
-                            >
-                                {category.name}
-                                <span className="pos-category__count" aria-hidden="true">
-                                    {intOf(category.count)}
-                                </span>
-                            </button>
-                        ))}
-                    </fieldset>
-                ) : null}
             </div>
 
             <div className="erp-card__body pos-catalog__body">
                 {buffet ? <BuffetLiveStrip live={buffetLive} /> : null}
-
-                {!buffet && favoriteItems.length ? (
-                    <fieldset className="pos-favorites m-0 min-w-0 border-0 p-0" aria-label="الأصناف المفضلة">
-                        <span className="pos-favorites__label">المفضلة</span>
-                        <div className="pos-favorites__list">
-                            {favoriteItems.map((item) => (
-                                <button
-                                    key={item.id}
-                                    type="button"
-                                    className="pos-favorite"
-                                    aria-label={`إضافة ${item.name} إلى السلة من المفضلة`}
-                                    disabled={!canSell || busy}
-                                    onClick={() => {
-                                        onAdd(item);
-                                    }}
-                                >
-                                    {item.imageUrl ? (
-                                        <img
-                                            className="pos-favorite__thumb"
-                                            src={item.imageUrl}
-                                            alt=""
-                                            loading="lazy"
-                                            decoding="async"
-                                            onError={(event) => {
-                                                event.currentTarget.style.visibility = 'hidden';
-                                            }}
-                                        />
-                                    ) : null}
-                                    <span className="pos-favorite__copy">
-                                        <strong>{item.name}</strong>
-                                        <small>{moneyText(item.price)}</small>
-                                    </span>
-                                </button>
-                            ))}
-                        </div>
-                    </fieldset>
-                ) : null}
-
-                {topSellers.length ? (
-                    <fieldset className="pos-favorites pos-favorites--best m-0 min-w-0 border-0 p-0" aria-label="الأكثر مبيعًا">
-                        <span className="pos-favorites__label">الأكثر مبيعًا</span>
-                        <div className="pos-favorites__list">
-                            {topSellers.map((item) => (
-                                <button
-                                    key={`best-${item.id}`}
-                                    type="button"
-                                    className="pos-favorite pos-favorite--best"
-                                    aria-label={`إضافة ${item.name} إلى السلة من الأكثر مبيعًا`}
-                                    disabled={!canSell || busy}
-                                    onClick={() => {
-                                        onAdd(item);
-                                    }}
-                                >
-                                    {item.imageUrl ? (
-                                        <img
-                                            className="pos-favorite__thumb"
-                                            src={item.imageUrl}
-                                            alt=""
-                                            loading="lazy"
-                                            decoding="async"
-                                            onError={(event) => {
-                                                event.currentTarget.style.visibility = 'hidden';
-                                            }}
-                                        />
-                                    ) : null}
-                                    <span className="pos-favorite__copy">
-                                        <strong>{item.name}</strong>
-                                        <small>
-                                            {moneyText(item.price)} · {qtyText(soldQty(item, sales))} مبيعًا
-                                        </small>
-                                    </span>
-                                </button>
-                            ))}
-                        </div>
-                    </fieldset>
-                ) : null}
 
                 {filtered.length === 0 ? (
                     <p className="text-body-sm text-muted" role="status">

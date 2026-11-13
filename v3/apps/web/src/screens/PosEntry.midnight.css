@@ -1901,3 +1901,140 @@
         min-block-size: 2.5rem;
     }
 }
+
+/* ═══ زر «الفئات والمفضلة» الجانبي + اللوحة المنبثقة ══════════════════════════ */
+
+.pos-entry .pos-catalog {
+    position: relative;
+}
+
+.pos-entry .pos-tools-toggle {
+    position: absolute;
+    z-index: 40;
+    inset-inline-end: 0.35rem;
+    top: 38%;
+    display: grid;
+    place-items: center;
+    inline-size: 2.35rem;
+    block-size: 2.35rem;
+    border: 1px solid rgb(16 185 129 / 45%);
+    border-radius: 999px;
+    background: rgb(11 17 32 / 92%);
+    color: #6ee7b7;
+    cursor: pointer;
+    box-shadow: 0 6px 18px -6px rgb(0 0 0 / 60%);
+    transition:
+        transform 75ms ease,
+        border-color 120ms ease,
+        background-color 120ms ease;
+}
+
+.pos-entry .pos-tools-toggle:hover {
+    border-color: var(--pos-emerald);
+    background: rgb(16 185 129 / 18%);
+    color: #34d399;
+}
+
+.pos-entry .pos-tools-toggle:active {
+    transform: scale(0.94);
+}
+
+.pos-entry .pos-tools-toggle:focus-visible {
+    outline: 2px solid var(--pos-emerald);
+    outline-offset: 2px;
+}
+
+.pos-entry .pos-tools-scrim {
+    position: absolute;
+    z-index: 38;
+    inset: 0;
+    border: 0;
+    border-radius: inherit;
+    background: rgb(2 6 23 / 55%);
+    cursor: pointer;
+}
+
+.pos-entry .pos-tools-panel {
+    position: absolute;
+    z-index: 42;
+    inset-block: 0.3rem;
+    inset-inline-end: 2.95rem;
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    inline-size: min(19.5rem, calc(100% - 3.3rem));
+    padding: 0.55rem;
+    border: 1px solid var(--pos-line);
+    border-radius: 12px;
+    background: rgb(15 23 42 / 97%);
+    box-shadow: 0 18px 40px -18px rgb(0 0 0 / 80%);
+    overflow-y: auto;
+}
+
+.pos-entry .pos-tools-panel__head {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0.45rem;
+    padding-block-end: 0.15rem;
+    border-block-end: 1px solid var(--pos-line);
+}
+
+.pos-entry .pos-tools-panel__title {
+    color: #f8fafc;
+    font-size: 0.84rem;
+    font-weight: 800;
+}
+
+.pos-entry .pos-tools-close {
+    display: grid;
+    place-items: center;
+    inline-size: 1.7rem;
+    block-size: 1.7rem;
+    margin-inline-start: auto;
+    border: 1px solid rgb(148 163 184 / 18%);
+    border-radius: 7px;
+    background: #1e293b;
+    color: #cbd5e1;
+    font-size: 1rem;
+    line-height: 1;
+    cursor: pointer;
+    transition:
+        border-color 120ms ease,
+        color 120ms ease;
+}
+
+.pos-entry .pos-tools-close:hover {
+    border-color: var(--pos-emerald);
+    color: #6ee7b7;
+}
+
+.pos-entry .pos-tools-group {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.pos-entry .pos-tools-group__label {
+    color: #94a3b8;
+    font-size: 0.68rem;
+    font-weight: 700;
+}
+
+.pos-entry .pos-tools-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+}
+
+.pos-entry .pos-tools-quick {
+    display: flex;
+    flex-direction: column;
+    gap: 0.3rem;
+}
+
+.pos-entry .pos-tools-panel .pos-favorite {
+    inline-size: 100%;
+    border-radius: 9px;
+    padding: 0.3rem 0.4rem;
+}
