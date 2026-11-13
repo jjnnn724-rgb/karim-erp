@@ -1,0 +1,114 @@
+<!doctype html>
+<!--
+  صفحة تحميل تطبيق كاريم للموظفين — امسح الـQR وستُنزَّل حزمة التطبيق.
+  المحتوى كله من karimeg.online (نفس السيرفر) — لا شيء من جهة خارجية.
+  اطبع الصفحة على ورق A4 وعلّقها في المطعم (لوحة الموظفين / قرب البوفيه).
+-->
+<html dir="rtl" lang="ar">
+<head>
+<meta charset="UTF-8" />
+<meta name="viewport" content="width=device-width, initial-scale=1.0" />
+<meta name="description" content="حمّل تطبيق كاريم على هاتفك — حضور وانصراف، طلبات إجازة، وبصمة الكاميرا." />
+<title>حمّل تطبيق كاريم</title>
+<style>
+    :root {
+        --bg: #0B1120;
+        --surface: #111827;
+        --raised: #1E293B;
+        --ink: #F0F6FA;
+        --muted: #94A3B8;
+        --emerald: #10B981;
+        --amber: #F59E0B;
+        --line: #1E293B;
+    }
+    * { box-sizing: border-box; margin: 0; padding: 0; }
+    body {
+        min-height: 100dvh;
+        display: grid;
+        place-items: center;
+        background: radial-gradient(1200px 800px at 50% -10%, #13233C 0%, var(--bg) 60%);
+        color: var(--ink);
+        font-family: 'Tajawal', 'Cairo', 'Segoe UI', system-ui, sans-serif;
+        padding: 24px;
+    }
+    main {
+        width: min(720px, 100%);
+        background: var(--surface);
+        border: 1px solid var(--line);
+        border-radius: 22px;
+        padding: clamp(1.25rem, 3vw, 2.25rem);
+        text-align: center;
+        display: flex;
+        flex-direction: column;
+        gap: 1.1rem;
+        box-shadow: 0 24px 60px -20px rgba(0, 0, 0, 0.75);
+    }
+    .brand { font-size: 0.78rem; letter-spacing: 0.18em; color: var(--emerald); font-weight: 800; }
+    h1 { font-size: clamp(1.6rem, 5vw, 2.3rem); }
+    p.lead { color: var(--muted); font-size: 0.98rem; line-height: 1.75; max-width: 46ch; margin: 0 auto; }
+    .qr-wrap {
+        background: #fff;
+        border-radius: 18px;
+        padding: 14px;
+        align-self: center;
+        box-shadow: 0 10px 30px -14px rgba(0, 0, 0, 0.6);
+    }
+    .qr-wrap img { display: block; width: min(280px, 60vw); height: auto; }
+    .dl {
+        display: inline-flex;
+        align-items: center;
+        gap: 0.6rem;
+        background: var(--emerald);
+        color: #04211A;
+        text-decoration: none;
+        font-weight: 800;
+        font-size: 1.05rem;
+        padding: 0.85rem 1.6rem;
+        border-radius: 12px;
+        width: fit-content;
+        margin: 0 auto;
+        transition: transform 0.15s ease;
+    }
+    .dl:hover { transform: scale(1.02); }
+    .meta { color: var(--muted); font-size: 0.78rem; }
+    .steps { display: grid; grid-template-columns: repeat(3, 1fr); gap: 0.5rem; text-align: center; }
+    .step { background: var(--raised); border: 1px solid var(--line); border-radius: 12px; padding: 0.7rem 0.5rem; }
+    .step b { color: var(--amber); font-size: 1.1rem; display: block; margin-bottom: 0.2rem; }
+    .step span { font-size: 0.78rem; color: #CBD5E1; line-height: 1.5; }
+    @media print {
+        body { background: #fff; padding: 0; }
+        main { border: 0; box-shadow: none; background: #fff; color: #111; gap: 0.75rem; max-width: none; width: 100%; }
+        p.lead, .meta { color: #333; }
+        .step { background: #f4f4f4; border: 1px solid #ddd; }
+        .step span { color: #111; }
+        .dl { display: none; }
+        .print-only { display: block !important; }
+    }
+    .print-only { display: none; color: #111; font-size: 0.9rem; }
+</style>
+</head>
+<body>
+<main>
+    <div class="brand">KARIM RESTAURANT · ENTERPRISE</div>
+    <h1>حمّل تطبيق كاريم على هاتفك</h1>
+    <p class="lead">
+        اجمع بين بصمة الكاميرا والسجل والطلبات في يدك. امسح الـQR بكاميرا هاتفك،
+        ثم ثبّت التطبيق، ثم سجّل الدخول باسمك وباسوورد البداية <b>Karim@2026</b> — وسيُطلب منك تغييره فورًا.
+    </p>
+
+    <div class="qr-wrap">
+        <img src="/app/downloads/Karim-ERP-apk-qr.png" alt="رمز QR لتحميل تطبيق كاريم" width="280" height="280" />
+    </div>
+
+    <a class="dl" href="/app/downloads/Karim-ERP.apk" download="Karim-ERP.apk">تحميل ملف التطبيق (APK)</a>
+    <p class="meta">Karimeg.online · أحدث نسخة متاحة · Android فقط</p>
+
+    <div class="steps">
+        <div class="step"><b>١</b><span>امسح الـQR بكاميرا هاتفك أو الكاميرا الخلفية</span></div>
+        <div class="step"><b>٢</b><span>ثبّت التطبيق — اسمح بـ«التثبيت من مصدر غير معروف» عند الطلب</span></div>
+        <div class="step"><b>٣</b><span>سجّل الدخول <b>Karim@2026</b> وغيّر الباسورد إلى باسوردك الخاص</span></div>
+    </div>
+    <p class="print-only">آخر تحديث للتطبيق: يُقرأ من <b>/app/downloads/Karim-ERP.apk</b> — لإعادة الطباعة بعد كل إصدار.</p>
+</main>
+</body>
+</html>

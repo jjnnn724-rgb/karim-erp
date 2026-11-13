@@ -111,3 +111,6 @@ tools/employee-card/out/
 _quarantine_*/
 /quarantine_*/
 frontend/v3/assets/
+
+# التوقيع الموقّع يُوزَّع من مجلد الإنتاج فقط — لا يُدرَج في Git
+frontend/app/downloads/*.apk
