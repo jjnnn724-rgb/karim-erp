@@ -84,21 +84,53 @@
     scrollbar-color: var(--pos-scroll-thumb) transparent;
 }
 
-.pos-entry :where(.custom-scroll, .pos-catalog__body, .pos-cart__body, .pos-categories, .pos-overlay__body, .pos-favorites__list)::-webkit-scrollbar {
+.pos-entry
+    :where(
+        .custom-scroll,
+        .pos-catalog__body,
+        .pos-cart__body,
+        .pos-categories,
+        .pos-overlay__body,
+        .pos-favorites__list
+    )::-webkit-scrollbar {
     width: 6px;
     height: 6px;
 }
 
-.pos-entry :where(.custom-scroll, .pos-catalog__body, .pos-cart__body, .pos-categories, .pos-overlay__body, .pos-favorites__list)::-webkit-scrollbar-track {
+.pos-entry
+    :where(
+        .custom-scroll,
+        .pos-catalog__body,
+        .pos-cart__body,
+        .pos-categories,
+        .pos-overlay__body,
+        .pos-favorites__list
+    )::-webkit-scrollbar-track {
     background: transparent;
 }
 
-.pos-entry :where(.custom-scroll, .pos-catalog__body, .pos-cart__body, .pos-categories, .pos-overlay__body, .pos-favorites__list)::-webkit-scrollbar-thumb {
+.pos-entry
+    :where(
+        .custom-scroll,
+        .pos-catalog__body,
+        .pos-cart__body,
+        .pos-categories,
+        .pos-overlay__body,
+        .pos-favorites__list
+    )::-webkit-scrollbar-thumb {
     border-radius: 4px;
     background: var(--pos-scroll-thumb);
 }
 
-.pos-entry :where(.custom-scroll, .pos-catalog__body, .pos-cart__body, .pos-categories, .pos-overlay__body, .pos-favorites__list)::-webkit-scrollbar-thumb:hover {
+.pos-entry
+    :where(
+        .custom-scroll,
+        .pos-catalog__body,
+        .pos-cart__body,
+        .pos-categories,
+        .pos-overlay__body,
+        .pos-favorites__list
+    )::-webkit-scrollbar-thumb:hover {
     background: #475569;
 }
 
@@ -711,19 +743,20 @@
 /* الشبكة */
 .pos-entry .pos-grid {
     display: grid;
-    grid-template-columns: repeat(3, minmax(0, 1fr));
-    gap: 0.6rem;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.5rem;
 }
 
 @media (min-width: 1180px) {
     .pos-entry .pos-grid {
-        grid-template-columns: repeat(4, minmax(0, 1fr));
+        grid-template-columns: repeat(5, minmax(0, 1fr));
     }
 }
 
 @media (min-width: 1460px) {
     .pos-entry .pos-grid {
-        grid-template-columns: repeat(5, minmax(0, 1fr));
+        grid-template-columns: repeat(6, minmax(0, 1fr));
+        gap: 0.4rem;
     }
 }
 
@@ -749,17 +782,17 @@
 }
 
 .pos-entry .pos-product__main {
-    display: flex;
-    flex-direction: column;
+    flex-direction: row;
     align-items: stretch;
-    inline-size: 100%;
-    block-size: 100%;
-    text-align: start;
+    gap: 0.55rem;
+    padding: 0.4rem;
 }
 
 .pos-entry .pos-product__media {
-    aspect-ratio: 1 / 1;
-    border-radius: 11px 11px 0 0;
+    flex: 0 0 auto;
+    inline-size: 4.8rem;
+    block-size: 4.8rem;
+    border-radius: 9px;
     background: linear-gradient(160deg, #1e293b, #0b1120);
 }
 

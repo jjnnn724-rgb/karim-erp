@@ -129,11 +129,6 @@ export function catalogFromProducts(products: readonly PosProduct[]): CatalogIte
     const active = products.filter(
         (product) => Number.isInteger(Number(product.id)) && Number(product.id) > 0 && product.is_active !== false,
     );
-    const imageUses = new Map<string, number>();
-    for (const product of active) {
-        const url = String(product.image_url ?? '').trim();
-        if (url) imageUses.set(url, (imageUses.get(url) ?? 0) + 1);
-    }
     return active.map((product) => {
         const rawCode = product.metadata?.yara_code;
         const imageUrl = String(product.image_url ?? '').trim();
@@ -145,7 +140,7 @@ export function catalogFromProducts(products: readonly PosProduct[]): CatalogIte
             unit: String(product.unit ?? ''),
             barcode: String(product.barcode ?? ''),
             stock: product.stock_quantity,
-            imageUrl: (imageUses.get(imageUrl) ?? 0) > 1 ? '' : safeProductImageUrl(imageUrl, String(product.id)),
+            imageUrl: safeProductImageUrl(imageUrl, String(product.id)),
             hasImage: Boolean(imageUrl),
             category: String(product.category ?? '').trim(),
             tier: '',
