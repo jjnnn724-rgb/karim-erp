@@ -2248,3 +2248,37 @@
     border-radius: 9px;
     padding: 0.3rem 0.4rem;
 }
+
+/* ─── أيقونات الأطباق المتسقة (للأصناف بلا صورة مطعم حقيقية) ─────────── */
+.pos-entry .pos-product__art {
+    position: absolute;
+    z-index: 0;
+    inset: 0;
+    display: grid;
+    place-items: center;
+}
+
+.pos-entry .pos-product__art-icon {
+    opacity: 0.97;
+    filter: drop-shadow(0 3px 5px rgb(0 0 0 / 38%));
+}
+
+.pos-entry .pos-product__stock {
+    position: absolute;
+    z-index: 2;
+    inset-block-start: 0.45rem;
+    inset-inline-start: 0.45rem;
+    align-self: auto;
+    margin: 0;
+}
+
+.pos-entry .pos-product__category-badge {
+    z-index: 2;
+}
+
+.pos-entry .pos-product__add {
+    position: absolute;
+    z-index: 2;
+    inset-block-end: 0.4rem;
+    inset-inline-end: 0.4rem;
+}

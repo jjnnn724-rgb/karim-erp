@@ -2,6 +2,7 @@ import { memo, type RefObject, useCallback, useEffect, useMemo, useRef, useState
 import type { BuffetLive, HeldOrder } from '../../lib/pos';
 import { intOf } from '../../lib/reporting';
 import { Badge, Button, SearchInput } from '../../ui';
+import { ProductArt } from './pos-art';
 import { bestSellers, type CatalogItem, moneyText, orderCatalog, qtyText, type SalesIndex, soldQty } from './pos-ui';
 
 export interface PosCatalogProps {
@@ -112,7 +113,7 @@ const ProductCard = memo(function ProductCard({
                 }}
             >
                 <span className="pos-product__media">
-                    {item.imageUrl ? (
+                    {item.imageUrl.startsWith('/uploads/menu/') ? (
                         <img
                             src={item.imageUrl}
                             alt=""
@@ -125,9 +126,7 @@ const ProductCard = memo(function ProductCard({
                             }}
                         />
                     ) : (
-                        <span className="pos-product__glyph" aria-hidden="true">
-                            {item.name.trim().charAt(0) || '•'}
-                        </span>
+                        <ProductArt item={item} />
                     )}
                     {item.category ? <span className="pos-product__category-badge">{item.category}</span> : null}
                     {item.stock !== null && item.stock <= 5 ? (
