@@ -1720,3 +1720,184 @@
         font-size: 1.3rem;
     }
 }
+
+/* ═══ كثافة لمس كاملة — كل حاجة تحت الإيد بلا فوارغ (شاشات ≤1100px) ═══════════ */
+@media (max-width: 1100px) {
+    .pos-entry.pos-entry--workspace {
+        padding: 0.35rem;
+        gap: 0.3rem;
+    }
+
+    /* شريط القيادة: سطر واحد فقط */
+    .pos-cmdbar {
+        flex-wrap: nowrap;
+        block-size: 2.3rem;
+        min-block-size: 2.3rem;
+        gap: 0.35rem;
+        padding-inline: 0.35rem;
+        padding-block: 0;
+        border-radius: 10px;
+    }
+
+    .pos-cmdbar__identity {
+        flex: 0 1 auto;
+        max-inline-size: none;
+        gap: 0.35rem;
+    }
+
+    .pos-cmdbar__copy strong {
+        font-size: 0.72rem;
+    }
+
+    .pos-cmdbar__copy small {
+        display: none;
+    }
+
+    .pos-cmdbar__center {
+        order: 0;
+        flex: 1 1 auto;
+        flex-basis: auto;
+        justify-content: flex-start;
+        overflow-x: auto;
+    }
+
+    .pos-cmdbar .pos-tabs__hint {
+        display: none;
+    }
+
+    .pos-cmdbar .pos-tabs {
+        gap: 0.2rem;
+    }
+
+    .pos-cmdbar .pos-tab button[role="tab"] {
+        padding: 0.1rem 0.4rem;
+        font-size: 0.68rem;
+    }
+
+    .pos-cmdbar .pos-tab__count {
+        min-inline-size: 1.05rem;
+        font-size: 0.6rem;
+    }
+
+    .pos-cmdbar .pos-tab-new {
+        min-block-size: 1.55rem;
+        font-size: 0.64rem;
+        padding: 0.08rem 0.45rem;
+    }
+
+    .pos-cmdbar__end .pos-icon-btn {
+        inline-size: 1.7rem;
+        block-size: 1.7rem;
+    }
+
+    .pos-menu__trigger {
+        min-block-size: 1.55rem;
+        padding-inline: 0.4rem;
+        font-size: 0.64rem;
+        gap: 0.15rem;
+    }
+
+    /* مبدّل اللوحين أضيق */
+    .pos-entry .pos-pane-switch {
+        padding: 0.1rem;
+        gap: 0.2rem;
+        border-radius: 10px;
+    }
+
+    .pos-entry .pos-pane-switch__btn {
+        min-block-size: 1.55rem;
+        font-size: 0.68rem;
+        padding: 0.08rem 0.35rem;
+    }
+
+    /* شريط الكتالوج: عنوان + بحث على سطر، والأوصاف تُخفى */
+    .pos-entry .pos-catalog__toolbar {
+        flex-direction: row;
+        flex-wrap: wrap;
+        align-items: center;
+        gap: 0.35rem;
+        padding: 0.28rem 0.4rem 0.3rem;
+    }
+
+    .pos-catalog__head p {
+        display: none;
+    }
+
+    .pos-catalog__head .erp-card__title {
+        font-size: 0.74rem;
+        white-space: nowrap;
+    }
+
+    .pos-entry .pos-search {
+        flex: 1 1 8rem;
+        min-inline-size: 7.5rem;
+    }
+
+    .pos-entry .pos-search__input {
+        block-size: 1.9rem;
+        font-size: 0.74rem;
+        padding-inline: 0.45rem;
+        border-radius: 8px;
+    }
+
+    .pos-catalog .pos-categories {
+        flex-basis: 100%;
+        gap: 0.25rem;
+        padding-block-end: 0;
+    }
+
+    .pos-entry .pos-category {
+        padding: 0.15rem 0.45rem;
+        font-size: 0.62rem;
+    }
+
+    /* شرائح المفضلة والأكثر مبيعًا: صف أنحف */
+    .pos-entry .pos-favorites {
+        padding: 0.22rem 0.35rem;
+        gap: 0.3rem;
+        border-radius: 9px;
+    }
+
+    .pos-entry .pos-favorites__label {
+        font-size: 0.58rem;
+    }
+
+    .pos-entry .pos-favorite {
+        min-block-size: 1.6rem;
+        padding: 0.12rem 0.35rem;
+        gap: 0.05rem;
+    }
+
+    .pos-entry .pos-favorite strong {
+        font-size: 0.62rem;
+        max-inline-size: 6.5rem;
+    }
+
+    .pos-entry .pos-favorite small {
+        font-size: 0.55rem;
+    }
+
+    .pos-entry .pos-favorite__thumb {
+        inline-size: 1.3rem;
+        block-size: 1.3rem;
+    }
+
+    /* الشبكة: فجوات أضيق */
+    .pos-entry .pos-grid {
+        gap: 0.32rem;
+    }
+
+    .pos-entry .pos-product__media {
+        inline-size: 4.2rem;
+        block-size: 4.2rem;
+    }
+
+    /* شريط السلة السفلي أقل ارتفاعًا مع إبقاء زر البيع كبيرًا */
+    .pos-entry .pos-cart__foot {
+        padding: 0.25rem 0.4rem;
+    }
+
+    .pos-entry .pos-cart__checkout {
+        min-block-size: 2.5rem;
+    }
+}
