@@ -29,7 +29,7 @@ describe('V2 document security boundary', () => {
 
     test('the strict policy is applied only to the V2 document before static serving', () => {
         const server = read(path.join(ROOT, 'backend', 'server.js'));
-        const policy = server.indexOf("req.path === '/app/v2.html'");
+        const policy = server.indexOf("app.get('/app/v2.html'");
         const staticFiles = server.indexOf("app.use('/app', appBrotli)");
         expect(policy).toBeGreaterThanOrEqual(0);
         expect(server.slice(policy, staticFiles)).toContain('buildV2Csp()');

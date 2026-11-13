@@ -2,9 +2,15 @@
  * tests/posting-matrix-engine.test.js — Automated Unit & Regression Tests for Posting Engine
  * ══════════════════════════════════════════════════════════════════════════════════════════
  * Verifies mathematical precision, debit=credit balance, and idempotency guarantees.
+ *
+ * ملاحظة المعمارية: `postJournal` يفتح معاملته على pool الحقيقي (DB) متى
+ * مرّر له كائن بلا `.release` — لذا كانت محاكاة `mockPool` لا تُجدي أصلًا
+ * ويفشل أي تشغيل بنفس المرجع على قاعدة معدّلة. الحل: تشغيل كل الحالات على
+ * قاعدة الاختبار المعزولة بوسم جولة فريد (RUN) + تنظيف موسوم عبر بوابة 136.
  */
 'use strict';
 
+const { pool } = require('../backend/shared-pool');
 const {
     round2,
     postPosCashSale,
@@ -13,35 +19,39 @@ const {
 } = require('../backend/posting-matrix-engine');
 
 describe('PostingMatrixEngine — Unit & Integrity Tests', () => {
-    let mockPool;
-    let postedEntries;
+    // وسم الجولة — كل مراجع القيد تسبقه وتُنظَّف بدالته عبر بوابة الحذف المرخّصة.
+    const RUN = `pm_${Date.now().toString(36)}_${Math.floor(Math.random() * 1e6).toString(36)}`;
 
-    beforeEach(() => {
-        postedEntries = [];
-        mockPool = {
-            query: jest.fn(async (text, params) => {
-                if (text.includes('SELECT code FROM chart_of_accounts')) {
-                    // All requested codes are valid & postable
-                    return { rows: params[0].map(c => ({ code: c })) };
-                }
-                if (text.includes('SELECT code FROM cost_centers')) {
-                    return { rows: [{ code: 'MAIN' }, { code: 'FACTZZ' }] };
-                }
-                if (text.includes('SELECT id, entry_no FROM journal_entries WHERE source_type = $1 AND source_id = $2')) {
-                    const existing = postedEntries.find(e => e.source_type === params[0] && e.source_id === params[1]);
-                    return { rows: existing ? [existing] : [] };
-                }
-                if (text.includes('INSERT INTO journal_entries')) {
-                    const entry = { id: 1001, entry_no: params[1], source_type: params[4], source_id: params[5] };
-                    postedEntries.push(entry);
-                    return { rows: [entry] };
-                }
-                if (text.includes('INSERT INTO journal_lines')) {
-                    return { rows: [{ id: 5001 }] };
-                }
-                return { rows: [] };
-            }),
-        };
+    const cleanup = async () => {
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            await client.query("SET LOCAL coa.allow_hard_delete = 'on'");
+            await client.query(
+                `DELETE FROM journal_lines WHERE entry_id IN
+                 (SELECT id FROM journal_entries WHERE source_id LIKE $1)`,
+                [`${RUN}%`],
+            );
+            await client.query('DELETE FROM journal_ledger_audit WHERE entry_id IN (SELECT id FROM journal_entries WHERE source_id LIKE $1)', [`${RUN}%`]).catch(() => {});
+            await client.query('DELETE FROM journal_entries WHERE source_id LIKE $1', [`${RUN}%`]);
+            await client.query('COMMIT');
+        } catch (_) {
+            await client.query('ROLLBACK').catch(() => {});
+        } finally {
+            client.release();
+        }
+    };
+
+    beforeAll(async () => {
+        // fixture: مركزا التكلفة اللذان تتكلمان عنهما الحالات.
+        await pool.query(`INSERT INTO cost_centers (code, name_ar)
+                          VALUES ('MAIN', 'MAIN'), ('FACTZZ', 'FACTZZ')
+                          ON CONFLICT (code) DO NOTHING`);
+        await cleanup();
+    });
+
+    afterAll(async () => {
+        await cleanup();
     });
 
     test('round2 handles cents and floats accurately', () => {
@@ -52,8 +62,8 @@ describe('PostingMatrixEngine — Unit & Integrity Tests', () => {
     });
 
     test('postPosCashSale produces perfectly balanced debits and credits', async () => {
-        const res = await postPosCashSale(mockPool, {
-            orderId: 'ORD-9901',
+        const res = await postPosCashSale(pool, {
+            orderId: `${RUN}-9901`,
             date: '2026-11-03',
             netAmount: 100,
             vatAmount: 15,
@@ -70,8 +80,8 @@ describe('PostingMatrixEngine — Unit & Integrity Tests', () => {
     });
 
     test('postDeliveryPlatformSale isolates platform commission and receivables', async () => {
-        const res = await postDeliveryPlatformSale(mockPool, {
-            orderId: 'DEL-8801',
+        const res = await postDeliveryPlatformSale(pool, {
+            orderId: `${RUN}-8801`,
             platformName: 'Jahez',
             date: '2026-11-03',
             grossSale: 200,
@@ -96,8 +106,8 @@ describe('PostingMatrixEngine — Unit & Integrity Tests', () => {
     });
 
     test('postFactoryTransfer records revenue for factory and cost burden for outlet', async () => {
-        const res = await postFactoryTransfer(mockPool, {
-            transferId: 'TR-7701',
+        const res = await postFactoryTransfer(pool, {
+            transferId: `${RUN}-7701`,
             date: '2026-11-03',
             totalValue: 500,
             factoryDept: 'FACTZZ',
@@ -119,8 +129,8 @@ describe('PostingMatrixEngine — Unit & Integrity Tests', () => {
 
     test('Idempotency prevents duplicate posting of same source transaction', async () => {
         // First post
-        const res1 = await postPosCashSale(mockPool, {
-            orderId: 'ORD-DUP-01',
+        const res1 = await postPosCashSale(pool, {
+            orderId: `${RUN}-dup`,
             date: '2026-11-03',
             netAmount: 50,
             vatAmount: 7.5,
@@ -129,8 +139,8 @@ describe('PostingMatrixEngine — Unit & Integrity Tests', () => {
         expect(res1.replay).toBe(false);
 
         // Second post with exact same orderId
-        const res2 = await postPosCashSale(mockPool, {
-            orderId: 'ORD-DUP-01',
+        const res2 = await postPosCashSale(pool, {
+            orderId: `${RUN}-dup`,
             date: '2026-11-03',
             netAmount: 50,
             vatAmount: 7.5,

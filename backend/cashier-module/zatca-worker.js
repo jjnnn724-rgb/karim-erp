@@ -72,7 +72,7 @@ async function loadZatcaConfig() {
 
 function resolveEndpoint(cfg) {
     const base = (cfg?.api_base
-        || (cfg?.environment === 'simulation' ? 'https://gw-factoora.zatca.gov.sa/e-invoicing/simulation' : null)
+        || (cfg?.environment === 'simulation' ? 'https://gw-fatoora.zatca.gov.sa/e-invoicing/simulation' : null)
         || (cfg?.environment === 'production' ? 'https://gw-fatoora.zatca.gov.sa/e-invoicing/core' : null)
         || ZATCA_API_BASE).replace(/\/+$/, '');
     // Restaurant POS invoices are B2C simplified → REPORTING (not clearance).

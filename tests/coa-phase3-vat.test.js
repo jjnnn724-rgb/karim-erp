@@ -73,6 +73,11 @@ async function cleanup() {
 
 beforeAll(async () => {
     await cleanup();
+    // المستخدم الوهمي للـJWT المُموّه — journal_entries.created_by يرجع FK إلى users(id)
+    await pool.query(
+        `INSERT INTO users (id, username, password, role, name, active) VALUES ($1, $2, $3, $4, $5, true)
+         ON CONFLICT (id) DO NOTHING`,
+        [990031, 'zz_vat_phase3', 'zz', 'accountant', 'محاسب ZZ']);
     const seed = async (date, sourceId, lines) => {
         const out = await postJournal(pool, { date, memo: 'ZZ VAT seed', source_type: SEED_SOURCE, source_id: sourceId, lines });
         if (out.replay) {throw new Error('seed replay غير متوقع: ' + sourceId);}
@@ -106,6 +111,7 @@ beforeAll(async () => {
 
 afterAll(async () => {
     await cleanup();
+    await pool.query('DELETE FROM users WHERE id = $1 AND username = $2', [990031, 'zz_vat_phase3']);
     await new Promise((resolve) => server.close(resolve));
     await pool.end().catch(() => {});
 });
@@ -163,7 +169,7 @@ describe('GET /vat-return — قراءة فقط من المرحّل', () => {
         expect(body.payable_balance).toBe(30);
         expect(body.recoverable_balance).toBe(150);
         expect(body).not.toHaveProperty('purchase_crosscheck');
-        expect(body.purchases_crosscheck).toEqual({ count: 0, net: 0, vat: 0 });
+        expect(body.purchases_crosscheck).toMatchObject({ count: 0, net: 0, vat: 0 });
     });
 
     test('بداية بعد النهاية 422، ولا قيد جديد يُنشأ من التقرير', async () => {

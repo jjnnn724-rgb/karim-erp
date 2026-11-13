@@ -122,19 +122,41 @@ describe('رسم وحدات V2 — لا اسم مستورد بلا تصدير', 
     test('المضيف يركّب كل شاشة مصدَّرة — لا شاشة ميتة في الشجرة', () => {
         const host = fs.readFileSync(path.join(V2, 'preview.js'), 'utf8');
         const registry = fs.readFileSync(path.join(V2, 'screens', 'registry.js'), 'utf8');
-        const mounted = [...host.matchAll(/from\s*'\.\/screens\/([\w-]+)\.js/g)].map((m) => m[1]);
-        // الشاشاتُ الكسولة: بوابة registry.js وحدها تحمل import() لكل شاشة،
-        // فلا يدخل وزنُها حزمةَ الإقلاع — وهي مركَّبةٌ كذلك.
-        const lazy = [
-            ...[...host.matchAll(/import\('\.\/screens\/([\w-]+)\.js/g)].map((m) => m[1]),
-            ...[...registry.matchAll(/import\('\.\/([\w-]+)\.js/g)].map((m) => m[1]),
-        ];
         const present = fs.readdirSync(path.join(V2, 'screens'))
             .map((f) => f.replace(/\.js$/, ''))
             .filter((n) => n !== 'registry');
+        // المجموعة المغلقة للمضيف بحثًا عن كل شاشة يصل إليها فعلًا — الكسولة منها
+        // عبر registry.js، والثابتة عبر preview.js وكل ما تستورده هذه مباشرة
+        // (مثل compliance.js داخل settings.js) — أي ملف تصل إليه سلسلة import()
+        // أو from واحدة تُحسب مركّبة.
+        const reachable = (starts) => {
+            const seen = new Set();
+            const queue = [...starts];
+            const specsOf = (src) => {
+                const specs = [];
+                // الاستيراد الكسول import('./x.js') — بوابة registry وحدها تحمل هذه
+                for (const m of src.matchAll(/import\s*\(\s*'([^']+)'\s*\)/g)) { specs.push(m[1]); }
+                for (const imp of importsOf(src)) { specs.push(imp.spec); }
+                return specs;
+            };
+            while (queue.length) {
+                const file = queue.pop();
+                const key = path.normalize(file);
+                if (seen.has(key)) {continue;}
+                seen.add(key);
+                const src = fs.readFileSync(file, 'utf8');
+                for (const spec of specsOf(src)) {
+                    if (!spec.startsWith('.')) {continue;}
+                    const target = path.resolve(path.dirname(file), spec.split('?')[0]);
+                    if (fs.existsSync(target)) {queue.push(target);}
+                }
+            }
+            return seen;
+        };
+        const mounted = reachable([path.join(V2, 'preview.js'), path.join(V2, 'screens', 'registry.js')]);
+        const reachableNames = new Set([...mounted].map((f) => path.basename(f, '.js')));
         for (const s of present) {
-            const ok = mounted.includes(s) || lazy.includes(s);
-            if (!ok) {throw new Error(`شاشة بلا تركيب في المضيف: ${s}`);}
+            if (!reachableNames.has(s)) {throw new Error(`شاشة بلا تركيب في المضيف: ${s}`);}
         }
     });
 });

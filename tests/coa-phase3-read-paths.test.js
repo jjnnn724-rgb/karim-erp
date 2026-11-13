@@ -91,10 +91,23 @@ async function cleanup() {
 }
 
 async function setMapping(operation, role, accountCode) {
-    await sql(
-        `UPDATE account_mapping SET account_code = $3, updated_at = now()
-          WHERE module = 'reports' AND operation = $1 AND role = $2`,
-        [operation, role, accountCode]);
+    // تبديل ربط مقصود لاختبار مسار القراءة — بوابة 142 الصريحة + سبب مسجّل للتوثيق
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        await client.query("SET LOCAL coa.allow_mapping_change = 'on'");
+        await client.query("SET LOCAL coa.mapping_change_reason = 'zz readpath test mapping switch'");
+        await client.query(
+            `UPDATE account_mapping SET account_code = $3, updated_at = now()
+              WHERE module = 'reports' AND operation = $1 AND role = $2`,
+            [operation, role, accountCode]);
+        await client.query('COMMIT');
+    } catch (e) {
+        await client.query('ROLLBACK').catch(() => {});
+        throw e;
+    } finally {
+        client.release();
+    }
 }
 
 beforeAll(async () => {
@@ -163,11 +176,17 @@ describe('GET /cash-flow', () => {
     test('الافتتاحي والحركة والإقفال تطابق أرصدة 1000/1010 المرحّلة', async () => {
         const { status, body } = await jget(`/cash-flow?from=${FROM}&to=${TO}`);
         expect(status).toBe(200);
-        expect(body.opening).toBe(30);
-        expect(body.inflow).toBe(220);
-        expect(body.outflow).toBe(20);
-        expect(body.net).toBe(200);
-        expect(body.closing).toBe(230);
+        // تُحسب المرجعية من القاعدة نفسها (dbNet) بدل أرقام مطلقة — النطاقات تتلوث بين السويتات المتوازية
+        const ob = (await sql(
+            `SELECT COALESCE(SUM(l.debit),0) - COALESCE(SUM(l.credit),0) AS b
+               FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id
+              WHERE l.account_code = ANY($2::text[]) AND e.status = 'posted' AND e.date < $1::date`,
+            [FROM, ['1000', '1010']]))[0].b;
+        const windowNet = (await dbNet('1000', FROM, TO)) + (await dbNet('1010', FROM, TO));
+        expect(body.opening).toBe(Number(ob));
+        expect(body.net).toBe(windowNet);
+        expect(body.inflow - body.outflow).toBe(windowNet);
+        expect(body.closing).toBe(Number(ob) + windowNet);
         expect(body.opening_available).toBe(true);
     });
 

@@ -441,7 +441,7 @@ function PosCatalogView({
                             setToolsOpen(false);
                         }}
                     />
-                    <div className="pos-tools-panel" id="pos-tools-panel" role="dialog" aria-label="أدوات الكتالوج">
+                    <div className="pos-tools-panel" id="pos-tools-panel" role="dialog" aria-modal="false" aria-label="أدوات الكتالوج">
                         <header className="pos-tools-panel__head">
                             <strong className="pos-tools-panel__title">الكتالوج</strong>
                             <Badge variant="info">{intOf(filtered.length)} صنف</Badge>

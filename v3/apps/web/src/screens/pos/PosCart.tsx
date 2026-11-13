@@ -354,7 +354,7 @@ export function PosCart({
                             </svg>
                         </button>
                         {customerOpen ? (
-                            <div className="pos-customer-panel" id="pos-customer-panel" role="dialog" aria-label="بيانات العميل">
+                            <div className="pos-customer-panel" id="pos-customer-panel" role="dialog" aria-modal="false" aria-label="بيانات العميل">
                                 <h3 className="pos-customer-panel__title">
                                     بيانات العميل <span className="pos-customer-panel__hint">— تُطبع على الإيصال</span>
                                 </h3>

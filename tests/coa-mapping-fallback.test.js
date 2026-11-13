@@ -88,14 +88,19 @@ describe('coa-mapping — الرجوع الآمن إلى الثوابت', () => 
             expect(before).toBeGreaterThan(0);
 
             await client.query('BEGIN');
+            // البوابة المرخّصة لبوابة التدقيق: تغيير ربط لحساب عليه قيود مرحّلة
+            // (الحساب 4000) يحتاج SET LOCAL coa.allow_mapping_change = 'on' داخل نفس المعاملة.
+            await client.query("SET LOCAL coa.allow_mapping_change = 'on'");
             const seeded = await resolveAccounts(client, 'sales_pos', 'pos_sale', DEFAULTS);
             expect(seeded).toEqual(DEFAULTS); // البذر يطابق الثوابت حرفيًا
 
+            // 1150 صارت مرفوضة من حارس النوع (revenue_account يقبل {revenue} فقط)
+            // منذ الترحيل 142 — التحقق من مسار القراءة يكون بقيمة صالحة النوع 4100.
             await client.query(
-                `UPDATE account_mapping SET account_code = '1150'
+                `UPDATE account_mapping SET account_code = '4100'
                   WHERE module = 'sales_pos' AND operation = 'pos_sale' AND role = 'revenue_account'`);
             const changed = await resolveAccounts(client, 'sales_pos', 'pos_sale', DEFAULTS);
-            expect(changed.revenue_account).toBe('1150');
+            expect(changed.revenue_account).toBe('4100');
 
             await client.query('DELETE FROM account_mapping');
             await expect(resolveAccounts(client, 'sales_pos', 'pos_sale', DEFAULTS)).resolves.toEqual(DEFAULTS);

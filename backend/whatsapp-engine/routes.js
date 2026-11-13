@@ -538,8 +538,12 @@ router.post('/media/upload', jwtAuth, requireRole(...WRITE_ROLES), rateLimit({ w
     try {
         const { jid, mediaType } = req.body || {};
         if (!jid || !isValidChatJid(jid)) {return res.status(422).json({ ok: false, error: 'INVALID_JID' });}
+        // whitelist أنواع الوسائط — أي قيمة خارج القائمة تُرفض ولا تُخزَّن
+        const MEDIA_TYPES = new Set(['image', 'video', 'audio', 'document']);
+        const safeType = MEDIA_TYPES.has(String(mediaType || '').toLowerCase()) ? String(mediaType).toLowerCase() : null;
+        if (!safeType) {return res.status(422).json({ ok: false, error: 'INVALID_MEDIA_TYPE' });}
         // Media upload creates a pending message with media type
-        const out = await store.enqueueOutbox({ clientKey: clientKeyFor(jid, `media:${Date.now()}`), remoteJid: jid, body: '', status: 'pending_media', mediaType: mediaType || 'image' });
+        const out = await store.enqueueOutbox({ clientKey: clientKeyFor(jid, `media:${Date.now()}`), remoteJid: jid, body: '', status: 'pending_media', mediaType: safeType });
         try { engineRef.sender?.kick(); } catch (_) {}
         res.status(201).json({ ok: true, id: out.id, message: 'Media queued' });
     } catch (_) { res.status(500).json({ ok: false, error: 'MEDIA_UPLOAD_FAILED' }); }

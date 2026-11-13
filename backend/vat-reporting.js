@@ -59,7 +59,11 @@ function calculateVatMovement(rows, accounts) {
   const outputVatReversals = round2(totals.output_vat_reversals);
   const inputVat = round2(totals.input_vat);
   const inputVatAdjustments = round2(totals.input_vat_adjustments);
-  const netTax = round2(totals.output_vat - totals.output_vat_debits - totals.input_vat + totals.input_vat_credits);
+  // الحركات اليدوية (غير المصنّفة) تُعرض ولا تُحتسب في الإقرار: تستبعد من
+  // الطرفين — المخرجات اليدوية من الخصم، والمدخلات اليدوية من الإضافة.
+  const countedOutputDebits = totals.output_vat_debits - totals.unclassified_output_debits;
+  const countedInputCredits = totals.input_vat_credits - totals.unclassified_input_credits;
+  const netTax = round2(totals.output_vat - countedOutputDebits - totals.input_vat + countedInputCredits);
 
   return {
     output_vat: outputVat,

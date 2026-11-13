@@ -138,7 +138,8 @@ describe('القيد العكسي المُعاد بناؤه (بلا قيد بي�
 
 describe('عقد مسار الإلغاء: قيد عكسي ذرّي وكامل', () => {
     test('المسار موجود ومحمي بأدوار الإدارة', () => {
-        expect(VOID_BLOCK).toContain("requireRole('admin', 'manager')");
+        // الأدوار الحالية المعتمدة: admin + manager + accountant (المحاسب أُضيف 2026-11)
+        expect(VOID_BLOCK).toContain("requireRole('admin', 'manager', 'accountant')");
     });
 
     test('يرفض الإلغاء في شهر مالي مقفل قبل أي عكس (423)', () => {

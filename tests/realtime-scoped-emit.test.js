@@ -78,8 +78,9 @@ describe('makeEmitScoped — سلوك الوضعين', () => {
 
 describe('لا io.emit خام في المسارات الحساسة', () => {
     const read = (p) => fs.readFileSync(path.join(__dirname, '..', p), 'utf8');
+    // backend/attendance-push/processor.js أُزيل ودُمج في zkteco/engine.js —
+    // الملف لم يعد موجودًا ولا يجوز أن يمر عليه الاختبار.
     const sensitive = [
-        'backend/attendance-push/processor.js',
         'backend/hr-routes.js',
         'backend/zkteco/engine.js',
         'backend/attendance-engine.js',

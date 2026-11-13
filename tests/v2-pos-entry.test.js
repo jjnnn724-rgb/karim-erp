@@ -78,7 +78,7 @@ describe('POS V2 — عقد الواجهة المدمجة', () => {
         expect(screen).toContain('accept="image/jpeg,image/png,image/webp"');
         expect(screen).toContain('file.size > 5 * 1024 * 1024');
         expect(screen).toContain('if (el.isConnected) {renderCashier();}');
-        expect(screen).toContain('safeProductImageUrl(p.image_url)');
+        expect(screen).toContain('safeProductImageUrl(p.image_url, p.id)');
         expect(styles).toContain('.erp-pos-v2-product-image img');
         expect(styles).toContain('.erp-pos-v2-image-action');
     });

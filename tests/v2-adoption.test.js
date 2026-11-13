@@ -56,9 +56,12 @@ describe('اعتماد V2 — التكافؤ مع القديم', () => {
 });
 
 describe('اعتماد V2 — بوابة الدخول والرجوع', () => {
-    test('جذر /app/ يحوّل إلى V2', () => {
+    test('جذر /app/ يحوّل إلى واجهة الاعتماد — /v3/ بعد قرار الترحيل و/app/v2.html?live=1 قبله (rollout.json)', () => {
+        // قرار المالك (تشرين الثاني 2026): /app/ يمرّر عبر rollout.v3Entry() —
+        // V3 هو المدخل الآن، قبله كان V2. الاختبار يثبّت بنية القرار لا التاريخ:
+        // لا مسارًا hardcoded، والتبديل عبر rollout.json بلا نشر.
         expect(serverSrc).toMatch(/app\.get\(\['\/app', '\/app\/'\]/);
-        expect(serverSrc).toMatch(/res\.redirect\(302, '\/app\/v2\.html\?live=1'\)/);
+        expect(serverSrc).toMatch(/res\.redirect\(302,\s*rollout\.v3Entry\(\)\s*\?\s*'\/v3\/'\s*:\s*'\/app\/v2\.html\?live=1'\)/);
     });
 
     test('القديمة تبقى متاحة — طريق رجوع لا حبس', () => {

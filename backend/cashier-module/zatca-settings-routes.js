@@ -41,7 +41,7 @@ const ENVIRONMENTS = {
     },
     simulation: {
         label: 'بيئة المحاكاة (Simulation)',
-        apiBase: 'https://gw-factoora.zatca.gov.sa/e-invoicing/simulation',
+        apiBase: 'https://gw-fatoora.zatca.gov.sa/e-invoicing/simulation',
     },
     production: {
         label: 'بيئة الإنتاج (Production)',

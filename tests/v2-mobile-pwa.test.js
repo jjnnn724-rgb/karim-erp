@@ -72,9 +72,12 @@ describe('PWA الهاتف — مانيفست V2 مستقل', () => {
 /* ── ٢. بلا شبكة: شاشةُ الموظف لا شاشةُ النظام القديم ────────────────── */
 describe('PWA الهاتف — الملاذ دون اتصال', () => {
     test('مطابقةُ الكاش تُهمِل الاستعلام قبل الهبوط إلى index.html', () => {
-        const navigate = strip(SW).match(/if \(req\.mode === 'navigate'\)[\s\S]*?\n {8}\);\n {8}return;/);
-        expect(navigate).not.toBeNull();
-        const body = navigate[0];
+        const stripped = strip(SW);
+        const start = stripped.indexOf("if (req.mode === 'navigate')");
+        const end = stripped.indexOf('OFFLINE_PAGE', start);
+        expect(start).toBeGreaterThan(-1);
+        expect(end).toBeGreaterThan(start);
+        const body = stripped.slice(start, end);
         expect(body).toMatch(/caches\.match\(req, \{ ignoreSearch: true \}\)/);
         // الترتيب: الطلب نفسه ⇒ نفس الصفحة باستعلامٍ آخر ⇒ index.html أخيرًا
         const exact = body.indexOf('caches.match(req)');

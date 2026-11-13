@@ -136,9 +136,9 @@ async function cleanupTagged() {
     try {
         await client.query('BEGIN');
         await client.query("SET LOCAL coa.allow_hard_delete = 'on'");
-        await client.query('DELETE FROM journal_lines WHERE entry_id = ANY($1::bigint[])', [[ENTRY_A, ENTRY_B]]);
-        await client.query('DELETE FROM journal_entries WHERE id = ANY($1::bigint[]) AND source_type = $2', [[ENTRY_A, ENTRY_B], TAG]);
-        await client.query('DELETE FROM journal_ledger_audit WHERE entry_id = ANY($1::bigint[])', [[ENTRY_A, ENTRY_B]]);
+        await client.query('DELETE FROM journal_lines WHERE entry_id IN (SELECT id FROM journal_entries WHERE source_type IN ($1, $2))', [TAG, 'v3read_bulk']);
+        await client.query('DELETE FROM journal_entries WHERE source_type IN ($1, $2)', [TAG, 'v3read_bulk']);
+        await client.query('DELETE FROM journal_ledger_audit WHERE entry_id IN (SELECT id FROM journal_entries WHERE source_type IN ($1, $2))', [TAG, 'v3read_bulk']);
         await client.query('COMMIT');
     } finally {
         client.release();
@@ -178,6 +178,22 @@ describe('/api/v3/accounting — قراءة V3', () => {
             await client.query('COMMIT');
         } finally {
             client.release();
+        }
+
+        // تعبئة جماعية بوسم الجولة: يعوّض نقص الصفوف في قاعدة الاختبار المشتركة —
+        // هذا الاختبار يتوقع الافتراضي 50 ويحتاج 50 على الأقل دائمًا.
+        const { postJournal } = require('../backend/accounting-routes');
+        for (let i = 0; i < 205; i++) {
+            await postJournal(pool, {
+                date: '2099-06-15',
+                memo: `v3read_test bulk seed ${i}`,
+                source_type: 'v3read_bulk',
+                source_id: `zzread-bulk-${i}`,
+                lines: [
+                    { account_code: '1000', debit: 10, credit: 0, memo: 'ZZ bulk' },
+                    { account_code: '4000', debit: 0, credit: 10, memo: 'ZZ bulk' },
+                ],
+            });
         }
 
         adminToken = tokenFor('admin');

@@ -71,11 +71,20 @@ async function expectFailure(fn, code, messageRe) {
 
 const mappingCount = async () =>
     (await client.query('SELECT COUNT(*)::int AS n FROM account_mapping')).rows[0].n;
-const auditRows = async () =>
-    (await client.query(
-        `SELECT action, module, operation, role, old_account_code, new_account_code,
+// ستأتي القراءات دائمًا مقيّدة بالوحدة التي تختبرها — جدول التدقيق يراكم
+// صفوفًا من سويتات أخرى على نفس القاعدة الإقليمية، والعدد المطلق لا يصح.
+const auditRows = async (module) => {
+    let sql = `SELECT action, module, operation, role, old_account_code, new_account_code,
                 old_active, new_active, changed_by::int AS changed_by, reason
-           FROM account_mapping_audit ORDER BY id`)).rows;
+           FROM account_mapping_audit`;
+    const params = [];
+    if (module) {
+        sql += ' WHERE module = $1';
+        params.push(module);
+    }
+    sql += ' ORDER BY id';
+    return (await client.query(sql, params)).rows;
+};
 
 let before;
 
@@ -113,7 +122,7 @@ describe('تطبيق 142 — البنية والفحص المسبق', () => {
         const s = await snap();
         expect(s.triggers).toBe(2);
         expect(s.guardFn).toBe(true);
-        expect(s.audit).toBe(0);
+        expect(s.audit).toBe(before.audit);
     });
 
     test('الفحص المسبق: الـ25 صفًا القائمة كلها مطابقة لأدوارها (وإلا كان التطبيق فشل)', async () => {
@@ -132,7 +141,7 @@ describe('1) مطابقة النوع (fail-closed)', () => {
         await client.query(
             `INSERT INTO account_mapping (module, operation, role, account_code, updated_by)
              VALUES ('zz_guard','report','revenue_account','4000',1)`);
-        const a = await auditRows();
+        const a = await auditRows('zz_guard');
         expect(a).toHaveLength(1);
         expect(a[0]).toMatchObject({
             action: 'INSERT', module: 'zz_guard', operation: 'report', role: 'revenue_account',
@@ -149,7 +158,7 @@ describe('1) مطابقة النوع (fail-closed)', () => {
             23514, /ACCOUNT_MAPPING_TYPE_MISMATCH/);
         expect(e.message).toContain('4000');
         expect(await mappingCount()).toBe(n0);
-        expect(await auditRows()).toHaveLength(1);
+        expect(await auditRows('zz_guard')).toHaveLength(1);
     });
 
     test('تعديل الحساب إلى نوع غير مسموح يُرفض قبل الكتابة', async () => {
@@ -172,7 +181,7 @@ describe('1) مطابقة النوع (fail-closed)', () => {
             `SELECT account_code FROM account_mapping
               WHERE module='zz_guard' AND operation='future' AND role='future_role'`)).rows[0];
         expect(row.account_code).toBe('4000');
-        const a = await auditRows();
+        const a = await auditRows('zz_guard');
         expect(a[a.length - 1].action).toBe('INSERT');
         expect(a[a.length - 1].role).toBe('future_role');
     });
@@ -183,7 +192,7 @@ describe('2) سجل التدقيق لكل تغيير', () => {
         await client.query(
             `UPDATE account_mapping SET active = false, updated_by = 1
               WHERE module='sales_pos' AND operation='pos_sale' AND role='revenue_account'`);
-        const a = (await auditRows()).filter((r) => r.action === 'UPDATE').pop();
+        const a = (await auditRows('sales_pos')).filter((r) => r.action === 'UPDATE').pop();
         expect(a).toMatchObject({
             module: 'sales_pos', operation: 'pos_sale', role: 'revenue_account',
             old_account_code: '4000', new_account_code: '4000',
@@ -214,7 +223,7 @@ describe('3) قفل الحساب الذي عليه قيود مرحّلة', () =>
         await client.query(`SET LOCAL coa.allow_mapping_change = 'off'`);
         await client.query(`SET LOCAL coa.mapping_change_reason = ''`);
 
-        const a = (await auditRows()).filter(
+        const a = (await auditRows('sales_pos')).filter(
             (r) => r.module === 'sales_pos' && r.operation === 'pos_sale' && r.role === 'cash_account').pop();
         expect(a).toMatchObject({
             action: 'UPDATE', old_account_code: '1000', new_account_code: '1010',
@@ -253,7 +262,7 @@ describe('3) قفل الحساب الذي عليه قيود مرحّلة', () =>
         await client.query(`SET LOCAL coa.allow_mapping_change = 'off'`);
         await client.query(`SET LOCAL coa.mapping_change_reason = ''`);
 
-        const del = (await auditRows()).filter(
+        const del = (await auditRows('sales_pos')).filter(
             (r) => r.action === 'DELETE' && r.role === 'cogs_account').pop();
         expect(del).toMatchObject({
             module: 'sales_pos', operation: 'pos_sale', role: 'cogs_account',
@@ -264,7 +273,7 @@ describe('3) قفل الحساب الذي عليه قيود مرحّلة', () =>
         await client.query(
             `DELETE FROM account_mapping
               WHERE module='assets' AND operation='depreciation_run' AND role='expense_account'`);
-        const last = (await auditRows()).pop();
+        const last = (await auditRows('assets')).pop();
         expect(last).toMatchObject({
             action: 'DELETE', module: 'assets', operation: 'depreciation_run',
             role: 'expense_account', old_account_code: '6600',
@@ -297,9 +306,9 @@ describe('إعادة التطبيق والرجوع', () => {
         await client.query('ROLLBACK');
         const after = await snap();
         expect(after).toEqual(before);
-        expect(after.rules).toBe(0);
-        expect(after.audit).toBe(0);
-        expect(after.triggers).toBe(0);
+        expect(after.rules).toBe(before.rules);
+        expect(after.audit).toBe(before.audit);
+        expect(after.triggers).toBe(before.triggers);
     });
 });
 

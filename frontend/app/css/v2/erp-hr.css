@@ -1205,7 +1205,7 @@
 .erp-v2-employees .erp-emp-att__scroll thead th {
   position: sticky;
   inset-block-start: 0;
-  z-index: 1;
+  z-index: var(--erp-z-base);
   background: var(--erp-surface-raised);
 }
 .erp-v2-employees .erp-emp-att__scroll tbody tr:nth-child(even) {

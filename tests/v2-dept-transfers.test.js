@@ -43,7 +43,9 @@ describe('عقد نظام التحويلات الداخلية بين الأقس�
         expect(src).toMatch(/router\.post\('\/dept-transfers\/:id\/approve'/);
         expect(src).toMatch(/router\.post\('\/dept-transfers\/:id\/reject'/);
         expect(src).toMatch(/router\.post\('\/dept-transfers\/:id\/cancel'/);
-        expect(src).toMatch(/module\.exports = \{ router \}/);
+        // التصدير اتسع لاحقًا ليشمل buildFactorySettlementLines + buildTransferCostLines
+        // (يراها accounting-routes.js) — المهم أن router ضمن المصدَّر.
+        expect(src).toMatch(/module\.exports = \{\s*router\b/);
     });
 
     test('الخادم: دورة قرار الشيف نفسها في سلسلة الصرف + منع اعتماد الطلب الذاتي', () => {
@@ -128,8 +130,10 @@ describe('عقد نظام التحويلات الداخلية بين الأقس�
     test('الخادم: قيد نقل التكلفة بين مركزي القسمين (مدين 5000 مستلم / دائن 5000 مرسل)', () => {
         const src = read(ROUTES);
         expect(src).toMatch(/postJournal, ensureCostCenters, normalizeCostCenterCode/);
-        expect(src).toMatch(/account_code: '5000', debit: v, credit: 0/);
-        expect(src).toMatch(/account_code: '5000', debit: 0, credit: v/);
+        // الحساب صار حسابًا مُحلَّلًا من الخريطة بخيار 5000 افتراضيًا — النص يذكر fallback
+        expect(src).toMatch(/cost_account \|\| '5000'/);
+        expect(src).toMatch(/account_code: costAcct, debit: v, credit: 0/);
+        expect(src).toMatch(/account_code: costAcct, debit: 0, credit: v/);
         expect(src).toMatch(/source_type: 'inventory_transfer'/);
         expect(src).toMatch(/ensureCostCenters\(\[src, dst\]\)/);
     });

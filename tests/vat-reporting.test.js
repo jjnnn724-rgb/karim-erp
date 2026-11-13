@@ -22,7 +22,7 @@ describe('calculateVatMovement', () => {
             input_vat_adjustments: 2,
             net_payable: 15,
             carry_forward_credit: 0,
-            unclassified_vat_movements: { output_debits: 0, input_credits: 0 },
+            unclassified_vat_movements: { output_debits: 0, output_credits: 0, input_debits: 0, input_credits: 0 },
         });
     });
 
@@ -32,7 +32,7 @@ describe('calculateVatMovement', () => {
             { account_code: '1150', source_type: 'manual', debit: 0, credit: 1 },
         ], accounts);
 
-        expect(result.unclassified_vat_movements).toEqual({ output_debits: 4, input_credits: 1 });
+        expect(result.unclassified_vat_movements).toEqual({ output_debits: 4, output_credits: 0, input_debits: 0, input_credits: 1 });
         expect(result.net_payable).toBe(0);
         expect(result.carry_forward_credit).toBe(0);
     });

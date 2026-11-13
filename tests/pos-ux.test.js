@@ -28,7 +28,7 @@ describe('POS fast-search and checkout UX', () => {
         expect(html).toMatch(/js\/pos\.js\?v=\d+\.\d+\.\d+/);
         expect(html.indexOf('js/pos-search.js')).toBeLessThan(html.indexOf('js/pos.js'));
         expect(html).toContain('<kbd>F2</kbd> إتمام البيع');
-        expect(html).toContain('<kbd>F9</kbd> إغلاق الوردية');
+        expect(html).toContain('إغلاق الوردية <kbd>F9</kbd>');
         // إصدار الكاش يتقدّم مع كل دفعة — الحراسة تثبّت الوجودَ لا الرقمَ
         expect(read('sw.js')).toMatch(/const CACHE_VERSION='\d+\.\d+\.\d+';/);
     });
@@ -38,7 +38,10 @@ describe('POS fast-search and checkout UX', () => {
         expect(css).toContain('minmax(clamp(96px, 8vw, 122px), 1fr)');
         expect(css).toContain('minmax(98px, 1fr)');
         expect(css).toContain('min-height: 96px');
-        expect(css).toContain('font-size: clamp(11px, 0.85vw, 12.5px)');
+        // أنماط الكثافة انتقلت إلى pos-fit.css (مُحمَّل مباشرة في pos.html)
+        expect(read('pos.html')).toContain('css/pos-fit.css?v=');
+        const fit = read('css/pos-fit.css');
+        expect(fit).toContain('font-size: clamp(11px, 0.82vw, 12.5px)');
     });
 
     test('product search uses cached normalized labels and delegated product clicks', () => {

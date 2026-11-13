@@ -85,7 +85,7 @@ describe('وعي الإبطال (2026-11-06): الإصلاح الآلي لا ي�
     const DISPATCH_LEDGER = read('scripts', 'reconcile-dispatch-ledger.js');
 
     test('postJournal افتراضيًا لا يعيد ترحيل المُبطَل، ومُستدعٍ بشري واحد فقط يمرّره', () => {
-        expect(ACCT).toMatch(/repostVoided = false\s*\}/);
+        expect(ACCT).toMatch(/repostVoided\s*=\s*false/);
         expect(ACCT.match(/repostVoided:/g) || []).toHaveLength(1);
         for (const auto of [GLB, DAY_CLOSE, RECONCILE, DISPATCH_LEDGER]) {
             expect(auto).not.toMatch(/repostVoided:/);

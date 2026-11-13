@@ -26,13 +26,13 @@ const css = fs.readFileSync(path.join(ROOT, 'frontend', 'app', 'css', 'v2', 'erp
 
 describe('مصدر الفواتير — مرآة YaraSoft لا pos_orders', () => {
     test('إحصاء اليوم يقرأ ys_mirror_orders', () => {
-        const stats = backend.slice(backend.indexOf("router.get('/stats/today'"), backend.indexOf("router.get('/list'"));
+        const stats = backend.slice(backend.indexOf("router.get('/stats/today'"), backend.indexOf("router.get('/ys/"));
         expect(stats).toMatch(/FROM ys_mirror_orders/);
         expect(stats).not.toMatch(/FROM pos_orders\b/);
     });
 
     test('التقويم: يوم الرياض لا CURRENT_DATE', () => {
-        const stats = backend.slice(backend.indexOf("router.get('/stats/today'"), backend.indexOf("router.get('/list'"));
+        const stats = backend.slice(backend.indexOf("router.get('/stats/today'"), backend.indexOf("router.get('/ys/"));
         expect(stats).toMatch(/riyadhToday\(\)/);
         // التعليقات تُذكر CURRENT_DATE لشرح سبب تجنّبه ⇒ نفحص SQL وحده
         const sql = stats.replace(/\/\*[\s\S]*?\*\//g, '').replace(/^\s*\/\/.*$/gm, '');

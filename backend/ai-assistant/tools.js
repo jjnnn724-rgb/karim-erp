@@ -61,8 +61,12 @@ async function readTable(table, { limit = 20, order = 'id DESC' } = {}) {
     if (!exists.rows.length) {throw new Error('TABLE_NOT_FOUND: ' + name);}
     const cols = await pool.query(
         `SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name = $1 ORDER BY ordinal_position`, [name]);
-    const orderCol = cols.rows.some((c) => c.column_name === order.split(' ')[0]) ? order : '1';
-    const r = await pool.query(`SELECT * FROM public."${name}" ORDER BY ${orderCol} LIMIT ${Math.min(Number(limit) || 20, 200)}`);
+    // ORDER BY صارم: عمود موجود فقط + اتجاه ASC/DESC من القائمة — لا تعبير حر أبدًا
+    const orderMatch = String(order || '').match(/^([A-Za-z_][A-Za-z0-9_]*)(?:\s+(ASC|DESC))?$/i);
+    const requested = orderMatch ? orderMatch[1] : null;
+    const orderCol = requested && cols.rows.some((c) => c.column_name === requested) ? `"${requested}"` : '1';
+    const orderDir = orderMatch && orderMatch[2] && orderMatch[2].toUpperCase() === 'DESC' ? 'DESC' : 'ASC';
+    const r = await pool.query(`SELECT * FROM public."${name}" ORDER BY ${orderCol} ${orderDir} LIMIT ${Math.min(Number(limit) || 20, 200)}`);
     return {
         table: name,
         columns: cols.rows.map((c) => c.column_name).filter((c) => !DENIED_COLUMNS.has(c)),

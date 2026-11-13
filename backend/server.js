@@ -186,6 +186,12 @@ if (ALLOWED_ORIGINS === '*') {
 // Tailscale MagicDNS (*.ts.net over HTTPS) is always allowed: those names only
 // resolve inside your private tailnet AND carry auto-provisioned trusted certs,
 // so PWA works with zero warnings and no manual .env edit per device.
+// zrok reserved public share (trusted HTTPS, checked-in tunnel).
+// كلاهما قابل للتعطيل بقرار صريح: CORS_TUNNELS=none في .env يعطّل المساراتين
+// معًا دون المساس بمصادر LAN. (افتراضيًا: tsnet,zrok — السلوك الحالي بلا تغيير)
+const _tunnels = String(process.env.CORS_TUNNELS || 'tsnet,zrok').split(',').map(s => s.trim().toLowerCase()).filter(Boolean);
+const TUNNEL_TSNET = _tunnels.includes('tsnet');
+const TUNNEL_ZROK = _tunnels.includes('zrok');
 const _staticOrigins = ALLOWED_ORIGINS === '*'
     ? null
     : ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(Boolean);
@@ -194,11 +200,10 @@ const corsOriginValue = ALLOWED_ORIGINS === '*'
     : ((origin, callback) => {
         if (!origin) {return callback(null, true);}
         if (_staticOrigins.includes(origin)) {return callback(null, true);}
-        if (/^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.ts\.net(:\d+)?$/i.test(origin)) {
+        if (TUNNEL_TSNET && /^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.ts\.net(:\d+)?$/i.test(origin)) {
             return callback(null, true);
         }
-        // zrok reserved public share (trusted HTTPS, checked-in tunnel).
-        if (/^https:\/\/[a-z0-9-]+\.shares\.zrok\.io(:\d+)?$/i.test(origin)) {
+        if (TUNNEL_ZROK && /^https:\/\/[a-z0-9-]+\.shares\.zrok\.io(:\d+)?$/i.test(origin)) {
             return callback(null, true);
         }
         return callback(null, false);
@@ -500,6 +505,27 @@ if (cspMeasurementEnabled) {
         });
     // القراءة (العدّادات) تُركَّب لاحقًا بعد apiKeyMiddleware — انظر أدناه.
 }
+// ─── استقبال بلاغات أخطاء الواجهة (دائمًا) ─────────────────────────────
+// الهدف: اكتشاف أعطال الإنتاج أولًا بأول بدل موت الواجهة بصمت عند العميل.
+// لا يحتاج مصادقة (قد يفشل التطبيق قبل الدخول) لكنه مقيّد: جسم 16kb، حدّ
+// 600/دقيقة لكل IP، حقول منظّفة يدويًا، بلا تخزين على القرص — سطر pino فقط.
+app.post('/api/security/client-error', generalLimiter, (req, res) => {
+    try {
+        const body = req.body && typeof req.body === 'object' ? req.body : {};
+        const message = String(body.message || '').slice(0, 300).trim();
+        if (!message) { return res.status(204).end(); }
+        logger.warn({
+            event: 'client_error',
+            kind: String(body.kind || '').slice(0, 40),
+            message,
+            stack: String(body.stack || '').slice(0, 2000),
+            page: String(body.page || '').slice(0, 200),
+            version: String(body.version || '').slice(0, 40),
+            userAgent: String(req.headers['user-agent'] || '').slice(0, 200),
+        }, 'client error reported');
+    } catch (_) { /* بلاغ تالف — نتجاهله */ }
+    res.status(204).end();
+});
 // FIX 2026-10-03 (اختبار ضغط): أُزيل morgan('combined') — كان يسجّل كل طلب
 // مرتين (httpLogger المنظم يغطي البداية والنهاية بتفاصيل أكبر)، والتحذير
 // للطلبات البطيئة موجود أصلًا في httpLogger (slowThresholdMs). العمل المكرر
@@ -3015,19 +3041,23 @@ app.use('/uploads', (req, res, next) => {
     const ext = path.extname(req.path).toLowerCase();
     const PUBLIC_IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico'];
     if (PUBLIC_IMAGE_EXTS.includes(ext)) {return next();}
-    // Non-image files require auth
+    // Non-image files require auth — تحقق موحّد بدل jwt.verify عارٍ:
+    // نفس الخوارزمية المثبتة HS256 ونفس سر الوصول ومعه رفض placeholders في الإنتاج.
     try {
         const auth = String(req.headers.authorization || '');
-        if (auth.startsWith('Bearer ')) {
-            const jwt = require('jsonwebtoken');
-            jwt.verify(auth.slice(7), process.env.JWT_ACCESS_SECRET, (err) => {
-                if (err) {return res.status(401).json({ error: 'UNAUTHORIZED' });}
+        const match = auth.match(/^Bearer\s+(.+)$/i);
+        if (match) {
+            const { verifyAccessToken } = require('./cashier-module/jwt-middleware');
+            try {
+                verifyAccessToken(match[1]);
                 next();
-            });
+            } catch (_) {
+                res.status(401).json({ error: 'UNAUTHORIZED' });
+            }
             return;
         }
-        return res.status(401).json({ error: 'UNAUTHORIZED', message: 'يجب تسجيل الدخول للوصول لهذا الملف' });
-    } catch (_) { return res.status(401).json({ error: 'UNAUTHORIZED' }); }
+        res.status(401).json({ error: 'UNAUTHORIZED', message: 'يجب تسجيل الدخول للوصول لهذا الملف' });
+    } catch (_) { res.status(401).json({ error: 'UNAUTHORIZED' }); }
 });
 app.use('/uploads', express.static(MEDIA_ROOT, {
     fallthrough: false,
