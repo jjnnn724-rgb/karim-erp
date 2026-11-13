@@ -109,6 +109,56 @@ describe('evaluatePunch — سيناريوهات §5.7 الحرفية', () => {
         expect(r.details.networkOk).toBe(true);
         expect(r.details.distanceM).toBeLessThanOrEqual(120);
     });
+    test('استثناء جغرافي: بصمة عبر الإنترنت بلا موقع → accepted مع GEO_EXEMPT', () => {
+        const s = resolvePunchSettings([
+            { key: 'punch_portal_enabled', value: 'true' },
+            { key: 'punch_geofence_enabled', value: 'true' },
+            { key: 'punch_radius_meters', value: '120' },
+            { key: 'punch_restaurant_lat', value: String(RESTAURANT.lat) },
+            { key: 'punch_restaurant_lng', value: String(RESTAURANT.lng) },
+            { key: 'punch_geo_exempt_user_ids', value: '1789955417831757' },
+        ]);
+        const r = evaluatePunch(s, { ...baseReq, remoteIp: '156.203.44.10', viaTunnel: true, location: null, geoExempt: true });
+        expect(r.decision).toBe('accepted');
+        expect(r.details.geoExempt).toBe(true);
+        expect(r.details.networkOk).toBe(true);
+    });
+    test('استثناء جغرافي: الوجه/الجهاز يبقى مفروضًا — PUNCH_DEVICE_REQUIRED لو غاب المعرّف', () => {
+        const s = resolvePunchSettings([
+            { key: 'punch_portal_enabled', value: 'true' },
+            { key: 'punch_geofence_enabled', value: 'true' },
+            { key: 'punch_device_binding', value: 'true' },
+            { key: 'punch_restaurant_lat', value: String(RESTAURANT.lat) },
+            { key: 'punch_restaurant_lng', value: String(RESTAURANT.lng) },
+            { key: 'punch_geo_exempt_user_ids', value: '1789955417831757' },
+        ]);
+        const r = evaluatePunch(s, { ...baseReq, remoteIp: '156.203.44.10', viaTunnel: true, deviceId: null, geoExempt: true });
+        expect(r.rejectCode).toBe('PUNCH_DEVICE_REQUIRED');
+    });
+    test('استثناء جغرافي: جهاز آخر غير مربوط → PUNCH_DEVICE_MISMATCH', () => {
+        const s = resolvePunchSettings([
+            { key: 'punch_portal_enabled', value: 'true' },
+            { key: 'punch_geofence_enabled', value: 'true' },
+            { key: 'punch_device_binding', value: 'true' },
+            { key: 'punch_device_auto_rebind', value: 'false' },
+            { key: 'punch_restaurant_lat', value: String(RESTAURANT.lat) },
+            { key: 'punch_restaurant_lng', value: String(RESTAURANT.lng) },
+            { key: 'punch_geo_exempt_user_ids', value: '1789955417831757' },
+        ]);
+        const r = evaluatePunch(s, { ...baseReq, remoteIp: '156.203.44.10', viaTunnel: true, deviceId: 'device-other-999', boundDeviceId: 'device-abc-123', geoExempt: true });
+        expect(r.rejectCode).toBe('PUNCH_DEVICE_MISMATCH');
+    });
+    test('غير المستثنى من الإنترنت مع موقع مثالي → يُرفض (الاستثناء ليس للجميع)', () => {
+        const r = evaluatePunch(baseSettings, { ...baseReq, remoteIp: '156.203.44.10' });
+        expect(r.rejectCode).toBe('PUNCH_OUT_OF_NETWORK');
+    });
+    test('resolvePunchSettings يقرأ punch_geo_exempt_user_ids ويعامله كقائمة', () => {
+        const s = resolvePunchSettings([
+            { key: 'punch_geo_exempt_user_ids', value: '1789955417831757, 12345' },
+        ]);
+        expect(s.geoExemptUserIds).toEqual(['1789955417831757', '12345']);
+    });
+
     test('الميزة مغلقة بالمفتاح المركزي → PUNCH_PORTAL_DISABLED (G4)', () => {
         const s = resolvePunchSettings([{ key: 'punch_portal_enabled', value: 'false' }]);
         const r = evaluatePunch(s, baseReq);

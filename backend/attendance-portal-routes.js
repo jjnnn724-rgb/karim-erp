@@ -17,7 +17,7 @@ const express = require('express');
 const { pool } = require('./shared-pool');
 const { logger } = require('./logger');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
-const { evaluatePunch, resolvePunchSettings, evaluateFaceMatch, isValidFaceDescriptor, assessTeleport, resolveDeviceBindingAction, assessFaceSamples } = require('./punch-portal-logic');
+const { evaluatePunch, resolvePunchSettings, evaluateFaceMatch, isValidFaceDescriptor, assessTeleport, resolveDeviceBindingAction, assessFaceSamples, isGeoExemptUser } = require('./punch-portal-logic');
 const { createRateLimiter } = require('./rate-limiter');
 const { shiftDateForEmployee } = require('./shift-day');
 // بصمة البوابة بلا اتجاه — تُحفظ خامًا بحالة مجهولة (-1)، لا تُخترع لها اتجاهات.
@@ -336,6 +336,11 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
     try {
         const settings = await loadPunchSettings();
 
+        // استثناء جغرافي (قرار المالك 2026-11-13): المستخدمون المعتمدون في
+        // punch_geo_exempt_user_ids يتجاوزون الطبقات الجغرافية فقط (الشبكة + الموقع).
+        // الوجه وربط الجهاز والصلاحيات تبقى مفروضة، وتُسجَّل GEO_EXEMPT_USER في التدقيق.
+        const geoExempt = isGeoExemptUser(settings.geoExemptUserIds, req.user.id);
+
         // IP الاتصال الفعلي. SECURITY: عبر Cloudflare Tunnel يصل الطلب من 127.0.0.1 —
         // tرويسات cf-* التي يضعها cloudflared تحمل IP العميل الحقيقي، وحضورها تعني
         // أن الطلب من الإنترنت (لا من LAN): يُستخدم IP الحقيقي في الحكم والتدقيق.
@@ -356,6 +361,7 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
             remoteIp,
             viaTunnel,
             deviceId,
+            geoExempt,
             location: Array.isArray(loc?.fixes) && loc.fixes.length
                 ? { fixes: loc.fixes, mocked: loc.mocked === true }
                 : loc ? {
@@ -405,8 +411,8 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
         // (رقم العميل fixAgeS لا يُثبت شيئًا — يبعث صفرًا في كل البصمات تقريبًا).
         const freshnessSignal = Number.isFinite(Number(verdict.details.serverAgeS))
             ? `SERVER_FIX_AGE_${Math.round(Number(verdict.details.serverAgeS))}S` : null;
-        const mergedTrustSignals = (baseSignals.length || spoofSignals.length || reboundSignal || freshnessSignal)
-            ? [...spoofSignals, ...(reboundSignal ? [reboundSignal] : []),
+        const mergedTrustSignals = (geoExempt || baseSignals.length || spoofSignals.length || reboundSignal || freshnessSignal)
+            ? [...spoofSignals, ...(reboundSignal ? [reboundSignal] : []), ...(geoExempt ? ['GEO_EXEMPT_USER'] : []),
                 ...(freshnessSignal ? [freshnessSignal] : []), ...baseSignals]
             : null;
 
@@ -478,7 +484,7 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
         // فحص التنقل المستحيل (2026-10-01): آخر بصمة مقبولة لهذا الموظف vs الحالية —
         // قفزة آلاف الكيلومترات بدقائق = مشاركة حساب أو تزييف متنقل. يعمل فقط عند
         // تفعيل الجيوفانس (توجد إحداثيات للمقارنة) ومفتاح punch_teleport_check.
-        if (settings.teleportCheck && settings.geofenceEnabled
+        if (settings.teleportCheck && settings.geofenceEnabled && !geoExempt
             && Number.isFinite(verdict.details.bestLat) && Number.isFinite(verdict.details.bestLng)) {
             try {
                 const last = (await pool.query(
@@ -737,11 +743,24 @@ const PUNCH_SETTING_KEYS = {
     punch_face_strict:      { type: 'bool' },
     punch_face_min_samples: { type: 'int', min: 1, max: 5 },
     punch_face_replay_min_distance: { type: 'float', min: 0, max: 0.2 },
+    // استثناء جغرافي: معرّفات مستخدمين (مفصولة بفواصل/فراغات) — يتجاوزون الطبقات الجغرافية فقط
+    punch_geo_exempt_user_ids: { type: 'stringlist', maxLength: 500 },
 };
 
 function validatePunchSettingValue(key, value) {
     const spec = PUNCH_SETTING_KEYS[key];
     if (!spec) {return { error: 'UNKNOWN_KEY' };}
+    if (spec.type === 'stringlist') {
+        const raw = String(value ?? '').trim();
+        if (raw === '') {return { value: '' };} // فارغة = مسح قائمة الاستثناء بالكامل
+        if (raw.length > spec.maxLength) {return { error: 'OUT_OF_RANGE', min: 0, max: spec.maxLength };}
+        const parts = raw.split(/[\s,]+/).map((s) => s.trim()).filter(Boolean);
+        if (parts.length > 50) {return { error: 'TOO_MANY', min: 0, max: 50 };}
+        for (const part of parts) {
+            if (!/^[0-9A-Za-z_-]{1,80}$/.test(part)) {return { error: 'INVALID_TOKEN' };}
+        }
+        return { value: parts.join(',') };
+    }
     if (spec.type === 'bool') {
         if (typeof value === 'boolean') {return { value: String(value) };}
         const s = String(value).trim().toLowerCase();

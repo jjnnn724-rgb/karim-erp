@@ -99,6 +99,7 @@ try {
  *   = نفس الصورة أعيدت لا نفس الوجه (تزييف إعادة تشغيل)
  * @property {number|null} lat إحداثيات المطعم — null = غير مضبوطة
  * @property {number|null} lng
+ * @property {string[]} geoExemptUserIds معرّفات مستخدمين مستثنين من الطبقات الجغرافية فقط (قرار المالك 2026-11-13)
  */
 
 /**
@@ -223,6 +224,42 @@ function numOr(v, fallback) {
 }
 
 /**
+ * قائمة مستخدمين مستثنين من الطبقات الجغرافية فقط (L1 الشبكة + L2-5 الموقع) —
+ * تُقرأ من `punch_geo_exempt_user_ids` (معرّفات مفصولة بفواصل/فراغات).
+ * ربط الجهاز والوجه والصلاحيات تبقى مفروضة عليهم كما على أي أحد.
+ * التحقق البشري ممن يُضاف: تسجيل الاستثناء في punch_attempts بـ GEO_EXEMPT_USER.
+ * @param {unknown} v
+ * @returns {string[]}
+ */
+function parseExemptList(v) {
+    if (v === undefined || v === null) {return [];}
+    const parts = String(v).split(/[\s,]+/).map((s) => s.trim()).filter(Boolean);
+    const clean = [];
+    const seen = new Set();
+    for (const p of parts) {
+        const t = p.replace(/[^0-9A-Za-z_-]/g, '');
+        if (t && t.length <= 80 && !seen.has(t)) {
+            seen.add(t);
+            clean.push(t);
+            if (clean.length >= 50) {break;}
+        }
+    }
+    return clean;
+}
+
+/**
+ * هل المستخدم مستثنى من الطبقات الجغرافية (الشبكة + الموقع)؟
+ * القرار في الوحدة النقية يُبنى على `req.geoExempt` (الراوت يحسبه من القائمة)،
+ * وهذه الدالة مجرد مساعدة اختبارية/قراءة.
+ * @param {readonly string[]|undefined} list
+ * @param {unknown} userId
+ * @returns {boolean}
+ */
+function isGeoExemptUser(list, userId) {
+    return Array.isArray(list) && list.includes(String(userId ?? '').trim());
+}
+
+/**
  * @param {unknown} v
  * @param {boolean} fallback
  * @returns {boolean}
@@ -272,6 +309,8 @@ function resolvePunchSettings(rows, env = {}) {
         // المالك — المفتوح يرفض فوريًا 40/119 بصمة مقبولة اليوم (قراءة واحدة).
         geoStrictMultiFix: boolOr(kv.punch_geo_strict_multi_fix, false),
         maxClockSkewS: /** @type {number} */ (numOr(kv.punch_max_clock_skew_s, 120)),
+        // استثناء الموقع لأشخاص محددين (قرار المالك 2026-11-13) — الطبقات الجغرافية فقط
+        geoExemptUserIds: parseExemptList(kv.punch_geo_exempt_user_ids !== undefined ? kv.punch_geo_exempt_user_ids : env.PUNCH_GEO_EXEMPT_USERS),
         faceStrict: boolOr(kv.punch_face_strict, false),
         faceMinSamples: /** @type {number} */ (numOr(kv.punch_face_min_samples, 2)),
         faceReplayMinDistance: /** @type {number} */ (numOr(kv.punch_face_replay_min_distance, 0.004)),
@@ -662,6 +701,7 @@ function evaluatePunch(settings, req) {
         serverAgeS: /** @type {number|null|undefined} */ (undefined),
         clockSkewS: /** @type {number|null|undefined} */ (undefined),
         deviceId: req.deviceId || null,
+        geoExempt: false,
     };
 
     // 0. مفتاح التفعيل المركزي (G4: الميزة تولد مغلقة)
@@ -673,9 +713,13 @@ function evaluatePunch(settings, req) {
     //    التونل للسيرفر من 127.0.0.1 — كان يُحسب "داخليًا" فيُفتح البصمة للإنترنت
     //    كله. الآن حركة التونل (ترويسات cf-*) تُقبل فقط إذا الجيوفانس مفعّل وسيحكم
     //    إثبات الموقع؛ مع تعطيل الجيوفانس تُرفض (لا بصمة عن بُعد بلا إثبات مكان).
+    //    الاستثناء الجغرافي (req.geoExempt): يُعفي الطبقات الجغرافية وحدها فقط —
+    //    الوجه وربط الجهاز والصلاحيات تبقى مفروضة، والبصمة تُسجَّل GEO_EXEMPT_USER.
+    const geoExempt = req.geoExempt === true;
+    details.geoExempt = geoExempt;
     const viaTunnel = req.viaTunnel === true;
-    details.networkOk = viaTunnel || isInternalIp(req.remoteIp);
-    if (!details.networkOk || (viaTunnel && !settings.geofenceEnabled)) {
+    details.networkOk = geoExempt || viaTunnel || isInternalIp(req.remoteIp);
+    if (!details.networkOk || (viaTunnel && !settings.geofenceEnabled && !geoExempt)) {
         return { decision: 'rejected', rejectCode: 'PUNCH_OUT_OF_NETWORK', details };
     }
 
@@ -684,8 +728,9 @@ function evaluatePunch(settings, req) {
     details.hasLocation = fixes.length > 0;
     details.fixCount = fixes.length;
 
-    // 2-5. الطبقات الجغرافية — تعمل فقط إذا فُعّلت إداريًا (وقُطبت الإحداثيات)
-    if (settings.geofenceEnabled) {
+    // 2-5. الطبقات الجغرافية — تعمل فقط إذا فُعّلت إداريًا (وقُطبت الإحداثيات)،
+    //    وتُتجاوز كاملة للمستثنى جغرافيًا (لا موقع مطلوب ولا نطاق للمطعم).
+    if (settings.geofenceEnabled && !geoExempt) {
         if (settings.lat == null || settings.lng == null) {
             return { decision: 'rejected', rejectCode: 'PUNCH_GEOFENCE_NOT_CONFIGURED', details };
         }
@@ -829,6 +874,8 @@ module.exports = {
     evaluateFaceMatch,
     assessFaceSamples,
     resolveDeviceBindingAction,
+    isGeoExemptUser,
+    parseExemptList,
     evaluatePunch,
     FACE_DESCRIPTOR_LEN,
     MAX_SESSION_SPREAD_M,
