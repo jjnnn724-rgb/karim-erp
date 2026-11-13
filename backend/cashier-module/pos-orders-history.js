@@ -594,7 +594,7 @@ router.get('/:id', jwtAuth, async (req, res) => {
         const orderRes = await pool.query(`
             SELECT po.*, pd.name_ar AS department_name, pd.name_en AS department_name_en,
                    COALESCE(NULLIF(pd.vat_number, ''), zs.vat_number) AS vat_number,
-                   u.name AS cashier_name
+                   u.name AS cashier_name, u.id AS cashier_id
             FROM pos_orders po
             LEFT JOIN pos_departments pd ON po.department_id = pd.id
             LEFT JOIN users u ON po.cashier_id = u.id
@@ -645,7 +645,7 @@ router.get('/:id/receipt-html', jwtAuth, requireRole('admin', 'manager', 'cashie
             SELECT po.*, pd.name_ar AS department_name, pd.name_en AS department_name_en,
                    COALESCE(NULLIF(pd.vat_number, ''), zs.vat_number) AS vat_number, pd.location AS address, NULL::text AS phone,
                    pd.code AS department_code,
-                   u.name AS cashier_name
+                   u.name AS cashier_name, u.id AS cashier_id
             FROM pos_orders po
             LEFT JOIN pos_departments pd ON po.department_id = pd.id
             LEFT JOIN users u ON po.cashier_id = u.id
@@ -660,7 +660,10 @@ router.get('/:id/receipt-html', jwtAuth, requireRole('admin', 'manager', 'cashie
         const order = orderRes.rows[0];
         
         const itemsRes = await pool.query(
-            `SELECT * FROM pos_order_items WHERE order_id = $1 ORDER BY id ASC`, [id]
+            `SELECT pos_order_items.*, pos_products.name_en AS name_en
+             FROM pos_order_items
+             LEFT JOIN pos_products ON pos_products.id = pos_order_items.product_id
+             WHERE pos_order_items.order_id = $1 ORDER BY pos_order_items.id ASC`, [id]
         );
         const paymentsRes = await pool.query(
             `SELECT * FROM pos_invoice_payments WHERE order_id = $1 ORDER BY id ASC`, [id]

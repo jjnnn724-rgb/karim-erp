@@ -80,15 +80,19 @@ function buildItemsSection({ items, isBuffet }) {
     }
     return `
 <table class="items">
-  <thead><tr><th class="item">الصنف</th><th class="qty">الكمية</th><th class="price">السعر</th><th class="total">الإجمالي</th></tr></thead>
+  <thead><tr><th class="item">الصنف / Item</th><th class="qty">الكمية</th><th class="price">السعر</th><th class="total">الإجمالي</th></tr></thead>
   <tbody>
-  ${items.map((it) => `
+  ${items.map((it) => {
+      const nameAr = String(it.product_name ?? '');
+      const nameEn = String(it.name_en ?? '').trim();
+      return `
     <tr>
-      <td class="item">${escHtml(it.product_name)}${Number(it.discount) > 0 ? '<span class="line-disc">خصم السطر</span>' : ''}</td>
+      <td class="item"><span class="item-ar">${escHtml(nameAr)}</span>${nameEn ? `<span class="item-en" dir="ltr">${escHtml(nameEn)}</span>` : ''}${Number(it.discount) > 0 ? '<span class="line-disc">خصم السطر</span>' : ''}</td>
       <td class="qty">${Number(it.quantity)}</td>
       <td class="price">${Number(it.unit_price).toFixed(2)}</td>
       <td class="total">${Number(it.line_total).toFixed(2)}</td>
-    </tr>`).join('')}
+    </tr>`;
+  }).join('')}
   </tbody>
 </table>`;
 }
@@ -183,6 +187,17 @@ function buildReceiptHtml({ order = {}, items = [], payments = [], qrImageDataUr
   .rule.double { border: none; border-top: 3px double var(--gold); margin: 4px 0 6px; }
   .rule.thin { border: none; border-top: 1px solid var(--line); margin: 5px 0; }
   .rule.solid { border-top: 1.6px solid var(--gold-deep); }
+
+  .inv-strip {
+    display: flex; align-items: center; justify-content: center; gap: 6mm;
+    background: var(--gold-deep); color: #ffe9c7;
+    border-radius: 8px; padding: 2mm 4mm; margin: 5px 0 6px;
+  }
+  .inv-strip .lbl { font-size: 8px; font-weight: 700; letter-spacing: 1.2px; opacity: .92; }
+  .inv-strip .num { font-size: 19px; font-weight: 900; letter-spacing: .5px; line-height: 1; }
+
+  .item-ar { display: block; font-weight: 700; }
+  .item-en { display: block; font-size: 7.5px; color: var(--ink-soft); letter-spacing: .3px; margin-top: 1px; }
 
   .brand { text-align: center; padding: 2px 0 6px; }
   .brand-mark {
@@ -306,6 +321,7 @@ function buildReceiptHtml({ order = {}, items = [], payments = [], qrImageDataUr
   @media print {
     @page { size: 80mm 200mm; margin: 2mm; }
     body { max-width: none; padding: 0; background: #fff; }
+    .inv-strip { background: #000 !important; color: #fff !important; border-radius: 0; }
     .grand {
       background: #000 !important; color: #fff !important;
       border: 2px solid #000; box-shadow: none; outline: none;
@@ -334,11 +350,12 @@ function buildReceiptHtml({ order = {}, items = [], payments = [], qrImageDataUr
     </div>
   </div>
   <hr class="rule double">
+  <div class="inv-strip"><span class="lbl">فاتورة / No.</span><span class="num" dir="ltr">#${escHtml(order.invoice_counter)}</span></div>
+  <hr class="rule double">
 
   <div class="meta-panel">
-  ${metaRow('رقم الفاتورة', `<span class="m-value">#${escHtml(order.invoice_counter)}</span>`)}
   ${metaRow('التاريخ والوقت', `<span class="m-value">${escHtml(date)}</span>`)}
-  ${metaRow('الكاشير', `<span class="m-value rtl">${escHtml(order.cashier_name || '—')}</span>`)}
+  ${metaRow('الكاشير / Cashier', `<span class="m-value rtl">${escHtml(order.cashier_name || '—')}${order.cashier_id ? ` (#${escHtml(order.cashier_id)})` : ''}</span>`)}
   ${order.session_id ? metaRow('الوردية', `<span class="m-value">${escHtml(order.session_id)}</span>`) : ''}
   ${order.invoice_uuid ? `<div class="m-row"><span class="m-label">UUID</span><span class="uuid">${escHtml(String(order.invoice_uuid).slice(0, 36))}</span></div>` : ''}
   ${voided ? `<div class="void-banner">ملغاة</div>${order.void_reason ? `<div class="void-reason">${escHtml(order.void_reason)}</div>` : ''}` : ''}
@@ -359,11 +376,23 @@ function buildReceiptHtml({ order = {}, items = [], payments = [], qrImageDataUr
   ${inPayments.length ? `
   <hr class="rule solid">
   <div class="pay-title">الدفع</div>
-  ${inPayments.map((p) => `
+  ${inPayments.map((p) => {
+      const info = (() => {
+          const raw = p.payer_info;
+          if (!raw) return {};
+          if (typeof raw === 'object') return raw;
+          try { return JSON.parse(String(raw)); } catch { return {}; }
+      })();
+      const brandLabels = { mada: 'مدى', visa: 'فيزا', mastercard: 'ماستركارد', amex: 'أمريكان إكسبريس' };
+      const brandLabel = info.brand ? (brandLabels[info.brand] || String(info.brand)) : '';
+      const last4 = info.last4 ? String(info.last4) : '';
+      const cardTxt = brandLabel ? ` · ${brandLabel}${last4 ? ` ····${last4}` : ''}` : '';
+      return `
     <div class="pay-row">
-      <span class="method">${escHtml(methodLabel(p.method))}${p.reference ? ` <span class="ref">#${escHtml(p.reference)}</span>` : ''}</span>
+      <span class="method">${escHtml(methodLabel(p.method))}${cardTxt}${p.reference ? ` <span class="ref">#${escHtml(p.reference)}</span>` : ''}</span>
       <span>${money(p.amount, currencyLabel)}</span>
-    </div>`).join('')}
+    </div>`;
+  }).join('')}
   ${changeGiven > 0 ? `<div class="pay-row change"><span class="method">الباقي للعميل</span><span>${money(changeGiven, currencyLabel)}</span></div>` : ''}
   ` : (paidIn > 0 ? `<hr class="rule solid"><div class="pay-row"><span class="method">المدفوع</span><span>${money(paidIn, currencyLabel)}</span></div>` : '')}
 

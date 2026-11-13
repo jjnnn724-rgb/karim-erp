@@ -21,8 +21,6 @@ export interface PosDiscount {
 export interface PosCartLine {
     id: string;
     name: string;
-    /** الاسم بالإنجليزية — يُطبع على الإيصال إن وُجد. */
-    nameEn?: string | undefined;
     /** سعر الوحدة كما أرسله الخادم (قد يكون نصًّا) — يُقرأ عددًا هنا للعرض فقط. */
     price: number;
     listPrice?: number;

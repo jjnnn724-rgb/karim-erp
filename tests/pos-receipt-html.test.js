@@ -20,13 +20,14 @@ const order = {
     invoice_counter: 1024,
     invoice_uuid: '8f2c1d7e-4a5b-4c3d-9e21-77aa10bb22cc',
     created_at: '2026-10-30T18:42:00+03:00',
-    subtotal: 210.5,
+    subtotal: 200.00,
     discount_total: 10.5,
     tax_total: 30,
     total_amount: 230,
     currency_code: 'SAR',
     session_id: 42,
     cashier_name: 'أحمد السيد',
+    cashier_id: 7,
     department_name: 'مطاعم الشرفه العالمي',
     department_name_en: 'AL SHARFA AL ALAMI RESTAURANTS',
     vat_number: '300000000000003',
@@ -35,8 +36,8 @@ const order = {
 };
 
 const items = [
-    { product_name: 'برياني لحم', quantity: 2, unit_price: 65, line_total: 130, discount: 0, vat_rate: 15 },
-    { product_name: 'شيش طاووق', quantity: 1, unit_price: 48.5, line_total: 38, discount: 10.5, vat_rate: 15 },
+    { product_name: 'برياني لحم', name_en: 'Lamb Kabsa', quantity: 2, unit_price: 65, line_total: 130, discount: 0, vat_rate: 15 },
+    { product_name: 'شيش طاووق', name_en: 'Shish Tawook', quantity: 1, unit_price: 48.5, line_total: 38, discount: 10.5, vat_rate: 15 },
 ];
 
 const payments = [
@@ -57,15 +58,18 @@ describe('قالب الفاتورة — فاتورة عادية', () => {
         expect(html).toContain('dir="rtl"');
     });
 
-    test('رأس الفاتورة: رقم، تاريخ، كاشير، وردية', () => {
+    test('رأس الفاتورة: رقم، تاريخ، كاشير ورقم الكاشير، وردية', () => {
         expect(html).toContain('#1024');
+        expect(html).toContain('inv-strip');
         expect(html).toContain('أحمد السيد');
+        expect(html).toContain('(#7)');
         expect(html).toContain('الوردية');
         expect(html).toContain('8f2c1d7e-4a5b-4c3d-9e21-77aa10bb22cc');
     });
 
-    test('الأصناف بكمياتها وأسعارها وإجمالي السطر', () => {
+    test('الأصناف بكمياتها وأسعارها وإجمالي السطر — بالعربي والإنجليزي', () => {
         expect(html).toContain('برياني لحم');
+        expect(html).toContain('Lamb Kabsa');
         expect(html).toContain('شيش طاووق');
         expect(html).toContain('130.00');
         expect(html).toContain('38.00');
@@ -73,7 +77,7 @@ describe('قالب الفاتورة — فاتورة عادية', () => {
     });
 
     test('الإجماليات: قبل الضريبة، الخصم، الضريبة بمعدلها، الإجمالي المستحق', () => {
-        expect(html).toContain('210.50');
+        expect(html).toContain('200.00');
         expect(html).toContain('10.50');
         expect(html).toContain('ضريبة القيمة المضافة (15%)');
         expect(html).toContain('الإجمالي المستحق');
@@ -96,7 +100,7 @@ describe('قالب الفاتورة — فاتورة عادية', () => {
     });
 
     test('تذييل الشكر والإقرار الإلكتروني', () => {
-        expect(html).toContain('شكراً لزيارتكم');
+        expect(html).toContain('شكرًا لزيارتكم');
         expect(html).toContain('لا تحتاج ختمًا أو توقيعًا');
     });
 

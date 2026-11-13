@@ -402,36 +402,6 @@ export const saleResultSchema = z
 
 export type PosSaleResult = z.infer<typeof saleResultSchema>;
 
-/** سطر لقطة في الإيصال — النسخة المطبوعة لما في السلة وقت الإتمام. */
-export interface ReceiptSnapshotLine {
-    name: string;
-    nameEn?: string | undefined;
-    quantity: number;
-    unit_price: number;
-    line_total: number;
-    vat_rate: number;
-}
-
-/** سطر دفعة في الإيصال — مع بيانات البطاقة إن وُجدت. */
-export interface ReceiptSnapshotPayment {
-    method: string;
-    amount: number;
-    reference: string | null;
-    brand?: string | undefined;
-    last4?: string | undefined;
-}
-
-/** نتيجة البيع الموسّعة بلقطات السلة والدفعات — الإيصال وحده يستهلكها. */
-export type PosReceiptData = PosSaleResult & {
-    cartLines?: ReceiptSnapshotLine[] | undefined;
-    paymentLines?: ReceiptSnapshotPayment[] | undefined;
-    cashierName?: string | undefined;
-    /** رقم المستخدم/الكاشير كما يظهر للمطابقة والدعم. */
-    cashierId?: string | undefined;
-    /** الرقم الضريبي للمنشأة — كما يرد من بيانات القسم. */
-    vatNumber?: string | undefined;
-};
-
 /** بيانات إضافية للدفع بالكريدت — تُرسل كما هي في `payer_info` للخادم. */
 export interface PosPaymentMeta {
     brand?: string;
@@ -835,6 +805,25 @@ export async function fetchPosOrders(filters: PosOrderFilters, signal?: AbortSig
         query.set('search', term);
     }
     return fetchJson(orderPageSchema, `/api/pos/orders?${query.toString()}`, token(), opts(signal));
+}
+
+/**
+ * إيصال البيع HTML من الخادم — المصدر الوحيد لقالب الإيصال في كل المسارات
+ * (الشراء، إعادة الطباعة من السجل، الطباعة من شاشة الإتمام). يعود الخادم
+ * بوثيقة كاملة؛ لا تُغلف بمستند آخر.
+ */
+export async function fetchPosOrderReceiptHtml(orderId: string): Promise<string> {
+    const id = String(orderId).trim();
+    if (!UUID_PATTERN.test(id)) {
+        throw new Error('معرّف الفاتورة غير صالح');
+    }
+    const body = await fetchJson(
+        z.object({ html: z.string().min(1) }).passthrough(),
+        `/api/pos/orders/${encodeURIComponent(id)}/receipt-html`,
+        token(),
+        opts(),
+    );
+    return body.html;
 }
 
 export async function fetchPosOrder(orderId: string, signal?: AbortSignal): Promise<PosOrderDetail> {

@@ -1,13 +1,28 @@
-import { describe, expect, it } from 'vitest';
-import type { PosReceiptData } from '../../lib/pos';
-import { receiptPrintHtml } from './PosReceipt';
+import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
+import type { PosSaleResult } from '../../lib/pos';
+import { PosReceipt } from './PosReceipt';
 
-const base = {
-    order_id: 'order-1',
+const mocks = vi.hoisted(() => ({
+    openServerHtmlWindow: vi.fn((html: string, _title?: string) => true),
+    qrDataUrl: vi.fn(async (_payload: string) => 'data:image/png;base64,AAAA' as string | null),
+}));
+
+vi.mock('./pos-ui', async (importOriginal) => {
+    const original = await importOriginal<typeof import('./pos-ui')>();
+    return {
+        ...original,
+        openServerHtmlWindow: mocks.openServerHtmlWindow as unknown as typeof original.openServerHtmlWindow,
+        qrDataUrl: mocks.qrDataUrl as unknown as typeof original.qrDataUrl,
+    };
+});
+
+const receipt = {
+    order_id: '11111111-1111-4111-8111-111111111111',
     invoice_counter: 1099,
     invoice_uuid: '8f2c1d7e-4a5b-4c3d-9e21-77aa10bb22cc',
     invoice_hash: 'hash',
-    qr_payload: null,
+    qr_payload: 'tlv-bytes',
     digital_signature: 'sig',
     total_amount: 55.25,
     tax_total: 7.25,
@@ -25,61 +40,74 @@ const base = {
     erp_dept_code: 'K01',
     party_name: null,
     buffet: null,
-    cartLines: [
-        { name: 'شاي', nameEn: 'Tea', quantity: 2, unit_price: 5, line_total: 10, vat_rate: 0.15 },
-        { name: 'قهوة عربية', nameEn: 'Arabic Coffee', quantity: 2, unit_price: 19, line_total: 38, vat_rate: 0.15 },
-    ],
-    paymentLines: [
-        { method: 'cash', amount: 20, reference: null },
-        { method: 'card', amount: 40, reference: 'AUTH-9911', brand: 'mada', last4: '8899' },
-    ],
-    cashierName: 'أحمد السيد',
-    cashierId: '7',
-    vatNumber: '300000000000003',
-} as unknown as PosReceiptData;
+} as unknown as PosSaleResult;
 
-const brand = { name: 'مطاعم الشرفه العالمي', logoSrc: '/app/assets/karim-logo.png' };
+function renderReceipt() {
+    return render(
+        <PosReceipt
+            receipt={receipt}
+            buffet={false}
+            canReprint={false}
+            busy={false}
+            onReprint={() => {}}
+            onKot={() => {}}
+            onDismiss={() => {}}
+        />,
+    );
+}
 
-describe('receiptPrintHtml — إيصال ما بعد البيع', () => {
-    const html = receiptPrintHtml(base, null, brand);
-
-    it('يعرض الأصناف وكمياتها بالعربي والإنجليزي بدل الاكتفاء بالإجماليات', () => {
-        expect(html).toContain('شاي');
-        expect(html).toContain('قهوة عربية');
-        expect(html).toContain('Tea');
-        expect(html).toContain('Arabic Coffee');
-        expect(html).toContain('<th>الصنف / Item</th>');
+describe('زر «طباعة الإيصال» — مسار الخادم الموحّد', () => {
+    beforeEach(() => {
+        mocks.openServerHtmlWindow.mockClear();
+        mocks.qrDataUrl.mockClear();
+        mocks.openServerHtmlWindow.mockReturnValue(true);
     });
 
-    it('يعرض رقم الفاتورة بارزًا والرقم الضريبي واسم الكاشير برقمه', () => {
-        expect(html).toContain('inv-strip');
-        expect(html).toContain('#1099');
-        expect(html).toContain('300000000000003');
-        expect(html).toContain('أحمد السيد (#7)');
+    afterEach(() => {
+        vi.unstubAllGlobals();
     });
 
-    it('يعرض شكل الدفع ببيانات البطاقة المقروءة', () => {
-        expect(html).toContain('مدى');
-        expect(html).toContain('····8899');
-        expect(html).toContain('AUTH-9911');
+    it('يجلب HTML الإيصال من الخادم ويفتحه كاملًا بلا تغليف', async () => {
+        const html = '<!DOCTYPE html><html dir="rtl">فاتورة 300000000000003</html>';
+        vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ html }) })) as unknown as typeof fetch);
+        renderReceipt();
+
+        fireEvent.click(screen.getByRole('button', { name: 'طباعة الإيصال' }));
+
+        await waitFor(() => {
+            expect(mocks.openServerHtmlWindow).toHaveBeenCalledTimes(1);
+        });
+        const call = mocks.openServerHtmlWindow.mock.calls[0] as unknown as [string, string];
+        expect(call[0]).toBe(html);
+        expect(call[1]).toContain('1099');
+        expect(fetch).toHaveBeenCalledWith(
+            expect.stringContaining('/api/pos/orders/11111111-1111-4111-8111-111111111111/receipt-html'),
+            expect.anything(),
+        );
     });
 
-    it('يعرض الباقي والإجمالي والوردية والكاشير', () => {
-        expect(html).toContain('الباقي للعميل');
-        expect(html).toContain('55.25');
-        expect(html).toContain('44');
-        expect(html).toContain('أحمد السيد');
+    it('لو حجب المتصفح النافذة تظهر رسالة الخطأ ولا ينكسر', async () => {
+        const html = '<!DOCTYPE html><html dir="rtl">فاتورة</html>';
+        vi.stubGlobal('fetch', vi.fn(async () => ({ ok: true, status: 200, json: async () => ({ html }) })) as unknown as typeof fetch);
+        mocks.openServerHtmlWindow.mockReturnValue(false);
+        renderReceipt();
+
+        fireEvent.click(screen.getByRole('button', { name: 'طباعة الإيصال' }));
+
+        expect(await screen.findByText(/حجب المتصفح نافذة الطباعة/)).toBeTruthy();
     });
 
-    it('يحترم الهروب من HTML في كل الحقول القادمة من المستخدم', () => {
-        const dirty = {
-            ...base,
-            party_name: '<script>alert(1)</script>',
-            cartLines: [{ name: '<b>x</b>', quantity: 1, unit_price: 10, line_total: 10, vat_rate: 0.15 }],
-        } as PosReceiptData;
-        const dirtyHtml = receiptPrintHtml(dirty, null, brand);
-        expect(dirtyHtml).not.toContain('<script>');
-        expect(dirtyHtml).not.toContain('<b>x</b>');
-        expect(dirtyHtml).toContain('&lt;script&gt;');
+    it('لو الخادم رفض الفاتورة تظهر رسالة الخطأ للمستخدم', async () => {
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async () => {
+                throw new Error('INVOICE_UNBALANCED');
+            }) as unknown as typeof fetch,
+        );
+        renderReceipt();
+
+        fireEvent.click(screen.getByRole('button', { name: 'طباعة الإيصال' }));
+
+        expect(await screen.findByText(/تعذّرت طباعة الإيصال/)).toBeTruthy();
     });
 });
