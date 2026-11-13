@@ -2558,3 +2558,249 @@
     background: var(--pos-sunken);
     font-size: 0.7rem;
 }
+
+/* ═══ شريط الكاشير العلوي (بطاقة الهوية / الفرع / الساعة / الكاشير) ═══════ */
+
+.pos-topbar {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    block-size: 3.75rem;
+    padding-inline: 0.6rem;
+    border: 1px solid var(--pos-line);
+    border-radius: var(--pos-radius);
+    background: var(--pos-surface);
+    box-shadow: 0 1px 2px rgb(15 23 42 / 5%);
+}
+
+.pos-topbar__brand {
+    display: flex;
+    flex: 0 1 auto;
+    align-items: center;
+    gap: 0.5rem;
+    min-inline-size: 0;
+    padding-inline-end: 0.6rem;
+    border-inline-end: 1px solid var(--pos-line);
+}
+
+.pos-topbar__crest {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    inline-size: 2.5rem;
+    block-size: 2.5rem;
+    border: 1px solid var(--pos-line);
+    border-radius: 999px;
+    background: var(--pos-sunken);
+    overflow: hidden;
+}
+
+.pos-topbar__crest img {
+    inline-size: 2rem;
+    block-size: 2rem;
+    object-fit: contain;
+}
+
+.pos-topbar__brand-copy {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.18;
+}
+
+.pos-topbar__brand-copy strong {
+    color: var(--pos-ink);
+    font-size: 0.78rem;
+    font-weight: 800;
+    white-space: nowrap;
+}
+
+.pos-topbar__brand-copy small {
+    color: var(--pos-muted);
+    font-size: 0.5rem;
+    font-weight: 700;
+    letter-spacing: 1.5px;
+    white-space: nowrap;
+}
+
+.pos-topbar__pod {
+    display: flex;
+    flex: 0 1 auto;
+    align-items: center;
+    gap: 0.45rem;
+    min-inline-size: 0;
+    block-size: 2.45rem;
+    padding-inline: 0.55rem;
+    border: 1px solid var(--pos-line);
+    border-radius: 10px;
+    background: var(--pos-sunken);
+}
+
+.pos-topbar__pod-copy {
+    display: flex;
+    flex-direction: column;
+    min-inline-size: 0;
+    line-height: 1.18;
+}
+
+.pos-topbar__pod-copy strong {
+    overflow: hidden;
+    color: var(--pos-ink);
+    font-size: 0.72rem;
+    font-weight: 700;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.pos-topbar__pod-copy small {
+    display: flex;
+    align-items: center;
+    gap: 0.3rem;
+    color: var(--pos-muted);
+    font-size: 0.57rem;
+    white-space: nowrap;
+}
+
+.pos-topbar__flag {
+    padding: 0.02rem 0.35rem;
+    border-radius: 4px;
+    background: #fff3cd;
+    color: #8a5a00;
+    font-size: 0.55rem;
+    font-style: normal;
+    font-weight: 800;
+}
+
+.pos-topbar__flag--warn {
+    background: #fee2e2;
+    color: #b91c1c;
+}
+
+.pos-topbar__clock time {
+    color: var(--pos-ink);
+    font-size: 0.8rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.pos-topbar__clock small {
+    color: var(--pos-muted);
+    font-variant-numeric: tabular-nums;
+}
+
+.pos-topbar__tabs {
+    display: flex;
+    flex: 1 1 auto;
+    min-inline-size: 0;
+    align-items: center;
+    justify-content: center;
+    overflow: hidden;
+}
+
+.pos-topbar__tabs .pos-tabs {
+    max-inline-size: 100%;
+    overflow-x: auto;
+}
+
+.pos-topbar__end {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+.pos-cashier {
+    display: flex;
+    flex: 0 1 auto;
+    align-items: center;
+    gap: 0.5rem;
+    block-size: 2.45rem;
+    padding-inline: 0.3rem 0.65rem;
+    border: 1px solid var(--pos-line);
+    border-radius: 999px;
+    background: var(--pos-sunken);
+    cursor: pointer;
+    list-style: none;
+}
+
+.pos-cashier::-webkit-details-marker {
+    display: none;
+}
+
+.pos-cashier:hover {
+    border-color: var(--pos-emerald);
+}
+
+.pos-cashier__avatar {
+    display: grid;
+    place-items: center;
+    flex-shrink: 0;
+    inline-size: 1.8rem;
+    block-size: 1.8rem;
+    border-radius: 999px;
+    background: var(--pos-emerald);
+    color: #ffffff;
+    font-size: 0.66rem;
+    font-weight: 800;
+}
+
+.pos-cashier__copy {
+    display: flex;
+    flex-direction: column;
+    line-height: 1.15;
+}
+
+.pos-cashier__copy strong {
+    color: var(--pos-ink);
+    font-size: 0.71rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.pos-cashier__copy small {
+    color: var(--pos-muted);
+    font-size: 0.55rem;
+    white-space: nowrap;
+}
+
+.pos-cashier-menu__panel {
+    inset-inline-end: 0;
+    min-inline-size: 14rem;
+}
+
+.pos-cashier-menu__head {
+    display: flex;
+    justify-content: space-between;
+    gap: 0.6rem;
+    margin: 0;
+    padding: 0.3rem 0.45rem 0.45rem;
+    border-block-end: 1px solid var(--pos-line);
+    color: var(--pos-muted);
+    font-size: 0.64rem;
+    font-weight: 700;
+}
+
+@media (max-width: 1100px) {
+    .pos-topbar {
+        flex-wrap: wrap;
+        block-size: auto;
+        row-gap: 0.25rem;
+        padding-block: 0.3rem;
+    }
+
+    .pos-topbar__brand-copy,
+    .pos-topbar__clock {
+        display: none;
+    }
+
+    .pos-topbar__tabs {
+        order: 5;
+        flex-basis: 100%;
+        justify-content: flex-start;
+        overflow-x: auto;
+        scrollbar-width: none;
+    }
+
+    .pos-topbar__tabs::-webkit-scrollbar {
+        display: none;
+    }
+}

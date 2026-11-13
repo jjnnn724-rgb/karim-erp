@@ -428,7 +428,7 @@ describe('نقطة البيع', () => {
 
         const tea = await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' });
         expect(screen.getByText('الكاشير الرئيسي')).toBeTruthy();
-        expect(screen.getByText(/وردية #44/)).toBeTruthy();
+        expect(screen.getAllByText(/وردية #44/).length).toBeGreaterThan(0);
         expect(screen.getByRole('button', { name: 'إضافة قهوة إلى السلة' })).toBeTruthy();
 
         fireEvent.click(tea);

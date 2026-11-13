@@ -210,6 +210,16 @@ export function PosEntry() {
     const searchInputRef = useRef<HTMLInputElement | null>(null);
     /** قائمة «إدارة الوردية» — تُغلق عند النقر خارجها حتى لا تبقى فوق السلة. */
     const menuRef = useRef<HTMLDetailsElement | null>(null);
+    const [now, setNow] = useState(() => new Date());
+
+    useEffect(() => {
+        const timer = window.setInterval(() => {
+            setNow(new Date());
+        }, 1000);
+        return () => {
+            window.clearInterval(timer);
+        };
+    }, []);
 
     useEffect(() => {
         function onPointerDown(event: MouseEvent) {
@@ -1303,6 +1313,19 @@ export function PosEntry() {
 
     const activeOrderNumber = tabs.findIndex((tab) => tab.id === activeTab.id) + 1;
     const heldCount = heldQuery.data?.length ?? 0;
+    const ROLE_LABELS: Record<string, string> = { admin: 'مدير النظام', manager: 'مدير', cashier: 'كاشير', accountant: 'محاسب' };
+    const roleLabel = ROLE_LABELS[role] ?? role;
+    const cashierInitials = (() => {
+        const parts = String(auth.user?.name ?? '').trim().split(/\s+/).filter(Boolean);
+        if (!parts.length) {
+            return 'كش';
+        }
+        const first = parts[0]?.[0] ?? '';
+        const last = parts.length > 1 ? (parts[parts.length - 1]?.[0] ?? '') : first;
+        return `${first}${last}`.toUpperCase();
+    })();
+    const clockText = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: true });
+    const dateText = now.toLocaleDateString('en-GB', { day: '2-digit', month: '2-digit', year: 'numeric' });
     const closeMenu = () => {
         if (menuRef.current) {
             menuRef.current.open = false;
@@ -1313,28 +1336,39 @@ export function PosEntry() {
         <div className={`flex flex-col premium-screen pos-entry pos-entry--workspace${posTheme === 'light' ? ' pos-entry--light' : ''} pos-entry--pane-${mobilePane}`}>
             <h1 className="sr-only">الكاشير — نقطة البيع</h1>
             {shift ? (
-                <section className="pos-cmdbar" aria-label="شريط الكاشير">
-                    <div className="pos-cmdbar__identity">
-                        <span
-                            className={`pos-cmdbar__status${shift.isStale ? ' is-warn' : ''}`}
-                            aria-hidden="true"
-                            title={shift.isStale ? 'وردية يوم سابق — غير صالحة للبيع' : 'وردية مفتوحة'}
-                        />
-                        <div className="pos-cmdbar__copy">
-                            <strong>{shift.deptName || 'نقطة البيع'}</strong>
-                            <small>
-                                <span className="pos-cmdbar__shift">وردية #{shift.sessionId}</span>
-                                {buffet ? (
-                                    <span className="pos-cmdbar__tag" title="قسم البوفيه المفتوح">
-                                        بوفيه
-                                    </span>
-                                ) : null}
-                                {shift.isStale ? <span className="pos-cmdbar__tag pos-cmdbar__tag--warn">يوم {shift.openedOn}</span> : null}
-                            </small>
-                        </div>
+                <section className="pos-topbar" aria-label="شريط الكاشير">
+                    <div className="pos-topbar__brand" title="مطاعم الشرف العالمي — AL SHARFA INTERNATIONAL">
+                        <span className="pos-topbar__crest" aria-hidden="true">
+                            <img src="/app/assets/karim-logo.png" alt="" width="40" height="40" />
+                        </span>
+                        <span className="pos-topbar__brand-copy">
+                            <strong>مطاعم الشرف العالمي</strong>
+                            <small dir="ltr">AL SHARFA INTERNATIONAL</small>
+                        </span>
                     </div>
 
-                    <div className="pos-cmdbar__center">
+                    <div className="pos-topbar__pod" title={`القسم: ${shift.deptName || 'نقطة البيع'}`}>
+                        <svg aria-hidden="true" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                            <path d="M4 10.5 5.5 5h13L20 10.5M4 10.5h16M5.5 10.5V19a1.5 1.5 0 0 0 1.5 1.5h10a1.5 1.5 0 0 0 1.5-1.5v-8.5M9.5 14h5" />
+                        </svg>
+                        <span className="pos-topbar__pod-copy">
+                            <strong>{shift.deptName || 'الفرع الرئيسي'}</strong>
+                            <small>وردية #{shift.sessionId}{buffet ? <em className="pos-topbar__flag" title="قسم البوفيه المفتوح">بوفيه</em> : null}{shift.isStale ? <em className="pos-topbar__flag pos-topbar__flag--warn">يوم {shift.openedOn}</em> : null}</small>
+                        </span>
+                    </div>
+
+                    <div className="pos-topbar__pod pos-topbar__clock" title="التوقيت المحلي" role="timer">
+                        <svg aria-hidden="true" viewBox="0 0 24 24" width="17" height="17" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                            <circle cx="12" cy="12" r="9" />
+                            <path d="M12 7v5l3.2 2" />
+                        </svg>
+                        <span className="pos-topbar__pod-copy">
+                            <time className="erp-numeric" dir="ltr">{clockText}</time>
+                            <small className="erp-numeric" dir="ltr">{dateText}</small>
+                        </span>
+                    </div>
+
+                    <div className="pos-topbar__tabs">
                         {view === 'cashier' && !shift.isStale ? (
                             <div className="pos-tabs" role="tablist" aria-label="الطلبات المتوازية">
                                 {tabs.map((tab, index) => {
@@ -1383,7 +1417,7 @@ export function PosEntry() {
                         ) : null}
                     </div>
 
-                    <div className="pos-cmdbar__end">
+                    <div className="pos-topbar__end">
                         <button
                             type="button"
                             className="pos-icon-btn"
@@ -1428,9 +1462,13 @@ export function PosEntry() {
                                 <path d="M9 15h6" />
                             </svg>
                         </button>
-                        <details ref={menuRef} className="pos-menu">
-                            <summary className="pos-menu__trigger">
-                                إدارة الوردية
+                        <details ref={menuRef} className="pos-menu pos-cashier-menu">
+                            <summary className="pos-cashier" aria-label={`${auth.user?.name ?? 'الكاشير'} — قائمة الحساب`}>
+                                <span className="pos-cashier__avatar" aria-hidden="true">{cashierInitials}</span>
+                                <span className="pos-cashier__copy">
+                                    <strong>{auth.user?.name ?? 'الكاشير'}</strong>
+                                    <small>{roleLabel}</small>
+                                </span>
                                 <svg
                                     aria-hidden="true"
                                     viewBox="0 0 24 24"
@@ -1445,7 +1483,11 @@ export function PosEntry() {
                                     <path d="m6 9 6 6 6-6" />
                                 </svg>
                             </summary>
-                            <div className="pos-menu__panel">
+                            <div className="pos-menu__panel pos-cashier-menu__panel">
+                                <p className="pos-cashier-menu__head">
+                                    <span>وردية #{shift.sessionId}</span>
+                                    <span dir="ltr">{roleLabel}</span>
+                                </p>
                                 {canHistory ? (
                                     <Button
                                         size="sm"

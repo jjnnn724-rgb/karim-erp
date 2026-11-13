@@ -2249,6 +2249,55 @@
     padding: 0.3rem 0.4rem;
 }
 
+/* ─── شريط الكاشير الجديد على الوضع الداكن ─────────────────────────────── */
+.pos-entry .pos-topbar {
+    background: #111827;
+    border-color: rgb(148 163 184 / 10%);
+    box-shadow:
+        0 1px 0 rgb(255 255 255 / 4%) inset,
+        0 8px 24px -18px rgb(0 0 0 / 80%);
+}
+
+.pos-entry .pos-topbar__crest {
+    background: #0b1120;
+    border-color: rgb(148 163 184 / 18%);
+}
+
+.pos-entry .pos-topbar__brand-copy strong {
+    color: #f8fafc;
+}
+
+.pos-entry .pos-topbar__brand-copy small {
+    color: #64748b;
+}
+
+.pos-entry .pos-topbar__pod {
+    background: #0b1120;
+    border-color: rgb(148 163 184 / 18%);
+}
+
+.pos-entry .pos-topbar__pod-copy strong {
+    color: #e2e8f0;
+}
+
+.pos-entry .pos-topbar__pod-copy small,
+.pos-entry .pos-topbar__clock small {
+    color: #94a3b8;
+}
+
+.pos-entry .pos-cashier {
+    background: #0b1120;
+    border-color: rgb(148 163 184 / 18%);
+}
+
+.pos-entry .pos-cashier__copy strong {
+    color: #e2e8f0;
+}
+
+.pos-entry .pos-cashier__copy small {
+    color: #94a3b8;
+}
+
 /* ─── أيقونات الأطباق المتسقة (للأصناف بلا صورة مطعم حقيقية) ─────────── */
 .pos-entry .pos-product__art {
     position: absolute;
