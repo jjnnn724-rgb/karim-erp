@@ -436,7 +436,9 @@ const { arFuzzyPattern } = require('../ar-search');
 
 // q → name (partial, trgm) OR barcode OR category · category exact · stock
 // filter (all|low|out|ok) server-side · always paginated · parameterized.
-router.get('/inventory/search', jwtAuth, requireRole('admin', 'manager', 'warehouse', 'accountant'), async (req, res) => {
+// الأدوار الموسّعة: كل من يستطيع فتح «طلب صرف جديد» في الواجهة (kitchen/sous_chef/dept_head)
+// يجب أن يرى الكتالوج نفسه — وإلا ظهرت له قائمة الأصناف فارغة بلا سبب.
+router.get('/inventory/search', jwtAuth, requireRole('admin', 'manager', 'warehouse', 'accountant', 'kitchen', 'sous_chef', 'dept_head'), async (req, res) => {
     try {
         const q = String(req.query.q ?? '').trim().slice(0, 100);
         const category = String(req.query.category ?? 'all').trim().slice(0, 100);

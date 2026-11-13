@@ -391,6 +391,20 @@ function RequestDialog({
                     }}
                     className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
                 />
+                {catalogQuery.isError ? (
+                    <div className="rounded-md border border-danger/30 bg-danger-soft p-sm text-body-sm text-danger-text" role="alert">
+                        تعذّر تحميل أصناف المخزن — صلاحيات الحساب أو اتصال الخادم.{' '}
+                        <button
+                            type="button"
+                            className="font-bold underline underline-offset-2 hover:no-underline"
+                            onClick={() => {
+                                void catalogQuery.refetch();
+                            }}
+                        >
+                            إعادة المحاولة
+                        </button>
+                    </div>
+                ) : null}
                 {suggestions.length > 0 ? (
                     <div className="flex flex-col rounded-md border border-hairline bg-surface-raised shadow-card">
                         {suggestions.map((item) => (
