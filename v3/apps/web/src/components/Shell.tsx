@@ -71,6 +71,7 @@ export const NAV_ITEMS = [
     { to: '/briefing', label: 'موجز المدير', hint: 'Briefing' },
     { to: '/command-center', label: 'مركز القيادة الموحّد', hint: 'Command Center' },
     { to: '/bank-rec', label: 'مطابقة البنك', hint: 'Bank Reconciliation' },
+    { to: '/compliance-center', label: 'لوحة الامتثال الشهري', hint: 'Compliance Center' },
     { to: '/sessions', label: 'الأجهزة والجلسات', hint: 'Sessions' },
     { to: '/whatsapp', label: 'واتساب والتنبيهات', hint: 'WhatsApp' },
     { to: '/settings', label: 'إعدادات النظام', hint: 'Settings' },

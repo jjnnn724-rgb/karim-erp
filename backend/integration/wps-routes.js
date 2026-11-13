@@ -455,4 +455,20 @@ router.get('/qiwa/readiness', canView, generalLimiter, async (req, res) => {
     }
 });
 
+// التقرير الشهري الكامل (WPS + GOSI + قوى) — قراءة فقط، لا حفظ ولا إرسال.
+router.get('/monthly-report', jwtAuth, canSubmit, async (req, res, next) => {
+    const month = monthOf(req);
+    if (!month) {
+        return fail(res, 422, 'INVALID_MONTH', 'صيغة الشهر يجب أن تكون YYYY-MM.');
+    }
+    try {
+        const { buildReport } = require('../compliance-monthly-worker');
+        const report = await buildReport(month);
+        return res.json({ ok: true, report });
+    } catch (error) {
+        logger.error('[integration/wps/monthly-report]', error && error.message);
+        return fail(res, 500, 'MONTHLY_REPORT_FAILED', 'تعذر تجميع تقرير الامتثال الشهري.');
+    }
+});
+
 module.exports = router;

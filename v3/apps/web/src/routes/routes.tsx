@@ -37,6 +37,13 @@ export const bankRecRoute = createRoute({
 });
 bankRecRoute.lazy(() => import('../screens/BankReconciliation.lazy').then((module) => module.Route));
 
+/** لوحة الامتثال الشهري — قراءة فقط: رواتب، مدد، GOSI، قوى. */
+export const complianceCenterRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/compliance-center',
+});
+complianceCenterRoute.lazy(() => import('../screens/ComplianceCenter.lazy').then((module) => module.Route));
+
 /** شجرة الحسابات — للقراءة فقط. */
 export const accountsRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -511,6 +518,7 @@ export const routeTree = rootRoute.addChildren([
     indexRoute,
     commandCenterRoute,
     bankRecRoute,
+    complianceCenterRoute,
     accountsRoute,
     journalRoute,
     revenuesRoute,

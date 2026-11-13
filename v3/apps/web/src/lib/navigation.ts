@@ -101,6 +101,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             'dept-employees',
             'employee-portal',
             'zkteco',
+            'compliance-center',
         ],
     },
     {
@@ -172,6 +173,7 @@ export const NAV_TITLES: Readonly<Record<string, string>> = {
     '/goods-scan': 'مسح البضاعة',
     '/briefing': 'موجز المدير',
     '/command-center': 'مركز القيادة الموحّد',
+    '/compliance-center': 'لوحة الامتثال الشهري',
     '/sessions': 'الأجهزة والجلسات',
     '/whatsapp': 'واتساب والتنبيهات',
     '/settings': 'إعدادات النظام',

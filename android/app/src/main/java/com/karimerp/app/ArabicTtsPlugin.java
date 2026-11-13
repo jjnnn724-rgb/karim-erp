@@ -4,6 +4,7 @@ import android.media.AudioAttributes;
 import android.os.Handler;
 import android.os.Looper;
 import android.speech.tts.TextToSpeech;
+import android.speech.tts.UtteranceProgressListener;
 import android.speech.tts.Voice;
 
 import com.getcapacitor.JSArray;
@@ -76,7 +77,7 @@ public class ArabicTtsPlugin extends Plugin {
                     flushPendingInit();
                 }
             });
-            tts.setOnUtteranceProgressListener(new TextToSpeech.OnUtteranceProgressListener() {
+            tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                 @Override public void onStart(String utteranceId) { }
                 @Override public void onDone(String utteranceId) { }
                 @Override public void onError(String utteranceId) { }
@@ -258,7 +259,7 @@ public class ArabicTtsPlugin extends Plugin {
         try {
             tts.setSpeechRate(clamp(rate, 0.5f, 2.0f));
             tts.setPitch(clamp(pitch, 0.5f, 2.0f));
-            tts.setOnUtteranceProgressListener(new TextToSpeech.OnUtteranceProgressListener() {
+            tts.setOnUtteranceProgressListener(new UtteranceProgressListener() {
                 @Override public void onStart(String utteranceId) { }
                 @Override public void onDone(String utteranceId) {
                     if (id.equals(utteranceId) && resolved.compareAndSet(false, true)) {

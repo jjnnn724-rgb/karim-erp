@@ -74,6 +74,7 @@ export const V3_SCREENS = [
     'yarasoft',
     'command-center',
     'bank-rec',
+    'compliance-center',
 ] as const;
 export type V3Screen = (typeof V3_SCREENS)[number];
 

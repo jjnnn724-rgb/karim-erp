@@ -84,6 +84,7 @@ export const ROLES = {
         'wh-vs-pos',
         'cashier-monitor',
         'pos-entry',
+        'compliance-center',
         'command-center',
         'bank-rec',
     ],

@@ -639,6 +639,33 @@ try {
 } catch (e) {
     logger.error('[YARA-GL] sweep scheduler failed to start:', e.message);
 }
+// ─── تقرير الامتثال الشهري: يُولَّد آليًا مرة وحدة بعد كل أول يوم ───────────
+// التوليد خفيف (بيانات داخلية فقط، بلا نداء خارجي)، ويحترم قانون ADR-008:
+// مدد يبقى BLOCKED ولا تُرسل أي أرقام إلى أي جهة.
+try {
+    const complianceReminder = async () => {
+        try {
+            const fsMod = require('fs');
+            const pathMod = require('path');
+            const dir = pathMod.join(__dirname, '..', 'var', 'compliance-reports');
+            const now = new Date();
+            const previous = new Date(Date.UTC(now.getUTCFullYear(), now.getUTCMonth() - 1, 1));
+            const month = `${previous.getUTCFullYear()}-${String(previous.getUTCMonth() + 1).padStart(2, '0')}`;
+            const stamp = pathMod.join(dir, `.stamp-${month}`);
+            if (fsMod.existsSync(stamp)) {return;}
+            logger.info(`[COMPLIANCE] توليد تقرير الامتثال الشهري لـ ${month}`);
+            const ok = await require('./compliance-monthly-worker').generateMonthlyComplianceReport(month);
+            if (ok) {fsMod.mkdirSync(dir, { recursive: true }); fsMod.writeFileSync(stamp, new Date().toISOString(), 'utf8');}
+        } catch (error) {
+            logger.error('[COMPLIANCE] فشل توليد تقرير الامتثال:', error && error.message);
+        }
+    };
+    setTimeout(complianceReminder, 120_000);
+    const complianceTimer = setInterval(complianceReminder, 6 * 60 * 60_000);
+    if (complianceTimer.unref) {complianceTimer.unref();}
+} catch (e) {
+    logger.error('[COMPLIANCE] تعذر بدء مجدول تقرير الامتثال:', e.message);
+}
 // Leave approval workflow: employee → direct manager → operations manager → general manager → HR.
 app.use('/api/hr', (req, res, next) => { req.io = io; next(); }, leaveWorkflowRouter);
 // البصمة الذاتية المقيدة جغرافيًا (SPEC-employee-pwa-attendance-geofence-v1) —
