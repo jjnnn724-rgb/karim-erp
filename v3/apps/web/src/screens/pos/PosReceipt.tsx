@@ -36,8 +36,13 @@ const THERMAL_CSS =
     '.brand h1{font-size:14.5px;font-weight:900;margin:1.6mm 0 0;letter-spacing:0}' +
     '.brand small{font-size:8px;color:#8a3c07;letter-spacing:2px;text-transform:uppercase;font-weight:700}' +
     '.doc-type{display:inline-block;margin:1.6mm auto 0;padding:0.8mm 5mm 1mm;border:1.2px solid #8a3c07;border-radius:999px;color:#8a3c07;font-size:8.5px;font-weight:800}' +
+    '.inv-strip{display:flex;align-items:center;justify-content:center;gap:4mm;background:#8a3c07;color:#ffe9c7;border-radius:2mm;padding:1.4mm 2mm;margin:1mm 0 1.5mm}' +
+    '.inv-strip .lbl{font-size:8.5px;font-weight:700;letter-spacing:1px;text-transform:uppercase;opacity:.9}' +
+    '.inv-strip .num{font-size:17px;font-weight:900;letter-spacing:.5px;font-variant-numeric:tabular-nums}' +
     '.meta{display:flex;flex-direction:column;gap:0.6mm;background:#fdf8ee;border-inline-start:2.4px solid #b45309;border-radius:2mm;padding:2mm 2.2mm;margin:1.5mm 0 2mm;font-size:8.5px}' +
     '.meta .r{display:flex;justify-content:space-between;gap:6px}' +
+    '.item-ar{display:block;font-weight:700}' +
+    '.item-en{display:block;font-size:7px;color:#8a857c;letter-spacing:.3px;text-transform:none;direction:ltr;text-align:left;margin-top:.2mm}' +
     '.meta .k{color:#57534e}.meta .v{font-weight:700}' +
     'table{width:100%;border-collapse:collapse;table-layout:fixed;border:0;font-size:10.5px}' +
     'th{font-size:8px;font-weight:800;color:#fff;background:#8a3c07;padding:1.2mm 1mm;text-align:right;letter-spacing:.4px}' +
@@ -65,6 +70,7 @@ const THERMAL_CSS =
     '@media print{' +
     'html,body{background:#fff}' +
     '.brand .mark{outline:none;border-color:#000}' +
+    '.inv-strip{background:#000 !important;color:#fff !important;border-radius:0}' +
     'h1,.doc-type{color:#000 !important;background:#fff !important;border-color:#000 !important}' +
     'th{background:#000 !important;color:#fff !important}' +
     '.tot tr.grand td{background:#000 !important;color:#fff !important;border-radius:0}' +
@@ -77,8 +83,8 @@ export function receiptPrintHtml(receipt: PosReceiptData, qr: string | null, bra
         ? brand.logoSrc
         : PRINT_LOGO_FALLBACK;
     const row = (label: string, value: string) => `<tr><td>${escapeHtml(label)}</td><td dir="ltr">${escapeHtml(value)}</td></tr>`;
-    const itemRow = (line: { name: string; quantity: number; unit_price: number; line_total: number }) =>
-        `<tr><td>${escapeHtml(line.name)}</td><td class="qty">${escapeHtml(String(line.quantity))}</td>` +
+    const itemRow = (line: { name: string; nameEn?: string | undefined; quantity: number; unit_price: number; line_total: number }) =>
+        `<tr><td><span class="item-ar">${escapeHtml(line.name)}</span>${line.nameEn ? `<span class="item-en">${escapeHtml(line.nameEn)}</span>` : ''}</td><td class="qty">${escapeHtml(String(line.quantity))}</td>` +
         `<td class="price">${escapeHtml(moneyText(line.unit_price))}</td><td class="total">${escapeHtml(moneyText(line.line_total))}</td></tr>`;
     const itemLines = (receipt.cartLines ?? []).map(itemRow).join('');
     const vatRates = [...new Set((receipt.cartLines ?? []).map((line) => line.vat_rate).filter((v) => Number.isFinite(v)))];
@@ -125,10 +131,14 @@ export function receiptPrintHtml(receipt: PosReceiptData, qr: string | null, bra
         '<small>Simplified Tax Invoice</small>' +
         '<div class="doc-type">فاتورة ضريبية مبسطة</div></div>' +
         '<hr class="rule double">' +
+        `<div class="inv-strip"><span class="lbl">فاتورة / No.</span><span class="num" dir="ltr">#${escapeHtml(String(receipt.invoice_counter ?? '—'))}</span></div>` +
+        '<hr class="rule double">' +
         '<div class="meta">' +
-        `<div class="r"><span class="k">رقم الفاتورة / No.</span><span class="v" dir="ltr">#${escapeHtml(String(receipt.invoice_counter ?? '—'))}</span></div>` +
+        (receipt.vatNumber
+            ? `<div class="r"><span class="k">الرقم الضريبي / VAT</span><span class="v" dir="ltr">${escapeHtml(receipt.vatNumber)}</span></div>`
+            : '') +
         (receipt.cashierName
-            ? `<div class="r"><span class="k">الكاشير / Cashier</span><span class="v">${escapeHtml(receipt.cashierName)}</span></div>`
+            ? `<div class="r"><span class="k">الكاشير / Cashier</span><span class="v">${escapeHtml(receipt.cashierName)}${receipt.cashierId ? ` (#${escapeHtml(receipt.cashierId)})` : ''}</span></div>`
             : '') +
         (receipt.session_id
             ? `<div class="r"><span class="k">الوردية / Shift</span><span class="v" dir="ltr">${escapeHtml(String(receipt.session_id))}</span></div>`

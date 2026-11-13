@@ -26,14 +26,16 @@ const base = {
     party_name: null,
     buffet: null,
     cartLines: [
-        { name: 'شاي', quantity: 2, unit_price: 5, line_total: 10, vat_rate: 0.15 },
-        { name: 'قهوة عربية', quantity: 2, unit_price: 19, line_total: 38, vat_rate: 0.15 },
+        { name: 'شاي', nameEn: 'Tea', quantity: 2, unit_price: 5, line_total: 10, vat_rate: 0.15 },
+        { name: 'قهوة عربية', nameEn: 'Arabic Coffee', quantity: 2, unit_price: 19, line_total: 38, vat_rate: 0.15 },
     ],
     paymentLines: [
         { method: 'cash', amount: 20, reference: null },
         { method: 'card', amount: 40, reference: 'AUTH-9911', brand: 'mada', last4: '8899' },
     ],
     cashierName: 'أحمد السيد',
+    cashierId: '7',
+    vatNumber: '300000000000003',
 } as unknown as PosReceiptData;
 
 const brand = { name: 'مطاعم الشرفه العالمي', logoSrc: '/app/assets/karim-logo.png' };
@@ -41,10 +43,19 @@ const brand = { name: 'مطاعم الشرفه العالمي', logoSrc: '/app/a
 describe('receiptPrintHtml — إيصال ما بعد البيع', () => {
     const html = receiptPrintHtml(base, null, brand);
 
-    it('يعرض الأصناف وكمياتها بدل الاكتفاء بالإجماليات', () => {
+    it('يعرض الأصناف وكمياتها بالعربي والإنجليزي بدل الاكتفاء بالإجماليات', () => {
         expect(html).toContain('شاي');
         expect(html).toContain('قهوة عربية');
+        expect(html).toContain('Tea');
+        expect(html).toContain('Arabic Coffee');
         expect(html).toContain('<th>الصنف / Item</th>');
+    });
+
+    it('يعرض رقم الفاتورة بارزًا والرقم الضريبي واسم الكاشير برقمه', () => {
+        expect(html).toContain('inv-strip');
+        expect(html).toContain('#1099');
+        expect(html).toContain('300000000000003');
+        expect(html).toContain('أحمد السيد (#7)');
     });
 
     it('يعرض شكل الدفع ببيانات البطاقة المقروءة', () => {

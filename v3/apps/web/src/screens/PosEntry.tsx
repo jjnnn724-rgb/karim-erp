@@ -478,7 +478,15 @@ export function PosEntry() {
                     ? tab.cart.map((row, rowIndex) => (rowIndex === index ? { ...row, quantity: row.quantity + 1 } : row))
                     : [
                           ...tab.cart,
-                          { id: item.id, name: item.name, price: item.price, listPrice: item.price, vatRate: item.vatRate, quantity: 1 },
+                          {
+                              id: item.id,
+                              name: item.name,
+                              nameEn: item.nameEn,
+                              price: item.price,
+                              listPrice: item.price,
+                              vatRate: item.vatRate,
+                              quantity: 1,
+                          },
                       ];
             return { ...tab, cart: cartNext, receipt: null, saleKey: '' };
         });
@@ -680,6 +688,7 @@ export function PosEntry() {
             // لقطة السلة والدفعات وقت الإتمام — الإيصال يعرضها كما هي بلا إعادة احتساب.
             const receiptCart = cart.map((line) => ({
                 name: line.name,
+                ...(line.nameEn ? { nameEn: line.nameEn } : {}),
                 quantity: line.quantity,
                 unit_price: line.price,
                 line_total: Math.round(line.price * line.quantity * 100) / 100,
@@ -697,6 +706,8 @@ export function PosEntry() {
                 cartLines: receiptCart,
                 paymentLines: receiptPayments,
                 cashierName: auth.user?.name,
+                cashierId: auth.user?.id,
+                vatNumber: activeVatNumber,
             };
             setTabs((current) =>
                 current.map((tab) => (tab.id === settledTabId ? { ...freshPosTab(tab), receipt: receiptWithExtras } : tab)),
@@ -776,6 +787,7 @@ export function PosEntry() {
                 return {
                     id: String(item.product_id),
                     name: String(item.name ?? 'صنف'),
+                    nameEn: catalogItem?.nameEn,
                     price: item.unit_price,
                     listPrice: catalogItem?.price ?? item.unit_price,
                     vatRate: item.vat_rate,
@@ -1292,6 +1304,8 @@ export function PosEntry() {
     }
 
     const departments = (departmentsQuery.data ?? []).filter((department) => department.is_active !== false);
+    const activeDepartment = departments.find((department) => String(department.id) === String(shift?.departmentId));
+    const activeVatNumber = activeDepartment?.vat_number ?? undefined;
     const catalogLoading = buffet ? buffetConfigQuery.isPending : productsQuery.isPending;
     const catalogError = buffet ? buffetConfigQuery.error : productsQuery.error;
     const catalogRetry = () => {

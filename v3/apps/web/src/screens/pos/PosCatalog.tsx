@@ -139,6 +139,11 @@ const ProductCard = memo(function ProductCard({
                 </span>
                 <span className="pos-product__info">
                     <strong>{item.name}</strong>
+                    {item.nameEn ? (
+                        <span className="pos-product__name-en" dir="ltr">
+                            {item.nameEn}
+                        </span>
+                    ) : null}
                     <span className="pos-product__price-row">
                         <span className="pos-product__price">
                             {moneyText(item.price)}

@@ -109,6 +109,8 @@ export function newIdempotencyKey(sessionId: string): string {
 export interface CatalogItem {
     id: string;
     name: string;
+    /** الاسم بالإنجليزية كما خُزّن في الكتالوج — عرض ثنائي اللغة عند توفره. */
+    nameEn?: string | undefined;
     price: number;
     vatRate: number;
     unit: string;
@@ -135,6 +137,7 @@ export function catalogFromProducts(products: readonly PosProduct[]): CatalogIte
         return {
             id: String(product.id),
             name: String(product.name_ar || product.name_en || 'صنف'),
+            nameEn: String(product.name_en ?? '').trim() || undefined,
             price: Number.isFinite(product.price) ? product.price : 0,
             vatRate: Number.isFinite(product.vat_rate) ? product.vat_rate : 15,
             unit: String(product.unit ?? ''),
@@ -158,6 +161,7 @@ export function catalogFromTiers(tiers: readonly BuffetTier[]): CatalogItem[] {
         .map((tier) => ({
             id: String(tier.id),
             name: String(tier.name_ar ?? '').trim() || 'فئة بوفيه',
+            nameEn: undefined,
             price: Number.isFinite(tier.price) ? tier.price : 0,
             vatRate: Number.isFinite(tier.vat_rate) ? tier.vat_rate : 15,
             unit: String(tier.unit ?? '').trim() || 'فرد',
