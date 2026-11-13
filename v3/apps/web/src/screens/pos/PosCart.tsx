@@ -9,6 +9,8 @@ export interface PosCartProps {
     cart: readonly PosCartLine[];
     /** صور الأصناف بمعرّفها — تُعرض مصغّرة في بنود السلة. */
     images?: Record<string, string>;
+    /** رقم الطلب النشط كما يظهر في شريط الطلبات. */
+    orderNumber?: number;
     totals: PosTotals;
     discount: PosDiscount;
     onDiscount: (next: PosDiscount) => void;
@@ -24,13 +26,49 @@ export interface PosCartProps {
     onClear: () => void;
     onHold: () => void;
     onComplete: () => void;
-    onOpenDrawer: () => void;
+}
+
+function HoldIcon() {
+    return (
+        <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M9 5v14M15 5v14" />
+        </svg>
+    );
+}
+
+function TrashIcon() {
+    return (
+        <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M4 7h16M9 7V5h6v2M6 7l1 13h10l1-13M10 11v6M14 11v6" />
+        </svg>
+    );
 }
 
 /** السلة والخصم والدفع — الأرقام تقديرية، والخادم هو من يسجّل الفاتورة. */
 export function PosCart({
     cart,
     images,
+    orderNumber = 1,
     totals,
     discount,
     onDiscount,
@@ -46,7 +84,6 @@ export function PosCart({
     onClear,
     onHold,
     onComplete,
-    onOpenDrawer,
 }: PosCartProps) {
     const count = cart.reduce((sum, row) => sum + row.quantity, 0);
     const amounts = PAYMENT_FIELDS.map((field) => parsePosMoney(payments[field.key]));
@@ -62,26 +99,69 @@ export function PosCart({
             ? `الباقي للعميل: ${moneyText(change)}`
             : 'المبلغ المدفوع مطابق للإجمالي.';
 
+    // نسبة الضريبة المعروضة تتغيّر مع سلّة مختلطة النسب؛ لا نطبع 15% إن لم تكن كذلك.
+    const rates = [...new Set(cart.map((row) => row.vatRate))];
+    const vatLabel = rates.length === 1 ? `الضريبة (${String(Math.round((rates[0] ?? 0) * 100))}%)` : 'الضريبة';
+
     return (
         <section className="erp-card pos-cart" aria-labelledby="pos-cart-title">
-            <div className="erp-card__body pos-cart__body">
-                <div className="pos-cart__head">
+            <header className="pos-cart__head">
+                <div className="pos-cart__head-main">
                     <h2 id="pos-cart-title" className="erp-card__title">
                         السلة <Badge variant="info">{count}</Badge>
                     </h2>
-                    <Button size="sm" variant="secondary" disabled={!cart.length || !canSell || busy} onClick={onHold}>
-                        تعليق الطلب الحالي
-                    </Button>
+                    <span className="pos-cart__order">طلب #{orderNumber}</span>
                 </div>
+                <div className="pos-cart__head-tools">
+                    <span className="pos-cart__customer" title="بيع مباشر دون بيانات عميل">
+                        <svg
+                            aria-hidden="true"
+                            viewBox="0 0 24 24"
+                            width="14"
+                            height="14"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.8"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
+                            <circle cx="12" cy="8" r="3.4" />
+                            <path d="M5 20a7 7 0 0 1 14 0" />
+                        </svg>
+                        عميل نقدي
+                    </span>
+                    <button
+                        type="button"
+                        className="pos-icon-btn pos-icon-btn--sm"
+                        aria-label="تعليق الطلب الحالي"
+                        title="تعليق الطلب (F3)"
+                        disabled={!cart.length || !canSell || busy}
+                        onClick={onHold}
+                    >
+                        <HoldIcon />
+                    </button>
+                    <button
+                        type="button"
+                        className="pos-icon-btn pos-icon-btn--sm pos-icon-btn--danger"
+                        aria-label="تفريغ السلة"
+                        title="تفريغ السلة"
+                        disabled={!cart.length || !canSell || busy}
+                        onClick={onClear}
+                    >
+                        <TrashIcon />
+                    </button>
+                </div>
+            </header>
 
+            <div className="pos-cart__body custom-scroll">
                 {cart.length === 0 ? (
                     <div className="pos-cart__empty">
                         <span className="pos-cart__empty-icon" aria-hidden="true">
                             <svg
                                 aria-hidden="true"
                                 viewBox="0 0 24 24"
-                                width="20"
-                                height="20"
+                                width="22"
+                                height="22"
                                 fill="none"
                                 stroke="currentColor"
                                 strokeWidth="1.6"
@@ -107,8 +187,8 @@ export function PosCart({
                                 <div className="min-w-0 pos-cart__copy">
                                     <strong>{row.name}</strong>
                                     <small>
-                                        {moneyText(row.price)} × {row.quantity}
-                                        {buffet ? ' فرد' : ''}
+                                        {moneyText(row.price)}
+                                        {buffet ? ' / فرد' : ''}
                                     </small>
                                 </div>
                                 <fieldset className="pos-qty m-0 min-w-0 border-0 p-0" aria-label={`كمية ${row.name}`}>
@@ -134,35 +214,25 @@ export function PosCart({
                                         +
                                     </button>
                                 </fieldset>
+                                <span className="pos-cart__line-total erp-numeric" dir="ltr">
+                                    {moneyText(row.price * row.quantity)}
+                                </span>
+                                <button
+                                    type="button"
+                                    className="pos-cart__line-remove"
+                                    aria-label={`حذف ${row.name} من السلة`}
+                                    title="حذف البند"
+                                    disabled={busy}
+                                    onClick={() => {
+                                        onQty(row.id, -row.quantity);
+                                    }}
+                                >
+                                    <TrashIcon />
+                                </button>
                             </li>
                         ))}
                     </ul>
                 )}
-
-                <dl className="pos-totals">
-                    <div>
-                        <dt>قبل الخصم</dt>
-                        <dd>{moneyText(totals.subtotalBeforeDiscount)}</dd>
-                    </div>
-                    {totals.discount > 0 ? (
-                        <div>
-                            <dt>الخصم</dt>
-                            <dd>−{moneyText(totals.discount)}</dd>
-                        </div>
-                    ) : null}
-                    <div>
-                        <dt>بعد الخصم وقبل الضريبة</dt>
-                        <dd>{moneyText(totals.subtotal)}</dd>
-                    </div>
-                    <div>
-                        <dt>الضريبة التقديرية</dt>
-                        <dd>{moneyText(totals.tax)}</dd>
-                    </div>
-                    <div className="pos-totals__grand">
-                        <dt>الإجمالي التقديري</dt>
-                        <dd>{moneyText(totals.total)}</dd>
-                    </div>
-                </dl>
 
                 {canSell && cart.length ? (
                     <details className="pos-payments">
@@ -253,34 +323,54 @@ export function PosCart({
                     <p className="text-body-sm text-muted">قراءة فقط — لا يمكن إتمام البيع بهذا الدور.</p>
                 ) : null}
             </div>
-            <div className="pos-cart__foot">
-                <div className="pos-cart__foot-main">
-                    <div className="pos-cart__due">
-                        <span>
-                            الإجمالي التقديري
-                            {count ? ` · ${count} في السلة` : ''}
-                        </span>
-                        <strong className="erp-numeric" dir="ltr">
-                            {moneyText(totals.total)}
-                        </strong>
+
+            <footer className="pos-cart__foot">
+                <dl className="pos-totals">
+                    <div>
+                        <dt>المجموع قبل الضريبة</dt>
+                        <dd className="erp-numeric" dir="ltr">
+                            {moneyText(totals.subtotalBeforeDiscount)}
+                        </dd>
                     </div>
-                    {canSell ? (
-                        <Button variant="primary" loading={busy} disabled={!cart.length || !totals.valid} onClick={onComplete}>
-                            إتمام البيع
-                        </Button>
+                    {totals.discount > 0 ? (
+                        <div className="pos-totals__discount">
+                            <dt>الخصم</dt>
+                            <dd className="erp-numeric" dir="ltr">
+                                −{moneyText(totals.discount)}
+                            </dd>
+                        </div>
                     ) : null}
-                </div>
-                {canSell ? (
-                    <div className="pos-cart__foot-tools">
-                        <Button size="sm" variant="secondary" disabled={busy} onClick={onOpenDrawer}>
-                            فتح الدرج
-                        </Button>
-                        <Button size="sm" variant="ghost" disabled={!cart.length || busy} onClick={onClear}>
-                            تفريغ السلة
-                        </Button>
+                    <div>
+                        <dt>{vatLabel}</dt>
+                        <dd className="erp-numeric" dir="ltr">
+                            {moneyText(totals.tax)}
+                        </dd>
                     </div>
+                </dl>
+
+                <div className="pos-cart__due">
+                    <span>
+                        الإجمالي النهائي
+                        {count ? ` · ${String(count)} في السلة` : ''}
+                    </span>
+                    <strong className="erp-numeric" dir="ltr">
+                        {moneyText(totals.total)}
+                    </strong>
+                </div>
+
+                {canSell ? (
+                    <Button
+                        variant="primary"
+                        className="pos-cart__checkout"
+                        loading={busy}
+                        disabled={!cart.length || !totals.valid}
+                        onClick={onComplete}
+                    >
+                        إتمام البيع والدفع
+                        <kbd className="pos-kbd">F4</kbd>
+                    </Button>
                 ) : null}
-            </div>
+            </footer>
         </section>
     );
 }

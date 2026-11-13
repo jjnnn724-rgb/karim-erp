@@ -361,9 +361,13 @@ function PosCatalogView({
                 <SearchInput
                     inputRef={searchInputRef}
                     label={buffet ? 'بحث الفئات' : 'بحث الأصناف'}
-                    placeholder={buffet ? 'اسم فئة البوفيه' : 'اسم الصنف أو الباركود ثم Enter'}
+                    placeholder={buffet ? 'اسم فئة البوفيه... [F2]' : 'اسم الصنف أو الباركود... [F2]'}
                     value={query}
                     onChange={onQuery}
+                    inputMode="none"
+                    autoComplete="off"
+                    enterKeyHint="enter"
+                    className="pos-search"
                     onKeyDown={(event) => {
                         if (event.key === 'Enter') {
                             event.preventDefault();
@@ -424,15 +428,15 @@ function PosCatalogView({
                                 >
                                     {item.imageUrl ? (
                                         <img
-                            className="pos-favorite__thumb"
-                            src={item.imageUrl}
-                            alt=""
-                            loading="lazy"
-                            decoding="async"
-                            onError={(event) => {
-                                event.currentTarget.style.visibility = 'hidden';
-                            }}
-                        />
+                                            className="pos-favorite__thumb"
+                                            src={item.imageUrl}
+                                            alt=""
+                                            loading="lazy"
+                                            decoding="async"
+                                            onError={(event) => {
+                                                event.currentTarget.style.visibility = 'hidden';
+                                            }}
+                                        />
                                     ) : null}
                                     <span className="pos-favorite__copy">
                                         <strong>{item.name}</strong>
@@ -461,15 +465,15 @@ function PosCatalogView({
                                 >
                                     {item.imageUrl ? (
                                         <img
-                            className="pos-favorite__thumb"
-                            src={item.imageUrl}
-                            alt=""
-                            loading="lazy"
-                            decoding="async"
-                            onError={(event) => {
-                                event.currentTarget.style.visibility = 'hidden';
-                            }}
-                        />
+                                            className="pos-favorite__thumb"
+                                            src={item.imageUrl}
+                                            alt=""
+                                            loading="lazy"
+                                            decoding="async"
+                                            onError={(event) => {
+                                                event.currentTarget.style.visibility = 'hidden';
+                                            }}
+                                        />
                                     ) : null}
                                     <span className="pos-favorite__copy">
                                         <strong>{item.name}</strong>

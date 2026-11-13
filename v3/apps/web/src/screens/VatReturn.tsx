@@ -1,12 +1,12 @@
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useState } from 'react';
+import { type ReactNode, useEffect, useState } from 'react';
 import { PrintActions } from '../components/PrintActions';
 import { KpiCard, RangeControls, ReportHeader, SectionCard } from '../components/Reports';
 import { StateError, StateLoading } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { fetchCurrency } from '../lib/finance';
 import { openBlankTab, writeHtmlDocument } from '../lib/print-document';
-import { errorMessage, moneyOf, num, presetRange, rangeProblem } from '../lib/reporting';
+import { errorMessage, intOf, moneyOf, num, presetRange, rangeProblem } from '../lib/reporting';
 import {
     applyVatSettlement,
     fetchVatReturn,
@@ -16,11 +16,16 @@ import {
     VAT_SETTLEMENT_WRITE_ROLES,
     type VatRateRow,
     type VatSettlement,
+    type VatWorksheetRow,
+    type VatWorksheetStatus,
+    vatBalanceReconciliation,
+    vatFilingDeadline,
     vatMonthRange,
     vatPeriodMonth,
     vatRateNeedsReview,
     vatRateRows,
     vatRateSummary,
+    vatWorksheet,
 } from '../lib/vat-return';
 import { vatReviewCsv, vatReviewFilename, vatReviewPrintHtml } from '../lib/vat-return-print';
 import { isWriteRole, useWriteMutation, writeErrorMessage } from '../lib/write';
@@ -37,6 +42,205 @@ const KIND_LABELS: Record<VatRateRow['kind'], string> = {
     void: 'إلغاء',
     purchase: 'شراء',
 };
+
+/** حالة خانة الإقرار — اللون يفرّق بين «جاهزة» و«غير مسجّلة» لا بين أرقام. */
+const WORKSHEET_STATUS: Record<VatWorksheetStatus, { label: string; className: string }> = {
+    ready: { label: 'جاهزة', className: 'border-success text-success-text' },
+    review: { label: 'تحتاج مراجعة', className: 'border-warning text-warning-text' },
+    missing: { label: 'بيانات ناقصة', className: 'border-danger text-danger-text' },
+    unavailable: { label: 'غير مسجّلة', className: 'border-hairline-strong text-muted' },
+};
+
+function WorksheetStatusBadge({ status, note }: { status: VatWorksheetStatus; note: string }) {
+    const meta = WORKSHEET_STATUS[status];
+    return (
+        <span
+            title={note}
+            className={`inline-flex whitespace-nowrap rounded-full border px-sm py-xxs text-body-sm font-medium ${meta.className}`}
+        >
+            {meta.label}
+        </span>
+    );
+}
+
+/**
+ * جدول خانات الإقرار — الرقم `null` يُعرض «—» لأنه «غير مسجّل في النظام»،
+ * وليس صفرًا. الخلط بينهما هو أخطر خطأ في إقرار ضريبي.
+ */
+function WorksheetTable({
+    title,
+    caption,
+    rows,
+    total,
+    totalLabel,
+    available,
+}: {
+    title: string;
+    caption: string;
+    rows: readonly VatWorksheetRow[];
+    total: { base: number; vat: number; documents: number };
+    totalLabel: string;
+    available: boolean;
+}) {
+    return (
+        <div className="flex min-w-0 flex-col gap-xs">
+            <h3 className="text-label-md font-medium text-ink-secondary">{title}</h3>
+            <div className="overflow-x-auto">
+                <table className="w-full border-collapse">
+                    <caption className="sr-only">{caption}</caption>
+                    <thead>
+                        <tr>
+                            {['الخانة', 'البند', 'الوعاء الضريبي', 'الضريبة', 'المستندات', 'الحالة'].map((label, index) => (
+                                <th
+                                    key={label}
+                                    scope="col"
+                                    className={`border-b border-hairline bg-surface-sunken px-sm py-xs text-label-md font-medium text-ink-secondary ${
+                                        index >= 2 && index <= 4 ? 'text-end' : 'text-start'
+                                    }`}
+                                >
+                                    {label}
+                                </th>
+                            ))}
+                        </tr>
+                    </thead>
+                    <tbody>
+                        {rows.map((row) => (
+                            <tr key={row.key}>
+                                <td dir="ltr" className="border-b border-hairline px-sm py-xxs text-start text-ink erp-numeric">
+                                    {row.box === null ? '—' : String(row.box)}
+                                </td>
+                                <td className="border-b border-hairline px-sm py-xxs text-ink">
+                                    {row.label}
+                                    {row.status !== 'ready' ? (
+                                        <span className="mt-xxs block text-body-sm text-muted">{row.note}</span>
+                                    ) : null}
+                                </td>
+                                <td dir="ltr" className="border-b border-hairline px-sm py-xxs text-end text-ink erp-numeric">
+                                    {row.base === null ? '—' : moneyOf(row.base)}
+                                </td>
+                                <td dir="ltr" className="border-b border-hairline px-sm py-xxs text-end text-ink erp-numeric">
+                                    {row.vat === null ? '—' : moneyOf(row.vat)}
+                                </td>
+                                <td dir="ltr" className="border-b border-hairline px-sm py-xxs text-end text-ink erp-numeric">
+                                    {available ? String(row.documents) : '—'}
+                                </td>
+                                <td className="border-b border-hairline px-sm py-xxs">
+                                    <WorksheetStatusBadge status={row.status} note={row.note} />
+                                </td>
+                            </tr>
+                        ))}
+                    </tbody>
+                    <tfoot>
+                        <tr>
+                            <th scope="row" colSpan={2} className="px-sm py-xs text-start text-label-md text-ink">
+                                {totalLabel}
+                            </th>
+                            <td dir="ltr" className="px-sm py-xs text-end text-ink erp-numeric">
+                                {available ? moneyOf(total.base) : '—'}
+                            </td>
+                            <td dir="ltr" className="px-sm py-xs text-end text-ink erp-numeric">
+                                {available ? moneyOf(total.vat) : '—'}
+                            </td>
+                            <td dir="ltr" className="px-sm py-xs text-end text-ink erp-numeric">
+                                {available ? String(total.documents) : '—'}
+                            </td>
+                            <td className="px-sm py-xs">
+                                <span className={`text-body-sm ${available ? 'text-muted' : 'text-warning-text'}`}>
+                                    {available ? 'مجموع الخانات المسجّلة' : 'الكشف غير متاح'}
+                                </span>
+                            </td>
+                        </tr>
+                    </tfoot>
+                </table>
+            </div>
+        </div>
+    );
+}
+
+/** مطابقة رصيد واحد: افتتاحي + حركة متوقعة من القيود = ختامي، والفرق يُبرز. */
+function ReconciliationRow({
+    label,
+    opening,
+    expected,
+    actual,
+    gap,
+    closing,
+    asOf,
+}: {
+    label: string;
+    opening: number;
+    expected: number;
+    actual: number;
+    gap: number;
+    closing: number;
+    asOf: string;
+}) {
+    const mismatch = Math.abs(gap) > 0.01;
+    return (
+        <div className="flex min-w-0 flex-col gap-xs rounded-lg border border-hairline bg-surface p-sm">
+            <div className="flex flex-wrap items-baseline justify-between gap-sm">
+                <h3 className="text-label-md font-medium text-ink">{label}</h3>
+                <span className="text-body-sm text-muted">
+                    افتتاحي حتى <span dir="ltr">{asOf}</span>
+                </span>
+            </div>
+            <dl className="flex flex-col gap-xxs text-body-sm">
+                <div className="flex items-center justify-between gap-sm">
+                    <dt className="text-muted">الرصيد الافتتاحي</dt>
+                    <dd dir="ltr" className="erp-numeric text-ink">
+                        {moneyOf(opening)}
+                    </dd>
+                </div>
+                <div className="flex items-center justify-between gap-sm">
+                    <dt className="text-muted">حركة الفترة المتوقعة من القيود</dt>
+                    <dd dir="ltr" className="erp-numeric text-ink">
+                        {moneyOf(expected)}
+                    </dd>
+                </div>
+                <div className="flex items-center justify-between gap-sm">
+                    <dt className="text-muted">حركة الفترة في الأستاذ</dt>
+                    <dd dir="ltr" className="erp-numeric text-ink">
+                        {moneyOf(actual)}
+                    </dd>
+                </div>
+                <div className="flex items-center justify-between gap-sm">
+                    <dt className={mismatch ? 'font-medium text-danger-text' : 'text-muted'}>الفرق</dt>
+                    <dd dir="ltr" className={`erp-numeric ${mismatch ? 'font-medium text-danger-text' : 'text-ink'}`}>
+                        {moneyOf(gap)}
+                    </dd>
+                </div>
+                <div className="flex items-center justify-between gap-sm border-t border-hairline pt-xxs">
+                    <dt className="text-ink">الرصيد الختامي</dt>
+                    <dd dir="ltr" className="erp-numeric font-medium text-ink">
+                        {moneyOf(closing)}
+                    </dd>
+                </div>
+            </dl>
+            {mismatch ? (
+                <p role="alert" className="text-body-sm text-danger-text">
+                    الحركة الفعلية لا تطابق القيود المرحّلة — راجع رصيد ما قبل الفترة أو حركات خارج الفترة قبل الاعتماد.
+                </p>
+            ) : (
+                <p className="text-body-sm text-success-text">الأرصدة مطابقة للقيود المرحّلة.</p>
+            )}
+        </div>
+    );
+}
+
+/** حالة التسجيل والاستحقاق — تُقرأ في سطر واحد قبل أي رقم. */
+function FilingChip({ tone, children }: { tone: 'ok' | 'warn' | 'muted'; children: ReactNode }) {
+    const className =
+        tone === 'ok'
+            ? 'border-success text-success-text'
+            : tone === 'warn'
+              ? 'border-warning text-warning-text'
+              : 'border-hairline-strong text-muted';
+    return (
+        <span className={`inline-flex items-center gap-xs rounded-full border px-sm py-xxs text-body-sm font-medium ${className}`}>
+            {children}
+        </span>
+    );
+}
 
 /**
  * مسودة مراجعة ضريبة القيمة المضافة — قراءة من القيود المرحّلة، وتصفية
@@ -179,6 +383,12 @@ export function VatReturn() {
     const unpostedSales = num(report?.sales_source_counts?.unposted_sales);
     const unpostedVoids = num(report?.sales_source_counts?.unposted_voids);
     const unpostedPurchases = num(report?.purchases_crosscheck.unposted_count);
+    const worksheet = report ? vatWorksheet(report) : null;
+    const reconciliation = report ? vatBalanceReconciliation(report) : null;
+    const filingDeadline = report ? vatFilingDeadline(frequency?.frequency ?? '', report.to) : null;
+    const registrationOk = Boolean(taxpayer?.number_configured && taxpayer?.registration_verified);
+    const legacyRevenue = report?.legacy_revenue_crosscheck;
+    const cancelledWithoutVoidDate = num(report?.cancelled_without_void_date);
 
     return (
         <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-lg">
@@ -239,6 +449,48 @@ export function VatReturn() {
                         الفترة: <span dir="ltr">{report.from}</span> — <span dir="ltr">{report.to}</span>
                     </p>
 
+                    <SectionCard title="الوضع الضريبي للفترة" english="Filing position">
+                        <div className="flex flex-col gap-sm p-sm">
+                            <div className="flex flex-wrap items-center gap-sm">
+                                <FilingChip tone={readiness?.can_file ? 'ok' : 'warn'}>
+                                    {readiness ? (readiness.can_file ? 'جاهز للتقديم' : 'غير جاهز للتقديم') : 'حالة الجاهزية غير محددة'}
+                                </FilingChip>
+                                <FilingChip tone="muted">
+                                    الدورية:{' '}
+                                    {frequency?.frequency === 'monthly'
+                                        ? 'شهرية'
+                                        : frequency?.frequency === 'quarterly'
+                                          ? 'ربع سنوية'
+                                          : 'غير مضبوطة'}
+                                </FilingChip>
+                                <FilingChip tone={frequency?.matches_frequency ? 'ok' : 'warn'}>
+                                    {frequency?.matches_frequency ? 'الفترة مطابقة للدورية' : 'الفترة غير مطابقة للدورية'}
+                                </FilingChip>
+                                <FilingChip tone={registrationOk ? 'ok' : 'warn'}>
+                                    {registrationOk
+                                        ? `المكلف مسجّل — ${taxpayer?.vat_number ?? 'رقم غير معروض'}`
+                                        : taxpayer?.number_configured
+                                          ? 'الرقم الضريبي مضبوط — التحقق النظامي غير مؤكد'
+                                          : 'بيانات المكلف غير مضبوطة'}
+                                </FilingChip>
+                                <FilingChip tone={filingDeadline ? 'muted' : 'warn'}>
+                                    آخر موعد إرشادي:{' '}
+                                    {filingDeadline ? (
+                                        <span dir="ltr" className="erp-numeric">
+                                            {filingDeadline}
+                                        </span>
+                                    ) : (
+                                        'غير محدد'
+                                    )}
+                                </FilingChip>
+                            </div>
+                            <p className="text-body-sm text-muted">
+                                الموعد إرشادي من دورية الإقرار المسجّلة، وليس تأكيدًا من بوابة زاتكا. التحقق من التسجيل والإقرار السابق يظل
+                                خارج النظام حتى ربطهما رسميًا.
+                            </p>
+                        </div>
+                    </SectionCard>
+
                     {unclassifiedOutputDebits > 0 || unclassifiedInputCredits > 0 || Math.abs(purchaseVatDifference) > 0.01 ? (
                         <aside role="alert" className="rounded-lg border border-warning bg-surface p-sm text-body-sm text-warning-text">
                             <strong>توجد حركات ضريبية غير مصنّفة وتحتاج مراجعة قبل اعتماد الأرقام.</strong>
@@ -284,6 +536,187 @@ export function VatReturn() {
                             hint="للمراجعة فقط — ليس إقرارًا معتمدًا"
                         />
                     </div>
+
+                    {worksheet ? (
+                        <SectionCard title="ورقة عمل الإقرار الضريبي" english="VAT return worksheet">
+                            <div className="flex flex-col gap-md p-sm">
+                                <p className="text-body-sm text-muted">
+                                    خانات النموذج مجمّعة من المستندات المرحّلة: البيع ناقص الإلغاء لنفس التصنيف، والمشتريات من فواتير الشراء
+                                    المرتبطة بقيود. «—» تعني أن النظام لا يسجّل هذه الخانة، وليست صفرًا.
+                                </p>
+                                {worksheet.reviewDocuments > 0 ? (
+                                    <p
+                                        role="status"
+                                        className="rounded-lg border border-warning bg-surface p-sm text-body-sm text-warning-text"
+                                    >
+                                        {intOf(worksheet.reviewDocuments)} مستندًا بمعدل غير قياسي أو مفقود يحتاج تصنيفًا يدويًا قبل إسناده إلى
+                                        خانة نظامية.
+                                    </p>
+                                ) : null}
+                                <WorksheetTable
+                                    title="المبيعات — ضريبة المخرجات"
+                                    caption="خانات ضريبة المخرجات في الإقرار مع الوعاء والضريبة وعدد المستندات"
+                                    rows={worksheet.sales}
+                                    total={worksheet.salesTotal}
+                                    totalLabel="إجمالي الخانات المسجّلة"
+                                    available={worksheet.hasSalesDetail}
+                                />
+                                <WorksheetTable
+                                    title="المشتريات — ضريبة المدخلات"
+                                    caption="خانات ضريبة المدخلات في الإقرار مع الوعاء والضريبة وعدد المستندات"
+                                    rows={worksheet.purchases}
+                                    total={worksheet.purchasesTotal}
+                                    totalLabel="إجمالي الخانات المسجّلة"
+                                    available={worksheet.hasPurchaseDetail}
+                                />
+                                <div className="grid gap-sm sm:grid-cols-3">
+                                    <KpiCard
+                                        label="ضريبة المخرجات المسجّلة"
+                                        english="Recorded output VAT"
+                                        value={worksheet.hasSalesDetail ? moneyOf(worksheet.salesTotal.vat) : '—'}
+                                        hint="بيع ناقص إلغاء، بكل التصنيفات المسجّلة"
+                                        tone={worksheet.hasSalesDetail ? 'neutral' : 'warning'}
+                                    />
+                                    <KpiCard
+                                        label="ضريبة المدخلات المسجّلة"
+                                        english="Recorded input VAT"
+                                        value={worksheet.hasPurchaseDetail ? moneyOf(worksheet.purchasesTotal.vat) : '—'}
+                                        hint="من فواتير الشراء المرحّلة بكل التصنيفات"
+                                        tone={worksheet.hasPurchaseDetail ? 'neutral' : 'warning'}
+                                    />
+                                    <KpiCard
+                                        label="صافي المستندات قبل التسويات"
+                                        english="Document net before adjustments"
+                                        value={worksheet.hasSalesDetail && worksheet.hasPurchaseDetail ? moneyOf(worksheet.net) : '—'}
+                                        hint="مخرجات − مدخلات؛ لا يشمل عكس الإلغاء أو التعديلات اليدوية"
+                                        tone={worksheet.net > 0 ? 'neutral' : worksheet.net < 0 ? 'success' : 'neutral'}
+                                    />
+                                </div>
+                                {worksheet.salesComplete && worksheet.purchasesComplete ? (
+                                    <p className="text-body-sm text-success-text">كل مستندات الفترة مصنّفة بمعدل قياسي — لا خانات معلّقة.</p>
+                                ) : (
+                                    <p className="text-body-sm text-warning-text">
+                                        الخانات المعلّقة أو غير المسجّلة أعلاه تمنع مطابقة الإقرار كاملًا؛ أكمل التصنيف أو سجّل البيانات الناقصة
+                                        قبل التقديم.
+                                    </p>
+                                )}
+                            </div>
+                        </SectionCard>
+                    ) : null}
+
+                    {reconciliation ? (
+                        <SectionCard title="مطابقة أرصدة الضريبة" english="VAT balance reconciliation">
+                            <div className="flex flex-col gap-sm p-sm">
+                                <p className="text-body-sm text-muted">
+                                    الرصيد الافتتاحي + حركة الفترة من القيود = الرصيد الختامي. أي فرق يعني رصيدًا افتتاحيًا غير مطابق أو حركة
+                                    خارج الفترة، ولا يجوز اعتماد الإقرار قبله.
+                                </p>
+                                <div className="grid gap-sm lg:grid-cols-2">
+                                    <ReconciliationRow
+                                        label="حساب ضريبة المخرجات (2100)"
+                                        asOf={reconciliation.asOf}
+                                        opening={reconciliation.openingPayable}
+                                        expected={reconciliation.expectedPayableMovement}
+                                        actual={reconciliation.payableMovement}
+                                        gap={reconciliation.payableGap}
+                                        closing={reconciliation.closingPayable}
+                                    />
+                                    <ReconciliationRow
+                                        label="حساب ضريبة المدخلات (1150)"
+                                        asOf={reconciliation.asOf}
+                                        opening={reconciliation.openingRecoverable}
+                                        expected={reconciliation.expectedRecoverableMovement}
+                                        actual={reconciliation.recoverableMovement}
+                                        gap={reconciliation.recoverableGap}
+                                        closing={reconciliation.closingRecoverable}
+                                    />
+                                </div>
+                            </div>
+                        </SectionCard>
+                    ) : null}
+
+                    <SectionCard title="تغطية المصادر قبل التقديم" english="Source coverage">
+                        <div className="flex flex-col gap-sm p-sm">
+                            <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
+                                <KpiCard
+                                    label="مستندات مبيعات غير مرحّلة"
+                                    english="Unposted sales"
+                                    value={intOf(unpostedSales + unpostedVoids)}
+                                    hint={`مبيعات ${intOf(unpostedSales)} · إلغاءات ${intOf(unpostedVoids)}`}
+                                    tone={unpostedSales + unpostedVoids > 0 ? 'warning' : 'neutral'}
+                                />
+                                <KpiCard
+                                    label="فواتير شراء غير مرحّلة"
+                                    english="Unposted purchases"
+                                    value={intOf(unpostedPurchases)}
+                                    hint="لا تدخل ضريبة المدخلات قبل الترحيل"
+                                    tone={unpostedPurchases > 0 ? 'warning' : 'neutral'}
+                                />
+                                <KpiCard
+                                    label="إلغاءات بلا تاريخ إلغاء"
+                                    english="Cancelled without void date"
+                                    value={intOf(cancelledWithoutVoidDate)}
+                                    hint="لا يمكن إثبات عكس ضريبتها بلا تاريخ"
+                                    tone={cancelledWithoutVoidDate > 0 ? 'danger' : 'neutral'}
+                                />
+                                <KpiCard
+                                    label="إيرادات قديمة بلا فاتورة"
+                                    english="Legacy revenue without invoice"
+                                    value={intOf(legacyRevenue?.count)}
+                                    hint={`بقيمة ${moneyOf(legacyRevenue?.amount)} — تحتاج مطابقة خارج النظام`}
+                                    tone={num(legacyRevenue?.count) > 0 ? 'warning' : 'neutral'}
+                                />
+                            </div>
+                            {legacyRevenue?.by_source?.length ? (
+                                <div className="overflow-x-auto">
+                                    <table className="w-full border-collapse">
+                                        <caption className="sr-only">تفصيل الإيرادات القديمة بلا فاتورة حسب المصدر</caption>
+                                        <thead>
+                                            <tr>
+                                                {['المصدر', 'عدد السجلات', 'المبلغ'].map((label, index) => (
+                                                    <th
+                                                        key={label}
+                                                        scope="col"
+                                                        className={`border-b border-hairline bg-surface-sunken px-sm py-xs text-label-md font-medium text-ink-secondary ${
+                                                            index === 0 ? 'text-start' : 'text-end'
+                                                        }`}
+                                                    >
+                                                        {label}
+                                                    </th>
+                                                ))}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {legacyRevenue.by_source.map((row) => (
+                                                <tr key={row.source}>
+                                                    <td className="border-b border-hairline px-sm py-xxs text-ink">{row.source}</td>
+                                                    <td
+                                                        dir="ltr"
+                                                        className="border-b border-hairline px-sm py-xxs text-end text-ink erp-numeric"
+                                                    >
+                                                        {intOf(row.count)}
+                                                    </td>
+                                                    <td
+                                                        dir="ltr"
+                                                        className="border-b border-hairline px-sm py-xxs text-end text-ink erp-numeric"
+                                                    >
+                                                        {moneyOf(row.amount)}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </div>
+                            ) : null}
+                            <KpiCard
+                                label="نواقص مستندات الشراء"
+                                english="Purchase document gaps"
+                                value={intOf(report?.purchases_crosscheck.missing_tax_rate_count)}
+                                hint={`معدل ${intOf(report?.purchases_crosscheck.missing_tax_rate_count)} · رقم ضريبي ${intOf(report?.purchases_crosscheck.missing_supplier_vat_count)} · حالة تسجيل ${intOf(report?.purchases_crosscheck.missing_supplier_tax_status_count)} · قاعدة ${intOf(report?.purchases_crosscheck.missing_tax_rule_count)}`}
+                                tone={num(report?.purchases_crosscheck.missing_tax_rate_count) > 0 ? 'warning' : 'neutral'}
+                            />
+                        </div>
+                    </SectionCard>
 
                     <SectionCard title="مطابقة فواتير الشراء" english="Posted purchase cross-check">
                         <div className="grid gap-sm p-sm sm:grid-cols-3">
@@ -444,39 +877,9 @@ export function VatReturn() {
                                     {readiness ? (readiness.can_file ? 'جاهز للتقديم' : 'غير جاهز للتقديم') : 'غير محدد'}
                                 </span>
                                 <span className="text-body-sm text-muted">
-                                    دورية الإقرار:{' '}
-                                    {frequency?.frequency === 'monthly'
-                                        ? 'شهرية'
-                                        : frequency?.frequency === 'quarterly'
-                                          ? 'ربع سنوية'
-                                          : 'غير مضبوطة'}
-                                </span>
-                                <span className="text-body-sm text-muted">
-                                    مطابقة الفترة للدورية: {frequency?.matches_frequency ? 'مطابقة' : 'غير مطابقة'}
-                                </span>
-                                <span className="text-body-sm text-muted">
                                     المكلف: {taxpayer?.number_configured ? taxpayer.seller_name || 'مضبوط' : 'رقم التسجيل غير مضبوط'}
                                 </span>
-                            </div>
-                            <div className="grid gap-sm sm:grid-cols-3">
-                                <KpiCard
-                                    label="مستندات مبيعات غير مرحّلة"
-                                    english="Unposted sales"
-                                    value={String(unpostedSales + unpostedVoids)}
-                                    hint={`مبيعات ${unpostedSales} · إلغاءات ${unpostedVoids}`}
-                                />
-                                <KpiCard
-                                    label="فواتير شراء غير مرحّلة"
-                                    english="Unposted purchases"
-                                    value={String(unpostedPurchases)}
-                                    hint="لا تدخل ضريبة المدخلات قبل الترحيل"
-                                />
-                                <KpiCard
-                                    label="نواقص مستندات الشراء"
-                                    english="Purchase document gaps"
-                                    value={String(num(report?.purchases_crosscheck.missing_tax_rate_count))}
-                                    hint={`معدل ${num(report?.purchases_crosscheck.missing_tax_rate_count)} · رقم ضريبي ${num(report?.purchases_crosscheck.missing_supplier_vat_count)} · حالة تسجيل ${num(report?.purchases_crosscheck.missing_supplier_tax_status_count)} · قاعدة ${num(report?.purchases_crosscheck.missing_tax_rule_count)}`}
-                                />
+                                <span className="text-body-sm text-muted">موانع التقديم المرصودة: {intOf(readiness?.blockers.length)}</span>
                             </div>
                             {readiness?.blockers?.length ? (
                                 <ol className="flex list-decimal flex-col gap-xxs ps-md text-body-sm text-ink">

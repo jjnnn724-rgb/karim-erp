@@ -23,6 +23,20 @@ export const indexRoute = createRoute({
 });
 indexRoute.lazy(() => import('../screens/Home.lazy').then((module) => module.Route));
 
+/** مركز القيادة الموحّد — قراءة فقط تجمع الضريبة والرواتب ومدد ومطابقة البنك. */
+export const commandCenterRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/command-center',
+});
+commandCenterRoute.lazy(() => import('../screens/CommandCenter.lazy').then((module) => module.Route));
+
+/** مطابقة البنك — كشف البنك مقابل الدفتر والمطابقة الآلية. */
+export const bankRecRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/bank-rec',
+});
+bankRecRoute.lazy(() => import('../screens/BankReconciliation.lazy').then((module) => module.Route));
+
 /** شجرة الحسابات — للقراءة فقط. */
 export const accountsRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -495,6 +509,8 @@ designGalleryRoute.lazy(() => import('../screens/DesignGallery.lazy').then((modu
 
 export const routeTree = rootRoute.addChildren([
     indexRoute,
+    commandCenterRoute,
+    bankRecRoute,
     accountsRoute,
     journalRoute,
     revenuesRoute,

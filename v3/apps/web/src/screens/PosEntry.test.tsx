@@ -413,7 +413,7 @@ describe('نقطة البيع', () => {
         renderScreen();
 
         fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
-        fireEvent.click(screen.getByRole('button', { name: 'إتمام البيع' }));
+        fireEvent.click(screen.getByRole('button', { name: /إتمام البيع/ }));
 
         expect(await screen.findByText('وردية الأمس ما زالت مفتوحة؛ أغلقها أولًا ثم افتح وردية اليوم.')).toBeTruthy();
         await waitFor(() => {
@@ -449,7 +449,7 @@ describe('نقطة البيع', () => {
         renderScreen();
 
         fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
-        fireEvent.click(screen.getByRole('button', { name: 'إتمام البيع' }));
+        fireEvent.click(screen.getByRole('button', { name: /إتمام البيع/ }));
 
         await waitFor(() => {
             expect(saleCalls(mock)).toHaveLength(1);
@@ -503,7 +503,7 @@ describe('نقطة البيع', () => {
         fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
         expect(await screen.findByRole('alert')).toBeTruthy();
 
-        fireEvent.click(screen.getByRole('button', { name: 'إتمام البيع' }));
+        fireEvent.click(screen.getByRole('button', { name: /إتمام البيع/ }));
         await waitFor(() => {
             expect(saleCalls(mock)).toHaveLength(0);
         });
@@ -514,7 +514,7 @@ describe('نقطة البيع', () => {
         renderScreen();
 
         fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
-        fireEvent.click(screen.getByRole('button', { name: 'إتمام البيع' }));
+        fireEvent.click(screen.getByRole('button', { name: /إتمام البيع/ }));
 
         await waitFor(() => {
             expect(saleCalls(mock)).toHaveLength(1);
@@ -525,7 +525,7 @@ describe('نقطة البيع', () => {
         // السلة باقية بعد الفشل.
         expect(screen.getByRole('heading', { name: /السلة/ })).toBeTruthy();
 
-        fireEvent.click(screen.getByRole('button', { name: 'إتمام البيع' }));
+        fireEvent.click(screen.getByRole('button', { name: /إتمام البيع/ }));
         await waitFor(() => {
             expect(saleCalls(mock)).toHaveLength(2);
         });
@@ -797,7 +797,7 @@ describe('نقطة البيع', () => {
         expect(within(cart).getByText('−1.00')).toBeTruthy();
         expect(within(cart).getAllByText('10.35').length).toBeGreaterThan(0);
 
-        fireEvent.click(screen.getByRole('button', { name: 'إتمام البيع' }));
+        fireEvent.click(screen.getByRole('button', { name: /إتمام البيع/ }));
         await waitFor(() => {
             expect(saleCalls(mock)).toHaveLength(1);
         });
@@ -818,7 +818,7 @@ describe('نقطة البيع', () => {
         fireEvent.change(screen.getByLabelText('قيمة الخصم'), { target: { value: '140' } });
 
         expect(await screen.findByText('قيمة الخصم غير صالحة؛ النسبة من 0 إلى 100.')).toBeTruthy();
-        const complete = screen.getByRole('button', { name: 'إتمام البيع' });
+        const complete = screen.getByRole('button', { name: /إتمام البيع/ });
         expect(complete.hasAttribute('disabled')).toBe(true);
         expect(saleCalls(mock)).toHaveLength(0);
     });
@@ -835,7 +835,7 @@ describe('نقطة البيع', () => {
         fireEvent.change(screen.getByLabelText('مرجع بطاقة'), { target: { value: 'AUTH-9911' } });
         expect(screen.getByText('المبلغ المدفوع مطابق للإجمالي.')).toBeTruthy();
 
-        fireEvent.click(screen.getByRole('button', { name: 'إتمام البيع' }));
+        fireEvent.click(screen.getByRole('button', { name: /إتمام البيع/ }));
         await waitFor(() => {
             expect(saleCalls(mock)).toHaveLength(1);
         });
@@ -858,7 +858,7 @@ describe('نقطة البيع', () => {
         fireEvent.click(screen.getByText('تعديل'));
         fireEvent.change(screen.getByLabelText('نقدي'), { target: { value: '5' } });
 
-        fireEvent.click(screen.getByRole('button', { name: 'إتمام البيع' }));
+        fireEvent.click(screen.getByRole('button', { name: /إتمام البيع/ }));
 
         const alert = await screen.findByRole('alert');
         expect(alert.textContent).toContain('المبلغ المدفوع أقل من إجمالي الفاتورة.');
@@ -900,7 +900,7 @@ describe('نقطة البيع', () => {
         renderScreen();
 
         fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
-        fireEvent.click(screen.getByRole('button', { name: 'إتمام البيع' }));
+        fireEvent.click(screen.getByRole('button', { name: /إتمام البيع/ }));
 
         fireEvent.click(await screen.findByRole('button', { name: 'إعادة طباعة الإيصال' }));
 

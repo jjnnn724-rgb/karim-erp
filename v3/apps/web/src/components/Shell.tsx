@@ -69,6 +69,8 @@ export const NAV_ITEMS = [
     { to: '/veg-requests', label: 'طلبات الخضار', hint: 'Vegetables' },
     { to: '/recipes', label: 'الوصفات', hint: 'Recipes' },
     { to: '/briefing', label: 'موجز المدير', hint: 'Briefing' },
+    { to: '/command-center', label: 'مركز القيادة الموحّد', hint: 'Command Center' },
+    { to: '/bank-rec', label: 'مطابقة البنك', hint: 'Bank Reconciliation' },
     { to: '/sessions', label: 'الأجهزة والجلسات', hint: 'Sessions' },
     { to: '/whatsapp', label: 'واتساب والتنبيهات', hint: 'WhatsApp' },
     { to: '/settings', label: 'إعدادات النظام', hint: 'Settings' },

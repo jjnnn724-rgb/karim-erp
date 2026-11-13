@@ -72,6 +72,8 @@ export const V3_SCREENS = [
     'received-analyzer',
     'wh-vs-pos',
     'yarasoft',
+    'command-center',
+    'bank-rec',
 ] as const;
 export type V3Screen = (typeof V3_SCREENS)[number];
 

@@ -571,11 +571,11 @@ export interface HomeQuickAction {
 }
 
 const ROLE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
-    owner: ['executive', 'briefing', 'cfo', 'reports', 'users', 'settings'],
-    admin: ['executive', 'briefing', 'cfo', 'reports', 'users', 'settings'],
-    manager: ['executive', 'briefing', 'reports', 'warehouse-dashboard', 'hr-dashboard', 'cashier-monitor'],
-    accountant: ['cfo', 'pnl', 'monthly-comparison', 'cost-analysis', 'revenues', 'expenses'],
-    auditor: ['briefing', 'reports', 'pnl', 'monthly-comparison', 'accounts', 'journal'],
+    owner: ['command-center', 'executive', 'briefing', 'cfo', 'reports', 'settings'],
+    admin: ['command-center', 'executive', 'briefing', 'cfo', 'reports', 'settings'],
+    manager: ['command-center', 'executive', 'briefing', 'reports', 'warehouse-dashboard', 'cashier-monitor'],
+    accountant: ['command-center', 'cfo', 'pnl', 'monthly-comparison', 'cost-analysis', 'revenues', 'expenses'],
+    auditor: ['command-center', 'briefing', 'reports', 'pnl', 'monthly-comparison', 'journal'],
     hr: ['hr-dashboard', 'employees', 'attendance', 'leaves', 'payroll', 'roster'],
     dept_head: ['dept-head-dashboard', 'dept-employees', 'dispatch', 'dept-transfers', 'cost-center', 'reports'],
     warehouse: ['warehouse', 'warehouse-dashboard', 'dispatch', 'wh-prs', 'inventory-inquiry', 'wh-moves'],

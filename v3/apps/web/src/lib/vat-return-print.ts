@@ -1,5 +1,13 @@
 import { intText, moneyText } from './cash-register';
-import { type VatReturn, type VatSettlement, vatReviewFlags } from './vat-return';
+import {
+    type VatReturn,
+    type VatSettlement,
+    type VatWorksheetRow,
+    type VatWorksheetStatus,
+    vatFilingDeadline,
+    vatReviewFlags,
+    vatWorksheet,
+} from './vat-return';
 
 /**
  * ورقة مراجعة ضريبة القيمة المضافة — A4 واحدة تجمع كل أرقام الفترة
@@ -50,6 +58,35 @@ function counter(label: string, value: unknown, hint: string): string {
     );
 }
 
+const WORKSHEET_STATUS_TEXT: Record<VatWorksheetStatus, string> = {
+    ready: 'جاهزة',
+    review: 'تحتاج مراجعة',
+    missing: 'بيانات ناقصة',
+    unavailable: 'غير مسجّلة',
+};
+
+/** صفوف خانات الإقرار — «—» لغير المسجّل، لا صفر. */
+function worksheetRows(rows: readonly VatWorksheetRow[], available: boolean, currency: string): string {
+    return rows
+        .map(
+            (row) =>
+                `<tr><td class="c">${row.box === null ? '—' : escapeHtml(row.box)}</td>` +
+                `<td>${escapeHtml(row.label)}${row.status === 'ready' ? '' : `<div class="muted">${escapeHtml(row.note)}</div>`}</td>` +
+                `<td class="n">${row.base === null ? '—' : amount(row.base, currency)}</td>` +
+                `<td class="n">${row.vat === null ? '—' : amount(row.vat, currency)}</td>` +
+                `<td class="c">${available ? escapeHtml(row.documents) : '—'}</td>` +
+                `<td class="c">${WORKSHEET_STATUS_TEXT[row.status]}</td></tr>`,
+        )
+        .join('');
+}
+
+function worksheetTable(title: string, rows: readonly VatWorksheetRow[], available: boolean, currency: string): string {
+    return `<h3>${escapeHtml(title)}</h3>
+        <table><thead><tr><th class="c">الخانة</th><th>البند</th><th class="n">الوعاء</th><th class="n">الضريبة</th>
+        <th class="c">المستندات</th><th class="c">الحالة</th></tr></thead>
+        <tbody>${worksheetRows(rows, available, currency)}</tbody></table>`;
+}
+
 export function vatReviewPrintHtml(report: VatReturn, options: VatReviewPrintOptions): string {
     const currency = String(options.currency ?? '');
     const flags = vatReviewFlags(report);
@@ -90,6 +127,19 @@ export function vatReviewPrintHtml(report: VatReturn, options: VatReviewPrintOpt
         ? '<div class="banner warn">المراجعة موقوفة: حركات ضريبية غير مصنّفة أو فرق بين ضريبة فواتير الشراء والأستاذ — عالجها قبل أي استخدام للأرقام.</div>'
         : '<div class="banner ok">لا حركات غير مصنّفة ولا فرق في مطابقة الفواتير — الأرقام جاهزة للمراجعة البشرية.</div>';
 
+    const sheet = vatWorksheet(report);
+    const deadline = vatFilingDeadline(report.filing_period_validation?.frequency ?? '', report.to);
+    const worksheetBlock = `<div class="sec"><h2>ورقة عمل الإقرار — خانات النموذج</h2>
+      <p class="muted">«—» تعني أن النظام لا يسجّل هذه الخانة، وليست صفرًا. الموعد الإرشادي للتقديم: ${
+          deadline ? escapeHtml(deadline) : 'غير محدد'
+      }.</p>
+      ${worksheetTable('المبيعات — ضريبة المخرجات', sheet.sales, sheet.hasSalesDetail, currency)}
+      ${worksheetTable('المشتريات — ضريبة المدخلات', sheet.purchases, sheet.hasPurchaseDetail, currency)}
+      <p class="muted">صافي المستندات قبل التسويات: ${
+          sheet.hasSalesDetail && sheet.hasPurchaseDetail ? amount(sheet.net, currency) : '—'
+      } — مستندات تحتاج تصنيفًا يدويًا: ${escapeHtml(sheet.reviewDocuments)}</p>
+      </div>`;
+
     return `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8">
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>مسودة مراجعة ضريبة القيمة المضافة ${escapeHtml(report.from)} — ${escapeHtml(report.to)}</title>
@@ -105,6 +155,7 @@ body{font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif;color:#172b3b;back
 .banner.warn{background:#fce8e6;border:1px solid #b3261e;color:#8e1f16;font-weight:700}
 .banner.ok{background:#e8f6ee;border:1px solid #16834a;color:#12633a;font-weight:700}
 .sec{margin-top:14px}.sec h2{font-size:14px;color:#102a43;margin:0 0 7px;border-right:4px solid #0f766e;padding-right:8px}
+.sec h3{font-size:12.5px;color:#0f766e;margin:8px 0 2px}
 .figs{display:grid;grid-template-columns:repeat(3,1fr);gap:8px}
 .fig{background:#f3f6fa;border:1px solid #dce5ec;border-radius:9px;padding:8px 10px}
 .fig-l{font-size:11.5px;color:#596e80}.fig-v{font-size:16px;font-weight:800;margin:2px 0}
@@ -130,6 +181,7 @@ td.c{text-align:center}td.n{direction:ltr;unicode-bidi:embed;text-align:right}
 </header>
 <div class="title">مراجعة ضريبة القيمة المضافة — ${escapeHtml(report.from)} إلى ${escapeHtml(report.to)}</div>
 ${reviewBanner}
+${worksheetBlock}
 <div class="sec"><h2>أرقام الفترة المرحّلة</h2><div class="figs">
 ${figure('ضريبة المخرجات', report.output_vat, currency, 'ائتمانات 2100')}
 ${figure('عكس مبيعات ملغاة', report.output_vat_reversals, currency, 'مدين قيود الإلغاء')}
@@ -180,6 +232,16 @@ export function vatReviewCsv(report: VatReturn, settlement?: VatSettlement | nul
         ['فرق الضريبة عن الأستاذ', String(vatReviewFlags(report).invoiceDifference)],
         ['حركات غير مصنّفة', String(vatReviewFlags(report).unclassified)],
     ];
+    const sheet = vatWorksheet(report);
+    for (const row of [...sheet.sales, ...sheet.purchases]) {
+        rows.push([
+            `خانة ${row.box === null ? '—' : String(row.box)} — ${row.label}`,
+            row.base === null
+                ? `غير مسجّلة — ${WORKSHEET_STATUS_TEXT[row.status]}`
+                : `${row.base} / ضريبة ${row.vat ?? 0} — مستندات ${row.documents}`,
+        ]);
+    }
+    rows.push(['صافي المستندات قبل التسويات', sheet.hasSalesDetail && sheet.hasPurchaseDetail ? String(sheet.net) : 'غير متاح']);
     if (settlement) {
         rows.push(
             ['شهر التصفية', settlement.month],

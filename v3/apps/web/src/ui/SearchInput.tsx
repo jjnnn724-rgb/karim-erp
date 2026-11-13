@@ -22,6 +22,10 @@ export interface SearchInputProps {
     'data-testid'?: string;
     /** لتركيز الحقل من اختصار لوحة مفاتيح دون البحث في DOM. */
     inputRef?: Ref<HTMLInputElement>;
+    /** `none` يمنع لوحة المفاتيح اللينة على شاشات اللمس — قارئ الباركود يكتب مباشرة. */
+    inputMode?: 'none' | 'text' | 'search' | 'numeric' | 'decimal';
+    autoComplete?: string;
+    enterKeyHint?: 'enter' | 'search' | 'done' | 'go';
 }
 
 export function SearchInput({
@@ -36,6 +40,9 @@ export function SearchInput({
     onKeyDown,
     'data-testid': testId,
     inputRef,
+    inputMode,
+    autoComplete = 'off',
+    enterKeyHint,
 }: SearchInputProps) {
     const autoId = useId();
     const inputId = id ?? autoId;
@@ -52,6 +59,9 @@ export function SearchInput({
                     id={inputId}
                     data-testid={testId}
                     type="search"
+                    inputMode={inputMode}
+                    autoComplete={autoComplete}
+                    enterKeyHint={enterKeyHint}
                     value={value}
                     disabled={disabled}
                     placeholder={placeholder}
@@ -62,7 +72,7 @@ export function SearchInput({
                         }
                         onChange(event.target.value);
                     }}
-                    className={cn(controlClassName, controlSizeClassName.md, 'ps-9 pe-9')}
+                    className={cn(controlClassName, controlSizeClassName.md, 'pos-search__input ps-10 pe-10')}
                 />
                 {value ? (
                     <button

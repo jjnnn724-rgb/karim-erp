@@ -84,6 +84,8 @@ export const ROLES = {
         'wh-vs-pos',
         'cashier-monitor',
         'pos-entry',
+        'command-center',
+        'bank-rec',
     ],
     manager: [
         'dashboard',
@@ -132,6 +134,8 @@ export const ROLES = {
         'warehouse-dashboard',
         'accountant-dashboard',
         'pos-entry',
+        'command-center',
+        'bank-rec',
     ],
     warehouse: [
         'dashboard',
@@ -220,6 +224,8 @@ export const ROLES = {
         'roster',
         'accountant-dashboard',
         'pos-entry',
+        'command-center',
+        'bank-rec',
     ],
     employee: ['dashboard', 'attendance', 'leaves', 'employee-portal'],
     owner: ['cashier-monitor', 'dashboard', 'zkteco', 'sales-inquiry'],

@@ -1,0 +1,1461 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   Karim POS — Luxury Midnight & Emerald
+   ───────────────────────────────────────────────────────────────────────────
+   طبقة تنسيق تُحمَّل بعد `PosEntry.premium.css` فتُغلبها بنفس التخصيص.
+   • تعيد تعريف رموز ERP الدلالية داخل `.pos-entry` وحده، فتبقى الشاشة ليلية
+     حتى لو كان ثيم التطبيق فاتحًا — بلا لمس أي شاشة أخرى.
+   • تخطيط ثلاثي المناطق: شريط قيادة 56px، كتالوج، سلة 380–440px.
+   • التمرير الداخلي وحده (شبكة الأصناف/بنود السلة) بشرائط 6px.
+   • لا تغيّر أي بنية يقرأها الخادم أو الاختبارات — تنسيق فقط.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.pos-entry {
+    /* لوحة الألوان */
+    --pos-bg: #0b1120;
+    --pos-surface: #111827;
+    --pos-sunken: #0f172a;
+    --pos-line: rgb(148 163 184 / 14%);
+    --pos-ink: #e2e8f0;
+    --pos-muted: #94a3b8;
+    --pos-emerald: #10b981;
+    --pos-emerald-soft: rgb(16 185 129 / 14%);
+    --pos-amber: #f59e0b;
+    --pos-crimson: #ef4444;
+    --pos-radius: 14px;
+    --pos-gap: 0.7rem;
+    --pos-scroll-thumb: #334155;
+
+    /* الرموز الدلالية داخل الشاشة — الحل الوحيد الذي يجعل المكوّنات المشتركة
+       (Button/Card/Input) ليلية دون تبديل ثيم التطبيق كله. */
+    --erp-canvas: #0b1120;
+    --erp-surface: #111827;
+    --erp-surface-raised: #1e293b;
+    --erp-surface-sunken: #0f172a;
+    --erp-surface-hover: #1e293b;
+    --erp-ink: #e2e8f0;
+    --erp-ink-secondary: #cbd5e1;
+    --erp-muted: #94a3b8;
+    --erp-faint: #64748b;
+    --erp-hairline: rgb(148 163 184 / 14%);
+    --erp-hairline-strong: rgb(148 163 184 / 28%);
+    --erp-field-border: #334155;
+    --erp-primary: #10b981;
+    --erp-primary-hover: #34d399;
+    --erp-primary-active: #059669;
+    --erp-on-primary: #04211a;
+    --erp-brand-text: #34d399;
+    --erp-brass: #f59e0b;
+    --erp-brass-text: #fbbf24;
+    --erp-copper: #f59e0b;
+    --erp-success: #10b981;
+    --erp-success-text: #34d399;
+    --erp-warning: #f59e0b;
+    --erp-warning-text: #fbbf24;
+    --erp-danger: #ef4444;
+    --erp-danger-text: #fca5a5;
+    --erp-info: #38bdf8;
+    --erp-info-text: #7dd3fc;
+    --erp-neutral: #64748b;
+    --erp-neutral-text: #cbd5e1;
+    --erp-success-soft: rgb(16 185 129 / 15%);
+    --erp-warning-soft: rgb(245 158 11 / 15%);
+    --erp-danger-soft: rgb(239 68 68 / 15%);
+    --erp-info-soft: rgb(56 189 248 / 15%);
+    --erp-neutral-soft: rgb(100 116 139 / 18%);
+    --erp-shadow-card: 0 1px 0 rgb(255 255 255 / 3%) inset;
+    --erp-shadow-pop: 0 10px 24px -12px rgb(0 0 0 / 70%);
+    --erp-focus-ring: 2px solid rgb(16 185 129 / 55%);
+
+    color-scheme: dark;
+    background: var(--pos-bg);
+    color: var(--pos-ink);
+    font-family: "Cairo", "Tajawal", "Segoe UI", system-ui, sans-serif;
+    -webkit-font-smoothing: antialiased;
+}
+
+.pos-entry :where(strong, dd, .erp-numeric) {
+    font-variant-numeric: tabular-nums;
+}
+
+/* ── شرائط تمرير رفيعة داخل الشاشة وحدها ─────────────────────────────────── */
+
+.pos-entry :where(.custom-scroll, .pos-catalog__body, .pos-cart__body, .pos-categories, .pos-overlay__body, .pos-favorites__list) {
+    scrollbar-width: thin;
+    scrollbar-color: var(--pos-scroll-thumb) transparent;
+}
+
+.pos-entry :where(.custom-scroll, .pos-catalog__body, .pos-cart__body, .pos-categories, .pos-overlay__body, .pos-favorites__list)::-webkit-scrollbar {
+    width: 6px;
+    height: 6px;
+}
+
+.pos-entry :where(.custom-scroll, .pos-catalog__body, .pos-cart__body, .pos-categories, .pos-overlay__body, .pos-favorites__list)::-webkit-scrollbar-track {
+    background: transparent;
+}
+
+.pos-entry :where(.custom-scroll, .pos-catalog__body, .pos-cart__body, .pos-categories, .pos-overlay__body, .pos-favorites__list)::-webkit-scrollbar-thumb {
+    border-radius: 4px;
+    background: var(--pos-scroll-thumb);
+}
+
+.pos-entry :where(.custom-scroll, .pos-catalog__body, .pos-cart__body, .pos-categories, .pos-overlay__body, .pos-favorites__list)::-webkit-scrollbar-thumb:hover {
+    background: #475569;
+}
+
+/* ═══ Zone A — شريط القيادة ═══════════════════════════════════════════════ */
+
+.pos-cmdbar {
+    position: relative;
+    z-index: 30;
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0.75rem;
+    block-size: 3.5rem;
+    padding-inline: 0.75rem;
+    border: 1px solid var(--pos-line);
+    border-radius: var(--pos-radius);
+    background: linear-gradient(180deg, #131c2e, #0f172a);
+    box-shadow:
+        0 1px 0 rgb(255 255 255 / 4%) inset,
+        0 8px 24px -18px rgb(0 0 0 / 80%);
+}
+
+.pos-cmdbar__identity {
+    display: flex;
+    flex: 0 1 auto;
+    align-items: center;
+    gap: 0.6rem;
+    min-inline-size: 0;
+    max-inline-size: 30%;
+}
+
+.pos-cmdbar__status {
+    flex-shrink: 0;
+    inline-size: 0.5rem;
+    block-size: 0.5rem;
+    border-radius: 999px;
+    background: var(--pos-emerald);
+    box-shadow: 0 0 0 4px rgb(16 185 129 / 16%);
+}
+
+.pos-cmdbar__status.is-warn {
+    background: var(--pos-crimson);
+    box-shadow: 0 0 0 4px rgb(239 68 68 / 16%);
+}
+
+.pos-cmdbar__copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-inline-size: 0;
+}
+
+.pos-cmdbar__copy strong {
+    overflow: hidden;
+    color: #f8fafc;
+    font-size: 0.92rem;
+    font-weight: 700;
+    line-height: 1.25;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.pos-cmdbar__copy small {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    overflow: hidden;
+    font-size: 0.68rem;
+    line-height: 1.2;
+    white-space: nowrap;
+}
+
+.pos-cmdbar__shift {
+    color: #cbd5e1;
+    font-variant-numeric: tabular-nums;
+}
+
+.pos-cmdbar__tag {
+    padding: 0.05rem 0.4rem;
+    border: 1px solid rgb(16 185 129 / 35%);
+    border-radius: 999px;
+    background: rgb(16 185 129 / 12%);
+    color: #6ee7b7;
+    font-size: 0.62rem;
+    font-weight: 700;
+}
+
+.pos-cmdbar__tag--warn {
+    border-color: rgb(239 68 68 / 40%);
+    background: rgb(239 68 68 / 12%);
+    color: #fca5a5;
+}
+
+.pos-cmdbar__center {
+    display: flex;
+    flex: 1 1 auto;
+    align-items: center;
+    justify-content: center;
+    min-inline-size: 0;
+    overflow: hidden;
+}
+
+.pos-cmdbar__end {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    gap: 0.35rem;
+}
+
+/* تبويبات الطلبات — مدمجة في الشريط */
+.pos-cmdbar .pos-tabs {
+    display: flex;
+    flex-wrap: nowrap;
+    align-items: center;
+    gap: 0.3rem;
+    max-inline-size: 100%;
+    padding: 0;
+    overflow-x: auto;
+    border: 0;
+    background: transparent;
+    scrollbar-width: none;
+}
+
+.pos-cmdbar .pos-tabs::-webkit-scrollbar {
+    display: none;
+}
+
+.pos-cmdbar .pos-tab {
+    flex-shrink: 0;
+    border-color: rgb(148 163 184 / 16%);
+    border-radius: 9px;
+    background: #0b1120;
+}
+
+.pos-cmdbar .pos-tab.is-active {
+    border-color: var(--pos-emerald);
+    background: rgb(16 185 129 / 14%);
+    box-shadow: none;
+}
+
+.pos-cmdbar .pos-tab > button[role="tab"] {
+    min-block-size: 1.9rem;
+    padding: 0.2rem 0.6rem;
+    color: #94a3b8;
+    font-size: 0.76rem;
+    font-weight: 600;
+}
+
+.pos-cmdbar .pos-tab.is-active > button[role="tab"] {
+    background: transparent;
+    color: #a7f3d0;
+}
+
+.pos-cmdbar .pos-tab__count {
+    min-inline-size: 1.2rem;
+    padding: 0 0.3rem;
+    border-radius: 999px;
+    background: rgb(148 163 184 / 16%);
+    color: #cbd5e1;
+    font-size: 0.62rem;
+}
+
+.pos-cmdbar .pos-tab.is-active .pos-tab__count {
+    background: var(--pos-emerald);
+    color: #04211a;
+    font-weight: 800;
+}
+
+.pos-cmdbar .pos-tab__close {
+    inline-size: 1.4rem;
+    color: #64748b;
+    border-inline-start-color: rgb(148 163 184 / 12%);
+    font-size: 0.85rem;
+}
+
+.pos-cmdbar .pos-tab__close:hover {
+    background: rgb(239 68 68 / 14%);
+    color: #fca5a5;
+}
+
+.pos-tab-new {
+    flex-shrink: 0;
+    block-size: 1.9rem;
+    padding-inline: 0.65rem;
+    border: 1px dashed rgb(16 185 129 / 40%);
+    border-radius: 9px;
+    background: transparent;
+    color: #34d399;
+    font-size: 0.74rem;
+    font-weight: 700;
+    white-space: nowrap;
+    cursor: pointer;
+    transition: background-color 120ms ease;
+}
+
+.pos-tab-new:hover:not(:disabled) {
+    background: rgb(16 185 129 / 12%);
+}
+
+.pos-tab-new:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
+.pos-tabs__held {
+    display: inline-flex;
+    flex-shrink: 0;
+    align-items: center;
+    gap: 0.25rem;
+    padding: 0.15rem 0.5rem;
+    border: 1px solid rgb(245 158 11 / 32%);
+    border-radius: 999px;
+    background: rgb(245 158 11 / 10%);
+    color: #fbbf24;
+    font-size: 0.66rem;
+    font-weight: 600;
+}
+
+.pos-tabs__held strong {
+    font-size: 0.72rem;
+    font-weight: 800;
+}
+
+.pos-cmdbar .pos-tabs__hint {
+    flex-shrink: 0;
+    margin-inline-start: 0.35rem;
+    color: #475569;
+    font-size: 0.62rem;
+    white-space: nowrap;
+}
+
+/* أزرار أيقونية */
+.pos-icon-btn {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    inline-size: 2.3rem;
+    block-size: 2.3rem;
+    padding: 0;
+    border: 1px solid var(--pos-line);
+    border-radius: 10px;
+    background: #0b1120;
+    color: #cbd5e1;
+    cursor: pointer;
+    transition:
+        background-color 120ms ease,
+        border-color 120ms ease,
+        color 120ms ease,
+        transform 75ms ease;
+}
+
+.pos-icon-btn:hover:not(:disabled) {
+    border-color: #334155;
+    background: #1e293b;
+    color: #f8fafc;
+}
+
+.pos-icon-btn:active:not(:disabled) {
+    transform: scale(0.96);
+}
+
+.pos-icon-btn:disabled {
+    opacity: 0.4;
+    cursor: not-allowed;
+}
+
+.pos-icon-btn--sm {
+    inline-size: 2rem;
+    block-size: 2rem;
+    border-radius: 9px;
+}
+
+.pos-icon-btn--danger:hover:not(:disabled) {
+    border-color: rgb(239 68 68 / 45%);
+    background: rgb(239 68 68 / 12%);
+    color: #fca5a5;
+}
+
+/* قائمة إدارة الوردية */
+.pos-menu {
+    position: relative;
+}
+
+.pos-menu__trigger {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.35rem;
+    block-size: 2.3rem;
+    padding-inline: 0.75rem;
+    border: 1px solid var(--pos-line);
+    border-radius: 10px;
+    background: #0b1120;
+    color: #cbd5e1;
+    font-size: 0.76rem;
+    font-weight: 600;
+    white-space: nowrap;
+    cursor: pointer;
+    user-select: none;
+    list-style: none;
+    transition:
+        background-color 120ms ease,
+        border-color 120ms ease;
+}
+
+.pos-menu__trigger::-webkit-details-marker {
+    display: none;
+}
+
+.pos-menu__trigger:hover {
+    border-color: #334155;
+    background: #1e293b;
+    color: #f8fafc;
+}
+
+.pos-menu[open] .pos-menu__trigger {
+    border-color: rgb(16 185 129 / 55%);
+    color: #a7f3d0;
+}
+
+.pos-menu__panel {
+    position: absolute;
+    inset-block-start: calc(100% + 0.4rem);
+    inset-inline-end: 0;
+    z-index: 60;
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-inline-size: 14rem;
+    padding: 0.35rem;
+    border: 1px solid #1e293b;
+    border-radius: 12px;
+    background: #0b1120;
+    box-shadow: 0 24px 48px -16px rgb(0 0 0 / 75%);
+}
+
+.pos-menu__panel .erp-button {
+    justify-content: flex-start;
+    block-size: 2.15rem;
+    padding-inline: 0.6rem;
+    border-color: transparent;
+    border-radius: 8px;
+    background: transparent;
+    color: #cbd5e1;
+    font-size: 0.8rem;
+    font-weight: 600;
+    box-shadow: none;
+}
+
+.pos-menu__panel .erp-button:hover:not(:disabled) {
+    background: #1e293b;
+    color: #f8fafc;
+    box-shadow: none;
+}
+
+.pos-menu__panel [data-variant="destructive"] {
+    border-color: transparent;
+    background: rgb(239 68 68 / 10%);
+    color: #fca5a5;
+}
+
+.pos-menu__panel [data-variant="destructive"]:hover:not(:disabled) {
+    background: rgb(239 68 68 / 18%);
+    color: #fecaca;
+}
+
+/* تنبيه عدم التوازن — شريط رفيع لا يزاحم الشاشة */
+.pos-entry .pos-alert {
+    flex: 0 0 auto;
+    margin: 0;
+    padding: 0.4rem 0.75rem;
+    border: 1px solid rgb(239 68 68 / 35%);
+    border-radius: 10px;
+    background: rgb(239 68 68 / 10%);
+    color: #fca5a5;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+
+/* ═══ Zone B / C — هيكل الشاشة بلا تمرير للصفحة ══════════════════════════ */
+
+.pos-entry.pos-entry--workspace {
+    gap: 0.6rem;
+    padding: 0.6rem;
+    background: var(--pos-bg);
+}
+
+@media (min-width: 1101px) {
+    .pos-entry.pos-entry--workspace {
+        block-size: 100dvh;
+        max-block-size: 100dvh;
+        min-block-size: 0;
+        overflow: hidden;
+    }
+
+    .pos-entry--workspace .pos-entry__layout {
+        display: grid;
+        flex: 1 1 auto;
+        grid-template-columns: minmax(0, 1fr) minmax(380px, 440px);
+        gap: 0.7rem;
+        align-items: stretch;
+        min-block-size: 0;
+        overflow: hidden;
+    }
+
+    .pos-entry--workspace .pos-entry__side {
+        position: static;
+        display: flex;
+        flex-direction: column;
+        gap: 0.6rem;
+        min-block-size: 0;
+        min-inline-size: 0;
+        height: 100%;
+        overflow: hidden;
+    }
+
+    .pos-entry--workspace .pos-catalog {
+        display: flex;
+        flex-direction: column;
+        block-size: 100%;
+        min-block-size: 0;
+        min-inline-size: 0;
+        overflow: hidden;
+    }
+
+    .pos-entry--workspace .pos-cart {
+        display: flex;
+        flex: 1 1 auto;
+        flex-direction: column;
+        min-block-size: 0;
+        min-inline-size: 0;
+        overflow: hidden;
+    }
+
+    .pos-entry--workspace .pos-catalog__toolbar {
+        flex: 0 0 auto;
+    }
+
+    .pos-entry--workspace .pos-catalog__body {
+        flex: 1 1 auto;
+        min-block-size: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .pos-entry--workspace .pos-cart {
+        display: flex;
+        flex-direction: column;
+    }
+
+    .pos-entry--workspace .pos-cart__body {
+        flex: 1 1 auto;
+        min-block-size: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+    }
+
+    .pos-entry--workspace .pos-cart__foot {
+        position: static;
+        flex: 0 0 auto;
+        inset: auto;
+        border: 0;
+        border-block-start: 1px solid var(--pos-line);
+        border-radius: 0;
+        box-shadow: none;
+    }
+
+    .pos-entry--workspace .pos-receipt {
+        max-block-size: 42%;
+        overflow-y: auto;
+        flex-shrink: 0;
+    }
+}
+
+/* ═══ Zone B — الكتالوج ═══════════════════════════════════════════════════ */
+
+.pos-entry .pos-catalog {
+    border: 1px solid var(--pos-line);
+    border-radius: var(--pos-radius);
+    background: var(--pos-sunken);
+    box-shadow: none;
+}
+
+.pos-entry .pos-catalog__toolbar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.6rem 0.7rem 0.55rem;
+    border-block-end: 1px solid var(--pos-line);
+    background: var(--pos-sunken);
+}
+
+.pos-entry .pos-catalog__head {
+    align-items: baseline;
+    gap: 0.5rem;
+}
+
+.pos-entry .pos-catalog__head .erp-card__title {
+    color: #e2e8f0;
+    font-size: 0.86rem;
+    font-weight: 700;
+}
+
+.pos-entry .pos-catalog__head p {
+    color: #64748b;
+    font-size: 0.66rem;
+}
+
+/* البحث */
+.pos-entry .pos-search {
+    gap: 0;
+}
+
+.pos-entry .pos-search__input {
+    block-size: 2.75rem;
+    border: 1px solid #334155;
+    border-radius: 10px;
+    background: #0b1120;
+    color: #f1f5f9;
+    font-family: inherit;
+    font-size: 0.92rem;
+    box-shadow: none;
+}
+
+.pos-entry .pos-search__input::placeholder {
+    color: #64748b;
+}
+
+.pos-entry .pos-search__input:hover {
+    border-color: #475569;
+}
+
+.pos-entry .pos-search__input:focus-visible {
+    border-color: var(--pos-emerald);
+    outline: 2px solid rgb(16 185 129 / 30%);
+    outline-offset: 0;
+    box-shadow: 0 0 0 3px rgb(16 185 129 / 12%);
+}
+
+.pos-entry .pos-search input[type="search"]::-webkit-search-cancel-button {
+    display: none;
+}
+
+.pos-entry .pos-search :where(svg) {
+    color: #64748b;
+}
+
+.pos-entry .pos-search :where(button) {
+    color: #94a3b8;
+}
+
+.pos-entry .pos-search :where(button):hover {
+    background: #1e293b;
+    color: #f1f5f9;
+}
+
+/* التصنيفات */
+.pos-entry .pos-categories {
+    display: flex;
+    flex-wrap: nowrap;
+    gap: 0.3rem;
+    padding-block-end: 0.1rem;
+    overflow-x: auto;
+    overscroll-behavior-x: contain;
+}
+
+.pos-entry .pos-category {
+    flex-shrink: 0;
+    padding: 0.32rem 0.65rem;
+    border: 1px solid rgb(148 163 184 / 16%);
+    border-radius: 999px;
+    background: #111827;
+    color: #94a3b8;
+    font-size: 0.72rem;
+    font-weight: 600;
+    transition:
+        background-color 120ms ease,
+        border-color 120ms ease,
+        color 120ms ease,
+        transform 75ms ease;
+}
+
+.pos-entry .pos-category:hover {
+    border-color: #334155;
+    background: #1e293b;
+    color: #e2e8f0;
+}
+
+.pos-entry .pos-category:active {
+    transform: scale(0.98);
+}
+
+.pos-entry .pos-category.is-active {
+    border-color: var(--pos-emerald);
+    background: var(--pos-emerald);
+    color: #04211a;
+    font-weight: 800;
+    box-shadow: 0 6px 16px -8px rgb(16 185 129 / 80%);
+}
+
+.pos-entry .pos-category__count {
+    background: rgb(148 163 184 / 16%);
+    color: inherit;
+    font-size: 0.6rem;
+}
+
+.pos-entry .pos-category.is-active .pos-category__count {
+    background: rgb(4 33 26 / 18%);
+}
+
+/* الشبكة */
+.pos-entry .pos-grid {
+    display: grid;
+    grid-template-columns: repeat(3, minmax(0, 1fr));
+    gap: 0.6rem;
+}
+
+@media (min-width: 1180px) {
+    .pos-entry .pos-grid {
+        grid-template-columns: repeat(4, minmax(0, 1fr));
+    }
+}
+
+@media (min-width: 1460px) {
+    .pos-entry .pos-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+    }
+}
+
+.pos-entry .pos-grid > * {
+    min-inline-size: 0;
+}
+
+/* بطاقة الصنف */
+.pos-entry .pos-product {
+    border: 1px solid rgb(148 163 184 / 10%);
+    border-radius: 12px;
+    background: #111827;
+    box-shadow: none;
+    transition:
+        border-color 120ms ease,
+        background-color 120ms ease;
+}
+
+.pos-entry .pos-product:hover {
+    border-color: rgb(16 185 129 / 45%);
+    background: #141d30;
+    box-shadow: none;
+}
+
+.pos-entry .pos-product__main {
+    display: flex;
+    flex-direction: column;
+    align-items: stretch;
+    inline-size: 100%;
+    block-size: 100%;
+    text-align: start;
+}
+
+.pos-entry .pos-product__media {
+    aspect-ratio: 1 / 1;
+    border-radius: 11px 11px 0 0;
+    background: linear-gradient(160deg, #1e293b, #0b1120);
+}
+
+.pos-entry .pos-product__media::after {
+    height: 32%;
+    background: linear-gradient(to top, rgb(2 6 23 / 55%), transparent);
+}
+
+.pos-entry .pos-product__media img {
+    object-fit: cover;
+}
+
+.pos-entry .pos-product:hover .pos-product__media img {
+    transform: scale(1.03);
+}
+
+.pos-entry .pos-product__glyph {
+    color: rgb(226 232 240 / 20%);
+    font-size: 1.7rem;
+}
+
+.pos-entry .pos-product__info {
+    gap: 0.2rem;
+    padding: 0.45rem 0.55rem 0.55rem;
+}
+
+.pos-entry .pos-product__info strong {
+    min-block-size: 2.6em;
+    color: #e2e8f0;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.3;
+    display: -webkit-box;
+    overflow: hidden;
+    -webkit-box-orient: vertical;
+    -webkit-line-clamp: 2;
+}
+
+.pos-entry .pos-product__price {
+    color: var(--pos-amber);
+    font-size: 0.9rem;
+    font-weight: 800;
+}
+
+.pos-entry .pos-product__unit {
+    color: #64748b;
+    font-size: 0.6rem;
+}
+
+.pos-entry .pos-product__category-badge {
+    background: rgb(2 6 23 / 65%);
+    border-color: rgb(148 163 184 / 20%);
+    color: #cbd5e1;
+    font-size: 0.58rem;
+}
+
+.pos-entry .pos-product__stock {
+    background: rgb(245 158 11 / 92%);
+    color: #1b1205;
+    font-size: 0.58rem;
+    font-weight: 800;
+}
+
+.pos-entry .pos-product__add {
+    inline-size: 1.55rem;
+    block-size: 1.55rem;
+    background: var(--pos-emerald);
+    color: #04211a;
+    font-size: 1rem;
+    box-shadow: 0 6px 14px -6px rgb(16 185 129 / 90%);
+    opacity: 0.85;
+    transition:
+        opacity 120ms ease,
+        transform 120ms ease;
+}
+
+.pos-entry .pos-product:hover .pos-product__add {
+    opacity: 1;
+    transform: scale(1.06);
+}
+
+.pos-entry .pos-product__pin {
+    inline-size: 1.65rem;
+    block-size: 1.65rem;
+    border-color: rgb(148 163 184 / 20%);
+    background: rgb(2 6 23 / 60%);
+    color: #cbd5e1;
+    font-size: 0.8rem;
+}
+
+.pos-entry .pos-product__pin.is-on {
+    border-color: var(--pos-amber);
+    background: rgb(2 6 23 / 85%);
+    color: var(--pos-amber);
+}
+
+.pos-entry .pos-product__image-action {
+    background: rgb(2 6 23 / 70%);
+    border-color: rgb(148 163 184 / 20%);
+    color: #e2e8f0;
+    font-size: 0.58rem;
+}
+
+/* بطاقات أفراد البوفيه */
+.pos-entry .pos-person {
+    border: 1px solid rgb(148 163 184 / 10%);
+    border-radius: 12px;
+    background: #111827;
+}
+
+.pos-entry .pos-person:hover {
+    border-color: rgb(16 185 129 / 45%);
+    background: #141d30;
+}
+
+/* المفضلة والأكثر مبيعًا */
+.pos-entry .pos-favorites {
+    border: 1px dashed rgb(148 163 184 / 20%);
+    border-radius: 11px;
+    background: #0b1120;
+}
+
+.pos-entry .pos-favorites__label {
+    color: #94a3b8;
+    font-size: 0.66rem;
+}
+
+.pos-entry .pos-favorite {
+    border: 1px solid rgb(148 163 184 / 12%);
+    background: #111827;
+    color: #e2e8f0;
+}
+
+.pos-entry .pos-favorite:hover {
+    border-color: rgb(16 185 129 / 40%);
+    background: #141d30;
+}
+
+.pos-entry .pos-favorite__copy small {
+    color: var(--pos-amber);
+}
+
+/* الطلبات المعلقة */
+.pos-entry .pos-held {
+    border: 1px solid var(--pos-line);
+    border-radius: 11px;
+    background: #0b1120;
+}
+
+.pos-entry .pos-held__title {
+    color: #cbd5e1;
+    font-size: 0.78rem;
+}
+
+.pos-entry .pos-held__row {
+    border: 1px solid rgb(148 163 184 / 12%);
+    border-radius: 9px;
+    background: #111827;
+}
+
+.pos-entry .pos-held__row strong {
+    color: #e2e8f0;
+    font-size: 0.76rem;
+}
+
+.pos-entry .pos-held__row small {
+    color: #64748b;
+    font-size: 0.66rem;
+}
+
+/* عداد البوفيه الحي */
+.pos-entry .pos-live {
+    border-color: var(--pos-line);
+    border-radius: 10px;
+    background: #0b1120;
+    color: #94a3b8;
+    font-size: 0.72rem;
+}
+
+.pos-entry .pos-live__pill {
+    border-color: rgb(148 163 184 / 16%);
+    background: #111827;
+    color: #e2e8f0;
+}
+
+/* ═══ Zone C — السلة ══════════════════════════════════════════════════════ */
+
+.pos-entry .pos-cart {
+    border: 1px solid var(--pos-line);
+    border-radius: var(--pos-radius);
+    background: var(--pos-sunken);
+    box-shadow: none;
+}
+
+.pos-entry .pos-cart__head {
+    display: flex;
+    flex: 0 0 auto;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.4rem;
+    padding: 0.5rem 0.6rem;
+    border-block-end: 1px solid var(--pos-line);
+    background: #111827;
+}
+
+.pos-entry .pos-cart__head-main {
+    display: flex;
+    flex-direction: column;
+    gap: 0.05rem;
+    min-inline-size: 0;
+}
+
+.pos-entry .pos-cart__head .erp-card__title {
+    gap: 0.35rem;
+    color: #f1f5f9;
+    font-size: 0.9rem;
+    font-weight: 800;
+}
+
+.pos-entry .pos-cart__order {
+    color: #64748b;
+    font-size: 0.64rem;
+    font-variant-numeric: tabular-nums;
+}
+
+.pos-entry .pos-cart__head-tools {
+    display: flex;
+    align-items: center;
+    gap: 0.25rem;
+}
+
+.pos-entry .pos-cart__customer {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    block-size: 2rem;
+    padding-inline: 0.5rem;
+    border: 1px solid rgb(148 163 184 / 16%);
+    border-radius: 999px;
+    background: #0b1120;
+    color: #94a3b8;
+    font-size: 0.66rem;
+    font-weight: 600;
+    white-space: nowrap;
+}
+
+.pos-entry .pos-cart__body {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    padding: 0.55rem 0.6rem;
+}
+
+.pos-entry .pos-cart__lines {
+    gap: 0.35rem;
+}
+
+.pos-entry .pos-cart__line {
+    display: flex;
+    align-items: center;
+    gap: 0.4rem;
+    padding: 0.35rem 0.4rem;
+    border: 1px solid rgb(148 163 184 / 10%);
+    border-radius: 10px;
+    background: #111827;
+    transition: border-color 120ms ease;
+}
+
+.pos-entry .pos-cart__line:hover {
+    border-color: rgb(148 163 184 / 24%);
+}
+
+.pos-entry .pos-cart__thumb {
+    inline-size: 2rem;
+    block-size: 2rem;
+    border-radius: 8px;
+    border-color: rgb(148 163 184 / 16%);
+}
+
+.pos-entry .pos-cart__copy {
+    flex: 1 1 auto;
+    min-inline-size: 0;
+}
+
+.pos-entry .pos-cart__copy strong {
+    color: #e2e8f0;
+    font-size: 0.78rem;
+    font-weight: 600;
+    line-height: 1.3;
+}
+
+.pos-entry .pos-cart__copy small {
+    color: #64748b;
+    font-size: 0.64rem;
+}
+
+.pos-entry .pos-cart__line-total {
+    min-inline-size: 3.4rem;
+    color: var(--pos-amber);
+    font-size: 0.8rem;
+    font-weight: 800;
+    text-align: end;
+}
+
+.pos-entry .pos-cart__line-remove {
+    display: grid;
+    flex-shrink: 0;
+    place-items: center;
+    inline-size: 1.6rem;
+    block-size: 1.6rem;
+    padding: 0;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #475569;
+    cursor: pointer;
+    opacity: 0;
+    transition:
+        opacity 120ms ease,
+        background-color 120ms ease,
+        color 120ms ease;
+}
+
+.pos-entry .pos-cart__line:hover .pos-cart__line-remove,
+.pos-entry .pos-cart__line-remove:focus-visible {
+    opacity: 1;
+}
+
+.pos-entry .pos-cart__line-remove:hover:not(:disabled) {
+    background: rgb(239 68 68 / 12%);
+    color: var(--pos-crimson);
+}
+
+@media (hover: none) {
+    .pos-entry .pos-cart__line-remove {
+        opacity: 1;
+    }
+}
+
+/* عدّاد الكمية */
+.pos-entry .pos-qty {
+    gap: 0.1rem;
+    padding: 0.1rem;
+    border: 1px solid rgb(148 163 184 / 14%);
+    border-radius: 8px;
+    background: #0b1120;
+}
+
+.pos-entry .pos-qty button {
+    inline-size: 1.55rem;
+    block-size: 1.55rem;
+    border: 0;
+    border-radius: 6px;
+    background: transparent;
+    color: #cbd5e1;
+    font-size: 0.9rem;
+}
+
+.pos-entry .pos-qty button:hover:not(:disabled) {
+    border-color: transparent;
+    background: #1e293b;
+    color: #fff;
+}
+
+.pos-entry .pos-qty button:active:not(:disabled) {
+    transform: scale(0.94);
+}
+
+.pos-entry .pos-qty span {
+    min-inline-size: 1.35rem;
+    color: #f1f5f9;
+    font-size: 0.78rem;
+    font-weight: 800;
+}
+
+/* الحالة الفارغة */
+.pos-entry .pos-cart__empty {
+    border: 1px dashed rgb(148 163 184 / 18%);
+    border-radius: 12px;
+    background: rgb(11 17 32 / 60%);
+}
+
+.pos-entry .pos-cart__empty-icon {
+    border-color: rgb(148 163 184 / 16%);
+    background: #111827;
+    color: #64748b;
+}
+
+.pos-entry .pos-cart__empty p {
+    color: #64748b;
+    font-size: 0.72rem;
+}
+
+/* لوحة الدفع */
+.pos-entry .pos-payments {
+    border: 1px solid rgb(148 163 184 / 14%);
+    border-radius: 10px;
+    background: #111827;
+}
+
+.pos-entry .pos-payments__summary {
+    color: #e2e8f0;
+}
+
+.pos-entry .pos-payments__summary strong {
+    font-size: 0.78rem;
+}
+
+.pos-entry .pos-payments__summary-state {
+    color: #94a3b8;
+    font-size: 0.68rem;
+}
+
+.pos-entry .pos-payments__summary-edit {
+    color: #34d399;
+    font-size: 0.68rem;
+}
+
+.pos-entry .pos-payments__body {
+    border-block-start-color: rgb(148 163 184 / 12%);
+}
+
+.pos-entry .pos-payments label {
+    color: #94a3b8;
+}
+
+/* الحقول المشتركة داخل الشاشة */
+.pos-entry :where(.erp-control) {
+    border-color: #334155;
+    background: #0b1120;
+    color: #e2e8f0;
+    box-shadow: none;
+}
+
+.pos-entry :where(.erp-control):hover {
+    border-color: #475569;
+}
+
+.pos-entry :where(.erp-control):focus-visible {
+    border-color: var(--pos-emerald);
+    outline: 2px solid rgb(16 185 129 / 30%);
+    outline-offset: 0;
+}
+
+.pos-entry :where(.erp-control)::placeholder {
+    color: #475569;
+}
+
+.pos-entry .pos-numpad button {
+    border-color: rgb(148 163 184 / 16%);
+    background: #0b1120;
+    color: #e2e8f0;
+}
+
+.pos-entry .pos-numpad button:hover:not(:disabled) {
+    background: #1e293b;
+}
+
+.pos-entry .pos-numpad__display {
+    border-color: rgb(148 163 184 / 16%);
+    background: #0b1120;
+    color: var(--pos-amber);
+}
+
+/* ═══ تذييل السلة — الإجمالي والدفع ═══════════════════════════════════════ */
+
+.pos-entry .pos-cart__foot {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.55rem 0.6rem calc(0.6rem + env(safe-area-inset-bottom, 0px));
+    border-block-start: 1px solid var(--pos-line);
+    background: linear-gradient(180deg, #111827, #0b1120);
+}
+
+.pos-entry .pos-totals {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+    border-radius: 0;
+    background: transparent;
+}
+
+.pos-entry .pos-totals > div {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0;
+    color: #94a3b8;
+    font-size: 0.7rem;
+}
+
+.pos-entry .pos-totals dt {
+    font-weight: 500;
+}
+
+.pos-entry .pos-totals dd {
+    margin: 0;
+    color: #cbd5e1;
+    font-weight: 700;
+}
+
+.pos-entry .pos-totals__discount dd {
+    color: #f87171;
+}
+
+.pos-entry .pos-cart__due {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.5rem;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid rgb(245 158 11 / 28%);
+    border-radius: 10px;
+    background: rgb(245 158 11 / 8%);
+}
+
+.pos-entry .pos-cart__due span {
+    color: #fcd34d;
+    font-size: 0.68rem;
+}
+
+.pos-entry .pos-cart__due strong {
+    color: #fbbf24;
+    font-size: 1.5rem;
+    font-weight: 800;
+    line-height: 1;
+    letter-spacing: -0.01em;
+}
+
+.pos-entry .pos-cart__foot .pos-cart__checkout {
+    inline-size: 100%;
+    block-size: 3.2rem;
+    min-block-size: 3.2rem;
+    border-radius: 12px;
+    font-size: 0.98rem;
+    font-weight: 800;
+    box-shadow: 0 12px 26px -12px rgb(16 185 129 / 85%);
+}
+
+.pos-entry .pos-cart__foot .pos-cart__checkout:hover:not(:disabled) {
+    box-shadow: 0 16px 30px -12px rgb(16 185 129 / 95%);
+    transform: translateY(-1px);
+}
+
+.pos-entry .pos-cart__foot .pos-cart__checkout:active:not(:disabled) {
+    transform: scale(0.985);
+}
+
+.pos-kbd {
+    display: inline-grid;
+    place-items: center;
+    min-inline-size: 1.6rem;
+    padding: 0.05rem 0.35rem;
+    border: 1px solid rgb(4 33 26 / 35%);
+    border-radius: 5px;
+    background: rgb(4 33 26 / 18%);
+    color: inherit;
+    font-family: var(--font-mono, ui-monospace, monospace);
+    font-size: 0.62rem;
+    font-weight: 700;
+    line-height: 1.4;
+}
+
+/* مبدّل اللوحتين على الأجهزة الضيقة */
+.pos-entry .pos-pane-switch {
+    border-color: var(--pos-line);
+    background: #0b1120;
+}
+
+.pos-entry .pos-pane-switch__btn {
+    color: #94a3b8;
+}
+
+.pos-entry .pos-pane-switch__btn.is-active {
+    border-color: rgb(16 185 129 / 60%);
+    background: rgb(16 185 129 / 14%);
+    color: #a7f3d0;
+}
+
+.pos-entry .pos-pane-dock__btn {
+    border-color: var(--pos-emerald);
+    background: var(--pos-emerald);
+    color: #04211a;
+}
+
+/* ═══ طبقات السجل والتقارير فوق شاشة البيع ═══════════════════════════════ */
+
+.pos-entry .pos-overlay {
+    background: rgb(2 6 23 / 72%);
+    backdrop-filter: blur(4px);
+}
+
+.pos-entry .pos-overlay__panel {
+    padding: 0.65rem;
+    border: 1px solid var(--pos-line);
+    border-radius: var(--pos-radius);
+    background: #0b1120;
+}
+
+.pos-entry .pos-overlay__bar {
+    border-color: var(--pos-line);
+    background: #111827;
+    box-shadow: none;
+}
+
+.pos-entry .pos-overlay__title {
+    color: #f1f5f9;
+}
+
+.pos-entry .pos-overlay__body {
+    border-radius: 12px;
+}
+
+.pos-entry .pos-overlay__body .erp-card {
+    border-color: var(--pos-line);
+    background: #111827;
+}
+
+.pos-entry .pos-overlay__body :where(th) {
+    color: #94a3b8;
+}
+
+.pos-entry .pos-overlay__body :where(td) {
+    color: #e2e8f0;
+}
+
+/* ── شاشة فتح الوردية تبقى مقروءة على الخلفية الليلية ─────────────────── */
+
+.pos-entry .pos-open {
+    border-color: var(--pos-line);
+    background: #111827;
+    color: #e2e8f0;
+}
+
+/* ── الحركة: لا وميض ثابت يشتّت الكاشير ────────────────────────────────── */
+
+@media (prefers-reduced-motion: reduce) {
+    .pos-entry :where(*) {
+        transition-duration: 0.01ms !important;
+        animation-duration: 0.01ms !important;
+    }
+}
+
+/* ── شاشات ضيقة: نُبقي السلة مقروءة ونمنع القصّ ─────────────────────────── */
+
+@media (max-width: 1100px) {
+    .pos-entry.pos-entry--workspace {
+        padding: 0.5rem;
+        padding-block-end: calc(6rem + env(safe-area-inset-bottom, 0px));
+        background: var(--pos-bg);
+    }
+
+    .pos-cmdbar {
+        flex-wrap: wrap;
+        block-size: auto;
+        min-block-size: 3.5rem;
+        row-gap: 0.4rem;
+        padding-block: 0.45rem;
+    }
+
+    .pos-cmdbar__identity {
+        max-inline-size: 60%;
+    }
+
+    .pos-cmdbar__center {
+        order: 3;
+        flex-basis: 100%;
+        justify-content: flex-start;
+        overflow-x: auto;
+    }
+
+    .pos-cmdbar .pos-tabs__hint {
+        display: none;
+    }
+
+    .pos-entry .pos-cart__foot {
+        position: static;
+        inset: auto;
+        border: 0;
+        border-block-start: 1px solid var(--pos-line);
+        border-radius: 0;
+        box-shadow: none;
+    }
+}
+
+@media (max-width: 640px) {
+    .pos-entry .pos-cart__customer {
+        display: none;
+    }
+
+    .pos-entry .pos-cart__due strong {
+        font-size: 1.3rem;
+    }
+}

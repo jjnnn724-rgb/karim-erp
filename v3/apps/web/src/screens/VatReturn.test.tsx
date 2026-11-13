@@ -160,4 +160,14 @@ describe('مسودة مراجعة ضريبة القيمة المضافة', () =>
         expect(screen.getByText('الترحيل متاح لأدمن والمحاسب فقط.')).toBeTruthy();
         expect(mocks.fetchVatSettlementPreview).not.toHaveBeenCalled();
     });
+
+    it('تعرض ورقة عمل الإقرار وتفرّق «غير مسجّلة» عن الصفر', async () => {
+        renderScreen();
+
+        expect(await screen.findByRole('heading', { name: /ورقة عمل الإقرار الضريبي/ })).toBeTruthy();
+        expect(screen.getByRole('heading', { name: /الوضع الضريبي للفترة/ })).toBeTruthy();
+        // التقرير بلا كشف مبيعات/مشتريات: كل الخانات تُعلن غير مسجّلة، لا أصفارًا.
+        expect(screen.getAllByText('غير مسجّلة').length).toBeGreaterThan(0);
+        expect(screen.getByText(/آخر موعد إرشادي/)).toBeTruthy();
+    });
 });

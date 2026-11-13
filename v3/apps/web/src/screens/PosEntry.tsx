@@ -1,4 +1,5 @@
 import './PosEntry.premium.css';
+import './PosEntry.midnight.css';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useConfirm } from '../components/ConfirmProvider';
@@ -117,10 +118,9 @@ interface PosTab {
     saleKey: string;
 }
 
-function newPosTab(): PosTab {
-    tabSequence += 1;
+function blankTab(id: string): PosTab {
     return {
-        id: `pos-tab-${String(tabSequence)}`,
+        id,
         cart: [],
         discount: EMPTY_DISCOUNT,
         payments: EMPTY_PAYMENTS,
@@ -131,18 +131,17 @@ function newPosTab(): PosTab {
     };
 }
 
-function freshPosTab(tab: PosTab): PosTab {
-    return {
-        id: tab.id,
-        cart: [],
-        discount: EMPTY_DISCOUNT,
-        payments: EMPTY_PAYMENTS,
-        references: EMPTY_REFERENCES,
-        paymentsTouched: false,
-        receipt: null,
-        saleKey: '',
-    };
+function newPosTab(): PosTab {
+    tabSequence += 1;
+    return blankTab(`pos-tab-${String(tabSequence)}`);
 }
+
+function freshPosTab(tab: PosTab): PosTab {
+    return blankTab(tab.id);
+}
+
+/** لا تخلو قائمة الطلبات عمليًا؛ هذا احتياطي لو حدث سباق حذف كي لا ينكسر الرسم. */
+const FALLBACK_TAB: PosTab = blankTab('pos-tab-fallback');
 
 function openShiftInfo(existingZ: unknown): string {
     if (existingZ && typeof existingZ === 'object' && 'z_number' in existingZ) {
@@ -194,8 +193,26 @@ export function PosEntry() {
         window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
     }, [mobilePane]);
     const searchInputRef = useRef<HTMLInputElement | null>(null);
+    /** قائمة «إدارة الوردية» — تُغلق عند النقر خارجها حتى لا تبقى فوق السلة. */
+    const menuRef = useRef<HTMLDetailsElement | null>(null);
 
-    const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0]!;
+    useEffect(() => {
+        function onPointerDown(event: MouseEvent) {
+            const node = menuRef.current;
+            if (!node?.open) {
+                return;
+            }
+            if (event.target instanceof Node && !node.contains(event.target)) {
+                node.open = false;
+            }
+        }
+        document.addEventListener('mousedown', onPointerDown);
+        return () => {
+            document.removeEventListener('mousedown', onPointerDown);
+        };
+    }, []);
+
+    const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0] ?? FALLBACK_TAB;
     const cart = activeTab.cart;
     const discount = activeTab.discount;
     const payments = activeTab.payments;
@@ -1053,7 +1070,7 @@ export function PosEntry() {
             return next.length ? next : [newPosTab()];
         });
         if (activeTab.id === id) {
-            const neighbor = tabs[index + 1] ?? tabs[index - 1] ?? tabs[0]!;
+            const neighbor = tabs[index + 1] ?? tabs[index - 1] ?? tabs[0] ?? FALLBACK_TAB;
             setActiveTabId(neighbor.id);
         }
     }
@@ -1145,11 +1162,13 @@ export function PosEntry() {
                     event.preventDefault();
                     shortcutActions.current.hold();
                     break;
+                case 'F4':
                 case 'F5':
                     event.preventDefault();
                     shortcutActions.current.complete();
                     break;
                 case 'F6':
+                case 'F9':
                     if (canHistory) {
                         event.preventDefault();
                         setView('history');
@@ -1196,99 +1215,224 @@ export function PosEntry() {
         }
     };
 
+    const activeOrderNumber = tabs.findIndex((tab) => tab.id === activeTab.id) + 1;
+    const heldCount = heldQuery.data?.length ?? 0;
+    const closeMenu = () => {
+        if (menuRef.current) {
+            menuRef.current.open = false;
+        }
+    };
+
     return (
-        <div className={`flex flex-col gap-md premium-screen pos-entry pos-entry--workspace pos-entry--pane-${mobilePane}`}>
+        <div className={`flex flex-col premium-screen pos-entry pos-entry--workspace pos-entry--pane-${mobilePane}`}>
             <h1 className="sr-only">الكاشير — نقطة البيع</h1>
             {shift ? (
-                <section className="pos-console" aria-label="شريط الكاشير">
-                    <div className="pos-console__identity">
-                        <span className="pos-console__status" aria-hidden="true" />
-                        <div className="pos-console__copy">
+                <section className="pos-cmdbar" aria-label="شريط الكاشير">
+                    <div className="pos-cmdbar__identity">
+                        <span
+                            className={`pos-cmdbar__status${shift.isStale ? ' is-warn' : ''}`}
+                            aria-hidden="true"
+                            title={shift.isStale ? 'وردية يوم سابق — غير صالحة للبيع' : 'وردية مفتوحة'}
+                        />
+                        <div className="pos-cmdbar__copy">
                             <strong>{shift.deptName || 'نقطة البيع'}</strong>
                             <small>
-                                وردية #{shift.sessionId}
-                                {shift.isStale ? ` · من يوم ${shift.openedOn} — غير صالحة للبيع` : ''}
-                                {buffet ? ' · بوفيه مفتوح' : ''}
+                                <span className="pos-cmdbar__shift">وردية #{shift.sessionId}</span>
+                                {buffet ? (
+                                    <span className="pos-cmdbar__tag" title="قسم البوفيه المفتوح">
+                                        بوفيه
+                                    </span>
+                                ) : null}
+                                {shift.isStale ? <span className="pos-cmdbar__tag pos-cmdbar__tag--warn">يوم {shift.openedOn}</span> : null}
                             </small>
                         </div>
                     </div>
-                    <section className="pos-console__kpis" aria-label="مؤشرات الوردية">
-                        <div className="pos-kpi">
-                            <span>الأصناف</span>
-                            <strong className="erp-numeric">{intOf(items.length)}</strong>
-                        </div>
-                        <div className="pos-kpi">
-                            <span>معلّقة</span>
-                            <strong className="erp-numeric">{intOf(heldQuery.data?.length ?? 0)}</strong>
-                        </div>
-                        <div className={`pos-kpi${cartCount ? ' is-live' : ''}`}>
-                            <span>في السلة</span>
-                            <strong className="erp-numeric">{intOf(cartCount)}</strong>
-                        </div>
-                        <div className="pos-kpi pos-kpi--total">
-                            <span>الإجمالي</span>
-                            <strong className="erp-numeric" dir="ltr">
-                                {moneyText(totals.total)}
-                            </strong>
-                        </div>
-                    </section>
-                    {unbalancedInvoice ? (
-                        <p className="pos-alert" role="alert">
-                            الفاتورة غير متوازنة (الصافي + الضريبة ≠ الإجمالي) — لا يمكن إصدارها أو طباعتها حتى تصحيح بيانات الأصناف.
-                        </p>
-                    ) : null}
-                    <div className="pos-console__actions">
-                        {canHistory ? (
-                            <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={() => {
-                                    setView('history');
-                                }}
+
+                    <div className="pos-cmdbar__center">
+                        {view === 'cashier' && !shift.isStale ? (
+                            <div className="pos-tabs" role="tablist" aria-label="الطلبات المتوازية">
+                                {tabs.map((tab, index) => {
+                                    const count = tab.cart.reduce((sum, row) => sum + row.quantity, 0);
+                                    const selected = tab.id === activeTab.id;
+                                    return (
+                                        <div key={tab.id} className={`pos-tab${selected ? ' is-active' : ''}`}>
+                                            <button
+                                                type="button"
+                                                role="tab"
+                                                aria-selected={selected}
+                                                aria-label={`طلب ${String(index + 1)}${count ? ` — ${String(count)} قطعة` : ''}`}
+                                                onClick={() => {
+                                                    setActiveTabId(tab.id);
+                                                }}
+                                            >
+                                                طلب {index + 1}
+                                                <span className="pos-tab__count">{intOf(count)}</span>
+                                            </button>
+                                            {tabs.length > 1 ? (
+                                                <button
+                                                    type="button"
+                                                    className="pos-tab__close"
+                                                    aria-label={`إغلاق طلب ${String(index + 1)}`}
+                                                    onClick={() => {
+                                                        void closeTab(tab.id);
+                                                    }}
+                                                >
+                                                    ×
+                                                </button>
+                                            ) : null}
+                                        </div>
+                                    );
+                                })}
+                                <button type="button" className="pos-tab-new" disabled={tabs.length >= MAX_TABS || busy} onClick={addTab}>
+                                    + طلب جديد
+                                </button>
+                                <span className="pos-tabs__held" title="طلبات معلقة في الخادم">
+                                    معلقة
+                                    <strong className="erp-numeric">{intOf(heldCount)}</strong>
+                                </span>
+                                <span className="pos-tabs__hint" aria-hidden="true">
+                                    F2 بحث · F3 تعليق · F4 إتمام · F9 السجل
+                                </span>
+                            </div>
+                        ) : null}
+                    </div>
+
+                    <div className="pos-cmdbar__end">
+                        <button
+                            type="button"
+                            className="pos-icon-btn"
+                            aria-label="فتح الدرج"
+                            title="فتح الدرج النقدي"
+                            disabled={!canSell || busy}
+                            onClick={() => {
+                                void openDrawer();
+                            }}
+                        >
+                            <svg
+                                aria-hidden="true"
+                                viewBox="0 0 24 24"
+                                width="18"
+                                height="18"
+                                fill="none"
+                                stroke="currentColor"
+                                strokeWidth="1.7"
+                                strokeLinecap="round"
+                                strokeLinejoin="round"
                             >
-                                سجل الفواتير
-                            </Button>
-                        ) : null}
-                        {buffet && canManageBuffet ? (
-                            <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={() => {
-                                    setView('buffet-prices');
-                                }}
-                            >
-                                أسعار البوفيه
-                            </Button>
-                        ) : null}
-                        {buffet ? (
-                            <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={() => {
-                                    setView('buffet-report');
-                                }}
-                            >
-                                تقرير البوفيه
-                            </Button>
-                        ) : null}
-                        {canDayClose ? (
-                            <Button size="sm" variant="secondary" onClick={() => void runDayClose()} disabled={dayCloseBusy}>
-                                إقفال اليوم Z
-                            </Button>
-                        ) : null}
-                        {canManageCatalog ? (
-                            <Button size="sm" variant="secondary" onClick={() => setPrintersOpen(true)}>
-                                الطابعة
-                            </Button>
-                        ) : null}
-                        <Button size="sm" variant="secondary" onClick={() => void refreshAll()}>
-                            تحديث
-                        </Button>
-                        <Button size="sm" variant="secondary" onClick={openCloseShiftDialog} disabled={!canSell || busy}>
-                            إغلاق الوردية
-                        </Button>
+                                <path d="M3 10h18M5 10V7a2 2 0 0 1 2-2h10a2 2 0 0 1 2 2v3M4 10h16v9H4z" />
+                                <path d="M9 15h6" />
+                            </svg>
+                        </button>
+                        <details ref={menuRef} className="pos-menu">
+                            <summary className="pos-menu__trigger">
+                                إدارة الوردية
+                                <svg
+                                    aria-hidden="true"
+                                    viewBox="0 0 24 24"
+                                    width="14"
+                                    height="14"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="2"
+                                    strokeLinecap="round"
+                                    strokeLinejoin="round"
+                                >
+                                    <path d="m6 9 6 6 6-6" />
+                                </svg>
+                            </summary>
+                            <div className="pos-menu__panel">
+                                {canHistory ? (
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => {
+                                            setView('history');
+                                            closeMenu();
+                                        }}
+                                    >
+                                        سجل الفواتير
+                                    </Button>
+                                ) : null}
+                                {buffet && canManageBuffet ? (
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => {
+                                            setView('buffet-prices');
+                                            closeMenu();
+                                        }}
+                                    >
+                                        أسعار البوفيه
+                                    </Button>
+                                ) : null}
+                                {buffet ? (
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => {
+                                            setView('buffet-report');
+                                            closeMenu();
+                                        }}
+                                    >
+                                        تقرير البوفيه
+                                    </Button>
+                                ) : null}
+                                {canManageCatalog ? (
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => {
+                                            setPrintersOpen(true);
+                                            closeMenu();
+                                        }}
+                                    >
+                                        الطابعة
+                                    </Button>
+                                ) : null}
+                                <Button
+                                    size="sm"
+                                    variant="ghost"
+                                    onClick={() => {
+                                        void refreshAll();
+                                        closeMenu();
+                                    }}
+                                >
+                                    تحديث البيانات
+                                </Button>
+                                {canDayClose ? (
+                                    <Button
+                                        size="sm"
+                                        variant="ghost"
+                                        onClick={() => {
+                                            void runDayClose();
+                                            closeMenu();
+                                        }}
+                                        disabled={dayCloseBusy}
+                                    >
+                                        إقفال اليوم Z
+                                    </Button>
+                                ) : null}
+                                <Button
+                                    size="sm"
+                                    variant="danger"
+                                    onClick={() => {
+                                        openCloseShiftDialog();
+                                        closeMenu();
+                                    }}
+                                    disabled={!canSell || busy}
+                                >
+                                    إغلاق الوردية
+                                </Button>
+                            </div>
+                        </details>
                     </div>
                 </section>
+            ) : null}
+
+            {shift && unbalancedInvoice ? (
+                <p className="pos-alert" role="alert">
+                    الفاتورة غير متوازنة (الصافي + الضريبة ≠ الإجمالي) — لا يمكن إصدارها أو طباعتها حتى تصحيح بيانات الأصناف.
+                </p>
             ) : null}
 
             {view === 'cashier' ? (
@@ -1318,7 +1462,7 @@ export function PosEntry() {
                         </div>
                     ) : null}
 
-                    {shift && shift.isStale ? (
+                    {shift?.isStale ? (
                         <div className="pos-open__wrap">
                             <section className="erp-card pos-open" aria-labelledby="pos-stale-title">
                                 <div className="erp-card__body flex flex-col gap-sm">
@@ -1359,46 +1503,6 @@ export function PosEntry() {
                             <StateError message={errorMessage(catalogError)} onRetry={catalogRetry} />
                         ) : (
                             <>
-                                <div className="pos-tabs" role="tablist" aria-label="الطلبات المتوازية">
-                                    {tabs.map((tab, index) => {
-                                        const count = tab.cart.reduce((sum, row) => sum + row.quantity, 0);
-                                        const selected = tab.id === activeTab.id;
-                                        return (
-                                            <div key={tab.id} className={`pos-tab${selected ? ' is-active' : ''}`}>
-                                                <button
-                                                    type="button"
-                                                    role="tab"
-                                                    aria-selected={selected}
-                                                    aria-label={`طلب ${String(index + 1)}${count ? ` — ${String(count)} قطعة` : ''}`}
-                                                    onClick={() => {
-                                                        setActiveTabId(tab.id);
-                                                    }}
-                                                >
-                                                    طلب {index + 1}
-                                                    <span className="pos-tab__count">{intOf(count)}</span>
-                                                </button>
-                                                {tabs.length > 1 ? (
-                                                    <button
-                                                        type="button"
-                                                        className="pos-tab__close"
-                                                        aria-label={`إغلاق طلب ${String(index + 1)}`}
-                                                        onClick={() => {
-                                                            void closeTab(tab.id);
-                                                        }}
-                                                    >
-                                                        ×
-                                                    </button>
-                                                ) : null}
-                                            </div>
-                                        );
-                                    })}
-                                    <Button size="sm" variant="secondary" disabled={tabs.length >= MAX_TABS || busy} onClick={addTab}>
-                                        + طلب جديد
-                                    </Button>
-                                    <span className="pos-tabs__hint" aria-hidden="true">
-                                        Ctrl+1…5 تبديل · F2 بحث · F3 تعليق · F5 إتمام · F6 السجل
-                                    </span>
-                                </div>
                                 <div ref={paneSwitchRef} className="pos-pane-switch" role="tablist" aria-label="عرض شاشة الكاشير">
                                     <button
                                         type="button"
@@ -1470,6 +1574,7 @@ export function PosEntry() {
                                         <PosCart
                                             cart={cart}
                                             images={itemImages}
+                                            orderNumber={activeOrderNumber}
                                             totals={totals}
                                             discount={discount}
                                             onDiscount={setDiscountValue}
@@ -1490,9 +1595,6 @@ export function PosEntry() {
                                             }}
                                             onComplete={() => {
                                                 void completeSale();
-                                            }}
-                                            onOpenDrawer={() => {
-                                                void openDrawer();
                                             }}
                                         />
                                         {receipt ? (
@@ -1792,11 +1894,7 @@ export function PosEntry() {
                 </div>
             </Dialog>
 
-            <PosPrinters
-                open={printersOpen}
-                departmentId={shift?.departmentId ?? ''}
-                onClose={() => setPrintersOpen(false)}
-            />
+            <PosPrinters open={printersOpen} departmentId={shift?.departmentId ?? ''} onClose={() => setPrintersOpen(false)} />
         </div>
     );
 }

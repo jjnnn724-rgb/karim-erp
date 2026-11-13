@@ -74,7 +74,18 @@ export const vatReturnSchema = z
         legacy_revenue_crosscheck: z
             .object({
                 count: z.number(),
-                total: z.number(),
+                amount: z.number(),
+                by_source: z
+                    .array(
+                        z
+                            .object({
+                                source: z.string(),
+                                count: z.number(),
+                                amount: z.number(),
+                            })
+                            .passthrough(),
+                    )
+                    .optional(),
             })
             .passthrough()
             .optional(),
@@ -276,4 +287,300 @@ export function vatRateSummary(rows: VatRateRow[]): VatRateSummary {
         }),
         { taxableBase: 0, vat: 0, documents: 0, reviewDocuments: 0 },
     );
+}
+
+/* ─── ورقة عمل الإقرار: مطابقة المستندات بخانات النموذج ───────────────────── */
+
+const round2 = (value: number): number => Math.round((Number(value) + Number.EPSILON) * 100) / 100;
+
+/**
+ * حالة الخانة — `unavailable` تعني «لا يوجد حقل في النظام»، لا «صفر».
+ * هذا فرق جوهري في الإقرار: الصفر تصريح، وغياب البيانات ليس تصريحًا.
+ */
+export type VatWorksheetStatus = 'ready' | 'review' | 'missing' | 'unavailable';
+
+export interface VatWorksheetRow {
+    key: string;
+    /** رقم الخانة في نموذج الإقرار السعودي، أو `null` لبند تحليلي لا خانة له. */
+    box: number | null;
+    label: string;
+    /** `null` تعني غير مسجّلة في النظام — تُعرض «—» لا 0.00. */
+    base: number | null;
+    vat: number | null;
+    documents: number;
+    status: VatWorksheetStatus;
+    note: string;
+}
+
+export interface VatWorksheetTotals {
+    base: number;
+    vat: number;
+    documents: number;
+}
+
+export interface VatWorksheet {
+    standardRate: number;
+    sales: VatWorksheetRow[];
+    purchases: VatWorksheetRow[];
+    salesTotal: VatWorksheetTotals;
+    purchasesTotal: VatWorksheetTotals;
+    /** صافي المستندات (مخرجات − مدخلات) قبل أي تسوية. */
+    net: number;
+    salesComplete: boolean;
+    purchasesComplete: boolean;
+    reviewDocuments: number;
+    hasSalesDetail: boolean;
+    hasPurchaseDetail: boolean;
+}
+
+function sumRateRows(rows: readonly VatRateRow[]): VatWorksheetTotals {
+    return rows.reduce<VatWorksheetTotals>(
+        (sum, row) => ({
+            base: round2(sum.base + Number(row.taxable_base ?? 0)),
+            vat: round2(sum.vat + Number(row.vat ?? 0)),
+            documents: sum.documents + Number(row.document_count ?? 0),
+        }),
+        { base: 0, vat: 0, documents: 0 },
+    );
+}
+
+/** صافي فئة مبيعات: البيع ناقص الإلغاء لنفس التصنيف — لا تُخلط المعدلات. */
+function netSalesRows(rows: readonly VatRateRow[], classes: readonly VatRateClassification[]): VatWorksheetTotals {
+    const inClass = (row: VatRateRow) => classes.includes(row.classification);
+    const sales = sumRateRows(rows.filter((row) => row.kind === 'sale' && inClass(row)));
+    const voids = sumRateRows(rows.filter((row) => row.kind === 'void' && inClass(row)));
+    return {
+        base: round2(sales.base - voids.base),
+        vat: round2(sales.vat - voids.vat),
+        documents: sales.documents + voids.documents,
+    };
+}
+
+function worksheetRow(
+    key: string,
+    box: number | null,
+    label: string,
+    totals: VatWorksheetTotals | null,
+    status: VatWorksheetStatus,
+    note: string,
+): VatWorksheetRow {
+    return {
+        key,
+        box,
+        label,
+        base: totals ? totals.base : null,
+        vat: totals ? totals.vat : null,
+        documents: totals ? totals.documents : 0,
+        status,
+        note,
+    };
+}
+
+/**
+ * ورقة عمل الإقرار — تُصنّف المستندات إلى خانات النموذج بقدر ما يسمح به
+ * تصنيف النظام، وتُعلن صراحةً ما لا يستطيع النظام إثباته (الإعفاء، التصدير،
+ * الاستيراد، الاحتساب العكسي) بدل عرضه صفرًا مضلّلًا.
+ */
+export function vatWorksheet(report: VatReturn): VatWorksheet {
+    const standardRate = Number(report.standard_vat_rate ?? 15) || 15;
+    const salesDetail = report.sales_breakdown;
+    const purchaseDetail = report.purchases_crosscheck?.by_rate;
+    const hasSalesDetail = Array.isArray(salesDetail);
+    const hasPurchaseDetail = Array.isArray(purchaseDetail);
+    const sales = salesDetail ?? [];
+    const purchases = purchaseDetail ?? [];
+
+    const standard = netSalesRows(sales, ['standard_rate']);
+    const zero = netSalesRows(sales, ['zero_rate_unclassified']);
+    const other = netSalesRows(sales, ['other_rate_review', 'invalid_rate']);
+    const missing = netSalesRows(sales, ['missing_rate']);
+
+    const pStandard = sumRateRows(purchases.filter((row) => row.classification === 'standard_rate'));
+    const pZero = sumRateRows(purchases.filter((row) => row.classification === 'zero_rate_unclassified'));
+    const pOther = sumRateRows(
+        purchases.filter((row) => row.classification === 'other_rate_review' || row.classification === 'invalid_rate'),
+    );
+    const pMissing = sumRateRows(purchases.filter((row) => row.classification === 'missing_rate'));
+
+    const builtSalesRows: VatWorksheetRow[] = [
+        worksheetRow(
+            'standard',
+            1,
+            `مبيعات بالمعدل القياسي (${String(standardRate)}%)`,
+            standard,
+            'ready',
+            'الوعاء والضريبة من فواتير البيع ناقص الإلغاء.',
+        ),
+        worksheetRow(
+            'zero',
+            2,
+            'مبيعات بمعدل 0%',
+            zero,
+            'review',
+            'غير مصنّفة نظاميًا: يجب تحديد «صفري» أم «معفى» قبل إسنادها لخانة 2 أو 3.',
+        ),
+        worksheetRow('exempt', 3, 'مبيعات معفاة', null, 'unavailable', 'لا يحفظ النظام تصنيف الإعفاء — غير مسجّلة، وليست صفرًا.'),
+        worksheetRow('other', 4, 'مبيعات بمعدلات أخرى / تصدير', other, 'review', 'معدل غير قياسي؛ تُراجع طبيعة التوريد قبل إسناد الخانة.'),
+        worksheetRow(
+            'missing',
+            null,
+            'مستندات بلا معدل ضريبة',
+            missing,
+            'missing',
+            'لا تُسند لخانة، وأرقامها غير موثوقة حتى استكمال المعدل.',
+        ),
+    ];
+
+    const builtPurchaseRows: VatWorksheetRow[] = [
+        worksheetRow(
+            'standard',
+            7,
+            `مشتريات بالمعدل القياسي (${String(standardRate)}%)`,
+            pStandard,
+            'ready',
+            'مدخلات من فواتير الشراء المرحّلة.',
+        ),
+        worksheetRow('zero', 8, 'مشتريات بمعدل 0%', pZero, 'review', 'غير مصنّفة نظاميًا؛ راجع طبيعة التوريد قبل الخانة.'),
+        worksheetRow('exempt', 9, 'مشتريات معفاة', null, 'unavailable', 'لا يحفظ النظام تصنيف الإعفاء — غير مسجّلة، وليست صفرًا.'),
+        worksheetRow('other', null, 'مشتريات بمعدلات أخرى', pOther, 'review', 'معدل غير قياسي يحتاج مراجعة المستند.'),
+        worksheetRow('imports', 10, 'استيراد خاضع للضريبة', null, 'unavailable', 'لا يوجد حقل استيراد في فواتير الشراء — غير مسجّل.'),
+        worksheetRow('reverse', 11, 'الاحتساب العكسي', null, 'unavailable', 'لا يوجد حقل احتساب عكسي — غير مسجّل.'),
+        worksheetRow(
+            'missing',
+            null,
+            'فواتير بلا معدل ضريبة',
+            pMissing,
+            'missing',
+            'لا تُسند لخانة، والمدخلات غير قابلة للخصم قبل استكمالها.',
+        ),
+    ];
+
+    const salesTotal: VatWorksheetTotals = {
+        base: round2(standard.base + zero.base + other.base + missing.base),
+        vat: round2(standard.vat + zero.vat + other.vat + missing.vat),
+        documents: standard.documents + zero.documents + other.documents + missing.documents,
+    };
+    const purchasesTotal: VatWorksheetTotals = {
+        base: round2(pStandard.base + pZero.base + pOther.base + pMissing.base),
+        vat: round2(pStandard.vat + pZero.vat + pOther.vat + pMissing.vat),
+        documents: pStandard.documents + pZero.documents + pOther.documents + pMissing.documents,
+    };
+
+    /**
+     * غياب الكشف ليس صفرًا: لو لم تُرجع الاستجابة تفصيل المبيعات أو المشتريات
+     * فكل خانة تصير «غير مسجّلة» بدل صفوف أصفار تُقرأ كإقرار.
+     */
+    const hideMissingDetail = (rows: VatWorksheetRow[], available: boolean, note: string): VatWorksheetRow[] =>
+        available
+            ? rows
+            : rows.map((row) => ({
+                  ...row,
+                  base: null,
+                  vat: null,
+                  documents: 0,
+                  status: 'unavailable' as const,
+                  note,
+              }));
+
+    const salesRows = hideMissingDetail(
+        builtSalesRows,
+        hasSalesDetail,
+        'لا كشف مبيعات مرحّل في الاستجابة لهذه الفترة — غير مسجّلة، وليست صفرًا.',
+    );
+    const purchaseRows = hideMissingDetail(
+        builtPurchaseRows,
+        hasPurchaseDetail,
+        'لا كشف مشتريات مرحّل في الاستجابة لهذه الفترة — غير مسجّلة، وليست صفرًا.',
+    );
+
+    const reviewDocuments = zero.documents + other.documents + missing.documents + pZero.documents + pOther.documents + pMissing.documents;
+
+    return {
+        standardRate,
+        sales: salesRows,
+        purchases: purchaseRows,
+        salesTotal,
+        purchasesTotal,
+        net: round2(salesTotal.vat - purchasesTotal.vat),
+        salesComplete: hasSalesDetail && zero.documents === 0 && other.documents === 0 && missing.documents === 0,
+        purchasesComplete: hasPurchaseDetail && pZero.documents === 0 && pOther.documents === 0 && pMissing.documents === 0,
+        reviewDocuments,
+        hasSalesDetail,
+        hasPurchaseDetail,
+    };
+}
+
+/* ─── مطابقة الأرصدة: افتتاحي ← حركة الفترة ← ختامي ─────────────────────── */
+
+export interface VatBalanceReconciliation {
+    asOf: string;
+    openingPayable: number;
+    closingPayable: number;
+    payableMovement: number;
+    expectedPayableMovement: number;
+    payableGap: number;
+    openingRecoverable: number;
+    closingRecoverable: number;
+    recoverableMovement: number;
+    expectedRecoverableMovement: number;
+    recoverableGap: number;
+    balanced: boolean;
+}
+
+/**
+ * حركة حساب الضريبة في الفترة = ختامي − افتتاحي، وتُقارن بحركة الأستاذ
+ * المتوقعة من القيود. أي فرق يعني رصيدًا افتتاحيًا غير مطابق أو حركة خارج الفترة.
+ */
+export function vatBalanceReconciliation(report: VatReturn): VatBalanceReconciliation | null {
+    const opening = report.opening_balances;
+    if (!opening) {
+        return null;
+    }
+    const outputDebits = Number(report.output_vat_reversals ?? 0) + Number(report.unclassified_vat_movements?.output_debits ?? 0);
+    const inputCredits = Number(report.input_vat_adjustments ?? 0) + Number(report.unclassified_vat_movements?.input_credits ?? 0);
+    const expectedPayableMovement = round2(Number(report.output_vat ?? 0) - outputDebits);
+    const expectedRecoverableMovement = round2(Number(report.input_vat ?? 0) - inputCredits);
+    const payableMovement = round2(Number(report.payable_balance ?? 0) - Number(opening.payable ?? 0));
+    const recoverableMovement = round2(Number(report.recoverable_balance ?? 0) - Number(opening.recoverable ?? 0));
+    const payableGap = round2(payableMovement - expectedPayableMovement);
+    const recoverableGap = round2(recoverableMovement - expectedRecoverableMovement);
+    return {
+        asOf: opening.as_of,
+        openingPayable: round2(Number(opening.payable ?? 0)),
+        closingPayable: round2(Number(report.payable_balance ?? 0)),
+        payableMovement,
+        expectedPayableMovement,
+        payableGap,
+        openingRecoverable: round2(Number(opening.recoverable ?? 0)),
+        closingRecoverable: round2(Number(report.recoverable_balance ?? 0)),
+        recoverableMovement,
+        expectedRecoverableMovement,
+        recoverableGap,
+        balanced: Math.abs(payableGap) <= 0.01 && Math.abs(recoverableGap) <= 0.01,
+    };
+}
+
+/* ─── استحقاق التقديم الإرشادي ───────────────────────────────────────────── */
+
+/**
+ * آخر يوم لتقديم الإقرار حسب الدورية — إرشادي فقط (زاتكا: الشهري 15 من الشهر
+ * التالي، والربع سنوي آخر يوم من الشهر التالي لنهاية الربع). `null` لدورية غير مضبوطة.
+ */
+export function vatFilingDeadline(frequency: string, periodTo: string): string | null {
+    const match = /^(\d{4})-(\d{2})-\d{2}$/.exec(String(periodTo ?? '').trim());
+    if (!match) {
+        return null;
+    }
+    const year = Number(match[1]);
+    const month = Number(match[2]);
+    if (!Number.isFinite(year) || month < 1 || month > 12) {
+        return null;
+    }
+    if (frequency === 'monthly') {
+        return new Date(Date.UTC(year, month, 15)).toISOString().slice(0, 10);
+    }
+    if (frequency === 'quarterly') {
+        return new Date(Date.UTC(year, month + 1, 0)).toISOString().slice(0, 10);
+    }
+    return null;
 }
