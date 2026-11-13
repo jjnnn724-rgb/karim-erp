@@ -194,6 +194,8 @@ export interface CreateAuditInput {
     periodStart: string;
     periodEnd: string;
     notes?: string;
+    /** نطاق الجرد — يُبني في الخادم لقطة الموقع ثم يُرشَّح. */
+    scopeFilter?: AuditScopeFilter;
 }
 
 /**
@@ -201,6 +203,7 @@ export interface CreateAuditInput {
  * «العدد الفعلي» مساويًا لرصيد النظام مبدئيًّا — ثم يعدّله المستخدم.
  */
 export async function createInventoryAudit(input: CreateAuditInput): Promise<void> {
+    const scope = input.scopeFilter;
     await writeAck(`${BASE}/audits`, 'POST', {
         locationId: Number(input.locationId),
         periodType: input.periodType,
@@ -208,6 +211,15 @@ export async function createInventoryAudit(input: CreateAuditInput): Promise<voi
         periodEnd: input.periodEnd,
         countedAt: input.periodStart,
         notes: String(input.notes ?? '').trim() || null,
+        ...(scope
+            ? {
+                  scopeFilter: {
+                      mode: scope.mode,
+                      category: scope.category ? String(scope.category) : null,
+                      search: scope.search ? String(scope.search) : null,
+                  },
+              }
+            : {}),
     });
 }
 
@@ -223,7 +235,7 @@ export async function saveAuditCounts(id: string, counts: readonly AuditCountPay
         counts: counts.map((row) => ({
             itemId: row.itemId,
             countedQty: row.countedQty,
-            notes: row.notes ?? null,
+            notes: String(row.notes ?? '').trim() || null,
         })),
     });
     const rejected = body.rejected ?? [];
@@ -233,6 +245,111 @@ export async function saveAuditCounts(id: string, counts: readonly AuditCountPay
         rejectedReasons: rejected.map((row) => String(row.reason ?? '').trim()).filter(Boolean),
         countedItems: Number(body.counted_items ?? 0),
     };
+}
+
+const countItemSchema = z
+    .object({
+        id: numberish,
+        item_id: numberish,
+        counted_qty: numberish,
+        notes: z.string().nullable().optional(),
+        is_counted: z.boolean().optional(),
+    })
+    .passthrough();
+
+const singleCountSchema = z
+    .object({
+        item: countItemSchema.optional(),
+        counted_items: numberish,
+    })
+    .passthrough();
+
+/**
+ * حفظ عدّ صف واحد — `PUT /audits/:id/counts/:itemId`
+ * (`backend/stocktaking-routes.js:290`): body `{countedQty, notes}`،
+ * والرد `{item, counted_items}`. هذا ما كان يفعله زرّ «حفظ» في صف
+ * شبكة V2 (`data-v2-asave`).
+ */
+export async function saveAuditCount(
+    id: string,
+    itemId: number,
+    countedQty: number,
+    notes?: string | null,
+): Promise<{ countedItems: number }> {
+    const body = await writeJson(singleCountSchema, `${BASE}/audits/${encodeURIComponent(id)}/counts/${itemId}`, 'PUT', {
+        countedQty: Number(countedQty),
+        notes: String(notes ?? '').trim() || null,
+    });
+    return { countedItems: Number(body.counted_items ?? 0) };
+}
+
+/**
+ * مسح عدّ صف واحد — `DELETE /audits/:id/counts/:itemId`
+ * (`backend/stocktaking-routes.js:378`): يُعيد البند `is_counted:false`
+ * و`counted_items`. زرّ «مسح» في صف شبكة V2 (`data-v2-aclear`).
+ */
+export async function clearAuditCount(id: string, itemId: number): Promise<{ countedItems: number }> {
+    const body = await writeJson(singleCountSchema, `${BASE}/audits/${encodeURIComponent(id)}/counts/${itemId}`, 'DELETE');
+    return { countedItems: Number(body.counted_items ?? 0) };
+}
+
+const locationPreviewSchema = z
+    .object({
+        items_count: numberish,
+        on_hand_value: numberish,
+        on_hand_qty: numberish,
+    })
+    .passthrough();
+
+export interface AuditLocationPreview {
+    itemsCount: number;
+    onHandValue: number;
+    onHandQty: number;
+}
+
+/**
+ * معاينة نطاق موقع قبل بدء الجلسة — `GET /inventory/locations/:id/preview`
+ * (`backend/stocktaking-routes.js:254`): كم صنفًا في الموقع وبقيمة
+ * كم، بنفس مرشّحات النطاق المستعملة في إنشاء الجلسة.
+ */
+export async function fetchAuditLocationPreview(
+    locationId: string,
+    params: { mode?: string; category?: string; search?: string },
+    signal?: AbortSignal,
+): Promise<AuditLocationPreview> {
+    const query = new URLSearchParams();
+    if (params.mode) query.set('mode', params.mode);
+    if (params.category) query.set('category', params.category);
+    if (params.search) query.set('search', params.search);
+    const suffix = query.toString();
+    const body = await fetchJson(
+        locationPreviewSchema,
+        `${BASE}/locations/${encodeURIComponent(locationId)}/preview${suffix ? `?${suffix}` : ''}`,
+        getAccessToken(),
+        signal ? { signal } : {},
+    );
+    return {
+        itemsCount: Number(body.items_count ?? 0),
+        onHandValue: Number(body.on_hand_value ?? 0),
+        onHandQty: Number(body.on_hand_qty ?? 0),
+    };
+}
+
+/** نطاق الجرد — نفس قيم `normalizeScopeFilter` في الخادم. */
+export const AUDIT_SCOPE_MODES = ['all', 'category', 'search', 'in_stock'] as const;
+export type AuditScopeMode = (typeof AUDIT_SCOPE_MODES)[number];
+
+export const AUDIT_SCOPE_LABELS: Record<AuditScopeMode, string> = {
+    all: 'كل أصناف الموقع',
+    category: 'تصنيف محدّد',
+    search: 'بحث بالاسم أو الباركود',
+    in_stock: 'الأصناف التي لها رصيد',
+};
+
+export interface AuditScopeFilter {
+    mode: AuditScopeMode;
+    category?: string | null;
+    search?: string | null;
 }
 
 export interface AuditSignature {

@@ -1,6 +1,7 @@
 import './Warehouse.premium.css';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
+import { BulkReceiptDialog } from '../components/BulkReceiptDialog';
 import { useConfirm } from '../components/ConfirmProvider';
 import { InventoryAuditStudio } from '../components/InventoryAuditStudio';
 import { PrintActions } from '../components/PrintActions';
@@ -514,6 +515,7 @@ export function Warehouse() {
     const [directRow, setDirectRow] = useState<InventoryRow | null>(null);
     const [mergeOpen, setMergeOpen] = useState(false);
     const [auditsOpen, setAuditsOpen] = useState(false);
+    const [bulkOpen, setBulkOpen] = useState(false);
 
     const auth = useAuthState();
     const role = auth.user?.role;
@@ -524,6 +526,7 @@ export function Warehouse() {
     const canForce = invForceVisible(role);
     const confirm = useConfirm();
     const { toast } = useToast();
+    const queryClient = useQueryClient();
 
     // البحث نداء خادم — الانتظار 300ms يجمع ضربات المفتاح بدل طلب لكل حرف.
     useEffect(() => {
@@ -678,6 +681,18 @@ export function Warehouse() {
                     <p className="text-body-sm text-muted">سجل الأصناف وأرصدتها — وارد سريع وتعديل مباشر وحذف ودمج للمكرر وصلاحياتها.</p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>
+                    {canWrite ? (
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => {
+                                setBulkOpen(true);
+                            }}
+                        >
+                            استلام مجمّع
+                        </Button>
+                    ) : null}
                     {canAudit ? (
                         <Button
                             type="button"
@@ -1132,6 +1147,23 @@ export function Warehouse() {
                     await mergeMutation.mutateAsync({ keepId, dupIds });
                 }}
             />
+
+            {canWrite ? (
+                <BulkReceiptDialog
+                    open={bulkOpen}
+                    onOpenChange={(next) => {
+                        setBulkOpen(next);
+                    }}
+                    onImported={(outcome) => {
+                        void queryClient.invalidateQueries({ queryKey: ['inventory'] });
+                        toast({
+                            title: outcome.failures.length ? 'اكتمل الاستيراد جزئيًا' : 'تم الاستلام المجمّع',
+                            description: `${outcome.imported} صنف — ${outcome.batches.length} دفعة`,
+                            variant: outcome.failures.length ? 'info' : 'success',
+                        });
+                    }}
+                />
+            ) : null}
 
             {canAudit ? (
                 <InventoryAuditStudio

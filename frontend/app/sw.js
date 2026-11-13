@@ -10,7 +10,7 @@
  */
 'use strict';
 
-const CACHE_VERSION='4.25.61'; // 2026-10-17: معاينة شاشة سامسونج الطولية بنسبة 9:16
+const CACHE_VERSION='4.25.62'; // 2026-11-13: كاشير Midnight & Emerald + طرق دفع ظاهرة
 const CACHE = `karim-erp-${CACHE_VERSION}`;
 const STATIC_CACHE = `karim-static-${CACHE_VERSION}`;
 const API_CACHE = `karim-api-${CACHE_VERSION}`;

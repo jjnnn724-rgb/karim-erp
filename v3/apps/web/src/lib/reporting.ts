@@ -15,7 +15,7 @@ import { formatCurrency, formatInt } from './format';
 
 export const MAX_SPAN_DAYS = 93;
 
-export type Preset = 'today' | 'week' | 'month' | 'year';
+export type Preset = 'today' | 'week' | 'month' | 'quarter' | 'year';
 
 export type DisplayTone = 'neutral' | 'success' | 'warning' | 'danger';
 

@@ -74,6 +74,10 @@ export const userUpdateSchema = z.object({
     role: z.string().min(1, USER_TEXT.roleRequired),
     dept_code: z.string().optional().nullable(),
     active: z.boolean().optional(),
+    password: z
+        .string()
+        .optional()
+        .refine((value) => !value || isStrongPassword(value), USER_TEXT.passwordWeak),
 });
 
 export type UserUpdateInput = z.infer<typeof userUpdateSchema>;
@@ -106,6 +110,7 @@ export async function updateUser(id: string | number, input: UserUpdateInput): P
         role: input.role.trim(),
         dept_code: input.dept_code?.trim() || null,
         ...(input.active !== undefined ? { active: input.active } : {}),
+        ...(input.password ? { password: input.password } : {}),
     });
 }
 

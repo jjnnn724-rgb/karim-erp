@@ -35,9 +35,9 @@ import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 
 /**
- * الوصفات — CRUD كامل مثل V2:
+ * الوصفات — CRUD كامل على جدول `recipes`:
  *  • إنشاء وصفة (POST /api/recipes — admin|manager)
- *  • تعديل وصفة (PATCH /api/recipes/:id — admin|manager)
+ *  • تعديل وصفة (PUT /api/recipes/:id — admin|manager)
  *  • حذف وصفة (DELETE /api/recipes/:id — أدمن فقط)
  *  • طباعة القائمة (PrintActions)
  *
@@ -183,9 +183,9 @@ function RecipeFormDialog({ open, onClose, pending, editing, departments, onSave
 
         const input: RecipeCreateInput | RecipeUpdateInput = {
             name: form.name.trim(),
-            selling_price: sellingPrice,
-            total_cost: totalCost,
-            department_code: form.departmentCode.trim() || null,
+            sellingPrice,
+            totalCost,
+            deptId: form.departmentCode.trim() || null,
         };
 
         try {

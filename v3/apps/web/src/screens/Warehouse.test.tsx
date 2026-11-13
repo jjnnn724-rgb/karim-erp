@@ -20,6 +20,7 @@ const mocks = vi.hoisted(() => ({
     deleteInventoryItem: vi.fn(),
     forceDeleteInventoryItem: vi.fn(),
     mergeInventoryItems: vi.fn(),
+    submitBulkReceipt: vi.fn(),
 }));
 
 vi.mock('../lib/auth', () => ({
@@ -42,6 +43,11 @@ vi.mock('../lib/inventory-write', async (importOriginal) => {
         forceDeleteInventoryItem: mocks.forceDeleteInventoryItem,
         mergeInventoryItems: mocks.mergeInventoryItems,
     };
+});
+
+vi.mock('../lib/inventory-bulk', async (importOriginal) => {
+    const original = await importOriginal<typeof import('../lib/inventory-bulk')>();
+    return { ...original, submitBulkReceipt: mocks.submitBulkReceipt };
 });
 
 const items = [
@@ -182,6 +188,7 @@ beforeEach(() => {
     mocks.deleteInventoryItem.mockResolvedValue(undefined);
     mocks.forceDeleteInventoryItem.mockResolvedValue(undefined);
     mocks.mergeInventoryItems.mockResolvedValue({ mergedCount: 1, movedQty: 2 });
+    mocks.submitBulkReceipt.mockResolvedValue({ imported: 2, total: 2, batches: ['BULK-1'], failures: [] });
 });
 
 afterEach(() => {
@@ -577,5 +584,146 @@ describe('المخزون — دمج المكرر (أدمن)', () => {
         fireEvent.click(screen.getByRole('button', { name: 'دمج أصناف مكررة' }));
         expect(await screen.findByText('ممتاز — لا توجد أصناف مكررة بالاسم نفسه حاليًا 👌')).toBeTruthy();
         expect(screen.queryByRole('button', { name: 'دمج في الصنف المحدد' })).toBeNull();
+    });
+});
+
+describe('المخزون — الاستلام المجمّع', () => {
+    function bulkDialog(): HTMLElement {
+        return screen.getByRole('dialog');
+    }
+
+    function fillRow(index: number, values: { name?: string; qty?: string; price?: string }): void {
+        const scope = within(bulkDialog());
+        if (values.name !== undefined) {
+            fireEvent.change(scope.getByLabelText(`الصنف — صف ${index}`), { target: { value: values.name } });
+        }
+        if (values.qty !== undefined) {
+            fireEvent.change(scope.getByLabelText(`الكمية — صف ${index}`), { target: { value: values.qty } });
+        }
+        if (values.price !== undefined) {
+            fireEvent.change(scope.getByLabelText(`السعر — صف ${index}`), { target: { value: values.price } });
+        }
+    }
+
+    it('الزر يظهر لمن يملك الكتابة ويختفي عن المحاسب', async () => {
+        stubFetch();
+        renderScreen();
+        await waitFor(() => {
+            expect(registerRows()).toHaveLength(5);
+        });
+        expect(screen.getByRole('button', { name: 'استلام مجمّع' })).toBeTruthy();
+    });
+
+    it('المحاسب لا يرى زر الاستلام المجمّع', async () => {
+        mocks.role = 'accountant';
+        stubFetch();
+        renderScreen();
+        await waitFor(() => {
+            expect(registerRows()).toHaveLength(5);
+        });
+        expect(screen.queryByRole('button', { name: 'استلام مجمّع' })).toBeNull();
+    });
+
+    it('يفتح النافذة بصف واحد بالافتراضيات ويضيف صفوفًا', async () => {
+        stubFetch();
+        renderScreen();
+        await waitFor(() => {
+            expect(registerRows()).toHaveLength(5);
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'استلام مجمّع' }));
+        expect(await screen.findByRole('heading', { name: 'استلام مجمّع' })).toBeTruthy();
+
+        const scope = within(bulkDialog());
+        expect((scope.getByLabelText('الفئة — صف 1') as HTMLInputElement).value).toBe('عام');
+        expect((scope.getByLabelText('الوحدة — صف 1') as HTMLInputElement).value).toBe('قطعة');
+        expect((scope.getByLabelText('الحد الأدنى — صف 1') as HTMLInputElement).value).toBe('5');
+
+        fireEvent.click(scope.getByRole('button', { name: 'إضافة صف' }));
+        expect(scope.getByLabelText('الصنف — صف 2')).toBeTruthy();
+        expect(screen.getByText('2 صف — 0 صالح للإرسال')).toBeTruthy();
+    });
+
+    it('يرفض الصف الناقص قبل الإرسال ولا ينادي الخادم', async () => {
+        stubFetch();
+        renderScreen();
+        await waitFor(() => {
+            expect(registerRows()).toHaveLength(5);
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'استلام مجمّع' }));
+        await screen.findByRole('heading', { name: 'استلام مجمّع' });
+
+        fillRow(1, { name: 'أرز' });
+        fireEvent.click(within(bulkDialog()).getByRole('button', { name: 'استلام 0 صنف' }));
+
+        expect(await screen.findByText('الكمية يجب أن تكون أكبر من صفر')).toBeTruthy();
+        expect(mocks.submitBulkReceipt).not.toHaveBeenCalled();
+    });
+
+    it('يرسل الصفوف الصالحة ويبطل استعلام المخزون', async () => {
+        stubFetch();
+        const { invalidate } = renderScreen();
+        await waitFor(() => {
+            expect(registerRows()).toHaveLength(5);
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'استلام مجمّع' }));
+        await screen.findByRole('heading', { name: 'استلام مجمّع' });
+
+        fillRow(1, { name: 'أرز', qty: '10', price: '25' });
+        fireEvent.click(within(bulkDialog()).getByRole('button', { name: 'استلام 1 صنف' }));
+
+        await waitFor(() => {
+            expect(mocks.submitBulkReceipt).toHaveBeenCalledTimes(1);
+        });
+        const rows = mocks.submitBulkReceipt.mock.calls[0]?.[0] as { name: string; qty: string; price: string; minQty: string }[];
+        expect(rows[0]).toMatchObject({ name: 'أرز', qty: '10', price: '25', minQty: '5' });
+
+        expect(await screen.findByText('تم الاستلام المجمّع')).toBeTruthy();
+        await waitFor(() => {
+            expect(invalidate).toHaveBeenCalledWith({ queryKey: ['inventory'] });
+        });
+    });
+
+    it('فشل دفعة يظهر كإيراد جزئي لا كنجاح صامت', async () => {
+        mocks.submitBulkReceipt.mockResolvedValueOnce({
+            imported: 1,
+            total: 2,
+            batches: ['BULK-1'],
+            failures: [{ names: ['زيت'], message: 'الوحدة غير مطابقة' }],
+        });
+        stubFetch();
+        renderScreen();
+        await waitFor(() => {
+            expect(registerRows()).toHaveLength(5);
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'استلام مجمّع' }));
+        await screen.findByRole('heading', { name: 'استلام مجمّع' });
+
+        fillRow(1, { name: 'أرز', qty: '10', price: '25' });
+        fireEvent.click(within(bulkDialog()).getByRole('button', { name: 'استلام 1 صنف' }));
+
+        expect(await screen.findByText('اكتمل الاستيراد جزئيًا')).toBeTruthy();
+        expect(screen.getByText('زيت — الوحدة غير مطابقة')).toBeTruthy();
+    });
+
+    it('فشل الاستلام كله يبقي النافذة مفتوحة ويعرض رسالة الخادم', async () => {
+        mocks.submitBulkReceipt.mockRejectedValueOnce(new Error('تعذر تسجيل استيراد المخزون'));
+        stubFetch();
+        renderScreen();
+        await waitFor(() => {
+            expect(registerRows()).toHaveLength(5);
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'استلام مجمّع' }));
+        await screen.findByRole('heading', { name: 'استلام مجمّع' });
+
+        fillRow(1, { name: 'أرز', qty: '10', price: '25' });
+        fireEvent.click(within(bulkDialog()).getByRole('button', { name: 'استلام 1 صنف' }));
+
+        expect(await screen.findByText('تعذر تسجيل استيراد المخزون')).toBeTruthy();
+        expect(screen.getByRole('heading', { name: 'استلام مجمّع' })).toBeTruthy();
     });
 });

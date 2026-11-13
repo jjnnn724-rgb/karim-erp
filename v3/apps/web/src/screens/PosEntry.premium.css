@@ -501,11 +501,15 @@
     font-size: 0.66rem;
 }
 
+.pos-product__image-actions {
+    display: flex;
+    flex-wrap: wrap;
+    justify-content: flex-end;
+    gap: 0.35rem;
+    padding: 0 0.7rem 0.7rem;
+}
+
 .pos-product__image-action {
-    position: absolute;
-    inset-block-start: 0.35rem;
-    inset-inline-end: 0.35rem;
-    z-index: 1;
     padding: 0.15rem 0.45rem;
     border: 1px solid var(--pos-line);
     border-radius: 999px;
@@ -1768,16 +1772,9 @@
 }
 
 .pos-product__image-action {
-    position: absolute;
-    inset-block-start: auto;
-    inset-block-end: 0.55rem;
-    inset-inline-end: auto;
-    inset-inline-start: 0.55rem;
-    z-index: 2;
     inline-size: auto;
     block-size: auto;
     min-inline-size: 0;
-    min-block-size: 0;
     padding: 0.16rem 0.5rem;
     border-radius: 999px;
     background: rgb(10 12 22 / 0.6);
@@ -2417,4 +2414,147 @@
     font-size: 0.8rem;
     font-weight: 600;
     line-height: 1.5;
+}
+
+/* ─── لوحة الطابعة الحرارية ─────────────────────────────────────────────── */
+.pos-printers {
+    display: flex;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+
+.pos-printer-status {
+    display: flex;
+    align-items: center;
+    gap: 0.65rem;
+    padding: 0.6rem 0.75rem;
+    border: 1px solid var(--pos-line);
+    border-radius: var(--pos-radius);
+    background: var(--pos-sunken);
+}
+
+.pos-printer-status__dot {
+    flex-shrink: 0;
+    inline-size: 0.6rem;
+    block-size: 0.6rem;
+    border-radius: 999px;
+    background: var(--erp-danger);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--erp-danger) 16%, transparent);
+}
+
+.pos-printer-status__dot.is-on {
+    background: var(--erp-success);
+    box-shadow: 0 0 0 4px color-mix(in srgb, var(--erp-success) 18%, transparent);
+}
+
+.pos-printer-status__copy {
+    display: flex;
+    flex: 1;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-inline-size: 0;
+}
+
+.pos-printer-status__copy strong {
+    color: var(--pos-ink);
+    font-size: 0.88rem;
+}
+
+.pos-printer-status__copy small {
+    color: var(--pos-muted);
+    font-size: 0.72rem;
+}
+
+.pos-printers__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.pos-printers__head strong {
+    font-size: 0.85rem;
+    color: var(--pos-ink);
+}
+
+.pos-printers__list {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+
+.pos-printer-row {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.6rem;
+    padding: 0.45rem 0.65rem;
+    border: 1px solid var(--pos-line);
+    border-radius: 10px;
+    background: var(--pos-surface);
+}
+
+.pos-printer-row__copy {
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+    min-inline-size: 0;
+}
+
+.pos-printer-row__copy strong {
+    display: flex;
+    align-items: center;
+    gap: 0.35rem;
+    overflow: hidden;
+    color: var(--pos-ink);
+    font-size: 0.82rem;
+    white-space: nowrap;
+    text-overflow: ellipsis;
+}
+
+.pos-printer-row__copy small {
+    color: var(--pos-muted);
+    font-size: 0.7rem;
+    word-break: break-word;
+}
+
+.pos-printers__registered {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding-top: 0.6rem;
+    border-top: 1px solid var(--pos-line);
+}
+
+.pos-printers__registered > strong {
+    font-size: 0.85rem;
+    color: var(--pos-ink);
+}
+
+.pos-printers__note {
+    margin: 0;
+    padding: 0.45rem 0.6rem;
+    border: 1px solid color-mix(in srgb, var(--erp-warning) 40%, transparent);
+    border-radius: 10px;
+    background: var(--erp-warning-soft);
+    color: var(--erp-warning-text);
+    font-size: 0.76rem;
+}
+
+.pos-printers__hint {
+    margin: 0;
+    color: var(--pos-muted);
+    font-size: 0.72rem;
+    line-height: 1.6;
+}
+
+.pos-printers__hint code {
+    padding: 0.05rem 0.3rem;
+    border-radius: 6px;
+    background: var(--pos-sunken);
+    font-size: 0.7rem;
 }

@@ -14,7 +14,12 @@
 const { z } = require('zod');
 
 const KINDS = ['receipt', 'kot'];
-const CONNECTION_TYPES = ['network', 'windows_share', 'usb'];
+const CONNECTION_TYPES = ['network', 'windows_share', 'windows_local', 'usb'];
+// Never resolve an executable from PATH or accept a script path from the request.
+const WINDOWS_POWERSHELL = 'C:\\Windows\\System32\\WindowsPowerShell\\v1.0\\powershell.exe';
+const departmentIdSchema = z.union([z.number(), z.string().regex(/^\d+$/)])
+    .refine((value) => Number.isSafeInteger(Number(value)) && Number(value) > 0, 'رقم القسم غير صالح')
+    .transform(Number);
 const PAPER_WIDTHS = [58, 80];
 const CHARSETS = ['utf8', 'cp864'];
 const PRINTER_ID_RE = /^[a-z0-9][a-z0-9-]{0,39}$/;
@@ -28,8 +33,9 @@ function kindOfPrinterId(printerId) {
 /** المعرف القياسي من النوع + رقم القسم */
 function resolvePrinterId(kind, departmentId) {
     if (!KINDS.includes(kind)) {return { ok: false, code: 'BAD_KIND' };}
-    const id = Number(departmentId);
-    if (!Number.isFinite(id) || !Number.isInteger(id) || id <= 0) {
+    const parsed = departmentIdSchema.safeParse(departmentId);
+    const id = parsed.success ? parsed.data : null;
+    if (!parsed.success) {
         return { ok: false, code: 'BAD_DEPARTMENT' };
     }
     return { ok: true, id: `${kind === 'kot' ? 'kot' : 'pos'}-${id}` };
@@ -52,10 +58,29 @@ function normalizeShareAddress(address) {
     return m ? { server: m[1], share: m[2] } : null;
 }
 
+/** Queue names are data, never paths, command options or wildcard expressions. */
+function normalizeLocalPrinterName(address) {
+    if (typeof address !== 'string') {return null;}
+    const name = address.trim();
+    if (!name || name.length > 120 || name === '.' || name === '..') {return null;}
+    // eslint-disable-next-line no-control-regex
+    if (/[\\/\u0000-\u001f\u007f]/.test(name)) {return null;}
+    return { name };
+}
+
+function canonicalPrinterAddress(connectionType, address) {
+    const normalized = validatePrinterAddress(connectionType, address);
+    if (!normalized) {return null;}
+    if (connectionType === 'network') {return `${normalized.host}:${normalized.port}`;}
+    if (connectionType === 'windows_share') {return `${normalized.server}/${normalized.share}`;}
+    return normalized.name;
+}
+
 /** تحقق موحد لنوع الاتصال — يعيد كائنًا مقننًا أو null */
 function validatePrinterAddress(connectionType, address) {
     if (connectionType === 'network') {return normalizeNetworkAddress(address);}
     if (connectionType === 'windows_share') {return normalizeShareAddress(address);}
+    if (connectionType === 'windows_local') {return normalizeLocalPrinterName(address);}
     return null; // usb غير مدعوم عمدًا
 }
 
@@ -81,12 +106,10 @@ const printerRegistrationSchema = z
     .object({
         id: z.string().regex(PRINTER_ID_RE, 'معرف غير صالح (أحرف صغيرة/أرقام/شرطة)').optional(),
         kind: z.enum(['receipt', 'kot']).default('receipt'),
-        department_id: z
-            .union([z.number().int().positive(), z.string().regex(/^\d+$/)])
-            .optional(),
+        department_id: departmentIdSchema.optional(),
         name: z.string().trim().max(80).optional(),
-        connection_type: z.enum(['network', 'windows_share']),
-        address: z.string().trim().min(3).max(120),
+        connection_type: z.enum(['network', 'windows_share', 'windows_local']),
+        address: z.string().trim().min(1).max(120),
         paper_width_mm: z.union([z.literal(58), z.literal(80)]).default(80),
         charset: z.enum(['utf8', 'cp864']).default('utf8'),
     })
@@ -114,8 +137,8 @@ const printerRegistrationSchema = z
 const printerUpdateSchema = z
     .object({
         name: z.string().trim().max(80).optional(),
-        connection_type: z.enum(['network', 'windows_share']).optional(),
-        address: z.string().trim().min(3).max(120).optional(),
+        connection_type: z.enum(['network', 'windows_share', 'windows_local']).optional(),
+        address: z.string().trim().min(1).max(120).optional(),
         paper_width_mm: z.union([z.literal(58), z.literal(80)]).optional(),
         charset: z.enum(['utf8', 'cp864']).optional(),
         is_online: z.boolean().optional(),

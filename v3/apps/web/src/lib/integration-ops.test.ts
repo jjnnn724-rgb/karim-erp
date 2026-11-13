@@ -1,8 +1,10 @@
 import { describe, expect, it } from 'vitest';
 import {
     ageText,
+    CREDENTIAL_KEY_RE,
     eventDirectionLabel,
     eventOutcomeLabel,
+    INTEGRATION_PROVIDER_CODES,
     integrationHealthSchema,
     outboxRetryable,
     outboxReviewable,
@@ -10,6 +12,7 @@ import {
     outboxStatusLabel,
     providerToggleAllowed,
     providerVerification,
+    validateCredentialForm,
 } from './integration-ops';
 
 /**
@@ -105,5 +108,38 @@ describe('تسميات ودلالات V2', () => {
         expect(ageText(7200)).toBe('2 س');
         expect(eventDirectionLabel('internal')).toBe('داخلي');
         expect(eventOutcomeLabel('success')).toBe('نجاح');
+    });
+});
+
+describe('تحقق نموذج الاعتماد', () => {
+    it('يقبل اسم مفتاح صحيحًا وقيمة ضمن الطول', () => {
+        const result = validateCredentialForm({ key: 'mudad.client_secret', value: 'secret-value-123' });
+        expect(result.ok).toBe(true);
+        if (result.ok) {
+            expect(result.key).toBe('mudad.client_secret');
+        }
+    });
+
+    it('يرفض اسم مفتاح لا يطابق قاعدة الخادم', () => {
+        expect(validateCredentialForm({ key: 'Mudad', value: 'secret-value-123' }).ok).toBe(false);
+        expect(validateCredentialForm({ key: '1secret', value: 'secret-value-123' }).ok).toBe(false);
+        expect(validateCredentialForm({ key: 'a', value: 'secret-value-123' }).ok).toBe(false);
+        expect(validateCredentialForm({ key: '', value: 'secret-value-123' }).ok).toBe(false);
+        expect(CREDENTIAL_KEY_RE.test('mudad.client_secret')).toBe(true);
+        expect(CREDENTIAL_KEY_RE.test('Mudad')).toBe(false);
+    });
+
+    it('يرفض قيمة قصيرة أو طويلة ولا يسرّبها في الرسالة', () => {
+        const short = validateCredentialForm({ key: 'mudad.key', value: '1234567' });
+        expect(short.ok).toBe(false);
+        if (!short.ok) {
+            expect(short.message).not.toContain('1234567');
+        }
+        expect(validateCredentialForm({ key: 'mudad.key', value: 'x'.repeat(8193) }).ok).toBe(false);
+        expect(validateCredentialForm({ key: 'mudad.key', value: 'x'.repeat(8192) }).ok).toBe(true);
+    });
+
+    it('يعرّف مزوّدَي التكامل الأربعة كما في الخادم', () => {
+        expect([...INTEGRATION_PROVIDER_CODES]).toEqual(['zatca', 'mudad', 'gosi', 'qiwa']);
     });
 });

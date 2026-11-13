@@ -63,6 +63,7 @@ export const V3_SCREENS = [
     'cfo',
     'monthly-comparison',
     'reports',
+    'vat-return',
     'cashier-sales',
     'cashier-monitor',
     'pos-entry',

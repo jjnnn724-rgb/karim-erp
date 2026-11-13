@@ -1009,6 +1009,16 @@ export async function execDayClose(date: string): Promise<DayCloseResult> {
     });
 }
 
+export async function removePosProductImage(productId: string): Promise<{ id: string; image_url: null }> {
+    const id = Number(productId);
+    if (!Number.isInteger(id) || id <= 0) {
+        throw new Error('معرّف الصنف غير صالح');
+    }
+    return fetchJson(z.object({ id: idText, image_url: z.null() }), `/api/pos/products/${String(id)}/image`, token(), {
+        method: 'DELETE',
+    });
+}
+
 export async function uploadPosProductImage(productId: string, file: File): Promise<{ id: string; image_url: string }> {
     const id = Number(productId);
     if (!Number.isInteger(id) || id <= 0) {
@@ -1140,3 +1150,144 @@ export async function fetchBuffetReport(date: string, signal?: AbortSignal): Pro
 export function riyadhToday(): string {
     return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Riyadh' });
 }
+
+export const posPrinterSchema = z
+    .object({
+        id: idText,
+        name: text,
+        kind: text,
+        department_id: idText.nullable().optional(),
+        connection_type: z.string(),
+        address: text,
+        paper_width_mm: numOrNull,
+        charset: text,
+        is_online: flag,
+        last_seen_at: text,
+    })
+    .passthrough();
+
+export type PosPrinter = z.infer<typeof posPrinterSchema>;
+
+const printerListSchema = z.object({ printers: z.array(posPrinterSchema) }).passthrough();
+
+const localQueueSchema = z
+    .object({
+        name: z.string(),
+        driver: text,
+        port: text,
+        shared: flag,
+        share_name: text,
+        status: text,
+        is_default: flag,
+        thermal: flag,
+    })
+    .passthrough();
+
+export type PosLocalPrintQueue = z.infer<typeof localQueueSchema>;
+
+const networkCandidateSchema = z
+    .object({
+        ip: idText.optional(),
+        port: numOrNull,
+        latency_ms: numOrNull,
+        address: text,
+        connection_type: text,
+    })
+    .passthrough();
+
+export type PosNetworkPrinter = z.infer<typeof networkCandidateSchema>;
+
+const printerDiscoverySchema = z
+    .object({
+        platform: text,
+        local_queue_supported: flag,
+        local_error: text,
+        local: z.array(localQueueSchema).optional().default([]),
+        network: z.array(networkCandidateSchema).optional().default([]),
+        subnet: text,
+        registered: z.array(posPrinterSchema).optional().default([]),
+        scanned_at: text,
+    })
+    .passthrough();
+
+export type PosPrinterDiscovery = z.infer<typeof printerDiscoverySchema>;
+
+const printerProbeSchema = z
+    .object({
+        printer_id: text,
+        reachable: z.boolean(),
+        latency_ms: numOrNull,
+        error: text,
+        host: text,
+        port: numOrNull,
+        connection_type: text,
+    })
+    .passthrough();
+
+export type PosPrinterProbe = z.infer<typeof printerProbeSchema>;
+
+const printerAutoSchema = z
+    .object({
+        printer: posPrinterSchema,
+        probe: printerProbeSchema.partial().passthrough().optional(),
+        source: text,
+        note: text,
+    })
+    .passthrough();
+
+export type PosPrinterAutoResult = z.infer<typeof printerAutoSchema>;
+
+/** الطابعات المسجلة — كل الأدوار الداخلية تقرأ، والتعديل للمدير/المسؤول. */
+export async function fetchPosPrinters(signal?: AbortSignal): Promise<PosPrinter[]> {
+    const row = await fetchJson(printerListSchema, '/api/pos/printers', token(), opts(signal));
+    return row.printers;
+}
+
+/** الاكتشاف التلقائي: طوابير ويندوز المثبتة + طابعات الشبكة على 9100. */
+export async function discoverPosPrinters(scan = true, signal?: AbortSignal): Promise<PosPrinterDiscovery> {
+    return fetchJson(
+        printerDiscoverySchema,
+        `/api/pos/printers/discover${scan ? '' : '?scan=0'}`,
+        token(),
+        opts(signal),
+    );
+}
+
+export async function probePosPrinter(printerId: string): Promise<PosPrinterProbe> {
+    const id = String(printerId).trim();
+    if (!/^[a-z0-9][a-z0-9-]{0,39}$/.test(id)) {
+        throw new Error('معرّف الطابعة غير صالح');
+    }
+    return fetchJson(printerProbeSchema, '/api/pos/printers/probe', token(), {
+        method: 'POST',
+        body: { id },
+    });
+}
+
+export interface AutoLinkPrinterInput {
+    departmentId?: string | null;
+    kind?: 'receipt' | 'kot';
+    address?: string;
+    connectionType?: 'network' | 'windows_share' | 'windows_local';
+    name?: string;
+}
+
+/** ربط الطابعة بضغطة واحدة — بلا عنوان يختار الخادم أفضل طابعة متاحة. */
+export async function autoLinkPosPrinter(input: AutoLinkPrinterInput = {}): Promise<PosPrinterAutoResult> {
+    const dept = input.departmentId ? Number(input.departmentId) : null;
+    if (dept !== null && (!Number.isInteger(dept) || dept <= 0)) {
+        throw new Error('رقم القسم غير صالح');
+    }
+    return fetchJson(printerAutoSchema, '/api/pos/printers/auto', token(), {
+        method: 'POST',
+        body: {
+            kind: input.kind ?? 'receipt',
+            ...(dept !== null ? { department_id: dept } : {}),
+            ...(input.address ? { address: input.address } : {}),
+            ...(input.connectionType ? { connection_type: input.connectionType } : {}),
+            ...(input.name ? { name: input.name } : {}),
+        },
+    });
+}
+
+/* ─── البوفيه: قراءة وكتابة ────────────────────────────────────────────── */

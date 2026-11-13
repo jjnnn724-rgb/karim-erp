@@ -9,6 +9,7 @@ function item(overrides: Partial<CatalogItem> & Pick<CatalogItem, 'id' | 'name'>
         barcode: '',
         stock: null,
         imageUrl: '',
+        hasImage: false,
         category: '',
         tier: '',
         isBuffet: false,

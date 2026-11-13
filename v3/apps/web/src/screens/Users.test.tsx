@@ -1,6 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import * as auth from '../lib/auth';
+import { USER_TEXT } from '../lib/users-write';
 import { ToastProvider } from '../ui/Toast';
 import { Users } from './Users';
 
@@ -62,13 +64,17 @@ function json(body: unknown, status = 200): Response {
     });
 }
 
-function stubFetch(fail: 'users' | null = null): string[] {
+function stubFetch(fail: 'users' | null = null, updates: { url: string; body: Record<string, unknown> }[] = []): string[] {
     const urls: string[] = [];
     vi.stubGlobal(
         'fetch',
-        vi.fn(async (url: string) => {
+        vi.fn(async (url: string, init?: RequestInit) => {
             const target = String(url);
             urls.push(target);
+            if (target.startsWith('/api/users/') && init?.method === 'PUT') {
+                updates.push({ url: target, body: JSON.parse(String(init.body)) });
+                return json({ id: target.split('/').pop() });
+            }
             if (target.includes('/api/users')) {
                 if (fail === 'users') {
                     return json({ error: 'FAILED', message: 'تعذّر جلب المستخدمين' }, 500);
@@ -100,7 +106,84 @@ function bodyRows(): HTMLElement[] {
 }
 
 afterEach(() => {
+    vi.restoreAllMocks();
     vi.unstubAllGlobals();
+});
+
+describe('user password editing', () => {
+    async function openEditor() {
+        const updates: { url: string; body: Record<string, unknown> }[] = [];
+        stubFetch(null, updates);
+        vi.spyOn(auth, 'useAuthState').mockReturnValue({
+            status: 'authenticated',
+            token: 'test-token',
+            user: { id: '1', username: 'admin', name: 'Test Admin', role: 'admin' },
+        });
+        renderScreen();
+        const row = (await screen.findByText('@head_salads')).closest('tr') as HTMLTableRowElement;
+        const editButton = within(row).getByRole('button', { name: /^تعديل$/ });
+        fireEvent.click(editButton);
+        const dialog = await screen.findByRole('dialog', { name: 'تعديل بيانات المستخدم' });
+        return { updates, editButton, dialog };
+    }
+
+    it('sends a strong new password with the existing user fields', async () => {
+        const { updates, dialog } = await openEditor();
+        const password = within(dialog).getByLabelText('كلمة المرور الجديدة (اختياري)');
+        expect(password).toHaveAttribute('type', 'password');
+        expect(password).toHaveAttribute('autocomplete', 'new-password');
+        expect(password).not.toBeRequired();
+        fireEvent.change(password, { target: { value: 'TestPassword123' } });
+        fireEvent.click(within(dialog).getByRole('button', { name: 'حفظ التعديل' }));
+
+        await waitFor(() => expect(updates).toHaveLength(1));
+        expect(updates[0]).toEqual({
+            url: '/api/users/2',
+            body: { name: 'أحمد صالح', role: 'dept_head', dept_code: 'salads', active: true, password: 'TestPassword123' },
+        });
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    });
+
+    it('omits the password when the input is cleared', async () => {
+        const { updates, dialog } = await openEditor();
+        const password = within(dialog).getByLabelText('كلمة المرور الجديدة (اختياري)');
+        fireEvent.change(password, { target: { value: 'TestPassword123' } });
+        fireEvent.change(password, { target: { value: '' } });
+        fireEvent.click(within(dialog).getByRole('button', { name: 'حفظ التعديل' }));
+
+        await waitFor(() => expect(updates).toHaveLength(1));
+        expect(updates[0]?.body).toEqual({ name: 'أحمد صالح', role: 'dept_head', dept_code: 'salads', active: true });
+        expect(updates[0]?.body).not.toHaveProperty('password');
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    });
+
+    it.each(['short1', 'abcdefghijkl', '123456789012', '            '])('rejects a weak nonempty password: %s', async (value) => {
+        const { updates, dialog } = await openEditor();
+        fireEvent.change(within(dialog).getByLabelText('كلمة المرور الجديدة (اختياري)'), { target: { value } });
+        fireEvent.click(within(dialog).getByRole('button', { name: 'حفظ التعديل' }));
+
+        expect(await within(dialog).findByRole('alert')).toHaveTextContent(USER_TEXT.passwordWeak);
+        expect(updates).toHaveLength(0);
+        expect(vi.mocked(fetch).mock.calls.every(([, init]) => !init?.method || init.method === 'GET')).toBe(true);
+    });
+
+    it('resets the password and validation error when reopened', async () => {
+        const { updates, editButton, dialog } = await openEditor();
+        fireEvent.change(within(dialog).getByLabelText('كلمة المرور الجديدة (اختياري)'), { target: { value: 'short1' } });
+        fireEvent.click(within(dialog).getByRole('button', { name: 'حفظ التعديل' }));
+        expect(await within(dialog).findByRole('alert')).toHaveTextContent(USER_TEXT.passwordWeak);
+        fireEvent.click(within(dialog).getByRole('button', { name: 'إلغاء' }));
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+        fireEvent.click(editButton);
+
+        const reopened = await screen.findByRole('dialog', { name: 'تعديل بيانات المستخدم' });
+        expect(within(reopened).getByLabelText('كلمة المرور الجديدة (اختياري)')).toHaveValue('');
+        expect(within(reopened).queryByRole('alert')).toBeNull();
+        fireEvent.click(within(reopened).getByRole('button', { name: 'حفظ التعديل' }));
+        await waitFor(() => expect(updates).toHaveLength(1));
+        expect(updates[0]?.body).not.toHaveProperty('password');
+        await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
+    });
 });
 
 describe('دليل المستخدمين', () => {

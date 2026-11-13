@@ -2,12 +2,30 @@ import { z } from 'zod';
 import { isWriteRole, writeAck, writeJson } from './write';
 
 /**
- * كتابة الوصفات — منقولة من V2 بوابات الصلاحية نفسها (نظام CRUD العام في الخادم):
- *  • إنشاء     POST   /api/recipes          (admin|manager)
- *  • تعديل     PATCH  /api/recipes/:id      (admin|manager)
- *  • حذف نهائي DELETE /api/recipes/:id      (admin)
+ * كتابة الوصفات — CRUD العام في الخادم على جدول `recipes`:
+ *  • إنشاء     POST   /api/recipes          (admin|manager|kitchen|sous_chef)
+ *  • تعديل     PUT    /api/recipes/:id      (admin|manager|kitchen|sous_chef)
+ *  • حذف نهائي DELETE /api/recipes/:id      (admin|manager|kitchen|sous_chef)
  *
- * حتى تُفعَّل هذه المسارات في الباكendien، تُعدّ الدوال جاهزة للاستدعاء.
+ * أسماء الحقول **كما في الخادم لا كما في V2**: السجل محميّ بقائمة كتابة
+ * (`backend/schema-registry.js:436`):
+ *
+ *     writeable: ['name', 'deptId', 'sellingPrice', 'totalCost', 'costRatio']
+ *     required : ['name']
+ *
+ * والجدول `database/migrations/001_schema.sql:169` لا يحمل إلا:
+ * `id, name, "deptId", "sellingPrice", "totalCost", "costRatio"`.
+ *
+ * `filterBody` (`schema-registry.js:630`) يُسقط أي حقل خارج القائمة ويُرجع
+ * 400 INVALID_PAYLOAD — فحقلٌ مثل `selling_price` أو `active` يُرفض رفضًا
+ * قاطعًا ولا يُحفظ بصمت.
+ *
+ * `costRatio` لا يُرسل من هنا: الخادم يشتقّه عند حفظ مكونات الوصفة
+ * (`backend/cashier-module/shift-routes.js:568`):
+ * `ROUND(totalCost / sellingPrice * 100, 2)` — وهي القاعدة الوحيدة للنسبة.
+ *
+ * الأدوار هنا **أضيق** من قائمة الخادم: بوابة الكتابة `admin|manager`
+ * والحذف `admin` فقط، فلا يظهر زرٌّ لغير من يملك الصلاحية فعلًا.
  */
 
 export const RECIPE_WRITE_ROLES = ['admin', 'manager'] as const;
@@ -31,14 +49,10 @@ export const RECIPE_TEXT = {
     costInvalid: 'التكلفة يجب أن تكون رقمًا ≥ صفر',
     createFailed: 'فشل إنشاء الوصفة في قاعدة البيانات',
     updateFailed: 'فشل تحديث بيانات الوصفة',
-    deactivateFailed: 'فشل إيقاف الوصفة',
-    activateFailed: 'فشل تفعيل الوصفة',
     deleteFailed: 'فشل حذف الوصفة من قاعدة البيانات',
     deleteBlocked: 'لا يمكن حذف هذه الوصفة: مرتبطة بعناصر قائمة أو فواتير',
     createSuccess: 'تم إنشاء الوصفة بنجاح',
     updateSuccess: 'تم تحديث بيانات الوصفة',
-    deactivateSuccess: 'تم إيقاف الوصفة',
-    activateSuccess: 'تم تفعيل الوصفة',
     deleteSuccess: 'تم حذف الوصفة',
     confirmCreate: 'إضافة وصفة جديدة؟',
     confirmUpdate: 'تعديل بيانات الوصفة «%s»؟',
@@ -50,57 +64,49 @@ export const RECIPE_TEXT = {
 
 export const recipeCreateSchema = z.object({
     name: z.string().min(1, RECIPE_TEXT.nameRequired),
-    selling_price: z.coerce.number().min(0, RECIPE_TEXT.priceInvalid),
-    total_cost: z.coerce.number().min(0, RECIPE_TEXT.costInvalid),
-    department_code: z.string().optional().nullable(),
-    active: z.boolean().default(true),
+    deptId: z.string().optional().nullable(),
+    sellingPrice: z.coerce.number().min(0, RECIPE_TEXT.priceInvalid),
+    totalCost: z.coerce.number().min(0, RECIPE_TEXT.costInvalid),
 });
 
 export type RecipeCreateInput = z.infer<typeof recipeCreateSchema>;
 
 export const recipeUpdateSchema = z.object({
     name: z.string().min(1, RECIPE_TEXT.nameRequired).optional(),
-    selling_price: z.coerce.number().min(0, RECIPE_TEXT.priceInvalid).optional(),
-    total_cost: z.coerce.number().min(0, RECIPE_TEXT.costInvalid).optional(),
-    department_code: z.string().optional().nullable(),
-    active: z.boolean().optional(),
+    deptId: z.string().optional().nullable(),
+    sellingPrice: z.coerce.number().min(0, RECIPE_TEXT.priceInvalid).optional(),
+    totalCost: z.coerce.number().min(0, RECIPE_TEXT.costInvalid).optional(),
 });
 
 export type RecipeUpdateInput = z.infer<typeof recipeUpdateSchema>;
-
-export const recipeActiveSchema = z.object({
-    active: z.boolean(),
-});
-
-export type RecipeActiveInput = z.infer<typeof recipeActiveSchema>;
 
 const recipeResultSchema = z.object({ id: z.union([z.string(), z.number()]) }).passthrough();
 export type RecipeResult = z.infer<typeof recipeResultSchema>;
 
 /* ── العمليات ─────────────────────────────────────────────────────────── */
 
+/** `deptId` فارغ → `null` (وعموده nullable في الجدول) لا نصًا فارغًا. */
+function deptValue(value: string | null | undefined): string | null {
+    const text = String(value ?? '').trim();
+    return text ? text : null;
+}
+
 export async function createRecipe(input: RecipeCreateInput): Promise<RecipeResult> {
     return writeJson(recipeResultSchema, '/api/recipes', 'POST', {
         name: input.name.trim(),
-        selling_price: Number(input.selling_price),
-        total_cost: Number(input.total_cost),
-        department_code: input.department_code?.trim() || null,
-        active: input.active ?? true,
+        deptId: deptValue(input.deptId),
+        sellingPrice: Number(input.sellingPrice),
+        totalCost: Number(input.totalCost),
     });
 }
 
 export async function updateRecipe(id: string | number, input: RecipeUpdateInput): Promise<RecipeResult> {
     return writeJson(recipeResultSchema, `/api/recipes/${encodeURIComponent(String(id))}`, 'PUT', {
         ...(input.name !== undefined ? { name: input.name.trim() } : {}),
-        ...(input.selling_price !== undefined ? { selling_price: Number(input.selling_price) } : {}),
-        ...(input.total_cost !== undefined ? { total_cost: Number(input.total_cost) } : {}),
-        ...(input.department_code !== undefined ? { department_code: input.department_code?.trim() || null } : {}),
-        ...(input.active !== undefined ? { active: input.active } : {}),
+        ...(input.deptId !== undefined ? { deptId: deptValue(input.deptId) } : {}),
+        ...(input.sellingPrice !== undefined ? { sellingPrice: Number(input.sellingPrice) } : {}),
+        ...(input.totalCost !== undefined ? { totalCost: Number(input.totalCost) } : {}),
     });
-}
-
-export async function setRecipeActive(id: string | number, active: boolean): Promise<RecipeResult> {
-    return writeJson(recipeResultSchema, `/api/recipes/${encodeURIComponent(String(id))}`, 'PUT', { active });
 }
 
 export async function deleteRecipe(id: string | number): Promise<void> {
@@ -117,14 +123,6 @@ export function recipeUpdateConfirm(name: string): string {
     return RECIPE_TEXT.confirmUpdate.replace('%s', String(name ?? ''));
 }
 
-export function recipeActivateConfirm(name: string): string {
-    return `تفعيل الوصفة «${String(name ?? '')}»؟`;
-}
-
-export function recipeDeactivateConfirm(name: string): string {
-    return `إيقاف الوصفة «${String(name ?? '')}»؟`;
-}
-
 export function recipeDeleteConfirm(name: string): string {
     return RECIPE_TEXT.confirmDelete.replace('%s', String(name ?? ''));
 }
@@ -137,14 +135,6 @@ export function recipeCreateSuccess(name: string): string {
 
 export function recipeUpdateSuccess(name: string): string {
     return `${RECIPE_TEXT.updateSuccess} — «${String(name ?? '')}»`;
-}
-
-export function recipeDeactivateSuccess(name: string): string {
-    return `${RECIPE_TEXT.deactivateSuccess} — «${String(name ?? '')}»`;
-}
-
-export function recipeActivateSuccess(name: string): string {
-    return `${RECIPE_TEXT.activateSuccess} — «${String(name ?? '')}»`;
 }
 
 export function recipeDeleteSuccess(name: string): string {

@@ -25,6 +25,7 @@ export interface PosCatalogProps {
     canManageCatalog: boolean;
     imagePending: boolean;
     onUploadImage: (item: CatalogItem, file: File) => void;
+    onRemoveImage: (item: CatalogItem) => void;
     onRecall: (order: HeldOrder) => void;
     onDeleteHeld: (order: HeldOrder) => void;
     busy: boolean;
@@ -80,6 +81,7 @@ interface ProductCardProps {
     onAdd: (item: CatalogItem) => void;
     onToggleFavorite: (item: CatalogItem) => void;
     onPickImage: (item: CatalogItem) => void;
+    onRemoveImage: (item: CatalogItem) => void;
 }
 
 /**
@@ -96,6 +98,7 @@ const ProductCard = memo(function ProductCard({
     onAdd,
     onToggleFavorite,
     onPickImage,
+    onRemoveImage,
 }: ProductCardProps) {
     return (
         <article className={`pos-product${pinned ? ' is-pinned' : ''}`}>
@@ -159,17 +162,32 @@ const ProductCard = memo(function ProductCard({
                 </button>
             ) : null}
             {canManageCatalog ? (
-                <button
-                    type="button"
-                    className="pos-product__image-action"
-                    aria-label={`رفع أو تغيير صورة ${item.name}`}
-                    disabled={busy || imagePending}
-                    onClick={() => {
-                        onPickImage(item);
-                    }}
-                >
-                    صورة
-                </button>
+                <div className="pos-product__image-actions">
+                    <button
+                        type="button"
+                        className="pos-product__image-action"
+                        aria-label={`رفع أو تغيير صورة ${item.name}`}
+                        disabled={busy || imagePending}
+                        onClick={() => {
+                            onPickImage(item);
+                        }}
+                    >
+                        صورة
+                    </button>
+                    {item.hasImage ? (
+                        <button
+                            type="button"
+                            className="pos-product__image-action"
+                            aria-label={`حذف صورة ${item.name}`}
+                            disabled={busy || imagePending}
+                            onClick={() => {
+                                onRemoveImage(item);
+                            }}
+                        >
+                            حذف الصورة
+                        </button>
+                    ) : null}
+                </div>
             ) : null}
         </article>
     );
@@ -196,6 +214,7 @@ function PosCatalogView({
     canManageCatalog,
     imagePending,
     onUploadImage,
+    onRemoveImage,
     onRecall,
     onDeleteHeld,
     busy,
@@ -313,6 +332,7 @@ function PosCatalogView({
                 onAdd={onAdd}
                 onToggleFavorite={onToggleFavorite}
                 onPickImage={pickImage}
+                onRemoveImage={onRemoveImage}
             />
         );
     }

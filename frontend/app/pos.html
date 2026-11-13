@@ -4,7 +4,7 @@
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>مطاعم الشرفه العالمي — كاشير المطعم</title>
-    <meta name="theme-color" content="#b45309">
+    <meta name="theme-color" content="#0B1120">
     <link rel="manifest" href="/app/manifest.json">
     <link rel="icon" type="image/png" href="/app/assets/icon-192.png">
     <link rel="apple-touch-icon" href="/app/assets/icon-192.png">
@@ -16,13 +16,15 @@
     <link rel="preload" as="font" type="font/woff2" crossorigin href="fonts/menu/tajawal-normal-700-arabic.woff2">
     <link rel="stylesheet" href="css/menu-fonts.css">
     <link rel="stylesheet" href="css/design-tokens.css">
-    <link rel="stylesheet" href="css/pos.css?v=4.9.313">
+    <link rel="stylesheet" href="css/pos.css?v=4.9.314">
     <!-- طبقة التلميع الاحترافية — تُحمَّل أخيرًا، CSS نقي، احذف السطر للرجوع الكامل -->
     <link rel="stylesheet" href="css/pro-theme.css?v=4.9.313">
     <!-- شاشة واحدة بلا تمرير: تخطيط ثابت الارتفاع + ترقيم صفحات الأصناف والسلة -->
     <link rel="stylesheet" href="css/pos-fit.css?v=4.9.313">
     <!-- أهداف لمس مريحة وردّ فعل ضغط على شاشات اللمس -->
     <link rel="stylesheet" href="css/pos-touch.css?v=4.9.313">
+    <!-- Luxury Midnight & Emerald — الطبقة البصرية النهائية (تخطيط ثلاثي المناطق بلا تمرير) -->
+    <link rel="stylesheet" href="css/pos-midnight.css?v=4.9.314">
 </head>
 <body>
 
@@ -65,64 +67,82 @@
 
     <!-- ═══ Main POS Screen ═══ -->
     <div id="pos-screen" class="screen hidden">
+        <!-- Zone A — شريط القيادة -->
         <header class="pos-header">
-            <div class="brand"><img src="assets/karim-logo-128.webp" alt="مطاعم الشرفه العالمي"> <span>مطاعم الشرفه العالمي</span></div>
-            <div class="cashier-info">
-                <span id="pos-cashier-name"></span>
-                <span class="badge" id="pos-dept-name"></span>
-                <span class="badge badge-shift" id="pos-session-id"></span>
-                <span class="pos-live" id="pos-live" title="الاتصال اللحظي بالخادم"><span class="pos-live-dot"></span><span id="pos-live-txt">مباشر</span></span>
+            <div class="pos-brand">
+                <img src="assets/karim-logo-128.webp" alt="مطاعم الشرفه العالمي">
+                <div class="pos-brand__copy">
+                    <strong id="pos-dept-name">قسم البيع</strong>
+                    <span class="pos-brand__meta">
+                        <span id="pos-cashier-name"></span>
+                        <span class="pos-shift-chip"><span class="pos-shift-dot" aria-hidden="true"></span><span id="pos-session-id"></span></span>
+                        <span class="pos-live" id="pos-live" title="الاتصال اللحظي بالخادم"><span class="pos-live-dot"></span><span id="pos-live-txt">مباشر</span></span>
+                    </span>
+                </div>
             </div>
+
+            <div class="pos-stats" id="pos-stats" aria-label="ملخص سريع">
+                <div class="stat-chip">
+                    <span class="label">أصناف</span>
+                    <strong id="stat-products-count">0</strong>
+                </div>
+                <div class="stat-chip">
+                    <span class="label">متاح</span>
+                    <strong id="stat-available-count">0</strong>
+                </div>
+                <div class="stat-chip warning">
+                    <span class="label">منخفض</span>
+                    <strong id="stat-low-stock-count">0</strong>
+                </div>
+                <div class="stat-chip info">
+                    <span class="label">معلق</span>
+                    <strong id="stat-held-count">0</strong>
+                </div>
+            </div>
+
             <div class="pos-header-actions">
-                <button class="icon-btn" id="refresh-products-btn" title="تحديث البيانات"><i class=ji data-i=refresh></i></button>
-                <button class="icon-btn" id="change-password-btn" title="تغيير كلمة المرور"><i class=ji data-i=lock></i></button>
-                <button class="icon-btn hidden" id="catalog-btn" title="إدارة منيو المطعم والأسعار"><i class=ji data-i=settings></i></button>
-                <button class="icon-btn hidden" id="buffet-prices-btn" title="قائمة أسعار البوفيه (كبير/صغير/ضيافة)"><i class=ji data-i=users></i></button>
-                <button class="icon-btn hidden" id="buffet-invoices-btn" title="فواتير البوفيه المخزنة"><i class=ji data-i=receipt></i></button>
-                <button class="icon-btn hidden" id="buffet-report-btn" title="تقرير البوفيه اليومي"><i class=ji data-i=chart-bar></i></button>
-                <button class="icon-btn" id="held-orders-btn" title="الطلبات المعلقة"><i class=ji data-i=clipboard-list></i></button>
-                <button class="icon-btn" id="orders-history-btn" title="سجل الفواتير"><i class=ji data-i=receipt></i></button>
                 <button class="icon-btn" id="drawer-btn" title="فتح درج النقدية"><i class=ji data-i=archive></i></button>
-                <button class="icon-btn" id="discount-btn" title="خصم على السلة" disabled><i class=ji data-i=tag></i></button>
-                <button class="icon-btn" id="close-shift-btn" title="إغلاق الوردية"><i class=ji data-i=stop></i></button>
-                <button class="icon-btn hidden" id="day-close-btn" title="الإقفال اليومي Z (مدير)"><i class=ji data-i=lock></i></button>
+                <button class="icon-btn" id="held-orders-btn" title="الطلبات المعلقة"><i class=ji data-i=clipboard-list></i></button>
+                <details class="pos-menu" id="pos-admin-menu">
+                    <summary class="icon-btn pos-menu__summary" aria-label="إدارة الوردية" title="إدارة الوردية">
+                        <i class=ji data-i=settings></i><span>إدارة الوردية</span>
+                    </summary>
+                    <div class="pos-menu__panel" role="menu">
+                        <button class="pos-menu__item" id="refresh-products-btn" type="button"><i class=ji data-i=refresh></i> تحديث البيانات</button>
+                        <button class="pos-menu__item" id="orders-history-btn" type="button"><i class=ji data-i=receipt></i> سجل الفواتير</button>
+                        <button class="pos-menu__item" id="discount-btn" type="button" disabled><i class=ji data-i=tag></i> خصم على السلة</button>
+                        <div class="pos-menu__sep" aria-hidden="true"></div>
+                        <button class="pos-menu__item hidden" id="catalog-btn" type="button"><i class=ji data-i=settings></i> إدارة منيو المطعم</button>
+                        <button class="pos-menu__item hidden" id="buffet-prices-btn" type="button"><i class=ji data-i=users></i> أسعار البوفيه</button>
+                        <button class="pos-menu__item hidden" id="buffet-invoices-btn" type="button"><i class=ji data-i=receipt></i> فواتير البوفيه</button>
+                        <button class="pos-menu__item hidden" id="buffet-report-btn" type="button"><i class=ji data-i=chart-bar></i> تقرير البوفيه اليومي</button>
+                        <button class="pos-menu__item" id="change-password-btn" type="button"><i class=ji data-i=lock></i> تغيير كلمة المرور</button>
+                        <div class="pos-menu__sep" aria-hidden="true"></div>
+                        <button class="pos-menu__item hidden" id="day-close-btn" type="button"><i class=ji data-i=lock></i> الإقفال اليومي Z</button>
+                        <button class="pos-menu__item danger" id="close-shift-btn" type="button"><i class=ji data-i=stop></i> إغلاق الوردية <kbd>F9</kbd></button>
+                    </div>
+                </details>
                 <button class="mobile-cart-toggle" id="mobile-cart-toggle" type="button" aria-controls="mobile-cart-panel" aria-expanded="false"><i class=ji data-i=shopping-cart></i> السلة <span id="mobile-cart-count">0</span></button>
             </div>
         </header>
 
         <main class="pos-main">
-            <!-- Products Section -->
+            <!-- Zone B — كتالوج الأصناف -->
             <section class="products-section">
-                <div class="pos-stats" id="pos-stats">
-                    <div class="stat-chip">
-                        <span class="label">أصناف المنيو</span>
-                        <strong id="stat-products-count">0</strong>
+                <div class="pos-search-row">
+                    <div class="search-bar">
+                        <i class=ji data-i=search aria-hidden="true"></i>
+                        <input type="text" id="product-search" placeholder="اسم الصنف أو الباركود… [F1]" aria-label="البحث عن صنف بالاسم أو الباركود" autocomplete="off" autocapitalize="off" autocorrect="off" spellcheck="false" autofocus>
                     </div>
-                    <div class="stat-chip">
-                        <span class="label">المتاح</span>
-                        <strong id="stat-available-count">0</strong>
-                    </div>
-                    <div class="stat-chip warning">
-                        <span class="label">منخفض</span>
-                        <strong id="stat-low-stock-count">0</strong>
-                    </div>
-                    <div class="stat-chip info">
-                        <span class="label">معلق</span>
-                        <strong id="stat-held-count">0</strong>
-                    </div>
-                </div>
-                <div class="search-bar">
-                    <input type="text" id="product-search" placeholder="ابحث بالاسم أو الباركود..." aria-label="البحث عن صنف بالاسم أو الباركود" autocomplete="off" autofocus>
                     <div class="pos-shortcut-help" role="note" aria-label="اختصارات الكاشير">
                         <span><kbd>F1</kbd> بحث</span>
                         <span><kbd>F2</kbd> إتمام البيع</span>
                         <span><kbd>F3</kbd> تعليق</span>
-                        <span><kbd>F4</kbd> تفريغ السلة</span>
-                        <span><kbd>F9</kbd> إغلاق الوردية</span>
+                        <span><kbd>F4</kbd> تفريغ</span>
                     </div>
                 </div>
                 <div class="category-tabs" id="category-tabs"></div>
-                <div id="products-grid" class="products-grid"></div>
+                <div id="products-grid" class="products-grid custom-scroll"></div>
                 <div class="pos-pager" id="pos-pager" role="group" aria-label="صفحات الأصناف">
                     <span class="pos-pager-range" id="pos-pager-range"></span>
                     <div class="pos-pager-nav">
@@ -133,23 +153,26 @@
                 </div>
             </section>
 
-            <!-- Cart Section -->
+            <!-- Zone C — السلة والتحصيل -->
             <aside class="cart-section" id="mobile-cart-panel">
                 <div class="cart-header">
-                    <h3><i class=ji data-i=shopping-cart></i> السلة</h3>
-                    <span class="cart-count" id="cart-count">0</span>
-                </div>
-
-                <div class="cart-actions-top">
-                    <button class="cart-action-btn warning" id="hold-order-btn" disabled><i class=ji data-i=pause></i> تعليق</button>
-                    <button class="cart-action-btn" id="clear-cart-btn" disabled><i class=ji data-i=trash></i> تفريغ</button>
+                    <div class="cart-header__title">
+                        <i class=ji data-i=shopping-cart></i>
+                        <h3>السلة</h3>
+                        <strong>الطلب الحالي</strong>
+                        <span class="cart-count" id="cart-count">0</span>
+                    </div>
+                    <div class="cart-header__actions cart-actions-top">
+                        <button class="cart-action-btn warning" id="hold-order-btn" disabled title="تعليق الطلب [F3]"><i class=ji data-i=pause></i> تعليق</button>
+                        <button class="cart-action-btn" id="clear-cart-btn" disabled title="تفريغ السلة [F4]"><i class=ji data-i=trash></i> تفريغ</button>
+                    </div>
                 </div>
 
                 <div id="buffet-party-row" class="buffet-party-row hidden">
                     <input type="text" id="buffet-party-name" maxlength="120" placeholder="اسم العائلة / المناسبة (اختياري) — يُسجَّل على الفاتورة">
                 </div>
 
-                <div id="cart-items" class="cart-items"></div>
+                <div id="cart-items" class="cart-items custom-scroll"></div>
 
                 <div class="cart-pager hidden" id="cart-pager" role="group" aria-label="صفحات السلة">
                     <button type="button" class="pos-pager-btn" id="cart-page-prev" aria-label="الصناف السابقة" title="السابق">›</button>
@@ -157,67 +180,67 @@
                     <button type="button" class="pos-pager-btn" id="cart-page-next" aria-label="الصناف التالية" title="التالي">‹</button>
                 </div>
 
-                <div class="cart-summary">
-                    <div class="summary-row">
-                        <span>المجموع الفرعي:</span>
-                        <span id="cart-subtotal">0.00</span>
-                    </div>
-                    <div class="summary-row">
-                        <span>الخصم:</span>
-                        <span class="discount-val" id="cart-discount">0.00</span>
-                    </div>
-                    <div class="summary-row">
-                        <span>الضريبة (15%):</span>
-                        <span class="tax-val" id="cart-tax">0.00</span>
-                    </div>
-                    <div class="summary-row total">
-                        <span>الإجمالي:</span>
-                        <span class="amount" id="cart-total">0.00 SAR</span>
-                    </div>
-                </div>
-
-                <div class="payment-section">
-                    <h4><i class=ji data-i=credit-card></i> طرق الدفع</h4>
-                    <div class="payment-channels">
-                        <div class="pay-channel cash" data-method="cash">
-                            <div class="pay-channel-label"><i class=ji data-i=banknote></i> نقدي <button type="button" class="pay-remaining-btn" data-target="pay-cash" title="ادفع المتبقي نقدًا">الباقي</button></div>
-                            <input type="text" inputmode="decimal" autocomplete="off" id="pay-cash" value="0" placeholder="0.00">
+                <div class="cart-checkout">
+                    <div class="pay-panel" id="pay-details">
+                        <div class="pay-panel__head">
+                            <span class="pay-panel__title"><i class=ji data-i=credit-card></i> طرق الدفع</span>
+                            <span class="pay-panel__totals">
+                                <span class="pay-chip">المدفوع <b id="pay-total">0.00</b></span>
+                                <span class="pay-chip pay-chip--change">الباقي <b id="pay-change">0.00</b></span>
+                            </span>
                         </div>
-                        <div class="pay-channel card" data-method="card">
-                            <div class="pay-channel-label"><i class=ji data-i=credit-card></i> بطاقة <button type="button" class="pay-remaining-btn" data-target="pay-card" title="ادفع المتبقي بالبطاقة">الباقي</button></div>
-                            <input type="text" inputmode="decimal" autocomplete="off" id="pay-card" value="0" placeholder="0.00">
-                            <input type="text" id="pay-card-ref" placeholder="مرجع العملية" class="ref-input">
-                        </div>
-                        <div class="pay-channel wallet" data-method="wallet">
-                            <div class="pay-channel-label"><i class=ji data-i=smartphone></i> محفظة <button type="button" class="pay-remaining-btn" data-target="pay-wallet" title="ادفع المتبقي بالمحفظة">الباقي</button></div>
-                            <input type="text" inputmode="decimal" autocomplete="off" id="pay-wallet" value="0" placeholder="0.00">
-                            <input type="text" id="pay-wallet-ref" placeholder="مرجع المحفظة" class="ref-input">
-                        </div>
-                        <div class="pay-channel" data-method="bank_transfer">
-                            <div class="pay-channel-label"><i class=ji data-i=landmark></i> تحويل <button type="button" class="pay-remaining-btn" data-target="pay-bank" title="ادفع المتبقي تحويلًا">الباقي</button></div>
-                            <input type="text" inputmode="decimal" autocomplete="off" id="pay-bank" value="0" placeholder="0.00">
-                            <input type="text" id="pay-bank-ref" placeholder="رقم العملية" class="ref-input">
+                        <div class="payment-section">
+                            <div class="payment-channels">
+                                <div class="pay-channel cash" data-method="cash">
+                                    <div class="pay-channel-label"><i class=ji data-i=banknote></i> نقدي <button type="button" class="pay-remaining-btn" data-target="pay-cash" title="ادفع المتبقي نقدًا">الباقي</button></div>
+                                    <input type="text" inputmode="decimal" autocomplete="off" id="pay-cash" value="0" placeholder="0.00">
+                                </div>
+                                <div class="pay-channel card" data-method="card">
+                                    <div class="pay-channel-label"><i class=ji data-i=credit-card></i> بطاقة <button type="button" class="pay-remaining-btn" data-target="pay-card" title="ادفع المتبقي بالبطاقة">الباقي</button></div>
+                                    <input type="text" inputmode="decimal" autocomplete="off" id="pay-card" value="0" placeholder="0.00">
+                                    <input type="text" id="pay-card-ref" placeholder="مرجع العملية" class="ref-input">
+                                </div>
+                                <div class="pay-channel wallet" data-method="wallet">
+                                    <div class="pay-channel-label"><i class=ji data-i=smartphone></i> محفظة <button type="button" class="pay-remaining-btn" data-target="pay-wallet" title="ادفع المتبقي بالمحفظة">الباقي</button></div>
+                                    <input type="text" inputmode="decimal" autocomplete="off" id="pay-wallet" value="0" placeholder="0.00">
+                                    <input type="text" id="pay-wallet-ref" placeholder="مرجع المحفظة" class="ref-input">
+                                </div>
+                                <div class="pay-channel" data-method="bank_transfer">
+                                    <div class="pay-channel-label"><i class=ji data-i=landmark></i> تحويل <button type="button" class="pay-remaining-btn" data-target="pay-bank" title="ادفع المتبقي تحويلًا">الباقي</button></div>
+                                    <input type="text" inputmode="decimal" autocomplete="off" id="pay-bank" value="0" placeholder="0.00">
+                                    <input type="text" id="pay-bank-ref" placeholder="رقم العملية" class="ref-input">
+                                </div>
+                            </div>
+                            <div class="quick-cash" id="quick-cash-buttons">
+                                <button class="quick-cash-btn" data-amount="50">50</button>
+                                <button class="quick-cash-btn" data-amount="100">100</button>
+                                <button class="quick-cash-btn" data-amount="200">200</button>
+                                <button class="quick-cash-btn" data-amount="exact">المبلغ بالضبط</button>
+                            </div>
                         </div>
                     </div>
 
-                    <div class="quick-cash" id="quick-cash-buttons">
-                        <button class="quick-cash-btn" data-amount="50">50</button>
-                        <button class="quick-cash-btn" data-amount="100">100</button>
-                        <button class="quick-cash-btn" data-amount="200">200</button>
-                        <button class="quick-cash-btn" data-amount="exact">المبلغ بالضبط</button>
-                    </div>
-
-                    <div class="summary-row paid-row">
-                        <span>المدفوع:</span>
-                        <span id="pay-total">0.00</span>
-                    </div>
-                    <div class="summary-row">
-                        <span>الباقي للعميل:</span>
-                        <span id="pay-change">0.00</span>
+                    <div class="cart-summary">
+                        <div class="summary-row">
+                            <span>المجموع قبل الضريبة</span>
+                            <span id="cart-subtotal">0.00</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>الخصم</span>
+                            <span class="discount-val" id="cart-discount">0.00</span>
+                        </div>
+                        <div class="summary-row">
+                            <span>الضريبة (15%)</span>
+                            <span class="tax-val" id="cart-tax">0.00</span>
+                        </div>
+                        <div class="summary-row total">
+                            <span>الإجمالي النهائي</span>
+                            <span class="amount" id="cart-total">0.00 SAR</span>
+                        </div>
                     </div>
 
                     <button id="complete-sale-btn" class="btn-complete" disabled>
-                        <i class=ji data-i=check></i> إتمام البيع
+                        <i class=ji data-i=check></i> إتمام البيع والدفع <kbd>F2</kbd>
                     </button>
                     <div id="sale-error" class="sale-error"></div>
                 </div>

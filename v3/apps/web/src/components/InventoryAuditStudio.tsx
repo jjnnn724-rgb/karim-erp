@@ -2,8 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { useAuthState } from '../lib/auth';
 import {
+    AUDIT_SCOPE_LABELS,
+    AUDIT_SCOPE_MODES,
     AUDIT_TEXT,
     type AuditDetail,
+    type AuditScopeFilter,
+    type AuditScopeMode,
     approveInventoryAudit,
     auditPeriodLabel,
     auditProgressLabel,
@@ -13,8 +17,10 @@ import {
     auditToday,
     cancelInventoryAudit,
     canWriteAudit,
+    clearAuditCount,
     createInventoryAudit,
     fetchAuditDetail,
+    fetchAuditLocationPreview,
     fetchAuditLocations,
     fetchInventoryAudits,
     formatAuditInt,
@@ -23,6 +29,7 @@ import {
     type InventoryAudit,
     isAuditDraft,
     isAuditOpen,
+    saveAuditCount,
     saveAuditCounts,
     submitInventoryAudit,
     varianceLabel,
@@ -100,6 +107,9 @@ export function InventoryAuditStudio({ open, onOpenChange }: InventoryAuditStudi
     const [actionError, setActionError] = useState('');
     const [cancelReason, setCancelReason] = useState('');
     const [cancelOpen, setCancelOpen] = useState(false);
+    const [scopeMode, setScopeMode] = useState<AuditScopeMode>('all');
+    const [scopeCategory, setScopeCategory] = useState('');
+    const [scopeSearch, setScopeSearch] = useState('');
 
     const auditsQuery = useQuery({
         queryKey: ['inventory-audits'],
@@ -119,6 +129,28 @@ export function InventoryAuditStudio({ open, onOpenChange }: InventoryAuditStudi
         queryKey: ['inventory-audit', selectedId],
         queryFn: ({ signal }) => fetchAuditDetail(selectedId ?? '', signal),
         enabled: open && selectedId !== null,
+    });
+
+    // معاينة نطاق الموقع قبل بدء الجلسة — نفس مرشّحات الخادم.
+    const scopeReady =
+        Boolean(locationId) &&
+        (scopeMode !== 'category' || Boolean(scopeCategory.trim())) &&
+        (scopeMode !== 'search' || Boolean(scopeSearch.trim()));
+
+    const previewQuery = useQuery({
+        queryKey: ['inventory-audit-preview', locationId, scopeMode, scopeCategory.trim(), scopeSearch.trim()],
+        queryFn: ({ signal }) =>
+            fetchAuditLocationPreview(
+                locationId,
+                {
+                    mode: scopeMode,
+                    category: scopeMode === 'category' ? scopeCategory.trim() : '',
+                    search: scopeMode === 'search' ? scopeSearch.trim() : '',
+                },
+                signal,
+            ),
+        enabled: open && createOpen && canWrite && scopeReady,
+        staleTime: 60_000,
     });
 
     const detail: AuditDetail | undefined = detailQuery.data;
@@ -161,7 +193,14 @@ export function InventoryAuditStudio({ open, onOpenChange }: InventoryAuditStudi
     }, [locationId, locationsQuery.data]);
 
     const createMutation = useWriteMutation<
-        { locationId: string; periodType: typeof periodType; periodStart: string; periodEnd: string; notes: string },
+        {
+            locationId: string;
+            periodType: typeof periodType;
+            periodStart: string;
+            periodEnd: string;
+            notes: string;
+            scopeFilter: AuditScopeFilter;
+        },
         void
     >({
         mutationFn: (input) => createInventoryAudit(input),
@@ -190,6 +229,36 @@ export function InventoryAuditStudio({ open, onOpenChange }: InventoryAuditStudi
         onSuccess: () => {
             setActionError('');
             toast({ title: 'تم حفظ العدّ', variant: 'success' });
+        },
+        onError: (cause) => {
+            setActionError(writeErrorMessage(cause, AUDIT_TEXT.saveFailed));
+        },
+    });
+
+    const rowSaveMutation = useWriteMutation<{ id: string; itemId: number; countedQty: number; notes: string }, void>({
+        mutationFn: async ({ id, itemId, countedQty, notes }) => {
+            await saveAuditCount(id, itemId, countedQty, notes);
+        },
+        successTitle: 'تم حفظ عدّ الصنف',
+        invalidate: [['inventory-audit', selectedId]],
+        silentError: true,
+        onSuccess: () => {
+            setActionError('');
+        },
+        onError: (cause) => {
+            setActionError(writeErrorMessage(cause, AUDIT_TEXT.saveFailed));
+        },
+    });
+
+    const rowClearMutation = useWriteMutation<{ id: string; itemId: number }, void>({
+        mutationFn: async ({ id, itemId }) => {
+            await clearAuditCount(id, itemId);
+        },
+        successTitle: 'تم مسح عدّ الصنف',
+        invalidate: [['inventory-audit', selectedId]],
+        silentError: true,
+        onSuccess: () => {
+            setActionError('');
         },
         onError: (cause) => {
             setActionError(writeErrorMessage(cause, AUDIT_TEXT.saveFailed));
@@ -325,7 +394,26 @@ export function InventoryAuditStudio({ open, onOpenChange }: InventoryAuditStudi
             setFormError('نهاية فترة الجرد لا يمكن أن تسبق بدايتها.');
             return;
         }
-        createMutation.mutate({ locationId, periodType, periodStart, periodEnd, notes: createNotes });
+        if (scopeMode === 'category' && !scopeCategory.trim()) {
+            setFormError('اكتب اسم التصنيف المراد جرده.');
+            return;
+        }
+        if (scopeMode === 'search' && !scopeSearch.trim()) {
+            setFormError('اكتب اسم الصنف أو الباركود للبحث.');
+            return;
+        }
+        createMutation.mutate({
+            locationId,
+            periodType,
+            periodStart,
+            periodEnd,
+            notes: createNotes,
+            scopeFilter: {
+                mode: scopeMode,
+                category: scopeMode === 'category' ? scopeCategory.trim() : null,
+                search: scopeMode === 'search' ? scopeSearch.trim() : null,
+            },
+        });
     }
 
     function saveCounts(): void {
@@ -477,6 +565,66 @@ export function InventoryAuditStudio({ open, onOpenChange }: InventoryAuditStudi
                                     setCreateNotes(event.target.value);
                                 }}
                             />
+                            <div className="grid gap-sm sm:grid-cols-3">
+                                <label className="flex min-w-0 flex-col gap-xxs text-label-md text-ink-secondary">
+                                    نطاق الجرد
+                                    <select
+                                        value={scopeMode}
+                                        onChange={(event) => {
+                                            const value = event.target.value;
+                                            setScopeMode(
+                                                AUDIT_SCOPE_MODES.includes(value as AuditScopeMode) ? (value as AuditScopeMode) : 'all',
+                                            );
+                                        }}
+                                        className={FIELD_CLASS}
+                                    >
+                                        {AUDIT_SCOPE_MODES.map((mode) => (
+                                            <option key={mode} value={mode}>
+                                                {AUDIT_SCOPE_LABELS[mode]}
+                                            </option>
+                                        ))}
+                                    </select>
+                                </label>
+                                {scopeMode === 'category' ? (
+                                    <label className="flex min-w-0 flex-col gap-xxs text-label-md text-ink-secondary">
+                                        التصنيف
+                                        <input
+                                            type="text"
+                                            value={scopeCategory}
+                                            onChange={(event) => {
+                                                setScopeCategory(event.target.value);
+                                            }}
+                                            placeholder="اسم التصنيف"
+                                            className={FIELD_CLASS}
+                                        />
+                                    </label>
+                                ) : null}
+                                {scopeMode === 'search' ? (
+                                    <label className="flex min-w-0 flex-col gap-xxs text-label-md text-ink-secondary">
+                                        بحث
+                                        <input
+                                            type="search"
+                                            value={scopeSearch}
+                                            onChange={(event) => {
+                                                setScopeSearch(event.target.value);
+                                            }}
+                                            placeholder="اسم الصنف أو الباركود"
+                                            className={FIELD_CLASS}
+                                        />
+                                    </label>
+                                ) : null}
+                            </div>
+                            {scopeReady ? (
+                                <p className="text-body-sm text-muted">
+                                    {previewQuery.isPending
+                                        ? 'جارٍ معاينة نطاق الجرد…'
+                                        : previewQuery.isError
+                                          ? writeErrorMessage(previewQuery.error, 'تعذّر معاينة نطاق الجرد')
+                                          : `النطاق يغطي ${formatAuditInt(previewQuery.data?.itemsCount ?? 0)} صنف — قيمة رصيد ${formatAuditMoney(
+                                                previewQuery.data?.onHandValue ?? 0,
+                                            )}`}
+                                </p>
+                            ) : null}
                             {formError ? (
                                 <p role="alert" className="text-body-sm text-danger-text">
                                     {formError}
@@ -617,7 +765,7 @@ export function InventoryAuditStudio({ open, onOpenChange }: InventoryAuditStudi
                             </label>
 
                             <TableScroll label="بنود جلسة الجرد">
-                                <table className="w-full min-w-[720px] border-collapse text-body-sm">
+                                <table className="w-full min-w-[980px] border-collapse text-body-sm">
                                     <thead>
                                         <tr className="border-b border-hairline text-caption text-muted">
                                             <th scope="col" className="px-xs py-xxs text-start font-medium">
@@ -632,6 +780,15 @@ export function InventoryAuditStudio({ open, onOpenChange }: InventoryAuditStudi
                                             <th scope="col" className="px-xs py-xxs text-start font-medium">
                                                 الفرق
                                             </th>
+                                            <th scope="col" className="px-xs py-xxs text-start font-medium">
+                                                قيمة الفرق
+                                            </th>
+                                            <th scope="col" className="px-xs py-xxs text-start font-medium">
+                                                ملاحظة
+                                            </th>
+                                            <th scope="col" className="px-xs py-xxs text-start font-medium">
+                                                <span className="sr-only">إجراءات الصف</span>
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -640,7 +797,10 @@ export function InventoryAuditStudio({ open, onOpenChange }: InventoryAuditStudi
                                             const raw = counts[key] ?? formatAuditQty(item.counted_qty);
                                             const parsed = Number(raw);
                                             const variance = (Number.isFinite(parsed) ? parsed : 0) - Number(item.system_qty);
+                                            const varianceValue = variance * Number(item.avg_cost ?? 0);
                                             const editable = canWrite && isAuditDraft(audit.status);
+                                            const note = itemNotes[key] ?? '';
+                                            const rowBusy = rowSaveMutation.isPending || rowClearMutation.isPending;
                                             return (
                                                 <tr key={key} className="border-b border-hairline last:border-0">
                                                     <td className="px-xs py-xxs">
@@ -688,6 +848,71 @@ export function InventoryAuditStudio({ open, onOpenChange }: InventoryAuditStudi
                                                         >
                                                             {varianceLabel(variance)}
                                                         </span>
+                                                    </td>
+                                                    <td className="erp-numeric px-xs py-xxs" dir="ltr">
+                                                        <span
+                                                            className={
+                                                                Math.abs(varianceValue) < 0.005
+                                                                    ? 'text-caption text-muted'
+                                                                    : varianceValue < 0
+                                                                      ? 'text-caption text-danger-text'
+                                                                      : 'text-caption text-success-text'
+                                                            }
+                                                        >
+                                                            {formatAuditMoney(varianceValue)}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-xs py-xxs">
+                                                        {editable ? (
+                                                            <input
+                                                                type="text"
+                                                                maxLength={200}
+                                                                aria-label={`ملاحظة — ${String(item.item_name ?? key)}`}
+                                                                value={note}
+                                                                onChange={(event) => {
+                                                                    const value = event.target.value;
+                                                                    setItemNotes((previous) => ({ ...previous, [key]: value }));
+                                                                    setTouched((previous) => ({ ...previous, [key]: true }));
+                                                                }}
+                                                                className="h-9 w-40 rounded-md border border-hairline-strong bg-surface px-xs text-body-sm text-ink"
+                                                            />
+                                                        ) : (
+                                                            <span className="text-caption text-muted">{note || '—'}</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-xs py-xxs">
+                                                        {editable ? (
+                                                            <div className="flex items-center gap-xxs">
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={rowBusy}
+                                                                    onClick={() => {
+                                                                        rowSaveMutation.mutate({
+                                                                            id: audit.id,
+                                                                            itemId: Number(item.item_id),
+                                                                            countedQty: Number.isFinite(parsed) ? parsed : 0,
+                                                                            notes: note.trim(),
+                                                                        });
+                                                                    }}
+                                                                    className="rounded-md border border-hairline-strong bg-surface px-xs py-xxs text-caption text-ink hover:bg-surface-hover disabled:opacity-50"
+                                                                >
+                                                                    حفظ
+                                                                </button>
+                                                                <button
+                                                                    type="button"
+                                                                    disabled={rowBusy}
+                                                                    onClick={() => {
+                                                                        rowClearMutation.mutate({
+                                                                            id: audit.id,
+                                                                            itemId: Number(item.item_id),
+                                                                        });
+                                                                    }}
+                                                                    className="rounded-md border border-hairline-strong bg-surface px-xs py-xxs text-caption text-ink hover:bg-surface-hover disabled:opacity-50"
+                                                                >
+                                                                    مسح
+                                                                </button>
+                                                            </div>
+                                                        ) : null}
                                                     </td>
                                                 </tr>
                                             );

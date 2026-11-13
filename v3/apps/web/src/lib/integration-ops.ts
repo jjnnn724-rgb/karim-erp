@@ -145,6 +145,16 @@ const eventsResponseSchema = z
 
 const writeAckLooseSchema = z.object({ ok: z.boolean().optional() }).passthrough();
 
+export const credentialRotationSchema = z
+    .object({
+        ok: z.boolean().optional(),
+        key_name: z.string().optional(),
+        rotated_at: text,
+        rotated: z.boolean().nullable().optional(),
+    })
+    .passthrough();
+export type CredentialRotation = z.infer<typeof credentialRotationSchema>;
+
 /* ─── القراءة ──────────────────────────────────────────────────────────── */
 
 function authOptions(signal?: AbortSignal) {
@@ -155,10 +165,13 @@ export async function fetchIntegrationHealth(signal?: AbortSignal): Promise<Inte
     return fetchJson(integrationHealthSchema, '/api/integration/health?live=1', getAccessToken(), authOptions(signal));
 }
 
-export async function fetchIntegrationOutbox(status: OutboxStatus | '', signal?: AbortSignal): Promise<OutboxRow[]> {
+export async function fetchIntegrationOutbox(status: OutboxStatus | '', signal?: AbortSignal, provider?: string): Promise<OutboxRow[]> {
     const params = new URLSearchParams({ live: '1', limit: '50' });
     if (status) {
         params.set('status', status);
+    }
+    if (provider) {
+        params.set('provider', provider);
     }
     const body = await fetchJson(
         outboxResponseSchema,
@@ -203,6 +216,38 @@ export async function reviewIntegrationRow(
         decision,
         reason: reason.trim(),
     });
+}
+
+/* ─── تدوير الاعتمادات (كتابة فقط — لا تُقرأ القيم أبدًا) ───────────────── */
+
+/** مزوّدو التكامل الأربعة — نفس `PROVIDER_CODES` في `backend/integration/lib.js`. */
+export const INTEGRATION_PROVIDER_CODES = ['zatca', 'mudad', 'gosi', 'qiwa'] as const;
+export type IntegrationProviderCode = (typeof INTEGRATION_PROVIDER_CODES)[number];
+
+/** `KEY_NAME_RE` في الخادم: حرف لاتيني صغير أولًا، ثم أحرف/رقام/._ بطول 2–64. */
+export const CREDENTIAL_KEY_RE = /^[a-z][a-z0-9_.]{1,63}$/;
+
+/** طول قيمة الاعتماد كما يطلب الخادم (8–8192). */
+export const CREDENTIAL_VALUE_MIN = 8;
+export const CREDENTIAL_VALUE_MAX = 8192;
+
+/**
+ * تدوير اعتماد لمزوّد — `PUT /api/integration/credentials/:provider/:key`.
+ *
+ * الكتابة فقط: القيمة تُرسل ولا تُقرأ ولا تُخزَّن؛ الخادم يبطل الاعتماد
+ * السابق ويسجّل الحدث `credential.rotated`.
+ */
+export async function rotateIntegrationCredential(
+    provider: IntegrationProviderCode,
+    key: string,
+    value: string,
+): Promise<CredentialRotation> {
+    return writeJson(
+        credentialRotationSchema,
+        `/api/integration/credentials/${encodeURIComponent(provider)}/${encodeURIComponent(key)}`,
+        'PUT',
+        { value },
+    );
 }
 
 /* ─── الدلالات والتسميات — من V2 `compliance.js:90-165` حرفيًّا ────────── */
@@ -271,4 +316,31 @@ export function eventDirectionLabel(value: string | null | undefined): string {
 export function eventOutcomeLabel(value: string | null | undefined): string {
     const code = String(value ?? '').trim();
     return code === 'success' ? 'نجاح' : code === 'failure' ? 'فشل' : code === 'skipped' ? 'تخطٍ' : code || '—';
+}
+
+/* ─── تحقق نموذج الاعتماد (مطابق لـ `backend/integration/routes.js:214`) ─── */
+
+export type CredentialForm = { key: string; value: string };
+
+export type CredentialValidation = { ok: true; key: string; value: string } | { ok: false; message: string };
+
+/**
+ * تحقق محلي قبل الإرسال — نفس شروط الخادم:
+ *  - اسم المفتاح `KEY_NAME_RE`: حرف لاتيني صغير أولًا.
+ *  - القيمة سلسلة بطول 8–8192 حرفًا.
+ * القيمة لا تُسجَّل ولا تُعاد في الرسالة.
+ */
+export function validateCredentialForm(form: CredentialForm): CredentialValidation {
+    const key = String(form.key ?? '').trim();
+    const value = String(form.value ?? '');
+    if (!key) {
+        return { ok: false, message: 'اسم مفتاح الاعتماد مطلوب.' };
+    }
+    if (!CREDENTIAL_KEY_RE.test(key)) {
+        return { ok: false, message: 'اسم المفتاح يبدأ بحرف لاتيني صغير، ثم أحرف أو أرقام أو . _ بطول 2–64.' };
+    }
+    if (value.length < CREDENTIAL_VALUE_MIN || value.length > CREDENTIAL_VALUE_MAX) {
+        return { ok: false, message: `قيمة الاعتماد بطول ${CREDENTIAL_VALUE_MIN} إلى ${CREDENTIAL_VALUE_MAX} حرفًا.` };
+    }
+    return { ok: true, key, value };
 }

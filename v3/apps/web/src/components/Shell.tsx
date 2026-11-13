@@ -90,6 +90,11 @@ export const NAV_ITEMS = [
     { to: '/pnl', label: 'الأرباح والخسائر', hint: 'P&L' },
     { to: '/monthly-comparison', label: 'المقارنة الشهرية', hint: 'Monthly' },
     { to: '/reports', label: 'تقارير المبيعات', hint: 'Reports' },
+    {
+        to: '/vat-return',
+        label: 'مسودة مراجعة ضريبة القيمة المضافة',
+        hint: 'VAT Review',
+    },
     { to: '/cashier-sales', label: 'مبيعات الكاشير', hint: 'Cashier Sales' },
     { to: '/cashier-monitor', label: 'متابعة الكاشير', hint: 'Cashier Monitor' },
     { to: '/pos-entry', label: 'نقطة البيع', hint: 'POS' },

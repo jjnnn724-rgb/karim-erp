@@ -301,6 +301,7 @@ function EditDialog({ open, row, onClose, pending, onSave }: EditDialogProps) {
     const [role, setRole] = useState('');
     const [deptCode, setDeptCode] = useState('');
     const [active, setActive] = useState(true);
+    const [password, setPassword] = useState('');
     const [error, setError] = useState('');
 
     useEffect(() => {
@@ -309,6 +310,7 @@ function EditDialog({ open, row, onClose, pending, onSave }: EditDialogProps) {
             setRole(row.role);
             setDeptCode(row.deptCode);
             setActive(row.active);
+            setPassword('');
             setError('');
         }
     }, [open, row]);
@@ -325,11 +327,17 @@ function EditDialog({ open, row, onClose, pending, onSave }: EditDialogProps) {
             return;
         }
 
+        if (password && !isStrongPassword(password)) {
+            setError(USER_TEXT.passwordWeak);
+            return;
+        }
+
         const payload: UserUpdateInput = {
             name: name.trim(),
             role,
             dept_code: deptCode.trim() || null,
             active,
+            ...(password ? { password } : {}),
         };
 
         try {
@@ -378,6 +386,15 @@ function EditDialog({ open, row, onClose, pending, onSave }: EditDialogProps) {
                     value={deptCode}
                     onChange={(e) => setDeptCode(e.target.value)}
                     placeholder="ACC, HR, WH…"
+                />
+                <Input
+                    label="كلمة المرور الجديدة (اختياري)"
+                    name="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    hint="اترك الحقل فارغًا دون تغيير. 12 حرفًا على الأقل مع حرف ورقم."
+                    autoComplete="new-password"
                 />
                 <div className="flex items-end gap-sm">
                     <input

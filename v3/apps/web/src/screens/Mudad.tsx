@@ -1,6 +1,7 @@
 import './Mudad.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { type CSSProperties, type FormEvent, type ReactNode, useMemo, useState } from 'react';
+import { MudadCredentials } from '../components/MudadCredentials';
 import { MudadDelivery } from '../components/MudadDelivery';
 import { PrintActions } from '../components/PrintActions';
 import { ShellIcon } from '../components/ShellIcons';
@@ -37,6 +38,8 @@ import {
     type WpsExportResponse,
     type WpsReadinessEmployee,
 } from '../lib/mudad';
+import { mudadReviewCsv, mudadReviewFilename, mudadReviewPrintHtml } from '../lib/mudad-print';
+import { openBlankTab, writeHtmlDocument } from '../lib/print-document';
 import { isWriteRole, useWriteMutation, writeErrorMessage } from '../lib/write';
 
 /**
@@ -151,6 +154,21 @@ function Gauge({ percent, ready, employees }: { percent: number; ready: number; 
 
 type StepState = 'done' | 'pending' | 'locked';
 
+/** دورة المزامنة التلقائية — قراءة فقط، ولا كتابة تلقائية. */
+const AUTO_REFRESH_MS = 60_000;
+
+/** وقت آخر تحديث مُعلن من الخادم (`generated_at`). */
+function generatedAtText(value: string | null | undefined): string {
+    if (!value) {
+        return '—';
+    }
+    const date = new Date(value);
+    if (Number.isNaN(date.getTime())) {
+        return String(value);
+    }
+    return date.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
+}
+
 type FlowStep = {
     id: string;
     label: string;
@@ -210,23 +228,33 @@ export function Mudad() {
     const requirementsQuery = useQuery({
         queryKey: ['mudad', 'requirements', month],
         queryFn: ({ signal }) => fetchWpsRequirements(month, signal),
+        refetchInterval: AUTO_REFRESH_MS,
+        refetchOnWindowFocus: true,
     });
     const readinessQuery = useQuery({
         queryKey: ['mudad', 'readiness', month],
         queryFn: ({ signal }) => fetchWpsReadiness(month, signal),
+        refetchInterval: AUTO_REFRESH_MS,
+        refetchOnWindowFocus: true,
     });
     const ratesQuery = useQuery({
         queryKey: ['mudad', 'gosi-rates'],
         queryFn: ({ signal }) => fetchGosiRates(signal),
+        refetchInterval: AUTO_REFRESH_MS,
+        refetchOnWindowFocus: true,
     });
     const previewQuery = useQuery({
         queryKey: ['mudad', 'gosi-preview', month, rateSet],
         queryFn: ({ signal }) => fetchGosiPreview(month, rateSet, signal),
         enabled: rateSet !== '',
+        refetchInterval: AUTO_REFRESH_MS,
+        refetchOnWindowFocus: true,
     });
     const qiwaQuery = useQuery({
         queryKey: ['mudad', 'qiwa'],
         queryFn: ({ signal }) => fetchQiwaReadiness(signal),
+        refetchInterval: AUTO_REFRESH_MS,
+        refetchOnWindowFocus: true,
     });
 
     const readiness = readinessQuery.data;
@@ -381,6 +409,52 @@ export function Mudad() {
         }
     }
 
+    const selectedRateSet = rates.find((rate) => rate.id === rateSet) ?? null;
+
+    /** ورقة مراجعة A4 — تُبنى من البيانات المحمَّلة نفسها، بلا نداء جديد. */
+    function printReviewSheet() {
+        if (!readiness) {
+            return;
+        }
+        const win = openBlankTab('ورقة مراجعة الامتثال — ملف الأجور');
+        if (!win) {
+            setNotice('تعذّر فتح نافذة الطباعة — اسمح بالنوافذ المنبثقة ثم أعد المحاولة.');
+            return;
+        }
+        writeHtmlDocument(
+            win,
+            mudadReviewPrintHtml(readiness, {
+                month,
+                byName: auth.user?.name ?? '—',
+                requirements,
+                preview: preview ?? null,
+                rateSet: selectedRateSet,
+                qiwaChecks: qiwa?.checks ?? [],
+            }),
+        );
+        win.document.querySelector('[data-mudad-print]')?.addEventListener('click', () => win.print());
+        win.document.querySelector('[data-mudad-close]')?.addEventListener('click', () => win.close());
+    }
+
+    function exportReviewCsv() {
+        if (!readiness) {
+            return;
+        }
+        const filename = mudadReviewFilename(month);
+        downloadTextFile(
+            filename,
+            mudadReviewCsv(readiness, {
+                month,
+                byName: auth.user?.name ?? '—',
+                requirements,
+                preview: preview ?? null,
+                rateSet: selectedRateSet,
+                qiwaChecks: qiwa?.checks ?? [],
+            }),
+        );
+        setNotice(`نُزّل ملخّص المراجعة — ${filename}`);
+    }
+
     const refreshing = requirementsQuery.isFetching || readinessQuery.isFetching || ratesQuery.isFetching || qiwaQuery.isFetching;
 
     return (
@@ -417,10 +491,28 @@ export function Mudad() {
                             <span>الربط الحكومي</span>
                             <strong data-tone="warning">معطّل</strong>
                         </li>
+                        <li>
+                            <span>المزامنة التلقائية</span>
+                            <strong className="erp-numeric" dir="ltr">
+                                كل {AUTO_REFRESH_MS / 1000} ثانية
+                            </strong>
+                        </li>
+                        <li>
+                            <span>آخر تحديث</span>
+                            <strong className="erp-numeric" dir="ltr">
+                                {generatedAtText(readiness?.generated_at ?? requirementsQuery.data?.generated_at)}
+                            </strong>
+                        </li>
                     </ul>
                 </div>
                 <div className="mudad-hero__actions">
                     <PrintActions title="مدد والتأمينات وقوى" />
+                    <button type="button" onClick={printReviewSheet} disabled={!readiness} className="mudad-btn">
+                        طباعة ورقة المراجعة
+                    </button>
+                    <button type="button" onClick={exportReviewCsv} disabled={!readiness} className="mudad-btn">
+                        تنزيل ملخّص CSV
+                    </button>
                     <button type="button" onClick={refreshAll} disabled={refreshing} className="mudad-btn mudad-btn--primary">
                         {refreshing ? 'جارٍ التحديث…' : 'تحديث البيانات'}
                     </button>
@@ -566,6 +658,13 @@ export function Mudad() {
                         />
                     ) : null}
                     {readiness?.note ? <p className="mudad-footnote">{readiness.note}</p> : null}
+                    <p className="mudad-footnote">
+                        آخر تحديث من الخادم:{' '}
+                        <span className="erp-numeric" dir="ltr">
+                            {generatedAtText(readiness?.generated_at)}
+                        </span>{' '}
+                        · {readinessQuery.isFetching ? 'جارٍ التحديث…' : 'المزامنة التلقائية كل 60 ثانية'}
+                    </p>
                 </div>
             </Card>
 
@@ -623,6 +722,12 @@ export function Mudad() {
                         <StateEmpty title="لا متطلبات معلنة" hint="راجع مسار /api/integration/wps/requirements ثم أعد المحاولة." />
                     )}
                     {requirementsQuery.data?.note ? <p className="mudad-footnote">{requirementsQuery.data.note}</p> : null}
+                    <p className="mudad-footnote">
+                        آخر تحديث:{' '}
+                        <span className="erp-numeric" dir="ltr">
+                            {generatedAtText(requirementsQuery.data?.generated_at)}
+                        </span>
+                    </p>
                 </div>
             </Card>
 
@@ -1104,6 +1209,12 @@ export function Mudad() {
                                     ))}
                                 </ul>
                             ) : null}
+                            <p className="mudad-footnote">
+                                آخر تحديث:{' '}
+                                <span className="erp-numeric" dir="ltr">
+                                    {generatedAtText(preview.generated_at)}
+                                </span>
+                            </p>
                         </>
                     ) : null}
                 </div>
@@ -1151,12 +1262,20 @@ export function Mudad() {
                                 ))}
                             </ul>
                             {qiwa.note ? <p className="mudad-footnote">{qiwa.note}</p> : null}
+                            <p className="mudad-footnote">
+                                آخر تحديث:{' '}
+                                <span className="erp-numeric" dir="ltr">
+                                    {generatedAtText(qiwa.generated_at)}
+                                </span>
+                            </p>
                         </>
                     ) : null}
                 </div>
             </Card>
 
             <MudadDelivery writable={canWrite} />
+
+            {canWrite ? <MudadCredentials /> : null}
 
             <Card className="mudad-section">
                 <SectionHead

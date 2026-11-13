@@ -409,6 +409,13 @@ export const reportsRoute = createRoute({
 });
 reportsRoute.lazy(() => import('../screens/Reports.lazy').then((module) => module.Route));
 
+/** الإقرار الضريبي — مسودة مراجعة ضريبة القيمة المضافة من القيود المرحّلة. */
+export const vatReturnRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/vat-return',
+});
+vatReturnRoute.lazy(() => import('../screens/VatReturn.lazy').then((module) => module.Route));
+
 /** مبيعات الكاشير — فواتير وأصناف (مرآة YaraSoft). */
 export const cashierSalesRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -544,6 +551,7 @@ export const routeTree = rootRoute.addChildren([
     cfoRoute,
     monthlyComparisonRoute,
     reportsRoute,
+    vatReturnRoute,
     cashierSalesRoute,
     cashierMonitorRoute,
     posEntryRoute,

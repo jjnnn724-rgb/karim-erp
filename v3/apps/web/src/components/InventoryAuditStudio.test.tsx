@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ToastProvider } from '../ui/Toast';
 import { InventoryAuditStudio } from './InventoryAuditStudio';
@@ -88,6 +88,26 @@ function json(body: unknown, status = 200): Response {
     });
 }
 
+interface RecordedCall {
+    url: string;
+    method: string;
+    body: unknown;
+}
+
+const calls: RecordedCall[] = [];
+
+function record(input: RequestInfo | URL, init?: RequestInit): void {
+    calls.push({
+        url: String(input),
+        method: init?.method ?? 'GET',
+        body: typeof init?.body === 'string' ? JSON.parse(init.body) : init?.body,
+    });
+}
+
+function callsTo(fragment: string): RecordedCall[] {
+    return calls.filter((call) => call.url.includes(fragment));
+}
+
 function renderStudio() {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     return render(
@@ -101,12 +121,32 @@ function renderStudio() {
 
 beforeEach(() => {
     mocks.role = 'warehouse';
+    calls.length = 0;
     vi.stubGlobal(
         'fetch',
-        vi.fn(async (input: RequestInfo | URL) => {
+        vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
             const url = String(input);
+            record(input, init);
+            if (url.includes('/inventory/locations/1/preview')) {
+                return json({ items_count: 2, on_hand_value: 120.5, on_hand_qty: 14 });
+            }
+            if (url.includes('/inventory/audits/9/counts/')) {
+                return json({ item: { id: 1, item_id: 101, counted_qty: 9, is_counted: true }, counted_items: 2 });
+            }
+            if (url.includes('/inventory/audits/9/counts')) {
+                return json({ saved_count: 1, rejected: [], counted_items: 2 });
+            }
             if (url.includes('/inventory/audits/9')) {
                 return json(detail);
+            }
+            if (url.endsWith('/inventory/audits')) {
+                if (init?.method === 'POST') {
+                    return json(
+                        { audit: list[0], itemCount: 2, location: { id: '1', code: 'MAIN-WAREHOUSE', name_ar: 'المخزن الرئيسي' } },
+                        201,
+                    );
+                }
+                return json(list);
             }
             if (url.includes('/inventory/audits')) {
                 return json(list);
@@ -178,5 +218,105 @@ describe('استوديو الجرد الفعلي', () => {
 
         expect(screen.queryByRole('button', { name: 'بدء جلسة جرد' })).toBeNull();
         expect(screen.getAllByRole('button', { name: 'عرض التفاصيل' }).length).toBe(2);
+    });
+});
+
+describe('استوديو الجرد — شبكة العدّ (حفظ/مسح الصف)', () => {
+    it('زر «حفظ» في الصف يحفظ عدّ الصنف الواحد فقط', async () => {
+        renderStudio();
+        fireEvent.click(await screen.findByRole('button', { name: 'متابعة العدّ' }));
+        const input = await screen.findByLabelText('العدد الفعلي — أرز');
+        fireEvent.change(input, { target: { value: '9' } });
+
+        const row = input.closest('tr') as HTMLElement;
+        fireEvent.click(within(row).getByRole('button', { name: 'حفظ' }));
+
+        await waitFor(() => {
+            expect(callsTo('/audits/9/counts/101')).toHaveLength(1);
+        });
+        const call = callsTo('/audits/9/counts/101')[0];
+        expect(call?.method).toBe('PUT');
+        expect(call?.body).toEqual({ countedQty: 9, notes: null });
+    });
+
+    it('زر «مسح» في الصف يلغي عدّ الصنف', async () => {
+        renderStudio();
+        fireEvent.click(await screen.findByRole('button', { name: 'متابعة العدّ' }));
+        const input = await screen.findByLabelText('العدد الفعلي — زيت');
+        const row = input.closest('tr') as HTMLElement;
+        fireEvent.click(within(row).getByRole('button', { name: 'مسح' }));
+
+        await waitFor(() => {
+            expect(callsTo('/audits/9/counts/102')).toHaveLength(1);
+        });
+        expect(callsTo('/audits/9/counts/102')[0]?.method).toBe('DELETE');
+    });
+
+    it('الشبكة تعرض الفرق وقيمة الفرق والملاحظة لكل صف', async () => {
+        renderStudio();
+        fireEvent.click(await screen.findByRole('button', { name: 'متابعة العدّ' }));
+        await screen.findByLabelText('العدد الفعلي — أرز');
+
+        const table = screen.getByLabelText('بنود جلسة الجرد');
+        const headers = within(table)
+            .getAllByRole('columnheader')
+            .map((cell) => cell.textContent?.trim());
+        expect(headers.slice(0, 6)).toEqual(['الصنف', 'رصيد النظام', 'العدد الفعلي', 'الفرق', 'قيمة الفرق', 'ملاحظة']);
+        expect(headers[6]).toContain('إجراءات الصف');
+
+        // زيت: رصيد النظام 4 والعدد الفعلي 3 ← عجز 1 بقيمة -20.00
+        const oilRow = within(table).getByText('زيت').closest('tr') as HTMLElement;
+        expect(within(oilRow).getByText('عجز 1')).toBeTruthy();
+        expect(within(oilRow).getByText('-20.00')).toBeTruthy();
+        expect(within(oilRow).getByLabelText('ملاحظة — زيت')).toBeTruthy();
+    });
+});
+
+describe('استوديو الجرد — نطاق الجرد (تصنيف/بحث)', () => {
+    it('معاينة النطاق تطلب الخادم قبل بدء الجلسة', async () => {
+        renderStudio();
+        fireEvent.click(await screen.findByRole('button', { name: 'بدء جلسة جرد' }));
+
+        await waitFor(() => {
+            expect(callsTo('/inventory/locations/1/preview').length).toBeGreaterThan(0);
+        });
+        expect(callsTo('/inventory/locations/1/preview')[0]?.url).toContain('mode=all');
+    });
+
+    it('اختيار «تصنيف محدّد» يطلب معاينة بالتصنيف ويبعثه في الإنشاء', async () => {
+        renderStudio();
+        fireEvent.click(await screen.findByRole('button', { name: 'بدء جلسة جرد' }));
+
+        fireEvent.change(await screen.findByLabelText('نطاق الجرد'), { target: { value: 'category' } });
+        const categoryInput = await screen.findByPlaceholderText('اسم التصنيف');
+        fireEvent.change(categoryInput, { target: { value: 'خضروات' } });
+
+        await waitFor(() => {
+            expect(callsTo('/preview').some((call) => call.url.includes('mode=category') && call.url.includes('category='))).toBe(true);
+        });
+        expect(await screen.findByText(/النطاق يغطي 2 صنف/)).toBeTruthy();
+
+        fireEvent.click(screen.getByRole('button', { name: 'بدء الجرد' }));
+
+        await waitFor(() => {
+            expect(calls.some((call) => call.method === 'POST' && call.url.endsWith('/inventory/audits'))).toBe(true);
+        });
+        const create = calls.find((call) => call.method === 'POST' && call.url.endsWith('/inventory/audits'));
+        expect(create?.body).toMatchObject({
+            locationId: 1,
+            scopeFilter: { mode: 'category', category: 'خضروات', search: null },
+        });
+    });
+
+    it('نطاق البحث بلا نص يُرفض برسالة قبل الإنشاء', async () => {
+        renderStudio();
+        fireEvent.click(await screen.findByRole('button', { name: 'بدء جلسة جرد' }));
+
+        fireEvent.change(await screen.findByLabelText('نطاق الجرد'), { target: { value: 'search' } });
+        await screen.findByPlaceholderText('اسم الصنف أو الباركود');
+        fireEvent.click(screen.getByRole('button', { name: 'بدء الجرد' }));
+
+        expect(await screen.findByText('اكتب اسم الصنف أو الباركود للبحث.')).toBeTruthy();
+        expect(calls.some((call) => call.method === 'POST' && call.url.endsWith('/inventory/audits'))).toBe(false);
     });
 });

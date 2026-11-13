@@ -10,6 +10,7 @@ import {
     fetchIntegrationOutbox,
     type IntegrationEvent,
     type IntegrationProvider,
+    OUTBOX_STATUSES,
     type OutboxRow,
     outboxRetryable,
     outboxReviewable,
@@ -27,6 +28,7 @@ import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
+import { Select } from '../ui/Select';
 
 /**
  * تشغيل التكامل داخل شاشة الامتثال — نفس أقسام V2 `compliance.js`:
@@ -34,12 +36,25 @@ import { Input } from '../ui/Input';
  * صفوف dead_letter بإعادة/اعتماد/إلغاء)، وآخر الأحداث. لا إرسال خارجي هنا.
  */
 
+/** دورة المراقبة الحيّة — قراءة فقط. */
+const MONITOR_INTERVAL_MS = 30_000;
+
 function dateText(value: string | null | undefined): string {
     if (!value) {
         return '—';
     }
     const date = new Date(value);
     return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' });
+}
+
+function clockText(value: string | null | undefined): string {
+    if (!value) {
+        return '—';
+    }
+    const date = new Date(value);
+    return Number.isNaN(date.getTime())
+        ? String(value)
+        : date.toLocaleTimeString('ar-EG', { hour: '2-digit', minute: '2-digit', second: '2-digit' });
 }
 
 function SectionHead({ title, description }: { title: string; description: string }) {
@@ -97,18 +112,25 @@ export function MudadDelivery({ writable }: { writable: boolean }) {
     const [review, setReview] = useState<{ row: OutboxRow; decision: ReviewDecision } | null>(null);
     const [reason, setReason] = useState('');
     const [reviewError, setReviewError] = useState('');
+    const [outboxStatus, setOutboxStatus] = useState<(typeof OUTBOX_STATUSES)[number] | ''>('dead_letter');
 
     const healthQuery = useQuery({
         queryKey: ['integration', 'health'],
         queryFn: ({ signal }) => fetchIntegrationHealth(signal),
+        refetchInterval: MONITOR_INTERVAL_MS,
+        refetchOnWindowFocus: true,
     });
     const outboxQuery = useQuery({
-        queryKey: ['integration', 'outbox', 'dead_letter'],
-        queryFn: ({ signal }) => fetchIntegrationOutbox('dead_letter', signal),
+        queryKey: ['integration', 'outbox', outboxStatus],
+        queryFn: ({ signal }) => fetchIntegrationOutbox(outboxStatus, signal),
+        refetchInterval: MONITOR_INTERVAL_MS,
+        refetchOnWindowFocus: true,
     });
     const eventsQuery = useQuery({
         queryKey: ['integration', 'events'],
         queryFn: ({ signal }) => fetchIntegrationEvents(20, signal),
+        refetchInterval: MONITOR_INTERVAL_MS,
+        refetchOnWindowFocus: true,
     });
 
     const toggleMutation = useWriteMutation<{ provider: IntegrationProvider; enabled: boolean }, unknown>({
@@ -220,8 +242,38 @@ export function MudadDelivery({ writable }: { writable: boolean }) {
             </Card>
 
             <Card className="mudad-section">
-                <SectionHead title="صندوق الصادر" description="صفوف فاشلة نهائيًا (dead_letter) فقط؛ الحمولة تبقى في القاعدة ولا تُعرض." />
+                <SectionHead
+                    title="صندوق الصادر"
+                    description="مراقبة حيّة لصفوف الصادر بحمولة مخفية — لا تُعرض الحمولة ولا يُرسل شيء خارجي."
+                />
                 <div className="flex flex-col gap-sm p-sm">
+                    <div className="flex flex-wrap items-end justify-between gap-sm">
+                        <div className="flex flex-wrap items-center gap-xs">
+                            <Badge variant="success" dot>
+                                مباشر
+                            </Badge>
+                            <span className="text-caption text-muted">
+                                آخر تحديث:{' '}
+                                <span className="erp-numeric" dir="ltr">
+                                    {clockText(health?.generated_at)}
+                                </span>{' '}
+                                · {outboxQuery.isFetching ? 'جارٍ التحديث…' : `كل ${MONITOR_INTERVAL_MS / 1000} ثانية`}
+                            </span>
+                        </div>
+                        <Select
+                            label="حالة الصف"
+                            size="sm"
+                            containerClassName="min-w-[180px]"
+                            value={outboxStatus}
+                            options={[
+                                { value: '', label: 'كل الحالات' },
+                                ...OUTBOX_STATUSES.map((status) => ({ value: status, label: outboxStatusLabel(status) })),
+                            ]}
+                            onValueChange={(next) => {
+                                setOutboxStatus(next as (typeof OUTBOX_STATUSES)[number] | '');
+                            }}
+                        />
+                    </div>
                     {counts ? (
                         <p className="flex flex-wrap items-center gap-xs text-body-sm text-ink">
                             <Badge variant="neutral">معلّق: {formatInt(counts.pending)}</Badge>
@@ -245,7 +297,10 @@ export function MudadDelivery({ writable }: { writable: boolean }) {
                         </div>
                     ) : null}
                     {outboxQuery.isSuccess && deadRows.length === 0 ? (
-                        <StateEmpty title="لا صفوف ميتة" hint="كل ما في الصادر لم يستنفد محاولاته." />
+                        <StateEmpty
+                            title="لا صفوف في هذه الحالة"
+                            hint={outboxStatus ? 'لا صفوف بهذه الحالة الآن — جرّب حالة أخرى من المرشّح.' : 'صندوق الصادر فارغ.'}
+                        />
                     ) : null}
                     {deadRows.length ? (
                         <TableScroll label="صفوف صندوق الصادر الميتة">

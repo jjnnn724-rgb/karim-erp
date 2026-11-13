@@ -7,7 +7,21 @@ import { Recipes } from './Recipes';
 /**
  * شاشة الوصفات تقرأ `/api/recipes` وكatalog الكاشير ودليل الأقسام —
  * نسبة التكلفة نقاط مئوية (24.00 ⇒ 24.0٪)، وفشل الكتالوج لا يُسقط السجل.
+ * والكتابة (إنشاء/تعديل/حذف) على جدول `recipes` بحقول الخادم:
+ * `name/deptId/sellingPrice/totalCost` — لا snake_case ولا `active`.
  */
+
+const mocks = vi.hoisted(() => ({ role: 'admin' }));
+
+vi.mock('../lib/auth', () => ({
+    getAccessToken: () => 'test-token',
+    getAppKey: () => null,
+    useAuthState: () => ({
+        status: 'authenticated',
+        token: 'test-token',
+        user: { id: '1', name: 'مستخدم اختبار', username: 'test', role: mocks.role },
+    }),
+}));
 
 const recipes = [
     {
@@ -53,11 +67,13 @@ function json(body: unknown, status = 200): Response {
     });
 }
 
+type RecordedCall = { url: string; method: string; body: Record<string, unknown> };
+
 function stubFetch(options: { fail?: boolean; catalogFails?: boolean } = {}): string[] {
     const urls: string[] = [];
     vi.stubGlobal(
         'fetch',
-        vi.fn(async (url: string) => {
+        vi.fn(async (url: string, init?: RequestInit) => {
             const target = String(url);
             urls.push(target);
             if (target.includes('/api/pos/recipes/catalog')) {
@@ -74,10 +90,46 @@ function stubFetch(options: { fail?: boolean; catalogFails?: boolean } = {}): st
             if (target.includes('/api/settings/main_settings')) {
                 return json({ currency: 'SAR' });
             }
+            if (target === '/api/recipes' && init?.method === 'POST') {
+                return json({ id: 9 }, 201);
+            }
             return json({ error: 'NOT_FOUND', message: target }, 404);
         }),
     );
     return urls;
+}
+
+/** يعترض الكتابة ويسجّل حمولتها كما أرسلها النموذج. */
+function stubFetchRecordingWrites(): RecordedCall[] {
+    const calls: RecordedCall[] = [];
+    vi.stubGlobal(
+        'fetch',
+        vi.fn(async (url: string, init?: RequestInit) => {
+            const target = String(url);
+            if (target.includes('/api/pos/recipes/catalog')) {
+                return json(catalog);
+            }
+            if (target.includes('/api/recipes?')) {
+                return json({ data: recipes, pagination: { page: 1, limit: 1000, total: 2, totalPages: 1 } });
+            }
+            if (target.includes('/api/departments')) {
+                return json({ data: departments });
+            }
+            if (target.includes('/api/settings/main_settings')) {
+                return json({ currency: 'SAR' });
+            }
+            if (target.startsWith('/api/recipes')) {
+                calls.push({
+                    url: target,
+                    method: init?.method ?? 'GET',
+                    body: typeof init?.body === 'string' ? (JSON.parse(init.body) as Record<string, unknown>) : {},
+                });
+                return json({ id: 9 }, 201);
+            }
+            return json({ error: 'NOT_FOUND', message: target }, 404);
+        }),
+    );
+    return calls;
 }
 
 function renderScreen() {
@@ -133,7 +185,7 @@ describe('الوصفات', () => {
         renderScreen();
         await screen.findByText('كبسة لحم');
 
-        fireEvent.change(screen.getByLabelText('القسم'), { target: { value: 'kitchen' } });
+        fireEvent.change(screen.getByLabelText(/^القسم/), { target: { value: 'kitchen' } });
         await waitFor(() => {
             expect(bodyRows()).toHaveLength(1);
         });
@@ -198,5 +250,73 @@ describe('الوصفات', () => {
         expect(screen.getByText('تعذّر جلب البيانات')).toBeTruthy();
         expect(screen.getByText('تعذّر جلب الوصفات')).toBeTruthy();
         expect(screen.getByRole('button', { name: 'إعادة المحاولة' })).toBeTruthy();
+    });
+});
+
+describe('الوصفات — الكتابة بحقول الخادم', () => {
+    it('الإنشاء يرسل name/deptId/sellingPrice/totalCost لا snake_case', async () => {
+        const calls = stubFetchRecordingWrites();
+        renderScreen();
+        await screen.findByText('كبسة لحم');
+
+        fireEvent.click(screen.getByRole('button', { name: 'إضافة وصفة' }));
+        const dialog = await screen.findByRole('dialog');
+        fireEvent.change(within(dialog).getByLabelText(/^اسم الوصفة/), { target: { value: '  كبسة لحم  ' } });
+        fireEvent.change(within(dialog).getByLabelText(/^سعر البيع/), { target: { value: '45' } });
+        fireEvent.change(within(dialog).getByLabelText(/^التكلفة/), { target: { value: '30' } });
+        fireEvent.click(within(dialog).getByRole('button', { name: 'إضافة الوصفة' }));
+
+        await waitFor(() => {
+            expect(calls.some((call) => call.method === 'POST')).toBe(true);
+        });
+        const post = calls.find((call) => call.method === 'POST');
+        expect(post?.url).toBe('/api/recipes');
+        expect(post?.body).toEqual({ name: 'كبسة لحم', deptId: null, sellingPrice: 45, totalCost: 30 });
+    });
+
+    it('لا حقل active ولا costRatio ولا حقول snake_case في الحمولة', async () => {
+        const calls = stubFetchRecordingWrites();
+        renderScreen();
+        await screen.findByText('كبسة لحم');
+
+        fireEvent.click(screen.getByRole('button', { name: 'إضافة وصفة' }));
+        const dialog = await screen.findByRole('dialog');
+        fireEvent.change(within(dialog).getByLabelText(/^اسم الوصفة/), { target: { value: 'كفتة' } });
+        fireEvent.change(within(dialog).getByLabelText(/^سعر البيع/), { target: { value: '50' } });
+        fireEvent.change(within(dialog).getByLabelText(/^التكلفة/), { target: { value: '12' } });
+        fireEvent.click(within(dialog).getByRole('button', { name: 'إضافة الوصفة' }));
+
+        await waitFor(() => {
+            expect(calls.some((call) => call.method === 'POST')).toBe(true);
+        });
+        const body = calls.find((call) => call.method === 'POST')?.body ?? {};
+        expect(body).not.toHaveProperty('active');
+        expect(body).not.toHaveProperty('costRatio');
+        expect(body).not.toHaveProperty('selling_price');
+        expect(body).not.toHaveProperty('total_cost');
+        expect(body).not.toHaveProperty('department_code');
+    });
+
+    it('التعديل يرسل PUT بالحقول المرسَلة فقط', async () => {
+        const calls = stubFetchRecordingWrites();
+        renderScreen();
+        await screen.findByText('كبسة لحم');
+
+        fireEvent.click(screen.getAllByRole('button', { name: 'تعديل' })[0] as HTMLElement);
+        const dialog = await screen.findByRole('dialog');
+        fireEvent.change(within(dialog).getByLabelText(/^سعر البيع/), { target: { value: '55' } });
+        fireEvent.click(within(dialog).getByRole('button', { name: 'حفظ التعديل' }));
+
+        await waitFor(() => {
+            expect(calls.some((call) => call.method === 'PUT')).toBe(true);
+        });
+        const put = calls.find((call) => call.method === 'PUT');
+        expect(put?.url).toBe('/api/recipes/1');
+        expect(put?.body).toEqual({
+            name: 'كبسة لحم',
+            deptId: 'external_sales',
+            sellingPrice: 55,
+            totalCost: 0,
+        });
     });
 });

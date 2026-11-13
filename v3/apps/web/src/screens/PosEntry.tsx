@@ -39,6 +39,7 @@ import {
     type PosPaymentInput,
     type PosSaleResult,
     recallHeldOrder,
+    removePosProductImage,
     renameBuffetTier,
     reprintPosOrder,
     riyadhToday,
@@ -65,6 +66,7 @@ import { type PaymentReferenceKey, PosCart } from './pos/PosCart';
 import { PosCatalog } from './pos/PosCatalog';
 import { PosHistory, type PosHistoryFiltersState, PosOrderDetailPanel } from './pos/PosHistory';
 import { PosOpenShift } from './pos/PosOpenShift';
+import { PosPrinters } from './pos/PosPrinters';
 import { PosReceipt } from './pos/PosReceipt';
 import {
     BUFFET_ADMIN_ROLES,
@@ -177,6 +179,7 @@ export function PosEntry() {
     const [activeTabId, setActiveTabId] = useState('');
     const [favorites, setFavorites] = useState<string[]>([]);
     const [imagePending, setImagePending] = useState(false);
+    const [printersOpen, setPrintersOpen] = useState(false);
     const [mobilePane, setMobilePane] = useState<'catalog' | 'cart'>('catalog');
     const paneSwitchRef = useRef<HTMLDivElement | null>(null);
 
@@ -312,8 +315,8 @@ export function PosEntry() {
 
     // مراجع مستقرة لأحداث الكتالوج: إضافة صنف أو تعديل المفضلة لا يجب أن يعيد
     // رسم 322 بطاقة صنف — البطاقة تُعاد فقط عندما يتغيّر صنفها فعليًا.
-    const catalogHandlersRef = useRef({ addItem, toggleFavorite, uploadImage, barcodeEnter, recallOrder, removeHeldOrder });
-    catalogHandlersRef.current = { addItem, toggleFavorite, uploadImage, barcodeEnter, recallOrder, removeHeldOrder };
+    const catalogHandlersRef = useRef({ addItem, toggleFavorite, uploadImage, removeImage, barcodeEnter, recallOrder, removeHeldOrder });
+    catalogHandlersRef.current = { addItem, toggleFavorite, uploadImage, removeImage, barcodeEnter, recallOrder, removeHeldOrder };
 
     const handleAddItem = useCallback((item: CatalogItem) => {
         catalogHandlersRef.current.addItem(item);
@@ -323,6 +326,9 @@ export function PosEntry() {
     }, []);
     const handleUploadImage = useCallback((item: CatalogItem, file: File) => {
         void catalogHandlersRef.current.uploadImage(item, file);
+    }, []);
+    const handleRemoveImage = useCallback((item: CatalogItem) => {
+        void catalogHandlersRef.current.removeImage(item);
     }, []);
     const handleBarcodeEnter = useCallback(() => {
         catalogHandlersRef.current.barcodeEnter();
@@ -724,6 +730,27 @@ export function PosEntry() {
             await queryClient.invalidateQueries({ queryKey: ['pos-products'] });
         } catch (error) {
             toast({ title: `تعذّر رفع صورة الصنف: ${errorMessage(error)}`, variant: 'error' });
+        } finally {
+            setImagePending(false);
+        }
+    }
+
+    async function removeImage(item: CatalogItem) {
+        if (!canManageCatalog || busy || imagePending || item.isBuffet || !item.hasImage) {
+            return;
+        }
+        setImagePending(true);
+        try {
+            const ok = await confirm(`حذف صورة ${item.name}؟ يبقى الصنف متاحًا للبيع.`, {
+                tone: 'danger',
+                confirmLabel: 'حذف الصورة',
+            });
+            if (!ok) return;
+            await removePosProductImage(item.id);
+            toast({ title: 'تم حذف صورة الصنف.', variant: 'success' });
+            await queryClient.invalidateQueries({ queryKey: ['pos-products'] });
+        } catch (error) {
+            toast({ title: `تعذّر حذف صورة الصنف: ${errorMessage(error)}`, variant: 'error' });
         } finally {
             setImagePending(false);
         }
@@ -1249,6 +1276,11 @@ export function PosEntry() {
                                 إقفال اليوم Z
                             </Button>
                         ) : null}
+                        {canManageCatalog ? (
+                            <Button size="sm" variant="secondary" onClick={() => setPrintersOpen(true)}>
+                                الطابعة
+                            </Button>
+                        ) : null}
                         <Button size="sm" variant="secondary" onClick={() => void refreshAll()}>
                             تحديث
                         </Button>
@@ -1429,6 +1461,7 @@ export function PosEntry() {
                                         canManageCatalog={canManageCatalog}
                                         imagePending={imagePending}
                                         onUploadImage={handleUploadImage}
+                                        onRemoveImage={handleRemoveImage}
                                         onRecall={handleRecallOrder}
                                         onDeleteHeld={handleDeleteHeld}
                                         busy={busy || buffetBusy || dayCloseBusy}
@@ -1758,6 +1791,12 @@ export function PosEntry() {
                     ) : null}
                 </div>
             </Dialog>
+
+            <PosPrinters
+                open={printersOpen}
+                departmentId={shift?.departmentId ?? ''}
+                onClose={() => setPrintersOpen(false)}
+            />
         </div>
     );
 }

@@ -106,6 +106,14 @@ export const REPORT_DESTINATIONS: readonly ReportDestination[] = [
         output: 'طباعة وPDF',
     },
     {
+        key: 'vat-return',
+        title: 'مسودة مراجعة ضريبة القيمة المضافة',
+        description: 'ضريبة المخرجات والمدخلات من القيود المرحّلة مع مطابقة فواتير الشراء.',
+        menu: 'vat-return',
+        href: '/v3/vat-return',
+        output: 'طباعة وPDF',
+    },
+    {
         key: 'monthly-comparison',
         title: 'المقارنة الشهرية',
         description: 'مقارنة الإيرادات والمصروفات بين الفترات.',
