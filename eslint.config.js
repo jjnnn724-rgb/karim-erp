@@ -111,6 +111,8 @@ module.exports = [
       'frontend/app/vendor/',
       'frontend/app/js/vendor/',
       'frontend/app/js/app.js',
+      // Deployed V3 bundles and timestamped static snapshots are generated output.
+      'frontend/v3*/',
       // مساحة عمل V3 كاملة: تُفحص بأدواتها (biome + tsc + vitest) لا بـeslint الجذر،
       // ومخرجات حزمها (packages/*/dist) ليست كودًا مصدريًا.
       'v3/',

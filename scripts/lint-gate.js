@@ -16,8 +16,9 @@
  * التشغيل: node scripts/lint-gate.js [--write-baseline]
  */
 'use strict';
-const { execFileSync } = require('child_process');
+const { spawnSync } = require('child_process');
 const fs = require('fs');
+const os = require('os');
 const path = require('path');
 
 const ROOT = path.resolve(__dirname, '..');
@@ -67,24 +68,34 @@ function parseEslintRun({ exitCode, stdout, stderr }) {
 }
 
 function runEslint() {
+  const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'karim-lint-gate-'));
+  const reportPath = path.join(tempDir, 'eslint-report.json');
+  let result;
   let stdout;
-  let exitCode = 0;
-  let stderr = '';
+
   try {
-    // stdio مُلتقَط لا موروث: نص «Oops!» ومسطرة ESLint يذهبان إلى e.stderr
-    // فيصبح تقرير البوابة سطراً واحداً مقروءاً بدل 20 سطراً من الضوضاء.
-    stdout = execFileSync(process.execPath, [ESLINT_BIN, '.', '--ext', '.js,.mjs', '--format', 'json'], {
-      cwd: ROOT,
-      encoding: 'utf8',
-      maxBuffer: 64 * 1024 * 1024,
-      stdio: ['ignore', 'pipe', 'pipe'],
-    });
-  } catch (e) {
-    // الرمز -1 يعني أن العملية لم تُقلع أصلاً (ENOENT، تجاوز maxBuffer).
-    exitCode = Number.isInteger(e.status) ? e.status : -1;
-    stdout = typeof e.stdout === 'string' ? e.stdout : '';
-    stderr = typeof e.stderr === 'string' && e.stderr.trim() ? e.stderr : String(e.message || '');
+    const reportFd = fs.openSync(reportPath, 'w');
+    try {
+      // The JSON report can exceed spawnSync's in-memory buffer on CI.
+      result = spawnSync(process.execPath, [ESLINT_BIN, '.', '--ext', '.js,.mjs', '--format', 'json'], {
+        cwd: ROOT,
+        encoding: 'utf8',
+        maxBuffer: 8 * 1024 * 1024,
+        stdio: ['ignore', reportFd, 'pipe'],
+      });
+    } finally {
+      fs.closeSync(reportFd);
+    }
+    stdout = fs.readFileSync(reportPath, 'utf8');
+  } finally {
+    fs.rmSync(tempDir, { recursive: true, force: true });
   }
+
+  const exitCode = result && Number.isInteger(result.status) ? result.status : -1;
+  const stderr =
+    result && typeof result.stderr === 'string' && result.stderr.trim()
+      ? result.stderr
+      : String((result && result.error && result.error.message) || '');
   return parseEslintRun({ exitCode, stdout, stderr });
 }
 

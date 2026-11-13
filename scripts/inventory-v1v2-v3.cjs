@@ -24,7 +24,7 @@ function parseArgs(argv) {
     const out = { db: 'karim_erp', json: 'var/inventory-v1v2-v3.json', md: 'docs/v1-v2-v3-inventory.md' };
     for (const arg of argv) {
         const m = /^--(db|json|md)=(.*)$/.exec(arg);
-        if (m) out[m[1]] = m[2];
+        if (m) {out[m[1]] = m[2];}
     }
     return out;
 }
@@ -32,10 +32,10 @@ function parseArgs(argv) {
 function readEnv() {
     const env = {};
     const file = path.join(ROOT, '.env');
-    if (!fs.existsSync(file)) return env;
+    if (!fs.existsSync(file)) {return env;}
     for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
         const m = /^([A-Za-z_0-9]+)=(.*)$/.exec(line.trim());
-        if (m) env[m[1]] = m[2].replace(/^["']|["']$/g, '');
+        if (m) {env[m[1]] = m[2].replace(/^["']|["']$/g, '');}
     }
     return env;
 }
@@ -44,13 +44,13 @@ function readEnv() {
 function buildReaderIndex(tables) {
     const wanted = new Set(tables);
     const index = new Map(); // table -> { backend:Set, v3:Set, v1v2:Set }
-    for (const table of tables) index.set(table, { backend: new Set(), v3: new Set(), v1v2: new Set() });
+    for (const table of tables) {index.set(table, { backend: new Set(), v3: new Set(), v1v2: new Set() });}
 
     for (const [label, dir] of Object.entries(SCAN_DIRS)) {
         const walk = (current, depth) => {
-            if (depth > 7 || !fs.existsSync(current)) return;
+            if (depth > 7 || !fs.existsSync(current)) {return;}
             for (const name of fs.readdirSync(current)) {
-                if (name === 'node_modules' || name === 'dist' || name === '.git') continue;
+                if (name === 'node_modules' || name === 'dist' || name === '.git') {continue;}
                 const full = path.join(current, name);
                 let stat;
                 try {
@@ -62,7 +62,7 @@ function buildReaderIndex(tables) {
                     walk(full, depth + 1);
                     continue;
                 }
-                if (!/\.(js|cjs|mjs|ts|tsx)$/.test(name)) continue;
+                if (!/\.(js|cjs|mjs|ts|tsx)$/.test(name)) {continue;}
                 let text;
                 try {
                     text = fs.readFileSync(full, 'utf8');
@@ -72,7 +72,7 @@ function buildReaderIndex(tables) {
                 const words = new Set(text.match(/[A-Za-z_][A-Za-z0-9_]{2,}/g) || []);
                 const rel = path.relative(ROOT, full).replace(/\\/g, '/');
                 for (const word of words) {
-                    if (!wanted.has(word)) continue;
+                    if (!wanted.has(word)) {continue;}
                     index.get(word)[label].add(rel);
                 }
             }
@@ -96,7 +96,7 @@ async function dateRange(client, table) {
                 `SELECT min("${row.column_name}")::text AS first, max("${row.column_name}")::text AS last FROM "${table}"
                   WHERE "${row.column_name}" IS NOT NULL`,
             );
-            if (r.rows[0]?.last) return { column: row.column_name, first: r.rows[0].first, last: r.rows[0].last };
+            if (r.rows[0]?.last) {return { column: row.column_name, first: r.rows[0].first, last: r.rows[0].last };}
         } catch {
             /* نوع غير قابل للمقارنة — نتجاوز */
         }
@@ -126,13 +126,13 @@ async function main() {
     const index = buildReaderIndex(tables);
     const rows = [];
     for (const table of tables) {
-        let count = 0;
+        let count;
         try {
             count = (await client.query(`SELECT count(*)::int n FROM "${table}"`)).rows[0].n;
         } catch {
             continue;
         }
-        if (count === 0) continue;
+        if (count === 0) {continue;}
         const readers = index.get(table);
         rows.push({
             table,

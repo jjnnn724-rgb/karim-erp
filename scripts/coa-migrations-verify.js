@@ -46,10 +46,6 @@ function readMig(name) {
     return { up: stripTx(fs.readFileSync(up, 'utf8')), down: stripTx(fs.readFileSync(down, 'utf8')) };
 }
 
-async function q(c, sql, params) {
-    return (await c.query(sql, params)).rows;
-}
-
 /** استعلام يتحمل غياب الجدول/العمود (بعد down 134) فيعيد 0 */
 async function safeCount(c, sql) {
     try { return (await c.query(sql)).rows[0].n; }

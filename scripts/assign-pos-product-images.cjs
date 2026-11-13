@@ -27,10 +27,10 @@ const URL_PREFIX = '/v3/img/pos/';
 function readEnv() {
     const env = {};
     const file = path.join(ROOT, '.env');
-    if (!fs.existsSync(file)) return env;
+    if (!fs.existsSync(file)) {return env;}
     for (const line of fs.readFileSync(file, 'utf8').split(/\r?\n/)) {
         const match = /^([A-Za-z_0-9]+)=(.*)$/.exec(line.trim());
-        if (match) env[match[1]] = match[2].replace(/^["']|["']$/g, '');
+        if (match) {env[match[1]] = match[2].replace(/^["']|["']$/g, '');}
     }
     return env;
 }
@@ -108,17 +108,17 @@ const DEFAULT_FAMILIES = ['kabsa-chicken', 'mixed-grill', 'shawarma', 'sandwich'
 function pickFamily(row) {
     // الاسم العربي أولًا (أدق للمنيو المحلي)، ثم الإنجليزي، ثم الفئة، ثم بديل ثابت.
     for (const haystack of [normalize(row.name_ar), normalize(row.name_en)]) {
-        if (!haystack) continue;
+        if (!haystack) {continue;}
         for (const [family, words] of NAME_RULES_NORM) {
-            if (words.some((word) => haystack.includes(word))) return family;
+            if (words.some((word) => haystack.includes(word))) {return family;}
         }
     }
     const category = normalize(row.category);
     for (const [family, words] of CATEGORY_RULES_NORM) {
-        if (words.some((word) => category.includes(word))) return family;
+        if (words.some((word) => category.includes(word))) {return family;}
     }
     let hash = 0;
-    for (const char of String(row.id)) hash = (hash * 31 + char.charCodeAt(0)) % 9973;
+    for (const char of String(row.id)) {hash = (hash * 31 + char.charCodeAt(0)) % 9973;}
     return DEFAULT_FAMILIES[hash % DEFAULT_FAMILIES.length];
 }
 
@@ -157,10 +157,10 @@ async function main() {
         }
         const family = pickFamily(row);
         const file = `pos-${family}.webp`;
-        if (!fs.existsSync(path.join(MEDIA_DIR, file))) missingFiles.add(file);
+        if (!fs.existsSync(path.join(MEDIA_DIR, file))) {missingFiles.add(file);}
         counts.set(family, (counts.get(family) ?? 0) + 1);
         const url = `${URL_PREFIX}${file}`;
-        if (row.image_url !== url) updates.push({ id: row.id, url });
+        if (row.image_url !== url) {updates.push({ id: row.id, url });}
     }
 
     if (missingFiles.size) {
@@ -177,7 +177,7 @@ async function main() {
     );
 
     if (args.includes('--list')) {
-        for (const row of rows) console.log(`${String(row.id).padStart(6)}  ${pickFamily(row).padEnd(16)} ${row.name_ar}`);
+        for (const row of rows) {console.log(`${String(row.id).padStart(6)}  ${pickFamily(row).padEnd(16)} ${row.name_ar}`);}
     }
 
     if (dry) {

@@ -23,7 +23,7 @@ let cache = { at: 0, mtimeMs: -1, config: null };
 
 function readConfig() {
     const now = Date.now();
-    let mtimeMs = -1;
+    let mtimeMs;
     try {
         mtimeMs = fs.statSync(CONFIG_FILE).mtimeMs;
     } catch (_) {

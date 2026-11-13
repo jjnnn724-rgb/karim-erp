@@ -19,7 +19,7 @@ const MODES = ['connected', 'standalone'];
 let schemaReady = null;
 
 async function ensureSchema() {
-    if (schemaReady) return schemaReady;
+    if (schemaReady) {return schemaReady;}
     schemaReady = pool
         .query(
             `CREATE TABLE IF NOT EXISTS integration_settings (
@@ -67,7 +67,7 @@ async function setMode(mode, userId) {
 /** تطبيق الوضع على المحركات الحيّة دون إعادة تشغيل الخادم. */
 function applyMode(mode, app) {
     const engine = app?.locals?.yarasoftEngine;
-    if (!engine) return;
+    if (!engine) {return;}
     try {
         if (mode === 'standalone') {
             engine.stop();
