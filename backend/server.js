@@ -3308,30 +3308,38 @@ installProcessShields({
 // وُجدت ترحيلات غير مسجلة — التطبيق يبقى قرارًا بشريًا (npm run migrate).
 (function checkMigrationsAtBoot() {
     try {
-        const { execFile } = require('child_process');
-        const migrationScript = require('path').join(__dirname, '..', 'database', 'scripts', 'run-migration.js');
-        const child = execFile(process.execPath, [migrationScript, '--status'], {
-            env: process.env,
-            timeout: 45_000,
-            maxBuffer: 2 * 1024 * 1024,
-        }, (error, stdout, stderr) => {
-            const out = String(stdout || '') + String(stderr || '');
-            const pending = out.match(/ملفات غير مسجلة: (\d+)/);
-            const count = pending ? Number(pending[1]) : null;
-            if (error) {
-                logger.warn({ event: 'migration_status_failed', message: error.message }, 'تعذر فحص حالة الترحيلات عند الإقلاع — لم يُفحص أي شيء');
+        // نفس منطق run-migration: ملفات الرجوع و007... لا — الـDemo و_down مستبعدة
+        // من العد (سياسة التشغيل نفسها)، فلا تُثار إنذارات وهمية عنها.
+        const { shouldApplyMigration, isRollbackMigration } = require(require('path').join(__dirname, '..', 'scripts', 'shared'));
+        const fs = require('fs');
+        const path = require('path');
+        const { compareMigrationLedger, readMigrationLedger } = require(require('path').join(__dirname, '..', 'database', 'scripts', 'migration-lock'));
+        const migrationsDir = path.join(__dirname, '..', 'database', 'migrations');
+        const migrationFiles = fs.readdirSync(migrationsDir)
+            .filter((file) => file.endsWith('.sql') && !isRollbackMigration(file) && shouldApplyMigration(file))
+            .sort();
+        const dbName = String(process.env.DB_NAME || 'karim_erp').trim();
+        if (!dbName) { return; }
+        readMigrationLedger({
+            name: dbName,
+            host: String(process.env.DB_HOST || '127.0.0.1'),
+            port: String(process.env.DB_PORT || '5432'),
+            user: String(process.env.DB_USER || 'postgres'),
+            password: String(process.env.DB_PASSWORD || ''),
+        }).then((appliedVersions) => {
+            if (appliedVersions === null) {
+                logger.warn({ event: 'migration_status_failed', db: dbName }, 'جدول schema_migrations غير موجود — تعذر التحقق من حالة الترحيلات');
                 return;
             }
-            if (count && count > 0) {
-                logger.warn({ event: 'migration_status_pending', pending: count }, `⚠️ توجد ${count} ترحيلات غير مسجلة على قاعدة الإنتاج — راجعها طبّقها عبر npm run migrate بقرار بشري`);
-                for (const line of out.split(/\r?\n/)) {
-                    if (line.includes('غير مسجل:')) { logger.warn(line.trim()); }
-                }
+            const status = compareMigrationLedger(migrationFiles, appliedVersions);
+            const pending = status.pending;
+            if (pending.length > 0) {
+                logger.warn({ event: 'migration_status_pending', pending: pending.length, files: pending }, `⚠️ توجد ${pending.length} ترحيلات غير مسجلة على قاعدة الإنتاج — راجعها وطبّقها عبر npm run migrate بقرار بشري`);
+                for (const file of pending) { logger.warn(`غير مسجل: ${file}`); }
             } else {
                 logger.info('✅ ترحيلات قاعدة البيانات متوازنة مع القاعدة');
             }
-        });
-        child.on('error', (error) => {
+        }).catch((error) => {
             logger.warn({ event: 'migration_status_failed', message: String(error?.message || error) }, 'تعذر فحص حالة الترحيلات عند الإقلاع');
         });
     } catch (error) {
