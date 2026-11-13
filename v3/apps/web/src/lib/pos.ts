@@ -402,10 +402,18 @@ export const saleResultSchema = z
 
 export type PosSaleResult = z.infer<typeof saleResultSchema>;
 
+/** بيانات إضافية للدفع بالكريدت — تُرسل كما هي في `payer_info` للخادم. */
+export interface PosPaymentMeta {
+    brand?: string;
+    last4?: string;
+}
+
 export interface PosPaymentInput {
     method: 'cash' | 'card' | 'wallet' | 'bank_transfer';
     amount: number;
     reference: string | null;
+    /** يُسجَّل في عمود `payer_info` jsonb — العميل لا يعبئه يدويًا. */
+    payer_info?: PosPaymentMeta | null;
 }
 
 export interface CompleteSaleInput {
@@ -1245,12 +1253,7 @@ export async function fetchPosPrinters(signal?: AbortSignal): Promise<PosPrinter
 
 /** الاكتشاف التلقائي: طوابير ويندوز المثبتة + طابعات الشبكة على 9100. */
 export async function discoverPosPrinters(scan = true, signal?: AbortSignal): Promise<PosPrinterDiscovery> {
-    return fetchJson(
-        printerDiscoverySchema,
-        `/api/pos/printers/discover${scan ? '' : '?scan=0'}`,
-        token(),
-        opts(signal),
-    );
+    return fetchJson(printerDiscoverySchema, `/api/pos/printers/discover${scan ? '' : '?scan=0'}`, token(), opts(signal));
 }
 
 export async function probePosPrinter(printerId: string): Promise<PosPrinterProbe> {

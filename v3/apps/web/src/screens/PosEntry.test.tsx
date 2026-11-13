@@ -768,6 +768,41 @@ describe('نقطة البيع', () => {
         });
     });
 
+    it('بطاقة غير مكتملة تمنع البيع حتى اكتمال الماركة وآخر 4 والمرجع', async () => {
+        const mock = stubFetch({ activeShift: SHIFT });
+        renderScreen();
+
+        fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
+        fireEvent.click(screen.getByText('تعديل'));
+        fireEvent.change(screen.getByLabelText('نقدي'), { target: { value: '5' } });
+        fireEvent.change(screen.getByLabelText('بطاقة'), { target: { value: '6.5' } });
+        fireEvent.change(screen.getByLabelText('مرجع / رقم الموافقة'), { target: { value: 'AUTH-1234' } });
+
+        // لا ماركة ولا آخر 4 → لا بيع، والرسالة تظهر بعد الضغط على إتمام البيع.
+        fireEvent.click(screen.getByRole('button', { name: /إتمام البيع/ }));
+        expect(await screen.findByText(/أكمل بيانات البطاقة/)).toBeTruthy();
+        await waitFor(() => {
+            expect(saleCalls(mock)).toHaveLength(0);
+        });
+
+        // اكتمل → الزر يشتغل.
+        fireEvent.click(screen.getByRole('button', { name: 'مدى' }));
+        fireEvent.change(screen.getByLabelText('آخر 4 أرقام'), { target: { value: '8899' } });
+        fireEvent.click(screen.getByRole('button', { name: /إتمام البيع/ }));
+        await waitFor(() => {
+            expect(saleCalls(mock)).toHaveLength(1);
+        });
+        const body = JSON.parse(String(callInit(saleCalls(mock)[0] as unknown[]).body)) as {
+            payments: Array<{ method: string; amount: number; payer_info?: { brand?: string; last4?: string } }>;
+        };
+        expect(body.payments[1]).toEqual({
+            method: 'card',
+            amount: 6.5,
+            reference: 'AUTH-1234',
+            payer_info: { brand: 'mada', last4: '8899' },
+        });
+    });
+
     it('F5 من لوحة المفاتيح يُتمم البيع بنفس عقد الزر', async () => {
         const mock = stubFetch({ activeShift: SHIFT });
         renderScreen();
@@ -832,7 +867,9 @@ describe('نقطة البيع', () => {
 
         fireEvent.change(screen.getByLabelText('نقدي'), { target: { value: '5' } });
         fireEvent.change(screen.getByLabelText('بطاقة'), { target: { value: '6.5' } });
-        fireEvent.change(screen.getByLabelText('مرجع بطاقة'), { target: { value: 'AUTH-9911' } });
+        fireEvent.click(screen.getByRole('button', { name: 'مدى' }));
+        fireEvent.change(screen.getByLabelText('آخر 4 أرقام'), { target: { value: '1234' } });
+        fireEvent.change(screen.getByLabelText('مرجع / رقم الموافقة'), { target: { value: 'AUTH-9911' } });
         expect(screen.getByText('المبلغ المدفوع مطابق للإجمالي.')).toBeTruthy();
 
         fireEvent.click(screen.getByRole('button', { name: /إتمام البيع/ }));
@@ -842,11 +879,11 @@ describe('نقطة البيع', () => {
         // لا نافذة تأكيد: المبلغ مطابق.
         expect(screen.queryByRole('dialog', { name: 'تأكيد الإجراء' })).toBeNull();
         const body = JSON.parse(String(callInit(saleCalls(mock)[0] as unknown[]).body)) as {
-            payments: Array<{ method: string; amount: number; reference: string | null }>;
+            payments: Array<{ method: string; amount: number; reference: string | null; payer_info?: { brand?: string; last4?: string } }>;
         };
         expect(body.payments).toEqual([
             { method: 'cash', amount: 5, reference: null },
-            { method: 'card', amount: 6.5, reference: 'AUTH-9911' },
+            { method: 'card', amount: 6.5, reference: 'AUTH-9911', payer_info: { brand: 'mada', last4: '1234' } },
         ]);
     });
 

@@ -1328,7 +1328,98 @@
     line-height: 1.4;
 }
 
+/* ─── لوحة البطاقة الاحترافية ───────────────────────────────────────────── */
+
+.pos-payments__grid {
+    flex-wrap: wrap;
+}
+
+.pos-card {
+    grid-column: 1 / -1;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.6rem;
+    border: 1px solid rgb(245 158 11 / 32%);
+    border-radius: 10px;
+    background: rgb(245 158 11 / 6%);
+}
+
+.pos-card__title {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    margin: 0;
+    color: #fcd34d;
+    font-size: 0.82rem;
+    font-weight: 800;
+}
+
+.pos-card__badge {
+    padding: 0.1rem 0.5rem;
+    border: 1px solid rgb(245 158 11 / 35%);
+    border-radius: 999px;
+    background: rgb(245 158 11 / 12%);
+    color: #fbbf24;
+    font-size: 0.72rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.pos-card__brands {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.pos-card__brand {
+    padding: 0.3rem 0.6rem;
+    border: 1px solid rgb(148 163 184 / 20%);
+    border-radius: 8px;
+    background: rgb(11 17 32 / 80%);
+    color: #e2e8f0;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        border-color 120ms ease,
+        background-color 120ms ease,
+        color 120ms ease,
+        transform 75ms ease;
+}
+
+.pos-card__brand:hover:not(:disabled) {
+    border-color: rgb(245 158 11 / 55%);
+    background: rgb(245 158 11 / 12%);
+    color: #fcd34d;
+}
+
+.pos-card__brand:active:not(:disabled) {
+    transform: scale(0.97);
+}
+
+.pos-card__brand.is-active {
+    border-color: var(--pos-amber);
+    background: var(--pos-amber);
+    color: #241600;
+}
+
+.pos-card__row {
+    display: grid;
+    grid-template-columns: minmax(0, 1fr) minmax(0, 1fr);
+    gap: 0.4rem;
+}
+
+.pos-card__hint {
+    margin: 0;
+    color: #fcd34d;
+    font-size: 0.68rem;
+    line-height: 1.4;
+}
+
 /* مبدّل اللوحتين على الأجهزة الضيقة */
+
 .pos-entry .pos-pane-switch {
     border-color: var(--pos-line);
     background: #0b1120;
@@ -1403,8 +1494,8 @@
 
 @media (prefers-reduced-motion: reduce) {
     .pos-entry :where(*) {
-        transition-duration: 0.01ms !important;
-        animation-duration: 0.01ms !important;
+        animation: none;
+        transition: none;
     }
 }
 

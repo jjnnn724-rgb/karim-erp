@@ -1,7 +1,7 @@
 import { type PosCartLine, type PosDiscount, type PosTotals, parsePosMoney } from '../../lib/pos-pricing';
 import { Badge, Button, Input, Select } from '../../ui';
 import { PosNumpad } from './PosNumpad';
-import { moneyText, PAYMENT_FIELDS, type PaymentKey } from './pos-ui';
+import { CARD_BRANDS, type CardMeta, moneyText, PAYMENT_FIELDS, type PaymentKey } from './pos-ui';
 
 export type PaymentReferenceKey = 'card' | 'wallet' | 'bank_transfer';
 
@@ -19,6 +19,8 @@ export interface PosCartProps {
     onPayment: (key: PaymentKey, value: string) => void;
     references: Record<PaymentReferenceKey, string>;
     onReference: (key: PaymentReferenceKey, value: string) => void;
+    cardMeta: CardMeta;
+    onCardMeta: (next: CardMeta) => void;
     canSell: boolean;
     busy: boolean;
     buffet: boolean;
@@ -77,6 +79,8 @@ export function PosCart({
     onPayment,
     references,
     onReference,
+    cardMeta,
+    onCardMeta,
     canSell,
     busy,
     buffet,
@@ -98,6 +102,11 @@ export function PosCart({
           : change > 0.009
             ? `الباقي للعميل: ${moneyText(change)}`
             : 'المبلغ المدفوع مطابق للإجمالي.';
+
+    // حساب نشاط البطاقة: لتفعيل لوحة بيانات البطاقة عند البدء بها
+    const cardAmount = parsePosMoney(payments.card);
+    const cardActive = Boolean(cardAmount > 0 || cardMeta.brand || cardMeta.last4 || references.card);
+    const cardBrandLabel = CARD_BRANDS.find((brand) => brand.value === cardMeta.brand)?.label ?? '';
 
     // نسبة الضريبة المعروضة تتغيّر مع سلّة مختلطة النسب؛ لا نطبع 15% إن لم تكن كذلك.
     const rates = [...new Set(cart.map((row) => row.vatRate))];
@@ -291,7 +300,7 @@ export function PosCart({
                                                 onPayment(field.key, event.target.value);
                                             }}
                                         />
-                                        {field.key === 'cash' ? null : (
+                                        {field.key === 'cash' ? null : field.key === 'card' ? null : (
                                             <Input
                                                 label={`مرجع ${field.label}`}
                                                 maxLength={120}
@@ -307,6 +316,69 @@ export function PosCart({
                                     </div>
                                 ))}
                             </div>
+
+                            {cardActive ? (
+                                <div className="pos-card">
+                                    <h4 id="pos-card-title" className="pos-card__title">
+                                        بيانات البطاقة
+                                        {cardAmount > 0 ? <span className="pos-card__badge">يدفع {moneyText(cardAmount)}</span> : null}
+                                    </h4>
+                                    <div className="pos-card__brands" role="group" aria-label="ماركة البطاقة">
+                                        {CARD_BRANDS.map((brand) => {
+                                            const active = cardMeta.brand === brand.value;
+                                            return (
+                                                <button
+                                                    key={brand.value}
+                                                    type="button"
+                                                    aria-pressed={active}
+                                                    className={`pos-card__brand${active ? ' is-active' : ''}`}
+                                                    disabled={busy}
+                                                    onClick={() => {
+                                                        onCardMeta({
+                                                            ...cardMeta,
+                                                            brand: active ? '' : (brand.value as CardMeta['brand']),
+                                                        });
+                                                    }}
+                                                >
+                                                    {brand.label}
+                                                </button>
+                                            );
+                                        })}
+                                    </div>
+                                    <div className="pos-card__row">
+                                        <Input
+                                            label="آخر 4 أرقام"
+                                            inputMode="numeric"
+                                            maxLength={4}
+                                            dir="ltr"
+                                            value={cardMeta.last4}
+                                            disabled={busy}
+                                            hint="تظهر على الإيصال فقط — لا تُخزَّن الشفرة الكاملة"
+                                            onChange={(event) => {
+                                                const digits = event.target.value.replace(/\D/g, '').slice(0, 4);
+                                                onCardMeta({ ...cardMeta, last4: digits });
+                                            }}
+                                        />
+                                        <Input
+                                            label="مرجع / رقم الموافقة"
+                                            maxLength={120}
+                                            autoComplete="off"
+                                            dir="ltr"
+                                            value={references.card}
+                                            disabled={busy}
+                                            placeholder="مثال: 889911"
+                                            onChange={(event) => {
+                                                onReference('card', event.target.value);
+                                            }}
+                                        />
+                                    </div>
+                                    <p className="pos-card__hint" role="status">
+                                        {cardMeta.brand && cardMeta.last4.length === 4
+                                            ? `${cardBrandLabel} ····${cardMeta.last4} — تظهر على الإيصال`
+                                            : 'اختر ماركة البطاقة ثم آخر 4 أرقام لاستكمال البيانات'}
+                                    </p>
+                                </div>
+                            ) : null}
 
                             <PosNumpad
                                 value={payments.cash}

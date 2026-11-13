@@ -20,6 +20,19 @@ export const CATALOG_IMAGE_ROLES = ['admin', 'manager'] as const;
 export const DAY_CLOSE_ROLES = ['admin', 'manager', 'accountant'] as const;
 export const BUFFET_ADMIN_ROLES = ['admin', 'manager', 'accountant'] as const;
 
+/** بطاقة الدفع — الماركة وآخر 4 أرقام؛ كل حالة تُعلَن صراحة في الإيصال. */
+export interface CardMeta {
+    brand: 'mada' | 'visa' | 'mastercard' | 'amex' | '';
+    last4: string;
+}
+
+export const CARD_BRANDS = [
+    { value: 'mada', label: 'مدى' },
+    { value: 'visa', label: 'فيزا' },
+    { value: 'mastercard', label: 'ماستركارد' },
+    { value: 'amex', label: 'أمريكان إكسبريس' },
+] as const;
+
 export const PAYMENT_FIELDS = [
     { key: 'cash', label: 'نقدي' },
     { key: 'card', label: 'بطاقة' },
@@ -113,7 +126,9 @@ export interface CatalogItem {
 }
 
 export function catalogFromProducts(products: readonly PosProduct[]): CatalogItem[] {
-    const active = products.filter((product) => Number.isInteger(Number(product.id)) && Number(product.id) > 0 && product.is_active !== false);
+    const active = products.filter(
+        (product) => Number.isInteger(Number(product.id)) && Number(product.id) > 0 && product.is_active !== false,
+    );
     const imageUses = new Map<string, number>();
     for (const product of active) {
         const url = String(product.image_url ?? '').trim();

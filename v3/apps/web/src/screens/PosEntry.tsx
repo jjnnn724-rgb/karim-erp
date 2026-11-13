@@ -72,6 +72,7 @@ import { PosReceipt } from './pos/PosReceipt';
 import {
     BUFFET_ADMIN_ROLES,
     CATALOG_IMAGE_ROLES,
+    type CardMeta,
     type CatalogItem,
     catalogFromProducts,
     catalogFromTiers,
@@ -98,6 +99,8 @@ type View = 'cashier' | 'history' | 'order-detail' | 'buffet-prices' | 'buffet-r
 const EMPTY_DISCOUNT: PosDiscount = { type: '', value: '0' };
 const EMPTY_PAYMENTS: Record<PaymentKey, string> = { cash: '0.00', card: '0', wallet: '0', bank_transfer: '0' };
 const EMPTY_REFERENCES: Record<PaymentReferenceKey, string> = { card: '', wallet: '', bank_transfer: '' };
+/** بطاقة الدفع المختارة — تُعلَن الماركة وآخر 4 أرقام على الإيصال */
+const EMPTY_CARD_META: CardMeta = { brand: '', last4: '' };
 const EMPTY_FILTERS: PosHistoryFiltersState = { dateFrom: '', dateTo: '', status: '', search: '' };
 const EMPTY_SALES_INDEX: Record<string, number> = {};
 // مصفوفة ثابتة الهوية: تمرير `[]` جديد كل رسم كان يهدم تذكير الكتالوج.
@@ -113,6 +116,7 @@ interface PosTab {
     discount: PosDiscount;
     payments: Record<PaymentKey, string>;
     references: Record<PaymentReferenceKey, string>;
+    cardMeta: CardMeta;
     paymentsTouched: boolean;
     receipt: PosSaleResult | null;
     saleKey: string;
@@ -125,6 +129,7 @@ function blankTab(id: string): PosTab {
         discount: EMPTY_DISCOUNT,
         payments: EMPTY_PAYMENTS,
         references: EMPTY_REFERENCES,
+        cardMeta: EMPTY_CARD_META,
         paymentsTouched: false,
         receipt: null,
         saleKey: '',
@@ -217,6 +222,7 @@ export function PosEntry() {
     const discount = activeTab.discount;
     const payments = activeTab.payments;
     const references = activeTab.references;
+    const cardMeta = activeTab.cardMeta;
     const paymentsTouched = activeTab.paymentsTouched;
     const receipt = activeTab.receipt;
     const cartCount = cart.reduce((sum, row) => sum + row.quantity, 0);
@@ -492,6 +498,10 @@ export function PosEntry() {
         }));
     }
 
+    function setCardMeta(next: CardMeta) {
+        updateActiveTab((tab) => ({ ...tab, cardMeta: next, saleKey: '' }));
+    }
+
     function setReference(key: PaymentReferenceKey, value: string) {
         updateActiveTab((tab) => ({
             ...tab,
@@ -577,10 +587,27 @@ export function PosEntry() {
             });
             return;
         }
+        const cardAmount = parsePosMoney(payments.card);
+        if (cardAmount > 0) {
+            const brandOk = cardMeta.brand.trim().length > 0;
+            const last4Ok = /^\d{4}$/.test(cardMeta.last4.trim());
+            const auth = references.card.trim();
+            const missing = [
+                !brandOk ? 'نوع البطاقة (مدى/فيزا/ماستركارد)' : '',
+                !last4Ok ? 'آخر 4 أرقام من البطاقة' : '',
+                !auth ? 'رقم المرجع/الموافقة من قارئ البطاقة' : '',
+            ].filter(Boolean);
+            if (missing.length) {
+                toast({ title: `أكمل بيانات البطاقة: ${missing.join('، ')}.`, variant: 'error' });
+                return;
+            }
+        }
+
         const entries = PAYMENT_FIELDS.map((field) => ({
             method: field.key,
             amount: parsePosMoney(payments[field.key]),
             reference: field.key === 'cash' ? null : references[field.key].trim() || null,
+            ...(field.key === 'card' && cardMeta.brand ? { payer_info: { brand: cardMeta.brand, last4: cardMeta.last4.trim() } } : {}),
         }));
         if (entries.some((entry) => !Number.isFinite(entry.amount))) {
             toast({ title: 'أدخل مبالغ دفع صحيحة غير سالبة.', variant: 'error' });
@@ -588,7 +615,12 @@ export function PosEntry() {
         }
         const salePayments: PosPaymentInput[] = entries
             .filter((entry) => entry.amount > 0)
-            .map((entry) => ({ method: entry.method, amount: entry.amount, reference: entry.reference }));
+            .map((entry) => ({
+                method: entry.method,
+                amount: entry.amount,
+                reference: entry.reference,
+                ...(entry.payer_info ? { payer_info: entry.payer_info } : {}),
+            }));
         const paid = salePayments.reduce((sum, payment) => sum + payment.amount, 0);
         if (paid + 0.009 < totals.total) {
             toast({ title: 'المبلغ المدفوع أقل من إجمالي الفاتورة.', variant: 'error' });
@@ -1583,6 +1615,8 @@ export function PosEntry() {
                                             onPayment={setPayment}
                                             references={references}
                                             onReference={setReference}
+                                            cardMeta={cardMeta}
+                                            onCardMeta={setCardMeta}
                                             canSell={canSell}
                                             busy={busy}
                                             buffet={buffet}
