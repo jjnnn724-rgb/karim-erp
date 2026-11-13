@@ -23,6 +23,7 @@ const { logger } = require("../logger");
 const { v4: uuidv4 } = require('uuid');
 const { pool } = require('./db-pool');
 const { jwtAuth, requireRole } = require('./jwt-middleware');
+const { saleLimiter } = require('../rate-limiter');
 const { signInvoice } = require('./zatca-signer');
 const { buildZatcaTlvInJs } = require('./zatca-tlv');
 const { enqueueZatcaReporting } = require('./zatca-queue');
@@ -50,7 +51,8 @@ const MAX_ITEMS = 200;
 const SALE_DISCOUNT_MAX_PERCENT = Math.max(0, Number(process.env.SALE_DISCOUNT_MAX_PERCENT || '0'));
 const SALE_PRICE_OVERRIDE_MAX_PERCENT = Math.max(0, Number(process.env.SALE_PRICE_OVERRIDE_MAX_PERCENT || '0'));
 const SALE_DISCOUNT_APPROVER_ROLES = new Set(
-    String(process.env.SALE_DISCOUNT_APPROVER_ROLES || 'manager,admin')
+    // قرار المالك 2026-11: الاعتماد على مستوى admin وaccountant فقط.
+    String(process.env.SALE_DISCOUNT_APPROVER_ROLES || 'admin,accountant')
         .split(',').map((s) => s.trim()).filter(Boolean)
 );
 function isDiscountApprover(role) {
@@ -550,7 +552,7 @@ async function quoteSale(req, res) {
             return res.status(404).json({ error: 'PRODUCT_NOT_FOUND', message: err.message, _request_id: requestId });
         }
         logger.error({ err: { message: err.message, code: err.code }, requestId }, 'quote failed');
-        return res.status(500).json({ error: 'INTERNAL_ERROR', message: err.message, _request_id: requestId });
+        return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى', _request_id: requestId });
     }
 }
 
@@ -1370,10 +1372,10 @@ async function completeSale(req, res) {
             return res.status(422).json({ error: err.code, message: err.message, _request_id: requestId });
         }
 
-        if (code === '23505') {return res.status(409).json({ error: 'DUPLICATE', message: err.message, _request_id: requestId });}
+        if (code === '23505') {return res.status(409).json({ error: 'DUPLICATE', message: 'طلب مكرر — لم تُسجَّل عملية ثانية', _request_id: requestId });}
         if (err.code === 'PRICE_OVERRIDE_FORBIDDEN') {return res.status(422).json({ error: 'PRICE_OVERRIDE_FORBIDDEN', message: err.message, _request_id: requestId });}
         if (err.code === 'DISCOUNT_APPROVAL_REQUIRED') {return res.status(403).json({ error: 'DISCOUNT_APPROVAL_REQUIRED', message: err.message, _request_id: requestId });}
-        if (err.code === 'INSUFFICIENT_STOCK' || code === '23514') {return res.status(409).json({ error: 'INSUFFICIENT_STOCK', message: err.message, _request_id: requestId });}
+        if (err.code === 'INSUFFICIENT_STOCK' || code === '23514') {return res.status(409).json({ error: 'INSUFFICIENT_STOCK', message: 'المخزون غير كافٍ لإتمام البيع', _request_id: requestId });}
         if (err.code === 'UNDERPAYMENT') {return res.status(422).json({ error: 'UNDERPAYMENT', message: err.message, _request_id: requestId });}
         if (err.code === 'PRODUCT_NOT_FOUND') {return res.status(404).json({ error: 'PRODUCT_NOT_FOUND', message: err.message, _request_id: requestId });}
         if (code === '40001' || code === '40P01') {return res.status(409).json({ error: 'CONCURRENCY_CONFLICT', message: 'Please retry.', _request_id: requestId });}
@@ -1407,12 +1409,14 @@ function register(app) {
     app.post('/api/sales/complete',
         jwtAuth,
         requireRole('cashier', 'manager', 'admin', 'accountant'),
+        saleLimiter,
         completeSale
     );
     // Read-only price preview: same engine and guards as the sale, no writes.
     app.post('/api/sales/quote',
         jwtAuth,
         requireRole('cashier', 'manager', 'admin', 'accountant'),
+        saleLimiter,
         quoteSale
     );
 }

@@ -331,7 +331,7 @@ router.post('/day-close', jwtAuth, requireRole('manager', 'admin'), async (req, 
     } catch (err) {
         const map = { 404: 'NOT_FOUND', 409: 'DAYCLOSE_EXISTS', 422: 'DAYCLOSE_INVALID', 423: 'PERIOD_LOCKED', 428: 'NEEDS_MANAGER', 23505: 'DAYCLOSE_EXISTS' };
         const code = err.code || err.statusCode || 500;
-        if (map[code]) {return res.status(String(code) === '23505' ? 409 : code).json({ error: map[code], message: err.message });}
+        if (map[code]) {return res.status(String(code) === '23505' ? 409 : code).json({ error: map[code], message: code === '23505' ? 'الإقفال اليومي مسجل مسبقًا لهذا التاريخ' : err.message });}
         logger.error('[day-close]', err.message);
         res.status(500).json({ error: 'DAYCLOSE_FAILED', message: 'تعذر الإقفال اليومي' });
     }

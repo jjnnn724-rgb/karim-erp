@@ -69,12 +69,25 @@ async function dbNet(account, from, to) {
 }
 
 async function cleanup() {
-    await sql(
-        `DELETE FROM journal_entries
-          WHERE source_id LIKE 'zz-%' AND source_type IN ($1,$2)`,
-        [SEED_SOURCE, YARA_REVENUE_SOURCE]);
+    // teardown موسوم عبر بوابة 136 المرخّصة — نمط journal-void: معاملة + SET LOCAL
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        await client.query("SET LOCAL coa.allow_hard_delete = 'on'");
+        await client.query("SET LOCAL coa.allow_mapping_change = 'on'");
+        await client.query(
+            `DELETE FROM journal_entries
+             WHERE source_id LIKE 'zz-%' AND source_type IN ($1,$2)`,
+            [SEED_SOURCE, YARA_REVENUE_SOURCE]);
+        await client.query(`DELETE FROM account_mapping WHERE module = 'reports'`);
+        await client.query('COMMIT');
+    } catch (e) {
+        await client.query('ROLLBACK').catch(() => {});
+        throw e;
+    } finally {
+        client.release();
+    }
     await sql(`DELETE FROM bank_statements WHERE description LIKE $1`, [`${TAG}%`]);
-    await sql(`DELETE FROM account_mapping WHERE module = 'reports'`);
 }
 
 async function setMapping(operation, role, accountCode) {

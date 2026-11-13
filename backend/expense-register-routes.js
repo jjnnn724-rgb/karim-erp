@@ -290,7 +290,7 @@ router.get('/', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async (req,
         });
     } catch (err) {
         logger.error({ err: err.message }, '[expense-register] failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -331,7 +331,7 @@ router.get('/voucher/:id', jwtAuth, requireRole(...READ_ROLES), generalLimiter, 
         res.json({ ...v, amountWords: amountInWords(v.total), currency: brand.currency });
     } catch (err) {
         logger.error({ err: err.message }, '[expense-register] voucher failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -603,7 +603,7 @@ router.get('/voucher/:id/html', jwtAuth, requireRole(...READ_ROLES), generalLimi
         res.send(html);
     } catch (err) {
         logger.error({ err: err.message }, '[expense-register] voucher html failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -664,7 +664,7 @@ router.get('/html', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async (
         res.send(html);
     } catch (err) {
         logger.error({ err: err.message }, '[expense-register] register html failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 

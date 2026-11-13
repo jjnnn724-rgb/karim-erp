@@ -3271,6 +3271,44 @@ installProcessShields({
     },
 });
 
+// ─── فحص ترحيلات قاعدة البيانات عند الإقلاع (تحذير فقط، لا يعطّل الإقلاع) ───────
+// خدمة Windows تقلع على schema قديم بلا أي إنذار عندما تنحرف الترحيلات عن
+// القاعدة (149/150 عليهما تمييز حاليًا). الفحص قراءة فقط (--status) ولا
+// يحجز قفل الترحيلات ولا يطبّق أي ملف؛ كل ما يفعله هو تسجيل تحذير بارز إن
+// وُجدت ترحيلات غير مسجلة — التطبيق يبقى قرارًا بشريًا (npm run migrate).
+(function checkMigrationsAtBoot() {
+    try {
+        const { execFile } = require('child_process');
+        const migrationScript = require('path').join(__dirname, '..', 'database', 'scripts', 'run-migration.js');
+        const child = execFile(process.execPath, [migrationScript, '--status'], {
+            env: process.env,
+            timeout: 45_000,
+            maxBuffer: 2 * 1024 * 1024,
+        }, (error, stdout, stderr) => {
+            const out = String(stdout || '') + String(stderr || '');
+            const pending = out.match(/ملفات غير مسجلة: (\d+)/);
+            const count = pending ? Number(pending[1]) : null;
+            if (error) {
+                logger.warn({ event: 'migration_status_failed', message: error.message }, 'تعذر فحص حالة الترحيلات عند الإقلاع — لم يُفحص أي شيء');
+                return;
+            }
+            if (count && count > 0) {
+                logger.warn({ event: 'migration_status_pending', pending: count }, `⚠️ توجد ${count} ترحيلات غير مسجلة على قاعدة الإنتاج — راجعها طبّقها عبر npm run migrate بقرار بشري`);
+                for (const line of out.split(/\r?\n/)) {
+                    if (line.includes('غير مسجل:')) { logger.warn(line.trim()); }
+                }
+            } else {
+                logger.info('✅ ترحيلات قاعدة البيانات متوازنة مع القاعدة');
+            }
+        });
+        child.on('error', (error) => {
+            logger.warn({ event: 'migration_status_failed', message: String(error?.message || error) }, 'تعذر فحص حالة الترحيلات عند الإقلاع');
+        });
+    } catch (error) {
+        logger.warn({ event: 'migration_status_failed', message: String(error?.message || error) }, 'تعذر فحص حالة الترحيلات عند الإقلاع');
+    }
+})();
+
 // ─── Initialize Graceful Shutdown Handler ─────────────
 // FIX 2026-10-11 (M4): logger was passed in dependencies (ignored) — moved
 // to options where graceful-shutdown.js actually reads it.

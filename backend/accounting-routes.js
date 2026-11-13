@@ -20,6 +20,7 @@
 const express = require('express');
 const { pool } = require('./shared-pool');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
+const { crudLimiter } = require('./rate-limiter');
 const { logger } = require('./logger');
 const {
   calculateVatMovement,
@@ -1356,12 +1357,12 @@ router.post('/journal', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) =
     const code = error.statusCode || 500;
     res
       .status(code)
-      .json({ error: code === 422 ? 'LEDGER_ENTRY_INVALID' : 'LEDGER_ENTRY_FAILED', message: error.message });
+      .json({ error: code === 422 ? 'LEDGER_ENTRY_INVALID' : 'LEDGER_ENTRY_FAILED', message: code === 422 ? error.message : 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
   }
 });
 
 // ─── إلغاء قيد (يُبقي الأثر للمراجعة — يُستبعد من الميزان) ────────────────────
-router.post('/journal/:id/void', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
+router.post('/journal/:id/void', jwtAuth, requireRole(...WRITE_ROLES), crudLimiter, async (req, res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id <= 0) {

@@ -169,10 +169,10 @@ export function PosEntry() {
     const role = auth.user?.role ?? '';
     const canAccess = roleIn(role, POS_ROLES);
     const canSell = roleIn(role, SELL_ROLES);
-    /** تعديل سعر بند بالسلة — صلاحيات تتفق مع الخادم (manager/admin فقط). */
-    const canEditPrice = role === 'manager' || role === 'admin';
-    /** تعديل سعر المنتج في الكتالوج — manager/admin فقط (سجل تدقيق بالخادم). */
-    const canEditProductPrice = role === 'manager' || role === 'admin';
+    /** تعديل سعر بند بالسلة — admin/accountant فقط (قرار المالك 2026-11). */
+    const canEditPrice = role === 'admin' || role === 'accountant';
+    /** تعديل سعر المنتج في الكتالوج — admin/accountant فقط (سجل تدقيق بالخادم). */
+    const canEditProductPrice = role === 'admin' || role === 'accountant';
     const canHistory = roleIn(role, HISTORY_ROLES);
     const canVoid = roleIn(role, VOID_ROLES);
     const canManageCatalog = roleIn(role, CATALOG_IMAGE_ROLES);

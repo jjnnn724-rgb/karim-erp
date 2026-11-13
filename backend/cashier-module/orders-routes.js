@@ -115,7 +115,7 @@ router.get('/', jwtAuth, generalLimiter, async (req, res) => {
         });
     } catch (err) {
         logger.error({ err: err.message }, '[orders] GET / failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -133,7 +133,7 @@ router.get('/:id', jwtAuth, async (req, res) => {
         res.json({ ...orderRes.rows[0], items: itemsRes.rows });
     } catch (err) {
         logger.error({ err: err.message }, '[orders] GET /:id failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -247,7 +247,7 @@ router.post('/', jwtAuth, requireRole('admin'), crudLimiter, guardCreate('posOrd
     } catch (err) {
         await client.query('ROLLBACK');
         logger.error({ err: err.message }, '[orders] POST / failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     } finally {
         client.release();
     }
@@ -313,7 +313,7 @@ router.put('/:id', jwtAuth, requireRole('manager', 'admin'), crudLimiter, async 
     } catch (err) {
         await client.query('ROLLBACK');
         logger.error({ err: err.message }, '[orders] PUT /:id failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     } finally {
         client.release();
     }
@@ -327,7 +327,7 @@ router.delete('/:id', jwtAuth, requireRole('admin', 'manager'), crudLimiter, asy
         res.json({ message: 'Order deleted', id: result.rows[0].id });
     } catch (err) {
         logger.error({ err: err.message }, '[orders] DELETE /:id failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 

@@ -282,7 +282,7 @@ router.post('/preview', jwtAuth, requireRole('manager', 'admin'), crudLimiter, a
         });
     } catch (err) {
         logger.error({ err: err.message }, '[inventory] preview failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -382,7 +382,7 @@ router.post('/', jwtAuth, requireRole('manager', 'admin'), crudLimiter, async (r
                 imported++;
             } catch (err) {
                 await client.query(`ROLLBACK TO SAVEPOINT ${spName}`).catch(() => {});
-                errors.push({ row: i + 1, errors: [{ field: 'general', message: err.message }] });
+                errors.push({ row: i + 1, errors: [{ field: 'general', message: `تعذّر حفظ الصف — راجع البيانات (${err.code || 'ERR'})` }] });
             }
         }
 
@@ -398,7 +398,7 @@ router.post('/', jwtAuth, requireRole('manager', 'admin'), crudLimiter, async (r
     } catch (err) {
         await client.query('ROLLBACK').catch(() => {});
         logger.error({ err: err.message }, '[inventory] import failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     } finally {
         client.release();
     }

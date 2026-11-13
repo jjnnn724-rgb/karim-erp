@@ -51,11 +51,23 @@ const CLOSED_MONTH = '2019-02';
 const EMPTY_MONTH = '2018-07';
 
 async function cleanup() {
-    await sql(
-        `DELETE FROM journal_entries
-          WHERE (source_type = $1 AND source_id LIKE 'zz-%')
-             OR (source_type = 'vat_settlement' AND source_id IN ($2,$3))`,
-        [SEED_SOURCE, MONTH, CLOSED_MONTH]);
+    // teardown موسوم عبر بوابة 136 المرخّصة — نمط journal-void: معاملة + SET LOCAL
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        await client.query("SET LOCAL coa.allow_hard_delete = 'on'");
+        await client.query(
+            `DELETE FROM journal_entries
+             WHERE (source_type = $1 AND source_id LIKE 'zz-%')
+              OR (source_type = 'vat_settlement' AND source_id IN ($2,$3))`,
+            [SEED_SOURCE, MONTH, CLOSED_MONTH]);
+        await client.query('COMMIT');
+    } catch (e) {
+        await client.query('ROLLBACK').catch(() => {});
+        throw e;
+    } finally {
+        client.release();
+    }
     await sql(`DELETE FROM accounting_periods WHERE period = $1 AND closed = true AND note = 'zz_vat_test'`, [CLOSED_MONTH]);
 }
 

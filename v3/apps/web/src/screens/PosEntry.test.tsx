@@ -807,14 +807,15 @@ describe('نقطة البيع', () => {
         });
     });
 
-    it('المدير يعدّل سعر بند من السلة وينعكس في الإرسال، بينما الكاشير لا يرى الزر', async () => {
-        mocks.role = 'manager';
+    it('الأدمن يعدّل سعر بند من السلة وينعكس في الإرسال، بينما الكاشير لا يرى الزر', async () => {
+        // قرار المالك 2026-11: تعديل السعر = admin وaccountant فقط.
+        mocks.role = 'admin';
         const mock = stubFetch({ activeShift: SHIFT });
         renderScreen();
 
         fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
 
-        // زر السلة للمدير يفتح محرر سطر السلة — السعر الجديد يُرسل للخادم في نفس الفاتورة.
+        // زر السلة للأدمن يفتح محرر سطر السلة — السعر الجديد يُرسل للخادم في نفس الفاتورة.
         fireEvent.click(screen.getByRole('button', { name: /تعديل سعر شاي — السعر الحالي/ }));
         fireEvent.change(screen.getByLabelText('سعر الوحدة'), { target: { value: '3' } });
         fireEvent.click(screen.getByRole('button', { name: 'حفظ السعر' }));
@@ -830,12 +831,13 @@ describe('نقطة البيع', () => {
         expect(body.items[0]!.unit_price).toBe(3);
     });
 
-    it('المدير يعدّل سعر المنتج من الكتالوج — يُرسل للخادم ويُحدِّث البطاقة', async () => {
-        mocks.role = 'manager';
+    it('الأدمن يعدّل سعر المنتج من الكتالوج — يُرسل للخادم ويُحدِّث البطاقة', async () => {
+        // قرار المالك 2026-11: تعديل السعر = admin وaccountant فقط.
+        mocks.role = 'admin';
         const mock = stubFetch({ activeShift: SHIFT });
         renderScreen();
 
-        // الزر موجود على بطاقة المنتج للمدير — يفتح محرر السعر.
+        // الزر موجود على بطاقة المنتج للأدمن — يفتح محرر السعر.
         fireEvent.click(await screen.findByRole('button', { name: 'تعديل سعر شاي' }));
         fireEvent.change(screen.getByLabelText('السعر الجديد'), { target: { value: '15' } });
         fireEvent.click(screen.getByRole('button', { name: 'حفظ السعر' }));
@@ -864,6 +866,18 @@ describe('نقطة البيع', () => {
         fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
 
         expect(screen.queryByRole('button', { name: /تعديل سعر/ })).toBeNull();
+    });
+
+    it('المدير لا يرى زر تعديل السعر — السياسة admin/accountant فقط (قرار المالك 2026-11)', async () => {
+        mocks.role = 'manager';
+        stubFetch({ activeShift: SHIFT });
+        renderScreen();
+
+        fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
+
+        expect(screen.queryByRole('button', { name: /تعديل سعر/ })).toBeNull();
+        // لا زر قلم السعر على بطاقة المنتج أيضًا
+        expect(screen.queryByRole('button', { name: 'تعديل سعر شاي' })).toBeNull();
     });
 
     it('F5 من لوحة المفاتيح يُتمم البيع بنفس عقد الزر', async () => {

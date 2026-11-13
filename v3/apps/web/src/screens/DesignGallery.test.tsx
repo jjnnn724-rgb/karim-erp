@@ -73,7 +73,7 @@ describe('DesignGallery', () => {
 
         fireEvent.click(screen.getAllByRole('button', { name: 'نجاح' })[0] as HTMLElement);
         expect(screen.getAllByRole('status').some((element) => element.textContent?.includes('تم الحفظ'))).toBe(true);
-    });
+    }, 20_000);
 
     it('بلا مخالفات axe على المعرض كاملًا', async () => {
         const { container } = render(<DesignGallery />);

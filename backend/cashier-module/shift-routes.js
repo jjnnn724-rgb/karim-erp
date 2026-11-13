@@ -17,6 +17,7 @@ const { logger } = require("../logger");
 const { MENU_IMAGE_ROOT, ensureMediaDirs, safeProductImageName, removeMenuImageByUrl } = require('../media-storage');
 const { pool, withTransaction } = require('./db-pool');
 const { jwtAuth, requireRole } = require('./jwt-middleware');
+const { saleLimiter } = require('../rate-limiter');
 const { rateLimit } = require('./rate-limit');
 const { writeAuditLog } = require('./audit-middleware');
 const { UNIT_DEFINITIONS, normalizeUnit, convertQuantity } = require('../unit-conversion');
@@ -617,10 +618,10 @@ router.post('/products', jwtAuth, requireRole('manager','admin','kitchen','sous_
 
 /**
  * POST /api/pos/products/:id/price — تعديل سعر البيع من شاشة الكاشير.
- * manager/admin فقط، ومُسجَّل في سجل التدقيق بالسعر القديم والجديد.
+ * admin/accountant فقط (قرار المالك 2026-11)، ومُسجَّل في سجل التدقيق بالسعر القديم والجديد.
  * يُسمح بسعر صفر (هدايا/ولاء)؛ لا تُسمح بقيمة سالبة أو حقل مفقود.
  */
-router.post('/products/:id/price', jwtAuth, requireRole('manager', 'admin'), async (req, res) => {
+router.post('/products/:id/price', jwtAuth, requireRole('admin', 'accountant'), saleLimiter, async (req, res) => {
     const productId = parseInt(req.params.id, 10);
     const price = Number(req.body?.price);
     if (!Number.isInteger(productId) || productId <= 0 || !Number.isFinite(price) || price < 0) {

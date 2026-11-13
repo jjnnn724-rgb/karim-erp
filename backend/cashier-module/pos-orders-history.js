@@ -123,7 +123,7 @@ router.get('/', jwtAuth, generalLimiter, async (req, res) => {
         });
     } catch (err) {
         logger.error({ err: err.message }, '[pos-orders] GET / failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -176,7 +176,7 @@ router.get('/item-summary', jwtAuth, generalLimiter, async (req, res) => {
         res.json({ data: result.rows, summary: totals, filters: { date_from: date_from || null, date_to: date_to || null, department_id: department_id || null } });
     } catch (err) {
         logger.error({ err: err.message }, '[pos-orders] item summary failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -252,7 +252,7 @@ router.get('/stats/today', jwtAuth, generalLimiter, async (req, res) => {
         });
     } catch (err) {
         logger.error({ err: err.message }, '[pos-orders] stats failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -310,7 +310,7 @@ router.get('/ys/:docNo', jwtAuth, async (req, res) => {
         });
     } catch (err) {
         logger.error({ err: err.message }, '[pos-orders] GET /ys/:docNo failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -404,7 +404,7 @@ router.get('/ys/:docNo/receipt-html', jwtAuth, requireRole('admin', 'manager', '
         res.send(html);
     } catch (err) {
         logger.error({ err: err.message }, '[pos-orders] receipt-html (ys) failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -457,7 +457,7 @@ router.post('/:id/returns/quote', jwtAuth, requireRole('admin', 'manager', 'acco
             });
         }
         logger.error({ err: err.message }, '[pos-returns] credit note quote failed');
-        return res.status(500).json({ error: 'INTERNAL', message: err.message });
+        return res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -491,7 +491,7 @@ router.get('/list', jwtAuth, generalLimiter, async (req, res) => {
         res.json({ from, to, totals: totals.rows[0], rows: rows.rows });
     } catch (err) {
         logger.error({ err: err.message }, '[pos-orders] list failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -527,7 +527,7 @@ router.get('/export', jwtAuth, requireRole('admin', 'manager', 'cashier'), gener
         res.json({ data: result.rows, count: result.rows.length });
     } catch (err) {
         logger.error({ err: err.message }, '[pos-orders] export failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -582,7 +582,7 @@ router.get('/cashier-items', jwtAuth, generalLimiter, async (req, res) => {
         } });
     } catch (err) {
         logger.error({ err: err.message }, '[pos-orders] cashier-items failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -632,7 +632,7 @@ router.get('/:id', jwtAuth, async (req, res) => {
         });
     } catch (err) {
         logger.error({ err: err.message }, '[pos-orders] GET /:id failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -708,7 +708,7 @@ router.get('/:id/receipt-html', jwtAuth, requireRole('admin', 'manager', 'cashie
             });
         }
         logger.error({ err: err.message }, '[pos-orders] receipt-html failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -789,7 +789,7 @@ router.post('/:id/reprint', jwtAuth, requireRole('admin', 'manager', 'cashier'),
         });
     } catch (err) {
         logger.error({ err: err.message }, '[pos-orders] reprint failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     } finally {
         client.release();
     }
@@ -978,7 +978,7 @@ router.post('/:id/void', jwtAuth, requireRole('admin', 'manager', 'accountant'),
         logger.error({ err: err.message }, '[pos-orders] void failed');
         const code = err.statusCode || 500;
         const errorCode = code === 423 ? 'PERIOD_CLOSED' : code === 422 ? 'LEDGER_REJECTED' : 'INTERNAL';
-        res.status(code).json({ error: errorCode, message: err.message });
+        res.status(code).json({ error: errorCode, message: code === 500 ? 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' : err.message });
     } finally { client.release(); }
 });
 

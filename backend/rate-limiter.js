@@ -325,6 +325,16 @@ const stateLimiter = createRateLimiter(DEFAULT_CONFIGS.state);
 const crudLimiter = createRateLimiter(DEFAULT_CONFIGS.crud);
 
 /**
+ * Money path limiter (60 sale/void-class ops/min per terminal+user) —
+ * يحدّ من إغراق البيع/الإلغاء دون التعارض مع سرعة كاشير حقيقي.
+ */
+const saleLimiter = createRateLimiter({
+    windowMs: 60 * 1000,
+    maxRequests: envMax('RATE_LIMIT_SALE_MAX', 60),
+    message: 'طلبات كثيرة على المسار المالي — أبطئ قليلًا أو راجع المشرف',
+});
+
+/**
  * Session-refresh rate limiter (120/min per IP) — FIX 2026-10-31.
  * /auth/refresh كانت على سقف الدخول الصارم، ومفتاحه بلا username في
  * الطلب فانهار إلى IP واحد — وكل أجهزة المطعم خلف نفق Cloudflare تظهر
@@ -352,6 +362,7 @@ module.exports = {
     refreshLimiter,
     stateLimiter,
     crudLimiter,
+    saleLimiter,
     
     // Key generators
     defaultKeyGenerator,

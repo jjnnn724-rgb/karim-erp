@@ -172,12 +172,12 @@ describe('employee normalization and delay logic', () => {
 
     test('counts only the net shortfall of the shift hours (قرار المالك: الإتمام هو المعيار)', () => {
         // دوام 09:00 + 8 ساعات: وصل 09:35 وخرج 17:30 (بعد النهاية 30د)
-        // → أكمل 7:55 من 8 ساعات → عجز 5د يُحسب كاملًا بلا سماح (قرار المالك 2026-11-02)
+        // → عمل 7:55 من 8 ساعات → عجز 5د — والبقاء أطول يغطي الدخول المتأخر:
+        // الدخول يُحسب بمقدار العجز الكلي فقط لا 35د (قرار المالك 2026-11-07)
         const row = { checkIn: '09:35', checkOut: '17:30' };
         const employee = { shift_start: '09:00', shift_karim: 8 };
         const parts = calculateDelayParts(row, employee);
-        // 35 دقيقة دخول متأخر تُحسب كاملة
-        expect(parts.arrivalLateMinutes).toBe(35);
+        expect(parts.arrivalLateMinutes).toBe(5);
         expect(parts.earlyLeaveMinutes).toBe(0);
         expect(parts.lateMinutes).toBe(5);
     });

@@ -3,6 +3,7 @@
 // الترتيب نفسه ونهايات الأسطر نفسها (CRLF/LF كما وردت) — انظر scripts/_warehouse-split.js
 // للحدود المختارة: كل زوج علامات تقطعه اختبارات العقد يبقى داخل نطاق واحد.
 const { __scope } = require('../warehouse-routes');
+const { crudLimiter } = require('../rate-limiter');
 const { router, pool, jwtAuth, requireRole, logger, postInventoryLedgerEntry, emitDomainEvent, id, n, round, dateOnly, cleanName, emit, fail, getWarehouseLocation, ensureLocationBalance } = __scope;
 
 // ─── طلب المالك 2026-10-05: «في اصناف مثل كده عايز احذف المكرر» — دمج أصناف مكررة في صنف واحد ───
@@ -147,7 +148,7 @@ function classifyInvoicePaymentsForVoid(payRows) {
     };
 }
 
-router.post('/purchase-invoices/:id/void', jwtAuth, requireRole('admin'), async (req, res) => {    const client = await pool.connect();
+router.post('/purchase-invoices/:id/void', jwtAuth, requireRole('admin'), crudLimiter, async (req, res) => {    const client = await pool.connect();
     try {
         const invoiceId = Number(req.params.id);
         if (!Number.isFinite(invoiceId)) {return fail(res, 422, 'INVALID_ID', 'معرف الفاتورة غير صحيح');}

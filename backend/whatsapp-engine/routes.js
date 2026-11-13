@@ -523,10 +523,11 @@ router.get('/analytics/dashboard', jwtAuth, requireRole('admin'), async (req, re
 });
 router.get('/analytics/engagement', jwtAuth, requireRole('admin'), async (req, res) => {
     try {
-        const days = Number(req.query.days) || 7;
+        const days = Number(req.query.days);
+        if (!Number.isFinite(days) || days < 1 || days > 365) {return res.status(422).json({ ok: false, error: 'INVALID_DAYS' });}
         const r = await store.pool.query(
-            `SELECT day, total_messages, avg_response_sec, orders_confirmed FROM wa_analytics_daily WHERE day >= NOW() - INTERVAL '$1 days' ORDER BY day DESC`,
-            [days]
+            `SELECT day, total_messages, avg_response_sec, orders_confirmed FROM wa_analytics_daily WHERE day >= NOW() - ($1::int * interval '1 day') ORDER BY day DESC`,
+            [Math.trunc(days)]
         );
         res.json({ ok: true, data: r.rows, period: days });
     } catch (_) { res.status(500).json({ ok: false, error: 'ENGAGEMENT_FAILED' }); }

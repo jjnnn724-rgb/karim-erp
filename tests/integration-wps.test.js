@@ -207,6 +207,11 @@ describe('/api/integration — WPS/GOSI/QIWA', () => {
                 }
             }
         }
+        // zatca_settings في karim_erp_test قد تكون بلا صف id=1 أصلًا —
+        // UPDATE على صف غير موجود يؤثر على 0 صفوص بصمت، فيكون employer_identifier
+        // فارغًا دائمًا والاختبار يفشل بـ EMPLOYER_ID_MISSING (409). اضمنه هنا.
+        await pool.query(
+            `INSERT INTO zatca_settings (id, enabled) VALUES (1, false) ON CONFLICT (id) DO NOTHING`);
         originalCrn = (await pool.query('SELECT crn FROM zatca_settings WHERE id = 1')).rows[0]?.crn ?? null;
 
         await pool.query(

@@ -14,13 +14,13 @@
  *  - prints use delegation-safe buttons (no inline handlers — CSP contract)
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.314';
-import { canWrite } from '../session.js?v=4.9.314';
-import { openInAppReport } from '../report-viewer.js?v=4.9.314';
-import { formatInt, formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.314';
-import { ensureXlsx } from '../vendor.js?v=4.9.314';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.314';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.314';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.315';
+import { canWrite } from '../session.js?v=4.9.315';
+import { openInAppReport } from '../report-viewer.js?v=4.9.315';
+import { formatInt, formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.315';
+import { ensureXlsx } from '../vendor.js?v=4.9.315';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.315';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.315';
 import {
     CFO_WRITE_ROLES, fetchCfoCurrency, fetchBrandName, fetchCfoSummary, fetchTrialBalance,
     fetchJournal, fetchChart, collectJournalLines, createJournal,
@@ -30,7 +30,7 @@ import {
     disposeAsset, runDepreciation, fetchCustody, handCustody, ackCustody,
     fetchBudgetVsActual, createBudget, deleteBudget, fetchAlertsLog, runAlerts,
     fetchOpenShifts, closeShiftRemote, dayCloseStatus, execDayClose,
-} from '../data/cfo-repo.js?v=4.9.314';
+} from '../data/cfo-repo.js?v=4.9.315';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

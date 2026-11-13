@@ -13,9 +13,9 @@ interface CatalogPriceEditProps {
 }
 
 /**
- * محرر سعر البيع لكتالوج المنتج — يظهر في بطاقة الصنف للمدير/المسؤول.
+ * محرر سعر البيع لكتالوج المنتج — يظهر في بطاقة الصنف للأدمن/المحاسب.
  * لا يرفع السعر بلا تأكيد صريح: أي قيمة سالبة أو فارغة تُمنع قبل وصول الخادم،
- * والخادم يفرض manager/admin ويسجل التعديل في سجل التدقيق باسم المنفِّذ.
+ * والخادم يفرض admin/accountant ويسجل التعديل في سجل التدقيق باسم المنفِّذ.
  */
 export function CatalogPriceEdit({ product, onClose, onSaved }: CatalogPriceEditProps) {
     const { toast } = useToast();

@@ -469,7 +469,7 @@ router.get('/summary', jwtAuth, requireRole(...READ_ROLES), generalLimiter, asyn
         });
     } catch (err) {
         logger.error({ err: err.message }, '[cashier-sales] summary failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -535,7 +535,7 @@ router.get('/orders', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async
         });
     } catch (err) {
         logger.error({ err: err.message }, '[cashier-sales] orders failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -653,7 +653,7 @@ router.get('/items', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async 
         });
     } catch (err) {
         logger.error({ err: err.message }, '[cashier-sales] items failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -783,7 +783,7 @@ router.get('/item/:code', jwtAuth, requireRole(...READ_ROLES), generalLimiter, a
         res.json({ ok: true, currency: brand.currency, code, ...d });
     } catch (err) {
         logger.error({ err: err.message }, '[cashier-sales] item failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -1102,7 +1102,7 @@ router.get('/invoice/:docNo', jwtAuth, requireRole(...READ_ROLES), generalLimite
         });
     } catch (err) {
         logger.error({ err: err.message }, '[cashier-sales] invoice failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -1195,7 +1195,7 @@ router.get('/invoice/:docNo/html', jwtAuth, requireRole(...READ_ROLES), generalL
         res.send(html);
     } catch (err) {
         logger.error({ err: err.message }, '[cashier-sales] invoice html failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -1378,7 +1378,7 @@ router.get('/html', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async (
         res.send(html);
     } catch (err) {
         logger.error({ err: err.message }, '[cashier-sales] sheet failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        res.status(500).json({ error: 'INTERNAL', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
