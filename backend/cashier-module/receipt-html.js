@@ -152,13 +152,19 @@ function buildReceiptHtml({ order = {}, items = [], payments = [], qrImageDataUr
 <style>
   :root {
     --gold: #b45309;
-    --gold-soft: #fbf3e4;
-    --ink: #171717;
-    --ink-soft: #52525b;
-    --line: #e7e5e4;
+    --gold-deep: #8a3c07;
+    --gold-soft: #f8ecd8;
+    --gold-pale: #fdf8ee;
+    --ink: #1c1917;
+    --ink-soft: #57534e;
+    --line: #e7e2d6;
+    --line-soft: #efeadd;
+    --crimson: #b91c1c;
+    --emerald: #047857;
+    --cream: #fffef9;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
-  html, body { background: #fff; }
+  html, body { background: var(--cream); }
   body {
     font-family: 'Tajawal', 'Cairo', 'Segoe UI', Tahoma, sans-serif;
     color: var(--ink);
@@ -166,134 +172,179 @@ function buildReceiptHtml({ order = {}, items = [], payments = [], qrImageDataUr
     line-height: 1.55;
     max-width: 80mm;
     margin: 0 auto;
-    padding: 6px 10px 10px;
+    padding: 8mm 6mm 8mm;
     font-variant-numeric: tabular-nums;
     -webkit-print-color-adjust: exact;
     print-color-adjust: exact;
   }
   .cur { font-size: 9px; color: var(--ink-soft); }
 
-  .brand { text-align: center; padding: 4px 0 8px; }
+  /* ═══ الترويسة — إطار ذهبي مزدوج ═══════════════════════════════════════════ */
+  .rule.double { border: none; border-top: 3px double var(--gold); margin: 4px 0 6px; }
+  .rule.thin { border: none; border-top: 1px solid var(--line); margin: 5px 0; }
+  .rule.solid { border-top: 1.6px solid var(--gold-deep); }
+
+  .brand { text-align: center; padding: 2px 0 6px; }
+  .brand-mark {
+    display: inline-flex; align-items: center; justify-content: center;
+    width: 62px; height: 62px; border: 1px solid var(--gold);
+    border-radius: 50%; outline: 3px double var(--gold-deep); outline-offset: 3px;
+    background: var(--gold-pale);
+  }
   .brand-logo {
-    width: 62px; height: 62px; object-fit: contain;
-    border: 1.5px solid var(--gold); border-radius: 50%;
-    padding: 6px; background: #fff;
+    width: 48px; height: 48px; object-fit: contain;
   }
-  .brand h1 { font-size: 15px; font-weight: 800; margin-top: 6px; letter-spacing: .2px; }
-  .brand .en { font-size: 9.5px; color: var(--ink-soft); letter-spacing: .6px; text-transform: uppercase; }
+  .brand h1 { font-size: 15.5px; font-weight: 900; margin-top: 8px; letter-spacing: 0; line-height: 1.3; }
+  .brand .en {
+    font-size: 8.5px; color: var(--gold-deep); letter-spacing: 1.6px;
+    text-transform: uppercase; margin-top: 2px; font-weight: 700;
+  }
   .doc-type {
-    display: inline-block; margin-top: 6px; padding: 2px 12px;
-    border: 1px solid var(--gold); border-radius: 999px;
-    color: var(--gold); font-size: 10px; font-weight: 800; background: var(--gold-soft);
+    display: inline-block; margin-top: 6px; padding: 3px 14px 4px;
+    border: 1.6px solid var(--gold-deep); border-radius: 999px;
+    color: var(--gold-deep); font-size: 9.5px; font-weight: 800;
+    letter-spacing: .4px; background: var(--gold-soft);
   }
-  .shop-meta { text-align: center; font-size: 9.5px; color: var(--ink-soft); margin-top: 4px; }
-  .shop-meta span + span::before { content: '·'; margin: 0 5px; color: #c8c4bd; }
+  .shop-meta {
+    display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;
+    font-size: 8.5px; color: var(--ink-soft); margin-top: 6px; line-height: 1.7;
+  }
+  .shop-meta span { display: inline-flex; align-items: center; }
+  .shop-meta .vat {
+    direction: ltr; border: 1px solid var(--line); border-radius: 4px;
+    padding: 0 5px; background: #fff; font-weight: 700; letter-spacing: .4px;
+  }
 
-  .rule { border: none; border-top: 1px dashed #b9b3a9; margin: 8px 0; }
-  .rule.solid { border-top-style: solid; border-top-color: var(--line); }
-
-  .m-row { display: flex; justify-content: space-between; gap: 8px; font-size: 11px; padding: 1.5px 0; }
-  .m-label { color: var(--ink-soft); }
+  /* ═══ لوحة بيانات الفاتورة ═════════════════════════════════════════════════ */
+  .meta-panel {
+    margin: 8px 0 6px; padding: 6px 8px;
+    background: var(--gold-pale);
+    border: 1px solid var(--line-soft);
+    border-inline-start: 3px solid var(--gold);
+    border-radius: 8px;
+  }
+  .m-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 10.5px; padding: 1.5px 0; }
+  .m-label { color: var(--ink-soft); font-size: 8.5px; letter-spacing: .3px; }
   .m-value { font-weight: 700; text-align: left; direction: ltr; }
   .m-value.rtl { direction: rtl; }
-  .uuid { font-size: 8.5px; color: #9a948b; letter-spacing: .3px; }
+  .uuid { font-size: 8px; color: #8a857c; letter-spacing: .4px; font-family: 'IBM Plex Mono', Consolas, monospace; }
 
+  /* ═══ جدول الأصناف ════════════════════════════════════════════════════════ */
   table { width: 100%; border-collapse: collapse; }
   .items th {
-    font-size: 9.5px; font-weight: 800; color: var(--gold);
-    background: var(--gold-soft); padding: 4px 3px; text-align: right;
+    font-size: 8.5px; font-weight: 800; color: #fff; background: var(--gold-deep);
+    padding: 5px 5px; text-align: right; letter-spacing: .4px;
   }
-  .items th.qty, .items td.qty { width: 12%; text-align: center; }
-  .items th.price, .items td.price { width: 20%; text-align: center; }
-  .items th.total, .items td.total { width: 25%; text-align: left; }
-  .items td { padding: 4px 3px; border-bottom: 1px dotted var(--line); font-size: 11.5px; vertical-align: top; }
+  .items th.qty, .items td.qty { width: 11%; text-align: center; }
+  .items th.price, .items td.price { width: 19%; text-align: center; }
+  .items th.total, .items td.total { width: 24%; text-align: left; }
+  .items td { padding: 5px 5px; border-bottom: 1px solid var(--line-soft); font-size: 11px; vertical-align: top; }
+  .items tbody tr:nth-child(even) td { background: var(--gold-pale); }
   .items tr:last-child td { border-bottom: none; }
   .items td.item { font-weight: 700; }
-  .line-disc { display: block; font-size: 9px; font-weight: 600; color: #b91c1c; }
+  .line-disc { display: block; font-size: 8.5px; font-weight: 600; color: var(--crimson); }
 
   .buffet-banner {
-    text-align: center; font-weight: 800; font-size: 12px; color: var(--gold);
-    background: var(--gold-soft); border: 1px solid #e9d3a9; border-radius: 8px;
-    padding: 5px; margin-bottom: 6px;
+    text-align: center; font-weight: 800; font-size: 11.5px; color: #fff;
+    background: var(--gold-deep); border-radius: 8px;
+    padding: 6px; margin-bottom: 6px; letter-spacing: .2px;
   }
-  .buffet-persons th, .buffet-persons td { padding: 4px 3px; border-bottom: 1px dotted var(--line); font-size: 11px; text-align: right; }
-  .buffet-persons th { background: var(--gold-soft); color: var(--gold); font-size: 9.5px; font-weight: 800; }
+  .buffet-persons th, .buffet-persons td { padding: 4px 4px; border-bottom: 1px solid var(--line-soft); font-size: 11px; text-align: right; }
+  .buffet-persons th { background: var(--gold-deep); color: #fff; font-size: 8.5px; font-weight: 800; letter-spacing: .4px; }
   .buffet-persons .c { text-align: center; }
-  .buffet-persons .t { text-align: left; }
+  .buffet-persons .t { text-align: left; font-weight: 700; }
   .persons-total {
     display: flex; justify-content: space-between; margin-top: 6px;
-    background: var(--gold-soft); border: 1px solid #e9d3a9; border-radius: 8px;
-    padding: 5px 8px; color: var(--gold); font-weight: 800; font-size: 12px;
+    background: var(--gold-soft); border: 1px solid #e5cf9f; border-radius: 8px;
+    padding: 6px 8px; color: var(--gold-deep); font-weight: 800; font-size: 12px;
   }
 
-  .totals { margin-top: 2px; }
-  .totals .row { display: flex; justify-content: space-between; font-size: 11.5px; padding: 2px 0; }
+  .totals { margin-top: 6px; padding: 2px 2px 0; }
+  .totals .row { display: flex; justify-content: space-between; font-size: 11.5px; padding: 2.5px 0; }
   .totals .row .k { color: var(--ink-soft); }
-  .totals .row.discount .v { color: #b91c1c; }
+  .totals .row .v { font-weight: 700; }
+  .totals .row.discount .v { color: var(--crimson); }
   .grand {
     display: flex; justify-content: space-between; align-items: baseline;
-    margin-top: 6px; padding: 8px 10px; border-radius: 10px;
-    background: var(--gold); color: #fff;
+    margin-top: 8px; padding: 10px 12px; border-radius: 10px;
+    background: linear-gradient(160deg, #d97706, #8a3c07);
+    color: #fff; border: 1px solid #6d2c05;
+    box-shadow: 0 2px 0 #6d2c05 inset, 0 -1px 0 rgb(255 255 255 / 30%) inset;
   }
-  .grand .k { font-size: 12px; font-weight: 700; opacity: .95; }
-  .grand .v { font-size: 21px; font-weight: 900; letter-spacing: .3px; }
-  .grand .v .cur { color: #ffe9c7; font-size: 10px; }
+  .grand .k { font-size: 11px; font-weight: 800; opacity: .95; letter-spacing: .3px; }
+  .grand .v { font-size: 22px; font-weight: 900; letter-spacing: .2px; }
+  .grand .v .cur { color: #ffe3ae; font-size: 10px; }
 
-  .pay-title { font-size: 10px; font-weight: 800; color: var(--gold); margin-bottom: 3px; }
-  .pay-row { display: flex; justify-content: space-between; font-size: 11px; padding: 1.5px 0; }
-  .pay-row .method { color: var(--ink-soft); }
-  .pay-row .ref { font-size: 8.5px; color: #9a948b; }
-  .pay-row.change { font-weight: 800; color: #047857; }
+  .pay-title { font-size: 9px; font-weight: 800; color: var(--gold-deep); letter-spacing: 1px; margin-bottom: 4px; text-transform: uppercase; }
+  .pay-row { display: flex; justify-content: space-between; font-size: 11px; padding: 2px 0; border-bottom: 1px dotted var(--line-soft); }
+  .pay-row:last-child { border-bottom: none; }
+  .pay-row .method { color: var(--ink-soft); font-weight: 600; }
+  .pay-row .ref { font-size: 8px; color: #a8a29e; }
+  .pay-row.change { font-weight: 800; color: var(--emerald); }
 
   .qr-section { text-align: center; margin-top: 10px; }
   .qr-section .qr-frame {
-    display: inline-block; padding: 6px; border: 1px solid var(--line);
+    display: inline-block; padding: 7px;
+    border: 1.6px solid var(--gold-deep); outline: 3px double var(--gold-deep); outline-offset: 2px;
     border-radius: 10px; background: #fff;
   }
   .qr-section img { width: 104px; height: 104px; display: block; }
-  .qr-cap { font-size: 8.5px; color: #9a948b; margin-top: 4px; }
+  .qr-cap { font-size: 8.5px; color: var(--ink-soft); margin-top: 6px; letter-spacing: .4px; font-weight: 600; }
 
-  .footer { text-align: center; margin-top: 10px; padding-top: 8px; border-top: 1px dashed #b9b3a9; }
-  .footer .thanks { font-size: 13px; font-weight: 800; color: var(--gold); }
+  .footer { text-align: center; margin-top: 12px; padding-top: 10px; border-top: 3px double var(--gold); }
+  .footer .thanks { font-size: 14px; font-weight: 900; color: var(--gold-deep); letter-spacing: .2px; }
   .footer .note { font-size: 9.5px; color: var(--ink-soft); margin-top: 2px; }
-  .footer .legal { font-size: 8.5px; color: #a8a29e; margin-top: 5px; }
+  .footer .legal { font-size: 8px; color: #b5aea1; margin-top: 6px; letter-spacing: .2px; }
+  .footer .brandline { font-size: 7px; color: #c7c0b2; letter-spacing: 1.6px; text-transform: uppercase; margin-top: 2px; }
 
   .void-banner {
-    margin: 8px 0; padding: 6px; text-align: center; font-weight: 900; font-size: 15px;
-    color: #b91c1c; border: 2px double #b91c1c; border-radius: 6px; letter-spacing: 2px;
+    margin: 8px 0; padding: 7px; text-align: center; font-weight: 900; font-size: 15px;
+    color: var(--crimson); border: 2.4px double var(--crimson); border-radius: 6px; letter-spacing: 4px;
   }
-  .void-reason { text-align: center; font-size: 10px; color: #b91c1c; margin-top: 2px; }
+  .void-reason { text-align: center; font-size: 10px; color: var(--crimson); margin-top: 3px; font-weight: 600; }
 
   @media print {
     @page { size: 80mm 200mm; margin: 2mm; }
-    body { max-width: none; padding: 0; }
-    .grand { background: #fff !important; color: #000 !important; border: 2px solid #000; }
-    .grand .v .cur { color: #000 !important; }
-    .items th { background: #f2f2f2 !important; color: #000 !important; }
+    body { max-width: none; padding: 0; background: #fff; }
+    .grand {
+      background: #000 !important; color: #fff !important;
+      border: 2px solid #000; box-shadow: none; outline: none;
+    }
+    .grand .v .cur { color: #fff !important; }
+    .items th { background: #000 !important; color: #fff !important; }
+    .items tbody tr:nth-child(even) td { background: #f5f5f5 !important; }
+    .buffet-banner, .buffet-persons th { background: #000 !important; color: #fff !important; }
+    .meta-panel { border-inline-start: 4px solid #000 !important; background: #fafafa !important; }
+    .qr-section .qr-frame { border: 2px solid #000 !important; outline: none; }
   }
 </style>
 </head>
 <body>
+  <hr class="rule double">
   <div class="brand">
-    <img class="brand-logo" src="/app/assets/karim-logo.png" alt="">
+    <div class="brand-mark">
+      <img class="brand-logo" src="/app/assets/karim-logo.png" alt="">
+    </div>
     <h1>${escHtml(order.department_name || 'مطاعم الشرفه العالمي')}</h1>
     ${order.department_name_en ? `<div class="en">${escHtml(order.department_name_en)}</div>` : ''}
     <div class="doc-type">فاتورة ضريبية مبسطة</div>
     <div class="shop-meta">
-      ${order.vat_number ? `<span>الرقم الضريبي ${escHtml(order.vat_number)}</span>` : ''}
+      ${order.vat_number ? `<span class="vat">VAT ${escHtml(order.vat_number)}</span>` : ''}
       ${order.location ? `<span>${escHtml(order.location)}</span>` : ''}
     </div>
   </div>
+  <hr class="rule double">
 
-  <hr class="rule">
+  <div class="meta-panel">
   ${metaRow('رقم الفاتورة', `<span class="m-value">#${escHtml(order.invoice_counter)}</span>`)}
   ${metaRow('التاريخ والوقت', `<span class="m-value">${escHtml(date)}</span>`)}
   ${metaRow('الكاشير', `<span class="m-value rtl">${escHtml(order.cashier_name || '—')}</span>`)}
   ${order.session_id ? metaRow('الوردية', `<span class="m-value">${escHtml(order.session_id)}</span>`) : ''}
   ${order.invoice_uuid ? `<div class="m-row"><span class="m-label">UUID</span><span class="uuid">${escHtml(String(order.invoice_uuid).slice(0, 36))}</span></div>` : ''}
   ${voided ? `<div class="void-banner">ملغاة</div>${order.void_reason ? `<div class="void-reason">${escHtml(order.void_reason)}</div>` : ''}` : ''}
+  </div>
 
-  <hr class="rule">
+  <hr class="rule thin">
   ${itemsHtml}
   ${isBuffet && order.notes ? `<div class="m-row"><span class="m-label">العائلة / المناسبة</span><span class="m-value rtl">${escHtml(order.notes)}</span></div>` : ''}
 
@@ -323,9 +374,10 @@ function buildReceiptHtml({ order = {}, items = [], payments = [], qrImageDataUr
   </div>` : ''}
 
   <div class="footer">
-    <div class="thanks">شكراً لزيارتكم</div>
+    <div class="thanks">✦ شكرًا لزيارتكم ✦</div>
     <div class="note">نتطلع لخدمتكم مرة أخرى</div>
-    <div class="legal">هذه فاتورة إلكترونية صادرة من نظام المطاعم — لا تحتاج ختمًا أو توقيعًا</div>
+    <div class="legal">هذه فاتورة إلكترونية صادرة وفق هيئة الزكاة والضريبة والجمارك — لا تحتاج ختمًا أو توقيعًا</div>
+    <div class="brandline">SHARFA AL ALAMI · KARIM ERP</div>
   </div>
 </body>
 </html>`;
