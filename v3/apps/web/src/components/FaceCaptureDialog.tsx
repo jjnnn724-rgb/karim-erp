@@ -331,6 +331,13 @@ export function FaceCaptureDialog({
             if (!image) {
                 return false;
             }
+            // عيّنة مطابقة بايتيًا لعيّنة سابقة ليست «لقطة جديدة»: تُقابل رفض السيرفر
+            // PUNCH_FACE_REPLAY حتى على بصمة حقيقية (لقطتان من نفس فريم الكاميرا).
+            // نمنعها هنا — العينة المتطابقة لا تُحتسب، ونطلب من المستخدم تغيير زاويته.
+            if (imagesRef.current.includes(image)) {
+                setMessage('التقطت نفس الصورة — حرّك رأسك قليلًا ثم التقط اللقطة التالية');
+                return false;
+            }
             if (requireDescriptor && !descriptor) {
                 setMessage('لم يُرصد وجه واضح — اقترب من الكاميرا وحسّن الإضاءة ثم أعد المحاولة');
                 return false;
