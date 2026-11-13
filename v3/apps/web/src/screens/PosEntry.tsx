@@ -38,7 +38,7 @@ import {
     openPosShift,
     type PosOrderDetail,
     type PosPaymentInput,
-    type PosSaleResult,
+    type PosReceiptData,
     recallHeldOrder,
     removePosProductImage,
     renameBuffetTier,
@@ -118,7 +118,7 @@ interface PosTab {
     references: Record<PaymentReferenceKey, string>;
     cardMeta: CardMeta;
     paymentsTouched: boolean;
-    receipt: PosSaleResult | null;
+    receipt: PosReceiptData | null;
     saleKey: string;
 }
 
@@ -164,6 +164,8 @@ export function PosEntry() {
     const role = auth.user?.role ?? '';
     const canAccess = roleIn(role, POS_ROLES);
     const canSell = roleIn(role, SELL_ROLES);
+    /** تعديل سعر بند بالسلة — صلاحيات تتفق مع الخادم (manager/admin فقط). */
+    const canEditPrice = role === 'manager' || role === 'admin';
     const canHistory = roleIn(role, HISTORY_ROLES);
     const canVoid = roleIn(role, VOID_ROLES);
     const canManageCatalog = roleIn(role, CATALOG_IMAGE_ROLES);
@@ -327,6 +329,11 @@ export function PosEntry() {
         return catalogFromProducts(productsQuery.data ?? []);
     }, [buffet, buffetConfigQuery.data, productsQuery.data]);
 
+    /** فهرسة الأصناف بالمعرّف — سعر القائمة مرجعٌ للتحرير والاسترجاع. */
+    const catalogById = useMemo(() => {
+        return new Map(items.map((item) => [String(item.id), item]));
+    }, [items]);
+
     /** صور الأصناف المفهرسة بمعرّفها — مصغّرات السلة بلا طلب إضافي. */
     const itemImages = useMemo(() => {
         const map: Record<string, string> = {};
@@ -469,7 +476,28 @@ export function PosEntry() {
             const cartNext =
                 index >= 0
                     ? tab.cart.map((row, rowIndex) => (rowIndex === index ? { ...row, quantity: row.quantity + 1 } : row))
-                    : [...tab.cart, { id: item.id, name: item.name, price: item.price, vatRate: item.vatRate, quantity: 1 }];
+                    : [
+                          ...tab.cart,
+                          { id: item.id, name: item.name, price: item.price, listPrice: item.price, vatRate: item.vatRate, quantity: 1 },
+                      ];
+            return { ...tab, cart: cartNext, receipt: null, saleKey: '' };
+        });
+    }
+
+    /** تعديل سعر بند بالسلة — الخادم يرفض أي رفع فوق القائمة ويطلب صلاحية معتمد للتخفيض. */
+    function setLinePrice(id: string, price: number) {
+        if (!canEditPrice || !Number.isFinite(price)) {
+            return;
+        }
+        updateActiveTab((tab) => {
+            const cartNext = tab.cart.map((row) => {
+                if (row.id !== id) {
+                    return row;
+                }
+                const cap = row.listPrice ?? row.price;
+                const next = Math.min(Math.max(0, Math.round(price * 100) / 100), cap);
+                return { ...row, price: next };
+            });
             return { ...tab, cart: cartNext, receipt: null, saleKey: '' };
         });
     }
@@ -649,7 +677,30 @@ export function PosEntry() {
                 payments: salePayments,
                 idempotencyKey: saleKey,
             });
-            setTabs((current) => current.map((tab) => (tab.id === settledTabId ? { ...freshPosTab(tab), receipt: result } : tab)));
+            // لقطة السلة والدفعات وقت الإتمام — الإيصال يعرضها كما هي بلا إعادة احتساب.
+            const receiptCart = cart.map((line) => ({
+                name: line.name,
+                quantity: line.quantity,
+                unit_price: line.price,
+                line_total: Math.round(line.price * line.quantity * 100) / 100,
+                vat_rate: line.vatRate,
+            }));
+            const receiptPayments = salePayments.map((payment) => ({
+                method: payment.method,
+                amount: payment.amount,
+                reference: payment.reference,
+                brand: payment.payer_info?.brand,
+                last4: payment.payer_info?.last4,
+            }));
+            const receiptWithExtras: PosReceiptData = {
+                ...result,
+                cartLines: receiptCart,
+                paymentLines: receiptPayments,
+                cashierName: auth.user?.name,
+            };
+            setTabs((current) =>
+                current.map((tab) => (tab.id === settledTabId ? { ...freshPosTab(tab), receipt: receiptWithExtras } : tab)),
+            );
             toast({ title: 'تم تسجيل البيع؛ حالة الطباعة وZATCA معروضة حسب رد الخادم.', variant: 'success' });
             await Promise.all([
                 queryClient.invalidateQueries({ queryKey: ['pos-products'] }),
@@ -720,13 +771,17 @@ export function PosEntry() {
                 throw new Error('الطلب المحفوظ لا يحتوي أصنافًا صالحة');
             }
             const recalledTabId = activeTab.id;
-            const recalledCart = result.items.map((item) => ({
-                id: String(item.product_id),
-                name: String(item.name ?? 'صنف'),
-                price: item.unit_price,
-                vatRate: item.vat_rate,
-                quantity: item.quantity,
-            }));
+            const recalledCart = result.items.map((item) => {
+                const catalogItem = catalogById.get(String(item.product_id));
+                return {
+                    id: String(item.product_id),
+                    name: String(item.name ?? 'صنف'),
+                    price: item.unit_price,
+                    listPrice: catalogItem?.price ?? item.unit_price,
+                    vatRate: item.vat_rate,
+                    quantity: item.quantity,
+                };
+            });
             const recalledDiscount =
                 result.cart_discount && (result.cart_discount.type === 'percent' || result.cart_discount.type === 'fixed')
                     ? { type: result.cart_discount.type, value: String(result.cart_discount.value ?? '0') }
@@ -1620,7 +1675,9 @@ export function PosEntry() {
                                             canSell={canSell}
                                             busy={busy}
                                             buffet={buffet}
+                                            canEditPrice={canEditPrice}
                                             onQty={changeQuantity}
+                                            onPrice={setLinePrice}
                                             onClear={() => {
                                                 resetSale();
                                             }}

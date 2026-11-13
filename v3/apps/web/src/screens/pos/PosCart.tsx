@@ -1,4 +1,4 @@
-import type { ReactElement } from 'react';
+import { type ReactElement, useState } from 'react';
 import { type PosCartLine, type PosDiscount, type PosTotals, parsePosMoney } from '../../lib/pos-pricing';
 import { Badge, Button, Input, Select } from '../../ui';
 import { PosNumpad } from './PosNumpad';
@@ -25,7 +25,11 @@ export interface PosCartProps {
     canSell: boolean;
     busy: boolean;
     buffet: boolean;
+    /** صلاحية تعديل سعر البند (الخادم يفرض manager/admin فقط). */
+    canEditPrice: boolean;
     onQty: (id: string, delta: number) => void;
+    /** ضبط سعر بند — مقيّد من الخادم (لا رفع فوق القائمة، وتخفيض يحتاج معتمد). */
+    onPrice: (id: string, price: number) => void;
     onClear: () => void;
     onHold: () => void;
     onComplete: () => void;
@@ -153,6 +157,25 @@ const METHOD_ICONS: Record<PaymentKey, () => ReactElement> = {
 
 const CASH_BILLS = [5, 10, 20, 50, 100, 200, 500] as const;
 
+function PencilIcon() {
+    return (
+        <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            width="12"
+            height="12"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M4 20h4l10.5-10.5a2.1 2.1 0 0 0-3-3L5 17v3Z" />
+            <path d="m13.5 6.5 3 3" />
+        </svg>
+    );
+}
+
 /** السلة والخصم والدفع — الأرقام تقديرية، والخادم هو من يسجّل الفاتورة. */
 export function PosCart({
     cart,
@@ -171,11 +194,14 @@ export function PosCart({
     canSell,
     busy,
     buffet,
+    canEditPrice,
     onQty,
+    onPrice,
     onClear,
     onHold,
     onComplete,
 }: PosCartProps) {
+    const [editPrice, setEditPrice] = useState<{ id: string; value: string } | null>(null);
     const count = cart.reduce((sum, row) => sum + row.quantity, 0);
     const amounts = PAYMENT_FIELDS.map((field) => parsePosMoney(payments[field.key]));
     const invalid = amounts.some((amount) => !Number.isFinite(amount));
@@ -291,58 +317,171 @@ export function PosCart({
                     </div>
                 ) : (
                     <ul className="pos-cart__lines">
-                        {cart.map((row) => (
-                            <li key={row.id} className="pos-cart__line">
-                                {images?.[row.id] ? (
-                                    <img className="pos-cart__thumb" src={images[row.id]} alt="" loading="lazy" decoding="async" />
-                                ) : null}
-                                <div className="min-w-0 pos-cart__copy">
-                                    <strong>{row.name}</strong>
-                                    <small>
-                                        {moneyText(row.price)}
-                                        {buffet ? ' / فرد' : ''}
-                                    </small>
-                                </div>
-                                <fieldset className="pos-qty m-0 min-w-0 border-0 p-0" aria-label={`كمية ${row.name}`}>
+                        {cart.map((row) => {
+                            const editingState =
+                                editPrice && editPrice.id === row.id
+                                    ? (() => {
+                                          const parsed = Number(editPrice.value);
+                                          const listPrice = row.listPrice ?? row.price;
+                                          const valid = Number.isFinite(parsed) && parsed >= 0 && parsed <= listPrice;
+                                          const deltaPct =
+                                              listPrice > 0 && Number.isFinite(parsed) ? ((parsed - listPrice) / listPrice) * 100 : null;
+                                          return { value: editPrice.value, parsed, listPrice, valid, deltaPct };
+                                      })()
+                                    : null;
+                            return (
+                                <li key={row.id} className="pos-cart__line">
+                                    {images?.[row.id] ? (
+                                        <img className="pos-cart__thumb" src={images[row.id]} alt="" loading="lazy" decoding="async" />
+                                    ) : null}
+                                    <div className="min-w-0 pos-cart__copy">
+                                        <strong>{row.name}</strong>
+                                        {canEditPrice ? (
+                                            <button
+                                                type="button"
+                                                className="pos-cart__price-edit"
+                                                aria-label={`تعديل سعر ${row.name} — السعر الحالي ${moneyText(row.price)}`}
+                                                aria-expanded={editingState !== null}
+                                                title="تعديل السعر"
+                                                disabled={busy}
+                                                onClick={() => {
+                                                    setEditPrice(editingState ? null : { id: row.id, value: row.price.toFixed(2) });
+                                                }}
+                                            >
+                                                <span className="erp-numeric" dir="ltr">
+                                                    {moneyText(row.price)}
+                                                </span>
+                                                {buffet ? <span> / فرد</span> : null}
+                                                <PencilIcon />
+                                                {row.listPrice !== undefined && row.price !== row.listPrice ? (
+                                                    <span className="pos-cart__price-badge">معدّل</span>
+                                                ) : null}
+                                            </button>
+                                        ) : (
+                                            <small>
+                                                {moneyText(row.price)}
+                                                {buffet ? ' / فرد' : ''}
+                                            </small>
+                                        )}
+                                    </div>
+                                    <fieldset className="pos-qty m-0 min-w-0 border-0 p-0" aria-label={`كمية ${row.name}`}>
+                                        <button
+                                            type="button"
+                                            aria-label={`تقليل ${row.name}`}
+                                            disabled={busy}
+                                            onClick={() => {
+                                                onQty(row.id, -1);
+                                            }}
+                                        >
+                                            −
+                                        </button>
+                                        <span aria-live="polite">{row.quantity}</span>
+                                        <button
+                                            type="button"
+                                            aria-label={`زيادة ${row.name}`}
+                                            disabled={busy}
+                                            onClick={() => {
+                                                onQty(row.id, 1);
+                                            }}
+                                        >
+                                            +
+                                        </button>
+                                    </fieldset>
+                                    <span className="pos-cart__line-total erp-numeric" dir="ltr">
+                                        {moneyText(row.price * row.quantity)}
+                                    </span>
                                     <button
                                         type="button"
-                                        aria-label={`تقليل ${row.name}`}
+                                        className="pos-cart__line-remove"
+                                        aria-label={`حذف ${row.name} من السلة`}
+                                        title="حذف البند"
                                         disabled={busy}
                                         onClick={() => {
-                                            onQty(row.id, -1);
+                                            onQty(row.id, -row.quantity);
                                         }}
                                     >
-                                        −
+                                        <TrashIcon />
                                     </button>
-                                    <span aria-live="polite">{row.quantity}</span>
-                                    <button
-                                        type="button"
-                                        aria-label={`زيادة ${row.name}`}
-                                        disabled={busy}
-                                        onClick={() => {
-                                            onQty(row.id, 1);
-                                        }}
-                                    >
-                                        +
-                                    </button>
-                                </fieldset>
-                                <span className="pos-cart__line-total erp-numeric" dir="ltr">
-                                    {moneyText(row.price * row.quantity)}
-                                </span>
-                                <button
-                                    type="button"
-                                    className="pos-cart__line-remove"
-                                    aria-label={`حذف ${row.name} من السلة`}
-                                    title="حذف البند"
-                                    disabled={busy}
-                                    onClick={() => {
-                                        onQty(row.id, -row.quantity);
-                                    }}
-                                >
-                                    <TrashIcon />
-                                </button>
-                            </li>
-                        ))}
+                                    {editingState ? (
+                                        <div className="pos-price-editor" role="group" aria-label={`تحرير سعر ${row.name}`}>
+                                            <Input
+                                                label="سعر الوحدة"
+                                                inputMode="decimal"
+                                                dir="ltr"
+                                                autoFocus
+                                                value={editingState.value}
+                                                disabled={busy}
+                                                hint={`سعر القائمة ${moneyText(editingState.listPrice)}`}
+                                                onChange={(event) => {
+                                                    setEditPrice({ id: row.id, value: event.target.value });
+                                                }}
+                                                onKeyDown={(event) => {
+                                                    if (event.key === 'Enter' && editingState.valid) {
+                                                        event.preventDefault();
+                                                        onPrice(row.id, Math.round(editingState.parsed * 100) / 100);
+                                                        setEditPrice(null);
+                                                    } else if (event.key === 'Escape') {
+                                                        event.preventDefault();
+                                                        setEditPrice(null);
+                                                    }
+                                                }}
+                                            />
+                                            <div className="pos-price-editor__meta">
+                                                {editingState.deltaPct !== null && Math.abs(editingState.deltaPct) > 0.009 ? (
+                                                    <span className={`pos-price-delta${editingState.deltaPct < 0 ? ' is-down' : ' is-up'}`}>
+                                                        {editingState.deltaPct < 0 ? 'تخفيض' : '—'}{' '}
+                                                        {Math.abs(editingState.deltaPct).toFixed(1)}% عن القائمة
+                                                    </span>
+                                                ) : (
+                                                    <span className="pos-price-delta is-flat">السعر مطابق للقائمة</span>
+                                                )}
+                                                {!editingState.valid ? (
+                                                    <span className="pos-price-error" role="alert">
+                                                        السعر غير صالح — لا يمكن تجاوز القائمة
+                                                    </span>
+                                                ) : null}
+                                            </div>
+                                            <div className="pos-price-editor__actions">
+                                                {row.listPrice !== undefined && row.price !== row.listPrice ? (
+                                                    <button
+                                                        type="button"
+                                                        className="pos-price-reset"
+                                                        disabled={busy}
+                                                        onClick={() => {
+                                                            onPrice(row.id, row.listPrice!);
+                                                            setEditPrice(null);
+                                                        }}
+                                                    >
+                                                        ↺ استرجاع القائمة
+                                                    </button>
+                                                ) : null}
+                                                <button
+                                                    type="button"
+                                                    className="pos-price-cancel"
+                                                    disabled={busy}
+                                                    onClick={() => {
+                                                        setEditPrice(null);
+                                                    }}
+                                                >
+                                                    إلغاء
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="pos-price-save"
+                                                    disabled={!editingState.valid || busy}
+                                                    onClick={() => {
+                                                        onPrice(row.id, Math.round(editingState.parsed * 100) / 100);
+                                                        setEditPrice(null);
+                                                    }}
+                                                >
+                                                    حفظ السعر
+                                                </button>
+                                            </div>
+                                        </div>
+                                    ) : null}
+                                </li>
+                            );
+                        })}
                     </ul>
                 )}
 

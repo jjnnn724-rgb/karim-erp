@@ -1940,6 +1940,150 @@
     }
 }
 
+/* ═══ تعديل سعر البند — للمدير/المسؤول (الخادم يفرض نفس القواعد) ════════════ */
+
+.pos-entry .pos-cart__line {
+    position: relative;
+}
+
+.pos-entry .pos-cart__price-edit {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    padding: 0.15rem 0.35rem;
+    border: 1px solid transparent;
+    border-radius: 6px;
+    background: transparent;
+    color: #fbbf24;
+    font-size: 0.72rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+    cursor: pointer;
+    transition:
+        background-color 120ms ease,
+        border-color 120ms ease;
+}
+
+.pos-entry .pos-cart__price-edit:hover {
+    background: rgb(245 158 11 / 12%);
+    border-color: rgb(245 158 11 / 35%);
+}
+
+.pos-entry .pos-cart__price-edit:focus-visible {
+    outline: 2px solid var(--pos-amber);
+    outline-offset: 1px;
+}
+
+.pos-entry .pos-cart__price-badge {
+    padding: 0 0.35rem;
+    border: 1px solid rgb(245 158 11 / 45%);
+    border-radius: 999px;
+    background: rgb(245 158 11 / 15%);
+    color: #fcd34d;
+    font-size: 0.6rem;
+    font-weight: 800;
+}
+
+.pos-entry .pos-price-editor {
+    position: absolute;
+    z-index: 45;
+    inset-inline-start: 0.5rem;
+    inset-block-start: 100%;
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    inline-size: min(19rem, calc(100% - 1rem));
+    padding: 0.55rem;
+    border: 1px solid rgb(245 158 11 / 45%);
+    border-radius: 11px;
+    background: rgb(30 41 59 / 98%);
+    box-shadow: 0 16px 36px -14px rgb(0 0 0 / 70%);
+}
+
+.pos-entry .pos-price-editor__meta {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.pos-entry .pos-price-delta {
+    padding: 0.1rem 0.45rem;
+    border-radius: 999px;
+    font-size: 0.64rem;
+    font-weight: 700;
+    font-variant-numeric: tabular-nums;
+}
+
+.pos-entry .pos-price-delta.is-down {
+    background: rgb(239 68 68 / 14%);
+    color: #fca5a5;
+    border: 1px solid rgb(239 68 68 / 35%);
+}
+
+.pos-entry .pos-price-delta.is-up,
+.pos-entry .pos-price-delta.is-flat {
+    background: rgb(148 163 184 / 10%);
+    color: #cbd5e1;
+    border: 1px solid rgb(148 163 184 / 20%);
+}
+
+.pos-entry .pos-price-error {
+    color: #fca5a5;
+    font-size: 0.66rem;
+    font-weight: 700;
+}
+
+.pos-entry .pos-price-editor__actions {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.3rem;
+    justify-content: flex-end;
+}
+
+.pos-entry .pos-price-editor__actions button {
+    min-block-size: 1.6rem;
+    padding: 0.2rem 0.55rem;
+    border-radius: 7px;
+    font-size: 0.66rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition:
+        background-color 120ms ease,
+        transform 75ms ease;
+}
+
+.pos-entry .pos-price-editor__actions button:active {
+    transform: scale(0.96);
+}
+
+.pos-entry .pos-price-save {
+    border: 1px solid var(--pos-emerald);
+    background: var(--pos-emerald);
+    color: #052e1f;
+}
+
+.pos-entry .pos-price-save:hover:not(:disabled) {
+    background: #34d399;
+}
+
+.pos-entry .pos-price-cancel,
+.pos-entry .pos-price-reset {
+    border: 1px solid rgb(148 163 184 / 22%);
+    background: #0b1120;
+    color: #cbd5e1;
+}
+
+.pos-entry .pos-price-cancel:hover,
+.pos-entry .pos-price-reset:hover {
+    border-color: var(--pos-emerald);
+    color: #6ee7b7;
+}
+
+.pos-entry .pos-price-editor__actions button:disabled {
+    opacity: 0.45;
+    cursor: not-allowed;
+}
+
 /* ═══ زر «الفئات والمفضلة» الجانبي + اللوحة المنبثقة ══════════════════════════ */
 
 .pos-entry .pos-catalog {

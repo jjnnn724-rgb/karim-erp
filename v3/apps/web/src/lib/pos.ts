@@ -402,6 +402,31 @@ export const saleResultSchema = z
 
 export type PosSaleResult = z.infer<typeof saleResultSchema>;
 
+/** سطر لقطة في الإيصال — النسخة المطبوعة لما في السلة وقت الإتمام. */
+export interface ReceiptSnapshotLine {
+    name: string;
+    quantity: number;
+    unit_price: number;
+    line_total: number;
+    vat_rate: number;
+}
+
+/** سطر دفعة في الإيصال — مع بيانات البطاقة إن وُجدت. */
+export interface ReceiptSnapshotPayment {
+    method: string;
+    amount: number;
+    reference: string | null;
+    brand?: string | undefined;
+    last4?: string | undefined;
+}
+
+/** نتيجة البيع الموسّعة بلقطات السلة والدفعات — الإيصال وحده يستهلكها. */
+export type PosReceiptData = PosSaleResult & {
+    cartLines?: ReceiptSnapshotLine[] | undefined;
+    paymentLines?: ReceiptSnapshotPayment[] | undefined;
+    cashierName?: string | undefined;
+};
+
 /** بيانات إضافية للدفع بالكريدت — تُرسل كما هي في `payer_info` للخادم. */
 export interface PosPaymentMeta {
     brand?: string;

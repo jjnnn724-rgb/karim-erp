@@ -803,6 +803,39 @@ describe('نقطة البيع', () => {
         });
     });
 
+    it('المدير يعدّل سعر بند من السلة وينعكس في الإرسال، بينما الكاشير لا يرى الزر', async () => {
+        mocks.role = 'manager';
+        const mock = stubFetch({ activeShift: SHIFT });
+        renderScreen();
+
+        fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
+
+        // الزر موجود للمدير — يفتح المحرر، ونوع السعر الجديد يُرسل للخادم.
+        fireEvent.click(screen.getByRole('button', { name: /تعديل سعر شاي/ }));
+        fireEvent.change(screen.getByLabelText('سعر الوحدة'), { target: { value: '3' } });
+        fireEvent.click(screen.getByRole('button', { name: 'حفظ السعر' }));
+        expect(screen.getByText('معدّل')).toBeTruthy();
+
+        fireEvent.click(screen.getByRole('button', { name: /إتمام البيع/ }));
+        await waitFor(() => {
+            expect(saleCalls(mock)).toHaveLength(1);
+        });
+        const body = JSON.parse(String(callInit(saleCalls(mock)[0] as unknown[]).body)) as {
+            items: Array<{ product_id: number; unit_price: number }>;
+        };
+        expect(body.items[0]!.unit_price).toBe(3);
+    });
+
+    it('الكاشير لا يرى زر تعديل السعر في السلة', async () => {
+        mocks.role = 'cashier';
+        stubFetch({ activeShift: SHIFT });
+        renderScreen();
+
+        fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
+
+        expect(screen.queryByRole('button', { name: /تعديل سعر/ })).toBeNull();
+    });
+
     it('F5 من لوحة المفاتيح يُتمم البيع بنفس عقد الزر', async () => {
         const mock = stubFetch({ activeShift: SHIFT });
         renderScreen();

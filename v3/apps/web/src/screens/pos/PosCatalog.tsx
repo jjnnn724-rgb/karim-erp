@@ -371,7 +371,17 @@ function PosCatalogView({
                         setToolsOpen((open) => !open);
                     }}
                 >
-                    <svg aria-hidden="true" viewBox="0 0 24 24" width="20" height="20" fill="none" stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <svg
+                        aria-hidden="true"
+                        viewBox="0 0 24 24"
+                        width="20"
+                        height="20"
+                        fill="none"
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    >
                         <path d="M4 6h16M7 12h10M10 18h4" />
                     </svg>
                 </button>
