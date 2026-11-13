@@ -919,7 +919,8 @@ router.get('/vat-return', jwtAuth, requireRole(...READ_ROLES), async (req, res) 
         [from, to]
       ),
       pool.query(
-        `SELECT p.tax_rate_snapshot::float AS rate,
+        `SELECT 'purchase'::text AS kind,
+                        p.tax_rate_snapshot::float AS rate,
                         CASE WHEN p.date < '2020-07-01' THEN 5.00::numeric
                              ELSE cfg.standard_vat_rate END::float AS applicable_standard_rate,
                         COUNT(*)::int AS document_count,
