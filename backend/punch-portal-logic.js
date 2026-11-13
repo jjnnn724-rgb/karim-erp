@@ -610,7 +610,10 @@ function evaluateFaceMatch(candidate, stored, threshold) {
  *     من الجهاز ولا يُعاد استخدامه كدليل هوية، وإلا صار قالب التسجيل مفتاحًا دائمًا.
  *   • صورة من المعرض لا من الكاميرا → PUNCH_FACE_UPLOAD_FORBIDDEN
  *   • عدد العينات أقل من الحد → PUNCH_FACE_SAMPLES_REQUIRED — عيّنة واحدة لا تُثبت حيّة
- *   • صورتان متطابقتان بايتيًا أو أدقّ من حدّ إعادة التشغيل → PUNCH_FACE_REPLAY
+ *   • صورتان متطابقتان بايتيًا → PUNCH_FACE_REPLAY
+ *   • كل العيّنات تشابه مطلق مع القالب (أقصى مسافة < حد التشغيل) → PUNCH_FACE_REPLAY
+ *   • عيّنة واحدة فائقة القرب لا تكفي وحدها — الكاميرا الثابتة تنتجها لوجه حيّ،
+ *     أما صورة أُعيد عرضها فتطابق *كل* العيّنات بلا تباين بين الفريمات
  *   • أي عيّنة فوق العتبة → PUNCH_FACE_MISMATCH (كل العيّنات لا تُقبل بأحسنها)
  * @param {{distances: Array<number|string|null|undefined>, identicalImages?: boolean, fromUpload?: boolean, hasServerImage?: boolean,
  *          minSamples?: number, threshold?: number, replayMinDistance?: number}} input
@@ -642,7 +645,10 @@ function assessFaceSamples(input) {
     if (input.identicalImages === true) {
         return { ...base, rejectCode: 'PUNCH_FACE_REPLAY' };
     }
-    if (Math.min(...distances) < replayMin) {
+    if (Math.max(...distances) < replayMin) {
+        // صورة أُعيد عرضها تطابق القالب بلا تباين بين الفريمات — في المرجع الميداني
+        // وجوه حية عند كاميرا ثابتة تُنتج عيّنة واحدة فائقة القرب والباقي يختلف
+        // قليلًا (0.016–0.033)؛ الحكم بأدنى مسافة كان يرفض البصمة الصحيحة.
         return { ...base, rejectCode: 'PUNCH_FACE_REPLAY' };
     }
     if (Number.isFinite(threshold) && Math.max(...distances) > threshold) {

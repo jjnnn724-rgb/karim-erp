@@ -144,9 +144,12 @@ describe('assessFaceSamples — دليل الوجه يُحسب على السير
         expect(ok({ distances: [0.2], hasServerImage: true, ...strict }).rejectCode)
             .toBe('PUNCH_FACE_SAMPLES_REQUIRED');
     });
-    test('تشابه مطلق مع القالب = نفس الصورة أعيدت لا وجه حيّ', () => {
-        expect(ok({ distances: [0.0001, 0.02], hasServerImage: true, ...strict }).rejectCode)
+    test('كل العيّنات تشابه مطلق بلا تباين = صورة أُعيد عرضها', () => {
+        expect(ok({ distances: [0.0001, 0.0004], hasServerImage: true, ...strict }).rejectCode)
             .toBe('PUNCH_FACE_REPLAY');
+    });
+    test('عيّنة واحدة فائقة القرب والباقي متباين = وجه حيّ عند كاميرا ثابتة', () => {
+        expect(ok({ distances: [0.0001, 0.02], hasServerImage: true, ...strict }).ok).toBe(true);
     });
     test('صورتان متطابقتان بايتيًا → إعادة تشغيل', () => {
         expect(ok({ distances: [0.2, 0.2], identicalImages: true, hasServerImage: true, ...strict }).rejectCode)
