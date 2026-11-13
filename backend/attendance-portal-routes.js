@@ -200,13 +200,18 @@ const FACE_STRICT_MESSAGES = {
 async function verifyFaceStrict(input) {
     const { req, userId, settings } = input;
     const body = req.body || {};
-    const rawImages = (Array.isArray(body.faceImages) ? body.faceImages : [])
-        .concat(body.faceImage ? [body.faceImage] : [])
+    const list = (Array.isArray(body.faceImages) ? body.faceImages : [])
         .map((x) => String(x || ''))
+        .filter((x) => x.length > 100);
+    const single = String(body.faceImage || '');
+    // التكرار داخل مصفوفة العيّنات وحده دليل إعادة تشغيل — أما faceImage (الصورة
+    // الأساسية) فغالبًا الفريم الأول نفسه مرسل مكررًا في الحقلين، وكونه «صورة
+    // مُعادة» يجب ألا يُحسب عيّنتين متطابقتين ويرفض بصمة حقيقية (2026-11-14).
+    const identicalImages = list.length > 1 && new Set(list).size < list.length;
+    const rawImages = Array.from(new Set([...list, single]))
         .filter((x) => x.length > 100)
         .slice(0, 8);
     const source = String(body.faceCapture?.source || '').trim().toLowerCase();
-    const identicalImages = rawImages.length > 1 && new Set(rawImages).size < rawImages.length;
 
     /** @type {any} */
     let faceV2;
