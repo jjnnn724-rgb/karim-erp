@@ -19,7 +19,7 @@
  *     لا كاميرا تعمل بعد الإغلاق.
  */
 
-import { trapFocus } from './focus-trap.js?v=4.9.313';
+import { trapFocus } from './focus-trap.js?v=4.9.314';
 
 const FACE_API_SRC = 'vendor/face-api.js?v=4.9.77';
 const FACE_MODELS_URI = 'vendor/face-models';
@@ -297,6 +297,12 @@ export function captureFace(opts = {}) {
 
         function addSample(image, descriptor, source) {
             if (!image) { return false; }
+            // لقطة مطابقة بايتيًا لعيّنة سابقة ليست «صورة جديدة»: السيرفر يرفض البصمة
+            // كلها PUNCH_FACE_REPLAY. نمنعها هنا — خبرة المستخدم: حرّك رأسك قليلًا.
+            if (images.includes(image)) {
+                say('التقطت نفس الصورة — حرّك رأسك قليلًا ثم التقط اللقطة التالية');
+                return false;
+            }
             if (requireDescriptor && !descriptor) {
                 say('لم يُرصد وجه واضح — اقترب من الكاميرا وحسّن الإضاءة ثم أعد المحاولة');
                 return false;
