@@ -58,6 +58,8 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             'cost-center',
             'accountant-dashboard',
             'yarasoft',
+            'balance-sheet',
+            'cash-flow',
         ],
     },
     {
@@ -174,6 +176,8 @@ export const NAV_TITLES: Readonly<Record<string, string>> = {
     '/briefing': 'موجز المدير',
     '/command-center': 'مركز القيادة الموحّد',
     '/compliance-center': 'لوحة الامتثال الشهري',
+    '/balance-sheet': 'قائمة المركز المالي',
+    '/cash-flow': 'قائمة التدفقات النقدية',
     '/sessions': 'الأجهزة والجلسات',
     '/whatsapp': 'واتساب والتنبيهات',
     '/settings': 'إعدادات النظام',
