@@ -24,6 +24,7 @@ import {
     fetchDayCloseStatus,
     fetchHeldOrders,
     fetchKotHtml,
+    fetchPosOrderReceiptHtml,
     fetchPosDepartments,
     fetchPosOrder,
     fetchPosOrders,
@@ -198,6 +199,7 @@ export function PosEntry() {
     const [activeTabId, setActiveTabId] = useState('');
     const [favorites, setFavorites] = useState<string[]>([]);
     const [imagePending, setImagePending] = useState(false);
+    const [printReceiptPending, setPrintReceiptPending] = useState(false);
     const [printersOpen, setPrintersOpen] = useState(false);
     const [mobilePane, setMobilePane] = useState<'catalog' | 'cart'>('catalog');
     const paneSwitchRef = useRef<HTMLDivElement | null>(null);
@@ -918,6 +920,25 @@ export function PosEntry() {
             toast({ title: `تعذرت إعادة الطباعة: ${errorMessage(error)}`, variant: 'error' });
         } finally {
             setBusy(false);
+        }
+    }
+
+    async function printReceiptNow(orderId: string, invoiceCounter: number | null) {
+        if (busy || printReceiptPending) {
+            return;
+        }
+        setPrintReceiptPending(true);
+        try {
+            const html = await fetchPosOrderReceiptHtml(orderId);
+            const label = invoiceCounter != null ? `فاتورة — #${String(invoiceCounter)}` : 'فاتورة — إيصال البيع';
+            const opened = openServerHtmlWindow(html, label, 'width=460,height=840,noopener');
+            if (!opened) {
+                toast({ title: 'حجب المتصفح نافذة الطباعة؛ اسمح بالنوافذ المنبثقة.', variant: 'error' });
+            }
+        } catch (error) {
+            toast({ title: `تعذّرت طباعة الإيصال: ${errorMessage(error)}`, variant: 'error' });
+        } finally {
+            setPrintReceiptPending(false);
         }
     }
 
@@ -1853,6 +1874,14 @@ export function PosEntry() {
                                             }}
                                             onComplete={() => {
                                                 void completeSale();
+                                            }}
+                                            canPrintReceipt={Boolean(receipt)}
+                                            printReceiptPending={printReceiptPending}
+                                            onPrintReceipt={() => {
+                                                if (!receipt) {
+                                                    return;
+                                                }
+                                                void printReceiptNow(receipt.order_id, receipt.invoice_counter ?? null);
                                             }}
                                         />
                                         {receipt ? (

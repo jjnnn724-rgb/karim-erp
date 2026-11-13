@@ -135,6 +135,12 @@ function buildReceiptHtml({ order = {}, items = [], payments = [], qrImageDataUr
         timeStyle: 'short',
     });
     const voided = isVoidStatus(order.status);
+    const sellerName = String(order.seller_name ?? order.department_name ?? 'مطاعم الشرفه العالمي').trim();
+    const sellerEn = String(order.department_name_en ?? '').trim();
+    const branchName = String(order.branch_name ?? '').trim();
+    const sellerAddress = String(order.seller_address ?? order.location ?? '').trim();
+    const crn = String(order.crn ?? '').trim();
+    const shopVat = String(order.vat_number ?? '').trim();
 
     const inPayments = payments.filter((p) => p.direction !== 'out');
     const changeGiven = payments
@@ -220,15 +226,24 @@ function buildReceiptHtml({ order = {}, items = [], payments = [], qrImageDataUr
     color: var(--gold-deep); font-size: 10.5px; font-weight: 800;
     letter-spacing: .5px; background: var(--gold-soft);
   }
-  .shop-meta {
-    display: flex; justify-content: center; gap: 8px; flex-wrap: wrap;
-    font-size: 8.5px; color: var(--ink-soft); margin-top: 6px; line-height: 1.7;
+  .doc-type small { display: block; font-size: 7px; font-weight: 700; letter-spacing: 1.4px; opacity: .85; }
+  .seller-panel {
+    margin: 0 0 6px; padding: 7px 9px 8px;
+    border: 1px solid var(--line); border-radius: 10px;
+    background: #ffffff;
   }
-  .shop-meta span { display: inline-flex; align-items: center; }
-  .shop-meta .vat {
-    direction: ltr; border: 1px solid var(--line); border-radius: 4px;
-    padding: 0 5px; background: #fff; font-weight: 700; letter-spacing: .4px;
+  .sp-title {
+    font-size: 7.5px; font-weight: 800; letter-spacing: 1.2px;
+    color: var(--gold-deep); text-transform: uppercase;
+    border-block-end: 1px solid var(--line-soft); padding-block-end: 3px; margin-block-end: 5px;
+    display: flex; justify-content: space-between; align-items: center;
   }
+  .sp-grid { display: grid; grid-template-columns: 1fr 1fr; gap: 4px 10px; }
+  .sp-item { display: flex; flex-direction: column; gap: 0.5px; min-inline-size: 0; }
+  .sp-item.sp-full { grid-column: 1 / -1; }
+  .sp-label { font-size: 7.5px; color: var(--ink-soft); letter-spacing: .3px; }
+  .sp-value { font-size: 9.5px; font-weight: 700; color: var(--ink); overflow-wrap: anywhere; }
+  .sp-value.ltr { direction: ltr; text-align: right; font-variant-numeric: tabular-nums; letter-spacing: .4px; }
 
   /* ═══ لوحة بيانات الفاتورة ═════════════════════════════════════════════════ */
   .meta-panel {
@@ -331,6 +346,8 @@ function buildReceiptHtml({ order = {}, items = [], payments = [], qrImageDataUr
     .items tbody tr:nth-child(even) td { background: #f5f5f5 !important; }
     .buffet-banner, .buffet-persons th { background: #000 !important; color: #fff !important; }
     .meta-panel { border-inline-start: 4px solid #000 !important; background: #fafafa !important; }
+    .seller-panel { border: 1.6px solid #000 !important; background: #fff !important; }
+    .sp-title { color: #000 !important; border-block-end-color: #000 !important; }
     .qr-section .qr-frame { border: 2px solid #000 !important; outline: none; }
   }
 </style>
@@ -341,15 +358,19 @@ function buildReceiptHtml({ order = {}, items = [], payments = [], qrImageDataUr
     <div class="brand-mark">
       <img class="brand-logo" src="/app/assets/karim-logo.png" alt="">
     </div>
-    <h1>${escHtml(order.department_name || 'مطاعم الشرفه العالمي')}</h1>
-    ${order.department_name_en ? `<div class="en">${escHtml(order.department_name_en)}</div>` : ''}
-    <div class="doc-type">فاتورة ضريبية مبسطة</div>
-    <div class="shop-meta">
-      ${order.vat_number ? `<span class="vat">VAT ${escHtml(order.vat_number)}</span>` : ''}
-      ${order.location ? `<span>${escHtml(order.location)}</span>` : ''}
+    <h1>${escHtml(sellerName)}</h1>
+    ${sellerEn ? `<div class="en">${escHtml(sellerEn)}</div>` : ''}
+    <div class="doc-type">فاتورة ضريبية مبسطة<small>SIMPLIFIED TAX INVOICE</small></div>
+  </div>
+  <div class="seller-panel" aria-label="بيانات البائع">
+    <div class="sp-title"><span>بيانات البائع · SELLER</span><span>المملكة العربية السعودية</span></div>
+    <div class="sp-grid">
+      ${branchName ? `<div class="sp-item"><span class="sp-label">الفرع / Branch</span><span class="sp-value">${escHtml(branchName)}</span></div>` : ''}
+      ${shopVat ? `<div class="sp-item"><span class="sp-label">الرقم الضريبي / VAT</span><span class="sp-value ltr">${escHtml(shopVat)}</span></div>` : ''}
+      ${crn ? `<div class="sp-item"><span class="sp-label">السجل التجاري / CRN</span><span class="sp-value ltr">${escHtml(crn)}</span></div>` : ''}
+      ${sellerAddress ? `<div class="sp-item sp-full"><span class="sp-label">العنوان الوطني / Address</span><span class="sp-value">${escHtml(sellerAddress)}</span></div>` : ''}
     </div>
   </div>
-  <hr class="rule double">
   <div class="inv-strip"><span class="lbl">فاتورة / No.</span><span class="num" dir="ltr">#${escHtml(order.invoice_counter)}</span></div>
   <hr class="rule double">
 

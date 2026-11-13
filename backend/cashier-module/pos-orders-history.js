@@ -643,13 +643,14 @@ router.get('/:id/receipt-html', jwtAuth, requireRole('admin', 'manager', 'cashie
         
         const orderRes = await pool.query(`
             SELECT po.*, pd.name_ar AS department_name, pd.name_en AS department_name_en,
-                   COALESCE(NULLIF(pd.vat_number, ''), zs.vat_number) AS vat_number, pd.location AS address, NULL::text AS phone,
+                   COALESCE(NULLIF(pd.vat_number, ''), zs.vat_number) AS vat_number, pd.location AS location, NULL::text AS phone,
                    pd.code AS department_code,
+                   zs.seller_name, zs.crn, zs.address AS seller_address, zs.branch_name,
                    u.name AS cashier_name, u.id AS cashier_id
             FROM pos_orders po
             LEFT JOIN pos_departments pd ON po.department_id = pd.id
             LEFT JOIN users u ON po.cashier_id = u.id
-            CROSS JOIN LATERAL (SELECT vat_number FROM zatca_settings WHERE id = 1) zs
+            CROSS JOIN LATERAL (SELECT seller_name, vat_number, crn, address, branch_name FROM zatca_settings WHERE id = 1) zs
             WHERE po.id = $1
         `, [id]);
         

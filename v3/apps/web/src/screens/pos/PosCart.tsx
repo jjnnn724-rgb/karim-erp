@@ -39,6 +39,11 @@ export interface PosCartProps {
     onClear: () => void;
     onHold: () => void;
     onComplete: () => void;
+    /** يوجد إيصال محفوظ لآخر بيع في هذه التبويبة — يفعّل زر الطباعة. */
+    canPrintReceipt: boolean;
+    /** طلب الطباعة جارٍ — يعطّل الزر ويظهر حالة التحميل. */
+    printReceiptPending: boolean;
+    onPrintReceipt: () => void;
 }
 
 function HoldIcon() {
@@ -55,6 +60,26 @@ function HoldIcon() {
             strokeLinejoin="round"
         >
             <path d="M9 5v14M15 5v14" />
+        </svg>
+    );
+}
+
+function PrinterIcon() {
+    return (
+        <svg
+            aria-hidden="true"
+            viewBox="0 0 24 24"
+            width="16"
+            height="16"
+            fill="none"
+            stroke="currentColor"
+            strokeWidth="1.8"
+            strokeLinecap="round"
+            strokeLinejoin="round"
+        >
+            <path d="M7 8V3h10v5" />
+            <path d="M7 17H4a1 1 0 0 1-1-1v-6a3 3 0 0 1 3-3h12a3 3 0 0 1 3 3v6a1 1 0 0 1-1 1h-3" />
+            <rect x="7" y="14" width="10" height="7" rx="1" />
         </svg>
     );
 }
@@ -211,6 +236,9 @@ export function PosCart({
     onClear,
     onHold,
     onComplete,
+    canPrintReceipt,
+    printReceiptPending,
+    onPrintReceipt,
 }: PosCartProps) {
     const [editPrice, setEditPrice] = useState<{ id: string; value: string } | null>(null);
     const [customerOpen, setCustomerOpen] = useState(false);
@@ -831,16 +859,30 @@ export function PosCart({
                 </div>
 
                 {canSell ? (
-                    <Button
-                        variant="primary"
-                        className="pos-cart__checkout"
-                        loading={busy}
-                        disabled={!cart.length || !totals.valid}
-                        onClick={onComplete}
-                    >
-                        إتمام البيع والدفع
-                        <kbd className="pos-kbd">F4</kbd>
-                    </Button>
+                    <div className="pos-cart__foot-actions">
+                        <Button
+                            variant="secondary"
+                            className="pos-cart__print"
+                            loading={printReceiptPending}
+                            disabled={busy || printReceiptPending || !canPrintReceipt}
+                            onClick={onPrintReceipt}
+                            title={canPrintReceipt ? 'طباعة إيصال آخر بيع' : 'الطباعة متاحة بعد إتمام أول بيع'}
+                            aria-label="طباعة الإيصال"
+                        >
+                            <PrinterIcon />
+                            طباعة
+                        </Button>
+                        <Button
+                            variant="primary"
+                            className="pos-cart__checkout"
+                            loading={busy}
+                            disabled={!cart.length || !totals.valid}
+                            onClick={onComplete}
+                        >
+                            إتمام البيع والدفع
+                            <kbd className="pos-kbd">F4</kbd>
+                        </Button>
+                    </div>
                 ) : null}
             </footer>
         </section>

@@ -2177,6 +2177,28 @@
     padding: 0.7rem 0.85rem;
 }
 
+/* زر الطباعة بجوار إتمام البيع — دائم الظهور، معطّل حتى يوجد إيصال محفوظ */
+.pos-cart__foot-actions {
+    display: flex;
+    align-items: stretch;
+    gap: 0.5rem;
+}
+
+.pos-cart__foot-actions .pos-cart__checkout {
+    flex: 1 1 auto;
+    inline-size: auto;
+}
+
+.pos-cart__print {
+    flex: 0 0 auto;
+    min-block-size: 2.9rem;
+    padding-inline: 0.85rem;
+    gap: 0.4rem;
+    font-size: 0.9rem;
+    font-weight: 700;
+    border-radius: 13px;
+}
+
 .pos-cart__due span {
     font-size: 0.7rem;
     color: var(--pos-muted);
