@@ -24,7 +24,6 @@ export interface PosCartProps {
     onClear: () => void;
     onHold: () => void;
     onComplete: () => void;
-    onOpenDrawer: () => void;
 }
 
 /** السلة والخصم والدفع — الأرقام تقديرية، والخادم هو من يسجّل الفاتورة. */
@@ -46,7 +45,6 @@ export function PosCart({
     onClear,
     onHold,
     onComplete,
-    onOpenDrawer,
 }: PosCartProps) {
     const count = cart.reduce((sum, row) => sum + row.quantity, 0);
     const amounts = PAYMENT_FIELDS.map((field) => parsePosMoney(payments[field.key]));
@@ -66,12 +64,38 @@ export function PosCart({
         <section className="erp-card pos-cart" aria-labelledby="pos-cart-title">
             <div className="erp-card__body pos-cart__body">
                 <div className="pos-cart__head">
-                    <h2 id="pos-cart-title" className="erp-card__title">
-                        السلة <Badge variant="info">{count}</Badge>
-                    </h2>
-                    <Button size="sm" variant="secondary" disabled={!cart.length || !canSell || busy} onClick={onHold}>
-                        تعليق الطلب الحالي
-                    </Button>
+                    <div className="pos-cart__head-title">
+                        <h2 id="pos-cart-title" className="erp-card__title">
+                            السلة <Badge variant="info">{count}</Badge>
+                        </h2>
+                        <span className="pos-customer-pill" title="البيع الحالي بدون ملف عميل مرتبط">
+                            عميل نقدي
+                        </span>
+                    </div>
+                    <div className="pos-cart__head-actions">
+                        <Button
+                            size="sm"
+                            variant="secondary"
+                            aria-label="تعليق الطلب الحالي"
+                            title="تعليق الطلب · F3"
+                            disabled={!cart.length || !canSell || busy}
+                            onClick={onHold}
+                        >
+                            <span aria-hidden="true">Ⅱ</span>
+                            <span>تعليق</span>
+                        </Button>
+                        <Button
+                            size="sm"
+                            variant="ghost"
+                            aria-label="تفريغ السلة"
+                            title="إفراغ السلة"
+                            disabled={!cart.length || busy}
+                            onClick={onClear}
+                        >
+                            <span aria-hidden="true">×</span>
+                            <span>إفراغ</span>
+                        </Button>
+                    </div>
                 </div>
 
                 {cart.length === 0 ? (
@@ -99,70 +123,57 @@ export function PosCart({
                     </div>
                 ) : (
                     <ul className="pos-cart__lines">
-                        {cart.map((row) => (
-                            <li key={row.id} className="pos-cart__line">
-                                {images?.[row.id] ? (
-                                    <img className="pos-cart__thumb" src={images[row.id]} alt="" loading="lazy" decoding="async" />
-                                ) : null}
-                                <div className="min-w-0 pos-cart__copy">
-                                    <strong>{row.name}</strong>
-                                    <small>
-                                        {moneyText(row.price)} × {row.quantity}
-                                        {buffet ? ' فرد' : ''}
-                                    </small>
-                                </div>
-                                <fieldset className="pos-qty m-0 min-w-0 border-0 p-0" aria-label={`كمية ${row.name}`}>
-                                    <button
-                                        type="button"
-                                        aria-label={`تقليل ${row.name}`}
-                                        disabled={busy}
-                                        onClick={() => {
-                                            onQty(row.id, -1);
-                                        }}
+                        {cart.map((row) => {
+                            const totalLine = totals.items.find((line) => line.id === row.id);
+                            return (
+                                <li key={row.id} className="pos-cart__line">
+                                    {images?.[row.id] ? (
+                                        <img
+                                            className="pos-cart__thumb"
+                                            src={images[row.id]}
+                                            alt=""
+                                            loading="lazy"
+                                            decoding="async"
+                                        />
+                                    ) : null}
+                                    <div className="min-w-0 pos-cart__copy">
+                                        <strong>{row.name}</strong>
+                                        <small>{moneyText(row.price)} {buffet ? 'للفرد' : 'للوحدة'}</small>
+                                    </div>
+                                    <strong className="pos-cart__line-total erp-numeric" dir="ltr">
+                                        {moneyText((totalLine?.subtotal ?? 0) + (totalLine?.tax ?? 0))}
+                                    </strong>
+                                    <fieldset
+                                        className="pos-qty m-0 min-w-0 border-0 p-0"
+                                        aria-label={`كمية ${row.name}`}
                                     >
-                                        −
-                                    </button>
-                                    <span aria-live="polite">{row.quantity}</span>
-                                    <button
-                                        type="button"
-                                        aria-label={`زيادة ${row.name}`}
-                                        disabled={busy}
-                                        onClick={() => {
-                                            onQty(row.id, 1);
-                                        }}
-                                    >
-                                        +
-                                    </button>
-                                </fieldset>
-                            </li>
-                        ))}
+                                        <button
+                                            type="button"
+                                            aria-label={`تقليل ${row.name}`}
+                                            disabled={busy}
+                                            onClick={() => {
+                                                onQty(row.id, -1);
+                                            }}
+                                        >
+                                            −
+                                        </button>
+                                        <span aria-live="polite">{row.quantity}</span>
+                                        <button
+                                            type="button"
+                                            aria-label={`زيادة ${row.name}`}
+                                            disabled={busy}
+                                            onClick={() => {
+                                                onQty(row.id, 1);
+                                            }}
+                                        >
+                                            +
+                                        </button>
+                                    </fieldset>
+                                </li>
+                            );
+                        })}
                     </ul>
                 )}
-
-                <dl className="pos-totals">
-                    <div>
-                        <dt>قبل الخصم</dt>
-                        <dd>{moneyText(totals.subtotalBeforeDiscount)}</dd>
-                    </div>
-                    {totals.discount > 0 ? (
-                        <div>
-                            <dt>الخصم</dt>
-                            <dd>−{moneyText(totals.discount)}</dd>
-                        </div>
-                    ) : null}
-                    <div>
-                        <dt>بعد الخصم وقبل الضريبة</dt>
-                        <dd>{moneyText(totals.subtotal)}</dd>
-                    </div>
-                    <div>
-                        <dt>الضريبة التقديرية</dt>
-                        <dd>{moneyText(totals.tax)}</dd>
-                    </div>
-                    <div className="pos-totals__grand">
-                        <dt>الإجمالي التقديري</dt>
-                        <dd>{moneyText(totals.total)}</dd>
-                    </div>
-                </dl>
 
                 {canSell && cart.length ? (
                     <details className="pos-payments">
@@ -254,10 +265,24 @@ export function PosCart({
                 ) : null}
             </div>
             <div className="pos-cart__foot">
+                <dl className="pos-totals pos-totals--compact">
+                    <div>
+                        <dt>المجموع قبل الضريبة</dt>
+                        <dd>{moneyText(totals.subtotalBeforeDiscount)}</dd>
+                    </div>
+                    <div>
+                        <dt>الخصم</dt>
+                        <dd>−{moneyText(totals.discount)}</dd>
+                    </div>
+                    <div>
+                        <dt>الضريبة ({[...new Set(cart.map((line) => line.vatRate))].length === 1 ? `${cart[0]?.vatRate ?? 15}%` : 'متعددة'})</dt>
+                        <dd>{moneyText(totals.tax)}</dd>
+                    </div>
+                </dl>
                 <div className="pos-cart__foot-main">
                     <div className="pos-cart__due">
                         <span>
-                            الإجمالي التقديري
+                            الإجمالي النهائي
                             {count ? ` · ${count} في السلة` : ''}
                         </span>
                         <strong className="erp-numeric" dir="ltr">
@@ -265,21 +290,18 @@ export function PosCart({
                         </strong>
                     </div>
                     {canSell ? (
-                        <Button variant="primary" loading={busy} disabled={!cart.length || !totals.valid} onClick={onComplete}>
-                            إتمام البيع
+                        <Button
+                            variant="primary"
+                            aria-label="إتمام البيع"
+                            loading={busy}
+                            disabled={!cart.length || !totals.valid}
+                            onClick={onComplete}
+                        >
+                            <span>إتمام البيع والدفع</span>
+                            <kbd>F4</kbd>
                         </Button>
                     ) : null}
                 </div>
-                {canSell ? (
-                    <div className="pos-cart__foot-tools">
-                        <Button size="sm" variant="secondary" disabled={busy} onClick={onOpenDrawer}>
-                            فتح الدرج
-                        </Button>
-                        <Button size="sm" variant="ghost" disabled={!cart.length || busy} onClick={onClear}>
-                            تفريغ السلة
-                        </Button>
-                    </div>
-                ) : null}
             </div>
         </section>
     );

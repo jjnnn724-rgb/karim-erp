@@ -102,6 +102,8 @@ export interface CatalogItem {
     barcode: string;
     stock: number | null;
     imageUrl: string;
+    /** الصورة المخزنة قد تكون مخفية؛ يبقى حذفها متاحًا للمخوّلين. */
+    hasImage: boolean;
     category: string;
     tier: string;
     isBuffet: boolean;
@@ -111,26 +113,32 @@ export interface CatalogItem {
 }
 
 export function catalogFromProducts(products: readonly PosProduct[]): CatalogItem[] {
-    return products
-        .filter((product) => Number.isInteger(Number(product.id)) && Number(product.id) > 0 && product.is_active !== false)
-        .map((product) => {
-            const rawCode = product.metadata?.yara_code;
-            return {
-                id: String(product.id),
-                name: String(product.name_ar || product.name_en || 'صنف'),
-                price: Number.isFinite(product.price) ? product.price : 0,
-                vatRate: Number.isFinite(product.vat_rate) ? product.vat_rate : 15,
-                unit: String(product.unit ?? ''),
-                barcode: String(product.barcode ?? ''),
-                stock: product.stock_quantity,
-                imageUrl: safeProductImageUrl(product.image_url, String(product.id)),
-                category: String(product.category ?? '').trim(),
-                tier: '',
-                isBuffet: false,
-                isCore: false,
-                yaraCode: typeof rawCode === 'string' ? rawCode.trim() : '',
-            };
-        });
+    const active = products.filter((product) => Number.isInteger(Number(product.id)) && Number(product.id) > 0 && product.is_active !== false);
+    const imageUses = new Map<string, number>();
+    for (const product of active) {
+        const url = String(product.image_url ?? '').trim();
+        if (url) imageUses.set(url, (imageUses.get(url) ?? 0) + 1);
+    }
+    return active.map((product) => {
+        const rawCode = product.metadata?.yara_code;
+        const imageUrl = String(product.image_url ?? '').trim();
+        return {
+            id: String(product.id),
+            name: String(product.name_ar || product.name_en || 'صنف'),
+            price: Number.isFinite(product.price) ? product.price : 0,
+            vatRate: Number.isFinite(product.vat_rate) ? product.vat_rate : 15,
+            unit: String(product.unit ?? ''),
+            barcode: String(product.barcode ?? ''),
+            stock: product.stock_quantity,
+            imageUrl: (imageUses.get(imageUrl) ?? 0) > 1 ? '' : safeProductImageUrl(imageUrl, String(product.id)),
+            hasImage: Boolean(imageUrl),
+            category: String(product.category ?? '').trim(),
+            tier: '',
+            isBuffet: false,
+            isCore: false,
+            yaraCode: typeof rawCode === 'string' ? rawCode.trim() : '',
+        };
+    });
 }
 
 /** فئات البوفيه تُباع «أفرادًا» — نفس تحويل `buffetTierProducts` في V2. */
@@ -146,6 +154,7 @@ export function catalogFromTiers(tiers: readonly BuffetTier[]): CatalogItem[] {
             barcode: '',
             stock: null,
             imageUrl: '',
+            hasImage: false,
             category: 'بوفيه',
             tier: String(tier.tier ?? ''),
             isBuffet: true,
@@ -258,10 +267,11 @@ export function escapeHtml(value: unknown): string {
 
 /** يفتح نافذة، يكتب HTML موثوقًا من الخادم أو مبنيًا هنا، ويطبعها. */
 export function openPrintWindow(title: string, html: string): boolean {
-    const win = window.open('', '_blank', 'noopener');
+    const win = window.open('', '_blank');
     if (!win) {
         return false;
     }
+    win.opener = null;
     win.document.open();
     win.document.write(
         `<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>` +

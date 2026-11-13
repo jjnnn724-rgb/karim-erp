@@ -1,4 +1,4 @@
-import { type KeyboardEventHandler, type Ref, useId } from 'react';
+import { type InputHTMLAttributes, type KeyboardEventHandler, type Ref, useId } from 'react';
 import { cn } from './cn';
 import { controlClassName, controlSizeClassName } from './Input';
 import { SearchIcon, XIcon } from './icons';
@@ -20,6 +20,8 @@ export interface SearchInputProps {
     /** لالتقاط Enter (قارئ باركود) قبل أي معالج آخر. */
     onKeyDown?: KeyboardEventHandler<HTMLInputElement>;
     'data-testid'?: string;
+    autoComplete?: string;
+    inputMode?: InputHTMLAttributes<HTMLInputElement>['inputMode'];
     /** لتركيز الحقل من اختصار لوحة مفاتيح دون البحث في DOM. */
     inputRef?: Ref<HTMLInputElement>;
 }
@@ -35,6 +37,8 @@ export function SearchInput({
     className,
     onKeyDown,
     'data-testid': testId,
+    autoComplete,
+    inputMode,
     inputRef,
 }: SearchInputProps) {
     const autoId = useId();
@@ -54,6 +58,8 @@ export function SearchInput({
                     type="search"
                     value={value}
                     disabled={disabled}
+                    autoComplete={autoComplete}
+                    inputMode={inputMode}
                     placeholder={placeholder}
                     onKeyDown={onKeyDown}
                     onChange={(event) => {

@@ -39,6 +39,7 @@ import {
     type PosPaymentInput,
     type PosSaleResult,
     recallHeldOrder,
+    removePosProductImage,
     renameBuffetTier,
     reprintPosOrder,
     riyadhToday,
@@ -65,6 +66,7 @@ import { type PaymentReferenceKey, PosCart } from './pos/PosCart';
 import { PosCatalog } from './pos/PosCatalog';
 import { PosHistory, type PosHistoryFiltersState, PosOrderDetailPanel } from './pos/PosHistory';
 import { PosOpenShift } from './pos/PosOpenShift';
+import { PosPrinters } from './pos/PosPrinters';
 import { PosReceipt } from './pos/PosReceipt';
 import {
     BUFFET_ADMIN_ROLES,
@@ -155,6 +157,15 @@ function openShiftInfo(existingZ: unknown): string {
 /** نقطة البيع — واجهة V3 الكاملة على نفس أبواب V2 والخادم هو الحاكم. */
 export function PosEntry() {
     const auth = useAuthState();
+    useEffect(() => {
+        const previousOverflow = document.body.style.overflow;
+        document.body.classList.add('pos-cashier-fullscreen');
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.classList.remove('pos-cashier-fullscreen');
+            document.body.style.overflow = previousOverflow;
+        };
+    }, []);
     const role = auth.user?.role ?? '';
     const canAccess = roleIn(role, POS_ROLES);
     const canSell = roleIn(role, SELL_ROLES);
@@ -177,6 +188,7 @@ export function PosEntry() {
     const [activeTabId, setActiveTabId] = useState('');
     const [favorites, setFavorites] = useState<string[]>([]);
     const [imagePending, setImagePending] = useState(false);
+    const [printersOpen, setPrintersOpen] = useState(false);
     const [mobilePane, setMobilePane] = useState<'catalog' | 'cart'>('catalog');
     const paneSwitchRef = useRef<HTMLDivElement | null>(null);
 
@@ -312,8 +324,8 @@ export function PosEntry() {
 
     // مراجع مستقرة لأحداث الكتالوج: إضافة صنف أو تعديل المفضلة لا يجب أن يعيد
     // رسم 322 بطاقة صنف — البطاقة تُعاد فقط عندما يتغيّر صنفها فعليًا.
-    const catalogHandlersRef = useRef({ addItem, toggleFavorite, uploadImage, barcodeEnter, recallOrder, removeHeldOrder });
-    catalogHandlersRef.current = { addItem, toggleFavorite, uploadImage, barcodeEnter, recallOrder, removeHeldOrder };
+    const catalogHandlersRef = useRef({ addItem, toggleFavorite, uploadImage, removeImage, barcodeEnter, recallOrder, removeHeldOrder });
+    catalogHandlersRef.current = { addItem, toggleFavorite, uploadImage, removeImage, barcodeEnter, recallOrder, removeHeldOrder };
 
     const handleAddItem = useCallback((item: CatalogItem) => {
         catalogHandlersRef.current.addItem(item);
@@ -323,6 +335,9 @@ export function PosEntry() {
     }, []);
     const handleUploadImage = useCallback((item: CatalogItem, file: File) => {
         void catalogHandlersRef.current.uploadImage(item, file);
+    }, []);
+    const handleRemoveImage = useCallback((item: CatalogItem) => {
+        void catalogHandlersRef.current.removeImage(item);
     }, []);
     const handleBarcodeEnter = useCallback(() => {
         catalogHandlersRef.current.barcodeEnter();
@@ -729,6 +744,27 @@ export function PosEntry() {
         }
     }
 
+    async function removeImage(item: CatalogItem) {
+        if (!canManageCatalog || busy || imagePending || item.isBuffet || !item.hasImage) {
+            return;
+        }
+        setImagePending(true);
+        try {
+            const ok = await confirm(`حذف صورة ${item.name}؟ يبقى الصنف متاحًا للبيع.`, {
+                tone: 'danger',
+                confirmLabel: 'حذف الصورة',
+            });
+            if (!ok) return;
+            await removePosProductImage(item.id);
+            toast({ title: 'تم حذف صورة الصنف.', variant: 'success' });
+            await queryClient.invalidateQueries({ queryKey: ['pos-products'] });
+        } catch (error) {
+            toast({ title: `تعذّر حذف صورة الصنف: ${errorMessage(error)}`, variant: 'error' });
+        } finally {
+            setImagePending(false);
+        }
+    }
+
     async function reprint(orderId: string) {
         if (!canSell || busy) {
             return;
@@ -993,14 +1029,37 @@ export function PosEntry() {
         toast({ title: 'حُدّثت بيانات الكاشير من الخادم.', variant: 'info' });
     }
 
-    function addTab() {
+    async function confirmActiveOrderSwitch() {
+        if (!activeTab.cart.length) {
+            return true;
+        }
+        return confirm(
+            `الطلب الحالي يحتوي ${String(activeTab.cart.length)} صنفًا ولم يُحفظ كفاتورة. سيظل محفوظًا في تبويبه؛ هل تريد التبديل؟`,
+            { tone: 'warning', confirmLabel: 'التبديل مع الاحتفاظ بالطلب' },
+        );
+    }
+
+    async function addTab() {
         if (tabs.length >= MAX_TABS) {
             toast({ title: `الحد الأقصى ${String(MAX_TABS)} طلبات متوازية.`, variant: 'info' });
+            return;
+        }
+        if (!(await confirmActiveOrderSwitch())) {
             return;
         }
         const tab = newPosTab();
         setTabs((current) => [...current, tab]);
         setActiveTabId(tab.id);
+    }
+
+    async function switchTab(tabId: string) {
+        if (tabId === activeTab.id) {
+            return;
+        }
+        if (!(await confirmActiveOrderSwitch())) {
+            return;
+        }
+        setActiveTabId(tabId);
     }
 
     async function closeTab(id: string) {
@@ -1103,7 +1162,7 @@ export function PosEntry() {
                     const target = tabs[Number(event.key) - 1];
                     if (target) {
                         event.preventDefault();
-                        setActiveTabId(target.id);
+                        void switchTab(target.id);
                     }
                 }
                 return;
@@ -1118,10 +1177,12 @@ export function PosEntry() {
                     event.preventDefault();
                     shortcutActions.current.hold();
                     break;
+                case 'F4':
                 case 'F5':
                     event.preventDefault();
                     shortcutActions.current.complete();
                     break;
+                case 'F9':
                 case 'F6':
                     if (canHistory) {
                         event.preventDefault();
@@ -1136,7 +1197,7 @@ export function PosEntry() {
         return () => {
             window.removeEventListener('keydown', onKeyDown);
         };
-    }, [view, shift, tabs, canHistory]);
+    }, [view, shift, tabs, activeTab.id, canHistory]);
 
     const overlayTitle =
         view === 'history'
@@ -1168,16 +1229,69 @@ export function PosEntry() {
             void productsQuery.refetch();
         }
     };
+    const orderTabs =
+        shift && !shift.isStale && view === 'cashier' && !catalogLoading && !catalogError ? (
+            <div className="pos-tabs" role="tablist" aria-label="الطلبات المتوازية">
+                {tabs.map((tab, index) => {
+                    const count = tab.cart.reduce((sum, row) => sum + row.quantity, 0);
+                    const selected = tab.id === activeTab.id;
+                    return (
+                        <div key={tab.id} className={`pos-tab${selected ? ' is-active' : ''}`}>
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={selected}
+                                aria-label={`طلب ${String(index + 1)}${count ? ` — ${String(count)} قطعة` : ''}`}
+                                title={count ? 'طلب غير محفوظ — سيبقى محفوظًا عند التبديل' : `طلب ${String(index + 1)}`}
+                                onClick={() => {
+                                    void switchTab(tab.id);
+                                }}
+                            >
+                                طلب {index + 1}
+                                <span className="pos-tab__count">{intOf(count)}</span>
+                                {count ? <span className="pos-tab__draft">مسودة</span> : null}
+                            </button>
+                            {tabs.length > 1 ? (
+                                <button
+                                    type="button"
+                                    className="pos-tab__close"
+                                    aria-label={`إغلاق طلب ${String(index + 1)}`}
+                                    onClick={() => {
+                                        void closeTab(tab.id);
+                                    }}
+                                >
+                                    ×
+                                </button>
+                            ) : null}
+                        </div>
+                    );
+                })}
+                <Button
+                    size="sm"
+                    variant="secondary"
+                    disabled={tabs.length >= MAX_TABS || busy}
+                    onClick={addTab}
+                >
+                    + طلب جديد
+                </Button>
+                <Badge variant={heldQuery.data?.length ? 'warning' : 'neutral'}>
+                    معلّقة {intOf(heldQuery.data?.length ?? 0)}
+                </Badge>
+            </div>
+        ) : null;
 
     return (
-        <div className={`flex flex-col gap-md premium-screen pos-entry pos-entry--workspace pos-entry--pane-${mobilePane}`}>
+        <div
+            dir="rtl"
+            className={`flex flex-col gap-md premium-screen pos-entry pos-entry--workspace pos-entry--pane-${mobilePane}`}
+        >
             <h1 className="sr-only">الكاشير — نقطة البيع</h1>
             {shift ? (
-                <section className="pos-console" aria-label="شريط الكاشير">
+                <header className="pos-console" aria-label="شريط الكاشير">
                     <div className="pos-console__identity">
                         <span className="pos-console__status" aria-hidden="true" />
                         <div className="pos-console__copy">
-                            <strong>{shift.deptName || 'نقطة البيع'}</strong>
+                            <strong>{shift.deptName || 'قسم البيع الخارجي'}</strong>
                             <small>
                                 وردية #{shift.sessionId}
                                 {shift.isStale ? ` · من يوم ${shift.openedOn} — غير صالحة للبيع` : ''}
@@ -1185,78 +1299,100 @@ export function PosEntry() {
                             </small>
                         </div>
                     </div>
-                    <section className="pos-console__kpis" aria-label="مؤشرات الوردية">
-                        <div className="pos-kpi">
-                            <span>الأصناف</span>
-                            <strong className="erp-numeric">{intOf(items.length)}</strong>
-                        </div>
-                        <div className="pos-kpi">
-                            <span>معلّقة</span>
-                            <strong className="erp-numeric">{intOf(heldQuery.data?.length ?? 0)}</strong>
-                        </div>
-                        <div className={`pos-kpi${cartCount ? ' is-live' : ''}`}>
-                            <span>في السلة</span>
-                            <strong className="erp-numeric">{intOf(cartCount)}</strong>
-                        </div>
-                        <div className="pos-kpi pos-kpi--total">
-                            <span>الإجمالي</span>
-                            <strong className="erp-numeric" dir="ltr">
-                                {moneyText(totals.total)}
-                            </strong>
-                        </div>
-                    </section>
-                    {unbalancedInvoice ? (
-                        <p className="pos-alert" role="alert">
-                            الفاتورة غير متوازنة (الصافي + الضريبة ≠ الإجمالي) — لا يمكن إصدارها أو طباعتها حتى تصحيح بيانات الأصناف.
-                        </p>
-                    ) : null}
-                    <div className="pos-console__actions">
-                        {canHistory ? (
-                            <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={() => {
-                                    setView('history');
-                                }}
-                            >
-                                سجل الفواتير
-                            </Button>
-                        ) : null}
-                        {buffet && canManageBuffet ? (
-                            <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={() => {
-                                    setView('buffet-prices');
-                                }}
-                            >
-                                أسعار البوفيه
-                            </Button>
-                        ) : null}
-                        {buffet ? (
-                            <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={() => {
-                                    setView('buffet-report');
-                                }}
-                            >
-                                تقرير البوفيه
-                            </Button>
-                        ) : null}
-                        {canDayClose ? (
-                            <Button size="sm" variant="secondary" onClick={() => void runDayClose()} disabled={dayCloseBusy}>
-                                إقفال اليوم Z
-                            </Button>
-                        ) : null}
-                        <Button size="sm" variant="secondary" onClick={() => void refreshAll()}>
-                            تحديث
-                        </Button>
-                        <Button size="sm" variant="secondary" onClick={openCloseShiftDialog} disabled={!canSell || busy}>
-                            إغلاق الوردية
-                        </Button>
+                    <div className="pos-console__orders">
+                        {orderTabs}
+                        {shift.isStale ? <span className="pos-console__stale">وردية غير صالحة للبيع</span> : null}
                     </div>
-                </section>
+                    <div className="pos-console__tools">
+                        {canSell ? (
+                            <Button
+                                className="pos-drawer-button"
+                                size="sm"
+                                variant="secondary"
+                                aria-label="فتح الدرج"
+                                title="فتح الدرج"
+                                disabled={busy}
+                                onClick={() => {
+                                    void openDrawer();
+                                }}
+                            >
+                                <svg
+                                    aria-hidden="true"
+                                    viewBox="0 0 24 24"
+                                    width="18"
+                                    height="18"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="1.8"
+                                >
+                                    <path
+                                        d="M4 10h16v9H4zM4 10l2-5h12l2 5M8 14h.01M12 14h.01M16 14h.01"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    />
+                                </svg>
+                            </Button>
+                        ) : null}
+                        <details className="pos-admin-menu">
+                            <summary>إدارة الوردية</summary>
+                            <div className="pos-admin-menu__items">
+                                {canHistory ? (
+                                    <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        aria-label="سجل الفواتير"
+                                        onClick={() => {
+                                            setView('history');
+                                        }}
+                                    >
+                                        سجل الفواتير <kbd>F9</kbd>
+                                    </Button>
+                                ) : null}
+                                {buffet && canManageBuffet ? (
+                                    <Button size="sm" variant="secondary" onClick={() => setView('buffet-prices')}>
+                                        أسعار البوفيه
+                                    </Button>
+                                ) : null}
+                                {buffet ? (
+                                    <Button size="sm" variant="secondary" onClick={() => setView('buffet-report')}>
+                                        تقرير البوفيه
+                                    </Button>
+                                ) : null}
+                                {canDayClose ? (
+                                    <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        onClick={() => void runDayClose()}
+                                        disabled={dayCloseBusy}
+                                    >
+                                        إقفال اليوم Z
+                                    </Button>
+                                ) : null}
+                                {canManageCatalog ? (
+                                    <Button size="sm" variant="secondary" onClick={() => setPrintersOpen(true)}>
+                                        الطابعة
+                                    </Button>
+                                ) : null}
+                                <Button size="sm" variant="secondary" onClick={() => void refreshAll()}>
+                                    تحديث
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="danger"
+                                    onClick={openCloseShiftDialog}
+                                    disabled={!canSell || busy}
+                                >
+                                    إغلاق الوردية
+                                </Button>
+                            </div>
+                        </details>
+                    </div>
+                </header>
+            ) : null}
+            {shift && view === 'cashier' && unbalancedInvoice ? (
+                <p className="pos-alert" role="alert">
+                    الفاتورة غير متوازنة (الصافي + الضريبة ≠ الإجمالي) — لا يمكن إصدارها أو طباعتها حتى تصحيح بيانات الأصناف.
+                </p>
             ) : null}
 
             {view === 'cashier' ? (
@@ -1327,46 +1463,6 @@ export function PosEntry() {
                             <StateError message={errorMessage(catalogError)} onRetry={catalogRetry} />
                         ) : (
                             <>
-                                <div className="pos-tabs" role="tablist" aria-label="الطلبات المتوازية">
-                                    {tabs.map((tab, index) => {
-                                        const count = tab.cart.reduce((sum, row) => sum + row.quantity, 0);
-                                        const selected = tab.id === activeTab.id;
-                                        return (
-                                            <div key={tab.id} className={`pos-tab${selected ? ' is-active' : ''}`}>
-                                                <button
-                                                    type="button"
-                                                    role="tab"
-                                                    aria-selected={selected}
-                                                    aria-label={`طلب ${String(index + 1)}${count ? ` — ${String(count)} قطعة` : ''}`}
-                                                    onClick={() => {
-                                                        setActiveTabId(tab.id);
-                                                    }}
-                                                >
-                                                    طلب {index + 1}
-                                                    <span className="pos-tab__count">{intOf(count)}</span>
-                                                </button>
-                                                {tabs.length > 1 ? (
-                                                    <button
-                                                        type="button"
-                                                        className="pos-tab__close"
-                                                        aria-label={`إغلاق طلب ${String(index + 1)}`}
-                                                        onClick={() => {
-                                                            void closeTab(tab.id);
-                                                        }}
-                                                    >
-                                                        ×
-                                                    </button>
-                                                ) : null}
-                                            </div>
-                                        );
-                                    })}
-                                    <Button size="sm" variant="secondary" disabled={tabs.length >= MAX_TABS || busy} onClick={addTab}>
-                                        + طلب جديد
-                                    </Button>
-                                    <span className="pos-tabs__hint" aria-hidden="true">
-                                        Ctrl+1…5 تبديل · F2 بحث · F3 تعليق · F5 إتمام · F6 السجل
-                                    </span>
-                                </div>
                                 <div ref={paneSwitchRef} className="pos-pane-switch" role="tablist" aria-label="عرض شاشة الكاشير">
                                     <button
                                         type="button"
@@ -1429,6 +1525,7 @@ export function PosEntry() {
                                         canManageCatalog={canManageCatalog}
                                         imagePending={imagePending}
                                         onUploadImage={handleUploadImage}
+                                        onRemoveImage={handleRemoveImage}
                                         onRecall={handleRecallOrder}
                                         onDeleteHeld={handleDeleteHeld}
                                         busy={busy || buffetBusy || dayCloseBusy}
@@ -1457,9 +1554,6 @@ export function PosEntry() {
                                             }}
                                             onComplete={() => {
                                                 void completeSale();
-                                            }}
-                                            onOpenDrawer={() => {
-                                                void openDrawer();
                                             }}
                                         />
                                         {receipt ? (
@@ -1758,6 +1852,12 @@ export function PosEntry() {
                     ) : null}
                 </div>
             </Dialog>
+
+            <PosPrinters
+                open={printersOpen}
+                departmentId={shift?.departmentId ?? ''}
+                onClose={() => setPrintersOpen(false)}
+            />
         </div>
     );
 }

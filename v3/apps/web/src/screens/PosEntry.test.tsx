@@ -356,6 +356,10 @@ function renderScreen() {
     );
 }
 
+async function openShiftMenu() {
+    fireEvent.click(await screen.findByText('إدارة الوردية'));
+}
+
 function saleCalls(mock: ReturnType<typeof stubFetch>) {
     return mock.mock.calls.filter((call) => String(call[0]).includes('/api/sales/complete'));
 }
@@ -604,6 +608,7 @@ describe('نقطة البيع', () => {
         expect(within(cart).getByText('بالغ')).toBeTruthy();
         expect(within(cart).getByText(/فرد/)).toBeTruthy();
 
+        await openShiftMenu();
         fireEvent.click(screen.getByRole('button', { name: 'أسعار البوفيه' }));
         expect(screen.getByRole('heading', { name: 'قائمة أسعار البوفيه' })).toBeTruthy();
         expect(screen.getByDisplayValue('بوفيه عائلي')).toBeTruthy();
@@ -616,6 +621,7 @@ describe('نقطة البيع', () => {
         stubFetch({ activeShift: BUFFET_SHIFT });
         renderScreen();
 
+        await openShiftMenu();
         fireEvent.click(await screen.findByRole('button', { name: 'تقرير البوفيه' }));
 
         expect(await screen.findByRole('heading', { name: 'تقرير البوفيه المفتوح' })).toBeTruthy();
@@ -634,6 +640,7 @@ describe('نقطة البيع', () => {
         const mock = stubFetch({ activeShift: SHIFT });
         renderScreen();
 
+        await openShiftMenu();
         fireEvent.click(await screen.findByRole('button', { name: 'سجل الفواتير' }));
 
         expect(await screen.findByRole('heading', { name: 'سجل فواتير الكاشير' })).toBeTruthy();
@@ -665,6 +672,7 @@ describe('نقطة البيع', () => {
         renderScreen();
 
         await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' });
+        await openShiftMenu();
         fireEvent.click(screen.getByRole('button', { name: 'إغلاق الوردية' }));
 
         expect(await screen.findByRole('heading', { name: 'إغلاق الوردية' })).toBeTruthy();
@@ -696,7 +704,9 @@ describe('نقطة البيع', () => {
         expect(screen.getByRole('tab', { name: /طلب 1/ }).getAttribute('aria-selected')).toBe('true');
 
         fireEvent.click(screen.getByRole('button', { name: '+ طلب جديد' }));
-        const secondTab = screen.getByRole('tab', { name: /طلب 2/ });
+        const addTabDialog = await screen.findByRole('dialog', { name: 'تأكيد الإجراء' });
+        fireEvent.click(within(addTabDialog).getByRole('button', { name: 'التبديل مع الاحتفاظ بالطلب' }));
+        const secondTab = await screen.findByRole('tab', { name: /طلب 2/ });
         expect(secondTab.getAttribute('aria-selected')).toBe('true');
         expect(screen.getByText('السلة فارغة — اختر صنفًا للبدء.')).toBeTruthy();
 
@@ -707,6 +717,8 @@ describe('نقطة البيع', () => {
 
         // Ctrl+1 يعود للطلب الأول دون فقدان سلته.
         fireEvent.keyDown(window, { key: '1', ctrlKey: true });
+        const switchTabDialog = await screen.findByRole('dialog', { name: 'تأكيد الإجراء' });
+        fireEvent.click(within(switchTabDialog).getByRole('button', { name: 'التبديل مع الاحتفاظ بالطلب' }));
         await waitFor(() => {
             expect(screen.getByRole('tab', { name: /طلب 1/ }).getAttribute('aria-selected')).toBe('true');
         });
@@ -779,6 +791,32 @@ describe('نقطة البيع', () => {
             expect(saleCalls(mock)).toHaveLength(1);
         });
         expect(callInit(saleCalls(mock)[0] as unknown[]).headers).toMatchObject({ 'X-Shift-Session-Id': '44' });
+    });
+
+    it('F4 من لوحة المفاتيح يُتمم البيع من اختصار الشاشة الجديد', async () => {
+        const mock = stubFetch({ activeShift: SHIFT });
+        renderScreen();
+
+        fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
+        fireEvent.keyDown(window, { key: 'F4' });
+
+        await waitFor(() => {
+            expect(saleCalls(mock)).toHaveLength(1);
+        });
+        expect(callInit(saleCalls(mock)[0] as unknown[]).headers).toMatchObject({ 'X-Shift-Session-Id': '44' });
+    });
+
+    it('F2 يركّز البحث وF9 يفتح سجل الفواتير للمخول', async () => {
+        mocks.role = 'manager';
+        stubFetch({ activeShift: SHIFT });
+        renderScreen();
+
+        const search = await screen.findByPlaceholderText(/F2/);
+        fireEvent.keyDown(window, { key: 'F2' });
+        expect(search).toHaveFocus();
+
+        fireEvent.keyDown(window, { key: 'F9' });
+        expect(await screen.findByRole('heading', { name: 'سجل فواتير الكاشير' })).toBeTruthy();
     });
 
     it('خصم نسبي يُوزَّع على البنود، واللقطة المعروضة هي ما يُرسل للخادم', async () => {

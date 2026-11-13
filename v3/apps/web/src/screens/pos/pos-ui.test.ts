@@ -1,5 +1,12 @@
 import { describe, expect, it } from 'vitest';
-import { bestSellers, type CatalogItem, groupCatalog, orderCatalog, searchScore, soldQty } from './pos-ui';
+import {
+    bestSellers,
+    type CatalogItem,
+    groupCatalog,
+    orderCatalog,
+    searchScore,
+    soldQty,
+} from './pos-ui';
 
 function item(overrides: Partial<CatalogItem> & Pick<CatalogItem, 'id' | 'name'>): CatalogItem {
     return {
@@ -9,6 +16,7 @@ function item(overrides: Partial<CatalogItem> & Pick<CatalogItem, 'id' | 'name'>
         barcode: '',
         stock: null,
         imageUrl: '',
+        hasImage: false,
         category: '',
         tier: '',
         isBuffet: false,

@@ -54,6 +54,7 @@ export default defineConfig({
     },
     build: {
         outDir: 'dist',
+        minify: 'terser',
         sourcemap: false,
         target: 'es2022',
         rollupOptions: {
