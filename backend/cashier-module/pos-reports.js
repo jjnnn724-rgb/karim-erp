@@ -70,6 +70,142 @@ async function cashierDeptMap() {
 }
 
 // ═══════════════════════════════════════════════════════════════════════════
+// 0) النظرة التنفيذية: كل ما تحتاجه لوحة القيادة في استدعاء واحد
+// ═══════════════════════════════════════════════════════════════════════════
+function previousRange(from, to) {
+    const fromDate = new Date(from + 'T00:00:00Z');
+    const toDate = new Date(to + 'T00:00:00Z');
+    const days = Math.max(1, Math.round((toDate - fromDate) / 86400000) + 1);
+    const prevTo = new Date(fromDate.getTime() - 86400000);
+    const prevFrom = new Date(prevTo.getTime() - (days - 1) * 86400000);
+    return { prevFrom: prevFrom.toISOString().slice(0, 10), prevTo: prevTo.toISOString().slice(0, 10), days };
+}
+
+const SALES_SELECT = `SELECT count(*)::int AS invoices,
+       round(sum(net)::numeric, 2) AS revenue,
+       round(sum(total)::numeric, 2) AS gross,
+       round(sum(vat)::numeric, 2) AS vat,
+       round(sum(discount)::numeric, 2) AS discount,
+       round(sum(pay_cash)::numeric, 2) AS cash,
+       round(sum(pay_network)::numeric, 2) AS card,
+       round(sum(COALESCE(pay_mobile, 0) + COALESCE(pay_credit, 0))::numeric, 2) AS other
+  FROM ys_mirror_orders
+ WHERE (doc_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date`;
+
+async function executiveReport({ from, to, departmentId }) {
+    const { prevFrom, prevTo } = previousRange(from, to);
+    const deptFilter = departmentId ? Number(departmentId) : null;
+
+    const deptJoin = `SELECT p.id, p.code, p.name_ar
+          FROM pos_departments p WHERE p.is_active = true`;
+    const cashiers = await cashierDeptMap();
+
+    // الأقسام المربوطة بكاشير فقط تظهر في التقرير التنفيذي
+    const posDeptRows = await pool.query(deptJoin);
+    const cashierDepts = new Set();
+    for (const list of cashiers.values()) {
+        for (const no of list) {
+            cashierDepts.add(String(no));
+        }
+    }
+
+    // إجمالي الفترة الحالية (مع فلتر قسم اختياري)
+    const cashierNos = (deptFilter && posDeptRows.rows.find(d => String(d.id) === String(deptFilter)))
+        ? (cashiers.get(posDeptRows.rows.find(d => String(d.id) === String(deptFilter)).legacy_dept_code) || [])
+        : null;
+    const deptCashierFilter = cashierNos && cashierNos.length
+        ? ` AND cashier_no = ANY($3)`
+        : '';
+    const deptParams = cashierNos && cashierNos.length ? [from, to, cashierNos] : [from, to];
+
+    const sum = async (fromDate, toDate, nos) => {
+        const params = nos ? [fromDate, toDate, nos] : [fromDate, toDate];
+        const extra = nos ? ' AND cashier_no = ANY($3)' : '';
+        const r = await pool.query(SALES_SELECT + extra, params);
+        return r.rows[0] || { invoices: 0, revenue: '0.00', gross: '0.00', vat: '0.00', discount: '0.00', cash: '0.00', card: '0.00', other: '0.00' };
+    };
+
+    const [cur, prev, daily, prevDaily, topRows] = await Promise.all([
+        sum(from, to, cashierNos),
+        sum(prevFrom, prevTo, cashierNos),
+        pool.query(`SELECT (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date AS day,
+                           count(*)::int AS invoices,
+                           round(sum(o.total)::numeric, 2) AS revenue
+                      FROM ys_mirror_orders o
+                     WHERE (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date${deptCashierFilter}
+                     GROUP BY 1 ORDER BY 1`, deptParams),
+        pool.query(`SELECT (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date AS day,
+                           count(*)::int AS invoices,
+                           round(sum(o.total)::numeric, 2) AS revenue
+                      FROM ys_mirror_orders o
+                     WHERE (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date${deptCashierFilter}
+                     GROUP BY 1 ORDER BY 1`, cashierNos ? [prevFrom, prevTo, cashierNos] : [prevFrom, prevTo]),
+        pool.query(`SELECT l->>'code' AS code, l->>'name' AS name,
+                            round(sum((l->>'qty')::numeric), 3) AS qty,
+                            round(sum((l->>'total')::numeric), 2) AS revenue
+                       FROM ys_mirror_orders o
+                       CROSS JOIN LATERAL jsonb_array_elements(o.lines::jsonb) AS l
+                      WHERE (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date${deptCashierFilter}
+                      GROUP BY l->>'code', l->>'name'
+                      ORDER BY sum((l->>'total')::numeric) DESC
+                      LIMIT 8`, deptParams),
+    ]);
+
+    const byDeptRows = await pool.query(`SELECT p.id, p.name_ar, p.legacy_dept_code
+        FROM pos_departments p
+        WHERE p.is_active = true`);
+
+    const deptSummary = [];
+    for (const d of byDeptRows.rows) {
+        const nos = cashiers.get(String(d.legacy_dept_code || '')) || [];
+        if (!nos.length) { continue; }
+        const s = await sum(from, to, nos);
+        if (Number(s.invoices) === 0 && Number(s.revenue) === 0) { continue; }
+        deptSummary.push({
+            id: String(d.id),
+            name: d.name_ar,
+            legacy_code: d.legacy_dept_code,
+            invoices: Number(s.invoices),
+            revenue: s.revenue,
+        });
+    }
+    deptSummary.sort((a, b) => Number(b.revenue) - Number(a.revenue));
+    const deptRevenueTotal = deptSummary.reduce((acc, d) => acc + Number(d.revenue), 0);
+
+    const withAvg = (s) => ({
+        invoices: Number(s.invoices),
+        revenue: s.revenue,
+        gross: s.gross,
+        vat: s.vat,
+        discount: s.discount,
+        cash: s.cash,
+        card: s.card,
+        other: s.other,
+        average_ticket: Number(s.invoices) > 0 ? money(Number(s.total ?? s.gross) / Number(s.invoices)) : '0.00',
+    });
+
+    return {
+        from, to,
+        previous: { from: prevFrom, to: prevTo },
+        department_id: deptFilter ? String(deptFilter) : null,
+        current: withAvg({ ...cur, total: cur.gross }),
+        previous_period: withAvg({ ...prev, total: prev.gross }),
+        daily: daily.rows.map((d) => ({ day: String(d.day).slice(0, 10), invoices: Number(d.invoices), revenue: d.revenue })),
+        previous_daily: prevDaily.rows.map((d) => ({ day: String(d.day).slice(0, 10), invoices: Number(d.invoices), revenue: d.revenue })),
+        by_department: deptSummary.map((d) => ({
+            ...d,
+            share: deptRevenueTotal > 0 ? Number(((Number(d.revenue) / deptRevenueTotal) * 100).toFixed(1)) : 0,
+        })),
+        top_products: topRows.rows.map((r) => ({ code: r.code, name: r.name, qty: num(r.qty), revenue: money(r.revenue) })),
+        payments: {
+            cash: money(cur.cash),
+            card: money(cur.card),
+            other: money(cur.other),
+        },
+    };
+}
+
+// ═══════════════════════════════════════════════════════════════════════════
 // 1) تقرير القسم
 // ═══════════════════════════════════════════════════════════════════════════
 async function departmentReport({ from, to, departmentId }) {
@@ -305,6 +441,18 @@ async function inventoryReport({ from, to, itemId, search }) {
 // ═══════════════════════════════════════════════════════════════════════════
 // المسارات
 // ═══════════════════════════════════════════════════════════════════════════
+router.get('/reports/executive', jwtAuth, requireReportRole(...REPORT_ROLES), async (req, res) => {
+    try {
+        const { from, to } = range(req);
+        const departmentId = req.query.department_id ? Number(req.query.department_id) : null;
+        const data = await executiveReport({ from, to, departmentId });
+        res.json(data);
+    } catch (err) {
+        logger.error({ err: { message: err.message }, requestId: req.requestId ?? null }, '[pos/reports] executive failed');
+        res.status(500).json({ error: 'REPORT_FAILED', message: 'تعذر إعداد النظرة التنفيذية' });
+    }
+});
+
 router.get('/reports/department', jwtAuth, requireReportRole(...REPORT_ROLES), async (req, res) => {
     try {
         const { from, to } = range(req);
@@ -347,4 +495,4 @@ router.get('/reports/inventory', jwtAuth, requireReportRole(...REPORT_ROLES), as
     }
 });
 
-module.exports = { router, departmentReport, productReport, inventoryReport };
+module.exports = { router, departmentReport, productReport, inventoryReport, executiveReport };

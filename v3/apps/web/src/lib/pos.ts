@@ -55,6 +55,66 @@ export const posDepartmentSchema = z
 
 export type PosDepartment = z.infer<typeof posDepartmentSchema>;
 
+// ─── النظرة التنفيذية /api/pos/reports/executive ───
+export const executiveSchema = z.object({
+    from: text,
+    to: text,
+    previous: z.object({ from: text, to: text }),
+    department_id: text.nullable(),
+    current: z.object({
+        invoices: num,
+        revenue: text,
+        gross: text,
+        vat: text,
+        discount: text,
+        cash: text,
+        card: text,
+        other: text,
+        average_ticket: text,
+    }),
+    previous_period: z.object({
+        invoices: num,
+        revenue: text,
+        gross: text,
+        vat: text,
+        discount: text,
+        cash: text,
+        card: text,
+        other: text,
+        average_ticket: text,
+    }),
+    daily: z.array(z.object({ day: text, invoices: num, revenue: text })),
+    previous_daily: z.array(z.object({ day: text, invoices: num, revenue: text })),
+    by_department: z.array(z.object({
+        id: text,
+        name: text,
+        legacy_code: text,
+        invoices: num,
+        revenue: text,
+        share: num,
+    })),
+    top_products: z.array(z.object({
+        code: text,
+        name: text,
+        qty: text,
+        revenue: text,
+    })),
+    payments: z.object({
+        cash: text,
+        card: text,
+        other: text,
+    }),
+});
+
+export type ExecutiveReport = z.infer<typeof executiveSchema>;
+
+/** النظرة التنفيذية: إيرادات/فواتير/ضريبة/مقارنة بالفترة السابقة + توزيع القسم/المنتج. */
+export async function fetchExecutiveReport(range: { from: string; to: string; departmentId?: string }, signal?: AbortSignal): Promise<ExecutiveReport> {
+    const qs = new URLSearchParams({ from: range.from, to: range.to });
+    if (range.departmentId) { qs.set('department_id', range.departmentId); }
+    return fetchJson(executiveSchema, `/api/pos/reports/executive?${qs}`, token(), opts(signal));
+}
+
 export const posProductSchema = z
     .object({
         id: idText,
