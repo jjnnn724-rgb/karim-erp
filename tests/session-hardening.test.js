@@ -43,12 +43,12 @@ function makeReq(overrides = {}) {
     }, overrides);
 }
 
-/** users.id بلا DEFAULT في هذا المخطط — التطبيق نفسه يولّده من MAX(id)+1. */
+/** ids عشوائية — MAX(id)+1 يتصادم مع زملاء الـworker المتوازيين */
 async function createUser(username, role = 'manager') {
     const hash = await bcrypt.hash(PASSWORD, 12);
     const r = await pool.query(
         `INSERT INTO users (id, username, password, role, name, active, must_change_password)
-         VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM users), $1, $2, $3, $4, TRUE, FALSE) RETURNING id;`,
+         VALUES (900000000000000 + floor(random() * 99999999999999)::bigint, $1, $2, $3, $4, TRUE, FALSE) RETURNING id;`,
         [username, hash, role, 'Session Probe']
     );
     return Number(r.rows[0].id);

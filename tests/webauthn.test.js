@@ -59,7 +59,7 @@ async function createUser() {
     const hash = await bcrypt.hash(PASSWORD, 12);
     const r = await pool.query(
         `INSERT INTO users (id, username, password, role, name, active, must_change_password)
-         VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM users), $1, $2, 'admin', $3, TRUE, FALSE)
+         VALUES (900000000000000 + floor(random() * 99999999999999)::bigint, $1, $2, 'admin', $3, TRUE, FALSE)
          RETURNING id;`,
         [username, hash, 'Passkey Probe']
     );

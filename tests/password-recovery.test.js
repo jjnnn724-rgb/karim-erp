@@ -77,7 +77,7 @@ async function createTestUser() {
     const r = await pool.query(
         // ids البسطة العشوائية بدل MAX(id)+1 — كان يتصادم مع زملاء الـworker المتوازيين
         `INSERT INTO users (id, username, password, role, name, active)
-         VALUES (900000000000000000 + floor(random() * 99999999999999)::bigint, $1, $2, 'cashier', $3, true) RETURNING id;`,
+         VALUES (900000000000000 + floor(random() * 99999999999999)::bigint, $1, $2, 'cashier', $3, true) RETURNING id;`,
         [MARK + '-user', hash, 'موظف اختبار الاستعادة']
     );
     return r.rows[0].id;
@@ -89,7 +89,7 @@ async function getAdminUser() {
     // ON CONFLICT يقاوم بقايا تشغيل سابق فشل قبل afterAll — يعيد id الموجود
     const r = await pool.query(
         `INSERT INTO users (id, username, password, role, name, active)
-         VALUES (900000000000000000 + floor(random() * 99999999999999)::bigint, $1, $2, 'admin', $3, true)
+         VALUES (900000000000000 + floor(random() * 99999999999999)::bigint, $1, $2, 'admin', $3, true)
          ON CONFLICT (username) DO UPDATE SET name = EXCLUDED.name
          RETURNING id;`,
         [MARK + '-admin', hash, 'Admin Test']

@@ -58,10 +58,9 @@ function userFromTicket(ticket) {
 
 async function createUser(username, { mustChange = false, role = 'admin' } = {}) {
     const hash = await bcrypt.hash(PASSWORD, 12);
-    // users.id بلا DEFAULT في هذا المخطط — التطبيق نفسه يولّده من MAX(id)+1.
     const r = await pool.query(
         `INSERT INTO users (id, username, password, role, name, active, must_change_password)
-         VALUES ((SELECT COALESCE(MAX(id), 0) + 1 FROM users), $1, $2, $3, $4, TRUE, $5) RETURNING id;`,
+         VALUES (900000000000000 + floor(random() * 99999999999999)::bigint, $1, $2, $3, $4, TRUE, $5) RETURNING id;`,
         [username, hash, role, 'MFA Probe', mustChange]
     );
     return Number(r.rows[0].id);

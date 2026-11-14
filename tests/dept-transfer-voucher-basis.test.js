@@ -80,6 +80,8 @@ async function wipe() {
     await pool.query('DELETE FROM inventory_ledger WHERE inventory_id = ANY($1::bigint[]) AND (reference_type = '
         + "'inventory_transfer' OR (reference_type = 'dispatch_receipt' AND reference_id = ANY($2::text[])))",
     [[MEAT, KUNAFA, SALT], DISPATCH_IDS.map((id) => String(id))]);
+    // أي دفتر يشير إلى مخازن المتجر الموسومة يُمحى أولًا — وإلا منع ارتباك زملائي السويتات
+    await pool.query('DELETE FROM inventory_ledger WHERE location_id IN (SELECT id FROM inventory_locations WHERE code = ANY($1::text[]))', [NEW_STORE_CODES]);
     await pool.query('DELETE FROM expenses WHERE notes LIKE ' + "'transfer:%'");
     await pool.query('DELETE FROM inventory_transfer_items WHERE transfer_id IN (SELECT id FROM inventory_transfers WHERE notes LIKE ' + "'ZZV%')");
     await pool.query('DELETE FROM inventory_transfer_events WHERE transfer_id IN (SELECT id FROM inventory_transfers WHERE notes LIKE ' + "'ZZV%')");
