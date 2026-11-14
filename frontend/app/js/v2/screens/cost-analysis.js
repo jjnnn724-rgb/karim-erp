@@ -24,13 +24,13 @@
  * THIS SCREEN NEVER WRITES.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.332';
-import { barChart, donutChart } from '../charts.js?v=4.9.332';
-import { openInAppReport } from '../report-viewer.js?v=4.9.332';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.333';
+import { barChart, donutChart } from '../charts.js?v=4.9.333';
+import { openInAppReport } from '../report-viewer.js?v=4.9.333';
 import {
     fetchCostAnalysis, fetchCostAnalysisDept, fetchCostAnalysisPrintHtml, firstOfMonth, riyadhToday,
-} from '../data/finance-repo.js?v=4.9.332';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.332';
+} from '../data/finance-repo.js?v=4.9.333';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.333';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

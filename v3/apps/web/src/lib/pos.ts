@@ -652,6 +652,100 @@ export async function fetchPosProducts(departmentId: string, signal?: AbortSigna
 }
 
 /** كميات الأصناف المباعة برمز Yara خلال نافذة أيام — أساس الترتيب الذكي للكتالوج. */
+// ─── تقارير المنشأة (pos/reports/*) — admin/manager/accountant فقط ───
+export const reportDepartmentRowSchema = z.object({
+    department_id: text,
+    code: text,
+    name: text,
+    legacy_code: text,
+    cashiers: z.array(text),
+    invoices: num,
+    net: text,
+    total: text,
+    vat: text,
+    discount: text,
+    cash: text,
+    card: text,
+    other: text,
+    average_ticket: text,
+    accounting_revenue: text,
+    revenue_entries: num,
+});
+
+export const reportProductRowSchema = z.object({
+    code: text,
+    name: text,
+    qty: text,
+    revenue: text,
+    vat: text,
+    discount: text,
+    invoices: num,
+    average_price: text,
+});
+
+export const reportInventoryRowSchema = z.object({
+    id: text,
+    date: text,
+    type: text,
+    reference_type: text,
+    reason: text,
+    item_id: text,
+    item_name: text,
+    item_category: text,
+    unit: text,
+    quantity: text,
+    direction: z.enum(['in', 'out']),
+    unit_cost: text,
+    value: text,
+});
+
+export const reportDepartmentSchema = z.object({
+    from: text,
+    to: text,
+    rows: z.array(reportDepartmentRowSchema),
+    totals: z.record(z.string(), z.union([z.string(), z.number()])),
+});
+export type ReportDepartment = z.infer<typeof reportDepartmentSchema>;
+
+export const reportProductSchema = z.object({
+    from: text,
+    to: text,
+    rows: z.array(reportProductRowSchema),
+    daily: z.array(z.object({ day: text, revenue: text, qty: text })),
+    totals: z.record(z.string(), z.union([z.string(), z.number()])),
+});
+export type ReportProduct = z.infer<typeof reportProductSchema>;
+
+export const reportInventorySchema = z.object({
+    from: text,
+    to: text,
+    rows: z.array(reportInventoryRowSchema),
+    totals: z.record(z.string(), z.union([z.string(), z.number()])),
+});
+export type ReportInventory = z.infer<typeof reportInventorySchema>;
+
+/** تقرير الأقسام: إيرادات/فواتير/متوسط فاتورة/ضريبة/نقدي/شبكة لكل قسم وفترة. */
+export async function fetchDepartmentReport(range: { from: string; to: string; departmentId?: string }, signal?: AbortSignal): Promise<ReportDepartment> {
+    const qs = new URLSearchParams({ from: range.from, to: range.to });
+    if (range.departmentId) { qs.set('department_id', range.departmentId); }
+    return fetchJson(reportDepartmentSchema, `/api/pos/reports/department?${qs}`, token(), opts(signal));
+}
+
+/** تقرير صنف: كمية/إيراد/ضريبة/خصومات/فواتير/متوسط سعر — من خطوط الفواتير الحقيقية. */
+export async function fetchProductReport(range: { from: string; to: string; productCode?: string; productName?: string }, signal?: AbortSignal): Promise<ReportProduct> {
+    const qs = new URLSearchParams({ from: range.from, to: range.to });
+    if (range.productCode) { qs.set('product_code', range.productCode); }
+    if (range.productName) { qs.set('product_name', range.productName); }
+    return fetchJson(reportProductSchema, `/api/pos/reports/product?${qs}`, token(), opts(signal));
+}
+
+/** تقرير المخزن: كل حركة بكمية وقيمة وسببها — للفترة المحددة. */
+export async function fetchInventoryReport(range: { from: string; to: string; search?: string }, signal?: AbortSignal): Promise<ReportInventory> {
+    const qs = new URLSearchParams({ from: range.from, to: range.to });
+    if (range.search) { qs.set('search', range.search); }
+    return fetchJson(reportInventorySchema, `/api/pos/reports/inventory?${qs}`, token(), opts(signal));
+}
+
 /**
  * كل أصناف المنيو (كل الأقسام) — لإدارة الصور من ترس الضبط.
  * department_id اختياري في الـbackend: بدونه يرجّع الكتالوج كاملًا.

@@ -11,8 +11,8 @@
  *   • /productions (نقطة التوليد الجديدة) — تنفيذ وسجل التوليد.
  * كل قراءة قراءة فقط؛ كل كتابة تمر بأبواب الخادم التي تتحقق وتُرحّل.
  */
-import { apiFetch } from '../../core/api.js?v=4.9.332';
-import { fetchDispatches, itemsSummary } from './dispatch-repo.js?v=4.9.332';
+import { apiFetch } from '../../core/api.js?v=4.9.333';
+import { fetchDispatches, itemsSummary } from './dispatch-repo.js?v=4.9.333';
 
 export const ADDITION_CATEGORY = 'إضافات قسم';
 export const PRODUCTION_CATEGORY = 'توليد';

@@ -28,13 +28,13 @@
  * لا كتابة، ولا مساس بالمخزن، ولا معالجات inline، والرموز --erp-* فقط.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.332';
-import { formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.332';
-import { openInAppReport } from '../report-viewer.js?v=4.9.332';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.333';
+import { formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.333';
+import { openInAppReport } from '../report-viewer.js?v=4.9.333';
 import {
     fetchItemSales, fetchItemInvoices, fetchOrderDetail, fetchReceiptHtml,
     fetchItemSalesSheetHtml, rangeError, YARA_MAX_SPAN_DAYS,
-} from '../data/yara-reports-repo.js?v=4.9.332';
+} from '../data/yara-reports-repo.js?v=4.9.333';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

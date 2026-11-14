@@ -10,6 +10,7 @@
 import { useMemo, useState } from 'react';
 import '../styles/pos-reports.css';
 import { useQuery } from '@tanstack/react-query';
+import { fetchDepartmentReport, fetchInventoryReport, fetchPosDepartments, fetchProductReport } from '../lib/pos';
 import { Badge, Button, Input } from '../ui';
 import { errorMessage } from '../lib/reporting';
 import { useToast } from '../ui/Toast';
@@ -50,24 +51,14 @@ export function PosReports() {
 
     const departmentsQuery = useQuery({
         queryKey: ['pos-departments'],
-        queryFn: async () => {
-            const res = await fetch('/api/pos/departments', { headers: { Accept: 'application/json' } });
-            if (!res.ok) { throw new Error('تعذر تحميل الأقسام'); }
-            return res.json() as Promise<Array<{ id: string; name_ar: string }>>;
-        },
+        queryFn: ({ signal }) => fetchPosDepartments(signal),
         staleTime: 300000,
         retry: 0,
     });
 
     const departmentQuery = useQuery({
         queryKey: ['pos-report-department', from, to, departmentId],
-        queryFn: async () => {
-            const qs = new URLSearchParams({ from, to });
-            if (departmentId) { qs.set('department_id', departmentId); }
-            const res = await fetch(`/api/pos/reports/department?${qs}`, { headers: { Accept: 'application/json' } });
-            if (!res.ok) { throw new Error('تعذر إعداد تقرير الأقسام'); }
-            return res.json() as Promise<{ rows: DepartmentRow[]; totals: Record<string, string | number> }>;
-        },
+        queryFn: ({ signal }) => fetchDepartmentReport(departmentId ? { from, to, departmentId } : { from, to }, signal),
         enabled: tab === 'department',
         staleTime: 30_000,
         retry: 0,
@@ -75,14 +66,7 @@ export function PosReports() {
 
     const productQuery = useQuery({
         queryKey: ['pos-report-product', from, to, productCode, productName],
-        queryFn: async () => {
-            const qs = new URLSearchParams({ from, to });
-            if (productCode) { qs.set('product_code', productCode); }
-            if (productName) { qs.set('product_name', productName); }
-            const res = await fetch(`/api/pos/reports/product?${qs}`, { headers: { Accept: 'application/json' } });
-            if (!res.ok) { throw new Error('تعذر إعداد تقرير الأصناف'); }
-            return res.json() as Promise<{ rows: ProductRow[]; totals: Record<string, string | number> }>;
-        },
+        queryFn: ({ signal }) => fetchProductReport({ from, to, ...(productCode ? { productCode } : {}), ...(productName ? { productName } : {}) }, signal),
         enabled: tab === 'product',
         staleTime: 30_000,
         retry: 0,
@@ -90,13 +74,7 @@ export function PosReports() {
 
     const inventoryQuery = useQuery({
         queryKey: ['pos-report-inventory', from, to, itemSearch],
-        queryFn: async () => {
-            const qs = new URLSearchParams({ from, to });
-            if (itemSearch) { qs.set('search', itemSearch); }
-            const res = await fetch(`/api/pos/reports/inventory?${qs}`, { headers: { Accept: 'application/json' } });
-            if (!res.ok) { throw new Error('تعذر إعداد تقرير المخزن'); }
-            return res.json() as Promise<{ rows: InventoryRow[]; totals: Record<string, string | number> }>;
-        },
+        queryFn: ({ signal }) => fetchInventoryReport(itemSearch ? { from, to, search: itemSearch } : { from, to }, signal),
         enabled: tab === 'inventory',
         staleTime: 30_000,
         retry: 0,
