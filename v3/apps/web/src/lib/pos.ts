@@ -1051,6 +1051,74 @@ export async function updatePosProductPrice(productId: string, price: number): P
     });
 }
 
+// ─── إدارة الأصناف من داخل الكاشير (ترس الضبط) — للأدوار الأعلى من الكاشير فقط ───
+// الـباك-إند نفسه لا يوافق إلا manager/admin/kitchen/sous_chef على POST/PUT/DELETE
+// والمسعر admin/accountant فقط. هذه الدوال لا تتجاوز أي صلاحية؛ هي فقط واجهة.
+export interface PosProductPayload {
+    name_ar: string;
+    name_en?: string;
+    barcode?: string;
+    price: number;
+    cost_price?: number | null;
+    vat_rate?: number;
+    category?: string;
+    unit?: string;
+    department_id?: number | null;
+    is_active?: boolean;
+}
+
+function productBody(payload: PosProductPayload) {
+    const deptId = payload.department_id ?? null;
+    return {
+        ...payload,
+        department_id: deptId,
+        department_ids: deptId != null ? [deptId] : [],
+    };
+}
+
+function parseProductId(productId: string | number): number {
+    const id = Number(productId);
+    if (!Number.isInteger(id) || id <= 0) {
+        throw new Error('معرّف الصنف غير صحيح');
+    }
+    return id;
+}
+
+export async function createPosProduct(payload: PosProductPayload): Promise<PosProduct> {
+    if (!payload.name_ar?.trim()) {
+        throw new Error('اسم الصنف مطلوب');
+    }
+    if (!Number.isFinite(Number(payload.price)) || Number(payload.price) < 0) {
+        throw new Error('سعر الصنف غير صالح');
+    }
+    return fetchJson(posProductSchema, '/api/pos/products', token(), {
+        method: 'POST',
+        body: productBody(payload),
+    });
+}
+
+export async function updatePosProduct(productId: string | number, payload: PosProductPayload): Promise<PosProduct> {
+    const id = parseProductId(productId);
+    if (!payload.name_ar?.trim()) {
+        throw new Error('اسم الصنف مطلوب');
+    }
+    if (!Number.isFinite(Number(payload.price)) || Number(payload.price) < 0) {
+        throw new Error('سعر الصنف غير صالح');
+    }
+    return fetchJson(posProductSchema, `/api/pos/products/${String(id)}`, token(), {
+        method: 'PUT',
+        body: productBody(payload),
+    });
+}
+
+/** أرشفة (soft-delete) — لا حذف مادي: يفصل المنتج من القوائم مع بقاء التاريخ. */
+export async function archivePosProduct(productId: string | number): Promise<{ id: string; status: string }> {
+    const id = parseProductId(productId);
+    return fetchJson(z.object({ id: idText, status: z.string() }).passthrough(), `/api/pos/products/${String(id)}`, token(), {
+        method: 'DELETE',
+    });
+}
+
 export async function removePosProductImage(productId: string): Promise<{ id: string; image_url: null }> {
     const id = Number(productId);
     if (!Number.isInteger(id) || id <= 0) {

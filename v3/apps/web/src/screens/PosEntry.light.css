@@ -883,3 +883,89 @@
     border-color: #C83D45;
     color: #A8303A;
 }
+
+/* ═══════════════════════════════════════════════════════════════════════════
+   ULTIMATE POS V2 — Light Enterprise IDENTITY v2 (2026-11-14)
+   أبيض مهيمن · حدود رقيقة بدل الظلال · الأخضر لأفعال البيع · لا تدرجات
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.pos-entry--light {
+    --pos-radius: 14px;
+    --pos-focus: #2563EB;
+    --pos-hairline: #E5E9EE;
+}
+
+/* الشريط العلوي — أبيض، خط سفلي رفيع، بلا ظلال */
+.pos-entry--light .pos-topbar {
+    background: #FFFFFF;
+    border: 0;
+    border-block-end: 1px solid var(--pos-hairline);
+    box-shadow: none;
+    padding-block: 0.35rem;
+}
+.pos-entry--light .pos-topbar__crest {
+    background: #EAF6EF;
+    border: 1px solid #CBE0D5;
+    border-radius: 12px;
+}
+.pos-entry--light .pos-topbar__brand-copy strong { color: #202A35; }
+.pos-entry--light .pos-topbar__brand-copy small { color: #8B95A3; letter-spacing: 0.08em; }
+
+/* أيقونات الشريط — زر ترس الضبط مميز بالأخضر */
+.pos-entry--light .pos-icon-btn { border-radius: 11px; }
+.pos-entry--light .pos-icon-btn--settings { background: #EAF6EF; border-color: #CBE0D5; color: #117247; }
+
+/* التابات — إشارة سفلية فقط */
+.pos-entry--light .pos-tab { border: 0; border-radius: 10px 10px 0 0; background: transparent; color: #687586; }
+.pos-entry--light .pos-tab.is-active { border: 0; background: transparent; color: #117247; box-shadow: inset 0 -2.5px 0 #168653; }
+
+/* رقائق الفئات — أبيض + أخضر ممتلئ للنشط */
+.pos-entry--light .pos-category { border-radius: 999px; border-color: #E5E9EE; }
+.pos-entry--light .pos-category.is-active { box-shadow: 0 2px 10px -4px rgb(22 134 83 / 55%); }
+
+/* بطاقات الأصناف — حدود رقيقة، hover مؤسسي */
+.pos-entry--light .pos-product {
+    border-radius: var(--pos-radius);
+    box-shadow: 0 1px 2px rgb(32 42 53 / 5%);
+}
+.pos-entry--light .pos-product:hover {
+    border-color: #168653;
+    box-shadow: 0 14px 30px -18px rgb(22 134 83 / 45%), 0 1px 2px rgb(32 42 53 / 6%);
+}
+.pos-entry--light .pos-product__price { color: #202A35; font-size: 0.82rem; }
+.pos-entry--light .pos-product__add { border-radius: 10px; }
+.pos-entry--light .pos-product__media { border-radius: var(--pos-radius) var(--pos-radius) 0 0; }
+
+/* البحث — واضح من النظرة الأولى */
+.pos-entry--light .pos-search__input {
+    border-radius: 12px;
+    font-size: 0.95rem;
+    background: #FDFDFD;
+}
+.pos-entry--light .pos-search__input:focus-visible {
+    outline: 2px solid #2563EB;
+    border-color: #2563EB;
+    box-shadow: 0 0 0 4px rgb(37 99 235 / 12%);
+    background: #FFFFFF;
+}
+
+/* السلة — لوحة بيضاء مثبتة */
+.pos-entry--light .pos-cart { border-radius: 16px; box-shadow: 0 1px 3px rgb(32 42 53 / 8%); }
+.pos-entry--light .pos-cart__head h2 { font-size: 0.95rem; }
+.pos-entry--light .pos-cart__checkout,
+.pos-entry--light .pos-cart__checkout-main {
+    background: #168653;
+    color: #FFFFFF;
+    font-weight: 800;
+    letter-spacing: 0.01em;
+}
+.pos-entry--light .pos-cart__checkout:hover:not(:disabled) { background: #117247; }
+.pos-entry--light .pos-cart__due strong { color: #168653; }
+
+/* الإجمالي — أرقام متراصة */
+.pos-entry--light .pos-totals dd,
+.pos-entry--light .pos-cart__due strong,
+.pos-entry--light .pos-cart__line-total { font-variant-numeric: tabular-nums; }
+
+/* focus مرئي مستقل عن اللون */
+.pos-entry--light :where(button, input, select, [tabindex]):focus-visible { outline: 2px solid #2563EB; outline-offset: 1px; }

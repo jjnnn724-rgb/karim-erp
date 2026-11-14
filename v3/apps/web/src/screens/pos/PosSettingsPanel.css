@@ -1,0 +1,275 @@
+/* PosSettingsPanel — «ترس الضبط» (إدارة الأصناف والأسعار — صلاحيات إدارية فقط)
+   Light Enterprise: أبيض مهيمن، حدود دقيقة، بدون ظلال ثقيلة — ULTIMATE POS V2 tokens */
+
+.pos-settings {
+    position: fixed;
+    inset: 0;
+    z-index: 70;
+    display: grid;
+    place-items: center;
+    padding: 1rem;
+}
+
+.pos-settings__scrim {
+    position: absolute;
+    inset: 0;
+    border: 0;
+    background: rgb(32 42 53 / 45%);
+    backdrop-filter: blur(3px);
+    cursor: pointer;
+}
+
+.pos-settings__panel {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    inline-size: min(46rem, 100%);
+    max-block-size: 86dvh;
+    border: 1px solid #E5E9EE;
+    border-radius: 16px;
+    background: #FFFFFF;
+    box-shadow: 0 24px 48px -24px rgb(32 42 53 / 35%);
+    overflow: hidden;
+}
+
+.pos-settings__panel--denied {
+    padding: 1.5rem;
+    gap: 0.75rem;
+}
+
+.pos-settings__panel--denied h2 { margin: 0; font-size: 1.05rem; color: #C83D45; }
+.pos-settings__panel--denied p { margin: 0; color: #687586; font-size: 0.85rem; line-height: 1.7; }
+
+/* ─── الشريط العلوي ─── */
+.pos-settings__bar {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.75rem 0.9rem;
+    border-block-end: 1px solid #E5E9EE;
+    background: #FFFFFF;
+}
+
+.pos-settings__title {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-inline-size: 0;
+}
+
+.pos-settings__title svg {
+    flex: 0 0 auto;
+    padding: 0.35rem;
+    border-radius: 10px;
+    background: #EAF6EF;
+    color: #168653;
+}
+
+.pos-settings__title h2 { margin: 0; font-size: 0.98rem; font-weight: 800; color: #202A35; line-height: 1.25; }
+.pos-settings__title p { margin: 0; font-size: 0.68rem; color: #687586; line-height: 1.4; }
+
+.pos-settings__close {
+    margin-inline-start: auto;
+    inline-size: 2rem;
+    block-size: 2rem;
+    border: 1px solid #E5E9EE;
+    border-radius: 9px;
+    background: #FFFFFF;
+    color: #687586;
+    font-size: 1.1rem;
+    line-height: 1;
+    cursor: pointer;
+}
+.pos-settings__close:hover { background: #F1F4F6; color: #202A35; }
+.pos-settings__close:focus-visible { outline: 2px solid #2563EB; outline-offset: 1px; }
+
+/* ─── إشعار الصلاحيات ─── */
+.pos-settings__notice {
+    margin: 0;
+    padding: 0.45rem 0.9rem;
+    border-block-end: 1px solid #FFF0D6;
+    background: #FFF5E5;
+    color: #8A5A13;
+    font-size: 0.7rem;
+    line-height: 1.6;
+}
+.pos-settings__notice b { color: #B7791F; }
+
+/* ─── التابات ─── */
+.pos-settings__tabs {
+    display: flex;
+    gap: 0.25rem;
+    padding: 0.5rem 0.9rem 0;
+    border-block-end: 1px solid #E5E9EE;
+    background: #FFFFFF;
+}
+.pos-settings__tab {
+    padding: 0.5rem 0.9rem;
+    border: 0;
+    border-block-end: 2px solid transparent;
+    background: transparent;
+    color: #687586;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    margin-block-end: -1px;
+}
+.pos-settings__tab:hover { color: #202A35; }
+.pos-settings__tab.is-active { border-block-end-color: #168653; color: #117247; }
+.pos-settings__tab:focus-visible { outline: 2px solid #2563EB; outline-offset: -2px; }
+
+/* ─── الجسم ─── */
+.pos-settings__body {
+    flex: 1 1 auto;
+    min-block-size: 0;
+    overflow-y: auto;
+    overscroll-behavior: contain;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 0.7rem 0.9rem 0.9rem;
+}
+
+.pos-settings__toolbar {
+    display: flex;
+    gap: 0.5rem;
+    align-items: center;
+}
+.pos-settings__toolbar .erp-control,
+.pos-settings__toolbar input[type="search"] {
+    flex: 1 1 auto;
+    min-inline-size: 0;
+    block-size: 2.5rem;
+    border: 1px solid #E5E9EE;
+    border-radius: 10px;
+    padding-inline: 0.65rem;
+    background: #FFFFFF;
+    color: #202A35;
+    font-size: 0.88rem;
+}
+.pos-settings__toolbar input[type="search"]:focus-visible { outline: 2px solid #2563EB; border-color: #2563EB; }
+.pos-settings__toolbar button { flex: 0 0 auto; block-size: 2.5rem; }
+
+.pos-settings__state { margin: 0.6rem 0.2rem; color: #687586; font-size: 0.82rem; }
+.pos-settings__state--error { color: #C83D45; font-weight: 600; }
+
+/* ─── نموذج الصنف ─── */
+.pos-settings__form {
+    display: flex;
+    flex-direction: column;
+    gap: 0.55rem;
+    padding: 0.6rem;
+    border: 1px solid #E5E9EE;
+    border-radius: 12px;
+    background: #F7F8FA;
+}
+.pos-settings__grid {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    gap: 0.45rem 0.6rem;
+}
+@media (max-width: 640px) {
+    .pos-settings__grid { grid-template-columns: 1fr; }
+}
+.pos-settings__grid label {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    font-size: 0.68rem;
+    font-weight: 600;
+    color: #687586;
+}
+.pos-settings__grid .erp-control,
+.pos-settings__grid input {
+    block-size: 2.3rem;
+    border: 1px solid #E5E9EE;
+    border-radius: 8px;
+    padding-inline: 0.55rem;
+    background: #FFFFFF;
+    color: #202A35;
+    font-size: 0.85rem;
+}
+.pos-settings__grid select.erp-control { padding-inline: 0.45rem; }
+.pos-settings__grid .erp-control:focus-visible,
+.pos-settings__grid input:focus-visible { outline: 2px solid #2563EB; border-color: #2563EB; }
+.pos-settings__check { flex-direction: row !important; align-items: center; gap: 0.4rem !important; align-self: end; padding-block-end: 0.35rem; }
+.pos-settings__check input { inline-size: 1.1rem; block-size: 1.1rem; }
+
+.pos-settings__form-error {
+    margin: 0;
+    padding: 0.35rem 0.6rem;
+    border-radius: 8px;
+    background: #FCEEEF;
+    border: 1px solid #F5C6CC;
+    color: #C83D45;
+    font-size: 0.75rem;
+    font-weight: 600;
+}
+.pos-settings__form-actions { display: flex; gap: 0.5rem; justify-content: flex-end; }
+
+/* ─── القائمة ─── */
+.pos-settings__list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+}
+
+.pos-settings__row {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.45rem 0.55rem;
+    border: 1px solid #E5E9EE;
+    border-radius: 10px;
+    background: #FFFFFF;
+}
+.pos-settings__row:hover { border-color: #CBE0D5; }
+.pos-settings__row.is-archived { opacity: 0.55; }
+
+.pos-settings__row-main { flex: 1 1 auto; min-inline-size: 0; display: flex; flex-direction: column; gap: 0.1rem; }
+.pos-settings__row-main strong { font-size: 0.85rem; font-weight: 700; color: #202A35; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+.pos-settings__row-meta { display: flex; gap: 0.4rem; align-items: center; flex-wrap: wrap; }
+.pos-settings__row-meta em { font-style: normal; font-size: 0.64rem; color: #8B95A3; background: #F1F4F6; border-radius: 999px; padding: 0.05rem 0.45rem; }
+.pos-settings__flag-off { color: #C83D45 !important; background: #FCEEEF !important; }
+
+.pos-settings__row-actions { display: flex; align-items: center; gap: 0.35rem; flex: 0 0 auto; }
+.pos-settings__price { font-variant-numeric: tabular-nums; font-size: 0.85rem; font-weight: 800; color: #202A35; min-inline-size: 4.5rem; text-align: end; }
+.pos-settings__price-edit input {
+    inline-size: 6.5rem;
+    block-size: 2rem;
+    border: 1px solid #E5E9EE;
+    border-radius: 8px;
+    padding-inline: 0.4rem;
+    text-align: center;
+    font-variant-numeric: tabular-nums;
+    background: #FFFFFF;
+    color: #202A35;
+    font-size: 0.85rem;
+}
+.pos-settings__price-edit input:focus-visible { outline: 2px solid #2563EB; border-color: #2563EB; }
+
+.pos-settings__action {
+    block-size: 2rem;
+    padding-inline: 0.65rem;
+    border: 1px solid #E5E9EE;
+    border-radius: 8px;
+    background: #FFFFFF;
+    color: #117247;
+    font-size: 0.74rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.pos-settings__action:hover:not(:disabled) { border-color: #168653; background: #EAF6EF; }
+.pos-settings__action:disabled { opacity: 0.45; cursor: not-allowed; }
+.pos-settings__action--danger { color: #C83D45; }
+.pos-settings__action--danger:hover:not(:disabled) { border-color: #C83D45; background: #FCEEEF; }
+
+.pos-settings__empty { padding: 1.5rem; text-align: center; color: #8B95A3; font-size: 0.82rem; }
+
+/* زر الترس في الشريط العلوي للكاشير — مميز بلون الهوية */
+.pos-icon-btn--settings { color: #117247; border-color: #CBE0D5; background: #EAF6EF; }
+.pos-icon-btn--settings:hover { background: #DDF0E6; border-color: #168653; color: #117247; }

@@ -16,8 +16,8 @@
  * حفظ لهدف admin (مرآة features/permissions.js:26 و:53).
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.318';
-import { fetchUsers, userToRow } from './portal-repo.js?v=4.9.318';
+import { apiFetch } from '../../core/api.js?v=4.9.319';
+import { fetchUsers, userToRow } from './portal-repo.js?v=4.9.319';
 
 /** بوابة الكتابة مرآة للخادم: requireRole('admin') في الأبواب الثلاثة. */
 export const PERM_WRITE_ROLES = ['admin'];

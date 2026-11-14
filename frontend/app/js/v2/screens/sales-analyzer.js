@@ -7,15 +7,15 @@
  * (نفس قاعدة 04/07/08). الصلاحية قرار الخادم.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.318';
-import { formatInt, formatMoney } from '../data/reports-repo.js?v=4.9.318';
-import { openInAppReport } from '../report-viewer.js?v=4.9.318';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.319';
+import { formatInt, formatMoney } from '../data/reports-repo.js?v=4.9.319';
+import { openInAppReport } from '../report-viewer.js?v=4.9.319';
 import {
     fetchItemSales, fetchYaraOrders, fetchOrderDetail, arSearchIncludes,
     rangeError, analysisLabel, safeTotals, SA_GROUPS,
-} from '../data/yara-reports-repo.js?v=4.9.318';
-import { ensureXlsx } from '../vendor.js?v=4.9.318';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.318';
+} from '../data/yara-reports-repo.js?v=4.9.319';
+import { ensureXlsx } from '../vendor.js?v=4.9.319';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.319';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
