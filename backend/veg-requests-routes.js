@@ -132,6 +132,37 @@ router.post('/', jwtAuth, requireRole(...CREATE_ROLES), async (req, res, next) =
                 });
             }
         } catch (_) { /* الإشعار اللحظي لا يوقف العملية */ }
+        // إشعار واتساب للمشرفين (طابور المخزن/المورد) — أفضل جهد، لا يعطل الحفظ ولا يرمي
+        try {
+            if (String(process.env.WHATSAPP_ENABLED || '').toLowerCase() === 'true') {
+                const jids = String(process.env.WHATSAPP_MANAGER_JIDS || '')
+                    .split(',').map((s) => s.replace(/\D/g, '').trim()).filter((s) => s.length >= 7).slice(0, 5);
+                if (jids.length) {
+                    const mod = require('./whatsapp-engine');
+                    const engine = (typeof mod.getEngine === 'function' ? mod.getEngine() : null)
+                        || mod.whatsappEngine || mod.engine || null;
+                    const sender = engine && engine.sender ? engine.sender : null;
+                    if (sender && typeof sender.enqueue === 'function') {
+                        const names = checked.items.slice(0, 8).map((i) => i.name).join('، ');
+                        const text = [
+                            '🌿 طلبية الخضروات والأعشاب — جديدة',
+                            `رقم: ${requestNo}`,
+                            `بواسطة: ${saved.created_by_name} (${saved.created_by_role})`,
+                            `عدد الأصناف: ${saved.items_count}${checked.items.length > 8 ? ' (وأعلى)' : ''}`,
+                            `الأولوية: ${saved.priority === 'urgent' ? 'عاجلة 🔴' : 'عادية'}`,
+                            `أصناف: ${names}${checked.items.length > 8 ? ' …' : ''}`,
+                            '',
+                            'الاستلام والتسعير من صفحة «طلبات خضار» في Karim ERP.',
+                        ].join('\n');
+                        for (const jid of jids) {
+                            sender.enqueue(jid, text, { clientKey: `veg-new:${saved.id}:${jid}` })
+                                .catch((err) => logger.warn('[veg-requests] whatsapp failed (non-fatal)', { msg: err && err.message }));
+                        }
+                        logger.info('[veg-requests] whatsapp notify queued', { request_no: requestNo, targets: jids.length });
+                    }
+                }
+            }
+        } catch (_) { /* إشعار أفضل جهد فقط */ }
         return res.json({ ok: true, request: saved });
     } catch (e) { next(e); }
 });

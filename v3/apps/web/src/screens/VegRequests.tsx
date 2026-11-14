@@ -151,12 +151,15 @@ const CREATE_FORM_ID = 'erp-veg-create-form';
 
 function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmit }: CreateDialogProps) {
     const [lines, setLines] = useState<VegItemInput[]>([]);
+    const [manualRows, setManualRows] = useState<Array<{ id: number; name: string; qty: string; unit: string; note: string }>>([]);
     const [priority, setPriority] = useState<'normal' | 'urgent'>('normal');
     const [notes, setNotes] = useState('');
     const [selected, setSelected] = useState('');
     const [qty, setQty] = useState('1');
     const [unit, setUnit] = useState('كجم');
     const [error, setError] = useState('');
+
+    const MANUAL_UNITS = ['كجم', 'جرام', 'طن', 'كرتونة', 'ربطة', 'حبة', 'صندوق', 'كيس', 'شيكارة', 'لتر', 'جالون', 'وحدة'];
 
     const allItems = useMemo(() => {
         if (!catalog) return [];
@@ -166,6 +169,7 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
     useEffect(() => {
         if (open) {
             setLines([]);
+            setManualRows([]);
             setPriority('normal');
             setNotes('');
             setSelected('');
@@ -195,15 +199,36 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
         setQty('1');
     }
 
+    function collectManualItems(): { ok: true; items: VegItemInput[] } | { ok: false; error: string } {
+        const filled: VegItemInput[] = [];
+        for (const row of manualRows) {
+            const name = row.name.trim();
+            const qtyNum = Number(row.qty);
+            const note = row.note.trim();
+            if (!name && !row.qty.trim() && !row.unit.trim() && !note) { continue; }
+            if (!name) { return { ok: false, error: 'صنف يدوي ناقص الاسم' }; }
+            if (!Number.isFinite(qtyNum) || qtyNum <= 0 || qtyNum > 99999) { return { ok: false, error: `كمية الصنف اليدوي «${name}» غير صحيحة` }; }
+            if ([...lines, ...filled].some((l) => l.name === name)) { return { ok: false, error: `الصنف «${name}» مكرر` }; }
+            filled.push({ name, qty: Math.round(qtyNum * 1000) / 1000, unit: row.unit || 'وحدة', note: note || null });
+        }
+        return { ok: true, items: filled };
+    }
+
     async function save(event: React.FormEvent<HTMLFormElement>): Promise<void> {
         event.preventDefault();
         setError('');
-        if (!lines.length) {
+        const manual = collectManualItems();
+        if (!manual.ok) {
+            setError(manual.error);
+            return;
+        }
+        const payload = [...lines, ...manual.items];
+        if (!payload.length) {
             setError(VEG_TEXT.itemsRequired);
             return;
         }
         try {
-            await onSubmit(lines, priority, notes);
+            await onSubmit(payload, priority, notes);
             onClose();
         } catch (cause) {
             setError(writeErrorMessage(cause, VEG_TEXT.createFailed));
@@ -255,6 +280,63 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
                     </Button>
                 </div>
 
+                {/* ── أصناف يدوية خارج الكتالوج (زي v2) ── */}
+                <div className="rounded-md border border-dashed border-hairline p-sm">
+                    <div className="mb-xs flex flex-wrap items-center justify-between gap-sm">
+                        <span className="text-label-md text-muted">صنف يدوي (زي v2 — خارج الكتالوج)</span>
+                        <Button type="button" variant="secondary" size="sm" onClick={() => setManualRows((prev) => [...prev, { id: Date.now() + prev.length, name: '', qty: '1', unit: 'كجم', note: '' }])}>
+                            + أضف صنف يدوي
+                        </Button>
+                    </div>
+                    {manualRows.length ? (
+                        <ul className="flex flex-col gap-xxs">
+                            {manualRows.map((row) => (
+                                <li key={row.id} className="grid grid-cols-1 items-end gap-xs sm:grid-cols-[1fr_90px_90px_1fr_auto]">
+                                    <Input
+                                        label="الصنف"
+                                        name={`manual-name-${row.id}`}
+                                        value={row.name}
+                                        onChange={(e) => setManualRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, name: e.target.value } : r)))}
+                                        placeholder="اكتب اسم الصنف…"
+                                    />
+                                    <Input
+                                        label="الكمية"
+                                        name={`manual-qty-${row.id}`}
+                                        type="number"
+                                        min={0}
+                                        step={0.001}
+                                        value={row.qty}
+                                        onChange={(e) => setManualRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, qty: e.target.value } : r)))}
+                                    />
+                                    <Select
+                                        label="الوحدة"
+                                        name={`manual-unit-${row.id}`}
+                                        value={row.unit}
+                                        onValueChange={(value) => setManualRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, unit: String(value ?? 'وحدة') } : r)))}
+                                        options={MANUAL_UNITS.map((u) => ({ label: u, value: u }))}
+                                    />
+                                    <Input
+                                        label="ملاحظة (اختياري)"
+                                        name={`manual-note-${row.id}`}
+                                        value={row.note}
+                                        onChange={(e) => setManualRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, note: e.target.value } : r)))}
+                                        placeholder="زي: حظ كبير / عريض"
+                                    />
+                                    <button
+                                        type="button"
+                                        className="pb-xxs text-danger-text"
+                                        onClick={() => setManualRows((prev) => prev.filter((r) => r.id !== row.id))}
+                                    >
+                                        إزالة
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <p className="text-body-sm text-muted">مفيش صنف يدوي — لإضافة صنف خارج الكتالوج، اضغط «+ أضف صنف يدوي».</p>
+                    )}
+                </div>
+
                 {catalogLoading ? <p className="text-body-sm text-muted">جارٍ تحميل الكتالوج…</p> : null}
 
                 {lines.length ? (
@@ -279,7 +361,7 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
                         ))}
                     </ul>
                 ) : (
-                    <p className="text-body-sm text-muted">لم تُضف أصناف بعد — اختر من الكتالوج أعلاه.</p>
+                    <p className="text-body-sm text-muted">لم تُضف أصناف بعد — اختر من الكتالوج أعلاه أو أضف صنفًا يدويًا (زي v2).</p>
                 )}
 
                 <Select

@@ -60,6 +60,7 @@ export interface VegItemInput {
     name: string;
     qty: number;
     unit?: string | undefined;
+    note?: string | null | undefined;
 }
 
 export const vegItemSchema = z.object({
@@ -85,7 +86,7 @@ export type VegResult = z.infer<typeof vegResultSchema>;
 
 export async function createVegRequest(input: VegCreateInput): Promise<VegResult> {
     return writeJson(vegResultSchema, '/api/veg-requests', 'POST', {
-        items: input.items.map((item) => ({ name: item.name, qty: Number(item.qty), unit: item.unit ?? '' })),
+        items: input.items.map((item) => ({ name: item.name, qty: Number(item.qty), unit: item.unit ?? '', note: item.note?.trim() || null })),
         priority: input.priority,
         notes: input.notes?.trim() || null,
     });
@@ -104,7 +105,7 @@ export async function priceVegRequest(
 
 export async function editVegItems(id: string | number, input: VegEditItemsInput): Promise<VegResult> {
     return writeJson(vegResultSchema, `/api/veg-requests/${encodeURIComponent(String(id))}/items`, 'PUT', {
-        items: input.items.map((item) => ({ name: item.name, qty: Number(item.qty), unit: item.unit ?? '' })),
+        items: input.items.map((item) => ({ name: item.name, qty: Number(item.qty), unit: item.unit ?? '', note: item.note?.trim() || null })),
     });
 }
 

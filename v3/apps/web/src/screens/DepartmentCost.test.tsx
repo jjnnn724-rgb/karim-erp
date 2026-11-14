@@ -32,6 +32,9 @@ const breakfastPayload = {
     total_cost: 15249.76,
     cost_pct: 9.4,
     verdict: { tone: 'success', text: 'ممتاز — هامش مريح' },
+    full_cost: 15249.76,
+    full_cost_pct: 9.4,
+    full_verdict: { tone: 'success', text: 'ممتاز — هامش مريح' },
     groups: [
         { group: 'بيض', items: [{ item_id: '11', name: 'بيض كرتون', unit: 'كرتون', qty: 56, grams: null, cost: 6710.11, moves: 26 }], cost: 6710.11, kg: 0, share: 44 },
         { group: 'فول', items: [{ item_id: '33', name: 'فول مدمس-كرتون', unit: 'كرتون', qty: 53, grams: null, cost: 1805.79, moves: 25 }], cost: 1805.79, kg: 0, share: 12 },

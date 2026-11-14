@@ -130,6 +130,7 @@ export const breakfastCostSchema = z
     .object({
         from: text,
         to: text,
+        dept: text.optional(),
         previous: z.object({ from: text, to: text }).passthrough(),
         revenue: num,
         revenue_entries: num,
@@ -206,9 +207,11 @@ export async function fetchBreakfastCost(
     range: { from: string; to: string },
     signal?: AbortSignal,
     extraIds?: readonly number[],
+    dept?: 'المطبخ' | 'بوفيه الافطار',
 ): Promise<BreakfastCost> {
     const qs = new URLSearchParams({ from: range.from, to: range.to });
     if (extraIds && extraIds.length) { qs.set('extra_ids', extraIds.join(',')); }
+    if (dept) { qs.set('dept', dept); }
     const token = getAccessToken();
     return fetchJson(breakfastCostSchema, `/api/pos/reports/breakfast-cost?${qs}`, token, signal ? { signal } : {});
 }

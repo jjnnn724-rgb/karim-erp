@@ -157,6 +157,7 @@ function BreakfastTab({ from, to }: { from: string; to: string }) {
     const [extraIds, setExtraIds] = useState<number[]>([]);
     const [searchTerm, setSearchTerm] = useState('');
     const [debounced, setDebounced] = useState('');
+    const [dept, setDept] = useState<'المطبخ' | 'بوفيه الافطار'>('المطبخ');
 
     // debounce البحث بعد ٣٠٠ms من التوقف عن الكتابة
     reactUseEffect(() => {
@@ -173,8 +174,8 @@ function BreakfastTab({ from, to }: { from: string; to: string }) {
     });
 
     const query = useQuery({
-        queryKey: ['breakfast-cost', from, to, extraIds],
-        queryFn: ({ signal }) => fetchBreakfastCost({ from, to }, signal, extraIds),
+        queryKey: ['breakfast-cost', from, to, extraIds, dept],
+        queryFn: ({ signal }) => fetchBreakfastCost({ from, to }, signal, extraIds, dept),
         staleTime: 30_000,
         retry: 0,
     });
@@ -199,7 +200,7 @@ function BreakfastTab({ from, to }: { from: string; to: string }) {
         printOfficialSheet({
             title: 'تحليل تكلفة الافطار',
             englishTitle: 'Breakfast Cost Analysis',
-            subtitle: 'مقارنة الإيراد بالتكلفة — كاشير 3',
+            subtitle: `مقارنة الإيراد بالتكلفة — كاشير 3 · أذونات: ${dept}`,
             from: data.from ?? from, to: data.to ?? to,
             kpis: [
                 { label: 'إيراد الفطار (كاشير 3)', value: `${money2(data.revenue)} ر.س`, hint: `${intOf(data.revenue_entries)} قيد` },
@@ -210,7 +211,7 @@ function BreakfastTab({ from, to }: { from: string; to: string }) {
             ],
             sections: [
                 {
-                    heading: 'تفاصيل مكونات الافطار (من أذونات المطبخ)',
+                    heading: `تفاصيل مكونات الافطار — أذونات ${dept}`,
                     columns: [
                         { key: 'group', header: 'المجموعة', width: '16%' },
                         { key: 'name', header: 'الصنف' },
@@ -267,7 +268,20 @@ function BreakfastTab({ from, to }: { from: string; to: string }) {
     return (
         <>
             <div className="dcost__filters">
-                <span className="dcost__hint">إيراد الافطار = كاشير 3 · التكلفة = مكونات المطبخ من أذونات الصرف + مكونات الافطار التقديرية (لحم 106 · كبدة · دقيق · خضار بسعر السوق · زيت دلال) · نسبة التكلفة شاملة الكل</span>
+                <div className="dcost__presets" role="group" aria-label="مصدر الأذونات">
+                    {(['المطبخ', 'بوفيه الافطار'] as const).map((label) => (
+                        <button
+                            key={label}
+                            type="button"
+                            className={`dcost__preset${dept === label ? ' is-active' : ''}`}
+                            aria-pressed={dept === label}
+                            onClick={() => setDept(label)}
+                        >
+                            {label}
+                        </button>
+                    ))}
+                </div>
+                <span className="dcost__hint">إيراد الافطار = كاشير 3 · التكلفة = مكونات الافطار من أذونات {dept} · الخضار وحدها تقديري بسعر السوق</span>
                 <Button variant="secondary" size="sm" onClick={printOfficial} disabled={!data}>🖨 طباعة ورقة رسمية A4</Button>
             </div>
 

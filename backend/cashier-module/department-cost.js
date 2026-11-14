@@ -118,8 +118,8 @@ function vegRequestsQuery(from, to) {
            AND created_at::date BETWEEN $1::date AND $2::date`, [from, to]);
 }
 
-/** حركات أصناف الفطار في الفترة عبر أذونات المطبخ. */
-function breakfastIssuesQuery(from, to) {
+/** حركات أصناف الفطار في الفترة عبر أذونات القسم (المطبخ أو بوفيه الافطار). */
+function breakfastIssuesQuery(from, to, dept) {
     return pool.query(`
         SELECT l.inventory_id AS item_id, i.name AS item_name, i.unit AS unit,
                round(sum(abs(l.quantity_delta))::numeric, 4) AS qty,
@@ -130,10 +130,10 @@ function breakfastIssuesQuery(from, to) {
           JOIN dispatches d ON d.id = replace(l.reference_id, 'DIS-', '')::bigint
          WHERE l.reference_type = 'dispatch' AND l.quantity_delta < 0
            AND l.business_date::date BETWEEN $1::date AND $2::date
-           AND d."deptName" = 'المطبخ'
+           AND d."deptName" = $4
            AND l.inventory_id = ANY($3::bigint[])
          GROUP BY l.inventory_id, i.name, i.unit
-         ORDER BY sum(abs(l.total_cost)) DESC NULLS LAST`, [from, to, BREAKFAST_IDS]);
+         ORDER BY sum(abs(l.total_cost)) DESC NULLS LAST`, [from, to, BREAKFAST_IDS, dept || 'المطبخ']);
 }
 
 /** إيراد الفطار: كاشير 3 من سجل الإيرادات + YaraSoft (للاطلاع). */
@@ -275,14 +275,16 @@ router.get('/reports/department-issues', jwtAuth, requireReportRole(...REPORT_RO
     });
 }));
 
-/** تحليل الفطار: تكلفة مكوّناته من أذونات المطبخ ÷ إيرادات كاشير 3. */
+/** تحليل الفطار: تكلفة مكوّناته من أذونات القسم ÷ إيرادات كاشير 3. */
 router.get('/reports/breakfast-cost', jwtAuth, requireReportRole(...REPORT_ROLES), asyncHandler(async (req, res) => {
     const { from, to } = range(req);
     const { prevFrom, prevTo } = prevRange(from, to);
 
     const extraIds = String(req.query.extra_ids || '').split(',').map((s) => Number(s.trim())).filter((n) => Number.isFinite(n) && n > 0).slice(0, 10);
+    const deptRaw = String(req.query.dept || '').trim();
+    const dept = deptRaw === 'بوفيه الافطار' ? 'بوفيه الافطار' : 'المطبخ';
     const issuesQueryWithExtras = async () => {
-        const base = await breakfastIssuesQuery(from, to).catch((e) => { logger.error({ err: { message: e.message } }, '[dept-cost] breakfast issues failed'); return { rows: [] }; });
+        const base = await breakfastIssuesQuery(from, to, dept).catch((e) => { logger.error({ err: { message: e.message } }, '[dept-cost] breakfast issues failed'); return { rows: [] }; });
         if (!extraIds.length) { return base; }
         const extra = await pool.query(`
             SELECT l.inventory_id AS item_id, i.name AS item_name, i.unit AS unit,
@@ -294,9 +296,9 @@ router.get('/reports/breakfast-cost', jwtAuth, requireReportRole(...REPORT_ROLES
               JOIN dispatches d ON d.id = replace(l.reference_id, 'DIS-', '')::bigint
              WHERE l.reference_type = 'dispatch' AND l.quantity_delta < 0
                AND l.business_date::date BETWEEN $1::date AND $2::date
-               AND d."deptName" = 'المطبخ'
+               AND d."deptName" = $4
                AND l.inventory_id = ANY($3::bigint[])
-             GROUP BY l.inventory_id, i.name, i.unit`, [from, to, extraIds]);
+             GROUP BY l.inventory_id, i.name, i.unit`, [from, to, extraIds, dept]);
         return { rows: [...base.rows, ...extra.rows.map((r) => ({ ...r, is_extra: true }))] };
     };
     const [issues, [curRev, curYs], [prevRevQ, prevYsQ], veg] = await Promise.all([
@@ -375,7 +377,7 @@ router.get('/reports/breakfast-cost', jwtAuth, requireReportRole(...REPORT_ROLES
     const oilTotal = round2((dailyOtherLines.find((l) => l.key === 'frying_oil_delal') || {}).total || 0);
     const marketTotal = round2(vegTotal + meatCartonTotal + liverTotal + flourTotal + oilTotal);
     const marketCostPct = rev > 0 ? round2((marketTotal / rev) * 100) : 0;
-    // ── التكلفة الكاملة = أذونات المطبخ الفعلية (سلة الفطار) + المكونات التقديرية ──
+    // ── التكلفة الكاملة = أذونات القسم الفعلية (سلة الفطار) + المكونات التقديرية ──
     const fullCost = round2(totalCost + marketTotal);
     const fullCostPct = rev > 0 ? round2((fullCost / rev) * 100) : 0;
     const fullVerdict = fullCostPct >= 30
@@ -393,6 +395,7 @@ router.get('/reports/breakfast-cost', jwtAuth, requireReportRole(...REPORT_ROLES
 
     res.json({
         from, to, previous: { from: prevFrom, to: prevTo },
+        dept,
         revenue: money(rev),
         revenue_entries: num(curRev.rows[0] && curRev.rows[0].entries),
         revenue_ys: money(ysRev),
@@ -431,7 +434,7 @@ router.get('/reports/breakfast-cost', jwtAuth, requireReportRole(...REPORT_ROLES
         notes: [
             prevRev > 0 ? 'الفترة السابقة متاحة — تمت المقارنة بكامل الفترة السابقة.' : 'الفترة السابقة لا تحتوي بيانات كاشير 3 (تبدأ 2026-10-15) — لا توجد مقارنة متاحة.',
             'الإيراد المحتسب: كاشير 3 (الافطار) — سجل الإيرادات المحاسبي.',
-            'التكلفة: مكونات الفطار الفعلية من أذونات صرف المطبخ (مواد فقط: بدون راتب أو إيجار أو مرافق).',
+            'التكلفة: مكونات الفطار الفعلية من أذونات صرف القسم (مواد فقط: بدون راتب أو إيجار أو مرافق).',
             'كل شيء بالجرام للأصناف الموزونة (كيلو/جرام/طن)؛ الأصناف المُعبأة وحدة العبوة كما هي.',
             'الخضار الطازجة واردة للمطبخ من طلبات الخضار — بلا تسعير مسجل — غير محتسبة في التكلفة.',
             'أضف أي مكون بيده: اكتب اسم الصنف في «إضافة مكونات» — سيُحسب تلقائيًا بكوسته من الأذونات.',
