@@ -23,13 +23,13 @@
  *   في تفاصيل القسم — شاشة 10)، فلا يملك هذا السجل POST.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.337';
-import { fetchRevenues, fetchDepartments, riyadhToday, firstOfMonth } from '../data/finance-repo.js?v=4.9.337';
-import { FINANCE_WRITE_ROLES, validateRevenueForm, updateRevenue, deleteRevenue } from '../data/finance-write-repo.js?v=4.9.337';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.337';
-import { canWrite } from '../session.js?v=4.9.337';
-import { financeWriteEnabled } from '../write-flags.js?v=4.9.337';
-import { paintFormErrors } from '../form-errors.js?v=4.9.337';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.338';
+import { fetchRevenues, fetchDepartments, riyadhToday, firstOfMonth } from '../data/finance-repo.js?v=4.9.338';
+import { FINANCE_WRITE_ROLES, validateRevenueForm, updateRevenue, deleteRevenue } from '../data/finance-write-repo.js?v=4.9.338';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.338';
+import { canWrite } from '../session.js?v=4.9.338';
+import { financeWriteEnabled } from '../write-flags.js?v=4.9.338';
+import { paintFormErrors } from '../form-errors.js?v=4.9.338';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

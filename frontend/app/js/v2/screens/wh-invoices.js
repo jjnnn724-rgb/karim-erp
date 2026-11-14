@@ -34,24 +34,24 @@
  *     The print button calls window.print() like screens 03/04.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.337';
-import { statusBadge } from '../status.js?v=4.9.337';
-import { canWrite } from '../session.js?v=4.9.337';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.338';
+import { statusBadge } from '../status.js?v=4.9.338';
+import { canWrite } from '../session.js?v=4.9.338';
 import {
     fetchPurchaseInvoices, invoiceToRow, supplierIdMap,
-} from '../data/purchase-invoices-repo.js?v=4.9.337';
+} from '../data/purchase-invoices-repo.js?v=4.9.338';
 import {
     fetchSuppliers, fetchCurrency, formatMoney, formatInt, PAYMENT_WRITE_ROLES,
     payInvoiceFull, rangeError,
-} from '../data/procurement-repo.js?v=4.9.337';
-import { fetchInventory } from '../data/inventory-repo.js?v=4.9.337';
+} from '../data/procurement-repo.js?v=4.9.338';
+import { fetchInventory } from '../data/inventory-repo.js?v=4.9.338';
 import {
     INVOICE_CREATE_ROLES,
-} from '../data/purchase-invoices-write-repo.js?v=4.9.337';
-import { invoiceCreateWriteEnabled } from '../write-flags.js?v=4.9.337';
-import { mountPurchaseInvoiceEditor } from '../invoice-editor.js?v=4.9.337';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.337';
-import { openInAppReport } from '../report-viewer.js?v=4.9.337';
+} from '../data/purchase-invoices-write-repo.js?v=4.9.338';
+import { invoiceCreateWriteEnabled } from '../write-flags.js?v=4.9.338';
+import { mountPurchaseInvoiceEditor } from '../invoice-editor.js?v=4.9.338';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.338';
+import { openInAppReport } from '../report-viewer.js?v=4.9.338';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

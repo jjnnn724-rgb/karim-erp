@@ -21,16 +21,16 @@
  * والخادم يرفض 422 INVALID_EXPIRY_DATE على أي حال.
  */
 
-import { formatMoney } from './data/reports-repo.js?v=4.9.337';
+import { formatMoney } from './data/reports-repo.js?v=4.9.338';
 import {
     createPurchaseInvoice, updatePurchaseInvoice,
     invoiceFormFromRow, PAID_ITEMS_ONLY_NOTICE,
     isDuplicateInvoiceError, TAX_CATEGORIES,
-} from './data/purchase-invoices-write-repo.js?v=4.9.337';
-import { checkExpiryOnLines, normalizeExpiryDate } from './data/expiry-policy.js?v=4.9.337';
+} from './data/purchase-invoices-write-repo.js?v=4.9.338';
+import { checkExpiryOnLines, normalizeExpiryDate } from './data/expiry-policy.js?v=4.9.338';
 import {
     rankItemMatches, normalizeItemText, smartSearchEnabled, setSmartSearchEnabled,
-} from './item-search.js?v=4.9.337';
+} from './item-search.js?v=4.9.338';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
