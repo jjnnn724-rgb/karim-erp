@@ -145,11 +145,38 @@ export const breakfastCostSchema = z
 export type BreakfastCost = z.infer<typeof breakfastCostSchema>;
 
 /** تحليل كوست الافطار: مكوّناته من أذونات المطبخ ÷ إيرادات كاشير 3. */
+/* ─── بحث أصناف المخزن ─── */
+export const searchItemsSchema = z
+    .object({
+        items: z.array(z.object({
+            id: text,
+            name: text,
+            unit: text,
+            category: text,
+            qty: num,
+            avg_cost: num,
+            barcode: text,
+        }).passthrough()),
+    })
+    .passthrough();
+
+export type InventorySearchItem = z.infer<typeof searchItemsSchema>['items'][number];
+
+/** بحث الأصناف بالاسم/الكود/الباركود — للإضافة اليدوية إلى التحليل. */
+export async function fetchSearchItems(query: string, signal?: AbortSignal): Promise<InventorySearchItem[]> {
+    const qs = new URLSearchParams({ q: query });
+    const token = getAccessToken();
+    const data = await fetchJson(searchItemsSchema, `/api/pos/reports/search-items?${qs}`, token, signal ? { signal } : {});
+    return data.items;
+}
+
 export async function fetchBreakfastCost(
     range: { from: string; to: string },
     signal?: AbortSignal,
+    extraIds?: readonly number[],
 ): Promise<BreakfastCost> {
     const qs = new URLSearchParams({ from: range.from, to: range.to });
+    if (extraIds && extraIds.length) { qs.set('extra_ids', extraIds.join(',')); }
     const token = getAccessToken();
     return fetchJson(breakfastCostSchema, `/api/pos/reports/breakfast-cost?${qs}`, token, signal ? { signal } : {});
 }

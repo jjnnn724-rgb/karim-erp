@@ -9,11 +9,11 @@
  *
  * التصميم: هادئ فاخر (quiet premium) — نفس عائلة «المساعد الذكي».
  */
-import { useState } from 'react';
+import { useEffect as reactUseEffect, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import {
-    fetchBreakfastCost, fetchDepartmentIssues, fetchIssueDepartments,
-    type BreakfastCost, type DepartmentIssues,
+    fetchBreakfastCost, fetchDepartmentIssues, fetchIssueDepartments, fetchSearchItems,
+    type BreakfastCost, type DepartmentIssues, type InventorySearchItem,
 } from '../lib/department-cost';
 import { Button } from '../ui';
 import '../styles/department-cost.css';
@@ -154,9 +154,27 @@ function DepartmentTab({ from, to }: { from: string; to: string }) {
 
 /* ─── تبويب: تحليل الفطار ─── */
 function BreakfastTab({ from, to }: { from: string; to: string }) {
+    const [extraIds, setExtraIds] = useState<number[]>([]);
+    const [searchTerm, setSearchTerm] = useState('');
+    const [debounced, setDebounced] = useState('');
+
+    // debounce البحث بعد ٣٠٠ms من التوقف عن الكتابة
+    reactUseEffect(() => {
+        const t = window.setTimeout(() => setDebounced(searchTerm.trim()), 300);
+        return () => window.clearTimeout(t);
+    }, [searchTerm]);
+
+    const searchQuery = useQuery({
+        queryKey: ['search-items', debounced],
+        queryFn: ({ signal }) => fetchSearchItems(debounced, signal),
+        enabled: debounced.length >= 2,
+        staleTime: 60_000,
+        retry: 0,
+    });
+
     const query = useQuery({
-        queryKey: ['breakfast-cost', from, to],
-        queryFn: ({ signal }) => fetchBreakfastCost({ from, to }, signal),
+        queryKey: ['breakfast-cost', from, to, extraIds],
+        queryFn: ({ signal }) => fetchBreakfastCost({ from, to }, signal, extraIds),
         staleTime: 30_000,
         retry: 0,
     });
@@ -228,6 +246,51 @@ function BreakfastTab({ from, to }: { from: string; to: string }) {
 
             {data ? (
                 <>
+            {/* ═══════ إضافة مكوّنات يدويًا (أي صنف من المخزن) ═══════ */}
+            <div className="dcost__manual">
+                <div className="ai-section-head">
+                    <h3 className="ai-section-head__title">إضافة مكوّنات يدويًا</h3>
+                    <span className="ai-section-head__hint">اكتب اسم أي صنف (بيض، لحم مفروم، خضار…) — سيُضاف تلقائيًا للتحليل</span>
+                </div>
+                <div className="dcost__manual-controls">
+                    <input
+                        type="search"
+                        className="dcost__manual-input"
+                        placeholder="اكتب اسم الصنف…"
+                        value={searchTerm}
+                        onChange={(e) => setSearchTerm(e.target.value)}
+                        aria-label="بحث عن صنف"
+                    />
+                </div>
+                {searchQuery.isPending && debounced.length >= 2 ? <p className="text-body-sm text-muted">جارٍ البحث…</p> : null}
+                {debounced.length >= 2 && (searchQuery.data ?? []).length === 0 && !searchQuery.isPending ? (
+                    <p className="text-body-sm text-muted">لا توجد أصناف مطابقة — جرب اسمًا آخر.</p>
+                ) : null}
+                {debounced.length >= 2 && (searchQuery.data ?? []).length > 0 ? (
+                    <ul className="dcost__manual-results">
+                        {(searchQuery.data ?? []).map((item: InventorySearchItem) => {
+                            const isAdded = extraIds.includes(Number(item.id));
+                            return (
+                                <li key={item.id} className="dcost__manual-item">
+                                    <span className="dcost__manual-name">{item.name}</span>
+                                    <span className="dcost__manual-meta">{item.unit} · رصيد {item.qty} · متوسط {money2(item.avg_cost)} ر.س</span>
+                                    <button
+                                        type="button"
+                                        className={'dcost__manual-toggle' + (isAdded ? ' is-added' : '')}
+                                        aria-pressed={isAdded}
+                                        onClick={() => setExtraIds((prev) => isAdded ? prev.filter((id) => id !== Number(item.id)) : [...prev, Number(item.id)])}
+                                    >
+                                        {isAdded ? '✓ أُضيف' : '+ أضف'}
+                                    </button>
+                                </li>
+                            );
+                        })}
+                    </ul>
+                ) : null}
+                {extraIds.length > 0 ? (
+                    <p className="dcost__manual-summary">✓ أضفت <strong>{extraIds.length}</strong> مكوّن إلى التحليل — تُحسب تكلفتها من أذونات المطبخ تلقائيًا.</p>
+                ) : null}
+            </div>
                     <div className="dcost__versus">
                         <div className="dcost__versus-cell">
                             <span className="dcost__versus-label">إيراد الفطار (كاشير 3)</span>

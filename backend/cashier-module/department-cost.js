@@ -148,6 +148,22 @@ function breakfastRevenueQuery(from, to) {
     ]).catch((e) => { throw e; });
 }
 
+
+/** بحث أصناف المخزن بالاسم/الكود/الباركود — للإضافة اليدوية إلى أي تحليل. */
+async function searchInventoryItems(q) {
+    if (!q || q.trim().length < 2) { return { rows: [] }; }
+    const kw = '%' + String(q).trim().replace(/[\\%_]/g, (c) => '\\' + c) + '%';
+    return pool.query(`
+        SELECT id, name, unit, category,
+               round(COALESCE(qty, 0)::numeric, 3) AS qty,
+               round(COALESCE("avgCost", 0)::numeric, 2) AS avg_cost,
+               COALESCE(barcode, '') AS barcode
+          FROM inventory
+         WHERE (name ILIKE $1 ESCAPE '\\' OR barcode ILIKE $1 ESCAPE '\\')
+         ORDER BY (qty > 0) DESC, name ASC
+         LIMIT 20`, [kw]);
+}
+
 const prevRange = (from, to) => {
     const f = Date.parse(`${from}T00:00:00Z`);
     const t = Date.parse(`${to}T00:00:00Z`);
@@ -163,6 +179,27 @@ const prevRange = (from, to) => {
 router.get('/reports/issue-departments', jwtAuth, requireReportRole(...REPORT_ROLES), asyncHandler(async (req, res) => {
     const r = await departmentsQuery();
     res.json({ departments: r.rows.map((row) => ({ dept: row.dept, code: row.code, requests: row.requests, received: row.received })) });
+}));
+
+
+/** بحث أصناف المخزن — للإضافة اليدوية إلى تحليل الفطار. */
+router.get('/reports/search-items', jwtAuth, requireReportRole(...REPORT_ROLES), asyncHandler(async (req, res) => {
+    const q = String(req.query.q || '').trim();
+    if (q.length < 2) {
+        return res.status(422).json({ error: 'QUERY_TOO_SHORT', message: 'اكتب حرفين على الأقل.' });
+    }
+    const r = await searchInventoryItems(q);
+    res.json({
+        items: r.rows.map((row) => ({
+            id: String(row.id),
+            name: row.name,
+            unit: row.unit,
+            category: row.category,
+            qty: num(row.qty),
+            avg_cost: money(row.avg_cost),
+            barcode: row.barcode,
+        })),
+    });
 }));
 
 /** وضع القسم: كل ما سُحب من المخزن لهذا القسم في الفترة — بالجرام. */
@@ -215,14 +252,47 @@ router.get('/reports/breakfast-cost', jwtAuth, requireReportRole(...REPORT_ROLES
     const { from, to } = range(req);
     const { prevFrom, prevTo } = prevRange(from, to);
 
+    const extraIds = String(req.query.extra_ids || '').split(',').map((s) => Number(s.trim())).filter((n) => Number.isFinite(n) && n > 0).slice(0, 10);
+    const issuesQueryWithExtras = async () => {
+        const base = await breakfastIssuesQuery(from, to).catch((e) => { logger.error({ err: { message: e.message } }, '[dept-cost] breakfast issues failed'); return { rows: [] }; });
+        if (!extraIds.length) { return base; }
+        const extra = await pool.query(`
+            SELECT l.inventory_id AS item_id, i.name AS item_name, i.unit AS unit,
+                   round(sum(abs(l.quantity_delta))::numeric, 4) AS qty,
+                   round(sum(abs(l.total_cost))::numeric, 2) AS cost,
+                   count(*)::int AS moves
+              FROM inventory_ledger l
+              JOIN inventory i ON i.id = l.inventory_id
+              JOIN dispatches d ON d.id = replace(l.reference_id, 'DIS-', '')::bigint
+             WHERE l.reference_type = 'dispatch' AND l.quantity_delta < 0
+               AND l.business_date::date BETWEEN $1::date AND $2::date
+               AND d."deptName" = 'المطبخ'
+               AND l.inventory_id = ANY($3::bigint[])
+             GROUP BY l.inventory_id, i.name, i.unit`, [from, to, extraIds]);
+        return { rows: [...base.rows, ...extra.rows.map((r) => ({ ...r, is_extra: true }))] };
+    };
     const [issues, [curRev, curYs], [prevRevQ, prevYsQ], veg] = await Promise.all([
-        breakfastIssuesQuery(from, to).catch((e) => { logger.error({ err: { message: e.message } }, '[dept-cost] breakfast issues failed'); return { rows: [] }; }),
+        issuesQueryWithExtras(),
         breakfastRevenueQuery(from, to).catch(() => [{ rows: [{ revenue: '0.00', entries: 0 }] }, { rows: [{ revenue: '0.00', invoices: 0 }] }]),
         breakfastRevenueQuery(prevFrom, prevTo).catch(() => [{ rows: [{ revenue: '0.00', entries: 0 }] }, { rows: [{ revenue: '0.00', invoices: 0 }] }]),
         vegRequestsQuery(from, to).catch(() => ({ rows: [] })),
     ]);
 
     const byId = new Map(issues.rows.map((r) => [String(r.item_id), r]));
+    const extraGroups = [];
+    if (extraIds.length) {
+        const extraItems = extraIds.map((id) => {
+            const r = byId.get(String(id));
+            return r
+                ? { item_id: String(r.item_id), name: r.item_name, unit: r.unit, qty: num(r.qty), grams: gramsOf(r.qty, r.unit), cost: money(r.cost), moves: num(r.moves) }
+                : null;
+        }).filter(Boolean);
+        const extraCost = round2(extraItems.reduce((s, it) => s + it.cost, 0));
+        const extraQtyKg = extraItems.reduce((s, it) => s + (it.grams ? it.grams / 1000 : 0), 0);
+        if (extraItems.length) {
+            extraGroups.push({ group: 'إضافاتي', items: extraItems, cost: extraCost, kg: round2(extraQtyKg) });
+        }
+    }
     const groups = BREAKFAST_BASKET.map((g) => {
         const gItems = g.ids.map((id) => {
             const r = byId.get(String(id));
@@ -235,8 +305,9 @@ router.get('/reports/breakfast-cost', jwtAuth, requireReportRole(...REPORT_ROLES
         return { group: g.group, items: gItems, cost: groupCost, kg: round2(groupQtyKg) };
     }).filter((g) => g.items.length);
 
-    const totalCost = round2(groups.reduce((s, g) => s + g.cost, 0));
-    for (const g of groups) {g.share = totalCost > 0 ? round2((g.cost / totalCost) * 100) : 0;}
+    const allGroups = [...groups, ...extraGroups];
+    const totalCost = round2(allGroups.reduce((s, g) => s + g.cost, 0));
+    for (const g of allGroups) {g.share = totalCost > 0 ? round2((g.cost / totalCost) * 100) : 0;}
 
     const rev = num(curRev.rows[0] && curRev.rows[0].revenue);
     const prevRev = num(prevRevQ.rows[0] && prevRevQ.rows[0].revenue);
@@ -259,7 +330,7 @@ router.get('/reports/breakfast-cost', jwtAuth, requireReportRole(...REPORT_ROLES
         total_cost: totalCost,
         cost_pct: pct,
         verdict,
-        groups,
+        groups: allGroups,
         top_items: issues.rows.slice(0, 12).map((r) => ({
             item_id: String(r.item_id), name: r.item_name, unit: r.unit,
             qty: num(r.qty), grams: gramsOf(r.qty, r.unit), cost: money(r.cost),
@@ -275,7 +346,7 @@ router.get('/reports/breakfast-cost', jwtAuth, requireReportRole(...REPORT_ROLES
             'التكلفة: مكونات الفطار الفعلية من أذونات صرف المطبخ (مواد فقط: بدون راتب أو إيجار أو مرافق).',
             'كل شيء بالجرام للأصناف الموزونة (كيلو/جرام/طن)؛ الأصناف المُعبأة وحدة العبوة كما هي.',
             'الخضار الطازجة واردة للمطبخ من طلبات الخضار — بلا تسعير مسجل — غير محتسبة في التكلفة.',
-            'لا يوجد صنف «لحم مفروم» مسجّل في المخزن — إن كان يُطلب للفطار فهو غير محسوب هنا.',
+            'أضف أي مكون بيده: اكتب اسم الصنف في «إضافة مكونات» — سيُحسب تلقائيًا بكوسته من الأذونات.',
         ],
     });
 }));

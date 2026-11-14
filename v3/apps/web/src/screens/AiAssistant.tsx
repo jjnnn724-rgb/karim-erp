@@ -158,7 +158,6 @@ export function AiAssistant() {
         if (!report) { return; }
         printOfficialSheet({
             title: 'المساعد الذكي «وين الزيادة؟»',
-            englishTitle: 'AI Assistant — Where did it increase?',
             subtitle: 'تقرير حتمي من بيانات النظام',
             from: report.current.from ?? '',
             to: report.current.to ?? '',
