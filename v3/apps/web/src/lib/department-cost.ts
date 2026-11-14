@@ -111,6 +111,21 @@ const basketGroupSchema = z
     })
     .passthrough();
 
+const marketLineSchema = z
+    .object({
+        key: text,
+        label: text,
+        item_id: text,
+        qty: num,
+        unit: text,
+        unit_price: num,
+        total: num,
+        kind: text,
+        per_day_kg: num.nullable().optional(),
+        per_day: num.nullable().optional(),
+    })
+    .passthrough();
+
 export const breakfastCostSchema = z
     .object({
         from: text,
@@ -139,6 +154,20 @@ export const breakfastCostSchema = z
             qty_kg: num,
         }).passthrough(),
         notes: z.array(z.string()),
+        market_estimates: z.object({
+            meat_lines: z.array(marketLineSchema),
+            veg_lines: z.array(marketLineSchema),
+            daily_lines: z.array(marketLineSchema).nullable().optional(),
+            total: num,
+            veg_total: num,
+            oil_total: num.nullable().optional(),
+            meat_carton_total: num,
+            liver_total: num,
+            flour_total: num,
+            cost_pct_of_revenue: num,
+            day_span: num,
+            notes: z.array(z.string()),
+        }).passthrough().nullable().optional(),
     })
     .passthrough();
 

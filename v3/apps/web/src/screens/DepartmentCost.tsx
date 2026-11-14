@@ -181,10 +181,17 @@ function BreakfastTab({ from, to }: { from: string; to: string }) {
 
     const data: BreakfastCost | undefined = query.data;
     const maxGroup = data?.groups.reduce((m, g) => Math.max(m, g.cost || 0), 0) ?? 1;
+    const market = data?.market_estimates ?? null;
+    const marketLines = market ? [...(market.meat_lines ?? []), ...(market.veg_lines ?? []), ...(market.daily_lines ?? [])] : [];
+    const combinedCost = market ? Number(data?.total_cost || 0) + Number(market.total || 0) : Number(data?.total_cost || 0);
+    const combinedPct = market && data && Number(data.revenue) > 0 ? Number(((combinedCost / Number(data.revenue)) * 100).toFixed(2)) : null;
     const verdictClass = data ? `dcost__verdict dcost__verdict--${data.verdict.tone}` : 'dcost__verdict';
 
     const printOfficial = () => {
         if (!data) { return; }
+        const market = data.market_estimates;
+        const combinedCost = Number(data.total_cost || 0) + Number(market?.total || 0);
+        const combinedPct = Number(data.revenue) > 0 ? Number(((combinedCost / Number(data.revenue)) * 100).toFixed(2)) : 0;
         printOfficialSheet({
             title: 'تحليل تكلفة الافطار',
             englishTitle: 'Breakfast Cost Analysis',
@@ -192,9 +199,10 @@ function BreakfastTab({ from, to }: { from: string; to: string }) {
             from: data.from ?? from, to: data.to ?? to,
             kpis: [
                 { label: 'إيراد الفطار (كاشير 3)', value: `${money2(data.revenue)} ر.س`, hint: `${intOf(data.revenue_entries)} قيد` },
-                { label: 'تكلفة المكونات', value: `${money2(data.total_cost)} ر.س` },
-                { label: 'نسبة التكلفة', value: `${data.cost_pct}%`, hint: data.verdict.text ?? '' },
-                { label: 'عدد الأصناف', value: intOf(data.groups.reduce((s, g) => s + g.items.length, 0)) },
+                { label: 'تكلفة المكونات (مخزن)', value: `${money2(data.total_cost)} ر.س` },
+                { label: 'مكونات السوق التقديرية', value: market ? `${money2(market.total)} ر.س` : '—', hint: market ? `≈ ${market.cost_pct_of_revenue}% من الإيراد` : '' },
+                { label: 'التكلفة الشاملة', value: `${money2(combinedCost)} ر.س`, hint: `≈ ${combinedPct}% من الإيراد` },
+                { label: 'نسبة التكلفة (مخزن فقط)', value: `${data.cost_pct}%`, hint: data.verdict.text ?? '' },
             ],
             sections: [
                 {
@@ -217,6 +225,24 @@ function BreakfastTab({ from, to }: { from: string; to: string }) {
                     }))),
                     totalsRow: [{ group: 'الإجمالي', name: '', unit: '', qty: '', cost: `${money2(data.total_cost)} ر.س`, share: '100%' }],
                 },
+                ...(market ? [{
+                    heading: 'مكونات السوق التقديرية (تقديري — سوق / مخزن)',
+                    columns: [
+                        { key: 'label', header: 'الصنف' },
+                        { key: 'qty', header: 'الكمية', align: 'end' as const },
+                        { key: 'unit', header: 'الوحدة', width: '10%' },
+                        { key: 'unit_price', header: 'سعر الوحدة', align: 'end' as const },
+                        { key: 'total', header: 'الإجمالي', align: 'end' as const },
+                    ] as OfficialSheetColumn[],
+                    rows: [...(market.meat_lines ?? []), ...(market.veg_lines ?? []), ...(market.daily_lines ?? [])].map((l) => ({
+                        label: l.label ?? '',
+                        qty: String(l.qty),
+                        unit: l.unit ?? '',
+                        unit_price: `${money2(l.unit_price)} ر.س`,
+                        total: `${money2(l.total)} ر.س`,
+                    })),
+                    totalsRow: [{ label: 'إجمالي البنود التقديرية', qty: '', unit: '', unit_price: '', total: `${money2(market.total)} ر.س` }],
+                }] : []),
                 {
                     heading: 'الإيرادات مقابل التكلفة',
                     columns: [
@@ -230,14 +256,14 @@ function BreakfastTab({ from, to }: { from: string; to: string }) {
                     ],
                 },
             ],
-            notes: data.notes ?? [],
+            notes: market ? [...(data.notes ?? []), ...(market.notes ?? [])] : (data.notes ?? []),
         });
     };
 
     return (
         <>
             <div className="dcost__filters">
-                <span className="dcost__hint">إيراد الافطار = كاشير 3 · التكلفة = مكونات الافطار من أذونات المطبخ · مواد فقط</span>
+                <span className="dcost__hint">إيراد الافطار = كاشير 3 · التكلفة = مكونات الافطار من أذونات المطبخ · مواد فقط · + بنود السوق التقديرية بالأسفل</span>
                 <Button variant="secondary" size="sm" onClick={printOfficial} disabled={!data}>🖨 طباعة ورقة رسمية A4</Button>
             </div>
 
@@ -332,6 +358,38 @@ function BreakfastTab({ from, to }: { from: string; to: string }) {
                             </div>
                         ))}
                     </div>
+
+                    {market ? (
+                        <>
+                            <h3 className="dcost__h3">مكونات السوق التقديرية <span className="dcost__verdict dcost__verdict--warning" style={{ marginInlineStart: '0.5rem' }}>تقديري — سعر السوق / المخزن</span></h3>
+                            <div className="dcost__groups">
+                                <div className="dcost__group">
+                                    <div className="dcost__group-head">
+                                        <strong>تقدير السوق — {intOf(market.day_span)} يوم</strong>
+                                        <span dir="ltr">{money2(market.total)} ر.س · ≈{market.cost_pct_of_revenue}% من الإيراد</span>
+                                    </div>
+                                    <div className="dcost__group-bar"><span style={{ inlineSize: '100%' }} /></div>
+                                    <ul className="dcost__group-items">
+                                        {marketLines.map((l) => (
+                                            <li key={l.key}>
+                                                <span>{l.label}</span>
+                                                <span dir="ltr" className="dcost__item-qty">{l.qty} {l.unit} × {money2(l.unit_price)}</span>
+                                                <span dir="ltr" className="dcost__item-cost">{money2(l.total)}</span>
+                                            </li>
+                                        ))}
+                                    </ul>
+                                    <div className="dcost__group-head" style={{ borderTop: '1px dashed var(--border, #e5e7eb)' }}>
+                                        <strong>الإجمالي الشامل (مخزن + سوق)</strong>
+                                        <span dir="ltr">{money2(combinedCost)} ر.س · ≈{combinedPct}% من الإيراد</span>
+                                    </div>
+                                </div>
+                            </div>
+
+                            <ul className="dcost__notes">
+                                {market.notes.map((note, i) => <li key={`m-${i}`}>{note}</li>)}
+                            </ul>
+                        </>
+                    ) : null}
 
                     <ul className="dcost__notes">
                         {data.notes.map((note, i) => <li key={i}>{note}</li>)}
