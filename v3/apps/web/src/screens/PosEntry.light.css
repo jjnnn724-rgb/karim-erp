@@ -1,69 +1,69 @@
-/* الكاشير — الثيم الفاتح (الافتراضي للقراءة السهلة)
+/* الكاشير — Light Enterprise THEME (ULTIMATE POS V2 tokens)
    يُفعّل بزر ☾/☀ في شريط القيادة؛ يُحفظ على جهاز الكاشير في v3.pos.theme.
    مساحة العمل كلها بيضاء بحدّة عالية التباين، الأخضر أساسي، العنبري للأسعار. */
 
 /* ─── الجذر ─────────────────────────────────────────────────────────────── */
 
 .pos-entry--light {
-    --pos-bg: #f7f7f9;
-    --pos-surface: #ffffff;
-    --pos-sunken: #efeef2;
-    --pos-ink: #1f2937;
-    --pos-muted: #5b6470;
-    --pos-line: #e9e9ee;
-    --pos-emerald: #059669;
-    --pos-amber: #d97706;
-    --pos-crimson: #dc2626;
+    --pos-bg: #F7F8FA;
+    --pos-surface: #FFFFFF;
+    --pos-sunken: #F1F4F6;
+    --pos-ink: #202A35;
+    --pos-muted: #687586;
+    --pos-line: #E5E9EE;
+    --pos-emerald: #168653;
+    --pos-amber: #B7791F;
+    --pos-crimson: #C83D45;
     --pos-radius: 12px;
 }
 
 .pos-entry.pos-entry--light {
-    background: #f7f7f9;
-    color: #1f2937;
+    background: #F7F8FA;
+    color: #202A35;
 }
 
 /* ─── Zone A — شريط القيادة ─────────────────────────────────────────────── */
 
 .pos-entry--light .pos-cmdbar {
     border-color: var(--pos-line);
-    background: #ffffff;
+    background: #FFFFFF;
     box-shadow:
         0 1px 0 rgb(24 24 27 / 4%) inset,
         0 6px 18px -14px rgb(24 24 27 / 30%);
 }
 
 .pos-entry--light .pos-cmdbar__copy strong {
-    color: #0f172a;
+    color: #202A35;
 }
 
 .pos-entry--light .pos-cmdbar__copy small {
-    color: #52525b;
+    color: #687586;
 }
 
 .pos-entry--light .pos-cmdbar__shift {
-    color: #52525b;
+    color: #687586;
 }
 
 .pos-entry--light .pos-cmdbar__status {
-    box-shadow: 0 0 0 4px rgb(5 150 105 / 16%);
+    box-shadow: 0 0 0 4px rgb(22 134 83 / 16%);
 }
 
 .pos-entry--light .pos-cmdbar__tag {
-    border-color: rgb(5 150 105 / 35%);
-    background: #ecfdf5;
-    color: #065f46;
+    border-color: rgb(22 134 83 / 35%);
+    background: #EAF6EF;
+    color: #117247;
 }
 
 .pos-entry--light .pos-tab {
-    border-color: #e9e9ee;
-    background: #f8fafc;
-    color: #3f3f46;
+    border-color: #E5E9EE;
+    background: #FFFFFF;
+    color: #687586;
 }
 
 .pos-entry--light .pos-tab.is-active {
     border-color: var(--pos-emerald);
-    background: #ffffff;
-    color: #065f46;
+    background: #FFFFFF;
+    color: #117247;
     box-shadow: 0 0 0 1px var(--pos-emerald) inset;
 }
 
@@ -72,24 +72,24 @@
 }
 
 .pos-entry--light .pos-tab__count {
-    background: #ecfdf5;
-    color: #065f46;
+    background: #EAF6EF;
+    color: #117247;
 }
 
 .pos-entry--light .pos-tab-new {
     background: var(--pos-emerald);
-    color: #ffffff;
+    color: #FFFFFF;
     border-color: var(--pos-emerald);
 }
 
 .pos-entry--light .pos-tabs__held {
-    color: #b45309;
+    color: #B7791F;
 }
 
 .pos-entry--light .pos-icon-btn {
-    border-color: #e9e9ee;
-    background: #ffffff;
-    color: #3f3f46;
+    border-color: #E5E9EE;
+    background: #FFFFFF;
+    color: #687586;
 }
 
 .pos-entry--light .pos-icon-btn:hover {
@@ -98,14 +98,14 @@
 }
 
 .pos-entry--light .pos-icon-btn--danger:hover {
-    border-color: #dc2626;
-    color: #dc2626;
+    border-color: #C83D45;
+    color: #C83D45;
 }
 
 .pos-entry--light .pos-menu__trigger {
-    border-color: #e9e9ee;
-    background: #ffffff;
-    color: #0f172a;
+    border-color: #E5E9EE;
+    background: #FFFFFF;
+    color: #202A35;
 }
 
 .pos-entry--light .pos-menu__trigger:hover {
@@ -114,118 +114,118 @@
 }
 
 .pos-entry--light .pos-menu__panel {
-    background: #ffffff;
-    border-color: #e9e9ee;
+    background: #FFFFFF;
+    border-color: #E5E9EE;
     box-shadow: 0 18px 40px -18px rgb(24 24 27 / 28%);
 }
 
 .pos-entry--light .pos-menu__item {
-    color: #1f2937;
+    color: #202A35;
 }
 
 .pos-entry--light .pos-menu__item:hover {
-    background: #f1f5f9;
+    background: #F1F4F6;
 }
 
 /* ─── مبدّل اللوحتين ─────────────────────────────────────────────────────── */
 
 .pos-entry--light .pos-pane-switch {
-    border-color: #e9e9ee;
-    background: #efeef2;
+    border-color: #E5E9EE;
+    background: #F1F4F6;
 }
 
 .pos-entry--light .pos-pane-switch__btn {
-    color: #52525b;
+    color: #687586;
 }
 
 .pos-entry--light .pos-pane-switch__btn.is-active {
-    background: #ffffff;
+    background: #FFFFFF;
     border-color: var(--pos-emerald);
-    color: #065f46;
+    color: #117247;
     box-shadow: 0 1px 4px rgb(24 24 27 / 10%);
 }
 
 /* ─── الكتالوج ──────────────────────────────────────────────────────────── */
 
 .pos-entry--light .pos-catalog {
-    border-color: #e9e9ee;
-    background: #ffffff;
+    border-color: #E5E9EE;
+    background: #FFFFFF;
     box-shadow: 0 1px 2px rgb(24 24 27 / 5%);
 }
 
 .pos-entry--light .pos-catalog__toolbar {
-    border-color: #efeef2;
-    background: #ffffff;
+    border-color: #F1F4F6;
+    background: #FFFFFF;
 }
 
 .pos-entry--light .pos-catalog__head .erp-card__title,
 .pos-entry--light .pos-catalog__buffet-title {
-    color: #0f172a;
+    color: #202A35;
 }
 
 .pos-entry--light .pos-search__input {
-    border-color: #e9e9ee;
-    background: #f8fafc;
-    color: #0f172a;
+    border-color: #E5E9EE;
+    background: #FFFFFF;
+    color: #202A35;
 }
 
 .pos-entry--light .pos-search__input::placeholder {
-    color: #94a3b8;
+    color: #8B95A3;
 }
 
 .pos-entry--light .pos-search__input:hover {
-    border-color: #cbd5e1;
+    border-color: #E5E9EE;
 }
 
 .pos-entry--light .pos-search__input:focus-visible {
     border-color: var(--pos-emerald);
-    outline: 2px solid rgb(5 150 105 / 25%);
-    background: #ffffff;
-    box-shadow: 0 0 0 3px rgb(5 150 105 / 12%);
+    outline: 2px solid rgb(22 134 83 / 25%);
+    background: #FFFFFF;
+    box-shadow: 0 0 0 3px rgb(22 134 83 / 12%);
 }
 
 .pos-entry--light .pos-category {
-    border-color: #e9e9ee;
-    background: #ffffff;
-    color: #52525b;
+    border-color: #E5E9EE;
+    background: #FFFFFF;
+    color: #687586;
 }
 
 .pos-entry--light .pos-category.is-active {
     border-color: var(--pos-emerald);
     background: var(--pos-emerald);
-    color: #ffffff;
+    color: #FFFFFF;
 }
 
 .pos-entry--light .pos-category__count {
-    background: rgb(5 150 105 / 14%);
-    color: #065f46;
+    background: rgb(22 134 83 / 14%);
+    color: #117247;
 }
 
 .pos-entry--light .pos-category.is-active .pos-category__count {
     background: rgb(255 255 255 / 28%);
-    color: #ffffff;
+    color: #FFFFFF;
 }
 
 .pos-entry--light .pos-category:hover:not(.is-active) {
-    border-color: #cbd5e1;
-    color: #0f172a;
+    border-color: #E5E9EE;
+    color: #202A35;
 }
 
 /* بطاقات الشبكة */
 .pos-entry--light .pos-product {
-    border-color: #e5e9f0;
-    background: #ffffff;
+    border-color: #E5E9EE;
+    background: #FFFFFF;
     box-shadow: 0 1px 2px rgb(24 24 27 / 5%);
 }
 
 .pos-entry--light .pos-product:hover {
-    border-color: rgb(5 150 105 / 45%);
-    background: #ffffff;
-    box-shadow: 0 6px 16px -10px rgb(5 150 105 / 45%);
+    border-color: rgb(22 134 83 / 45%);
+    background: #FFFFFF;
+    box-shadow: 0 6px 16px -10px rgb(22 134 83 / 45%);
 }
 
 .pos-entry--light .pos-product__media {
-    background: linear-gradient(160deg, #efeef2, #e9e9ee);
+    background: linear-gradient(160deg, #F1F4F6, #E5E9EE);
 }
 
 .pos-entry--light .pos-product__media::after {
@@ -239,21 +239,21 @@
 
 .pos-entry--light .pos-product__category-badge {
     background: rgb(255 255 255 / 88%);
-    border-color: #e9e9ee;
-    color: #3f3f46;
+    border-color: #E5E9EE;
+    color: #687586;
 }
 
 .pos-entry--light .pos-product__stock {
-    background: #f59e0b;
-    color: #2d1a02;
+    background: #B7791F;
+    color: #8A5A13;
 }
 
 .pos-entry--light .pos-product__info strong {
-    color: #0f172a;
+    color: #202A35;
 }
 
 .pos-entry--light .pos-product__name-en {
-    color: #64748b;
+    color: #8B95A3;
 }
 
 .pos-entry--light .pos-product__price {
@@ -261,41 +261,41 @@
 }
 
 .pos-entry--light .pos-product__unit {
-    color: #6b7280;
+    color: #687586;
 }
 
 .pos-entry--light .pos-product__pin {
-    border-color: #e9e9ee;
+    border-color: #E5E9EE;
     background: rgb(255 255 255 / 88%);
-    color: #52525b;
+    color: #687586;
 }
 
 .pos-entry--light .pos-product__pin.is-on {
-    border-color: #d97706;
-    color: #d97706;
-    background: #fffbeb;
+    border-color: #B7791F;
+    color: #B7791F;
+    background: #FFF5E5;
 }
 
 .pos-entry--light .pos-product__image-action {
     background: rgb(255 255 255 / 92%);
-    border-color: #e9e9ee;
-    color: #3f3f46;
+    border-color: #E5E9EE;
+    color: #687586;
 }
 
 .pos-entry--light .pos-add-symbol {
-    color: #065f46;
+    color: #117247;
 }
 
 /* أدوات الكتالوج العائمة */
 .pos-entry--light .pos-tools-toggle {
-    border-color: rgb(5 150 105 / 45%);
-    background: #ffffff;
+    border-color: rgb(22 134 83 / 45%);
+    background: #FFFFFF;
     color: var(--pos-emerald);
     box-shadow: 0 6px 16px -8px rgb(24 24 27 / 35%);
 }
 
 .pos-entry--light .pos-tools-toggle:hover {
-    background: #ecfdf5;
+    background: #EAF6EF;
 }
 
 .pos-entry--light .pos-tools-scrim {
@@ -303,454 +303,454 @@
 }
 
 .pos-entry--light .pos-tools-panel {
-    background: #ffffff;
-    border-color: #e9e9ee;
+    background: #FFFFFF;
+    border-color: #E5E9EE;
     box-shadow: 0 18px 40px -18px rgb(24 24 27 / 30%);
 }
 
 .pos-entry--light .pos-tools-panel__title {
-    color: #0f172a;
+    color: #202A35;
 }
 
 .pos-entry--light .pos-tools-group__label {
-    color: #52525b;
+    color: #687586;
 }
 
 .pos-entry--light .pos-tools-chips .pos-category {
-    background: #f8fafc;
+    background: #FFFFFF;
 }
 
 .pos-entry--light .pos-tools-close {
-    border-color: #e9e9ee;
-    background: #f1f5f9;
-    color: #3f3f46;
+    border-color: #E5E9EE;
+    background: #F1F4F6;
+    color: #687586;
 }
 
 .pos-entry--light .pos-tools-close:hover {
     border-color: var(--pos-emerald);
-    color: #065f46;
+    color: #117247;
 }
 
 /* المفضلة والشائع */
 .pos-entry--light .pos-favorites {
-    background: #ffffff;
-    border-color: #e5e9f0;
+    background: #FFFFFF;
+    border-color: #E5E9EE;
 }
 
 .pos-entry--light .pos-favorite {
-    border-color: #e5e9f0;
-    background: #f8fafc;
-    color: #1f2937;
+    border-color: #E5E9EE;
+    background: #FFFFFF;
+    color: #202A35;
 }
 
 .pos-entry--light .pos-favorite:hover {
-    border-color: rgb(5 150 105 / 45%);
-    background: #ffffff;
+    border-color: rgb(22 134 83 / 45%);
+    background: #FFFFFF;
 }
 
 .pos-entry--light .pos-favorites--best {
-    border-color: rgb(5 150 105 / 38%);
-    background: #f0fdf7;
+    border-color: rgb(22 134 83 / 38%);
+    background: #EAF6EF;
 }
 
 .pos-entry--light .pos-favorite--best {
-    background: #ffffff;
+    background: #FFFFFF;
 }
 
 .pos-entry--light .pos-favorites__label {
-    color: #52525b;
+    color: #687586;
 }
 
 .pos-entry--light .pos-favorite strong {
-    color: #0f172a;
+    color: #202A35;
 }
 
 /* ─── السلة ─────────────────────────────────────────────────────────────── */
 
 .pos-entry--light .pos-cart {
-    border-color: #e9e9ee;
-    background: #ffffff;
+    border-color: #E5E9EE;
+    background: #FFFFFF;
     box-shadow: 0 1px 2px rgb(24 24 27 / 5%);
 }
 
 .pos-entry--light .pos-cart__head {
-    border-color: #efeef2;
+    border-color: #F1F4F6;
 }
 
 .pos-entry--light .pos-cart__head h2,
 .pos-entry--light .pos-cart__order {
-    color: #0f172a;
+    color: #202A35;
 }
 
 .pos-entry--light .pos-cart__customer {
-    color: #065f46;
+    color: #117247;
 }
 
 .pos-entry--light .pos-cart__line {
-    border-color: #efeef2;
+    border-color: #F1F4F6;
 }
 
 .pos-entry--light .pos-cart__copy strong {
-    color: #0f172a;
+    color: #202A35;
 }
 
 .pos-entry--light .pos-cart__copy small,
 .pos-entry--light .pos-cart__unit,
 .pos-entry--light .pos-cart__line small {
-    color: #64748b;
+    color: #8B95A3;
 }
 
 .pos-entry--light .pos-qty button {
-    border-color: #e9e9ee;
-    background: #f8fafc;
-    color: #0f172a;
+    border-color: #E5E9EE;
+    background: #FFFFFF;
+    color: #202A35;
 }
 
 .pos-entry--light .pos-qty button:hover:not(:disabled) {
     border-color: var(--pos-emerald);
-    color: #065f46;
+    color: #117247;
 }
 
 .pos-entry--light .pos-qty span {
-    color: #0f172a;
+    color: #202A35;
 }
 
 .pos-entry--light .pos-cart__line-total {
-    color: #0f172a;
+    color: #202A35;
 }
 
 .pos-entry--light .pos-cart__line-remove,
 .pos-entry--light .pos-cart__line-remove svg {
-    color: #9aa4b2;
+    color: #8B95A3;
 }
 
 .pos-entry--light .pos-cart__line-remove:hover {
-    color: #dc2626;
+    color: #C83D45;
 }
 
 .pos-entry--light .pos-cart__thumb {
-    border-color: #e5e9f0;
+    border-color: #E5E9EE;
 }
 
 .pos-entry--light .pos-cart__foot {
-    border-color: #efeef2;
-    background: #ffffff;
+    border-color: #F1F4F6;
+    background: #FFFFFF;
     box-shadow: none;
 }
 
 .pos-entry--light .pos-totals dt {
-    color: #64748b;
+    color: #8B95A3;
 }
 
 .pos-entry--light .pos-totals dd {
-    color: #0f172a;
+    color: #202A35;
 }
 
 .pos-entry--light .pos-totals__discount dd {
-    color: #dc2626;
+    color: #C83D45;
 }
 
 .pos-entry--light .pos-cart__due,
 .pos-entry--light .pos-cart__totals-row {
-    color: #0f172a;
+    color: #202A35;
 }
 
 .pos-entry--light .pos-cart__charge-hint,
 .pos-entry--light .pos-cart__customer-hint {
-    color: #64748b;
+    color: #8B95A3;
 }
 
 .pos-entry--light .pos-cart__checkout,
 .pos-entry--light .pos-cart__checkout-main {
     background: var(--pos-emerald);
-    color: #ffffff;
+    color: #FFFFFF;
 }
 
 .pos-entry--light .pos-cart__checkout:hover:not(:disabled) {
-    background: #047857;
+    background: #117247;
 }
 
 /* غطاء الدفع */
 .pos-entry--light .pos-payments {
-    border-color: #e5e9f0;
-    background: #ffffff;
+    border-color: #E5E9EE;
+    background: #FFFFFF;
 }
 
 .pos-entry--light .pos-payments__title {
-    color: #0f172a;
+    color: #202A35;
 }
 
 .pos-entry--light .pos-payments__state {
-    color: #52525b;
+    color: #687586;
 }
 
 .pos-entry--light .pos-payments__state.is-invalid {
-    color: #dc2626;
+    color: #C83D45;
 }
 
 .pos-entry--light .pos-method {
-    border-color: #e9e9ee;
-    background: #f8fafc;
-    color: #3f3f46;
+    border-color: #E5E9EE;
+    background: #FFFFFF;
+    color: #687586;
 }
 
 .pos-entry--light .pos-method svg {
-    color: #64748b;
+    color: #8B95A3;
 }
 
 .pos-entry--light .pos-method:hover:not(:disabled) {
     border-color: var(--pos-emerald);
-    background: #ecfdf5;
-    color: #065f46;
+    background: #EAF6EF;
+    color: #117247;
 }
 
 .pos-entry--light .pos-method.is-active {
     border-color: var(--pos-emerald);
-    background: #ecfdf5;
-    color: #065f46;
+    background: #EAF6EF;
+    color: #117247;
     box-shadow: 0 0 0 1px var(--pos-emerald) inset;
 }
 
 .pos-entry--light .pos-bill {
-    border-color: #fde68a;
-    background: #fffbeb;
-    color: #b45309;
+    border-color: #F5D9A8;
+    background: #FFF5E5;
+    color: #B7791F;
 }
 
 .pos-entry--light .pos-bill:hover:not(:disabled) {
-    border-color: #f59e0b;
-    background: #fef3c7;
+    border-color: #B7791F;
+    background: #FFF5E5;
 }
 
 .pos-entry--light .pos-bill--exact {
-    border-color: #a7f3d0;
-    background: #ecfdf5;
-    color: #065f46;
+    border-color: #CBE9D8;
+    background: #EAF6EF;
+    color: #117247;
 }
 
 .pos-entry--light .pos-bill--exact:hover:not(:disabled) {
-    border-color: #6ee7b7;
-    background: #d1fae5;
+    border-color: #CBE9D8;
+    background: #EAF6EF;
 }
 
 .pos-entry--light .pos-numpad button {
-    border-color: #e9e9ee;
-    background: #f8fafc;
-    color: #0f172a;
+    border-color: #E5E9EE;
+    background: #FFFFFF;
+    color: #202A35;
     box-shadow: 0 1px 0 rgb(24 24 27 / 5%);
 }
 
 .pos-entry--light .pos-numpad button:hover:not(:disabled) {
-    background: #efeef2;
+    background: #F1F4F6;
 }
 
 .pos-entry--light .pos-numpad__display,
 .pos-entry--light .pos-numpad-display {
-    background: #f8fafc;
-    color: #0f172a;
+    background: #FFFFFF;
+    color: #202A35;
 }
 
 /* بطاقة البطاقة */
 .pos-entry--light .pos-card {
-    border-color: #fde68a;
-    background: #fffbeb;
+    border-color: #F5D9A8;
+    background: #FFF5E5;
 }
 
 .pos-entry--light .pos-card__title {
-    color: #92400e;
+    color: #8A5A13;
 }
 
 .pos-entry--light .pos-card__badge {
-    border-color: #f59e0b;
-    background: #fef3c7;
-    color: #92400e;
+    border-color: #B7791F;
+    background: #FFF5E5;
+    color: #8A5A13;
 }
 
 .pos-entry--light .pos-card__brand {
-    border-color: #e9e9ee;
-    background: #ffffff;
-    color: #3f3f46;
+    border-color: #E5E9EE;
+    background: #FFFFFF;
+    color: #687586;
 }
 
 .pos-entry--light .pos-card__brand:hover:not(:disabled) {
-    border-color: #f59e0b;
-    background: #fef3c7;
-    color: #92400e;
+    border-color: #B7791F;
+    background: #FFF5E5;
+    color: #8A5A13;
 }
 
 .pos-entry--light .pos-card__brand.is-active {
-    border-color: #d97706;
-    background: #d97706;
-    color: #ffffff;
+    border-color: #B7791F;
+    background: #B7791F;
+    color: #FFFFFF;
 }
 
 .pos-entry--light .pos-card__hint {
-    color: #92400e;
+    color: #8A5A13;
 }
 
 /* محرر السعر */
 .pos-entry--light .pos-price-editor {
-    background: #ffffff;
-    border-color: #fde68a;
+    background: #FFFFFF;
+    border-color: #F5D9A8;
     box-shadow: 0 16px 36px -14px rgb(24 24 27 / 30%);
 }
 
 .pos-entry--light .pos-price-delta.is-down {
-    background: #fef2f2;
-    color: #b91c1c;
-    border-color: #fecaca;
+    background: #FCEEEF;
+    color: #C83D45;
+    border-color: #FCEEEF;
 }
 
 .pos-entry--light .pos-price-delta.is-up,
 .pos-entry--light .pos-price-delta.is-flat {
-    background: #f1f5f9;
-    color: #52525b;
-    border-color: #e9e9ee;
+    background: #F1F4F6;
+    color: #687586;
+    border-color: #E5E9EE;
 }
 
 .pos-entry--light .pos-price-error {
-    color: #b91c1c;
+    color: #C83D45;
 }
 
 .pos-entry--light .pos-price-save {
     border-color: var(--pos-emerald);
     background: var(--pos-emerald);
-    color: #ffffff;
+    color: #FFFFFF;
 }
 
 .pos-entry--light .pos-price-save:hover:not(:disabled) {
-    background: #047857;
+    background: #117247;
 }
 
 .pos-entry--light .pos-price-cancel,
 .pos-entry--light .pos-price-reset {
-    border-color: #e9e9ee;
-    background: #ffffff;
-    color: #3f3f46;
+    border-color: #E5E9EE;
+    background: #FFFFFF;
+    color: #687586;
 }
 
 .pos-entry--light .pos-price-cancel:hover,
 .pos-entry--light .pos-price-reset:hover {
     border-color: var(--pos-emerald);
-    color: #065f46;
+    color: #117247;
 }
 
 .pos-entry--light .pos-cart__price-edit {
-    color: #b45309;
+    color: #B7791F;
 }
 
 .pos-entry--light .pos-cart__price-edit:hover {
-    background: #fffbeb;
-    border-color: #fde68a;
+    background: #FFF5E5;
+    border-color: #F5D9A8;
 }
 
 .pos-entry--light .pos-cart__price-badge {
-    background: #fef3c7;
-    border-color: #f59e0b;
-    color: #92400e;
+    background: #FFF5E5;
+    border-color: #B7791F;
+    color: #8A5A13;
 }
 
 /* المعلق */
 .pos-entry--light .pos-held {
-    background: #ffffff;
-    border-color: #e5e9f0;
+    background: #FFFFFF;
+    border-color: #E5E9EE;
 }
 
 .pos-entry--light .pos-held__title,
 .pos-entry--light .pos-held__row strong {
-    color: #0f172a;
+    color: #202A35;
 }
 
 .pos-entry--light .pos-held__row small {
-    color: #64748b;
+    color: #8B95A3;
 }
 
 /* ─── حقول مشتركة ───────────────────────────────────────────────────────── */
 
 .pos-entry--light :where(.erp-control) {
-    border-color: #e9e9ee;
-    background: #ffffff;
-    color: #0f172a;
+    border-color: #E5E9EE;
+    background: #FFFFFF;
+    color: #202A35;
     box-shadow: none;
 }
 
 .pos-entry--light :where(.erp-control):hover {
-    border-color: #cbd5e1;
+    border-color: #E5E9EE;
 }
 
 .pos-entry--light :where(.erp-control):focus-visible {
     border-color: var(--pos-emerald);
-    outline: 2px solid rgb(5 150 105 / 30%);
-    background: #ffffff;
+    outline: 2px solid rgb(22 134 83 / 30%);
+    background: #FFFFFF;
 }
 
 .pos-entry--light :where(.erp-control)::placeholder {
-    color: #94a3b8;
+    color: #8B95A3;
 }
 
 .pos-entry--light :where(.erp-control):disabled {
-    background: #f1f5f9;
-    color: #94a3b8;
+    background: #F1F4F6;
+    color: #8B95A3;
 }
 
 /* ─── البوفيه ───────────────────────────────────────────────────────────── */
 
 .pos-entry--light .pos-person {
-    border-color: #e5e9f0;
-    background: #ffffff;
-    color: #0f172a;
+    border-color: #E5E9EE;
+    background: #FFFFFF;
+    color: #202A35;
 }
 
 .pos-entry--light .pos-person strong {
-    color: #0f172a;
+    color: #202A35;
 }
 
 .pos-entry--light .pos-person:hover:not(:disabled) {
     border-color: var(--pos-emerald);
-    background: #f8fafc;
+    background: #FFFFFF;
 }
 
 .pos-entry--light .pos-person__mark {
-    background: #f1f5f9;
-    color: #52525b;
+    background: #F1F4F6;
+    color: #687586;
 }
 
 /* ─── الإيصال (شاشة بعد البيع) ──────────────────────────────────────────── */
 
 .pos-entry--light .pos-receipt {
-    border-color: #e9e9ee;
-    background: #ffffff;
+    border-color: #E5E9EE;
+    background: #FFFFFF;
 }
 
 .pos-entry--light .pos-receipt__head h2,
 .pos-entry--light .pos-receipt__facts dt,
 .pos-entry--light .pos-receipt__facts dd {
-    color: #0f172a;
+    color: #202A35;
 }
 
 .pos-entry--light .pos-receipt__facts dt {
-    color: #64748b;
+    color: #8B95A3;
 }
 
 /* ─── نوافذ منبثقة ──────────────────────────────────────────────────────── */
 
 .pos-entry--light .pos-overlay__body .erp-card {
-    border-color: #e9e9ee;
-    background: #ffffff;
+    border-color: #E5E9EE;
+    background: #FFFFFF;
 }
 
 .pos-entry--light .pos-overlay__body :where(th) {
-    color: #52525b;
+    color: #687586;
 }
 
 .pos-entry--light .pos-overlay__body :where(td) {
-    color: #1f2937;
+    color: #202A35;
 }
 
 .pos-entry--light .pos-open {
-    border-color: #e9e9ee;
-    background: #ffffff;
-    color: #0f172a;
+    border-color: #E5E9EE;
+    background: #FFFFFF;
+    color: #202A35;
 }
 
 /* ─── التمرير الرفيع ─────────────────────────────────────────────────────── */
@@ -780,7 +780,7 @@
         .pos-tools-panel
     )::-webkit-scrollbar-thumb {
     border-radius: 999px;
-    background: #cbd5e1;
+    background: #E5E9EE;
 }
 
 .pos-entry--light
@@ -793,93 +793,93 @@
         .pos-favorites__list,
         .pos-tools-panel
     )::-webkit-scrollbar-thumb:hover {
-    background: #94a3b8;
+    background: #8B95A3;
 }
 
 /* ═══ عناصر الإصدار الجديد — ثيم فاتح ═════════════════════════════════════ */
 
 .pos-entry--light .pos-product__price-edit {
     background: rgb(255 255 255 / 90%);
-    color: #d97706;
-    border-color: #fde68a;
+    color: #B7791F;
+    border-color: #F5D9A8;
 }
 
 .pos-entry--light .pos-product__price-edit:hover {
-    background: #d97706;
-    color: #ffffff;
-    border-color: #d97706;
+    background: #B7791F;
+    color: #FFFFFF;
+    border-color: #B7791F;
 }
 
 .pos-entry--light .catalog-price-edit {
-    background: #ffffff;
-    border-color: #fde68a;
+    background: #FFFFFF;
+    border-color: #F5D9A8;
     box-shadow: 0 22px 48px -16px rgb(24 24 27 / 30%);
 }
 
 .pos-entry--light .catalog-price-edit__head strong {
-    color: #b45309;
+    color: #B7791F;
 }
 
 .pos-entry--light .catalog-price-edit__close {
-    background: #f8fafc;
-    border-color: #e9e9ee;
-    color: #3f3f46;
+    background: #FFFFFF;
+    border-color: #E5E9EE;
+    color: #687586;
 }
 
 .pos-entry--light .catalog-price-edit__close:hover {
     border-color: var(--pos-emerald);
-    color: #065f46;
+    color: #117247;
 }
 
 .pos-entry--light .catalog-price-edit__name {
-    color: #0f172a;
+    color: #202A35;
 }
 
 .pos-entry--light .catalog-price-edit__current {
-    color: #64748b;
+    color: #8B95A3;
 }
 
 .pos-entry--light .catalog-price-edit__note {
-    color: #94a3b8;
+    color: #8B95A3;
 }
 
 .pos-entry--light .pos-cart__customer {
-    background: #ecfdf5;
-    color: #065f46;
-    border-color: #a7f3d0;
+    background: #EAF6EF;
+    color: #117247;
+    border-color: #CBE9D8;
 }
 
 .pos-entry--light .pos-cart__customer:hover {
-    background: #d1fae5;
+    background: #EAF6EF;
 }
 
 .pos-entry--light .pos-cart__customer.is-set {
     background: var(--pos-emerald);
-    color: #ffffff;
+    color: #FFFFFF;
     border-color: var(--pos-emerald);
 }
 
 .pos-entry--light .pos-customer-panel {
-    background: #ffffff;
-    border-color: #a7f3d0;
+    background: #FFFFFF;
+    border-color: #CBE9D8;
     box-shadow: 0 22px 48px -16px rgb(24 24 27 / 28%);
 }
 
 .pos-entry--light .pos-customer-panel__title {
-    color: #0f172a;
+    color: #202A35;
 }
 
 .pos-entry--light .pos-customer-panel__hint {
-    color: #64748b;
+    color: #8B95A3;
 }
 
 .pos-entry--light .pos-customer-clear {
-    background: #fef2f2;
-    border-color: #fecaca;
-    color: #b91c1c;
+    background: #FCEEEF;
+    border-color: #FCEEEF;
+    color: #C83D45;
 }
 
 .pos-entry--light .pos-customer-clear:hover {
-    border-color: #f87171;
-    color: #991b1b;
+    border-color: #C83D45;
+    color: #A8303A;
 }
