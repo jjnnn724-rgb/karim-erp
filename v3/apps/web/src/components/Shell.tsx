@@ -89,6 +89,7 @@ export const NAV_ITEMS = [
     { to: '/inventory-inquiry-pro', label: 'البطاقة الفاخرة', hint: 'Item Card' },
     { to: '/accountant-dashboard', label: 'لوحة المحاسب', hint: 'Accountant' },
     { to: '/cfo', label: 'المدير المالي', hint: 'CFO' },
+    { to: '/ai-assistant', label: 'المساعد الذكي', hint: 'AI Assistant' },
     { to: '/dept-head-dashboard', label: 'لوحة رئيس القسم', hint: 'Dept Head' },
     { to: '/cost-analysis', label: 'تحليل التكلفة', hint: 'Cost Analysis' },
     { to: '/cost-center', label: 'مركز التكلفة', hint: 'Cost Center' },

@@ -472,6 +472,13 @@ export const posReportsRoute = createRoute({
 });
 posReportsRoute.lazy(() => import('../screens/PosReports.lazy').then((module) => module.Route));
 
+/** المساعد الذكي — «وين الزيادة؟»: مقارنات وتخفيض + تنبيهات (admin/manager/accountant). */
+export const aiAssistantRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/ai-assistant',
+});
+aiAssistantRoute.lazy(() => import('../screens/AiAssistant.lazy').then((module) => module.Route));
+
 /** نقطة البيع — الكاشير الحيّ: أصناف وسلة ودفع ووردية وإيصال. */
 export const posEntryRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -603,6 +610,7 @@ export const routeTree = rootRoute.addChildren([
     cashierMonitorRoute,
     posEntryRoute,
     posReportsRoute,
+    aiAssistantRoute,
     cashierKioskRoute,
     legacySourceRoute,
     salesAnalyzerRoute,

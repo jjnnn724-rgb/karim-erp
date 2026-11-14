@@ -20,7 +20,11 @@ const { logger } = require('../logger');
 const assistant = require('./assistant');
 const localLlm = require('./local-llm');
 const tools = require('./tools');
+const analyzer = require('./analyzer');
 const { riyadhToday } = require('../riyadh-date');
+
+/* أدمن + مدير + محاسب — نفس أدوار التقارير (لا نقد). */
+const ANALYTICS_ROLES = ['admin', 'manager', 'accountant'];
 
 const router = express.Router();
 
@@ -118,6 +122,24 @@ router.post('/drafts/:id/apply', jwtAuth, requireRole('admin'), asyncHandler(asy
 /** رفض مسوّدة. */
 router.post('/drafts/:id/reject', jwtAuth, requireRole('admin'), asyncHandler(async (req, res) => {
     res.json({ draft: tools.rejectDraft(req.params.id) });
+}));
+
+/** تحليلات مقارنة (أسبوع/شهر) — حتمية من القاعدة، بلا نموذج. */
+router.get('/analytics', jwtAuth, requireRole(...ANALYTICS_ROLES), asyncHandler(async (req, res) => {
+    const range = req.query.range === 'month' ? 'month' : 'week';
+    const alertPct = Number(req.query.alertPct ?? 0);
+    res.set('Cache-Control', 'no-store');
+    res.json(await analyzer.cachedAnalytics({ range, alertPct: Number.isFinite(alertPct) ? alertPct : 0 }));
+}));
+
+/** شرح الصورة بالنموذج المحلي المجاني (اختياري — عند الطلب فقط). */
+router.post('/analytics/explain', jwtAuth, requireRole(...ANALYTICS_ROLES), assistantLimiter, asyncHandler(async (req, res) => {
+    const body = req.body || {};
+    const range = body.range === 'month' ? 'month' : 'week';
+    const alertPct = Number(body.alertPct ?? 0);
+    const report = await analyzer.cachedAnalytics({ range, alertPct: Number.isFinite(alertPct) ? alertPct : 0 });
+    const out = await analyzer.explain(report);
+    res.json({ ...out, range: report.range, days: report.days, alertPct: report.alertPct });
 }));
 
 /** سؤال واحد ⇒ رد واحد. */

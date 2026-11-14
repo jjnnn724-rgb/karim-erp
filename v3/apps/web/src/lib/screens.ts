@@ -61,6 +61,7 @@ export const V3_SCREENS = [
     'inventory-inquiry-pro',
     'pnl',
     'cfo',
+    'ai-assistant',
     'monthly-comparison',
     'reports',
     'vat-return',
