@@ -13,9 +13,9 @@
  * session is not live; it never fabricates a local session.
  */
 
-import { fetchChatUsers, fetchChatHistory, sendChatMessage, CHAT_MAX_BODY } from './data/chat-repo.js?v=4.9.328';
-import { ensureRealtimeSocket, closeRealtimeSocket } from './realtime.js?v=4.9.328';
-import { chatWriteEnabled } from './write-flags.js?v=4.9.328';
+import { fetchChatUsers, fetchChatHistory, sendChatMessage, CHAT_MAX_BODY } from './data/chat-repo.js?v=4.9.330';
+import { ensureRealtimeSocket, closeRealtimeSocket } from './realtime.js?v=4.9.330';
+import { chatWriteEnabled } from './write-flags.js?v=4.9.330';
 
 const CHAT_POLL_MS = 15_000;
 

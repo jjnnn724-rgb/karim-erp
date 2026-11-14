@@ -28,6 +28,12 @@ export interface PosCatalogProps {
     /** manager/admin فقط — يفتح محرر سعر البيع من البطاقة. */
     canEditProductPrice: boolean;
     onProductPriceSaved: (productId: string, price: number) => void;
+    /**
+     * شريط الفئات تحت البحث — مخفي عن موظف الكاشير (طلب المالك 2026-11-14):
+     * كل شريط ي��دّر ~46px من ارتفاع الشاشة، والمينو يستاهل المساحة.
+     * الأدوار الأعلى (مدير/محاسب) يبقى عندهم الشريط للتنقل بين الفئات.
+     */
+    showCategories?: boolean;
     imagePending: boolean;
     onUploadImage: (item: CatalogItem, file: File) => void;
     onRemoveImage: (item: CatalogItem) => void;
@@ -263,15 +269,12 @@ function PosCatalogView({
     busy,
     canEditProductPrice,
     onProductPriceSaved,
+    showCategories = true,
 }: PosCatalogProps) {
     const fileRef = useRef<HTMLInputElement | null>(null);
     const [imageTarget, setImageTarget] = useState<CatalogItem | null>(null);
     const [priceEditTarget, setPriceEditTarget] = useState<CatalogItem | null>(null);
     const needle = query.trim().toLocaleLowerCase();
-
-    useEffect(() => {
-        searchInputRef.current?.focus();
-    }, [searchInputRef]);
 
     const categories = useMemo(() => {
         const soldByCategory = new Map<string, number>();
@@ -286,13 +289,15 @@ function PosCatalogView({
             .map(([category]) => ({ name: category, count: itemsByCategory.get(category) ?? 0 }));
     }, [items, sales]);
 
+    const activeCategory = showCategories ? selectedCategory : '';
+
     const filtered = useMemo(() => {
         return items.filter((item) => {
-            const categoryMatch = buffet || !selectedCategory || item.category === selectedCategory;
+            const categoryMatch = buffet || !activeCategory || item.category === activeCategory;
             const haystack = `${item.name} ${item.barcode} ${item.category}`.toLocaleLowerCase();
             return categoryMatch && (!needle || haystack.includes(needle));
         });
-    }, [buffet, items, needle, selectedCategory]);
+    }, [activeCategory, buffet, items, needle]);
 
     const ordered = useMemo(() => {
         if (buffet) return filtered;
@@ -539,33 +544,34 @@ function PosCatalogView({
                 </>
             ) : null}
 
-            <div className="pos-catalog__toolbar">
-                {buffet ? (
+            {buffet ? (
+                <div className="pos-catalog__toolbar">
                     <div className="pos-catalog__head">
                         <span className="erp-card__title">فئات البوفيه</span>
                         <Badge variant="info">بوفيه مفتوح</Badge>
                     </div>
-                ) : null}
-                <SearchInput
-                    inputRef={searchInputRef}
-                    label={buffet ? 'بحث الفئات' : 'بحث الأصناف'}
-                    placeholder={buffet ? 'اسم فئة البوفيه... [F2]' : 'اسم الصنف أو الباركود... [F2]'}
-                    value={query}
-                    onChange={onQuery}
-                    inputMode="none"
-                    autoComplete="off"
-                    enterKeyHint="enter"
-                    className="pos-search"
-                    onKeyDown={(event) => {
-                        if (event.key === 'Enter') {
-                            event.preventDefault();
-                            onBarcodeEnter();
-                        }
-                    }}
-                />
-            </div>
+                    <SearchInput
+                        inputRef={searchInputRef}
+                        label="بحث الفئات"
+                        placeholder="اسم فئة البوفيه... [F2]"
+                        value={query}
+                        onChange={onQuery}
+                        inputMode="none"
+                        autoComplete="off"
+                        enterKeyHint="enter"
+                        className="pos-search"
+                        onKeyDown={(event) => {
+                            if (event.key === 'Enter') {
+                                event.preventDefault();
+                                onBarcodeEnter();
+                            }
+                        }}
+                    />
+                </div>
+            ) : null}
+            {/* البحث العادي انتقل إلى شريط الرأس (يوفّر صفًا كاملًا للمنيو) — 2026-11-14 */}
 
-            {categories.length && !buffet ? (
+            {categories.length && !buffet && showCategories ? (
                 <div className="pos-categories" role="group" aria-label="الفئات">
                     <button
                         type="button"

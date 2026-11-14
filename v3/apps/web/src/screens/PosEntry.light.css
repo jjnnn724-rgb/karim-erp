@@ -579,6 +579,10 @@
     color: #8B95A3;
 }
 
+.pos-entry--light .pos-qty {
+    border-color: #E5E9EE;
+    background: #FFFFFF;
+}
 .pos-entry--light .pos-qty button {
     border-color: #E5E9EE;
     background: #FFFFFF;
@@ -1100,6 +1104,37 @@
 /* أيقونات الشريط — زر ترس الضبط مميز بالأخضر */
 .pos-entry--light .pos-icon-btn { border-radius: 11px; }
 .pos-entry--light .pos-icon-btn--settings { background: #EAF6EF; border-color: #CBE0D5; color: #117247; }
+
+/* البحث — Lives في شريط الرأس: صف كامل كان مهدور على المنيو */
+.pos-entry--light .pos-topbar__search {
+    flex: 0 1 auto;
+    min-inline-size: 0;
+    inline-size: 17rem;
+    max-inline-size: 24rem;
+}
+.pos-entry--light .pos-topbar__search .pos-search__input {
+    block-size: 2.15rem;
+    border-radius: 10px;
+    border-color: #E5E9EE;
+    background: #FDFDFD;
+    color: #202A35;
+    font-size: 0.82rem;
+    padding-inline-start: 1.9rem;
+}
+.pos-entry--light .pos-topbar__search .pos-search__input::placeholder {
+    color: #8B95A3;
+}
+.pos-entry--light .pos-topbar__search .pos-search__input:focus-visible {
+    outline: 2px solid #2563EB;
+    border-color: #2563EB;
+    box-shadow: 0 0 0 3px rgb(37 99 235 / 12%);
+    background: #FFFFFF;
+}
+@media (max-width: 1100px) {
+    .pos-entry--light .pos-topbar__search {
+        inline-size: 13rem;
+    }
+}
 
 /* التابات — إشارة سفلية فقط */
 .pos-entry--light .pos-tab { border: 0; border-radius: 10px 10px 0 0; background: transparent; color: #687586; }

@@ -123,7 +123,7 @@ describe('واجهة الكاشير — دور cashier فقط', () => {
         expect(screen.queryByRole('button', { name: /حذف صورة/ })).toBeNull();
     });
 
-    it('الشاشة تظل مكتملة: الأصناف والبحث والفئات وزر الدفع موجودة', async () => {
+    it('الشاشة تظل مكتملة: البحث موجود وزر الدفع موجود — وشريط الفئات مخفي للكاشير', async () => {
         stubFetch();
         renderScreen();
 
@@ -131,12 +131,12 @@ describe('واجهة الكاشير — دور cashier فقط', () => {
             expect(screen.getByRole('button', { name: /إضافة شاي إلى السلة/ })).toBeTruthy();
         });
 
-        // البحث موجود (F2)
+        // البحث بقى في شريط الرأس (مش صف داخل الكتالوج) — موجود وظاهر
         expect(screen.getByPlaceholderText(/اسم الصنف أو الباركود/)).toBeTruthy();
         // زر إتمام البيع والدفع موجود — الكاشير لازم يقدر يبيع
         expect(screen.getByRole('button', { name: /إتمام البيع والدفع/ })).toBeTruthy();
-        // الفئات (الأصناف الحقيقية) ظاهرة
-        expect(screen.getByRole('button', { name: /مشروبات/ })).toBeTruthy();
+        // شريط الفئات مخفي عن الكاشير (طلب المالك) — مساحة أكبر للمنيو
+        expect(screen.queryByRole('button', { name: /مشروبات/ })).toBeNull();
     });
 
     it('زر الترس يظهر لمدير النظام — الفرق بالصلاحية مش بالاخفاء الكوني', async () => {
@@ -164,5 +164,23 @@ describe('واجهة الكاشير — دور cashier فقط', () => {
         expect(screen.getByRole('button', { name: /حذف صورة/ })).toBeTruthy();
         // المحاسب يدير الأسعار (الترس ظاهر) — والكاشير لا شيء من هذا
         expect(screen.getByRole('button', { name: /ترس الضبط/ })).toBeTruthy();
+        // شريط الفئات موجود للأدوار الأعلى (للتنقل بين الفئات)
+        expect(screen.getByRole('button', { name: /مشروبات/ })).toBeTruthy();
+    });
+
+    it('البحث في شريط الرأس — خارج الكتالوج — ومركّز تلقائيًا عند فتح الوردية', async () => {
+        stubFetch();
+        renderScreen();
+
+        await waitFor(() => {
+            expect(screen.getByRole('button', { name: /إضافة شاي إلى السلة/ })).toBeTruthy();
+        });
+
+        const search = screen.getByLabelText('بحث الأصناف') as HTMLInputElement;
+        // البحث ليس داخل قسم الأصناف — نقلناه للشريط حتى لا يكلّف مساحة
+        const catalog = screen.getByRole('region', { name: 'الأصناف' });
+        expect(catalog.contains(search)).toBe(false);
+        expect(search.closest('.pos-topbar')).toBeTruthy();
+        expect(document.activeElement).toBe(search);
     });
 });

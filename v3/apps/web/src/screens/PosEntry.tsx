@@ -63,7 +63,7 @@ import {
     parsePosMoney,
 } from '../lib/pos-pricing';
 import { errorMessage, intOf } from '../lib/reporting';
-import { Badge, Button, Dialog, Input, PageHeader, Textarea, useToast } from '../ui';
+import { Badge, Button, Dialog, Input, PageHeader, SearchInput, Textarea, useToast } from '../ui';
 import { PosBuffetPrices, PosBuffetReport } from './pos/PosBuffet';
 import { type PaymentReferenceKey, PosCart } from './pos/PosCart';
 import { PosCatalog } from './pos/PosCatalog';
@@ -182,6 +182,12 @@ export function PosEntry() {
     const canManageCatalog = roleIn(role, CATALOG_IMAGE_ROLES);
     /** رفع/حذف صور الأصناف: admin/manager/accountant — موظف الكاشير لا يرى شيئًا. */
     const canManageImages = roleIn(role, PRODUCT_IMAGE_ROLES);
+    /**
+     * شريط الفئات تحت البحث: يظهر لكل الأدوار عدا موظف الكاشير (طلب المالك
+     * 2026-11-14) — الشريط كان ي��كل ~46px من ارتفاع الشاشة والمينو يستاهل
+     * المساحة؛ الكاشير بيبحث بالباركود/الاسم (F2) وبيمرر على الأصناف.
+     */
+    const showCategoryStrip = role !== 'cashier';
     const canManageBuffet = roleIn(role, BUFFET_ADMIN_ROLES);
     const canDayClose = roleIn(role, DAY_CLOSE_ROLES);
 
@@ -296,6 +302,18 @@ export function PosEntry() {
     const shift = shiftQuery.data ?? null;
     const buffet = shift ? isBuffetDepartment({ deptCode: shift.deptCode, deptName: shift.deptName }) : false;
     const staleShift = Boolean(shift?.isStale);
+
+    /**
+     * البحث انتقل إلى شريط الرأس (2026-11-14) — الحقل لا يُركَّب قبل وجود
+     * وردية، فالتركيز التلقائي يتم هنا عند فتح الوردية (ما كانش ممكن يبقى
+     * جوّه الكتالوج بعد النقل).
+     */
+    useEffect(() => {
+        if (!shift) {
+            return;
+        }
+        searchInputRef.current?.focus();
+    }, [shift]);
 
     const productsQuery = useQuery({
         queryKey: ['pos-products', shift?.departmentId ?? ''],
@@ -1318,8 +1336,7 @@ export function PosEntry() {
                     event.preventDefault();
                     searchInputRef.current?.focus();
                     searchInputRef.current?.select();
-                    break;
-                case 'F3':
+                    break;                case 'F3':
                     event.preventDefault();
                     shortcutActions.current.hold();
                     break;
@@ -1463,12 +1480,34 @@ export function PosEntry() {
                         <span className="pos-topbar__pod-copy">
                             <time className="erp-numeric" dir="ltr">
                                 {clockText}
-                            </time>
-                            <small className="erp-numeric" dir="ltr">
+                            </time>                            <small className="erp-numeric" dir="ltr">
                                 {dateText}
                             </small>
                         </span>
                     </div>
+
+                    {/* البحث في شريط الرأس: صف كامل كان مهدور على المنيو (طلب المالك 2026-11-14) */}
+                    {!buffet ? (
+                        <div className="pos-topbar__search">
+                            <SearchInput
+                                inputRef={searchInputRef}
+                                label="بحث الأصناف"
+                                placeholder="اسم الصنف أو الباركود… [F2]"
+                                value={query}
+                                onChange={setQuery}
+                                inputMode="none"
+                                autoComplete="off"
+                                enterKeyHint="enter"
+                                className="pos-search"
+                                onKeyDown={(event) => {
+                                    if (event.key === 'Enter') {
+                                        event.preventDefault();
+                                        handleBarcodeEnter();
+                                    }
+                                }}
+                            />
+                        </div>
+                    ) : null}
 
                     <div className="pos-topbar__tabs">
                         {view === 'cashier' && !shift.isStale ? (
@@ -1861,6 +1900,7 @@ export function PosEntry() {
                                         canManageImages={canManageImages}
                                         canEditProductPrice={canEditProductPrice}
                                         onProductPriceSaved={handleProductPriceSaved}
+                                        showCategories={showCategoryStrip}
                                         imagePending={imagePending}
                                         onUploadImage={handleUploadImage}
                                         onRemoveImage={handleRemoveImage}

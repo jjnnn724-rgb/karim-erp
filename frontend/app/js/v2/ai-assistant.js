@@ -13,8 +13,8 @@
  *   • وضع «قواعدي» يظهر حين لا يوجد مفتاح: الحقائق تُعرض كما هي.
  *   • vm-friendly: لا DOM وقت الاستيراد — كل شيء داخل mount.
  */
-import { apiFetch } from '../core/api.js?v=4.9.328';
-import { trapFocus } from './focus-trap.js?v=4.9.328';
+import { apiFetch } from '../core/api.js?v=4.9.330';
+import { trapFocus } from './focus-trap.js?v=4.9.330';
 
 const MODES = [
     { id: 'knowledge', label: 'معرفة', icon: 'file-text', hint: 'الشاشات والعقود' },
