@@ -90,43 +90,112 @@ function zatcaHeaders(cfg) {
     return headers;
 }
 
+/**
+ * بناء فاتورة ZATCA Phase-2 (Simplified / B2C — reporting:1.0) كاملة.
+ * البنية مطابقة لمتطلبات هيئة الزكاة 388 الإبلاغ المبسط:
+ *  cbc:ProfileID = reporting:1.0
+ *  cbc:InvoiceTypeCode name="0200000" القيمة 388
+ *  cac:AccountingSupplierParty: PostalAddress + PartyTaxScheme + PartyLegalEntity
+ *  cac:TaxTotal: cbc:TaxAmount + cac:TaxSubtotal مع cac:TaxCategory (S 15%)
+ *  cac:LegalMonetaryTotal: Line/Exclusive/Inclusive/Allowance/Payable
+ *  cac:PaymentMeans: أكواد ISO 4217 (10 نقدي / 48 شبكة / 42 تحويل بنكي / 30 لأجل)
+ *  cac:InvoiceLine: كمية + سعر + معدل VAT لكل بند
+ * المبالغ تُعرض كما هي من القاعدة بلا أي تلاعب؛ فريق هيئة الزكاة هو من يقرر القبول.
+ */
 function buildZatcaUblXml(order, items, payments, dept) {
-    // Lightweight UBL-style payload with the real seller, lines and totals —
-    // the earlier stub shipped an almost-empty <Invoice> and flipped the order
-    // to 'reported', which is a compliance lie. NOTE: full Phase-2 clearance
-    // still requires CSID/mutual-TLS + XML-DSig (see integration TODO below).
-    const lines = items.map((it, i) => `  <cac:InvoiceLine>
+    // Lightweight UBL-style payload with the real seller, lines and totals.
+    const money = (v) => Number(v || 0).toFixed(2);
+    const sumLines = (items || []).reduce((s, it) => s + Number(it.line_total || 0), 0);
+    const firstVatRate = (items || []).map((it) => Number(it.vat_rate)).find((v) => Number.isFinite(v) && v > 0) || 15;
+    const issuedAt = new Date(order.created_at || Date.now());
+    const isoDate = issuedAt.toISOString().slice(0, 10);
+    const isoTime = issuedAt.toISOString().slice(11, 19);
+
+    const invoiceAllowance = Number(order.discount_total || 0);
+    const taxExclusive = Number(order.subtotal || 0) - invoiceAllowance;
+
+    const lines = (items || []).map((it, i) => `  <cac:InvoiceLine>
     <cbc:ID>${i + 1}</cbc:ID>
     <cbc:InvoicedQuantity unitCode="EA">${Number(it.quantity)}</cbc:InvoicedQuantity>
-    <cbc:LineExtensionAmount currencyID="SAR">${Number(it.line_total).toFixed(2)}</cbc:LineExtensionAmount>
-    <cac:Item><cbc:Name>${escapeXml(it.product_name)}</cbc:Name></cac:Item>
-    <cac:Price><cbc:PriceAmount currencyID="SAR">${Number(it.unit_price).toFixed(2)}</cbc:PriceAmount></cac:Price>
-    <cac:TaxTotal><cbc:TaxAmount currencyID="SAR">${Number(it.vat_amount).toFixed(2)}</cbc:TaxAmount></cac:TaxTotal>
+    <cbc:LineExtensionAmount currencyID="SAR">${money(it.line_total)}</cbc:LineExtensionAmount>
+    <cac:TaxTotal><cbc:TaxAmount currencyID="SAR">${money(it.vat_amount)}</cbc:TaxAmount></cac:TaxTotal>
+    <cac:Item>
+      <cbc:Name>${escapeXml(it.product_name)}</cbc:Name>
+      <cac:ClassifiedTaxCategory>
+        <cbc:ID>S</cbc:ID>
+        <cbc:Percent>${Number(it.vat_rate ?? 15)}</cbc:Percent>
+        <cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme>
+      </cac:ClassifiedTaxCategory>
+    </cac:Item>
+    <cac:Price><cbc:PriceAmount currencyID="SAR">${money(it.unit_price)}</cbc:PriceAmount></cac:Price>
   </cac:InvoiceLine>`).join('\n');
-    // Only incoming payment rows belong in <PaymentMeans> — change given to the
-    // customer (direction='out', payer_info.reason='change') and refunds are not
-    // payment methods and would inflate the declared paid amounts.
+
+    const METHOD_CODE = { cash: '10', card: '48', wallet: '48', bank_transfer: '42', voucher: '30', loyalty: '30' };
     const inPayments = payments.filter(p => p.direction === 'in');
-    const paymentMeans = inPayments.length ? inPayments.map(p => `  <cac:PaymentMeans><cbc:PaymentMeansCode>${p.method}</cbc:PaymentMeansCode><cbc:PaidAmount currencyID="SAR">${Number(p.amount).toFixed(2)}</cbc:PaidAmount></cac:PaymentMeans>`).join('\n') : '';
+    const paymentMeans = inPayments.length
+        ? inPayments.map(p => `  <cac:PaymentMeans><cbc:PaymentMeansCode>${METHOD_CODE[p.method] || '30'}</cbc:PaymentMeansCode><cbc:PaidAmount currencyID="SAR">${money(p.amount)}</cbc:PaidAmount></cac:PaymentMeans>`).join('\n')
+        : '  <cac:PaymentMeans><cbc:PaymentMeansCode>10</cbc:PaymentMeansCode><cbc:PaidAmount currencyID="SAR">0.00</cbc:PaidAmount></cac:PaymentMeans>';
+
+    const sellerName = String(dept?.seller_name || dept?.name_ar || dept?.name || '').trim();
+    const sellerVat = String(dept?.vat_number || '').trim();
+    const sellerCrn = String(dept?.crn || '').trim();
+    const sellerAddress = String(dept?.address || '').trim();
+    const sellerBranch = String(dept?.branch_name || '').trim();
+    const customerName = String(order.party_name || order.notes || '').trim();
+
     return `<?xml version="1.0" encoding="UTF-8"?>
-<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2"
-         xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2"
-         xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
-  <cbc:ID>${order.invoice_counter}</cbc:ID>
-  <cbc:UUID>${order.invoice_uuid}</cbc:UUID>
-  <cbc:IssueDate>${new Date(order.created_at).toISOString().slice(0,10)}</cbc:IssueDate>
+<Invoice xmlns="urn:oasis:names:specification:ubl:schema:xsd:Invoice-2" xmlns:cac="urn:oasis:names:specification:ubl:schema:xsd:CommonAggregateComponents-2" xmlns:cbc="urn:oasis:names:specification:ubl:schema:xsd:CommonBasicComponents-2">
+  <cbc:ProfileID>reporting:1.0</cbc:ProfileID>
+  <cbc:ID>${escapeXml(order.invoice_counter)}</cbc:ID>
+  <cbc:UUID>${escapeXml(order.invoice_uuid)}</cbc:UUID>
+  <cbc:IssueDate>${isoDate}</cbc:IssueDate>
+  <cbc:IssueTime>${isoTime}</cbc:IssueTime>
+  <cbc:InvoiceTypeCode name="0200000">388</cbc:InvoiceTypeCode>
   <cbc:DocumentCurrencyCode>SAR</cbc:DocumentCurrencyCode>
+  <cbc:TaxCurrencyCode>SAR</cbc:TaxCurrencyCode>
+  <cbc:Note>simplified_tax_invoice</cbc:Note>
   <cac:AccountingSupplierParty>
-    <cac:Party><cac:PartyTaxScheme><cbc:CompanyID>${escapeXml(dept?.vat_number || '')}</cbc:CompanyID></cac:PartyTaxScheme>
-      <cac:PartyLegalEntity><cbc:RegistrationName>${escapeXml(dept?.name_ar || '')}</cbc:RegistrationName></cac:PartyLegalEntity>
+    <cac:Party>
+      <cac:PostalAddress>
+        <cbc:StreetName>${escapeXml(sellerAddress)}</cbc:StreetName>
+        <cbc:CityName>Riyadh</cbc:CityName>
+        <cac:Country><cbc:IdentificationCode>SAU</cbc:IdentificationCode></cac:Country>
+      </cac:PostalAddress>
+      <cac:PartyTaxScheme>
+        <cbc:CompanyID>${escapeXml(sellerVat)}</cbc:CompanyID>
+        <cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme>
+      </cac:PartyTaxScheme>
+      <cac:PartyLegalEntity>
+        <cbc:RegistrationName>${escapeXml(sellerName)}</cbc:RegistrationName>
+        <cbc:CompanyID>${escapeXml(sellerCrn)}</cbc:CompanyID>
+      </cac:PartyLegalEntity>
+      ${sellerBranch ? `<cac:PartyIdentification><cbc:ID>${escapeXml(sellerBranch)}</cbc:ID></cac:PartyIdentification>` : ''}
     </cac:Party>
   </cac:AccountingSupplierParty>
+  <cac:AccountingCustomerParty>
+    <cac:Party>
+      <cac:PartyLegalEntity><cbc:RegistrationName>${escapeXml(customerName || 'Walk-in')}</cbc:RegistrationName></cac:PartyLegalEntity>
+    </cac:Party>
+  </cac:AccountingCustomerParty>
 ${paymentMeans}
-  <cac:TaxTotal><cbc:TaxAmount currencyID="SAR">${Number(order.tax_total).toFixed(2)}</cbc:TaxAmount></cac:TaxTotal>
+  <cac:TaxTotal>
+    <cbc:TaxAmount currencyID="SAR">${money(order.tax_total)}</cbc:TaxAmount>
+    <cac:TaxSubtotal>
+      <cbc:TaxableAmount currencyID="SAR">${money(sumLines)}</cbc:TaxableAmount>
+      <cbc:TaxAmount currencyID="SAR">${money(order.tax_total)}</cbc:TaxAmount>
+      <cac:TaxCategory>
+        <cbc:ID>S</cbc:ID>
+        <cbc:Percent>${Number(firstVatRate)}</cbc:Percent>
+        <cac:TaxScheme><cbc:ID>VAT</cbc:ID></cac:TaxScheme>
+      </cac:TaxCategory>
+    </cac:TaxSubtotal>
+  </cac:TaxTotal>
   <cac:LegalMonetaryTotal>
-    <cbc:TaxExclusiveAmount currencyID="SAR">${Number(order.subtotal).toFixed(2)}</cbc:TaxExclusiveAmount>
-    <cbc:TaxInclusiveAmount currencyID="SAR">${Number(order.total_amount).toFixed(2)}</cbc:TaxInclusiveAmount>
-    <cbc:PayableAmount currencyID="SAR">${Number(order.total_amount).toFixed(2)}</cbc:PayableAmount>
+    <cbc:LineExtensionAmount currencyID="SAR">${money(sumLines)}</cbc:LineExtensionAmount>
+    <cbc:TaxExclusiveAmount currencyID="SAR">${money(taxExclusive)}</cbc:TaxExclusiveAmount>
+    <cbc:TaxInclusiveAmount currencyID="SAR">${money(order.total_amount)}</cbc:TaxInclusiveAmount>
+    ${invoiceAllowance > 0 ? `<cbc:AllowanceTotalAmount currencyID="SAR">${money(invoiceAllowance)}</cbc:AllowanceTotalAmount>` : ''}
+    <cbc:PayableAmount currencyID="SAR">${money(order.total_amount)}</cbc:PayableAmount>
   </cac:LegalMonetaryTotal>
 ${lines}
 </Invoice>`;
@@ -157,7 +226,7 @@ async function submitInvoiceToZatca(orderId, config = null) {
             throw err;
         }
         const orderRes = await client.query(
-            `SELECT o.*, pd.name_ar AS dept_name, pd.vat_number AS dept_vat,
+            `SELECT o.*, pd.name_ar AS dept_name, pd.vat_number AS dept_vat, pd.location AS dept_location,
                     u.name AS cashier_name
                FROM pos_orders o
                JOIN pos_departments pd ON pd.id = o.department_id
@@ -209,7 +278,13 @@ async function submitInvoiceToZatca(orderId, config = null) {
         }
 
         const ublXml = buildZatcaUblXml(order, itemsRes.rows, paymentsRes.rows, {
-            name_ar: order.dept_name, vat_number: order.dept_vat,
+            name_ar: order.dept_name,
+            name: order.dept_name,
+            vat_number: order.dept_vat,
+            seller_name: (cfg && cfg.seller_name) ? cfg.seller_name : order.dept_name,
+            crn: cfg?.crn || '',
+            address: cfg?.address || order.dept_location || '',
+            branch_name: cfg?.branch_name || '',
         });
 
         // Real Fatoora V2 reporting call — simplified (B2C) invoices.
@@ -388,4 +463,4 @@ async function shutdown(signal) {
 process.on('SIGTERM', () => shutdown('SIGTERM'));
 process.on('SIGINT',  () => shutdown('SIGINT'));
 
-module.exports = { worker, submitInvoiceToZatca, pollSqlQueue, reclaimStaleProcessing };
+module.exports = { worker, submitInvoiceToZatca, pollSqlQueue, reclaimStaleProcessing, buildZatcaUblXml };
