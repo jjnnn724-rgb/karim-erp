@@ -7,12 +7,12 @@
  * الصلاحية قرار الخادم.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.323';
-import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.323';
-import { fetchWhVsPos, fetchItemSuggestions, arSearchIncludes, rangeError } from '../data/yara-reports-repo.js?v=4.9.323';
-import { ensureXlsx } from '../vendor.js?v=4.9.323';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.323';
-import { openInAppReport } from '../report-viewer.js?v=4.9.323';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.327';
+import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.327';
+import { fetchWhVsPos, fetchItemSuggestions, arSearchIncludes, rangeError } from '../data/yara-reports-repo.js?v=4.9.327';
+import { ensureXlsx } from '../vendor.js?v=4.9.327';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.327';
+import { openInAppReport } from '../report-viewer.js?v=4.9.327';
 
 /** أسماء الحالات كما في تصدير القديم (features/wh-vs-pos.js:301). */
 const STATUS_AR = {

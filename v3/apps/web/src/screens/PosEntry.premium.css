@@ -2836,15 +2836,39 @@
         padding-block: 0.3rem;
     }
 
-    .pos-topbar__brand-copy,
-    .pos-topbar__clock {
+    /* الشعار يختفي نصه فقط — والشريط يمتلئ: لا فراغ أبيض فوق */
+    .pos-topbar__brand-copy {
         display: none;
     }
 
+    /* الساعة تبقى (مضغوطة: الوقت فقط) — كانت مخفية وتترك فراغًا أبيض */
+    .pos-topbar__clock {
+        display: flex;
+        padding-inline: 0.4rem;
+    }
+
+    .pos-topbar__clock small {
+        display: none;
+    }
+
+    /* أدوات الكاشير تلتصق بالحافة البعيدة فلا يبقى شريطٌ أبيض فاضي */
+    .pos-topbar__end {
+        margin-inline-start: auto;
+    }
+
+    /* التابات سطر مستقل كان يبني الشريط من سطرين (107px) — نخلّيها تختصر
+       في سطر واحد مع قابلية التمرير أفقيًا. */
     .pos-topbar__tabs {
-        order: 5;
-        flex-basis: 100%;
+        order: 0;
+        flex: 0 1 auto;
+        min-inline-size: 0;
         justify-content: flex-start;
+        overflow: hidden;
+    }
+
+    .pos-topbar__tabs .pos-tabs {
+        flex: 0 1 auto;
+        min-inline-size: 0;
         overflow-x: auto;
         scrollbar-width: none;
     }

@@ -137,8 +137,8 @@ const ProductCard = memo(function ProductCard({
                             }}
                         />
                     ) : null}
-                    {item.category ? <span className="pos-product__category-badge">{item.category}</span> : null}
-                    {item.stock !== null && item.stock <= 5 ? (
+                    {/* الفئة تُعرض تحت الاسم (نص هادئ) بدل شارة عائمة فوق الصورة */}
+                    {item.stock !== null && item.stock > 0 && item.stock <= 5 ? (
                         <span className="pos-product__stock">{`متبقي ${qtyText(item.stock)}`}</span>
                     ) : null}
                     <span className="pos-product__add" aria-hidden="true">
@@ -147,16 +147,17 @@ const ProductCard = memo(function ProductCard({
                 </span>
                 <span className="pos-product__info">
                     <strong>{item.name}</strong>
-                    {item.nameEn ? (
-                        <span className="pos-product__name-en" dir="ltr">
-                            {item.nameEn}
-                        </span>
-                    ) : null}
                     <span className="pos-product__price-row">
                         <span className="pos-product__price">
                             {moneyText(item.price)}
                             {item.unit ? <span className="pos-product__unit">/{item.unit}</span> : null}
                         </span>
+                        {item.nameEn ? (
+                            <span className="pos-product__name-en" dir="ltr">
+                                {item.nameEn}
+                            </span>
+                        ) : null}
+                        {item.category ? <span className="pos-product__category-line">{item.category}</span> : null}
                     </span>
                 </span>
             </button>

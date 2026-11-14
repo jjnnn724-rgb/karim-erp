@@ -22,15 +22,15 @@
  * يُعلَن: سندٌ بلا سطور، أو إجماليٌ لا يساوي صافيًا + ضريبة، أو دفعٌ لم
  * يغطِّ الإجمالي — كلها تُعرض كما هي لأن إخفاءها يجعل الرقم أجمل وأكذب.
  */
-import { createDataTable } from '../data-display/data-table.js?v=4.9.323';
-import { barChart, donutChart, lineChart } from '../charts.js?v=4.9.323';
-import { openInAppReport } from '../report-viewer.js?v=4.9.323';
-import { trapFocus } from '../focus-trap.js?v=4.9.323';
-import { ensureRealtimeSocket } from '../realtime.js?v=4.9.323';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.327';
+import { barChart, donutChart, lineChart } from '../charts.js?v=4.9.327';
+import { openInAppReport } from '../report-viewer.js?v=4.9.327';
+import { trapFocus } from '../focus-trap.js?v=4.9.327';
+import { ensureRealtimeSocket } from '../realtime.js?v=4.9.327';
 import {
     fetchSummary, fetchOrders, fetchItems, fetchItem, fetchInvoice,
     fetchInvoiceHtml, fetchSheetHtml, money, count, qty, periodPresets, isoDay,
-} from '../data/cashier-sales-repo.js?v=4.9.323';
+} from '../data/cashier-sales-repo.js?v=4.9.327';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

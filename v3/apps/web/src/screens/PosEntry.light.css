@@ -225,27 +225,115 @@
 }
 
 .pos-entry--light .pos-product__media {
+    inline-size: 100%;
+    block-size: auto;
+    aspect-ratio: 4 / 3;
+    border-radius: var(--pos-radius) var(--pos-radius) 0 0;
     background: linear-gradient(160deg, #F1F4F6, #E5E9EE);
 }
 
 .pos-entry--light .pos-product__media::after {
-    height: 55%;
-    background: linear-gradient(to top, rgb(24 24 27 / 55%), transparent);
+    height: 34%;
+    background: linear-gradient(to top, rgb(24 24 27 / 34%), transparent);
 }
 
 .pos-entry--light .pos-product__glyph {
     color: rgb(24 24 27 / 22%);
 }
 
+/* شارة الفئة — كبسولة مقروءة أعلى الصورة (يمين) */
 .pos-entry--light .pos-product__category-badge {
-    background: rgb(255 255 255 / 88%);
-    border-color: #E5E9EE;
+    inset-block-start: 0.4rem;
+    inset-block-end: auto;
+    inset-inline-start: 0.4rem;
+    inset-inline-end: auto;
+    max-inline-size: 55%;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    padding: 0.1rem 0.45rem;
+    border: 1px solid #E5E9EE;
+    border-radius: 999px;
+    background: rgb(255 255 255 / 92%);
     color: #687586;
+    font-size: 0.58rem;
+    font-weight: 600;
 }
 
+/* زر تعديل السعر — أعلى اليمين (بعد freeing الزاوية من شارة الفئة) */
+.pos-entry--light .pos-product__price-edit {
+    inset-block-start: 0.4rem;
+    inset-block-end: auto;
+    inset-inline-start: 0.4rem;
+    inset-inline-end: auto;
+}
+
+/* الفئة تحت الاسم — نص هادئ بلا شارة عائمة */
+.pos-entry--light .pos-product__category-line {
+    flex: 0 1 auto;
+    min-inline-size: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+    font-size: 0.56rem;
+    line-height: 1.2;
+    color: #8B95A3;
+}
+
+/* بطاقة الصنف — مضغوطة واحترافية: اسم واحد + سطر سعر/فئة */
+.pos-entry--light .pos-product__info {
+    gap: 0.12rem;
+    padding: 0.3rem 0.38rem 0.34rem;
+}
+.pos-entry--light .pos-product__info strong {
+    font-size: 0.76rem;
+    line-height: 1.25;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.pos-entry--light .pos-product__price-row {
+    gap: 0.3rem;
+    justify-content: space-between;
+}
+.pos-entry--light .pos-product__price {
+    font-size: 0.8rem;
+    font-weight: 800;
+}
+.pos-entry--light .pos-product__name-en {
+    font-size: 0.52rem;
+    max-inline-size: 40%;
+}
+
+/* شبكة أعمق = بطاقات أصغر = منيو كامل في شاشة واحدة */
+.pos-entry--light .pos-grid {
+    gap: 0.35rem;
+}
+@media (max-width: 1100px) {
+    .pos-entry--light .pos-grid {
+        grid-template-columns: repeat(5, minmax(0, 1fr));
+        gap: 0.3rem;
+    }
+}
+
+/* شارة المخزون — كبسولة مضغوطة أسفل الصورة (يمين)، لا عمود ممتد */
 .pos-entry--light .pos-product__stock {
-    background: #B7791F;
+    inset-block-start: auto;
+    inset-block-end: 0.4rem;
+    inset-inline-start: 0.4rem;
+    inset-inline-end: auto;
+    align-self: auto;
+    margin: 0;
+    display: inline-flex;
+    align-items: center;
+    white-space: nowrap;
+    padding: 0.1rem 0.45rem;
+    border: 1px solid #F5D9A8;
+    border-radius: 999px;
+    background: #FFF5E5;
     color: #8A5A13;
+    font-size: 0.58rem;
+    font-weight: 700;
 }
 
 .pos-entry--light .pos-product__info strong {
@@ -992,7 +1080,14 @@
     border: 0;
     border-block-end: 1px solid var(--pos-hairline);
     box-shadow: none;
-    padding-block: 0.35rem;
+    block-size: auto;
+    min-block-size: 0;
+    padding-block: 0.3rem;
+    gap: 0.4rem;
+}
+.pos-entry--light .pos-topbar__pod {
+    block-size: 2.15rem;
+    padding-inline: 0.45rem;
 }
 .pos-entry--light .pos-topbar__crest {
     background: #EAF6EF;
@@ -1009,6 +1104,21 @@
 /* التابات — إشارة سفلية فقط */
 .pos-entry--light .pos-tab { border: 0; border-radius: 10px 10px 0 0; background: transparent; color: #687586; }
 .pos-entry--light .pos-tab.is-active { border: 0; background: transparent; color: #117247; box-shadow: inset 0 -2.5px 0 #168653; }
+
+/* سطر الطلبات: المجموعات على الحافة والاختصارات على الحافة المقابلة —
+   لا يبقى شريطٌ أبيض فاضي في نص الشريط */
+.pos-entry--light .pos-topbar__tabs {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+.pos-entry--light .pos-topbar__tabs .pos-tabs__hint {
+    margin-inline-start: auto;
+    color: #8B95A3;
+    font-size: 0.62rem;
+    white-space: nowrap;
+}
 
 /* رقائق الفئات — أبيض + أخضر ممتلئ للنشط */
 .pos-entry--light .pos-category { border-radius: 999px; border-color: #E5E9EE; }

@@ -1612,7 +1612,8 @@ export function PosEntry() {
                                 </span>
                                 <span className="pos-cashier__copy">
                                     <strong>{auth.user?.name ?? 'الكاشير'}</strong>
-                                    <small>{roleLabel}</small>
+                                    {/* لا نكرّر نفس الكلمة مرتين: لو اسم الموظف = دوره نكتفي بالاسم */}
+                                    {roleLabel && roleLabel !== auth.user?.name ? <small>{roleLabel}</small> : null}
                                 </span>
                                 <svg
                                     aria-hidden="true"

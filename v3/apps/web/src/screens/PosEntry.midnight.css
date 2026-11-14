@@ -1148,19 +1148,20 @@
     display: grid;
     flex-shrink: 0;
     place-items: center;
-    inline-size: 1.6rem;
-    block-size: 1.6rem;
+    inline-size: 1.75rem;
+    block-size: 1.75rem;
     padding: 0;
-    border: 0;
-    border-radius: 6px;
-    background: transparent;
-    color: #475569;
+    border: 1px solid rgb(239 68 68 / 30%);
+    border-radius: 8px;
+    background: rgb(239 68 68 / 10%);
+    color: var(--pos-crimson);
     cursor: pointer;
-    opacity: 0;
+    /* ظاهر دائمًا: شاشة اللمس ما عندهاش hover — زر الحذف لازم يكون موجود. */
+    opacity: 1;
     transition:
-        opacity 120ms ease,
         background-color 120ms ease,
-        color 120ms ease;
+        color 120ms ease,
+        transform 75ms ease;
 }
 
 .pos-entry .pos-cart__line:hover .pos-cart__line-remove,
@@ -1168,8 +1169,12 @@
     opacity: 1;
 }
 
+.pos-entry .pos-cart__line-remove:active:not(:disabled) {
+    transform: scale(0.94);
+}
+
 .pos-entry .pos-cart__line-remove:hover:not(:disabled) {
-    background: rgb(239 68 68 / 12%);
+    background: rgb(239 68 68 / 22%);
     color: var(--pos-crimson);
 }
 
