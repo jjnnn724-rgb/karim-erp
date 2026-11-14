@@ -32,8 +32,8 @@
  *   فالتفريد هنا فحصٌ في النموذج لا وهمٌ بقيد الخادم.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.336';
-import { fetchInventory } from './inventory-repo.js?v=4.9.336';
+import { apiFetch } from '../../core/api.js?v=4.9.337';
+import { fetchInventory } from './inventory-repo.js?v=4.9.337';
 
 /** سقوف الخادم: `barcode VARCHAR(100)` (010_inventory_barcode.sql:5) وmaxLength
  *  100 في السجل (schema-registry.js:348) — لا نرسل أطول مما يقبل. */

@@ -11,10 +11,10 @@
  * Read-only by construction: no forms, no write door, no row buttons.
  */
 
-import { donutChart } from '../charts.js?v=4.9.336';
-import { formatQty } from '../data/inventory-repo.js?v=4.9.336';
-import { fetchWarehouseSnapshot, buildWarehouseView } from '../data/dashboard-repo.js?v=4.9.336';
-import { esc, int, kpiStrip, miniList, failureBox } from '../role-dash-parts.js?v=4.9.336';
+import { donutChart } from '../charts.js?v=4.9.337';
+import { formatQty } from '../data/inventory-repo.js?v=4.9.337';
+import { fetchWarehouseSnapshot, buildWarehouseView } from '../data/dashboard-repo.js?v=4.9.337';
+import { esc, int, kpiStrip, miniList, failureBox } from '../role-dash-parts.js?v=4.9.337';
 
 function template() {
     return `

@@ -16,9 +16,9 @@
     // الروابط تحمل ?v= صريحًا كي يلتقطها scripts/frontend-version.js --bump
     // مع بقية أصول الواجهة؛ الخادم يرسل JS بلا كاش فوري فلا تبقى نسخة قديمة.
     const SOURCES = {
-        xlsx: '/app/vendor/xlsx.full.min.js?v=4.9.336',
-        chart: '/app/vendor/chart.umd.min.js?v=4.9.336',
-        qrcode: '/app/vendor/html5-qrcode.min.js?v=4.9.336',
+        xlsx: '/app/vendor/xlsx.full.min.js?v=4.9.337',
+        chart: '/app/vendor/chart.umd.min.js?v=4.9.337',
+        qrcode: '/app/vendor/html5-qrcode.min.js?v=4.9.337',
     };
     const GLOBALS = { xlsx: 'XLSX', chart: 'Chart', qrcode: 'Html5Qrcode' };
     const pending = {};

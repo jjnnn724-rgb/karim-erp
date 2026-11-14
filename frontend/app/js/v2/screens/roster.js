@@ -27,14 +27,14 @@
  * destroy() on nav, no invented values, no inline handlers.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.336';
-import { formatInt } from '../data/reports-repo.js?v=4.9.336';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.337';
+import { formatInt } from '../data/reports-repo.js?v=4.9.337';
 import {
     ROSTER_DAY_LABELS, ROSTER_MAX_CELLS, canApproveRoster, canPickDept,
     canRosterWrite, fetchRosterWeek, fetchRosterPending, saveRosterWeek,
     requestRosterApproval, approveRoster, rosterApprovalKey, rosterApprovalState,
     cellEdit, cellKey, dirtyToCells, weekOf,
-} from '../data/roster-repo.js?v=4.9.336';
+} from '../data/roster-repo.js?v=4.9.337';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

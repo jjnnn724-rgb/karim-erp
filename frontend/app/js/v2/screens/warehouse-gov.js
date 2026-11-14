@@ -33,10 +33,10 @@
  *   screen does not own (P2-4 is the read report plus the fiscal lifecycle).
  */
 
-import { canWrite } from '../session.js?v=4.9.336';
-import { fiscalWriteEnabled } from '../write-flags.js?v=4.9.336';
-import { statusBadge } from '../status.js?v=4.9.336';
-import { formatInt, formatQty, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.336';
+import { canWrite } from '../session.js?v=4.9.337';
+import { fiscalWriteEnabled } from '../write-flags.js?v=4.9.337';
+import { statusBadge } from '../status.js?v=4.9.337';
+import { formatInt, formatQty, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.337';
 import {
     FISCAL_READ_ROLES, FISCAL_CREATE_ROLES, FISCAL_CLOSE_ROLES,
     OPENING_READ_ROLES, HEALTH_READ_ROLES,
@@ -44,7 +44,7 @@ import {
     fetchOpeningBalanceReport, fetchSystemHealth,
     validateFiscalYearForm, normalizeFiscalYearForm,
     fiscalYearToRow, fiscalSummary, openingToInvoice, openingTotals, healthSummary,
-} from '../data/warehouse-gov-repo.js?v=4.9.336';
+} from '../data/warehouse-gov-repo.js?v=4.9.337';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
