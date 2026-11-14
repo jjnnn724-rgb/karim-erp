@@ -1,5 +1,5 @@
-import { apiFetch } from '../../core/api.js?v=4.9.330';
-import { fetchInventory } from './inventory-repo.js?v=4.9.330';
+import { apiFetch } from '../../core/api.js?v=4.9.331';
+import { fetchInventory } from './inventory-repo.js?v=4.9.331';
 
 export const YARASOFT_WRITE_ROLES = Object.freeze(['admin', 'manager']);
 

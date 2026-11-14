@@ -180,7 +180,7 @@ window.toggleLoginPassword = toggleLoginPassword;
 // 2026-10-11: ?v= + update() عند كل تحميل — يجبر تحديث الكاش فورًا بعد أي رفع.
 if ('serviceWorker' in navigator && (window.isSecureContext || location.hostname === 'localhost' || location.hostname === '127.0.0.1')) {
     window.addEventListener('load', function () {
-        navigator.serviceWorker.register('/app/sw.js?v=4.9.330', { scope: '/app/' })
+        navigator.serviceWorker.register('/app/sw.js?v=4.9.331', { scope: '/app/' })
             .then(function (reg) { try { reg.update(); } catch (_) {} })
             .catch(function () {});
     });

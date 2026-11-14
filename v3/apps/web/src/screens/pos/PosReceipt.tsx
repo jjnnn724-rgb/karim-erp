@@ -11,10 +11,12 @@ export interface PosReceiptProps {
     busy: boolean;
     onReprint: (orderId: string) => void;
     onKot: (orderId: string, counter: number | null) => void;
+    /** معاينة ورقة الإيصال كما ستُطبع بالضبط (طلب المالك 2026-11-14). */
+    onPreview: (orderId: string) => void;
     onDismiss: () => void;
 }
 
-export function PosReceipt({ receipt, buffet, canReprint, busy, onReprint, onKot, onDismiss }: PosReceiptProps) {
+export function PosReceipt({ receipt, buffet, canReprint, busy, onReprint, onKot, onPreview, onDismiss }: PosReceiptProps) {
     const [qr, setQr] = useState<string | null>(null);
     const [qrError, setQrError] = useState('');
     const [printError, setPrintError] = useState('');
@@ -114,6 +116,16 @@ export function PosReceipt({ receipt, buffet, canReprint, busy, onReprint, onKot
                 ) : null}
 
                 <div className="pos-receipt__actions">
+                    <Button
+                        size="sm"
+                        variant="secondary"
+                        disabled={busy}
+                        onClick={() => {
+                            onPreview(receipt.order_id);
+                        }}
+                    >
+                        معاينة الإيصال
+                    </Button>
                     {canReprint ? (
                         <Button
                             size="sm"

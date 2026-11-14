@@ -161,17 +161,18 @@ function buildReceiptHtml({ order = {}, items = [], payments = [], qrImageDataUr
 <title>فاتورة رقم ${escHtml(order.invoice_counter)}</title>
 <style>
   :root {
-    --gold: #b45309;
-    --gold-deep: #8a3c07;
-    --gold-soft: #f8ecd8;
-    --gold-pale: #fdf8ee;
-    --ink: #1c1917;
-    --ink-soft: #57534e;
-    --line: #e7e2d6;
-    --line-soft: #efeadd;
-    --crimson: #b91c1c;
-    --emerald: #047857;
-    --cream: #fffef9;
+    /* أحادي بالكامل: الطابعة الحرارية أبيض/أسود — والمعاينة = نفس المطبوعة */
+    --accent: #000000;
+    --accent-deep: #000000;
+    --accent-soft: #f1f1f1;
+    --accent-pale: #fafafa;
+    --ink: #000000;
+    --ink-soft: #4a4a4a;
+    --line: #b5b5b5;
+    --line-soft: #dcdcdc;
+    --crimson: #000000;
+    --emerald: #000000;
+    --cream: #ffffff;
   }
   * { margin: 0; padding: 0; box-sizing: border-box; }
   html, body { background: var(--cream); }
@@ -190,14 +191,15 @@ function buildReceiptHtml({ order = {}, items = [], payments = [], qrImageDataUr
   .cur { font-size: 9px; color: var(--ink-soft); }
 
   /* ═══ الترويسة — إطار ذهبي مزدوج ═══════════════════════════════════════════ */
-  .rule.double { border: none; border-top: 3px double var(--gold); margin: 4px 0 6px; }
+  .rule.double { border: none; border-top: 3px double var(--accent); margin: 4px 0 6px; }
   .rule.thin { border: none; border-top: 1px solid var(--line); margin: 5px 0; }
-  .rule.solid { border-top: 1.6px solid var(--gold-deep); }
+  .rule.solid { border-top: 1.6px solid var(--accent-deep); }
 
   .inv-strip {
     display: flex; align-items: center; justify-content: center; gap: 7mm;
-    background: var(--gold-deep); color: #ffe9c7;
-    border-radius: 10px; padding: 3mm 4mm; margin: 5px 0 7px;
+    background: #ffffff; color: #000000;
+    border: 1.8px solid #000000; border-radius: 4px;
+    padding: 3mm 4mm; margin: 5px 0 7px;
   }
   .inv-strip .lbl { font-size: 9px; font-weight: 800; letter-spacing: 1.4px; opacity: .92; }
   .inv-strip .num { font-size: 24px; font-weight: 900; letter-spacing: .5px; line-height: 1; }
@@ -208,23 +210,23 @@ function buildReceiptHtml({ order = {}, items = [], payments = [], qrImageDataUr
   .brand { text-align: center; padding: 2px 0 8px; }
   .brand-mark {
     display: inline-flex; align-items: center; justify-content: center;
-    width: 74px; height: 74px; border: 1.5px solid var(--gold);
-    border-radius: 50%; outline: 3.5px double var(--gold-deep); outline-offset: 4px;
-    background: var(--gold-pale);
+    width: 74px; height: 74px; border: 1.5px solid var(--accent);
+    border-radius: 50%; outline: 3.5px double var(--accent-deep); outline-offset: 4px;
+    background: var(--accent-pale);
   }
   .brand-logo {
     width: 58px; height: 58px; object-fit: contain;
   }
   .brand h1 { font-size: 18px; font-weight: 900; margin-top: 10px; letter-spacing: 0; line-height: 1.3; }
   .brand .en {
-    font-size: 10px; color: var(--gold-deep); letter-spacing: 2px;
+    font-size: 10px; color: var(--accent-deep); letter-spacing: 2px;
     text-transform: uppercase; margin-top: 3px; font-weight: 800;
   }
   .doc-type {
     display: inline-block; margin-top: 7px; padding: 4px 16px 5px;
-    border: 1.8px solid var(--gold-deep); border-radius: 999px;
-    color: var(--gold-deep); font-size: 10.5px; font-weight: 800;
-    letter-spacing: .5px; background: var(--gold-soft);
+    border: 1.8px solid var(--accent-deep); border-radius: 999px;
+    color: var(--accent-deep); font-size: 10.5px; font-weight: 800;
+    letter-spacing: .5px; background: var(--accent-soft);
   }
   .doc-type small { display: block; font-size: 7px; font-weight: 700; letter-spacing: 1.4px; opacity: .85; }
   .seller-panel {
@@ -234,7 +236,7 @@ function buildReceiptHtml({ order = {}, items = [], payments = [], qrImageDataUr
   }
   .sp-title {
     font-size: 7.5px; font-weight: 800; letter-spacing: 1.2px;
-    color: var(--gold-deep); text-transform: uppercase;
+    color: var(--accent-deep); text-transform: uppercase;
     border-block-end: 1px solid var(--line-soft); padding-block-end: 3px; margin-block-end: 5px;
     display: flex; justify-content: space-between; align-items: center;
   }
@@ -248,45 +250,46 @@ function buildReceiptHtml({ order = {}, items = [], payments = [], qrImageDataUr
   /* ═══ لوحة بيانات الفاتورة ═════════════════════════════════════════════════ */
   .meta-panel {
     margin: 9px 0 7px; padding: 7px 10px;
-    background: var(--gold-pale);
+    background: var(--accent-pale);
     border: 1px solid var(--line-soft);
-    border-inline-start: 3.5px solid var(--gold);
+    border-inline-start: 3.5px solid var(--accent);
     border-radius: 9px;
   }
   .m-row { display: flex; justify-content: space-between; align-items: baseline; gap: 8px; font-size: 11.5px; padding: 2px 0; }
   .m-label { color: var(--ink-soft); font-size: 9px; letter-spacing: .3px; }
   .m-value { font-weight: 800; text-align: left; direction: ltr; font-size: 11px; }
   .m-value.rtl { direction: rtl; }
-  .uuid { font-size: 8px; color: #8a857c; letter-spacing: .4px; font-family: 'IBM Plex Mono', Consolas, monospace; }
+  .uuid { font-size: 8px; color: #6f6f6f; letter-spacing: .4px; font-family: 'IBM Plex Mono', Consolas, monospace; }
 
   /* ═══ جدول الأصناف ════════════════════════════════════════════════════════ */
   table { width: 100%; border-collapse: collapse; }
   .items th {
-    font-size: 9.5px; font-weight: 800; color: #fff; background: var(--gold-deep);
+    font-size: 9.5px; font-weight: 800; color: #000; background: #ffffff;
+    border-bottom: 1.6px solid #000;
     padding: 6px 5px; text-align: right; letter-spacing: .5px;
   }
   .items th.qty, .items td.qty { width: 11%; text-align: center; }
   .items th.price, .items td.price { width: 19%; text-align: center; }
   .items th.total, .items td.total { width: 24%; text-align: left; }
   .items td { padding: 6px 5px; border-bottom: 1px solid var(--line-soft); font-size: 12px; vertical-align: top; }
-  .items tbody tr:nth-child(even) td { background: var(--gold-pale); }
+  .items tbody tr:nth-child(even) td { background: var(--accent-pale); }
   .items tr:last-child td { border-bottom: none; }
   .items td.item { font-weight: 700; }
   .line-disc { display: block; font-size: 8.5px; font-weight: 600; color: var(--crimson); }
 
   .buffet-banner {
-    text-align: center; font-weight: 800; font-size: 11.5px; color: #fff;
-    background: var(--gold-deep); border-radius: 8px;
+    text-align: center; font-weight: 800; font-size: 11.5px; color: #000;
+    background: #ffffff; border: 1.4px solid #000; border-radius: 4px;
     padding: 6px; margin-bottom: 6px; letter-spacing: .2px;
   }
   .buffet-persons th, .buffet-persons td { padding: 4px 4px; border-bottom: 1px solid var(--line-soft); font-size: 11px; text-align: right; }
-  .buffet-persons th { background: var(--gold-deep); color: #fff; font-size: 8.5px; font-weight: 800; letter-spacing: .4px; }
+  .buffet-persons th { background: #ffffff; color: #000; border-bottom: 1.4px solid #000; font-size: 8.5px; font-weight: 800; letter-spacing: .4px; }
   .buffet-persons .c { text-align: center; }
   .buffet-persons .t { text-align: left; font-weight: 700; }
   .persons-total {
     display: flex; justify-content: space-between; margin-top: 6px;
-    background: var(--gold-soft); border: 1px solid #e5cf9f; border-radius: 8px;
-    padding: 6px 8px; color: var(--gold-deep); font-weight: 800; font-size: 12px;
+    background: #f1f1f1; border: 1px solid #000; border-radius: 4px;
+    padding: 6px 8px; color: #000; font-weight: 800; font-size: 12px;
   }
 
   .totals { margin-top: 6px; padding: 2px 2px 0; }
@@ -296,36 +299,35 @@ function buildReceiptHtml({ order = {}, items = [], payments = [], qrImageDataUr
   .totals .row.discount .v { color: var(--crimson); }
   .grand {
     display: flex; justify-content: space-between; align-items: baseline;
-    margin-top: 8px; padding: 10px 12px; border-radius: 10px;
-    background: linear-gradient(160deg, #d97706, #8a3c07);
-    color: #fff; border: 1px solid #6d2c05;
-    box-shadow: 0 2px 0 #6d2c05 inset, 0 -1px 0 rgb(255 255 255 / 30%) inset;
+    margin-top: 9px; padding: 7px 2px 6px;
+    border-top: 2.6px double #000; border-bottom: 2.6px double #000;
+    background: #ffffff; color: #000;
   }
   .grand .k { font-size: 12px; font-weight: 800; opacity: .95; letter-spacing: .4px; }
   .grand .v { font-size: 26px; font-weight: 900; letter-spacing: .3px; }
-  .grand .v .cur { color: #ffe3ae; font-size: 11px; }
+  .grand .v .cur { color: #000; font-size: 11px; }
 
-  .pay-title { font-size: 9px; font-weight: 800; color: var(--gold-deep); letter-spacing: 1px; margin-bottom: 4px; text-transform: uppercase; }
+  .pay-title { font-size: 9px; font-weight: 800; color: var(--accent-deep); letter-spacing: 1px; margin-bottom: 4px; text-transform: uppercase; }
   .pay-row { display: flex; justify-content: space-between; font-size: 11px; padding: 2px 0; border-bottom: 1px dotted var(--line-soft); }
   .pay-row:last-child { border-bottom: none; }
   .pay-row .method { color: var(--ink-soft); font-weight: 600; }
-  .pay-row .ref { font-size: 8px; color: #a8a29e; }
+  .pay-row .ref { font-size: 8px; color: #8c8c8c; }
   .pay-row.change { font-weight: 800; color: var(--emerald); }
 
   .qr-section { text-align: center; margin-top: 10px; }
   .qr-section .qr-frame {
     display: inline-block; padding: 7px;
-    border: 1.6px solid var(--gold-deep); outline: 3px double var(--gold-deep); outline-offset: 2px;
+    border: 1.6px solid var(--accent-deep); outline: 3px double var(--accent-deep); outline-offset: 2px;
     border-radius: 10px; background: #fff;
   }
   .qr-section img { width: 132px; height: 132px; display: block; }
   .qr-cap { font-size: 8.5px; color: var(--ink-soft); margin-top: 6px; letter-spacing: .4px; font-weight: 600; }
 
-  .footer { text-align: center; margin-top: 12px; padding-top: 10px; border-top: 3px double var(--gold); }
-  .footer .thanks { font-size: 14px; font-weight: 900; color: var(--gold-deep); letter-spacing: .2px; }
+  .footer { text-align: center; margin-top: 12px; padding-top: 10px; border-top: 3px double var(--accent); }
+  .footer .thanks { font-size: 14px; font-weight: 900; color: var(--accent-deep); letter-spacing: .2px; }
   .footer .note { font-size: 9.5px; color: var(--ink-soft); margin-top: 2px; }
-  .footer .legal { font-size: 8px; color: #b5aea1; margin-top: 6px; letter-spacing: .2px; }
-  .footer .brandline { font-size: 7px; color: #c7c0b2; letter-spacing: 1.6px; text-transform: uppercase; margin-top: 2px; }
+  .footer .legal { font-size: 8px; color: #9a9a9a; margin-top: 6px; letter-spacing: .2px; }
+  .footer .brandline { font-size: 7px; color: #b0b0b0; letter-spacing: 1.6px; text-transform: uppercase; margin-top: 2px; }
 
   .void-banner {
     margin: 8px 0; padding: 7px; text-align: center; font-weight: 900; font-size: 15px;
@@ -335,16 +337,22 @@ function buildReceiptHtml({ order = {}, items = [], payments = [], qrImageDataUr
 
   @media print {
     @page { size: 80mm 200mm; margin: 2mm; }
-    body { max-width: none; padding: 0; background: #fff; }
-    .inv-strip { background: #000 !important; color: #fff !important; border-radius: 0; }
-    .grand {
-      background: #000 !important; color: #fff !important;
-      border: 2px solid #000; box-shadow: none; outline: none;
+    body {
+      max-width: none; padding: 0; background: #fff;
+      /* بلا تلوين خفيف: الطباعة بالأبيض والأسود فقط */
+      -webkit-print-color-adjust: economy;
+      print-color-adjust: economy;
     }
-    .grand .v .cur { color: #fff !important; }
-    .items th { background: #000 !important; color: #fff !important; }
-    .items tbody tr:nth-child(even) td { background: #f5f5f5 !important; }
-    .buffet-banner, .buffet-persons th { background: #000 !important; color: #fff !important; }
+    .inv-strip { background: #fff !important; color: #000 !important; border: 1.8px solid #000 !important; border-radius: 0; }
+    .grand {
+      background: #fff !important; color: #000 !important;
+      border-top: 2.6px double #000 !important; border-bottom: 2.6px double #000 !important;
+      box-shadow: none; outline: none;
+    }
+    .grand .v .cur { color: #000 !important; }
+    .items th { background: #fff !important; color: #000 !important; border-bottom: 1.6px solid #000 !important; }
+    .items tbody tr:nth-child(even) td { background: #f4f4f4 !important; }
+    .buffet-banner, .buffet-persons th { background: #fff !important; color: #000 !important; border-color: #000 !important; }
     .meta-panel { border-inline-start: 4px solid #000 !important; background: #fafafa !important; }
     .seller-panel { border: 1.6px solid #000 !important; background: #fff !important; }
     .sp-title { color: #000 !important; border-block-end-color: #000 !important; }

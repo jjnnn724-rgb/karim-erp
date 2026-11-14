@@ -611,6 +611,58 @@
     color: #C83D45;
 }
 
+/* معاينة الإيصال — ورقة 80mm كما تُطبع */
+.pos-receipt-preview__frame {
+    inline-size: 100%;
+    block-size: 70vh;
+    border: 1px solid #E5E9EE;
+    border-radius: 12px;
+    background: #FFFFFF;
+}
+
+/* السلة — بلا سكرول ظاهر (طلب المالك 2026-11-14): السطر مضغوط والتمرير
+   يبقى ممكن بإصبع الكاشير بس من غير شريط مزعج على الشاشة. */
+.pos-entry--light .pos-cart__body,
+.pos-entry--light .pos-cart__lines {
+    scrollbar-width: none;
+    -ms-overflow-style: none;
+}
+.pos-entry--light .pos-cart__body::-webkit-scrollbar,
+.pos-entry--light .pos-cart__lines::-webkit-scrollbar {
+    inline-size: 0;
+    block-size: 0;
+}
+
+.pos-entry--light .pos-cart__line {
+    padding: 0.25rem 0.3rem;
+    gap: 0.3rem;
+}
+.pos-entry--light .pos-cart__thumb {
+    inline-size: 1.7rem;
+    block-size: 1.7rem;
+    border-radius: 7px;
+}
+.pos-entry--light .pos-cart__copy strong {
+    font-size: 0.74rem;
+    line-height: 1.25;
+}
+.pos-entry--light .pos-cart__copy small {
+    font-size: 0.58rem;
+}
+.pos-entry--light .pos-qty button {
+    inline-size: 1.35rem;
+    block-size: 1.35rem;
+    font-size: 0.85rem;
+}
+.pos-entry--light .pos-cart__line-total {
+    font-size: 0.76rem;
+    min-inline-size: 3rem;
+}
+.pos-entry--light .pos-cart__line-remove {
+    inline-size: 1.6rem;
+    block-size: 1.6rem;
+}
+
 .pos-entry--light .pos-cart__thumb {
     border-color: #E5E9EE;
 }

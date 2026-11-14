@@ -270,6 +270,108 @@
 
 .pos-settings__empty { padding: 1.5rem; text-align: center; color: #8B95A3; font-size: 0.82rem; }
 
+/* ─── قسم صور المنيو ─── */
+.pos-settings__images {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+}
+
+.pos-settings__filters {
+    display: flex;
+    gap: 0.3rem;
+    flex: 0 0 auto;
+}
+.pos-settings__chip {
+    padding: 0.35rem 0.7rem;
+    border: 1px solid #E5E9EE;
+    border-radius: 999px;
+    background: #FFFFFF;
+    color: #687586;
+    font-size: 0.72rem;
+    font-weight: 700;
+    cursor: pointer;
+    white-space: nowrap;
+}
+.pos-settings__chip:hover { border-color: #CBE0D5; color: #117247; }
+.pos-settings__chip.is-active { background: #168653; border-color: #168653; color: #FFFFFF; }
+.pos-settings__chip:focus-visible { outline: 2px solid #2563EB; outline-offset: 1px; }
+
+.pos-settings__hint {
+    margin: 0;
+    padding: 0.4rem 0.6rem;
+    border: 1px solid #FFF0D6;
+    border-radius: 9px;
+    background: #FFF5E5;
+    color: #8A5A13;
+    font-size: 0.68rem;
+    line-height: 1.6;
+}
+
+.pos-settings__images-grid {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: grid;
+    grid-template-columns: repeat(auto-fill, minmax(15rem, 1fr));
+    gap: 0.4rem;
+}
+.pos-settings__image-card {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.4rem;
+    border: 1px solid #E5E9EE;
+    border-radius: 11px;
+    background: #FFFFFF;
+}
+.pos-settings__image-thumb {
+    flex: 0 0 auto;
+    display: grid;
+    place-items: center;
+    inline-size: 3rem;
+    block-size: 3rem;
+    border: 1px solid #E5E9EE;
+    border-radius: 9px;
+    background: #F7F8FA;
+    overflow: hidden;
+}
+.pos-settings__image-thumb img { inline-size: 100%; block-size: 100%; object-fit: cover; }
+.pos-settings__image-thumb em { font-style: normal; font-size: 0.55rem; color: #8B95A3; }
+.pos-settings__image-copy {
+    flex: 1 1 auto;
+    min-inline-size: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.1rem;
+}
+.pos-settings__image-copy strong {
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: #202A35;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.pos-settings__image-copy small { font-size: 0.6rem; color: #8B95A3; }
+.pos-settings__image-warn {
+    align-self: flex-start;
+    padding: 0.05rem 0.4rem;
+    border-radius: 999px;
+    background: #FCEEEF;
+    border: 1px solid #F5C6CC;
+    color: #C83D45;
+    font-style: normal;
+    font-size: 0.56rem;
+    font-weight: 700;
+}
+.pos-settings__image-actions {
+    flex: 0 0 auto;
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+}
+
 /* زر الترس في الشريط العلوي للكاشير — مميز بلون الهوية */
 .pos-icon-btn--settings { color: #117247; border-color: #CBE0D5; background: #EAF6EF; }
 .pos-icon-btn--settings:hover { background: #DDF0E6; border-color: #168653; color: #117247; }

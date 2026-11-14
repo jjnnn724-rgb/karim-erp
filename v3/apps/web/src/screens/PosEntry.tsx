@@ -214,6 +214,7 @@ export function PosEntry() {
     const [printReceiptPending, setPrintReceiptPending] = useState(false);
     const [printersOpen, setPrintersOpen] = useState(false);
     const [settingsOpen, setSettingsOpen] = useState(false);
+    const [receiptPreviewHtml, setReceiptPreviewHtml] = useState<string | null>(null);
     const [mobilePane, setMobilePane] = useState<'catalog' | 'cart'>('catalog');
     const paneSwitchRef = useRef<HTMLDivElement | null>(null);
 
@@ -956,7 +957,8 @@ export function PosEntry() {
         try {
             const html = await fetchPosOrderReceiptHtml(orderId);
             const label = invoiceCounter != null ? `فاتورة — #${String(invoiceCounter)}` : 'فاتورة — إيصال البيع';
-            const opened = openServerHtmlWindow(html, label, 'width=460,height=840,noopener');
+            // طباعة أوتوماتيكية: الكاشير يضغط «إتمام البيع» والورقة تطلع لوحدها
+            const opened = openServerHtmlWindow(html, label, 'width=460,height=840,noopener', true);
             if (!opened) {
                 toast({ title: 'حجب المتصفح نافذة الطباعة؛ اسمح بالنوافذ المنبثقة.', variant: 'error' });
             }
@@ -964,6 +966,15 @@ export function PosEntry() {
             toast({ title: `تعذّرت طباعة الإيصال: ${errorMessage(error)}`, variant: 'error' });
         } finally {
             setPrintReceiptPending(false);
+        }
+    }
+
+    async function previewReceipt(orderId: string) {
+        try {
+            const html = await fetchPosOrderReceiptHtml(orderId);
+            setReceiptPreviewHtml(html);
+        } catch (error) {
+            toast({ title: `تعذّرت معاينة الإيصال: ${errorMessage(error)}`, variant: 'error' });
         }
     }
 
@@ -1968,6 +1979,9 @@ export function PosEntry() {
                                                 onKot={(orderId, counter) => {
                                                     void openKot(orderId, counter);
                                                 }}
+                                                onPreview={(orderId) => {
+                                                    void previewReceipt(orderId);
+                                                }}
                                                 onDismiss={() => {
                                                     updateActiveTab((tab) => ({ ...tab, receipt: null }));
                                                 }}
@@ -2254,6 +2268,26 @@ export function PosEntry() {
             </Dialog>
 
             <PosPrinters open={printersOpen} departmentId={shift?.departmentId ?? ''} onClose={() => setPrintersOpen(false)} />
+            {/* معاينة ورقة الإيصال — نفس المستند الذي يُرسل للطابعة بالحرف */}
+            <Dialog
+                open={receiptPreviewHtml !== null}
+                onOpenChange={(open) => {
+                    if (!open) {setReceiptPreviewHtml(null);}
+                }}
+                title="معاينة الإيصال (كما يُطبَع)"
+                description="هذه نفس ورقة الإيصال التي تخرج من الطابعة — أبيض وأسود."
+                size="lg"
+                className="erp-dialog--receipt-preview"
+            >
+                {receiptPreviewHtml ? (
+                    <iframe
+                        className="pos-receipt-preview__frame"
+                        title="معاينة الإيصال"
+                        srcDoc={receiptPreviewHtml}
+                        sandbox="allow-same-origin"
+                    />
+                ) : null}
+            </Dialog>
             <PosSettingsPanel
                 open={settingsOpen}
                 onClose={() => setSettingsOpen(false)}

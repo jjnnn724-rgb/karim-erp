@@ -634,6 +634,15 @@ export async function fetchPosProducts(departmentId: string, signal?: AbortSigna
 }
 
 /** كميات الأصناف المباعة برمز Yara خلال نافذة أيام — أساس الترتيب الذكي للكتالوج. */
+/**
+ * كل أصناف المنيو (كل الأقسام) — لإدارة الصور من ترس الضبط.
+ * department_id اختياري في الـbackend: بدونه يرجّع الكتالوج كاملًا.
+ */
+export async function fetchAllPosProducts(includeInactive = false, signal?: AbortSignal): Promise<PosProduct[]> {
+    const query = includeInactive ? '?include_inactive=true' : '';
+    return fetchJson(z.array(posProductSchema), `/api/pos/products${query}`, token(), opts(signal));
+}
+
 export async function fetchSalesQuantities(days: number, signal?: AbortSignal): Promise<Record<string, number>> {
     const span = Math.max(1, Math.min(31, Math.trunc(days)));
     const day = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;

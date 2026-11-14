@@ -51,6 +51,7 @@ function renderReceipt() {
             busy={false}
             onReprint={() => {}}
             onKot={() => {}}
+            onPreview={() => {}}
             onDismiss={() => {}}
         />,
     );

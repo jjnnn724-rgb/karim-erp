@@ -308,8 +308,11 @@ export function openPrintWindow(title: string, html: string): boolean {
     return true;
 }
 
-/** صفحة HTML كاملة أرسلها الخادم (تذاكر المطبخ) — تُعرض كما هي بلا تغليف. */
-export function openServerHtmlWindow(html: string, title = '', features = ''): boolean {
+/**
+ * صفحة HTML كاملة أرسلها الخادم (تذاكر المطبخ) — تُعرض كما هي بلا تغليف.
+ * autoPrint = true تُطلق أمر الطباعة فور رسم المحتوى (الكاشير لا يضغط شيئًا).
+ */
+export function openServerHtmlWindow(html: string, title = '', features = '', autoPrint = false): boolean {
     const win = window.open('', '_blank', features || 'noopener');
     if (!win) {
         return false;
@@ -321,6 +324,16 @@ export function openServerHtmlWindow(html: string, title = '', features = ''): b
         win.document.title = title;
     }
     win.focus();
+    if (autoPrint) {
+        // مهلة قصيرة: الخطوط والـQR يحتاجون لحظة ليرسموا قبل الطباعة
+        win.setTimeout(() => {
+            try {
+                win.print();
+            } catch (_) {
+                /* المتصفح منع الطباعة — الكاشير يطبع يدويًا */
+            }
+        }, 350);
+    }
     return true;
 }
 

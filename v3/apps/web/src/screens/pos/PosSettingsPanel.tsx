@@ -9,16 +9,19 @@
  * كل تغيير سعر يُسجّل في audit log تلقائيًا من الـbackend (PRODUCT_PRICE_CHANGE).
  * الواجهة لا تتجاوز أي صلاحية؛ الـباك-إند هو الحارس الأساسي.
  */
-import { useMemo, useState } from 'react';
+import { useMemo, useRef, useState } from 'react';
 import './PosSettingsPanel.css';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import {
     archivePosProduct,
     createPosProduct,
+    fetchAllPosProducts,
     fetchPosDepartments,
     fetchPosProducts,
+    removePosProductImage,
     updatePosProduct,
     updatePosProductPrice,
+    uploadPosProductImage,
     type PosProduct,
     type PosProductPayload,
 } from '../../lib/pos';
@@ -28,14 +31,19 @@ import { moneyText, roleIn } from './pos-ui';
 
 export const POS_ITEMS_MANAGER_ROLES = ['admin', 'manager'] as const;
 export const POS_PRICE_MANAGER_ROLES = ['admin', 'accountant'] as const;
+/** رفع/حذف صور الأصناف — نفس الأدوار التي يسمح بها الـbackend على /products/:id/image. */
+export const POS_IMAGE_ROLES = ['admin', 'manager', 'accountant'] as const;
 export function canManagePosItems(role: string | null | undefined): boolean {
     return roleIn(role, POS_ITEMS_MANAGER_ROLES);
 }
 export function canEditPosPrices(role: string | null | undefined): boolean {
     return roleIn(role, POS_PRICE_MANAGER_ROLES);
 }
+export function canManagePosImages(role: string | null | undefined): boolean {
+    return roleIn(role, POS_IMAGE_ROLES);
+}
 export function canOpenPosSettings(role: string | null | undefined): boolean {
-    return canManagePosItems(role) || canEditPosPrices(role);
+    return canManagePosItems(role) || canEditPosPrices(role) || canManagePosImages(role);
 }
 
 export interface PosSettingsPanelProps {
@@ -47,7 +55,8 @@ export interface PosSettingsPanelProps {
     readonly onChanged: () => void;
 }
 
-type Tab = 'items' | 'prices';
+type Tab = 'items' | 'prices' | 'images';
+type ImageFilter = 'all' | 'none' | 'shared';
 type FormMode = 'closed' | 'new' | 'edit';
 
 interface ItemFormState {
@@ -103,6 +112,7 @@ export function PosSettingsPanel({ open, onClose, departmentId, role, onChanged 
     const queryClient = useQueryClient();
     const canItems = canManagePosItems(role);
     const canPrices = canEditPosPrices(role);
+    const canImages = canManagePosImages(role);
     const [tab, setTab] = useState<Tab>('items');
     const [search, setSearch] = useState('');
     const [busy, setBusy] = useState(false);
@@ -111,6 +121,11 @@ export function PosSettingsPanel({ open, onClose, departmentId, role, onChanged 
     const [form, setForm] = useState<ItemFormState>(EMPTY_FORM);
     const [priceDrafts, setPriceDrafts] = useState<Record<string, string>>({});
     const [formError, setFormError] = useState('');
+    // ── قسم صور المنيو ──
+    const [imageFilter, setImageFilter] = useState<ImageFilter>('all');
+    const [imageSearch, setImageSearch] = useState('');
+    const [imageTarget, setImageTarget] = useState<string | null>(null);
+    const fileInputRef = useRef<HTMLInputElement | null>(null);
 
     // نفس مفتاح الكاش — نفس البيانات اللي بيراها الكاشير في الشبكة.
     const deptKey = departmentId ? String(departmentId) : '';
@@ -125,6 +140,13 @@ export function PosSettingsPanel({ open, onClose, departmentId, role, onChanged 
         queryFn: ({ signal }) => fetchPosDepartments(signal),
         enabled: open,
         staleTime: 5 * 60 * 1000,
+    });
+    // كل أصناف المنيو (كل الأقسام) — قسم الصور يشتغل على الكتالوج كامل
+    const allProductsQuery = useQuery({
+        queryKey: ['pos-products', 'all'],
+        queryFn: ({ signal }) => fetchAllPosProducts(false, signal),
+        enabled: open && canManagePosImages(role),
+        staleTime: 60 * 1000,
     });
 
     const products = useMemo(() => productsQuery.data ?? [], [productsQuery.data]);
@@ -143,9 +165,35 @@ export function PosSettingsPanel({ open, onClose, departmentId, role, onChanged 
         [products],
     );
 
+    /**
+     * ذكاء الصور: صورة واحدة مستخدمة في أكثر من صنف = خطأ مؤكد
+     * («عصير فراولة» بصورة برتقال مثلًا). نحسبها من الكتالوج مباشرةً.
+     */
+    const imageUsage = useMemo(() => {
+        const counts = new Map<string, number>();
+        for (const p of allProductsQuery.data ?? []) {
+            const url = String(p.image_url ?? '').trim();
+            if (url) { counts.set(url, (counts.get(url) ?? 0) + 1); }
+        }
+        return counts;
+    }, [allProductsQuery.data]);
+
+    const imageRows = useMemo(() => {
+        const q = imageSearch.trim().toLowerCase();
+        return (allProductsQuery.data ?? []).filter((p) => {
+            const url = String(p.image_url ?? '').trim();
+            if (imageFilter === 'none' && url) { return false; }
+            if (imageFilter === 'shared' && (!url || (imageUsage.get(url) ?? 0) < 2)) { return false; }
+            if (!q) { return true; }
+            return p.name_ar?.toLowerCase().includes(q)
+                || p.name_en?.toLowerCase().includes(q)
+                || p.category?.toLowerCase().includes(q);
+        });
+    }, [allProductsQuery.data, imageFilter, imageSearch, imageUsage]);
+
     // قفل: لا ترس، لا تنفيذ — حتى لو استُدعي المكوّن بالخطأ.
     if (!open) { return null; }
-    if (!canItems && !canPrices) {
+    if (!canItems && !canPrices && !canImages) {
         return (
             <div className="pos-settings" role="dialog" aria-modal="true" aria-label="غير مصرّح">
                 <div className="pos-settings__panel pos-settings__panel--denied">
@@ -243,8 +291,44 @@ export function PosSettingsPanel({ open, onClose, departmentId, role, onChanged 
         }
     };
 
-    const showTab = (candidate: Tab) => (candidate === 'items' ? canItems : canPrices);
-    const effectiveTab = showTab(tab) ? tab : (canItems ? 'items' : 'prices');
+    const pickImageFile = (productId: string) => {
+        setImageTarget(productId);
+        fileInputRef.current?.click();
+    };
+
+    const uploadImageFor = async (productId: string, file: File) => {
+        setBusy(true);
+        try {
+            await uploadPosProductImage(productId, file);
+            toast({ title: 'تم رفع الصورة', description: 'حُدِّثت صورة الصنف في الكاشير', variant: 'success' });
+            await queryClient.invalidateQueries({ queryKey: ['pos-products'] });
+            await queryClient.invalidateQueries({ queryKey: ['pos-products', 'all'] });
+            onChanged();
+        } catch (err) {
+            toast({ title: 'تعذّر رفع الصورة', description: err instanceof Error ? err.message : '', variant: 'error' });
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const deleteImageFor = async (productId: string, name: string) => {
+        if (!window.confirm(`حذف صورة «${name}»؟ الصنف هيبقى بالأيقونة البديلة.`)) { return; }
+        setBusy(true);
+        try {
+            await removePosProductImage(productId);
+            toast({ title: 'حُذفت الصورة', description: name, variant: 'success' });
+            await queryClient.invalidateQueries({ queryKey: ['pos-products'] });
+            await queryClient.invalidateQueries({ queryKey: ['pos-products', 'all'] });
+            onChanged();
+        } catch (err) {
+            toast({ title: 'تعذّر حذف الصورة', description: err instanceof Error ? err.message : '', variant: 'error' });
+        } finally {
+            setBusy(false);
+        }
+    };
+
+    const showTab = (candidate: Tab) => (candidate === 'items' ? canItems : candidate === 'prices' ? canPrices : canImages);
+    const effectiveTab = showTab(tab) ? tab : (canItems ? 'items' : canPrices ? 'prices' : 'images');
 
     return (
         <div className="pos-settings" role="dialog" aria-modal="true" aria-label="ترس الضبط — إدارة الأصناف والأسعار">
@@ -275,6 +359,9 @@ export function PosSettingsPanel({ open, onClose, departmentId, role, onChanged 
                     {canPrices ? (
                         <button type="button" role="tab" aria-selected={effectiveTab === 'prices'} className={`pos-settings__tab${effectiveTab === 'prices' ? ' is-active' : ''}`} onClick={() => setTab('prices')}>الأسعار</button>
                     ) : null}
+                    {canImages ? (
+                        <button type="button" role="tab" aria-selected={effectiveTab === 'images'} className={`pos-settings__tab${effectiveTab === 'images' ? ' is-active' : ''}`} onClick={() => setTab('images')}>صور المنيو</button>
+                    ) : null}
                 </div>
 
                 <div className="pos-settings__body">
@@ -293,6 +380,71 @@ export function PosSettingsPanel({ open, onClose, departmentId, role, onChanged 
 
                     {productsQuery.isPending ? <p className="pos-settings__state">جاري تحميل الأصناف…</p> : null}
                     {productsQuery.error ? <p className="pos-settings__state pos-settings__state--error">تعذر تحميل الأصناف</p> : null}
+
+                    {/* ── صور المنيو ── */}
+                    {effectiveTab === 'images' && canImages ? (
+                        <div className="pos-settings__images">
+                            <div className="pos-settings__toolbar">
+                                <Input
+                                    type="search"
+                                    placeholder="ابحث باسم الصنف أو الفئة…"
+                                    value={imageSearch}
+                                    onChange={(e) => setImageSearch(e.target.value)}
+                                    aria-label="بحث في صور الأصناف"
+                                />
+                                <div className="pos-settings__filters" role="group" aria-label="تصفية الصور">
+                                    <button type="button" className={`pos-settings__chip${imageFilter === 'all' ? ' is-active' : ''}`} onClick={() => setImageFilter('all')}>الكل</button>
+                                    <button type="button" className={`pos-settings__chip${imageFilter === 'none' ? ' is-active' : ''}`} onClick={() => setImageFilter('none')}>بدون صورة</button>
+                                    <button type="button" className={`pos-settings__chip${imageFilter === 'shared' ? ' is-active' : ''}`} onClick={() => setImageFilter('shared')}>صورة مشتركة (راجعها)</button>
+                                </div>
+                            </div>
+                            <p className="pos-settings__hint">
+                                «صورة مشتركة» = نفس الصورة مستخدمة في أكثر من صنف — سببMost شيوعًا لصورة غلط على صنف.
+                                ارفع صورة كل صنف من هنا لتظهر صح في الكاشير.
+                            </p>
+                            {allProductsQuery.isPending ? <p className="pos-settings__state">جاري تحميل الأصناف…</p> : null}
+                            <ul className="pos-settings__images-grid">
+                                {imageRows.map((p) => {
+                                    const url = String(p.image_url ?? '').trim();
+                                    const shared = url ? (imageUsage.get(url) ?? 0) : 0;
+                                    return (
+                                        <li key={p.id} className="pos-settings__image-card">
+                                            <span className="pos-settings__image-thumb">
+                                                {url ? <img src={url} alt="" loading="lazy" decoding="async" /> : <em>بلا صورة</em>}
+                                            </span>
+                                            <span className="pos-settings__image-copy">
+                                                <strong>{p.name_ar}</strong>
+                                                <small>{p.category || '—'}</small>
+                                                {shared > 1 ? (
+                                                    <em className="pos-settings__image-warn">مستخدمة في {shared} أصناف</em>
+                                                ) : null}
+                                            </span>
+                                            <span className="pos-settings__image-actions">
+                                                <button type="button" className="pos-settings__action" onClick={() => pickImageFile(p.id)} disabled={busy}>
+                                                    {url ? 'تغيير' : 'رفع صورة'}
+                                                </button>
+                                                {url ? (
+                                                    <button type="button" className="pos-settings__action pos-settings__action--danger" onClick={() => { void deleteImageFor(p.id, p.name_ar ?? String(p.id)); }} disabled={busy}>حذف</button>
+                                                ) : null}
+                                            </span>
+                                        </li>
+                                    );
+                                })}
+                            </ul>
+                            <input
+                                ref={fileInputRef}
+                                type="file"
+                                accept="image/jpeg,image/png,image/webp"
+                                className="sr-only"
+                                onChange={(event) => {
+                                    const file = event.target.files?.[0];
+                                    const target = imageTarget;
+                                    event.target.value = '';
+                                    if (file && target) { void uploadImageFor(target, file); }
+                                }}
+                            />
+                        </div>
+                    ) : null}
 
                     {/* ── نموذج صنف (جديد/تعديل) ── */}
                     {formMode !== 'closed' && effectiveTab === 'items' && canItems ? (
