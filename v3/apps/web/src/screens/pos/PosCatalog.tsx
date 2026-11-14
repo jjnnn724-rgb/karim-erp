@@ -24,7 +24,7 @@ export interface PosCatalogProps {
     favorites: readonly string[];
     onToggleFavorite: (item: CatalogItem) => void;
     canSell: boolean;
-    canManageCatalog: boolean;
+    canManageImages: boolean;
     /** manager/admin فقط — يفتح محرر سعر البيع من البطاقة. */
     canEditProductPrice: boolean;
     onProductPriceSaved: (productId: string, price: number) => void;
@@ -81,7 +81,7 @@ interface ProductCardProps {
     pinned: boolean;
     canSell: boolean;
     busy: boolean;
-    canManageCatalog: boolean;
+    canManageImages: boolean;
     imagePending: boolean;
     /** manager/admin فقط */
     canEditProductPrice: boolean;
@@ -101,7 +101,7 @@ const ProductCard = memo(function ProductCard({
     pinned,
     canSell,
     busy,
-    canManageCatalog,
+    canManageImages,
     imagePending,
     canEditProductPrice,
     onAdd,
@@ -204,7 +204,7 @@ const ProductCard = memo(function ProductCard({
                     </svg>
                 </button>
             ) : null}
-            {canManageCatalog ? (
+            {canManageImages ? (
                 <div className="pos-product__image-actions">
                     <button
                         type="button"
@@ -254,7 +254,7 @@ function PosCatalogView({
     favorites,
     onToggleFavorite,
     canSell,
-    canManageCatalog,
+    canManageImages,
     imagePending,
     onUploadImage,
     onRemoveImage,
@@ -389,7 +389,7 @@ function PosCatalogView({
                 pinned={favorites.includes(item.id)}
                 canSell={canSell}
                 busy={busy}
-                canManageCatalog={canManageCatalog}
+                canManageImages={canManageImages}
                 imagePending={imagePending}
                 canEditProductPrice={canEditProductPrice}
                 onAdd={onAdd}
@@ -609,7 +609,7 @@ function PosCatalogView({
                     </div>
                 )}
 
-                {canManageCatalog && !buffet ? (
+                {canManageImages && !buffet ? (
                     <input
                         ref={fileRef}
                         type="file"

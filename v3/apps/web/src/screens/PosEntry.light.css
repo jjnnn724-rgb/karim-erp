@@ -227,7 +227,7 @@
 .pos-entry--light .pos-product__media {
     inline-size: 100%;
     block-size: auto;
-    aspect-ratio: 4 / 3;
+    aspect-ratio: 1 / 1;
     border-radius: var(--pos-radius) var(--pos-radius) 0 0;
     background: linear-gradient(160deg, #F1F4F6, #E5E9EE);
 }

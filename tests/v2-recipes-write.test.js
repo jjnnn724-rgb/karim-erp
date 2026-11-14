@@ -113,8 +113,8 @@ describe('recipes-edit-repo — الفصل البنيوي وأسماء الأب�
             "router.post('/recipes/sync-legacy', jwtAuth, requireRole('manager','admin')",
             "router.get('/products/:id/ingredients', jwtAuth, requireRole('manager','admin','auditor')",
             "router.put('/products/:id/ingredients', jwtAuth, requireRole('manager','admin')",
-            "router.post('/products/:id/image', jwtAuth, requireRole('manager','admin')",
-            "router.delete('/products/:id/image', jwtAuth, requireRole('manager','admin')",
+            "router.post('/products/:id/image', jwtAuth, requireRole('manager','admin','accountant')",
+            "router.delete('/products/:id/image', jwtAuth, requireRole('manager','admin','accountant')",
         ]) {expect(shift).toContain(line);}
         // المطبخ يكتب الوصفة لكن لا يلمس مكوّناتها (أدوار وحدة الكاشير ليست له)
         expect(repo.RECIPE_WRITE_ROLES).toContain('kitchen');

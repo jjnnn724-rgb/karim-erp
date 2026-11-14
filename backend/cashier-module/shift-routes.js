@@ -378,7 +378,9 @@ router.get('/products', jwtAuth, requireRole('cashier','manager','admin','audito
     }
 });
 
-router.post('/products/:id/image', jwtAuth, requireRole('manager','admin'), uploadMenuImage, async (req, res) => {
+// إدارة صور الأصناف: admin/manager/accountant — دور المحاسب يقدر يرفع/يحذف صورة
+// الصنف مثل المدير (طلب المالك 2026-11-14). الطابعة تفضل admin/manager فقط.
+router.post('/products/:id/image', jwtAuth, requireRole('manager','admin','accountant'), uploadMenuImage, async (req, res) => {
     const productId = parsePositiveInt(req.params.id, 'product_id');
     if (!req.file) {return res.status(422).json({ error: 'IMAGE_REQUIRED', message: 'اختر صورة للصنف أولاً' });}
     const extension = MENU_IMAGE_EXTENSIONS[req.file.mimetype];
@@ -403,7 +405,7 @@ router.post('/products/:id/image', jwtAuth, requireRole('manager','admin'), uplo
     } finally { client.release(); }
 });
 
-router.delete('/products/:id/image', jwtAuth, requireRole('manager','admin'), async (req, res) => {
+router.delete('/products/:id/image', jwtAuth, requireRole('manager','admin','accountant'), async (req, res) => {
     const productId = parsePositiveInt(req.params.id, 'product_id');
     try {
         const old = await pool.query(`SELECT image_url FROM pos_products WHERE id = $1`, [productId]);

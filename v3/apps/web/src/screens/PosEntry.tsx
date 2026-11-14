@@ -75,6 +75,7 @@ import { PosReceipt } from './pos/PosReceipt';
 import {
     BUFFET_ADMIN_ROLES,
     CATALOG_IMAGE_ROLES,
+    PRODUCT_IMAGE_ROLES,
     type CardMeta,
     type CatalogItem,
     catalogFromProducts,
@@ -179,6 +180,8 @@ export function PosEntry() {
     const canHistory = roleIn(role, HISTORY_ROLES);
     const canVoid = roleIn(role, VOID_ROLES);
     const canManageCatalog = roleIn(role, CATALOG_IMAGE_ROLES);
+    /** رفع/حذف صور الأصناف: admin/manager/accountant — موظف الكاشير لا يرى شيئًا. */
+    const canManageImages = roleIn(role, PRODUCT_IMAGE_ROLES);
     const canManageBuffet = roleIn(role, BUFFET_ADMIN_ROLES);
     const canDayClose = roleIn(role, DAY_CLOSE_ROLES);
 
@@ -873,7 +876,7 @@ export function PosEntry() {
     }
 
     async function uploadImage(item: CatalogItem, file: File) {
-        if (!canManageCatalog || busy || imagePending) {
+        if (!canManageImages || busy || imagePending) {
             return;
         }
         setImagePending(true);
@@ -892,7 +895,7 @@ export function PosEntry() {
     }
 
     async function removeImage(item: CatalogItem) {
-        if (!canManageCatalog || busy || imagePending || item.isBuffet || !item.hasImage) {
+        if (!canManageImages || busy || imagePending || item.isBuffet || !item.hasImage) {
             return;
         }
         setImagePending(true);
@@ -1855,7 +1858,7 @@ export function PosEntry() {
                                         favorites={favorites}
                                         onToggleFavorite={handleToggleFavorite}
                                         canSell={canSell}
-                                        canManageCatalog={canManageCatalog}
+                                        canManageImages={canManageImages}
                                         canEditProductPrice={canEditProductPrice}
                                         onProductPriceSaved={handleProductPriceSaved}
                                         imagePending={imagePending}

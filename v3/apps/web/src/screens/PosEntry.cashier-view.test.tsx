@@ -150,4 +150,19 @@ describe('واجهة الكاشير — دور cashier فقط', () => {
 
         expect(screen.getByRole('button', { name: /ترس الضبط/ })).toBeTruthy();
     });
+
+    it('المحاسب يشوف أزرار إدارة الصور (طلب المالك) — والكاشير لا يراها', async () => {
+        mocks.role = 'accountant';
+        stubFetch();
+        renderScreen();
+
+        await waitFor(() => {
+            expect(screen.getByRole('button', { name: /إضافة شاي إلى السلة/ })).toBeTruthy();
+        });
+
+        expect(screen.getByRole('button', { name: /رفع أو تغيير صورة/ })).toBeTruthy();
+        expect(screen.getByRole('button', { name: /حذف صورة/ })).toBeTruthy();
+        // المحاسب يدير الأسعار (الترس ظاهر) — والكاشير لا شيء من هذا
+        expect(screen.getByRole('button', { name: /ترس الضبط/ })).toBeTruthy();
+    });
 });

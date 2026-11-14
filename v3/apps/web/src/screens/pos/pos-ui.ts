@@ -17,6 +17,12 @@ export const SELL_ROLES = ['admin', 'manager', 'accountant', 'cashier'] as const
 export const HISTORY_ROLES = ['admin', 'manager', 'accountant'] as const;
 export const VOID_ROLES = ['admin', 'manager', 'accountant'] as const;
 export const CATALOG_IMAGE_ROLES = ['admin', 'manager'] as const;
+/**
+ * رفع/حذف صورة الصنف من شاشة الكاشير — أدوار إدارية فقط (طلب المالك 2026-11-14):
+ * مدير النظام، المدير، المحاسب. موظف الكاشير لا يرى الأزرار ولا الشريط الأبيض
+ * الناتج عنها إطلاقًا. (الـbackend يقبل نفس الأدوار على /products/:id/image.)
+ */
+export const PRODUCT_IMAGE_ROLES = ['admin', 'manager', 'accountant'] as const;
 export const DAY_CLOSE_ROLES = ['admin', 'manager', 'accountant'] as const;
 export const BUFFET_ADMIN_ROLES = ['admin', 'manager', 'accountant'] as const;
 
