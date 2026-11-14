@@ -114,14 +114,13 @@ async function departmentReport({ from, to, departmentId }) {
     const salesByCashier = new Map();
     for (const row of sales.rows) { salesByCashier.set(String(row.cashier_no), row); }
 
-    // الإيراد المحاسبي لكل قسم (revenues.deptId → departments.code)
+    // الإيراد المحاسبي لكل قسم (revenues."deptId" = كود القسم departments.code)
     const revenueRows = await pool.query(`
-        SELECT r."deptId" AS dept_id, d.code AS dept_code, d.name AS dept_name,
-               round(sum(r.amount)::numeric, 2) AS amount, count(*)::int AS entries,
-               min(r.date)::text AS first_date, max(r.date)::text AS last_date
+        SELECT r."deptId" AS dept_code, d.code AS code, d.name AS dept_name,
+               round(sum(r.amount)::numeric, 2) AS amount, count(*)::int AS entries
           FROM revenues r
-          LEFT JOIN departments d ON d.id = r."deptId"
-         WHERE r.date BETWEEN $1::date AND $2::date
+          LEFT JOIN departments d ON d.code = r."deptId"
+         WHERE r.date BETWEEN $1 AND $2
          GROUP BY r."deptId", d.code, d.name
          ORDER BY sum(r.amount) DESC`, [from, to]);
 
@@ -190,30 +189,30 @@ async function departmentReport({ from, to, departmentId }) {
 async function productReport({ from, to, productCode, productName }) {
     const params = [from, to];
     const filters = [];
-    if (productCode) { params.push(productCode); filters.push(`lower(l.code) = lower($${params.length})`); }
-    if (productName) { params.push(productName); filters.push(`lower(l.name) LIKE lower($${params.length})`); }
+    if (productCode) { params.push(productCode); filters.push(`lower(l->>'code') = lower($${params.length})`); }
+    if (productName) { params.push(productName); filters.push(`lower(l->>'name') LIKE lower($${params.length})`); }
     const where = filters.length ? `AND ${filters.join(' AND ')}` : '';
 
     const rows = await pool.query(`
-        SELECT l.code, l.name,
-               round(sum(l.qty)::numeric, 3) AS qty,
-               round(sum(l.total)::numeric, 2) AS revenue,
-               round(sum(l.vat)::numeric, 2) AS vat,
-               round(sum(l.discount)::numeric, 2) AS discount,
+        SELECT l->>'code' AS code, l->>'name' AS name,
+               round(sum((l->>'qty')::numeric), 3) AS qty,
+               round(sum((l->>'total')::numeric), 2) AS revenue,
+               round(sum((l->>'vat')::numeric), 2) AS vat,
+               round(sum((l->>'discount')::numeric), 2) AS discount,
                count(DISTINCT o.doc_no)::int AS invoices,
                count(*)::int AS lines
           FROM ys_mirror_orders o
           CROSS JOIN LATERAL jsonb_array_elements(o.lines::jsonb) AS l
          WHERE (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date
            ${where}
-         GROUP BY l.code, l.name
-         ORDER BY sum(l.total) DESC
+         GROUP BY l->>'code', l->>'name'
+         ORDER BY sum((l->>'total')::numeric) DESC
          LIMIT 500`, params);
 
     const daily = await pool.query(`
         SELECT (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date AS day,
-               round(sum(l.total)::numeric, 2) AS revenue,
-               round(sum(l.qty)::numeric, 3) AS qty
+               round(sum((l->>'total')::numeric), 2) AS revenue,
+               round(sum((l->>'qty')::numeric), 3) AS qty
           FROM ys_mirror_orders o
           CROSS JOIN LATERAL jsonb_array_elements(o.lines::jsonb) AS l
          WHERE (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date
