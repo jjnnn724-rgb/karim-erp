@@ -92,7 +92,7 @@ function hasValidImageSignature(file) {
 function uploadMenuImage(req, res, next) {    menuImageUpload.single('image')(req, res, (err) => {
         if (err) {
             if (err.code === 'LIMIT_FILE_SIZE') {return res.status(413).json({ error: 'IMAGE_TOO_LARGE', message: 'حجم الصورة يجب ألا يتجاوز 5 ميجابايت' });}
-            if (err.code === 'INVALID_IMAGE_TYPE') {return res.status(422).json({ error: 'INVALID_IMAGE_TYPE', message: err.message });}
+            if (err.code === 'INVALID_IMAGE_TYPE') {return res.status(422).json({ error: 'INVALID_IMAGE_TYPE', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });}
             return res.status(422).json({ error: 'IMAGE_UPLOAD_FAILED', message: 'تعذر قراءة الصورة' });
         }
         if (!req.file || !req.file.buffer) {return res.status(422).json({ error: 'IMAGE_REQUIRED', message: 'اختر صورة للصنف أولاً' });}
@@ -899,7 +899,7 @@ router.post('/shifts/open',
             res.status(201).json({ session_id: result.id, status: 'open', opening_balance, new_session: newSessionRequested });
         } catch (err) {
             if (err.code === 'SHIFT_ALREADY_OPEN' || /already has an open shift/i.test(err.message)) {
-                return res.status(409).json({ error: 'SHIFT_ALREADY_OPEN', message: err.message });
+                return res.status(409).json({ error: 'SHIFT_ALREADY_OPEN', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
             }
             logger.error('[shifts/open]', err); res.status(500).json({ error: 'INTERNAL_ERROR' });
         }
@@ -976,7 +976,7 @@ router.post('/shifts/:id/close', jwtAuth, requireRole('cashier','manager','admin
     } catch (err) {
         if (err.code === 404) {return res.status(404).json({ error: 'NOT_FOUND' });}
         if (err.code === 403) {return res.status(403).json({ error: 'FORBIDDEN' });}
-        if (err.code === 409) {return res.status(409).json({ error: 'SHIFT_NOT_OPEN', message: err.message });}
+        if (err.code === 409) {return res.status(409).json({ error: 'SHIFT_NOT_OPEN', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });}
         logger.error('[shifts/close]', err); res.status(500).json({ error: 'INTERNAL_ERROR' });
     }
 });
@@ -1263,7 +1263,7 @@ router.get('/reports/sales', jwtAuth, requireRole('cashier','manager','admin','a
         });
     } catch (e) {
         if (e.statusCode === 422) {
-            return res.status(422).json({ error: 'VALIDATION_ERROR', message: e.message });
+            return res.status(422).json({ error: 'VALIDATION_ERROR', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
         }
         logger.error('[pos/reports/sales]', e);
         res.status(500).json({ error: 'INTERNAL_ERROR', message: 'Failed to build POS sales report' });

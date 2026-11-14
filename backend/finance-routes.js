@@ -2831,7 +2831,7 @@ async function monthlyDetailPayload(query) {
 function sendMonthlyComparisonSourceError(error, res) {
     const codes = ['YARASOFT_REVENUE_UNAVAILABLE', 'NO_LINKED_CASHIERS', 'INVALID_LINKED_CASHIER', 'LINKED_CASHIER_MAP_UNAVAILABLE'];
     if (!error || !codes.includes(error.code)) {return false;}
-    res.status(503).json({ error: error.code, code: error.code, message: error.message });
+    res.status(503).json({ error: error.code, code: error.code, message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     return true;
 }
 

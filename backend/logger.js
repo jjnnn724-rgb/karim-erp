@@ -277,7 +277,7 @@ function httpLogger(options = {}) {
 function logError(error, context = {}, log = logger) {
     const errorInfo = {
         event: 'error',
-        message: error.message,
+        message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى',
         stack: error.stack,
         name: error.name,
         code: error.code,

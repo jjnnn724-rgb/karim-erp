@@ -1175,7 +1175,7 @@ router.post('/vat-settlement', jwtAuth, requireRole(...WRITE_ROLES), async (req,
     });
   } catch (error) {
     if (error.statusCode === 423) {
-      return res.status(423).json({ error: 'PERIOD_CLOSED', message: error.message });
+      return res.status(423).json({ error: 'PERIOD_CLOSED', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
     logger.error('[ledger/vat-settlement]', error);
     res.status(500).json({ error: 'LEDGER_VAT_SETTLEMENT_FAILED', message: 'تعذر ترحيل تصفية الضريبة' });
@@ -1448,7 +1448,7 @@ router.post('/post-payroll', jwtAuth, requireRole(...WRITE_ROLES), async (req, r
     res.status(201).json({ entry: out.entry, total: Number(total.t), count: Number(total.n) });
   } catch (error) {
     const code = error.statusCode || 500;
-    res.status(code).json({ error: 'LEDGER_PAYROLL_FAILED', message: error.message });
+    res.status(code).json({ error: 'LEDGER_PAYROLL_FAILED', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
   }
 });
 

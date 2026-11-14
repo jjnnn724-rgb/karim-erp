@@ -114,7 +114,7 @@ function globalErrorHandler(err, req, res, _next) {
             securityLog(`client.${error.code.toLowerCase()}`, {
                 errorId: error.errorId,
                 status:  error.statusCode,
-                message: error.message,
+                message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى',
             }, req);
         }
     }
@@ -227,7 +227,7 @@ function installProcessShields({
         // عابر (قاعدة بيانات/شبكة): يُسجَّل ويُمتصّ — لا يُسقط الخادم.
         const transient = isTransientInfraError(err) && !noteTransientBurst();
         writeCrashJournal(transient ? 'transientRejection' : 'unhandledRejection', {
-            message: err.message, code: err.code, stack: err.stack,
+            message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى', code: err.code, stack: err.stack,
             promise: String(promise), transient,
         });
         if (transient) {

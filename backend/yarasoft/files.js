@@ -51,7 +51,7 @@ async function probeShare(dirPath, { timeoutMs = 5000 } = {}) {
         const list = await withTimeout(fsp.readdir(dirPath), timeoutMs, 'SHARE_LIST_TIMEOUT');
         return { ok: true, entries: list.length };
     } catch (error) {
-        return { ok: false, code: error.code || 'UNKNOWN', message: error.message };
+        return { ok: false, code: error.code || 'UNKNOWN', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' };
     }
 }
 

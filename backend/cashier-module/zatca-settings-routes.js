@@ -365,7 +365,7 @@ router.post('/csr', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
         await audit('UPDATE', 'توليد CSR جديد لـ ZATCA', { subject: csr.subject }, req);
         res.json({ ok: true, csr_pem: csr.csrPem, subject: csr.subject });
     } catch (e) {
-        if (e.code === 'INVALID_VAT') {return res.status(422).json({ error: e.code, message: e.message });}
+        if (e.code === 'INVALID_VAT') {return res.status(422).json({ error: e.code, message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });}
         logger.error('[zatca/csr]', e);
         res.status(500).json({ error: 'CSR_FAILED', message: 'تعذر توليد CSR' });
     }

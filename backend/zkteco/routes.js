@@ -228,7 +228,7 @@ router.post('/devices/:id/test', jwtAuth, requireRole(...WRITE_ROLES), async (re
             usersCount: Array.isArray(result.users) ? result.users.length : null,
         });
     } catch (error) {
-        res.status(502).json({ ok: false, error: 'ZK_PROBE_FAILED', message: error.message });
+        res.status(502).json({ ok: false, error: 'ZK_PROBE_FAILED', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -257,7 +257,7 @@ router.get('/devices/:id/users', jwtAuth, requireRole(...WRITE_ROLES), async (re
         const probe = await engine.probeDevice(rows[0]);
         res.json({ ok: true, users: probe.users || [] });
     } catch (error) {
-        res.status(502).json({ ok: false, error: 'ZK_USERS_FAILED', message: error.message });
+        res.status(502).json({ ok: false, error: 'ZK_USERS_FAILED', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -283,7 +283,7 @@ router.get('/devices/:id/stored-users', jwtAuth, requireRole(...READ_ROLES), asy
               ORDER BY 1`, [id]);
         res.json({ ok: true, count: rows.length, users: rows });
     } catch (error) {
-        res.status(500).json({ ok: false, error: 'ZK_STORED_USERS_FAILED', message: error.message });
+        res.status(500).json({ ok: false, error: 'ZK_STORED_USERS_FAILED', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -823,7 +823,7 @@ router.get('/coverage', jwtAuth, requireRole(...READ_ROLES), async (req, res) =>
         });
     } catch (error) {
         logger.error('[ZKTECO] coverage failed:', error.message);
-        res.status(500).json({ error: 'ZK_COVERAGE_FAILED', message: error.message });
+        res.status(500).json({ error: 'ZK_COVERAGE_FAILED', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -844,7 +844,7 @@ router.get('/reconciliation', jwtAuth, requireRole(...READ_ROLES), async (req, r
         res.json(report);
     } catch (error) {
         logger.error('[ZKTECO] reconciliation failed:', error.message);
-        res.status(500).json({ error: 'ZK_RECONCILIATION_FAILED', message: error.message });
+        res.status(500).json({ error: 'ZK_RECONCILIATION_FAILED', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 

@@ -452,7 +452,7 @@ router.post('/:id/returns/quote', jwtAuth, requireRole('admin', 'manager', 'acco
             }, '[pos-returns] credit note rejected');
             return res.status(422).json({
                 error: err.code || 'INVOICE_UNBALANCED',
-                message: err.message,
+                message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى',
                 details: err.details || null,
             });
         }
@@ -703,7 +703,7 @@ router.get('/:id/receipt-html', jwtAuth, requireRole('admin', 'manager', 'cashie
             logger.error({ err: err.message, details: err.details }, '[pos-orders] receipt refused: unbalanced invoice');
             return res.status(422).json({
                 error: 'INVOICE_UNBALANCED',
-                message: err.message,
+                message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى',
                 details: err.details || null,
             });
         }

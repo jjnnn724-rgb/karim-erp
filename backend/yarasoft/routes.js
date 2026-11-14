@@ -101,7 +101,7 @@ router.post('/run-now', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) =
         res.json({ ok: true, ...r, status: eng.getStatus() });
     } catch (error) {
         logger.error('[yarasoft/run-now]', error);
-        res.status(502).json({ error: 'YARASOFT_RUN_FAILED', message: error.message });
+        res.status(502).json({ error: 'YARASOFT_RUN_FAILED', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
 
@@ -210,9 +210,9 @@ router.post('/mappings', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) 
         const row = await upsertMapping({ externalCode, externalBarcode, internalProductId, active });
         res.status(201).json(row);
     } catch (error) {
-        if (error.code === 'MAPPING_CLASH') {return res.status(409).json({ error: error.code, message: error.message });}
+        if (error.code === 'MAPPING_CLASH') {return res.status(409).json({ error: error.code, message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });}
         if (['INTERNAL_PRODUCT_REQUIRED', 'EXTERNAL_KEY_REQUIRED', 'PRODUCT_NOT_FOUND'].includes(error.code)) {
-            return res.status(422).json({ error: error.code, message: error.message });
+            return res.status(422).json({ error: error.code, message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
         }
         logger.error('[yarasoft/mappings POST]', error);
         res.status(500).json({ error: 'YARASOFT_MAPPING_FAILED', message: 'تعذر حفظ الربط' });
@@ -445,7 +445,7 @@ router.post('/dry-run-preview', jwtAuth, requireRole(...WRITE_ROLES), express.js
             res.json({ ok: true, parsed, suggestedProfile: profile ? null : suggestProfile(text) });
         } catch (error) {
             if (error instanceof ParseError) {
-                return res.status(422).json({ ok: false, error: 'PARSE_FAILED', message: error.message, suggestedProfile: suggestProfile(text) });
+                return res.status(422).json({ ok: false, error: 'PARSE_FAILED', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى', suggestedProfile: suggestProfile(text) });
             }
             throw error;
         }

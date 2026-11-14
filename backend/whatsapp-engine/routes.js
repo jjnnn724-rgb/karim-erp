@@ -89,7 +89,7 @@ router.post('/qr/refresh', jwtAuth, requireRole(...WRITE_ROLES), rateLimit({ win
         const ok = await engineRef.connection.requestQR();
         if (ok) { res.json({ ok: true, message: 'QR جديد تم إنشاؤه — امسحه الآن من واتساب' }); }
         else { res.json({ ok: true, message: 'تم إنشاء QR جديد — اجلبه من زر جلب الرمز' }); }
-    } catch (e) { res.status(500).json({ ok: false, error: 'QR_REFRESH_FAILED', message: e.message.slice(0, 200) }); }
+    } catch (e) { res.status(500).json({ ok: false, error: 'QR_REFRESH_FAILED', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى'.slice(0, 200) }); }
 });
 
 router.post('/pairing', jwtAuth, requireRole(...WRITE_ROLES), rateLimit({ windowMs: 60000, max: 3, keyFn: (r) => `wa_pair:${r.user.id}` }), async (req, res) => {
@@ -103,7 +103,7 @@ router.post('/pairing', jwtAuth, requireRole(...WRITE_ROLES), rateLimit({ window
         }
         const code = await engineRef.connection.pairingCode(req.body?.phone);
         res.json({ ok: true, code });
-    } catch (e) { res.status(422).json({ ok: false, error: e.code || 'PAIRING_FAILED', message: e.message }); }
+    } catch (e) { res.status(422).json({ ok: false, error: e.code || 'PAIRING_FAILED', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' }); }
 });
 
 router.post('/start', jwtAuth, requireRole(...WRITE_ROLES), rateLimit({ windowMs: 60000, max: 5, keyFn: (r) => `wa_start:${r.user.id}` }), async (req, res) => {
@@ -140,7 +140,7 @@ router.post('/session/restore', jwtAuth, requireRole('admin'), async (req, res) 
         try { await store.logEvent('session_restore', 'creds.json', String(used).slice(-60)); } catch (_) {}
         res.json({ ok: true, backup: String(used).split(/[\\/]/).pop() });
     } catch (e) {
-        if (e && e.code === 'NO_BACKUP') {return res.status(422).json({ ok: false, error: 'NO_BACKUP', message: e.message });}
+        if (e && e.code === 'NO_BACKUP') {return res.status(422).json({ ok: false, error: 'NO_BACKUP', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });}
         logger.error('[wa/session/restore]', e.message); res.status(500).json({ ok: false, error: 'WA_RESTORE_FAILED' });
     }
 });
@@ -157,10 +157,10 @@ router.post('/send', jwtAuth, requireRole(...WRITE_ROLES), rateLimit({ windowMs:
     } catch (e) {
         if (e && (e.code === 'BULK_FROZEN' || e.code === 'WARMUP_CAP' || e.code === 'COLD_CAP' || e.code === 'SENDER_PAUSED')) {
             try { await store.logEvent('send_refused', String(req.body?.to || ''), e.code); } catch (_) {}
-            return res.status(429).json({ ok: false, error: e.code, message: e.message });
+            return res.status(429).json({ ok: false, error: e.code, message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
         }
         if (e && (e.code === 'INVALID_JID' || e.code === 'EMPTY_BODY')) {
-            return res.status(422).json({ ok: false, error: e.code, message: e.message });
+            return res.status(422).json({ ok: false, error: e.code, message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
         }
         logger.error('[wa/send]', e.message); res.status(500).json({ ok: false, error: 'WA_SEND_FAILED' });
     }
@@ -179,10 +179,10 @@ router.post('/send-media', jwtAuth, requireRole(...WRITE_ROLES), rateLimit({ win
     } catch (e) {
         if (e && (e.code === 'BULK_FROZEN' || e.code === 'WARMUP_CAP' || e.code === 'COLD_CAP' || e.code === 'SENDER_PAUSED')) {
             try { await store.logEvent('send_media_refused', String(req.body?.to || ''), e.code); } catch (_) {}
-            return res.status(429).json({ ok: false, error: e.code, message: e.message });
+            return res.status(429).json({ ok: false, error: e.code, message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
         }
         if (e && (e.code === 'INVALID_JID' || e.code === 'INVALID_MEDIA_TYPE' || e.code === 'INVALID_MEDIA_URL' || e.code === 'EMPTY_MEDIA' || e.code === 'MEDIA_FILE_MISSING' || e.code === 'MEDIA_TOO_LARGE' || e.code === 'MEDIA_PATH_FORBIDDEN')) {
-            return res.status(422).json({ ok: false, error: e.code, message: e.message });
+            return res.status(422).json({ ok: false, error: e.code, message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
         }
         logger.error('[wa/send-media]', e.message); res.status(500).json({ ok: false, error: 'WA_SEND_MEDIA_FAILED' });
     }
@@ -370,7 +370,7 @@ router.post('/ai/chat', jwtAuth, requireRole(...WRITE_ROLES), rateLimit({ window
         if (!message) {return res.status(422).json({ ok: false, error: 'MESSAGE_REQUIRED' });}
         const response = await engineRef.ai.respond('admin-test', message, { customerName: customerName || 'Admin' });
         res.json({ ok: true, response });
-    } catch (e) { res.status(500).json({ ok: false, error: 'AI_CHAT_FAILED', message: e.message.slice(0, 200) }); }
+    } catch (e) { res.status(500).json({ ok: false, error: 'AI_CHAT_FAILED', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى'.slice(0, 200) }); }
 });
 
 // ─── Message Templates ───
@@ -410,7 +410,7 @@ router.post('/templates/send', jwtAuth, requireRole(...WRITE_ROLES), rateLimit({
         res.status(201).json({ ok: true, id: out.id, status: out.status });
     } catch (e) {
         if (e && (e.code === 'BULK_FROZEN' || e.code === 'WARMUP_CAP' || e.code === 'COLD_CAP' || e.code === 'SENDER_PAUSED')) {
-            return res.status(429).json({ ok: false, error: e.code, message: e.message });
+            return res.status(429).json({ ok: false, error: e.code, message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
         }
         logger.error('[wa/templates/send]', e.message); res.status(500).json({ ok: false, error: 'WA_TEMPLATE_SEND_FAILED' });
     }
@@ -480,7 +480,7 @@ router.post('/workflows/:key/run', jwtAuth, requireRole('admin'), async (req, re
         const { key } = req.params;
         const result = await engineRef.workflows.startFlow('admin@admin', key);
         res.json({ ok: true, result });
-    } catch (e) { res.status(500).json({ ok: false, error: 'WORKFLOW_RUN_FAILED', message: e.message.slice(0, 200) }); }
+    } catch (e) { res.status(500).json({ ok: false, error: 'WORKFLOW_RUN_FAILED', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى'.slice(0, 200) }); }
 });
 router.get('/workflows/active', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
     try { res.json({ ok: true, active: engineRef.workflows.activeCount, sessions: Array.from(engineRef.workflows._activeSessions.keys()) }); }
@@ -613,7 +613,7 @@ router.post('/send-buttons', jwtAuth, requireRole(...WRITE_ROLES), rateLimit({ w
         res.status(201).json({ ok: true, id: out.id, status: out.status });
     } catch (e) {
         if (e?.code === 'BULK_FROZEN' || e?.code === 'WARMUP_CAP' || e?.code === 'COLD_CAP' || e?.code === 'SENDER_PAUSED') {
-            return res.status(429).json({ ok: false, error: e.code, message: e.message });
+            return res.status(429).json({ ok: false, error: e.code, message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
         }
         logger.error('[wa/send-buttons]', e.message);
         res.status(500).json({ ok: false, error: 'BUTTONS_SEND_FAILED' });
@@ -630,7 +630,7 @@ router.post('/send-quick-reply', jwtAuth, requireRole(...WRITE_ROLES), rateLimit
         res.status(201).json({ ok: true, id: out.id, status: out.status });
     } catch (e) {
         if (e?.code === 'BULK_FROZEN' || e?.code === 'WARMUP_CAP' || e?.code === 'COLD_CAP' || e?.code === 'SENDER_PAUSED') {
-            return res.status(429).json({ ok: false, error: e.code, message: e.message });
+            return res.status(429).json({ ok: false, error: e.code, message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
         }
         res.status(500).json({ ok: false, error: 'QUICK_REPLY_FAILED' });
     }

@@ -229,7 +229,7 @@ router.post('/config/tiers', jwtAuth, requireRole(...ADMIN_ROLES), async (req, r
         const tiers = await loadTiers();
         res.status(201).json({ created: { ...created, id: Number(created.id), price: Number(created.price), vat_rate: Number(created.vat_rate) }, tiers });
     } catch (e) {
-        if (e.code === 'DUPLICATE_TIER') {return res.status(409).json({ error: e.code, message: e.message });}
+        if (e.code === 'DUPLICATE_TIER') {return res.status(409).json({ error: e.code, message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });}
         logger.error('[buffet/add-tier]', e);
         res.status(500).json({ error: 'BUFFET_ADD_TIER_FAILED', message: 'تعذر إضافة الفئة' });
     }

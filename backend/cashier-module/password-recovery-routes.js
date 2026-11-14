@@ -128,7 +128,7 @@ async function requestCodeHandler(req, res, ctx = {}) {
             message: 'الرمز للاستخدام مرة واحدة وصلاحيته 10 دقائق — شاركه مع الموظف فقط.',
         });
     } catch (err) {
-        logger.error({ err: { message: err.message, stack: err.stack } }, '[pw-recovery] request-code failed');
+        logger.error({ err: { message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى', stack: err.stack } }, '[pw-recovery] request-code failed');
         return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر إصدار رمز الاستعادة — حاول مرة أخرى.' });
     } finally {
         client.release();

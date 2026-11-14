@@ -1404,7 +1404,7 @@ router.post('/dept-transfers', jwtAuth, requireRole(...WRITE_ROLES), async (req,
       return fail(res, 409, e.code, e.message, { available: e.available, requested: e.requested, inventoryId: e.inventoryId });
     }
     const soft = ['DEPT_NOT_FOUND', 'INVENTORY_ITEM_NOT_FOUND', 'INVALID_TRANSFER_ITEM', 'INVALID_TRANSFER', 'DEPT_CODE_REQUIRED'];
-    res.status(soft.indexOf(e.code) !== -1 ? 422 : 500).json({ error: e.code || 'INTERNAL_ERROR', message: e.message || 'تعذر إنشاء طلب التحويل' });
+    res.status(soft.indexOf(e.code) !== -1 ? 422 : 500).json({ error: e.code || 'INTERNAL_ERROR', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' || 'تعذر إنشاء طلب التحويل' });
   } finally { client.release(); }
 });
 
@@ -1519,7 +1519,7 @@ router.post('/dept-transfers/external', jwtAuth, requireRole(...WRITE_ROLES), as
     }
     const soft = ['DEPT_NOT_FOUND', 'INVENTORY_ITEM_NOT_FOUND', 'INVALID_TRANSFER_ITEM', 'INVALID_TRANSFER', 'DEPT_CODE_REQUIRED',
       'FACTORY_PRICE_MISSING', 'FACTORY_PRICE_AMBIGUOUS'];
-    res.status(soft.indexOf(e.code) !== -1 ? 422 : 500).json({ error: e.code || 'INTERNAL_ERROR', message: e.message || 'تعذر تنفيذ تحويل البيع الخارجي' });
+    res.status(soft.indexOf(e.code) !== -1 ? 422 : 500).json({ error: e.code || 'INTERNAL_ERROR', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' || 'تعذر تنفيذ تحويل البيع الخارجي' });
   } finally { client.release(); }
 });
 
@@ -1571,7 +1571,7 @@ router.post('/dept-transfers/:id/approve', jwtAuth, requireRole(...APPROVE_ROLES
         available: e.available, requested: e.requested, inventoryId: e.inventoryId,
       });
     }
-    res.status(500).json({ error: e.code || 'INTERNAL_ERROR', message: e.message || 'تعذر اعتماد التحويل' });
+    res.status(500).json({ error: e.code || 'INTERNAL_ERROR', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' || 'تعذر اعتماد التحويل' });
   } finally { client.release(); }
 });
 

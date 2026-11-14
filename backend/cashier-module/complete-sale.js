@@ -539,19 +539,19 @@ async function quoteSale(req, res) {
         });
     } catch (err) {
         if (err.code === 'INVOICE_UNBALANCED') {
-            logger.error({ err: { message: err.message, details: err.details }, requestId }, 'quote refused: unbalanced invoice');
-            return res.status(422).json({ error: 'INVOICE_UNBALANCED', message: err.message, details: err.details || null, _request_id: requestId });
+            logger.error({ err: { message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى', details: err.details }, requestId }, 'quote refused: unbalanced invoice');
+            return res.status(422).json({ error: 'INVOICE_UNBALANCED', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى', details: err.details || null, _request_id: requestId });
         }
         if (err.code === 'DISCOUNT_APPROVAL_REQUIRED') {
-            return res.status(403).json({ error: 'DISCOUNT_APPROVAL_REQUIRED', message: err.message, _request_id: requestId });
+            return res.status(403).json({ error: 'DISCOUNT_APPROVAL_REQUIRED', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى', _request_id: requestId });
         }
         if (err.code === 'PRICE_OVERRIDE_FORBIDDEN') {
-            return res.status(422).json({ error: 'PRICE_OVERRIDE_FORBIDDEN', message: err.message, _request_id: requestId });
+            return res.status(422).json({ error: 'PRICE_OVERRIDE_FORBIDDEN', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى', _request_id: requestId });
         }
         if (err.code === 'PRODUCT_NOT_FOUND') {
-            return res.status(404).json({ error: 'PRODUCT_NOT_FOUND', message: err.message, _request_id: requestId });
+            return res.status(404).json({ error: 'PRODUCT_NOT_FOUND', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى', _request_id: requestId });
         }
-        logger.error({ err: { message: err.message, code: err.code }, requestId }, 'quote failed');
+        logger.error({ err: { message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى', code: err.code }, requestId }, 'quote failed');
         return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى', _request_id: requestId });
     }
 }
@@ -1363,21 +1363,21 @@ async function completeSale(req, res) {
             }
             return res.status(422).json({
                 error: 'INVOICE_UNBALANCED',
-                message: err.message,
+                message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى',
                 details: err.details || null,
                 _request_id: requestId,
             });
         }
         if (['INVALID_DISCOUNT', 'NEGATIVE_LINE_PRICE', 'INVALID_VAT_RATE', 'INVALID_MONEY_VALUE', 'INVALID_QUANTITY'].includes(err.code)) {
-            return res.status(422).json({ error: err.code, message: err.message, _request_id: requestId });
+            return res.status(422).json({ error: err.code, message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى', _request_id: requestId });
         }
 
         if (code === '23505') {return res.status(409).json({ error: 'DUPLICATE', message: 'طلب مكرر — لم تُسجَّل عملية ثانية', _request_id: requestId });}
-        if (err.code === 'PRICE_OVERRIDE_FORBIDDEN') {return res.status(422).json({ error: 'PRICE_OVERRIDE_FORBIDDEN', message: err.message, _request_id: requestId });}
-        if (err.code === 'DISCOUNT_APPROVAL_REQUIRED') {return res.status(403).json({ error: 'DISCOUNT_APPROVAL_REQUIRED', message: err.message, _request_id: requestId });}
+        if (err.code === 'PRICE_OVERRIDE_FORBIDDEN') {return res.status(422).json({ error: 'PRICE_OVERRIDE_FORBIDDEN', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى', _request_id: requestId });}
+        if (err.code === 'DISCOUNT_APPROVAL_REQUIRED') {return res.status(403).json({ error: 'DISCOUNT_APPROVAL_REQUIRED', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى', _request_id: requestId });}
         if (err.code === 'INSUFFICIENT_STOCK' || code === '23514') {return res.status(409).json({ error: 'INSUFFICIENT_STOCK', message: 'المخزون غير كافٍ لإتمام البيع', _request_id: requestId });}
-        if (err.code === 'UNDERPAYMENT') {return res.status(422).json({ error: 'UNDERPAYMENT', message: err.message, _request_id: requestId });}
-        if (err.code === 'PRODUCT_NOT_FOUND') {return res.status(404).json({ error: 'PRODUCT_NOT_FOUND', message: err.message, _request_id: requestId });}
+        if (err.code === 'UNDERPAYMENT') {return res.status(422).json({ error: 'UNDERPAYMENT', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى', _request_id: requestId });}
+        if (err.code === 'PRODUCT_NOT_FOUND') {return res.status(404).json({ error: 'PRODUCT_NOT_FOUND', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى', _request_id: requestId });}
         if (code === '40001' || code === '40P01') {return res.status(409).json({ error: 'CONCURRENCY_CONFLICT', message: 'Please retry.', _request_id: requestId });}
 
         logger.error({

@@ -1822,7 +1822,7 @@ app.get('/api/attendance/audit', jwtAuth, requireRole('admin', 'hr', 'manager'),
         res.json(result);
     } catch (error) {
         logger.error('[attendance-audit] list failed:', error.message);
-        res.status(500).json({ error: 'ATTENDANCE_AUDIT_FAILED', message: error.message });
+        res.status(500).json({ error: 'ATTENDANCE_AUDIT_FAILED', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 }));
 
@@ -2111,7 +2111,7 @@ entities.forEach(entity => {
                     return res.status(authzCreate.status).json({ error: authzCreate.code, message: authzCreate.message });
                 }
                 try { await validateDeptHeadUserLink(entity, filtered); }
-                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'DEPT_HEAD_LINK_INVALID', message: error.message }); }
+                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'DEPT_HEAD_LINK_INVALID', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' }); }
                 filtered = { ...filtered, password: await bcrypt.hash(String(filtered.password), 12), active: filtered.active !== false };
             }
 
@@ -2232,7 +2232,7 @@ entities.forEach(entity => {
             const periodBlockCreateOpen = await payrollPeriodViolation(entity, filtered);
             if (periodBlockCreateOpen) {return res.status(423).json(periodBlockCreateOpen);}
             try { filtered = await enforceAttendanceSelfService(entity, req, filtered); }
-            catch (error) { return res.status(error.statusCode || 403).json({ error: error.code || 'ATTENDANCE_FORBIDDEN', message: error.message }); }
+            catch (error) { return res.status(error.statusCode || 403).json({ error: error.code || 'ATTENDANCE_FORBIDDEN', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' }); }
             if (entity === 'attendance') {
                 // حوكمة الحضور (2026-11-02): سببٌ إجباري + تجميد الفترة المغلقة.
                 const gov = require('./attendance-governance');
@@ -2251,7 +2251,7 @@ entities.forEach(entity => {
                     }
                 }
                 try { await validateEmployeeUserLink(entity, filtered); }
-                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'EMPLOYEE_USER_LINK_INVALID', message: error.message }); }
+                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'EMPLOYEE_USER_LINK_INVALID', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' }); }
                 // انصراف تلقائي + قفل اليوم: مدير النظام فقط — يُسقط لغيره بصمت
                 if (entity === 'employees' && req.user?.role !== 'admin') {
                     delete filtered.auto_checkout;
@@ -2266,15 +2266,15 @@ entities.forEach(entity => {
                             filtered.shift_karim = normalizeShiftKarim(filtered.shift_karim) ?? 9;
                         }
                     }
-                    catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'SHIFT_INVALID', message: error.message }); }
+                    catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'SHIFT_INVALID', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' }); }
                 }
             }
             if (entity === 'departments' && Object.prototype.hasOwnProperty.call(filtered, 'parent_code')) {                try { filtered = { ...filtered, parent_code: await validateDeptParent(filtered.code, filtered.parent_code) }; }
-                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'DEPT_PARENT_INVALID', message: error.message }); }
+                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'DEPT_PARENT_INVALID', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' }); }
             }
             if (entity === 'dept_cashier_links') {
                 try { filtered = await validateDeptCashierLink(filtered); }
-                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'DEPT_CASHIER_LINK_INVALID', message: error.message }); }
+                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'DEPT_CASHIER_LINK_INVALID', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' }); }
             }
             if (entity === 'users') {
                 if (!String(filtered.password || '').trim()) {return res.status(422).json({ error: 'PASSWORD_REQUIRED', message: 'كلمة المرور مطلوبة' });}
@@ -2285,7 +2285,7 @@ entities.forEach(entity => {
                 }
                 // Task 19: حساب رئيس القسم يجب ربطه بقسم صحيح عند الإنشاء
                 try { await validateDeptHeadUserLink(entity, filtered); }
-                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'DEPT_HEAD_LINK_INVALID', message: error.message }); }
+                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'DEPT_HEAD_LINK_INVALID', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' }); }
                 filtered = { ...filtered, password: await bcrypt.hash(String(filtered.password), 12), active: filtered.active !== false };
             }
 
@@ -2479,11 +2479,11 @@ entities.forEach(entity => {
                 };
                 // Task 19: التحقق من ربط رئيس القسم بقسمه عند التعديل (يدمج الدور والقسم الفعليين)
                 try { await validateDeptHeadUserUpdate(filtered, id); }
-                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'DEPT_HEAD_LINK_INVALID', message: error.message }); }
+                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'DEPT_HEAD_LINK_INVALID', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' }); }
             }
             if (entity === 'employees') {
                 try { await validateEmployeeUserLink(entity, filtered, id); }
-                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'EMPLOYEE_USER_LINK_INVALID', message: error.message }); }
+                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'EMPLOYEE_USER_LINK_INVALID', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' }); }
                 try {
                     if (Object.prototype.hasOwnProperty.call(filtered, 'shift_start')) {
                         filtered.shift_start = normalizeShiftStart(filtered.shift_start) || '09:00';
@@ -2492,7 +2492,7 @@ entities.forEach(entity => {
                         filtered.shift_karim = normalizeShiftKarim(filtered.shift_karim) ?? 9;
                     }
                 }
-                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'SHIFT_INVALID', message: error.message }); }
+                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'SHIFT_INVALID', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' }); }
                 // انصراف تلقائي: مدير النظام فقط — يُسقط لغيره بصمت
                 // انصراف تلقائي + قفل اليوم: مدير النظام فقط — يُسقط لغيره بصمت
                 if (Object.prototype.hasOwnProperty.call(filtered, 'auto_checkout') && req.user?.role !== 'admin') {
@@ -2609,7 +2609,7 @@ entities.forEach(entity => {
                 });
             }
             try { filtered = await enforceAttendanceSelfService(entity, req, filtered, id); }
-            catch (error) { return res.status(error.statusCode || 403).json({ error: error.code || 'ATTENDANCE_FORBIDDEN', message: error.message }); }
+            catch (error) { return res.status(error.statusCode || 403).json({ error: error.code || 'ATTENDANCE_FORBIDDEN', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' }); }
             /* حوكمة الحضور (2026-11-02): الصفُّ القديم + سببٌ إجباري + تجميد الفترة. */
             let attBefore;
             if (entity === 'attendance') {
@@ -2661,11 +2661,11 @@ entities.forEach(entity => {
                 }
                 // Task 19: التحقق من ربط رئيس القسم بقسمه عند التعديل (يدمج الدور والقسم الفعليين)
                 try { await validateDeptHeadUserUpdate(filtered, id); }
-                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'DEPT_HEAD_LINK_INVALID', message: error.message }); }
+                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'DEPT_HEAD_LINK_INVALID', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' }); }
             }
             if (entity === 'employees') {
                 try { await validateEmployeeUserLink(entity, filtered, id); }
-                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'EMPLOYEE_USER_LINK_INVALID', message: error.message }); }
+                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'EMPLOYEE_USER_LINK_INVALID', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' }); }
                 try {
                     if (Object.prototype.hasOwnProperty.call(filtered, 'shift_start')) {
                         filtered.shift_start = normalizeShiftStart(filtered.shift_start) || '09:00';
@@ -2674,7 +2674,7 @@ entities.forEach(entity => {
                         filtered.shift_karim = normalizeShiftKarim(filtered.shift_karim) ?? 9;
                     }
                 }
-                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'SHIFT_INVALID', message: error.message }); }
+                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'SHIFT_INVALID', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' }); }
                 // انصراف تلقائي: مدير النظام فقط — يُسقط لغيره بصمت
                 // انصراف تلقائي + قفل اليوم: مدير النظام فقط — يُسقط لغيره بصمت
                 if (Object.prototype.hasOwnProperty.call(filtered, 'auto_checkout') && req.user?.role !== 'admin') {
@@ -2690,7 +2690,7 @@ entities.forEach(entity => {
                     if (!target) {return res.status(404).json({ error: 'NOT_FOUND', message: 'السجل المطلوب غير موجود' });}
                     filtered = { ...filtered, parent_code: await validateDeptParent(target.code, filtered.parent_code) };
                 }
-                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'DEPT_PARENT_INVALID', message: error.message }); }
+                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'DEPT_PARENT_INVALID', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' }); }
             }
             if (entity === 'dept_cashier_links') {
                 try {
@@ -2700,7 +2700,7 @@ entities.forEach(entity => {
                     if (!target) {return res.status(404).json({ error: 'NOT_FOUND', message: 'السجل المطلوب غير موجود' });}
                     filtered = await validateDeptCashierLink({ ...target, ...filtered }, id);
                 }
-                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'DEPT_CASHIER_LINK_INVALID', message: error.message }); }
+                catch (error) { return res.status(error.statusCode || 422).json({ error: error.code || 'DEPT_CASHIER_LINK_INVALID', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' }); }
             }
             const periodBlockPutOpen = await payrollRowViolation(entity, id, filtered);
             if (periodBlockPutOpen) {return res.status(423).json(periodBlockPutOpen);}

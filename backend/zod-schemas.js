@@ -379,7 +379,7 @@ function validate(schema, options = {}) {
                 const zodErrors = result.error?.errors || [];
                 const errors = zodErrors.map(err => ({
                     field: Array.isArray(err.path) ? err.path.join('.') : String(err.path || 'unknown'),
-                    message: err.message || 'Validation failed',
+                    message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' || 'Validation failed',
                     code: err.code, // e.g., 'too_small', 'invalid_enum_value'
                     expected: err.expected,
                     received: err.received,
