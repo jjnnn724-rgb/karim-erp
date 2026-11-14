@@ -14,6 +14,7 @@
  */
 import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
+import { Link } from '@tanstack/react-router';
 import {
     explainAnalytics, fetchAnalytics, type AnalyticsRange, type AnalyticsReport,
 } from '../lib/ai-assistant';
@@ -51,7 +52,7 @@ function severityOf(sev: string | null | undefined): { cls: string; label: strin
     return (sev && SEVERITY[sev]) || SEV_FALLBACK;
 }
 
-const METRIC_ORDER = ['sales', 'avgTicket', 'expenses', 'materials', 'warehouseOut', 'dispatches'] as const;
+const METRIC_ORDER = ['sales', 'avgTicket', 'expenses', 'materials', 'warehouseOut', 'dispatches', 'purchases', 'attendance'] as const;
 
 function ExplainPanel({ report }: { report: AnalyticsReport }) {
     const { toast } = useToast();
@@ -246,7 +247,7 @@ export function AiAssistant() {
                             </div>
                         ) : null}
 
-                        {/* ═══════ شريط المؤشرات الستة ═══════ */}
+                        {/* ═══════ شريط مؤشرات كل موديولات النظام ═══════ */}
                         <div className="ai-kpis">
                             {METRIC_ORDER.map((key) => {
                                 const m = report.metrics[key];
@@ -263,7 +264,78 @@ export function AiAssistant() {
                             })}
                         </div>
 
-                        {/* ═══════ التنبيهات ═══════ */}
+        
+                {/* ═══════ يحتاج قرارك الآن ═══════ */}
+                {report.pending ? (
+                    <>
+                        <div className="ai-section-head">
+                            <h3 className="ai-section-head__title">يحتاج قرارك الآن
+                                <span className="ai-count ai-count--amber">{(() => { const p = report.pending; return [p.dispatchesAwaiting, p.purchaseRequestsAwaiting, p.leavesAwaiting, p.openShifts, p.belowMinItems, p.negativeStockItems].reduce((a, b) => a + b, 0) + (p.daysSinceClose !== null && p.daysSinceClose !== undefined && p.daysSinceClose > 0 ? 1 : 0); })()}</span>
+                            </h3>
+                            <span className="ai-section-head__hint">لقطة لحظية من النظام — ليست مقارنة</span>
+                        </div>
+                        <div className="ai-decisions">
+                            {report.pending.dispatchesAwaiting > 0 ? (
+                                <Link to="/dispatch" className="ai-decision ai-decision--amber">
+                                    <span className="ai-decision__count">{report.pending.dispatchesAwaiting}</span>
+                                    <span className="ai-decision__text"><strong>إذن صرف بلا اعتماد</strong><small>بانتظار قرارك في المطبخ/القسم</small></span>
+                                    <span className="ai-decision__go">←</span>
+                                </Link>
+                            ) : null}
+                            {report.pending.purchaseRequestsAwaiting > 0 ? (
+                                <Link to="/wh-prs" className="ai-decision ai-decision--amber">
+                                    <span className="ai-decision__count">{report.pending.purchaseRequestsAwaiting}</span>
+                                    <span className="ai-decision__text"><strong>طلب شراء ينتظر</strong><small>اعتماد chef/GM قبل التنفيذ</small></span>
+                                    <span className="ai-decision__go">←</span>
+                                </Link>
+                            ) : null}
+                            {report.pending.leavesAwaiting > 0 ? (
+                                <Link to="/leaves" className="ai-decision ai-decision--amber">
+                                    <span className="ai-decision__count">{report.pending.leavesAwaiting}</span>
+                                    <span className="ai-decision__text"><strong>إجازة معلّقة</strong><small>اعتماد مشرف القسم</small></span>
+                                    <span className="ai-decision__go">←</span>
+                                </Link>
+                            ) : null}
+                            {report.pending.openShifts > 0 ? (
+                                <Link to="/cashier-monitor" className="ai-decision ai-decision--amber">
+                                    <span className="ai-decision__count">{report.pending.openShifts}</span>
+                                    <span className="ai-decision__text"><strong>وردية مفتوحة</strong><small>نقد لم يُقفل — Z بعد قليل</small></span>
+                                    <span className="ai-decision__go">←</span>
+                                </Link>
+                            ) : null}
+                            {report.pending.daysSinceClose !== null && report.pending.daysSinceClose !== undefined && report.pending.daysSinceClose > 0 ? (
+                                <Link to="/daily-locks" className="ai-decision ai-decision--red">
+                                    <span className="ai-decision__count">{report.pending.daysSinceClose}</span>
+                                    <span className="ai-decision__text"><strong>يوم بلا إقفال</strong><small>آخر إقفال كان {report.pending.lastDayClose}</small></span>
+                                    <span className="ai-decision__go">←</span>
+                                </Link>
+                            ) : null}
+                            {report.pending.belowMinItems > 0 ? (
+                                <Link to="/warehouse" className="ai-decision ai-decision--amber">
+                                    <span className="ai-decision__count">{report.pending.belowMinItems}</span>
+                                    <span className="ai-decision__text"><strong>صنف تحت الحد الأدنى</strong><small>نافذة إعادة الطلب تمر دون توريد</small></span>
+                                    <span className="ai-decision__go">←</span>
+                                </Link>
+                            ) : null}
+                            {report.pending.negativeStockItems > 0 ? (
+                                <Link to="/warehouse" className="ai-decision ai-decision--red">
+                                    <span className="ai-decision__count">{report.pending.negativeStockItems}</span>
+                                    <span className="ai-decision__text"><strong>صنف رصيده سالب</strong><small>استهلاك بلا صرف — الكوست غير موثوق</small></span>
+                                    <span className="ai-decision__go">←</span>
+                                </Link>
+                            ) : null}
+                            {report.inventoryOnHand ? (
+                                <Link to="/warehouse" className="ai-decision ai-decision--neutral">
+                                    <span className="ai-decision__count" dir="ltr">{Math.round(report.inventoryOnHand.value / 1000)}K</span>
+                                    <span className="ai-decision__text"><strong>قيمة المخزون القائم</strong><small>{report.inventoryOnHand.items} صنف بمتوسط تكلفة</small></span>
+                                    <span className="ai-decision__go">←</span>
+                                </Link>
+                            ) : null}
+                        </div>
+                    </>
+                ) : null}
+
+                {/* ═══════ التنبيهات ═══════ */}
                         <div className="ai-section-head">
                             <h3 className="ai-section-head__title">التنبيهات <span className="ai-count">{alerts.length}</span></h3>
                             {alerts.length ? <span className="ai-section-head__hint">مرتبة حسب الخطورة — أي زيادة فوق {report.alertPct}%</span> : null}
@@ -356,6 +428,25 @@ export function AiAssistant() {
                                                 <td className="erp-numeric">{deltaBadge(d.deltaPct, true)}</td>
                                             </tr>
                                         ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            <div className="ai-panel">
+                                <h3 className="ai-panel__title">المشتريات حسب المورد</h3>
+                                <p className="ai-panel__sub">{report.purchases.curInvoices} فاتورة — الأعلى قيمة في الفترة</p>
+                                <table className="ai-table">
+                                    <thead><tr><th>المورد</th><th>فواتير</th><th>القيمة</th></tr></thead>
+                                    <tbody>
+                                        {(report.purchases.topSuppliers ?? []).map((s) => (
+                                            <tr key={s.supplier}>
+                                                <td>{s.supplier}</td>
+                                                <td className="erp-numeric">{s.invoices}</td>
+                                                <td className="erp-numeric">{money(s.value)}</td>
+                                            </tr>
+                                        ))}
+                                        {(report.purchases.topSuppliers ?? []).length === 0 ? (
+                                            <tr><td colSpan={3} className="text-body-sm text-muted">لا توجد فواتير في الفترة</td></tr>
+                                        ) : null}
                                     </tbody>
                                 </table>
                             </div>

@@ -1,6 +1,7 @@
 import { describe, expect, it, vi } from 'vitest';
 import { render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { createMemoryHistory, createRootRoute, createRouter, RouterProvider } from '@tanstack/react-router';
 import { ToastProvider } from '../ui/Toast';
 import { AiAssistant } from './AiAssistant';
 
@@ -22,6 +23,8 @@ const analyticsPayload = {
         expenses: { mode: 'total', curDays: 7, prevDays: 7, windowDays: 7 },
         ledger: { mode: 'total', curDays: 7, prevDays: 7, windowDays: 7 },
         dispatches: { mode: 'total', curDays: 7, prevDays: 7, windowDays: 7 },
+        purchases: { mode: 'total', curDays: 7, prevDays: 7, windowDays: 7 },
+        attendance: { mode: 'total', curDays: 7, prevDays: 7, windowDays: 7 },
     },
     fairNotes: [],
     metrics: {
@@ -31,6 +34,8 @@ const analyticsPayload = {
         materials: { current: 139850.35, previous: 175849.91, delta: -35999.56, deltaPct: -20.5, unit: 'ر.س', lowerIsBetter: true, label: 'مواد خام (كوست)', sub: '', basis: 'total' },
         warehouseOut: { current: 171281.17, previous: 220581.15, delta: -49299.98, deltaPct: -22.4, unit: 'ر.س', lowerIsBetter: true, label: 'صرف المخزن (تكلفة)', sub: '210 حركة', basis: 'total' },
         dispatches: { current: 79, previous: 91, delta: -12, deltaPct: -13.2, unit: 'إذن', lowerIsBetter: true, label: 'أذونات الصرف', sub: '70 مستلم · 2 معلّق', basis: 'total' },
+        purchases: { current: 190970.95, previous: 208959.21, delta: -17988.26, deltaPct: -8.6, unit: 'ر.س', lowerIsBetter: true, label: 'المشتريات', sub: '56 فاتورة', basis: 'total' },
+        attendance: { current: 44.6, previous: 27.8, delta: 16.8, deltaPct: 60.4, unit: '%', lowerIsBetter: true, label: 'معدل التأخير', sub: '664 سطر حضور', basis: 'total' },
     },
     sales: {
         curRevenue: 430467.13, prevRevenue: 498231.55,
@@ -45,6 +50,24 @@ const analyticsPayload = {
     expenses: {
         curTotal: 139850.35, prevTotal: 175849.91, curEntries: 180, prevEntries: 220,
         deltaPct: -20.5, curAvgPerDay: 19978.62, prevAvgPerDay: 25121.42, basis: 'total',
+    },
+    purchases: {
+        curInvoices: 56, prevInvoices: 54, curValue: 190970.95, prevValue: 208959.21,
+        curVat: 21802.63, prevVat: 25832.74, deltaPct: -8.6, basis: 'total',
+        topSuppliers: [
+            { supplier: 'نجم خير الشرق', invoices: 7, value: 82584.55 },
+            { supplier: 'اليسرة للأغذية', invoices: 3, value: 23649.41 },
+        ],
+    },
+    attendance: {
+        curRows: 664, prevRows: 652, curLate: 296, prevLate: 181,
+        curMissingIn: 0, prevMissingIn: 1, curMissingOut: 26, prevMissingOut: 31,
+        lateRateCur: 44.6, lateRatePrev: 27.8, missOutCur: 3.9, missOutPrev: 4.8, basis: 'total',
+    },
+    inventoryOnHand: { items: 398, value: 967881.64 },
+    pending: {
+        dispatchesAwaiting: 6, purchaseRequestsAwaiting: 1, leavesAwaiting: 0, openShifts: 1,
+        lastDayClose: '2026-10-05', daysSinceClose: 41, negativeStockItems: 0, belowMinItems: 68,
     },
     expenseCategories: [
         { category: 'مواد خام', current: 139850.35, previous: 175849.91, delta: -35999.56, deltaPct: -20.5 },
@@ -74,6 +97,13 @@ const analyticsPayload = {
             current: 430467.13, previous: 498231.55, deltaPct: -13.6,
             action: 'راجع أسباب التراجع مع مشرفي الأقسام',
         },
+        {
+            id: 'attendance-late', severity: 'high', area: 'الحضور', direction: 'up',
+            title: 'التأخير ارتفع إلى 44.6% (+16.8 نقطة)',
+            detail: '296 سطر من 664 فيه تأخير — مقابل 181 من 652',
+            current: 44.6, previous: 27.8, deltaPct: 60.4,
+            action: 'راجع أسماء المتأخرين المتكررين',
+        },
     ],
     reductionTargets: [],
     dataGaps: [],
@@ -102,26 +132,42 @@ function stubAnalytics() {
 
 function renderScreen() {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
-    return render(
-        <QueryClientProvider client={client}>
-            <ToastProvider>
-                <AiAssistant />
-            </ToastProvider>
-        </QueryClientProvider>,
-    );
+    const rootRoute = createRootRoute({
+        component: () => (
+            <QueryClientProvider client={client}>
+                <ToastProvider>
+                    <AiAssistant />
+                </ToastProvider>
+            </QueryClientProvider>
+        ),
+    });
+    const router = createRouter({
+        routeTree: rootRoute,
+        history: createMemoryHistory({ initialEntries: ['/'] }),
+    });
+    return render(<RouterProvider router={router} />);
 }
 
 describe('المساعد الذكي', () => {
-    it('يعرض المؤشرات الستة والتنبيهات من الخادم', async () => {
+    it('يعرض مؤشرات كل الوحدات والتنبيهات ولقطة «يحتاج قرارك الآن»', async () => {
         stubAnalytics();
         renderScreen();
         await waitFor(() => {
             expect(screen.getByText('صافي المبيعات')).toBeTruthy();
         });
+        // مؤشرات المجالات الموسعة
+        expect(screen.getByText('المشتريات')).toBeTruthy();
+        expect(screen.getByText('معدل التأخير')).toBeTruthy();
+        // التنبيهات
         expect(screen.getByText('انخفاض المبيعات 13.6%')).toBeTruthy();
-        expect(screen.getByText('المطبخ')).toBeTruthy();
-        expect(screen.getByText('مواد خام')).toBeTruthy();
-        expect(screen.getByRole('button', { name: /طباعة ورقة رسمية/ })).toBeTruthy();
+        // يحتاج قرارك الآن + لينكات الشاشات
+        expect(screen.getByText('يحتاج قرارك الآن')).toBeTruthy();
+        expect(screen.getByText('إذن صرف بلا اعتماد')).toBeTruthy();
+        expect(screen.getByRole('link', { name: /إذن صرف بلا اعتماد/ })).toBeTruthy();
+        expect(screen.getByRole('link', { name: /صنف تحت الحد الأدنى/ })).toBeTruthy();
+        // المشتريات حسب المورد
+        expect(screen.getByText('نجم خير الشرق')).toBeTruthy();
+        expect(screen.getByRole('link', { name: /يوم بلا إقفال/ })).toBeTruthy();
     });
 
     it('زر الشرح يستدعي النموذج المحلي ويعرض النتيجة', async () => {

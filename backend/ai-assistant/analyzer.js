@@ -61,6 +61,83 @@ const deltaPct = (cur, prev) => {
 };
 const deltaOf = (cur, prev) => round2(num(cur) - num(prev));
 
+/* ═══ تغطية موسّعة: كل موديولات النظام ═══ */
+
+function purchasesQuery(from, to) {
+    return pool.query(`SELECT count(*)::int AS invoices,
+                              round(sum("totalAmount")::numeric, 2) AS value,
+                              round(sum("vat_total")::numeric, 2) AS vat
+                         FROM "purchaseInvoices"
+                        WHERE date BETWEEN $1 AND $2`, [from, to]);
+}
+
+function purchasesCoverageQuery(curFrom, curTo, prevFrom, prevTo) {
+    return pool.query(`SELECT
+        count(DISTINCT date) FILTER (WHERE date BETWEEN $1 AND $2)::int AS cur_days,
+        count(DISTINCT date) FILTER (WHERE date BETWEEN $3 AND $4)::int AS prev_days
+        FROM "purchaseInvoices"
+        WHERE date BETWEEN $3 AND $2`, [curFrom, curTo, prevFrom, prevTo]);
+}
+
+function purchasesTopSuppliersQuery(from, to) {
+    return pool.query(`SELECT COALESCE(NULLIF("supplierName", ''), '—') AS supplier,
+                              count(*)::int AS invoices,
+                              round(sum("totalAmount")::numeric, 2) AS value
+                         FROM "purchaseInvoices"
+                        WHERE date BETWEEN $1 AND $2
+                        GROUP BY 1 ORDER BY sum("totalAmount") DESC NULLS LAST LIMIT 5`, [from, to]);
+}
+
+function attendanceQuery(from, to) {
+    return pool.query(`SELECT count(*)::int AS rows,
+                              count(*) FILTER (WHERE late)::int AS late,
+                              count(*) FILTER (WHERE "checkIn" IS NULL)::int AS missing_in,
+                              count(*) FILTER (WHERE "checkOut" IS NULL)::int AS missing_out
+                         FROM attendance
+                        WHERE date BETWEEN $1 AND $2`, [from, to]);
+}
+
+function attendanceCoverageQuery(curFrom, curTo, prevFrom, prevTo) {
+    return pool.query(`SELECT
+        count(DISTINCT date) FILTER (WHERE date BETWEEN $1 AND $2)::int AS cur_days,
+        count(DISTINCT date) FILTER (WHERE date BETWEEN $3 AND $4)::int AS prev_days
+        FROM attendance
+        WHERE date BETWEEN $3 AND $2`, [curFrom, curTo, prevFrom, prevTo]);
+}
+
+/** قيمة المخزون الحالية (لقطة — لا تاريخ لها، ليست مقارنة). */
+function inventoryValueQuery() {
+    return pool.query(`SELECT count(*)::int AS items,
+                              round(sum(COALESCE(qty, 0) * COALESCE("avgCost", 0))::numeric, 2) AS value
+                         FROM inventory WHERE COALESCE(qty, 0) > 0`);
+}
+
+/** لقطة «يحتاج قرارك الآن» — ما ينتظر الإدارة اليوم (ليست مقارنة). */
+async function pendingSnapshot() {
+    const [dispatches, prs, leaves, openShifts, lastClose, stockOut, belowMin] = await Promise.all([
+        pool.query(`SELECT count(*)::int AS n FROM dispatches WHERE status IN ('pending', 'approved')`).catch(() => ({ rows: [{ n: 0 }] })),
+        pool.query(`SELECT count(*)::int AS n FROM purchase_requests WHERE status NOT IN ('gm_approved', 'received', 'rejected')`).catch(() => ({ rows: [{ n: 0 }] })),
+        pool.query(`SELECT count(*)::int AS n FROM "leaveRequests" WHERE status = 'pending'`).catch(() => ({ rows: [{ n: 0 }] })),
+        pool.query(`SELECT count(*)::int AS n FROM pos_shift_sessions WHERE status = 'open'`).catch(() => ({ rows: [{ n: 0 }] })),
+        pool.query('SELECT MAX(close_date) AS last_close FROM pos_day_closes').catch(() => ({ rows: [{}] })),
+        pool.query('SELECT count(*)::int AS n FROM inventory WHERE COALESCE(qty, 0) < 0').catch(() => ({ rows: [{ n: 0 }] })),
+        pool.query('SELECT count(*)::int AS n FROM inventory WHERE COALESCE(qty, 0) < COALESCE("minQty", 0) AND COALESCE("minQty", 0) > 0').catch(() => ({ rows: [{ n: 0 }] })),
+    ]);
+    const lastCloseDay = lastClose.rows[0] && lastClose.rows[0].last_close;
+    const lastCloseIso = lastCloseDay instanceof Date ? lastCloseDay.toISOString().slice(0, 10) : (lastCloseDay ? String(lastCloseDay).slice(0, 10) : null);
+    const daysSinceClose = lastCloseIso ? Math.round((Date.now() - Date.parse(lastCloseIso + 'T00:00:00Z')) / 86400000) : null;
+    return {
+        dispatchesAwaiting: num(dispatches.rows[0] && dispatches.rows[0].n),
+        purchaseRequestsAwaiting: num(prs.rows[0] && prs.rows[0].n),
+        leavesAwaiting: num(leaves.rows[0] && leaves.rows[0].n),
+        openShifts: num(openShifts.rows[0] && openShifts.rows[0].n),
+        lastDayClose: lastCloseIso,
+        daysSinceClose,
+        negativeStockItems: num(stockOut.rows[0] && stockOut.rows[0].n),
+        belowMinItems: num(belowMin.rows[0] && belowMin.rows[0].n),
+    };
+}
+
 /* ─────────── التغطية: الأيام ببيانات فعلًا ─────────── */
 function salesCoverageQuery(curFrom, curTo, prevFrom, prevTo) {
     return pool.query(`SELECT
@@ -371,6 +448,49 @@ function buildAlerts({ analysis, alertPct, minCategory = 500 }) {
             action: 'جمّد الطلبات غير العاجلة حتى تراجع الفئات الأعلى زيادة، وطالب كل قسم بمبرر للزيادة.',
         });
     }
+    // (7ب) المشتريات: زيادة الإنفاق
+    const pu = analysis.purchases;
+    const puPct = pu.deltaPct !== undefined ? pu.deltaPct : 0;
+    if (pu.curValue > 0 && puPct > alertPct) {
+        push({
+            id: 'purchases-up',
+            severity: puPct > 20 ? 'high' : 'medium',
+            area: 'المشتريات',
+            direction: 'up',
+            title: `ارتفاع المشتريات ${puPct.toFixed(1)}%`,
+            detail: `المشتريات ${money(pu.curValue)} ر.س (${pu.curInvoices} فاتورة) مقابل ${money(pu.prevValue)} ر.س.`,
+            current: money(pu.curValue), previous: money(pu.prevValue), deltaPct: puPct,
+            action: 'راجع أكبر الموردين في الجدول (هل ارتفعت الأسعار أم الكميات؟) وحاول التفاوض أو التقسيم على موردين.',
+        });
+    }
+    // (7ج) الحضور: تدهور معدل التأخير أو الانصراف
+    const at = analysis.attendance;
+    if (at.curRows > 0 && at.lateRateCur > at.lateRatePrev + Math.abs(alertPct)) {
+        const pts = round2(at.lateRateCur - at.lateRatePrev);
+        push({
+            id: 'attendance-late',
+            severity: pts > 5 ? 'high' : 'medium',
+            area: 'الحضور',
+            direction: 'up',
+            title: `التأخير ارتفع إلى ${at.lateRateCur.toFixed(1)}% (+${pts.toFixed(1)} نقطة)`,
+            detail: `${at.curLate} سطر من ${at.curRows} فيه تأخير — مقابل ${at.prevLate} من ${at.prevRows} في الفترة السابقة.`,
+            current: at.lateRateCur, previous: at.lateRatePrev, deltaPct: round2(at.lateRatePrev > 0 ? ((at.lateRateCur - at.lateRatePrev) / at.lateRatePrev) * 100 : 0),
+            action: 'راجع أسماء المتأخرين المتكررين وطبّق سياسة الخصم التدريجي بعد التنبيه.',
+        });
+    }
+    if (at.curRows > 0 && at.missOutCur > at.missOutPrev + Math.abs(alertPct)) {
+        const pts = round2(at.missOutCur - at.missOutPrev);
+        push({
+            id: 'attendance-missing-out',
+            severity: 'medium',
+            area: 'الحضور',
+            direction: 'up',
+            title: `انصراف غير مسجل: ${at.curMissingOut} سطر (${at.missOutCur.toFixed(1)}%)`,
+            detail: `مقارنة بـ${at.prevMissingOut} سطر في الفترة السابقة — سجلات ناقص تعني حضور غير موثوق للرواتب.`,
+            current: at.missOutCur, previous: at.missOutPrev, deltaPct: round2(at.missOutPrev > 0 ? ((at.missOutCur - at.missOutPrev) / at.missOutPrev) * 100 : 100),
+            action: 'طابق بصمات الأجهزة مع الجدول وصحّح السجلات قبل إقفال الشهر.',
+        });
+    }
     // (8) كل فئة مصاريف زادت — مرتبة بالأثر (delta الأعلى أولًا)، بحد 500 ر.س على الأقل
     const rising = analysis.expenseCategories
         .filter((r) => num(r.delta) >= minCategory && r.deltaPct > alertPct && r.category !== 'مواد خام')
@@ -410,7 +530,10 @@ async function buildAnalytics(dbPool, { range = 'week', alertPct = 0 } = {}) {
         curExp, prevExp, curExpDept, prevExpDept,
         curOut, prevOut, curIn, prevIn,
         curDisp, prevDisp, curDispDept, prevDispDept,
-        covSales, covRev, covExp, covLedger, covDisp] = await Promise.all([
+        covSales, covRev, covExp, covLedger, covDisp,
+        curPurch, prevPurch, covPurch, purchTop,
+        curAtt, prevAtt, covAtt,
+        invValue] = await Promise.all([
         salesQuery(current.from, current.to).catch((e) => ({ rows: [], error: String(e.message).slice(0, 120) })),
         salesQuery(previous.from, previous.to).catch((e) => ({ rows: [], error: String(e.message).slice(0, 120) })),
         salesDailyQuery(current.from, current.to).catch(() => ({ rows: [] })),
@@ -433,12 +556,24 @@ async function buildAnalytics(dbPool, { range = 'week', alertPct = 0 } = {}) {
         expensesCoverageQuery(current.from, current.to, previous.from, previous.to).catch(() => ({ rows: [{}] })),
         ledgerCoverageQuery(current.from, current.to, previous.from, previous.to).catch(() => ({ rows: [{}] })),
         dispatchesCoverageQuery(current.from, current.to, previous.from, previous.to).catch(() => ({ rows: [{}] })),
+        purchasesQuery(current.from, current.to).catch(() => ({ rows: [] })),
+        purchasesQuery(previous.from, previous.to).catch(() => ({ rows: [] })),
+        purchasesCoverageQuery(current.from, current.to, previous.from, previous.to).catch(() => ({ rows: [{}] })),
+        purchasesTopSuppliersQuery(current.from, current.to).catch(() => ({ rows: [] })),
+        attendanceQuery(current.from, current.to).catch(() => ({ rows: [] })),
+        attendanceQuery(previous.from, previous.to).catch(() => ({ rows: [] })),
+        attendanceCoverageQuery(current.from, current.to, previous.from, previous.to).catch(() => ({ rows: [{}] })),
+        inventoryValueQuery().catch(() => ({ rows: [] })),
     ]);
 
     const cov = (r) => ({ cur: num(r.rows[0] && r.rows[0].cur_days), prev: num(r.rows[0] && r.rows[0].prev_days) });
+    const covPurchD = cov(covPurch);
+    const covAttD = cov(covAtt);
     const salesDays = cov(covSales); const revDays = cov(covRev); const expDays = cov(covExp);
     const ledgerDays = cov(covLedger); const dispDays = cov(covDisp);
     const windowDays = days;
+    const purchBasis = basisFor(covPurchD.cur, covPurchD.prev, windowDays);
+    const attBasis = basisFor(covAttD.cur, covAttD.prev, windowDays);
     const salesBasis = basisFor(salesDays.cur, salesDays.prev, windowDays);
     const revBasis = basisFor(revDays.cur, revDays.prev, windowDays);
     const expBasis = basisFor(expDays.cur, expDays.prev, windowDays);
@@ -497,6 +632,31 @@ async function buildAnalytics(dbPool, { range = 'week', alertPct = 0 } = {}) {
     const inn = (rows) => ({ moves: num(rows[0] && rows[0].moves), value: round2(rows[0] && rows[0].value) });
     const ci = inn(curIn.rows); const pi = inn(prevIn.rows);
     const inFair = fairDelta(ci.value, pi.value, ledgerBasis);
+
+    const purch = (rows) => ({
+        invoices: num(rows[0] && rows[0].invoices),
+        value: round2(rows[0] && rows[0].value),
+        vat: round2(rows[0] && rows[0].vat),
+    });
+    const cp = purch(curPurch.rows); const pp = purch(prevPurch.rows);
+    const purchFair = fairDelta(cp.value, pp.value, purchBasis);
+
+    const att = (rows) => ({
+        rows: num(rows[0] && rows[0].rows),
+        late: num(rows[0] && rows[0].late),
+        missingIn: num(rows[0] && rows[0].missing_in),
+        missingOut: num(rows[0] && rows[0].missing_out),
+    });
+    const ca = att(curAtt.rows); const pa = att(prevAtt.rows);
+    const lateRateCur = ca.rows > 0 ? round2((ca.late / ca.rows) * 100) : 0;
+    const lateRatePrev = pa.rows > 0 ? round2((pa.late / pa.rows) * 100) : 0;
+    const missOutCur = ca.rows > 0 ? round2((ca.missingOut / ca.rows) * 100) : 0;
+    const missOutPrev = pa.rows > 0 ? round2((pa.missingOut / pa.rows) * 100) : 0;
+
+    const invOnHand = {
+        items: num(invValue.rows[0] && invValue.rows[0].items),
+        value: round2(invValue.rows[0] && invValue.rows[0].value),
+    };
 
     const disp = (rows) => ({
         requests: num(rows[0] && rows[0].requests),
@@ -564,10 +724,28 @@ async function buildAnalytics(dbPool, { range = 'week', alertPct = 0 } = {}) {
             delta: outFair.delta,
             basis: ledgerBasis.mode,
         },
+        inventoryOnHand: invOnHand,
+        pending: null,
         inbound: {
             curMoves: ci.moves, prevMoves: pi.moves,
             curValue: ci.value, prevValue: pi.value,
             deltaPct: inFair.deltaPct,
+        },
+        purchases: {
+            curInvoices: cp.invoices, prevInvoices: pp.invoices,
+            curValue: cp.value, prevValue: pp.value,
+            curVat: cp.vat, prevVat: pp.vat,
+            deltaPct: purchFair.deltaPct,
+            basis: purchBasis.mode,
+            topSuppliers: (purchTop.rows || []).map((r) => ({ supplier: r.supplier, invoices: num(r.invoices), value: money(r.value) })),
+        },
+        attendance: {
+            curRows: ca.rows, prevRows: pa.rows,
+            curLate: ca.late, prevLate: pa.late,
+            curMissingIn: ca.missingIn, prevMissingIn: pa.missingIn,
+            curMissingOut: ca.missingOut, prevMissingOut: pa.missingOut,
+            lateRateCur, lateRatePrev, missOutCur, missOutPrev,
+            basis: attBasis.mode,
         },
         dispatches: {
             curRequests: cd.requests, prevRequests: pd.requests,
@@ -580,6 +758,9 @@ async function buildAnalytics(dbPool, { range = 'week', alertPct = 0 } = {}) {
             byDept: dispatchDepts,
         },
     };
+
+    // لقطة «يحتاج قرارك الآن» — بعد كل الحسابات حتى لا يؤخر البناء
+    analysis.pending = await pendingSnapshot().catch(() => null);
 
     const alerts = buildAlerts({ analysis, alertPct: safeAlert });
 
@@ -605,12 +786,15 @@ async function buildAnalytics(dbPool, { range = 'week', alertPct = 0 } = {}) {
 
     const coverage = {
         sales: salesBasis, revenues: revBasis, expenses: expBasis, ledger: ledgerBasis, dispatches: dispBasis,
+        purchases: purchBasis, attendance: attBasis,
     };
     const fairNotes = [];
     if (salesBasis.mode === 'per-day') {fairNotes.push('المبيعات: تغطية YaraSoft تبدأ 2026-09-25 — قورنت بمعدل اليوم لا بالإجمالي.');}
     if (expBasis.mode === 'per-day') {fairNotes.push('المصروفات تبدأ 2026-10-04 — قورنت بمعدل اليوم (الفترة السابقة أقصر من الحالية).');}
     if (ledgerBasis.mode === 'per-day') {fairNotes.push('حركات المخزن تبدأ 2026-10-03 — المقارنة بمعدل اليوم.');}
     if (dispBasis.mode === 'per-day') {fairNotes.push('أذونات الصرف تبدأ 2026-10-04 — المقارنة بمعدل اليوم.');}
+    if (purchBasis.mode === 'per-day') {fairNotes.push('المشتريات تبدأ 2026-10-06 — المقارنة بمعدل اليوم.');}
+    if (attBasis.mode === 'per-day') {fairNotes.push('الحضور غير مكتمل التغطية للفترة — المقارنة بمعدل اليوم.');}
 
     return {
         range: safeRange,
@@ -656,6 +840,17 @@ async function buildAnalytics(dbPool, { range = 'week', alertPct = 0 } = {}) {
                 deltaPct: analysis.dispatches.requestsDeltaPct, unit: 'إذن', lowerIsBetter: true, basis: dispBasis.mode,
                 label: 'أذونات الصرف', sub: `${cd.received} مستلم · ${cd.awaiting} معلّق`,
             },
+            purchases: {
+                current: money(cp.value), previous: money(pp.value), delta: deltaOf(cp.value, pp.value),
+                deltaPct: analysis.purchases.deltaPct, unit: 'ر.س', lowerIsBetter: true, basis: purchBasis.mode,
+                label: 'المشتريات', sub: `${cp.invoices} فاتورة`,
+            },
+            attendance: {
+                current: round2(lateRateCur), previous: round2(lateRatePrev), delta: round2(lateRateCur - lateRatePrev),
+                deltaPct: round2(lateRatePrev > 0 ? ((lateRateCur - lateRatePrev) / lateRatePrev) * 100 : 0),
+                unit: '%', lowerIsBetter: true, basis: attBasis.mode,
+                label: 'معدل التأخير', sub: `${ca.rows} سطر حضور`,
+            },
         },
         sales: analysis.sales,
         accounting: analysis.accounting,
@@ -665,6 +860,10 @@ async function buildAnalytics(dbPool, { range = 'week', alertPct = 0 } = {}) {
         warehouse: analysis.warehouse,
         inbound: analysis.inbound,
         dispatches: analysis.dispatches,
+        purchases: analysis.purchases,
+        attendance: analysis.attendance,
+        inventoryOnHand: analysis.inventoryOnHand,
+        pending: analysis.pending,
         alerts,
         reductionTargets,
         dataGaps,

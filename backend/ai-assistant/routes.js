@@ -23,8 +23,8 @@ const tools = require('./tools');
 const analyzer = require('./analyzer');
 const { riyadhToday } = require('../riyadh-date');
 
-/* أدمن + مدير + محاسب — نفس أدوار التقارير (لا نقد). */
-const ANALYTICS_ROLES = ['admin', 'manager', 'accountant'];
+/* الأدمن وحده — طلب المالك صراحة: الإدارة العليا فقط (لا مدير ولا محاسب). */
+const ANALYTICS_ROLES = ['admin'];
 
 const router = express.Router();
 

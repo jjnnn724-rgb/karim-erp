@@ -190,6 +190,59 @@ const reductionTargetSchema = z
     })
     .passthrough();
 
+const purchaseSupplierSchema = z
+    .object({ supplier: text, invoices: num, value: num })
+    .passthrough();
+
+const purchasesSchema = z
+    .object({
+        curInvoices: num,
+        prevInvoices: num,
+        curValue: num,
+        prevValue: num,
+        curVat: num,
+        prevVat: num,
+        deltaPct: num,
+        basis: text,
+        topSuppliers: z.array(purchaseSupplierSchema).optional(),
+    })
+    .passthrough();
+
+const attendanceSchema = z
+    .object({
+        curRows: num,
+        prevRows: num,
+        curLate: num,
+        prevLate: num,
+        curMissingIn: num,
+        prevMissingIn: num,
+        curMissingOut: num,
+        prevMissingOut: num,
+        lateRateCur: num,
+        lateRatePrev: num,
+        missOutCur: num,
+        missOutPrev: num,
+        basis: text,
+    })
+    .passthrough();
+
+const inventoryOnHandSchema = z
+    .object({ items: num, value: num })
+    .passthrough();
+
+const pendingSnapshotSchema = z
+    .object({
+        dispatchesAwaiting: num,
+        purchaseRequestsAwaiting: num,
+        leavesAwaiting: num,
+        openShifts: num,
+        lastDayClose: text.nullable(),
+        daysSinceClose: num.nullable(),
+        negativeStockItems: num,
+        belowMinItems: num,
+    })
+    .passthrough();
+
 export const analyticsSchema = z
     .object({
         range: text,
@@ -205,6 +258,8 @@ export const analyticsSchema = z
             expenses: basisSchema.optional(),
             ledger: basisSchema.optional(),
             dispatches: basisSchema.optional(),
+            purchases: basisSchema.optional(),
+            attendance: basisSchema.optional(),
         }).passthrough().optional(),
         fairNotes: z.array(text).optional(),
         metrics: z.object({
@@ -214,10 +269,16 @@ export const analyticsSchema = z
             materials: metricSchema,
             warehouseOut: metricSchema,
             dispatches: metricSchema,
+            purchases: metricSchema,
+            attendance: metricSchema,
         }).passthrough(),
         sales: salesSchema,
         accounting: accountingSchema,
         expenses: expensesSchema,
+        purchases: purchasesSchema,
+        attendance: attendanceSchema,
+        inventoryOnHand: inventoryOnHandSchema.optional(),
+        pending: pendingSnapshotSchema.nullable().optional(),
         expenseCategories: z.array(categoryRowSchema).optional(),
         expenseDepts: z.array(deptExpenseSchema).optional(),
         warehouse: warehouseSchema,

@@ -12,6 +12,7 @@
 const money = (v) => Number(v || 0).toLocaleString('en-US', { maximumFractionDigits: 2, minimumFractionDigits: 2 });
 const int = (v) => Number(v || 0).toLocaleString('en-US', { maximumFractionDigits: 0 });
 const arrow = (pct) => (Number(pct) >= 0 ? `▲ +${Number(pct).toFixed(1)}%` : `▼ ${Math.abs(Number(pct)).toFixed(1)}%`);
+const pts = (delta) => (Number(delta) >= 0 ? `+${Number(delta).toFixed(1)}` : `${Number(delta).toFixed(1)}`);
 const divider = '━━━━━━━━━━━━━━━━━━━━━';
 const pct1 = (v) => `${Number(v || 0).toFixed(1)}%`;
 
@@ -33,7 +34,26 @@ function weekBlock(w) {
         `🥩 مواد خام (الكوست): ${money(m.materials.current)} ر.س ${arrow(m.materials.deltaPct)}`,
         `🏭 صرف المخزن: ${money(m.warehouseOut.current)} ر.س ${arrow(m.warehouseOut.deltaPct)}`,
         `📋 أذونات الصرف: ${int(m.dispatches.current)} (${int(w.dispatches.curItems)} بند) ${arrow(m.dispatches.deltaPct)}`,
+        `🛒 المشتريات: ${money(m.purchases.current)} ر.س ${arrow(m.purchases.deltaPct)}`,
+        `⏱️ معدل التأخير: ${pct1(m.attendance.current)} (${pts(m.attendance.current - m.attendance.previous)} نقطة)`,
+        `💰 مخزون قائم: ${money(w.inventoryOnHand ? w.inventoryOnHand.value : 0)} ر.س`,
     ];
+}
+
+/** «يحتاج قرارك الآن» — لقطة الإجراءات المعلّقة (ليست مقارنة). */
+function pendingBlock(week) {
+    const p = week.pending;
+    if (!p) {return [];}
+    const parts = [];
+    if (p.dispatchesAwaiting > 0) {parts.push(`${p.dispatchesAwaiting} إذن صرف بلا اعتماد`);}
+    if (p.purchaseRequestsAwaiting > 0) {parts.push(`${p.purchaseRequestsAwaiting} طلب شراء ينتظر`);}
+    if (p.leavesAwaiting > 0) {parts.push(`${p.leavesAwaiting} طلب إجازة معلّق`);}
+    if (p.openShifts > 0) {parts.push(`${p.openShifts} وردية مفتوحة`);}
+    if (p.daysSinceClose !== null && p.daysSinceClose !== undefined && p.daysSinceClose > 0) {parts.push(`آخر إقفال اليوم قبل ${p.daysSinceClose} يوم`);}
+    if (p.belowMinItems > 0) {parts.push(`${p.belowMinItems} صنف تحت الحد الأدنى`);}
+    if (p.negativeStockItems > 0) {parts.push(`${p.negativeStockItems} صنف رصيده سالب`);}
+    if (!parts.length) {return ['✅ لا شيء معلّق — كل الطلبات والإقفالات مُنجزة.'];}
+    return [`🔔 يحتاج قرارك الآن: ${parts.join(' · ')}`];
 }
 
 /** «وين الزيادة؟» — زيادة الأسبوع أولًا ثم الشهر، معلّمة بمصدرها. */
@@ -62,7 +82,7 @@ function monthBlock(month) {
     const basis = month.fairNotes && month.fairNotes.length ? ' (بمعدل اليوم — التغطية أقصر)' : '';
     return [
         `📊 الشهر مقابل الشهر${basis}`,
-        `▫️ مبيعات ${arrow(m.sales.deltaPct)} · مصروفات ${arrow(m.expenses.deltaPct)} · صرف مخزن ${arrow(m.warehouseOut.deltaPct)} · أذونات ${arrow(m.dispatches.deltaPct)}`,
+        `▫️ مبيعات ${arrow(m.sales.deltaPct)} · مصروفات ${arrow(m.expenses.deltaPct)} · مشتريات ${arrow(m.purchases.deltaPct)} · صرف مخزن ${arrow(m.warehouseOut.deltaPct)} · أذونات ${arrow(m.dispatches.deltaPct)}`,
     ];
 }
 
@@ -86,6 +106,9 @@ const RECOMMENDATIONS = {
     'dispatches-up': 'راجع الأقسام الأعلى طلبًا آخر ٧ أيام وامنع الطلبات المكررة',
     'correction-up': 'افحص آخر جرد — أصناف سالبة أو عجز يحتاج تحقيقًا',
     'ratio-up': 'جمّد الطلبات غير العاجلة حتى مراجعة الفئات الأعلى زيادة',
+    'purchases-up': 'راجع المورد الأكبر الأعلى زيادة — تفاوض أو قسّم على موردين',
+    'attendance-late': 'راجع المتأخرين المتكررين وطبّق سياسة الخصم التدريجي',
+    'attendance-missing-out': 'طابق بصمات الأجهزة قبل إقفال الشهر — السجلات ناقصة',
 };
 function recommendationBlock(week) {
     const alerts = (week.alerts || []).slice();
@@ -100,7 +123,7 @@ function recommendationBlock(week) {
 }
 
 /**
- * يبني فقرة «التقرير الذكي» كاملة (≤ ~1200 حرف).
+ * يبني فقرة «التقرير الذكي» كاملة (≤ ~1500 حرف).
  * @param {object} week — نتيجة analyzer للأسبوع
  * @param {object} month — نتيجة analyzer للشهر
  * @param {string} day — يوم الإحاطة YYYY-MM-DD
@@ -112,6 +135,8 @@ function formatSmartReport(week, month, day) {
         `${weekdayAr(day)} ${day}`.trim(),
         '',
         ...weekBlock(week),
+        '',
+        ...pendingBlock(week),
         '',
         ...increasesBlock(week, month),
         '',
@@ -125,4 +150,4 @@ function formatSmartReport(week, month, day) {
     return lines.filter((l) => l !== null && l !== undefined).join('\n');
 }
 
-module.exports = { formatSmartReport, weekBlock, monthBlock, increasesBlock, reductionBlock, recommendationBlock };
+module.exports = { formatSmartReport, weekBlock, monthBlock, increasesBlock, reductionBlock, recommendationBlock, pendingBlock };
