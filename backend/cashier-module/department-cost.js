@@ -74,9 +74,6 @@ const BREAKFAST_BASKET = [
     { group: 'ناجتس', ids: [1791136473695564] },
     { group: 'قشطة', ids: [1791468433228, 1791136473533482] },
     { group: 'مكسرات', ids: [1791136472689052, 1791136473582508, 1791136473107280, 1791136473513472, 1791136473103278] },
-    { group: 'لحوم', ids: [1791136472649030] },
-    { group: 'كبدة', ids: [1793271033657] },
-    { group: 'زيت قلي', ids: [1791136473392414] },
 ];
 const BREAKFAST_IDS = BREAKFAST_BASKET.flatMap((g) => g.ids);
 
@@ -167,9 +164,11 @@ async function searchInventoryItems(q) {
          LIMIT 20`, [kw]);
 }
 
-/* ═══ الخضار الطازجة — أسعار السوق السعودي الحالي (نوفمبر 2026) ═══
- * الخضار تصل للمطبخ من طلبات الخضار بدون تسعير — لذلك تُقدَّر بأسعار السوق.
- * كل ما عدا الخضار (بيض، لحم 106، كبدة، زيت قلي دلال، دقيق…) يُحتسب من أذونات المطبخ الفعلية. */
+/* ═══ مكونات الافطار التقديرية (زي البداية) ═══
+ * أ) الخضار: سعر السوق السعودي الحالي (نوفمبر 2026) × كمية يومية × أيام الفترة — الخضار تصل بدون تسعير.
+ * ب) مكونات بمعدلات شبه شهرية: تُقاس نسبيًا على الفترة (لكل 15 يوم).
+ * ج) زيت قلي دلال: معدل يومي — بسعر المخزن الفعلي.
+ * كلها «تقديري» — أساسية التقرير بغض النظر عن الفترة. */
 const MARKET_FRESH_PRICES = {
     onion: 3.98,      // بصل أحمر
     potato: 3.98,     // بطاطس محلية
@@ -183,6 +182,14 @@ const MARKET_ESTIMATE_VEG = [
     { key: 'tomato', label: 'طماطم سعودي (سوق حالي)', per_day_kg: 10 },
     { key: 'eggplant', label: 'باذنجان كبير (سوق حالي)', per_day_kg: 15 },
     { key: 'zucchini', label: 'كوسا صغيرة (سوق حالي)', per_day_kg: 8 },
+];
+const MARKET_ESTIMATE_MEATS = [
+    { key: 'meat_quarter_106', label: 'فور كوارتر رول هندي 106 (لحم 106) — 2 كرتون / 15 يوم', item_id: 1791136472649030, qty_per_15d: 2, unit: 'كرتون', unit_price: 383.40 },
+    { key: 'liver_carton', label: 'كبدة بالكرتون — 8 كرتون / 15 يوم', item_id: 1793271033657, qty_per_15d: 8, unit: 'كرتون', unit_price: 168.81 },
+    { key: 'flour_bag_45kg', label: 'دقيق فاخر 45 كيلو-كيس — 2 شكاره / شهر (≈ شكاره / 15 يوم)', item_id: 1791136473100276, qty_per_15d: 1, unit: 'كيس', unit_price: 35.00 },
+];
+const MARKET_ESTIMATE_DAILY_OTHER = [
+    { key: 'frying_oil_delal', label: 'زيت قلي دلال-تنك — 2 تنك / يوم (سعر المخزن)', item_id: 1791136473392414, per_day: 2, unit: 'تنك', unit_price: 104.65 },
 ];
 
 const prevRange = (from, to) => {
@@ -342,17 +349,33 @@ router.get('/reports/breakfast-cost', jwtAuth, requireReportRole(...REPORT_ROLES
                 : { tone: 'info', text: 'ممتاز جدًا — أو تسريب مواد خارج القنوات' };
 
 
-    // ── الخضار الطازجة (الوحيدة غير المسعّرة) — تقديري بسعر السوق ──
-    // كل ما عدا الخضار (بيض، لحم 106، كبدة، زيت دلال، دقيق…) محتسب من أذونات المطبخ الفعلية.
+    // ── مكونات الافطار التقديرية (زي البداية) — كلها «تقديري» ──
+    // الخضار: سعر السوق × الكمية اليومية × أيام الفترة.
+    // شبه الشهرية (لحم 106، كبدة، دقيق): المعدل لكل 15 يوم يُقاس نسبيًا على أي فترة.
+    // زيت دلال: معدل يومي بسعر المخزن الفعلي.
     const daySpan = Math.max(1, Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 86400000) + 1);
+    const scale15 = daySpan / 15;
+    const estItems = MARKET_ESTIMATE_MEATS.map((m) => {
+        const qty = Math.round(m.qty_per_15d * scale15 * 100) / 100;
+        return { key: m.key, label: m.label, item_id: String(m.item_id), qty, unit: m.unit, unit_price: m.unit_price, total: round2(qty * m.unit_price), kind: 'market', is_estimate: true };
+    });
     const vegLines = MARKET_ESTIMATE_VEG.map((v) => {
         const qty = v.per_day_kg * daySpan;
         const price = MARKET_FRESH_PRICES[v.key];
         return { key: v.key, label: v.label, qty: round2(qty), unit: 'كجم', unit_price: price, total: round2(qty * price), kind: 'market', is_estimate: true, per_day_kg: v.per_day_kg };
     });
-    const marketTotal = round2(vegLines.reduce((s, l) => s + l.total, 0));
+    const dailyOtherLines = MARKET_ESTIMATE_DAILY_OTHER.map((d) => {
+        const qty = round2(d.per_day * daySpan);
+        return { key: d.key, label: d.label, item_id: String(d.item_id), qty, unit: d.unit, unit_price: d.unit_price, total: round2(qty * d.unit_price), kind: 'market', is_estimate: true, per_day: d.per_day };
+    });
+    const vegTotal = round2(vegLines.reduce((s, l) => s + l.total, 0));
+    const meatCartonTotal = round2((estItems.find((l) => l.key === 'meat_quarter_106') || {}).total || 0);
+    const liverTotal = round2((estItems.find((l) => l.key === 'liver_carton') || {}).total || 0);
+    const flourTotal = round2((estItems.find((l) => l.key === 'flour_bag_45kg') || {}).total || 0);
+    const oilTotal = round2((dailyOtherLines.find((l) => l.key === 'frying_oil_delal') || {}).total || 0);
+    const marketTotal = round2(vegTotal + meatCartonTotal + liverTotal + flourTotal + oilTotal);
     const marketCostPct = rev > 0 ? round2((marketTotal / rev) * 100) : 0;
-    // ── التكلفة الكاملة = أذونات المطبخ الفعلية (سلة الفطار) + الخضار التقديرية ──
+    // ── التكلفة الكاملة = أذونات المطبخ الفعلية (سلة الفطار) + المكونات التقديرية ──
     const fullCost = round2(totalCost + marketTotal);
     const fullCostPct = rev > 0 ? round2((fullCost / rev) * 100) : 0;
     const fullVerdict = fullCostPct >= 30
@@ -362,8 +385,10 @@ router.get('/reports/breakfast-cost', jwtAuth, requireReportRole(...REPORT_ROLES
                 : { tone: 'info', text: 'ممتاز جدًا — أو تسريب مواد خارج القنوات' };
     const marketNotes = [
         'الخضار الطازج يصل للمطبخ من طلبات الخضار بدون تسعير — سعّرناه بأسعار السوق السعودي الحالية (كارفور/التميمي، نوفمبر 2026): بصل 3.98 · بطاطس 3.98 · طماطم 4.75 · باذنجان 4.99 · كوسة 5.99 ر.س/كجم.',
-        'كل ما عدا الخضار — بما فيه لحم 106، كبدة، زيت قلي دلال، دقيق — محتسب من أذونات المطبخ الفعلية بسعر المخزن.',
-        'بنود الخضار تقديرية «تقديري — سعر السوق» — للدلالة فقط ولا تصلح سند صرف أو ترصيد محاسبي.',
+        'زيت قلي دلال-تنك: 2 تنك يوميًا × سعر المخزن الفعلي (104.65 ر.س/تنك) — غير مسجّل في أذونات المطبخ.',
+        'البنود شبه الشهرية تُقاس نسبيًا على الفترة: لحم 106 → 2 كرتون لكل 15 يوم (383.40 ر.س/كرتون من المخزن) · كبدة → 8 كرتون لكل 15 يوم (168.81) · دقيق فاخر 2 شكاره شهريًا ≈ شكاره لكل 15 يوم (35.00).',
+        'لحم «106» = فور كوارتر رول هندي 106 — السعر من المخزن الفعلي.',
+        'كل هذه البنود تقديرية «تقديري — سعر السوق/المخزن» — أساسية التقرير ولا تصلح سند صرف أو ترصيد محاسبي. عدّلها في الكود لو الاحتياج تغيّر.',
     ];
 
     res.json({
@@ -381,15 +406,15 @@ router.get('/reports/breakfast-cost', jwtAuth, requireReportRole(...REPORT_ROLES
         full_verdict: fullVerdict,
         groups: allGroups,
         market_estimates: {
-            meat_lines: [],
+            meat_lines: estItems,
             veg_lines: vegLines,
-            daily_lines: [],
+            daily_lines: dailyOtherLines,
             total: marketTotal,
-            veg_total: marketTotal,
-            meat_carton_total: 0,
-            liver_total: 0,
-            flour_total: 0,
-            oil_total: 0,
+            veg_total: vegTotal,
+            meat_carton_total: meatCartonTotal,
+            liver_total: liverTotal,
+            flour_total: flourTotal,
+            oil_total: oilTotal,
             cost_pct_of_revenue: marketCostPct,
             day_span: daySpan,
             notes: marketNotes,
@@ -414,4 +439,4 @@ router.get('/reports/breakfast-cost', jwtAuth, requireReportRole(...REPORT_ROLES
     });
 }));
 
-module.exports = { router, BREAKFAST_BASKET, gramsOf, prevRange, MARKET_FRESH_PRICES, MARKET_ESTIMATE_VEG };
+module.exports = { router, BREAKFAST_BASKET, gramsOf, prevRange, MARKET_FRESH_PRICES, MARKET_ESTIMATE_VEG, MARKET_ESTIMATE_MEATS, MARKET_ESTIMATE_DAILY_OTHER };

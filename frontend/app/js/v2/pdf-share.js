@@ -28,7 +28,7 @@
  *   أزِل الاستيراد والزرين في report-viewer.js — لا شيء آخر يمسّه.
  */
 
-import { ensureVendor } from './vendor.js?v=4.9.346';
+import { ensureVendor } from './vendor.js?v=4.9.347';
 
 /* ── أدوات نقية (لعقد الاختبار) ─────────────────────────────────────── */
 
