@@ -37,7 +37,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         id: 'operations',
         label: 'التشغيل',
         shortLabel: 'تشغيل',
-        keys: ['pos-entry', 'cashier-monitor', 'kitchen', 'menu-board', 'recipes', 'departments', 'dept-transfers', 'whatsapp'],
+        keys: ['pos-entry', 'pos-reports', 'cashier-monitor', 'kitchen', 'menu-board', 'recipes', 'departments', 'dept-transfers', 'whatsapp'],
     },
     {
         id: 'finance',
@@ -202,6 +202,7 @@ export const NAV_TITLES: Readonly<Record<string, string>> = {
     '/vat-return': 'مسودة مراجعة ضريبة القيمة المضافة',
     '/cashier-sales': 'مبيعات الكاشير',
     '/cashier-monitor': 'متابعة الكاشير',
+    '/pos-reports': 'مركز التقارير',
     '/pos-entry': 'نقطة البيع',
     '/cashier': 'واجهة الكاشير',
     '/integrations': 'مصدر البيانات',

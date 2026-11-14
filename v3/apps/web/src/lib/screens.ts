@@ -67,6 +67,7 @@ export const V3_SCREENS = [
     'cashier-sales',
     'cashier-monitor',
     'pos-entry',
+    'pos-reports',
     'sales-analyzer',
     'sales-inquiry',
     'received-analyzer',

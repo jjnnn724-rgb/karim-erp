@@ -97,7 +97,9 @@ function register(app, opts = {}) {
 
     // Task 36 (التسليم): إدارة الطابعات + الاكتشاف + نظافة التوكنات الأوتوماتيكية
     const printerRoutes = require('./printer-routes');
+const posReportsRoutes = require('./pos-reports');
     app.use('/api/pos/printers', printerRoutes.router);
+    app.use('/api/pos', posReportsRoutes.router);
 
     // درج النقدية: فتح بنبضة ESC/POS مع أثر تدقيق (لا يفتح بلا طابعة متصلة)
     const drawerRoutes = require('./drawer-routes');

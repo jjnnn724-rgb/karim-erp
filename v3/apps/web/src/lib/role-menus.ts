@@ -17,6 +17,7 @@
 
 export const ROLES = {
     admin: [
+        'pos-reports',
         'dashboard',
         'menu-board',
         'cfo',
@@ -91,6 +92,7 @@ export const ROLES = {
         'bank-rec',
     ],
     manager: [
+        'pos-reports',
         'dashboard',
         'menu-board',
         'cfo',
@@ -197,6 +199,7 @@ export const ROLES = {
         'roster',
     ],
     accountant: [
+        'pos-reports',
         'dashboard',
         'cfo',
         'accounts',

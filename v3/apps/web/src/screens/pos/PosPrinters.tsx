@@ -4,7 +4,6 @@ import {
     autoLinkPosPrinter,
     discoverPosPrinters,
     fetchPosPrinters,
-    type PosLocalPrintQueue,
     type PosNetworkPrinter,
     type PosPrinter,
     type PosPrinterDiscovery,
@@ -64,6 +63,14 @@ export function PosPrinters({ open, departmentId, onClose }: PosPrintersProps) {
     });
 
     const registered = printersQuery.data ?? discovery?.registered ?? [];
+    // الطابعات الافتراضية (OneNote/Evernote/PDF) تذهب لآخر القائمة — لا ورق حقيقي
+    const localQueues = [...(discovery?.local ?? [])].sort((a, b) => {
+        const av = a.virtual ? 1 : 0;
+        const bv = b.virtual ? 1 : 0;
+        if (av !== bv) { return av - bv; }
+        if (!!a.thermal !== !!b.thermal) { return a.thermal ? -1 : 1; }
+        return a.name.localeCompare(b.name, 'ar');
+    });
     const targetId = departmentId ? `pos-${String(departmentId)}` : '';
     const target = registered.find((printer) => printer.id === targetId) ?? null;
     const receiptPrinters = registered.filter((printer) => (printer.kind ?? '').startsWith('receipt') || !printer.kind);
@@ -158,7 +165,7 @@ export function PosPrinters({ open, departmentId, onClose }: PosPrintersProps) {
         }
     }
 
-    const localQueues: PosLocalPrintQueue[] = discovery?.local ?? [];
+    // (الترتيب: الطابعات الحقيقية أولًا —_virtual إلى آخر القائمة_)
     const networkPrinters: PosNetworkPrinter[] = discovery?.network ?? [];
 
     return (
@@ -231,11 +238,17 @@ export function PosPrinters({ open, departmentId, onClose }: PosPrintersProps) {
                         {localQueues.map((queue) => (
                             <li key={queue.name} className="pos-printer-row">
                                 <div className="pos-printer-row__copy">
-                                    <strong>{queue.name}</strong>
+                                    <strong>
+                                        {queue.name}
+                                        {queue.virtual ? (
+                                            <Badge variant="warning">افتراضية — لا ورق</Badge>
+                                        ) : null}
+                                    </strong>
                                     <small>
                                         {queue.driver || 'سائق غير معروف'}
                                         {queue.is_default ? ' · الافتراضية في ويندوز' : ''}
                                         {queue.thermal ? ' · حرارية' : ''}
+                                        {queue.virtual ? ' · مخرجها ملف PDF أو لا شيء — لا تصلح للإيصالات' : ''}
                                     </small>
                                 </div>
                                 <Button

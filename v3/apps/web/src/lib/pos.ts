@@ -621,6 +621,24 @@ function deviceHeaders(departmentId?: string): Record<string, string> {
     return { 'x-device-name': deviceName(departmentId) };
 }
 
+/**
+ * روابط القسم ↔ الكاشير (من جدول dept_cashier_links) — مرجع اختيار الكاشير
+ * حتى لا يختلط الكاشير: كل قسم يعرض أرقام كاشيراته مرتبة وواضحة.
+ */
+export const deptCashierLinkSchema = z.object({
+    id: idText,
+    dept_code: text,
+    cashier_no: text,
+    is_primary: z.union([z.boolean(), z.string(), z.number()]).optional(),
+    notes: text.nullable().optional(),
+});
+
+export type DeptCashierLink = z.infer<typeof deptCashierLinkSchema>;
+
+export async function fetchDeptCashierLinks(signal?: AbortSignal): Promise<DeptCashierLink[]> {
+    return fetchJson(z.array(deptCashierLinkSchema), '/api/dept_cashier_links', token(), opts(signal));
+}
+
 export async function fetchPosDepartments(signal?: AbortSignal): Promise<PosDepartment[]> {
     return fetchJson(z.array(posDepartmentSchema), '/api/pos/departments', token(), opts(signal));
 }
@@ -1299,6 +1317,8 @@ const localQueueSchema = z
         status: text,
         is_default: flag,
         thermal: flag,
+        /** طابعة افتراضية (OneNote/Evernote/PDF/Fax) — لا ورق حقيقي */
+        virtual: z.boolean().optional(),
     })
     .passthrough();
 

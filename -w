@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="ar" dir="rtl">
+    <head>
+        <meta charset="UTF-8" />
+        <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+        <meta name="asset-version" content="4.9.332" />
+        <meta name="theme-color" content="#0B5A5F" />
+        <meta
+            name="description"
+            content="كاريم ERP — منصة متكاملة لإدارة المطاعم: نقطة بيع، مخزون، محاسبة، موارد بشرية وتقارير لحظية بواجهة عربية."
+        />
+        <meta property="og:type" content="website" />
+        <meta property="og:site_name" content="Karim ERP" />
+        <meta property="og:title" content="كاريم ERP — نظام إدارة المطاعم" />
+        <meta
+            property="og:description"
+            content="نقطة بيع، مخزون، محاسبة، موارد بشرية وتقارير لحظية في مساحة عمل واحدة."
+        />
+        <meta property="og:locale" content="ar_SA" />
+        <meta name="twitter:card" content="summary" />
+        <link rel="icon" type="image/png" href="/v3/icons/icon-192.png" />
+        <link rel="apple-touch-icon" href="/v3/icons/icon-192.png" />
+        <link rel="manifest" href="/v3/manifest.webmanifest" />
+        <meta name="application-name" content="Karim POS" />
+        <meta name="mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-capable" content="yes" />
+        <meta name="apple-mobile-web-app-status-bar-style" content="default" />
+        <meta name="apple-mobile-web-app-title" content="Karim POS" />
+        <title>Karim ERP — نظام إدارة المطاعم</title>
+      <script type="module" crossorigin src="/v3/assets/index-Be32hmOS.js"></script>
+      <link rel="stylesheet" crossorigin href="/v3/assets/index-C9yUgMh0.css">
+        <meta name="v3-primary" content="1" />
+    <meta name="v3-screens" content="accounts,journal,revenues,expenses,cash-register,daily-locks,oracle-data,procurement,purchase-invoices,payments,departments,wh-moves,dispatch,warehouse,warehouse-gov,shelves,wh-returns,wh-prs,dept-transfers,employees,hr-departments,users,branches,permissions,veg-requests,weight,recipes,goods-scan,attendance,leaves,payroll,mudad,roster,sessions,whatsapp,briefing,settings,executive,hr-dashboard,dept-employees,employee-portal,zkteco,kitchen,menu-board,warehouse-dashboard,accountant-dashboard,dept-head-dashboard,cost-analysis,cost-center,inventory-inquiry,inventory-inquiry-pro,pnl,cfo,monthly-comparison,reports,vat-return,cashier-sales,cashier-monitor,pos-entry,sales-analyzer,sales-inquiry,received-analyzer,wh-vs-pos,yarasoft,command-center,bank-rec,compliance-center,balance-sheet,cash-flow" />
+    </head>
+    <body>
+        <div id="root"></div>
+    <script nonce="j7lAJjRu5qd5vcWWDb3VVsyqn4nix2ecmTWK36d1pFY=">(function(){function c(){var b=a.contentDocument||(a.contentWindow&&a.contentWindow.document);if(b){var d=b.createElement('script');d.nonce='j7lAJjRu5qd5vcWWDb3VVsyqn4nix2ecmTWK36d1pFY=';d.innerHTML="window.__CF$cv$params={r:'a5a32a4fc8c370e5',t:'MTc5NDYyOTQxNA=='};var l=window.parent.location,o;try{o=new URL(l.origin).origin}catch(e){try{o=new URL(new URL(l.href).origin).origin}catch(e){o=''}}var u='/cdn-cgi/challenge-platform/scripts/jsd/main.js?ray=a5a32a4fc8c370e5',a=document.createElement('script');a.nonce='j7lAJjRu5qd5vcWWDb3VVsyqn4nix2ecmTWK36d1pFY=';a.src=o?new URL(u,o).href:u;document.getElementsByTagName('head')[0].appendChild(a);";b.getElementsByTagName('head')[0].appendChild(d)}}if(document.body){var a=document.createElement('iframe');a.height=1;a.width=1;a.style.position='absolute';a.style.top=0;a.style.left=0;a.style.border='none';a.style.visibility='hidden';document.body.appendChild(a);if('loading'!==document.readyState)c();else if(window.addEventListener)document.addEventListener('DOMContentLoaded',c);else{var e=document.onreadystatechange||function(){};document.onreadystatechange=function(b){e(b);'loading'!==document.readyState&&(document.onreadystatechange=e,c())}}}})();</script></body>
+</html>

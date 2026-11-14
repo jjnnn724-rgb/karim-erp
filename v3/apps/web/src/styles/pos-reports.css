@@ -1,0 +1,32 @@
+/* مركز التقارير — ورقة رسمية قابلة للطباعة */
+.pos-reports__body { display: flex; flex-direction: column; gap: 0.75rem; }
+.pos-reports__head { display: flex; align-items: flex-start; justify-content: space-between; gap: 1rem; }
+.pos-reports__head h2 { margin: 0 0 0.15rem; }
+.pos-reports__tabs { display: flex; gap: 0.25rem; border-block-end: 1px solid var(--erp-line, #E5E9EE); }
+.pos-reports__tab {
+    padding: 0.45rem 0.85rem; border: 0; border-block-end: 2px solid transparent; background: transparent;
+    color: var(--erp-muted, #687586); font-size: 0.85rem; font-weight: 700; cursor: pointer;
+}
+.pos-reports__tab:hover { color: var(--erp-ink, #202A35); }
+.pos-reports__tab.is-active { border-block-end-color: var(--erp-primary, #168653); color: var(--erp-primary, #168653); }
+.pos-reports__filters { display: flex; flex-wrap: wrap; gap: 0.5rem; align-items: end; }
+.pos-reports__filters label { display: flex; flex-direction: column; gap: 0.2rem; font-size: 0.72rem; font-weight: 600; color: var(--erp-muted, #687586); }
+.pos-reports__filters input, .pos-reports__filters select {
+    block-size: 2.2rem; border: 1px solid var(--erp-line, #E5E9EE); border-radius: 8px;
+    padding-inline: 0.5rem; background: #fff; color: var(--erp-ink, #202A35); font-size: 0.82rem;
+}
+.pos-reports__kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(8rem, 1fr)); gap: 0.4rem; }
+.pos-reports__kpi {
+    display: flex; flex-direction: column; gap: 0.1rem; padding: 0.5rem 0.6rem;
+    border: 1px solid var(--erp-line, #E5E9EE); border-radius: 10px; background: #fff;
+}
+.pos-reports__kpi span { font-size: 0.68rem; color: var(--erp-muted, #687586); }
+.pos-reports__kpi strong { font-size: 1.05rem; font-weight: 800; color: var(--erp-ink, #202A35); font-variant-numeric: tabular-nums; }
+.pos-reports__table { inline-size: 100%; border-collapse: collapse; font-size: 0.8rem; }
+.pos-reports__table th { border: 1px solid var(--erp-line, #E5E9EE); background: #F7F8FA; padding: 0.4rem 0.45rem; text-align: start; font-weight: 700; }
+.pos-reports__table td { border: 1px solid #EFEFF2; padding: 0.35rem 0.45rem; }
+.pos-reports__table tbody tr:nth-child(even) td { background: #FCFCFD; }
+@media print {
+    .pos-reports__filters, .pos-reports__tabs, .pos-reports__head button { display: none !important; }
+    .pos-reports__table th, .pos-reports__table td { border-color: #000 !important; }
+}

@@ -110,6 +110,17 @@ function looksLikeReceiptPrinter(printer) {
  * طوابير الطباعة المثبتة على ويندوز — مصدر الاكتشاف المحلي.
  * كل طابور يُقترح كـ windows_local لأن الإرسال RAW عبر winspool لا يحتاج مشاركة.
  */
+/**
+ * طابعات افتراضية (لا ورق): OneNote / Evernote / Foxit / PDF / XPS / Fax.
+ * وجودها في القائمة كان يوهم الكاشير إن الطباعة رايحة لطابعة حقيقية بينما
+ * المخرج كله ملف PDF أو لا شيء. نمنFlagها صراحةً.
+ */
+const VIRTUAL_PRINTER_PATTERN = /(onenote|one note|evernote|foxit|microsoft print to pdf|microsoft xps|fax|nul:|portprompt|snagit|acrobat|bullzip)/i;
+function isVirtualPrinter({ name = '', driver = '', port = '' } = {}) {
+    const haystack = `${name} ${driver} ${port}`;
+    return VIRTUAL_PRINTER_PATTERN.test(haystack);
+}
+
 async function listLocalPrintQueues() {
     if (!localQueueSupported()) {
         return [];
@@ -141,6 +152,7 @@ async function listLocalPrintQueues() {
                 status: statusText(row.PrinterStatus),
                 is_default: name === defaultName,
                 thermal: looksLikeReceiptPrinter({ name, driver: String(row.DriverName || '') }),
+                virtual: isVirtualPrinter({ name, driver: String(row.DriverName || ''), port: String(row.PortName || '') }),
             };
         });
 }

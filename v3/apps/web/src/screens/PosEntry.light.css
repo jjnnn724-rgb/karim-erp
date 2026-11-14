@@ -611,6 +611,71 @@
     color: #C83D45;
 }
 
+/* ─── منتقي الكاشير (مرتّب حسب القسم) ─── */
+.pos-cashier-pick {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    max-block-size: 42vh;
+    overflow-y: auto;
+    padding-inline-end: 0.15rem;
+}
+.pos-cashier-pick__group {
+    border: 1px solid #E5E9EE;
+    border-radius: 12px;
+    background: #FFFFFF;
+    padding: 0.5rem 0.6rem 0.55rem;
+}
+.pos-cashier-pick__group--others { background: #F7F8FA; }
+.pos-cashier-pick__title {
+    margin: 0 0 0.35rem;
+    font-size: 0.82rem;
+    font-weight: 800;
+    color: #202A35;
+}
+.pos-cashier-pick__chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+.pos-cashier-pick__chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+    min-block-size: 2.4rem;
+    padding-inline: 0.8rem;
+    border: 1px solid #E5E9EE;
+    border-radius: 999px;
+    background: #FFFFFF;
+    color: #202A35;
+    font-size: 0.8rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: border-color 120ms ease, background-color 120ms ease, color 120ms ease, transform 75ms ease;
+}
+.pos-cashier-pick__chip:hover:not(:disabled) { border-color: #168653; background: #EAF6EF; color: #117247; }
+.pos-cashier-pick__chip:active:not(:disabled) { transform: scale(0.97); }
+.pos-cashier-pick__chip.is-active {
+    background: #168653;
+    border-color: #168653;
+    color: #FFFFFF;
+}
+.pos-cashier-pick__chip:disabled { opacity: 0.5; cursor: not-allowed; }
+.pos-cashier-pick__chip:focus-visible { outline: 2px solid #2563EB; outline-offset: 1px; }
+.pos-cashier-pick__no { white-space: nowrap; }
+.pos-cashier-pick__tag {
+    padding: 0.02rem 0.35rem;
+    border-radius: 999px;
+    background: #F1F4F6;
+    color: #687586;
+    font-size: 0.55rem;
+    font-weight: 700;
+}
+.pos-cashier-pick__chip.is-active .pos-cashier-pick__tag { background: rgb(255 255 255 / 22%); color: #FFFFFF; }
+
+.pos-open__picker { display: flex; flex-direction: column; gap: 0.35rem; }
+.pos-open__picker-label { font-size: 0.74rem; font-weight: 700; color: #687586; }
+
 /* معاينة الإيصال — ورقة 80mm كما تُطبع */
 .pos-receipt-preview__frame {
     inline-size: 100%;

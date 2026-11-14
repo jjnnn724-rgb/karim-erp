@@ -465,6 +465,13 @@ export const cashierMonitorRoute = createRoute({
 });
 cashierMonitorRoute.lazy(() => import('../screens/CashierMonitor.lazy').then((module) => module.Route));
 
+/** مركز التقارير — تقارير رسمية قابلة للطباعة (قسم/صنف/مخزن). */
+export const posReportsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/pos-reports',
+});
+posReportsRoute.lazy(() => import('../screens/PosReports.lazy').then((module) => module.Route));
+
 /** نقطة البيع — الكاشير الحيّ: أصناف وسلة ودفع ووردية وإيصال. */
 export const posEntryRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -595,6 +602,7 @@ export const routeTree = rootRoute.addChildren([
     cashierSalesRoute,
     cashierMonitorRoute,
     posEntryRoute,
+    posReportsRoute,
     cashierKioskRoute,
     legacySourceRoute,
     salesAnalyzerRoute,

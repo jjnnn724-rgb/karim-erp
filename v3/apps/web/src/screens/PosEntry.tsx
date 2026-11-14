@@ -22,6 +22,7 @@ import {
     fetchBuffetLive,
     fetchBuffetReport,
     fetchDayCloseStatus,
+    fetchDeptCashierLinks,
     fetchHeldOrders,
     fetchKotHtml,
     fetchPosOrderReceiptHtml,
@@ -292,6 +293,14 @@ export function PosEntry() {
         queryFn: ({ signal }) => fetchPosDepartments(signal),
         enabled: canAccess,
         staleTime: 5 * 60 * 1000,
+    });
+    // روابط القسم ↔ الكاشير: ترتيب اختيار الكاشير حسب القسم (طلب المالك)
+    const cashierLinksQuery = useQuery({
+        queryKey: ['dept-cashier-links'],
+        queryFn: ({ signal }) => fetchDeptCashierLinks(signal),
+        enabled: canAccess,
+        staleTime: 5 * 60 * 1000,
+        retry: false,
     });
     const shiftQuery = useQuery({
         queryKey: ['pos-active-shift'],
@@ -1796,6 +1805,7 @@ export function PosEntry() {
                     {!shiftQuery.isPending && !shiftQuery.isError && !shift ? (
                         <div className="pos-open__wrap">
                             <PosOpenShift
+                    cashierLinks={cashierLinksQuery.data ?? []}
                                 departments={departments}
                                 canSell={canSell}
                                 busy={busy}

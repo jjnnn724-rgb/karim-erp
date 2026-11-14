@@ -103,6 +103,7 @@ export const NAV_ITEMS = [
     { to: '/cashier-sales', label: 'مبيعات الكاشير', hint: 'Cashier Sales' },
     { to: '/cashier-monitor', label: 'متابعة الكاشير', hint: 'Cashier Monitor' },
     { to: '/pos-entry', label: 'نقطة البيع', hint: 'POS' },
+    { to: '/pos-reports', label: 'مركز التقارير', hint: 'Reports Hub' },
     { to: '/cashier', label: 'واجهة الكاشير', hint: 'Cashier Page' },
     { to: '/integrations', label: 'مصدر البيانات', hint: 'Data Source' },
     { to: '/sales-analyzer', label: 'تحليل المبيعات', hint: 'Sales Analyzer' },
