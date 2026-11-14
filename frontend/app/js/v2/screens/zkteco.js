@@ -28,11 +28,11 @@
  *   repo is the only door). It never touches inline handlers (CSP).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.316';
-import { statusBadge } from '../status.js?v=4.9.316';
-import { canWrite } from '../session.js?v=4.9.316';
-import { zkWriteEnabled } from '../write-flags.js?v=4.9.316';
-import { fetchHrDepartments } from '../data/hr-registers-repo.js?v=4.9.316';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.317';
+import { statusBadge } from '../status.js?v=4.9.317';
+import { canWrite } from '../session.js?v=4.9.317';
+import { zkWriteEnabled } from '../write-flags.js?v=4.9.317';
+import { fetchHrDepartments } from '../data/hr-registers-repo.js?v=4.9.317';
 import {
     fetchZkStatus, fetchZkDevices, deviceToRow, summarizeDevices,
     fetchZkMappings, mappingStats, fetchZkLogs, fetchZkCoverage, coverageStats,
@@ -44,7 +44,7 @@ import {
     testDevice, syncDevice, createDevice, updateDevice, deleteDevice,
     scanNetwork, saveMapping, autoLinkMappings, importDeviceUsers,
     downloadZkLogsCsv,
-} from '../data/zkteco-repo.js?v=4.9.316';
+} from '../data/zkteco-repo.js?v=4.9.317';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

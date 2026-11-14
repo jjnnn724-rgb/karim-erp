@@ -29,32 +29,32 @@
  *   a live integration.
  */
 
-import { ROLES } from '../core/config.js?v=4.9.316';
-import { MENU_STRINGS, t } from '../core/i18n.js?v=4.9.316';
-import { initTheme, currentTheme } from './theme.js?v=4.9.316';
-import { statusBadge, hydrateStatusNodes } from './status.js?v=4.9.316';
-import { mountAppLayout } from './layout/app-layout.js?v=4.9.316';
-import { mountShellExtras } from './layout/shell-extras.js?v=4.9.316';
-import { mountChartInteraction } from './charts-live.js?v=4.9.316';
-import { mountAiAssistant } from './ai-assistant.js?v=4.9.316';
-import { mountChat } from './chat.js?v=4.9.316';
-import { mountMobileShell } from './mobile-shell.js?v=4.9.316';
-import { createDataTable } from './data-display/data-table.js?v=4.9.316';
-import { ensureSession, setLogoutObserver, stopKeepAlive, lastRefreshOutcome } from './session.js?v=4.9.316';
-import { fetchMyPermissions } from './data/shell-repo.js?v=4.9.316';
-import { fetchMainSettingsFull } from './data/settings-repo.js?v=4.9.316';
-import { installV2PrintBranding, setV2PrintLogo } from './print-branding.js?v=4.9.316';
-import { fetchDbConstraints, invalidateDbConstraints, validateDbField, validateDbForm } from './data/db-constraints-repo.js?v=4.9.316';
-import { readNavGroups, allowedMenus } from './layout/nav-model.js?v=4.9.316';
-import { DASH_KEY, keyFromHash, hashFor, knownKeys, resolveRouteKey, routingEnabled } from './routing.js?v=4.9.316';
-import { applyScreenMood } from './mood.js?v=4.9.316';
-import { installToast, notifyTo, toastEnabled } from './toast.js?v=4.9.316';
-import { installOverlay, overlayEnabled } from './overlay.js?v=4.9.316';
-import { confirmEnabled, createConfirm } from './confirm.js?v=4.9.316';
-import { renderDashboard, mountCommandPalette } from './screens/dashboard.js?v=4.9.316';
-import { loadScreen } from './screens/registry.js?v=4.9.316';
-import { mountLoginScreen } from './screens/login.js?v=4.9.316';
-import { dashboardKind } from './role-dashboard.js?v=4.9.316';
+import { ROLES } from '../core/config.js?v=4.9.317';
+import { MENU_STRINGS, t } from '../core/i18n.js?v=4.9.317';
+import { initTheme, currentTheme } from './theme.js?v=4.9.317';
+import { statusBadge, hydrateStatusNodes } from './status.js?v=4.9.317';
+import { mountAppLayout } from './layout/app-layout.js?v=4.9.317';
+import { mountShellExtras } from './layout/shell-extras.js?v=4.9.317';
+import { mountChartInteraction } from './charts-live.js?v=4.9.317';
+import { mountAiAssistant } from './ai-assistant.js?v=4.9.317';
+import { mountChat } from './chat.js?v=4.9.317';
+import { mountMobileShell } from './mobile-shell.js?v=4.9.317';
+import { createDataTable } from './data-display/data-table.js?v=4.9.317';
+import { ensureSession, setLogoutObserver, stopKeepAlive, lastRefreshOutcome } from './session.js?v=4.9.317';
+import { fetchMyPermissions } from './data/shell-repo.js?v=4.9.317';
+import { fetchMainSettingsFull } from './data/settings-repo.js?v=4.9.317';
+import { installV2PrintBranding, setV2PrintLogo } from './print-branding.js?v=4.9.317';
+import { fetchDbConstraints, invalidateDbConstraints, validateDbField, validateDbForm } from './data/db-constraints-repo.js?v=4.9.317';
+import { readNavGroups, allowedMenus } from './layout/nav-model.js?v=4.9.317';
+import { DASH_KEY, keyFromHash, hashFor, knownKeys, resolveRouteKey, routingEnabled } from './routing.js?v=4.9.317';
+import { applyScreenMood } from './mood.js?v=4.9.317';
+import { installToast, notifyTo, toastEnabled } from './toast.js?v=4.9.317';
+import { installOverlay, overlayEnabled } from './overlay.js?v=4.9.317';
+import { confirmEnabled, createConfirm } from './confirm.js?v=4.9.317';
+import { renderDashboard, mountCommandPalette } from './screens/dashboard.js?v=4.9.317';
+import { loadScreen } from './screens/registry.js?v=4.9.317';
+import { mountLoginScreen } from './screens/login.js?v=4.9.317';
+import { dashboardKind } from './role-dashboard.js?v=4.9.317';
 
 // Enable the embedded cashier while retaining the standalone POS fallback.
 const V2_FEATURE_FLAGS = Object.freeze({ embeddedPos: true, salesEnabled: true });
@@ -226,7 +226,7 @@ initTheme();
             if (!('serviceWorker' in window.navigator)) {return;}
             if (!window.isSecureContext
                 && !['localhost', '127.0.0.1'].includes(window.location.hostname)) {return;}
-            window.navigator.serviceWorker.register('/app/sw.js?v=4.9.316', {scope: '/app/'})
+            window.navigator.serviceWorker.register('/app/sw.js?v=4.9.317', {scope: '/app/'})
                 .then((reg) => {try {reg.update();} catch (_) { /* كاشٌ أفضل من لا كاش */ }})
                 .catch(() => {});
             /* العامل يبثّ SW_UPDATED بعد activate. الصفحة المفتوحة قبل النشر
@@ -522,7 +522,7 @@ async function renderCashRegisterScreen() {
     const host = shell.main.querySelector('[data-v2-cashreg-host]');
     try {
         if (!cashRegisterMount) {
-            const mod = await import('./screens/cash-register.js?v=4.9.316');
+            const mod = await import('./screens/cash-register.js?v=4.9.317');
             cashRegisterMount = mod.mountCashRegister;
         }
         cashRegisterHandle = cashRegisterMount(host, { navigate: (k) => shell.navigate(k) });
@@ -545,7 +545,7 @@ async function renderCashierSalesScreen() {
     const host = shell.main.querySelector('[data-v2-csales-host]');
     try {
         if (!cashierSalesMount) {
-            const mod = await import('./screens/cashier-sales.js?v=4.9.316');
+            const mod = await import('./screens/cashier-sales.js?v=4.9.317');
             cashierSalesMount = mod.mountCashierSales;
         }
         cashierSalesHandle = cashierSalesMount(host);
@@ -568,7 +568,7 @@ async function renderExecutiveScreen() {
     const host = shell.main.querySelector('[data-v2-executive-host]');
     try {
         if (!executiveMount) {
-            const mod = await import('./screens/executive.js?v=4.9.316');
+            const mod = await import('./screens/executive.js?v=4.9.317');
             executiveMount = mod.mountExecutiveScreen;
         }
         executiveHandle = executiveMount(host, { navigate: (k) => shell.navigate(k) });

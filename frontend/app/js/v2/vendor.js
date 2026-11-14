@@ -12,8 +12,8 @@
  *
  * SAME FILES, SAME URLS AS THE LEGACY PAGE — ON PURPOSE
  *   index.html loads them as:
- *     /app/vendor/xlsx.full.min.js?v=4.9.316      (index.html:46)
- *     js/vendor/qrcode.min.js?v=4.9.316           (index.html:257)
+ *     /app/vendor/xlsx.full.min.js?v=4.9.317      (index.html:46)
+ *     js/vendor/qrcode.min.js?v=4.9.317           (index.html:257)
  *   These specifiers point at the same physical files with the SAME ?v the
  *   legacy page already uses, so the browser and the Cloudflare tunnel's
  *   four-hour cache serve them as hits — no new cache URL is minted. The
@@ -33,18 +33,18 @@
  */
 
 const VENDOR_ASSETS = {
-    XLSX: { global: 'XLSX', src: 'vendor/xlsx.full.min.js?v=4.9.316' },
-    QRCode: { global: 'QRCode', src: 'js/vendor/qrcode.min.js?v=4.9.316' },
+    XLSX: { global: 'XLSX', src: 'vendor/xlsx.full.min.js?v=4.9.317' },
+    QRCode: { global: 'QRCode', src: 'js/vendor/qrcode.min.js?v=4.9.317' },
     // قارئ الكاميرا (371 KB) — index.html:47 يحمّله لكل الجلسة؛ هنا يُحمَّل
     // عند أول مسح بطاقة فقط، بنفس الملف ونفس ?v فلا عنوان كاش جديد.
-    Html5Qrcode: { global: 'Html5Qrcode', src: 'vendor/html5-qrcode.min.js?v=4.9.316' },
+    Html5Qrcode: { global: 'Html5Qrcode', src: 'vendor/html5-qrcode.min.js?v=4.9.317' },
     // ── محرك تصدير PDF ومشاركته (2026-10-31 بطلب المالك: «استعلام المبيعات
     // عايز احملها pdf واي مكان في طباعة اقدر اعمله شير») ──
     // jsPDF (366 KB) للتركيب متعدد الصفحات، وhtml2canvas-pro (211 KB) للرسم —
     // نسخة pro عمدًا: الأصلية ترمي على color-mix/oklch المستخدمة في هوية V2.
     // ملفان جديدان ليسا في القديمة، فلهما وسم ثابت خاص بهما لا يتحرك مع rev.
-    JsPDF: { global: 'jspdf', src: 'js/vendor/jspdf.umd.min.js?v=4.9.316' },
-    Html2CanvasPro: { global: 'html2canvas', src: 'js/vendor/html2canvas-pro.min.js?v=4.9.316' },
+    JsPDF: { global: 'jspdf', src: 'js/vendor/jspdf.umd.min.js?v=4.9.317' },
+    Html2CanvasPro: { global: 'html2canvas', src: 'js/vendor/html2canvas-pro.min.js?v=4.9.317' },
 };
 
 /** @type {Map<string, Promise<boolean>>} one in-flight promise per asset */

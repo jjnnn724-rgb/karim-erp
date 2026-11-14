@@ -4,7 +4,7 @@
  */
 // FIX 2026-10-01: localDateOnly كانت ضاعت في الهجرة (معرفة في smart-card فقط)
 // فكان توليد كل التقارير يرمي «localDateOnly is not defined» — استيراد صريح.
-import { localDateOnly } from './smart-card.js?v=4.9.316';
+import { localDateOnly } from './smart-card.js?v=4.9.317';
 // ============================================
 // REPORTS
 // ============================================
