@@ -4,16 +4,16 @@
  * (features/hr.js:695/:717/:725 — الكود يُولَّد لاتينيًا آمنًا إن كان عربيًا).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.343';
-import { fetchHrDepartments, hrDeptToRow, fetchEmployees } from '../data/hr-registers-repo.js?v=4.9.343';
-import { formatInt } from '../data/reports-repo.js?v=4.9.343';
-import { openInAppReport } from '../report-viewer.js?v=4.9.343';
-import { canWrite } from '../session.js?v=4.9.343';
-import { hrDepartmentWriteEnabled } from '../write-flags.js?v=4.9.343';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.344';
+import { fetchHrDepartments, hrDeptToRow, fetchEmployees } from '../data/hr-registers-repo.js?v=4.9.344';
+import { formatInt } from '../data/reports-repo.js?v=4.9.344';
+import { openInAppReport } from '../report-viewer.js?v=4.9.344';
+import { canWrite } from '../session.js?v=4.9.344';
+import { hrDepartmentWriteEnabled } from '../write-flags.js?v=4.9.344';
 import {
     HR_DEPARTMENT_WRITE_ROLES,
     validateHrDepartmentForm, createHrDepartment, updateHrDepartment, deleteHrDepartment,
-} from '../data/departments-write-repo.js?v=4.9.343';
+} from '../data/departments-write-repo.js?v=4.9.344';
 
 const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 

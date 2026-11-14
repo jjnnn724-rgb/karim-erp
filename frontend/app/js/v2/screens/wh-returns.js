@@ -24,15 +24,15 @@
  *   • قارئ عمود «حذف» كما :657 — يظهر لحامله فقط ووظيفته عكس الأثر كاملًا.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.343';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.344';
 import {
     fetchKitchenReturns, kitchenReturnToRow,
     returnCreateVisible, returnDeleteVisible,
     fetchReturnDispatches, fetchReturnDepartments, fetchReturnInventory,
     directReturnDepartments, deptLabelOf, returnDeptCodesOf,
     returnCreatePayload, createKitchenReturn, deleteKitchenReturn,
-} from '../data/warehouse-repo.js?v=4.9.343';
-import { fetchCurrency, formatMoney, formatInt, formatQty } from '../data/reports-repo.js?v=4.9.343';
+} from '../data/warehouse-repo.js?v=4.9.344';
+import { fetchCurrency, formatMoney, formatInt, formatQty } from '../data/reports-repo.js?v=4.9.344';
 
 const esc = (v) => String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 const money = (v, c) => { const m = formatMoney(v, c); return `<span class="erp-num" dir="ltr">${m.amount}</span>` + (m.hasUnit ? ` <span class="erp-text-sm erp-text-muted">${esc(m.unit)}</span>` : ''); };
