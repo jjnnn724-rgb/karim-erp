@@ -165,6 +165,11 @@ describe('تقوية الجلسات — التدوير والمهلة', () => {
     });
 
     it('تبويبان يجدّدان معًا: داخل المهلة يُصدر شقيقًا ولا يُبطل الجلسة', async () => {
+        // اجعل «اللقطة» طازة: التيست السابق دوّر rt1، والنافذة 45 ثانية — وإلا فشل على الآلات البطيئة.
+        await pool.query(
+            `UPDATE pos_refresh_tokens SET revoked_at = CURRENT_TIMESTAMP WHERE id = $1;`,
+            [oldRowId]
+        );
         const res = makeRes();
         await refreshHandler(makeReq({ body: { refresh_token: rt1 } }), res);
 
