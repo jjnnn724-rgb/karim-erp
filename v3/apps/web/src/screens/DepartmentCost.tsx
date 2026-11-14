@@ -182,16 +182,20 @@ function BreakfastTab({ from, to }: { from: string; to: string }) {
     const data: BreakfastCost | undefined = query.data;
     const maxGroup = data?.groups.reduce((m, g) => Math.max(m, g.cost || 0), 0) ?? 1;
     const market = data?.market_estimates ?? null;
-    const marketLines = market ? [...(market.meat_lines ?? []), ...(market.veg_lines ?? []), ...(market.daily_lines ?? [])] : [];
-    const combinedCost = market ? Number(data?.total_cost || 0) + Number(market.total || 0) : Number(data?.total_cost || 0);
-    const combinedPct = market && data && Number(data.revenue) > 0 ? Number(((combinedCost / Number(data.revenue)) * 100).toFixed(2)) : null;
-    const verdictClass = data ? `dcost__verdict dcost__verdict--${data.verdict.tone}` : 'dcost__verdict';
+    const marketLines = market ? [...(market.veg_lines ?? [])] : [];
+    const fullCost = data ? Number(data.full_cost ?? (Number(data.total_cost || 0) + Number(market?.total || 0))) : 0;
+    const fullPct = data ? Number(data.full_cost_pct ?? (Number(data.revenue) > 0 ? (fullCost / Number(data.revenue)) * 100 : 0)) : 0;
+    const fullVerdict = data?.full_verdict ?? data?.verdict ?? null;
+    const combinedCost = fullCost;
+    const combinedPct = fullPct;
+    const verdictClass = fullVerdict ? `dcost__verdict dcost__verdict--${fullVerdict.tone}` : 'dcost__verdict';
 
     const printOfficial = () => {
         if (!data) { return; }
         const market = data.market_estimates;
-        const combinedCost = Number(data.total_cost || 0) + Number(market?.total || 0);
-        const combinedPct = Number(data.revenue) > 0 ? Number(((combinedCost / Number(data.revenue)) * 100).toFixed(2)) : 0;
+        const combinedCost = Number(data.full_cost ?? (Number(data.total_cost || 0) + Number(market?.total || 0)));
+        const combinedPct = Number(data.full_cost_pct ?? (Number(data.revenue) > 0 ? (combinedCost / Number(data.revenue)) * 100 : 0));
+        const printVerdict = data.full_verdict ?? data.verdict;
         printOfficialSheet({
             title: 'تحليل تكلفة الافطار',
             englishTitle: 'Breakfast Cost Analysis',
@@ -200,9 +204,9 @@ function BreakfastTab({ from, to }: { from: string; to: string }) {
             kpis: [
                 { label: 'إيراد الفطار (كاشير 3)', value: `${money2(data.revenue)} ر.س`, hint: `${intOf(data.revenue_entries)} قيد` },
                 { label: 'تكلفة المكونات (مخزن)', value: `${money2(data.total_cost)} ر.س` },
-                { label: 'مكونات السوق التقديرية', value: market ? `${money2(market.total)} ر.س` : '—', hint: market ? `≈ ${market.cost_pct_of_revenue}% من الإيراد` : '' },
-                { label: 'التكلفة الشاملة', value: `${money2(combinedCost)} ر.س`, hint: `≈ ${combinedPct}% من الإيراد` },
-                { label: 'نسبة التكلفة (مخزن فقط)', value: `${data.cost_pct}%`, hint: data.verdict.text ?? '' },
+                { label: 'الخضار الطازجة (تقديري)', value: market ? `${money2(market.total)} ر.س` : '—', hint: market ? `≈ ${market.cost_pct_of_revenue}% من الإيراد` : '' },
+                { label: 'التكلفة الشاملة', value: `${money2(combinedCost)} ر.س`, hint: `أذونات ${money2(data.total_cost)} + خضار ${money2(market?.total ?? 0)}` },
+                { label: 'نسبة التكلفة (شاملة)', value: `${combinedPct}%`, hint: `${printVerdict?.text ?? ''} — شامل الخضار التقديري` },
             ],
             sections: [
                 {
@@ -226,7 +230,7 @@ function BreakfastTab({ from, to }: { from: string; to: string }) {
                     totalsRow: [{ group: 'الإجمالي', name: '', unit: '', qty: '', cost: `${money2(data.total_cost)} ر.س`, share: '100%' }],
                 },
                 ...(market ? [{
-                    heading: 'مكونات السوق التقديرية (تقديري — سوق / مخزن)',
+                    heading: 'الخضار الطازجة — تقدير السوق (تقديري)',
                     columns: [
                         { key: 'label', header: 'الصنف' },
                         { key: 'qty', header: 'الكمية', align: 'end' as const },
@@ -234,7 +238,7 @@ function BreakfastTab({ from, to }: { from: string; to: string }) {
                         { key: 'unit_price', header: 'سعر الوحدة', align: 'end' as const },
                         { key: 'total', header: 'الإجمالي', align: 'end' as const },
                     ] as OfficialSheetColumn[],
-                    rows: [...(market.meat_lines ?? []), ...(market.veg_lines ?? []), ...(market.daily_lines ?? [])].map((l) => ({
+                    rows: [...(market.veg_lines ?? [])].map((l) => ({
                         label: l.label ?? '',
                         qty: String(l.qty),
                         unit: l.unit ?? '',
@@ -252,7 +256,9 @@ function BreakfastTab({ from, to }: { from: string; to: string }) {
                     rows: [
                         { src: `إيراد الفطار — كاشير 3 (سجل الإيرادات، ${intOf(data.revenue_entries)} قيد)`, val: `${money2(data.revenue)} ر.س` },
                         { src: 'إيراد الفطار — YaraSoft', val: `${money2(data.revenue_ys)} ر.س` },
-                        { src: 'نسبة تكلفة المكونات من الإيراد', val: `${data.cost_pct}%` },
+                        { src: 'التكلفة الشاملة (أذونات + خضار تقديري)', val: `${money2(combinedCost)} ر.س` },
+                        { src: 'نسبة التكلفة من الإيراد (شاملة)', val: `${combinedPct}%` },
+                        { src: 'نسبة التكلفة من المخزن فقط', val: `${data.cost_pct}%` },
                     ],
                 },
             ],
@@ -263,7 +269,7 @@ function BreakfastTab({ from, to }: { from: string; to: string }) {
     return (
         <>
             <div className="dcost__filters">
-                <span className="dcost__hint">إيراد الافطار = كاشير 3 · التكلفة = مكونات الافطار من أذونات المطبخ · مواد فقط · + بنود السوق التقديرية بالأسفل</span>
+                <span className="dcost__hint">إيراد الافطار = كاشير 3 · التكلفة = مكونات الافطار من أذونات المطبخ (مواد فقط — ويشمل لحم 106 والكبدة وزيت دلال) · الخضار وحدها تقديري بسعر السوق</span>
                 <Button variant="secondary" size="sm" onClick={printOfficial} disabled={!data}>🖨 طباعة ورقة رسمية A4</Button>
             </div>
 
@@ -325,15 +331,16 @@ function BreakfastTab({ from, to }: { from: string; to: string }) {
                         </div>
                         <div className="dcost__versus-op">÷</div>
                         <div className="dcost__versus-cell">
-                            <span className="dcost__versus-label">تكلفة مكونات الافطار</span>
-                            <strong className="dcost__versus-num dcost__versus-num--cost" dir="ltr">{money2(data.total_cost)} <small>ر.س</small></strong>
-                            <span className="dcost__versus-sub">{data.groups.length} مجموعات · {data.groups.reduce((s, g) => s + g.items.length, 0)} صنف</span>
+                            <span className="dcost__versus-label">التكلفة الشاملة (مخزن + خضار)</span>
+                            <strong className="dcost__versus-num dcost__versus-num--cost" dir="ltr">{money2(fullCost)} <small>ر.س</small></strong>
+                            <span className="dcost__versus-sub">أذونات {money2(data.total_cost)} + سوق {money2(market?.total ?? 0)} · {data.groups.length} مجموعات · {data.groups.reduce((s, g) => s + g.items.length, 0)} صنف</span>
                         </div>
                         <div className="dcost__versus-op">=</div>
                         <div className="dcost__versus-cell dcost__versus-cell--pct">
-                            <span className="dcost__versus-label">نسبة التكلفة</span>
-                            <strong className="dcost__versus-num dcost__versus-num--pct" dir="ltr">{data.cost_pct}%</strong>
-                            <span className={verdictClass}>{data.verdict.text}</span>
+                            <span className="dcost__versus-label">نسبة التكلفة (شاملة)</span>
+                            <strong className="dcost__versus-num dcost__versus-num--pct" dir="ltr">{fullPct}%</strong>
+                            <span className={verdictClass}>{fullVerdict?.text ?? ''}</span>
+                            <span className="dcost__versus-sub">شاملة الخضار التقديري (المخزن فقط {data.cost_pct}%)</span>
                         </div>
                     </div>
 
@@ -361,7 +368,7 @@ function BreakfastTab({ from, to }: { from: string; to: string }) {
 
                     {market ? (
                         <>
-                            <h3 className="dcost__h3">مكونات السوق التقديرية <span className="dcost__verdict dcost__verdict--warning" style={{ marginInlineStart: '0.5rem' }}>تقديري — سعر السوق / المخزن</span></h3>
+                            <h3 className="dcost__h3">الخضار الطازجة — تقدير السوق <span className="dcost__verdict dcost__verdict--warning" style={{ marginInlineStart: '0.5rem' }}>تقديري — سعر السوق</span></h3>
                             <div className="dcost__groups">
                                 <div className="dcost__group">
                                     <div className="dcost__group-head">

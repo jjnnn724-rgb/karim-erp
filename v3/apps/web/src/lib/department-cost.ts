@@ -139,6 +139,9 @@ export const breakfastCostSchema = z
         total_cost: num,
         cost_pct: num,
         verdict: z.object({ tone: text, text: text }).passthrough(),
+        full_cost: num.nullable().optional(),
+        full_cost_pct: num.nullable().optional(),
+        full_verdict: z.object({ tone: text, text: text }).passthrough().nullable().optional(),
         groups: z.array(basketGroupSchema),
         top_items: z.array(z.object({
             item_id: text,
