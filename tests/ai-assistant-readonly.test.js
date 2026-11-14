@@ -66,7 +66,8 @@ describe('المساعد — قراءة فقط', () => {
         const posts = [...src.matchAll(/router\.post\('([^']+)'/g)].map((m) => m[1]);
         // المسموح: السؤال (حقائق فورية)، وتحليلٌ أعمق (اختيار المالك)،
         // وإنشاء مسوّدة، وتطبيقها/رفضها (يمرّ ببوابة النظام بصلاحية المالك)
-        expect(posts.sort()).toEqual(['/ask', '/ask/deep', '/drafts', '/drafts/:id/apply', '/drafts/:id/reject']);
+        // /analytics/explain: تحليلٌ حتمي للقراءة فقط (بلا كتابة) — يُضاف للمسوّح القرائي
+        expect(posts.sort()).toEqual(['/analytics/explain', '/ask', '/ask/deep', '/drafts', '/drafts/:id/apply', '/drafts/:id/reject']);
         const puts = [...src.matchAll(/router\.(put|delete|patch)\(/g)];
         expect(puts).toEqual([]);
         // ولا كتابة في القاعدة من المساعد نفسه

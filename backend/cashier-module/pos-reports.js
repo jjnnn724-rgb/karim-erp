@@ -125,30 +125,48 @@ async function executiveReport({ from, to, departmentId }) {
         return r.rows[0] || { invoices: 0, revenue: '0.00', gross: '0.00', vat: '0.00', discount: '0.00', cash: '0.00', card: '0.00', other: '0.00' };
     };
 
-    const [cur, prev, daily, prevDaily, topRows] = await Promise.all([
-        sum(from, to, cashierNos),
-        sum(prevFrom, prevTo, cashierNos),
-        pool.query(`SELECT (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date AS day,
+    const withFilter = Boolean(cashierNos && cashierNos.length);
+    const dayBase = `SELECT (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date AS day,
                            count(*)::int AS invoices,
                            round(sum(o.total)::numeric, 2) AS revenue
                       FROM ys_mirror_orders o
-                     WHERE (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date${deptCashierFilter}
-                     GROUP BY 1 ORDER BY 1`, deptParams),
-        pool.query(`SELECT (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date AS day,
+                     WHERE (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date
+                  GROUP BY 1 ORDER BY 1`;
+    const dayWith = `SELECT (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date AS day,
                            count(*)::int AS invoices,
                            round(sum(o.total)::numeric, 2) AS revenue
                       FROM ys_mirror_orders o
-                     WHERE (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date${deptCashierFilter}
-                     GROUP BY 1 ORDER BY 1`, cashierNos ? [prevFrom, prevTo, cashierNos] : [prevFrom, prevTo]),
-        pool.query(`SELECT l->>'code' AS code, l->>'name' AS name,
+                     WHERE (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date
+                       AND cashier_no = ANY($3)
+                  GROUP BY 1 ORDER BY 1`;
+    const topBase = `SELECT l->>'code' AS code, l->>'name' AS name,
                             round(sum((l->>'qty')::numeric), 3) AS qty,
                             round(sum((l->>'total')::numeric), 2) AS revenue
                        FROM ys_mirror_orders o
                        CROSS JOIN LATERAL jsonb_array_elements(o.lines::jsonb) AS l
-                      WHERE (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date${deptCashierFilter}
+                      WHERE (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date
                       GROUP BY l->>'code', l->>'name'
                       ORDER BY sum((l->>'total')::numeric) DESC
-                      LIMIT 8`, deptParams),
+                      LIMIT 8`;
+    const topWith = `SELECT l->>'code' AS code, l->>'name' AS name,
+                            round(sum((l->>'qty')::numeric), 3) AS qty,
+                            round(sum((l->>'total')::numeric), 2) AS revenue
+                       FROM ys_mirror_orders o
+                       CROSS JOIN LATERAL jsonb_array_elements(o.lines::jsonb) AS l
+                      WHERE (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date
+                        AND cashier_no = ANY($3)
+                      GROUP BY l->>'code', l->>'name'
+                      ORDER BY sum((l->>'total')::numeric) DESC
+                      LIMIT 8`;
+    const daySql = withFilter ? dayWith : dayBase;
+    const topSql = withFilter ? topWith : topBase;
+
+    const [cur, prev, daily, prevDaily, topRows] = await Promise.all([
+        sum(from, to, cashierNos),
+        sum(prevFrom, prevTo, cashierNos),
+        pool.query(daySql, deptParams),
+        pool.query(daySql, cashierNos && cashierNos.length ? [prevFrom, prevTo, cashierNos] : [prevFrom, prevTo]),
+        pool.query(topSql, deptParams),
     ]);
 
     const byDeptRows = await pool.query(`SELECT p.id, p.name_ar, p.legacy_dept_code
@@ -323,14 +341,15 @@ async function departmentReport({ from, to, departmentId }) {
 // 2) تقرير الصنف
 // ═══════════════════════════════════════════════════════════════════════════
 async function productReport({ from, to, productCode, productName }) {
+    const hasCode = Boolean(productCode);
+    const hasName = Boolean(productName);
     const params = [from, to];
-    const filters = [];
-    if (productCode) { params.push(productCode); filters.push(`lower(l->>'code') = lower($${params.length})`); }
-    if (productName) { params.push(productName); filters.push(`lower(l->>'name') LIKE lower($${params.length})`); }
-    const where = filters.length ? `AND ${filters.join(' AND ')}` : '';
+    if (hasCode) { params.push(productCode); }
+    if (hasName) { params.push(`%${productName}%`); }
 
-    const rows = await pool.query(`
-        SELECT l->>'code' AS code, l->>'name' AS name,
+    // استعلامات ثابتة لكل تركيبة فلاتر — بلا تركيب نصي
+    const rowsSql = hasCode && hasName
+        ? `SELECT l->>'code' AS code, l->>'name' AS name,
                round(sum((l->>'qty')::numeric), 3) AS qty,
                round(sum((l->>'total')::numeric), 2) AS revenue,
                round(sum((l->>'vat')::numeric), 2) AS vat,
@@ -339,21 +358,92 @@ async function productReport({ from, to, productCode, productName }) {
                count(*)::int AS lines
           FROM ys_mirror_orders o
           CROSS JOIN LATERAL jsonb_array_elements(o.lines::jsonb) AS l
-         WHERE (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date
-           ${where}
-         GROUP BY l->>'code', l->>'name'
-         ORDER BY sum((l->>'total')::numeric) DESC
-         LIMIT 500`, params);
+          WHERE (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date
+            AND lower(l->>'code') = lower($3) AND lower(l->>'name') LIKE lower($4)
+          GROUP BY l->>'code', l->>'name'
+          ORDER BY sum((l->>'total')::numeric) DESC
+          LIMIT 500`
+        : hasCode
+            ? `SELECT l->>'code' AS code, l->>'name' AS name,
+                   round(sum((l->>'qty')::numeric), 3) AS qty,
+                   round(sum((l->>'total')::numeric), 2) AS revenue,
+                   round(sum((l->>'vat')::numeric), 2) AS vat,
+                   round(sum((l->>'discount')::numeric), 2) AS discount,
+                   count(DISTINCT o.doc_no)::int AS invoices,
+                   count(*)::int AS lines
+              FROM ys_mirror_orders o
+              CROSS JOIN LATERAL jsonb_array_elements(o.lines::jsonb) AS l
+              WHERE (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date
+                AND lower(l->>'code') = lower($3)
+              GROUP BY l->>'code', l->>'name'
+              ORDER BY sum((l->>'total')::numeric) DESC
+              LIMIT 500`
+            : hasName
+                ? `SELECT l->>'code' AS code, l->>'name' AS name,
+                       round(sum((l->>'qty')::numeric), 3) AS qty,
+                       round(sum((l->>'total')::numeric), 2) AS revenue,
+                       round(sum((l->>'vat')::numeric), 2) AS vat,
+                       round(sum((l->>'discount')::numeric), 2) AS discount,
+                       count(DISTINCT o.doc_no)::int AS invoices,
+                       count(*)::int AS lines
+                  FROM ys_mirror_orders o
+                  CROSS JOIN LATERAL jsonb_array_elements(o.lines::jsonb) AS l
+                  WHERE (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date
+                    AND lower(l->>'name') LIKE lower($3)
+                  GROUP BY l->>'code', l->>'name'
+                  ORDER BY sum((l->>'total')::numeric) DESC
+                  LIMIT 500`
+                : `SELECT l->>'code' AS code, l->>'name' AS name,
+                       round(sum((l->>'qty')::numeric), 3) AS qty,
+                       round(sum((l->>'total')::numeric), 2) AS revenue,
+                       round(sum((l->>'vat')::numeric), 2) AS vat,
+                       round(sum((l->>'discount')::numeric), 2) AS discount,
+                       count(DISTINCT o.doc_no)::int AS invoices,
+                       count(*)::int AS lines
+                  FROM ys_mirror_orders o
+                  CROSS JOIN LATERAL jsonb_array_elements(o.lines::jsonb) AS l
+                  WHERE (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date
+                  GROUP BY l->>'code', l->>'name'
+                  ORDER BY sum((l->>'total')::numeric) DESC
+                  LIMIT 500`;
 
-    const daily = await pool.query(`
-        SELECT (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date AS day,
+    const dailySql = hasCode && hasName
+        ? `SELECT (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date AS day,
                round(sum((l->>'total')::numeric), 2) AS revenue,
                round(sum((l->>'qty')::numeric), 3) AS qty
           FROM ys_mirror_orders o
           CROSS JOIN LATERAL jsonb_array_elements(o.lines::jsonb) AS l
-         WHERE (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date
-           ${where}
-         GROUP BY 1 ORDER BY 1`, params);
+          WHERE (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date
+            AND lower(l->>'code') = lower($3) AND lower(l->>'name') LIKE lower($4)
+          GROUP BY 1 ORDER BY 1`
+        : hasCode
+            ? `SELECT (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date AS day,
+                   round(sum((l->>'total')::numeric), 2) AS revenue,
+                   round(sum((l->>'qty')::numeric), 3) AS qty
+              FROM ys_mirror_orders o
+              CROSS JOIN LATERAL jsonb_array_elements(o.lines::jsonb) AS l
+              WHERE (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date
+                AND lower(l->>'code') = lower($3)
+              GROUP BY 1 ORDER BY 1`
+            : hasName
+                ? `SELECT (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date AS day,
+                       round(sum((l->>'total')::numeric), 2) AS revenue,
+                       round(sum((l->>'qty')::numeric), 3) AS qty
+                  FROM ys_mirror_orders o
+                  CROSS JOIN LATERAL jsonb_array_elements(o.lines::jsonb) AS l
+                  WHERE (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date
+                    AND lower(l->>'name') LIKE lower($3)
+                  GROUP BY 1 ORDER BY 1`
+                : `SELECT (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date AS day,
+                       round(sum((l->>'total')::numeric), 2) AS revenue,
+                       round(sum((l->>'qty')::numeric), 3) AS qty
+                  FROM ys_mirror_orders o
+                  CROSS JOIN LATERAL jsonb_array_elements(o.lines::jsonb) AS l
+                  WHERE (o.doc_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date
+                  GROUP BY 1 ORDER BY 1`;
+
+    const rows = await pool.query(rowsSql, params);
+    const daily = await pool.query(dailySql, params);
 
     const list = rows.rows.map((r) => ({
         code: r.code,
@@ -383,26 +473,54 @@ async function productReport({ from, to, productCode, productName }) {
     };
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// 3) تقرير حركة المخزن
-// ═══════════════════════════════════════════════════════════════════════════
+// 3) تقرير المخزن
 async function inventoryReport({ from, to, itemId, search }) {
+    const hasItem = Boolean(itemId);
+    const hasSearch = Boolean(search);
     const params = [from, to];
-    const filters = [];
-    if (itemId) { params.push(itemId); filters.push(`l.inventory_id::text = $${params.length}`); }
-    if (search) { params.push(search); filters.push(`(i.name LIKE $${params.length} OR i.category LIKE $${params.length})`); }
-    const where = filters.length ? `AND ${filters.join(' AND ')}` : '';
+    if (hasItem) { params.push(itemId); }
+    if (hasSearch) { params.push(`%${search}%`); }
 
-    const rows = await pool.query(`
-        SELECT l.id, l.business_date, l.transaction_type, l.reference_type, l.reason,
+    const rowsSql = hasItem && hasSearch
+        ? `SELECT l.id, l.business_date, l.transaction_type, l.reference_type, l.reason,
                l.quantity_delta, l.unit, l.unit_cost, l.total_cost,
                i.id AS item_id, i.name AS item_name, i.category AS item_category, i.unit AS item_unit
           FROM inventory_ledger l
           LEFT JOIN inventory i ON i.id = l.inventory_id
-         WHERE (l.business_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date
-           ${where}
-         ORDER BY l.business_date DESC, l.id DESC
-         LIMIT 500`, params);
+          WHERE (l.business_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date
+            AND l.inventory_id::text = $3 AND (i.name LIKE $4 OR i.category LIKE $4)
+          ORDER BY l.business_date DESC, l.id DESC
+          LIMIT 500`
+        : hasItem
+            ? `SELECT l.id, l.business_date, l.transaction_type, l.reference_type, l.reason,
+                   l.quantity_delta, l.unit, l.unit_cost, l.total_cost,
+                   i.id AS item_id, i.name AS item_name, i.category AS item_category, i.unit AS item_unit
+              FROM inventory_ledger l
+              LEFT JOIN inventory i ON i.id = l.inventory_id
+              WHERE (l.business_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date
+                AND l.inventory_id::text = $3
+              ORDER BY l.business_date DESC, l.id DESC
+              LIMIT 500`
+            : hasSearch
+                ? `SELECT l.id, l.business_date, l.transaction_type, l.reference_type, l.reason,
+                       l.quantity_delta, l.unit, l.unit_cost, l.total_cost,
+                       i.id AS item_id, i.name AS item_name, i.category AS item_category, i.unit AS item_unit
+                  FROM inventory_ledger l
+                  LEFT JOIN inventory i ON i.id = l.inventory_id
+                  WHERE (l.business_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date
+                    AND (i.name LIKE $3 OR i.category LIKE $3)
+                  ORDER BY l.business_date DESC, l.id DESC
+                  LIMIT 500`
+                : `SELECT l.id, l.business_date, l.transaction_type, l.reference_type, l.reason,
+                       l.quantity_delta, l.unit, l.unit_cost, l.total_cost,
+                       i.id AS item_id, i.name AS item_name, i.category AS item_category, i.unit AS item_unit
+                  FROM inventory_ledger l
+                  LEFT JOIN inventory i ON i.id = l.inventory_id
+                  WHERE (l.business_date AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date
+                  ORDER BY l.business_date DESC, l.id DESC
+                  LIMIT 500`;
+
+    const rows = await pool.query(rowsSql, params);
 
     const list = rows.rows.map((r) => ({
         id: r.id,
@@ -438,8 +556,6 @@ async function inventoryReport({ from, to, itemId, search }) {
     };
 }
 
-// ═══════════════════════════════════════════════════════════════════════════
-// المسارات
 // ═══════════════════════════════════════════════════════════════════════════
 router.get('/reports/executive', jwtAuth, requireReportRole(...REPORT_ROLES), async (req, res) => {
     try {
