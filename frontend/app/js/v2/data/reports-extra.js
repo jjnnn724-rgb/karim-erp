@@ -21,15 +21,15 @@
  * التي لا تشملها STOCK_TYPES في finance-repo (تُركت هناك لعقدها).
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.321';
-import { fetchRevenues, fetchExpenses, fetchDepartments, calcDeptStats, fetchEntityNewest, WALK_ALL_PAGES } from './finance-repo.js?v=4.9.321';
-import { fetchDispatches } from './dispatch-repo.js?v=4.9.321';
-import { fetchKitchenReturns } from './warehouse-repo.js?v=4.9.321';
-import { fetchInventory } from './inventory-repo.js?v=4.9.321';
-import { fetchRecipes } from './recipes-repo.js?v=4.9.321';
-import { fetchEmployees } from './employees-repo.js?v=4.9.321';
-import { fetchLeaveWorkflow } from './leaves-repo.js?v=4.9.321';
-import { fetchAttendanceRange } from './attendance-repo.js?v=4.9.321';
+import { apiFetch } from '../../core/api.js?v=4.9.323';
+import { fetchRevenues, fetchExpenses, fetchDepartments, calcDeptStats, fetchEntityNewest, WALK_ALL_PAGES } from './finance-repo.js?v=4.9.323';
+import { fetchDispatches } from './dispatch-repo.js?v=4.9.323';
+import { fetchKitchenReturns } from './warehouse-repo.js?v=4.9.323';
+import { fetchInventory } from './inventory-repo.js?v=4.9.323';
+import { fetchRecipes } from './recipes-repo.js?v=4.9.323';
+import { fetchEmployees } from './employees-repo.js?v=4.9.323';
+import { fetchLeaveWorkflow } from './leaves-repo.js?v=4.9.323';
+import { fetchAttendanceRange } from './attendance-repo.js?v=4.9.323';
 
 export const EXTRA_REPORT_TYPES = [
     'general', 'department', 'kitchen', 'returns', 'warehouse', 'hr',

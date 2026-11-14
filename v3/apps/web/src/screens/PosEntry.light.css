@@ -386,6 +386,39 @@
 }
 
 /* ─── الأسطح الداكنة المتبقية من الثيم الليلي — Light Enterprise ─── */
+/* ─── شريط الفئات الدائم (تحت الـ toolbar) ─── */
+.pos-entry--light .pos-categories {
+    flex: 0 0 auto;
+    padding: 0.35rem 0.6rem 0.45rem;
+    border-block-end: 1px solid #F1F4F6;
+    background: #FDFDFD;
+    scrollbar-width: thin;
+    scrollbar-color: #E5E9EE transparent;
+}
+.pos-entry--light .pos-categories .pos-category {
+    background: #F1F4F6;
+    border-color: #E5E9EE;
+    color: #687586;
+}
+.pos-entry--light .pos-categories .pos-category:hover:not(.is-active) {
+    background: #EAF6EF;
+    border-color: #CBE0D5;
+    color: #117247;
+}
+.pos-entry--light .pos-categories .pos-category.is-active {
+    background: #168653;
+    border-color: #168653;
+    color: #FFFFFF;
+}
+.pos-entry--light .pos-categories .pos-category__count {
+    background: rgb(22 134 83 / 12%);
+    color: #117247;
+}
+.pos-entry--light .pos-categories .pos-category.is-active .pos-category__count {
+    background: rgb(255 255 255 / 25%);
+    color: #FFFFFF;
+}
+
 .pos-entry--light .pos-cart__empty,
 .pos-entry--light .pos-cart__empty-icon {
     background: #F7F8FA;

@@ -171,7 +171,9 @@ const ProductCard = memo(function ProductCard({
                         onToggleFavorite(item);
                     }}
                 >
-                    {pinned ? '★' : '☆'}
+                    <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill={pinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                        <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" />
+                    </svg>
                 </button>
             ) : null}
             {canEditProductPrice ? (
@@ -410,8 +412,8 @@ function PosCatalogView({
                     className="pos-tools-toggle"
                     aria-expanded={toolsOpen}
                     aria-controls="pos-tools-panel"
-                    aria-label="الفئات والمفضلة والأكثر مبيعًا"
-                    title="الفئات والمفضلة والأكثر مبيعًا"
+                    aria-label="الأصناف المفضلة والأكثر مبيعًا"
+                    title="الأصناف المفضلة والأكثر مبيعًا"
                     onClick={() => {
                         setToolsOpen((open) => !open);
                     }}
@@ -456,42 +458,6 @@ function PosCatalogView({
                                 ×
                             </button>
                         </header>
-
-                        {categories.length ? (
-                            <div className="pos-tools-group" role="group" aria-label="الفئات">
-                                <span className="pos-tools-group__label">الفئات</span>
-                                <div className="pos-tools-chips">
-                                    <button
-                                        type="button"
-                                        className={`pos-category${selectedCategory ? '' : ' is-active'}`}
-                                        aria-pressed={!selectedCategory}
-                                        onClick={() => {
-                                            onCategory('');
-                                            setToolsOpen(false);
-                                        }}
-                                    >
-                                        الكل
-                                    </button>
-                                    {categories.map((category) => (
-                                        <button
-                                            key={category.name}
-                                            type="button"
-                                            className={`pos-category${selectedCategory === category.name ? ' is-active' : ''}`}
-                                            aria-pressed={selectedCategory === category.name}
-                                            onClick={() => {
-                                                onCategory(category.name);
-                                                setToolsOpen(false);
-                                            }}
-                                        >
-                                            {category.name}
-                                            <span className="pos-category__count" aria-hidden="true">
-                                                {intOf(category.count)}
-                                            </span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        ) : null}
 
                         {favoriteItems.length ? (
                             <div className="pos-tools-group" role="group" aria-label="الأصناف المفضلة">
@@ -598,6 +564,36 @@ function PosCatalogView({
                 />
             </div>
 
+            {categories.length && !buffet ? (
+                <div className="pos-categories" role="group" aria-label="الفئات">
+                    <button
+                        type="button"
+                        className={`pos-category${selectedCategory ? '' : ' is-active'}`}
+                        aria-pressed={!selectedCategory}
+                        onClick={() => onCategory('')}
+                    >
+                        الكل
+                        <span className="pos-category__count" aria-hidden="true">
+                            {intOf(items.length)}
+                        </span>
+                    </button>
+                    {categories.map((category) => (
+                        <button
+                            key={category.name}
+                            type="button"
+                            className={`pos-category${selectedCategory === category.name ? ' is-active' : ''}`}
+                            aria-pressed={selectedCategory === category.name}
+                            onClick={() => onCategory(category.name)}
+                        >
+                            {category.name}
+                            <span className="pos-category__count" aria-hidden="true">
+                                {intOf(category.count)}
+                            </span>
+                        </button>
+                    ))}
+                </div>
+            ) : null}
+
             <div className="erp-card__body pos-catalog__body">
                 {buffet ? <BuffetLiveStrip live={buffetLive} /> : null}
 
@@ -630,18 +626,16 @@ function PosCatalogView({
                     />
                 ) : null}
 
-                <section className="pos-held" aria-labelledby="pos-held-title">
-                    <h3 id="pos-held-title" className="pos-held__title">
-                        الطلبات المعلقة <Badge variant="info">{heldOrders.length}</Badge>
-                    </h3>
-                    {heldError ? (
-                        <p className="text-body-sm text-danger" role="alert">
-                            {heldError}
-                        </p>
-                    ) : null}
-                    {heldOrders.length === 0 ? (
-                        <p className="text-body-sm text-muted">لا توجد طلبات معلقة.</p>
-                    ) : (
+                {heldOrders.length > 0 || heldError ? (
+                    <section className="pos-held" aria-labelledby="pos-held-title">
+                        <h3 id="pos-held-title" className="pos-held__title">
+                            الطلبات المعلقة <Badge variant="info">{heldOrders.length}</Badge>
+                        </h3>
+                        {heldError ? (
+                            <p className="text-body-sm text-danger" role="alert">
+                                {heldError}
+                            </p>
+                        ) : null}
                         <ul className="pos-held__list">
                             {heldOrders.map((order) => (
                                 <li key={order.id} className="pos-held__row">
@@ -676,8 +670,8 @@ function PosCatalogView({
                                 </li>
                             ))}
                         </ul>
-                    )}
-                </section>
+                    </section>
+                ) : null}
             </div>
             {!buffet ? (
                 <CatalogPriceEdit

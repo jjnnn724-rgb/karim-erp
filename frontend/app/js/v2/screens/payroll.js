@@ -7,21 +7,21 @@
  * والجمل — والكتابة لأدوار admin/manager/hr (:779)، والخادم يعيد الفحص.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.321';
-import { fetchPayrollRuns, payrollRunToRow } from '../data/hr-registers-repo.js?v=4.9.321';
-import { fetchDepartments as fetchHrDepartments, arSearchKey } from '../data/employees-repo.js?v=4.9.321';
-import { formatMoney, formatInt, fetchCurrency } from '../data/reports-repo.js?v=4.9.321';
-import { openInAppReport } from '../report-viewer.js?v=4.9.321';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.323';
+import { fetchPayrollRuns, payrollRunToRow } from '../data/hr-registers-repo.js?v=4.9.323';
+import { fetchDepartments as fetchHrDepartments, arSearchKey } from '../data/employees-repo.js?v=4.9.323';
+import { formatMoney, formatInt, fetchCurrency } from '../data/reports-repo.js?v=4.9.323';
+import { openInAppReport } from '../report-viewer.js?v=4.9.323';
 import {
     PAYROLL_WRITE_ROLES, fetchPayrollSheet, generatePayrollRun,
     fetchDeductionsPreview, applyDeductions,
     advancesApi, adjustmentsApi, contractsApi, evaluationsApi,
     fetchSuiteLists, validateAdvance, validateAdjustment,
     validateContract, validateEvaluation,
-} from '../data/payroll-suite.js?v=4.9.321';
-import { canWrite } from '../session.js?v=4.9.321';
-import { ensureXlsx } from '../vendor.js?v=4.9.321';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.321';
+} from '../data/payroll-suite.js?v=4.9.323';
+import { canWrite } from '../session.js?v=4.9.323';
+import { ensureXlsx } from '../vendor.js?v=4.9.323';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.323';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

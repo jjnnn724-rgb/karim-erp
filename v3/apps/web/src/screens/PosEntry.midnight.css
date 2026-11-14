@@ -1938,7 +1938,7 @@
     }
 
     .pos-catalog .pos-categories {
-        flex-basis: 100%;
+        flex: 0 0 auto;
         gap: 0.25rem;
         padding-block-end: 0;
     }
