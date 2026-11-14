@@ -120,7 +120,21 @@ async function pushBriefing(engine, day, tag) {
             if (g && g.text) {exec = '\n' + g.text + '\n' + '─'.repeat(14) + '\n';}
         } catch (e) { logger.warn('[WHATSAPP] executive summary skipped: ' + String(e.message).slice(0, 100)); }
     }
-    const text = `🌙 التقرير الليلي ${b.day}\n` + exec + bodyText;
+    // 🧠 التقرير الذكي «وين الزيادة؟»: نفس مجرى الإحاطة (نفس المستلمين ونفس
+    // الـidempotency). إن تعذّر حسابه، تصل الإحاطة الأساسية كما كانت.
+    let smartBlock = '';
+    try {
+        const analyzer = require('../ai-assistant/analyzer');
+        const { formatSmartReport } = require('../ai-assistant/whatsapp-report');
+        const [wk, mo] = await Promise.all([
+            analyzer.cachedAnalytics({ range: 'week', alertPct: 0 }),
+            analyzer.cachedAnalytics({ range: 'month', alertPct: 0 }),
+        ]);
+        smartBlock = '\n' + formatSmartReport(wk, mo, b.day) + '\n';
+    } catch (e) {
+        logger.warn('[WHATSAPP] smart report skipped: ' + String(e.message).slice(0, 120));
+    }
+    const text = `🌙 التقرير الليلي ${b.day}\n` + exec + bodyText + smartBlock;
     void cfg;
     const targets = await managerTargets();
     let queued = 0;
