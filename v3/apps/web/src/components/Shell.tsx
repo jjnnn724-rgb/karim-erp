@@ -1,6 +1,8 @@
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useQuery } from '@tanstack/react-query';
 import { logout, useAuthState } from '../lib/auth';
+import { fetchRadar } from '../lib/ai-assistant';
 import { useHiddenNavKeys } from '../lib/hidden-nav';
 import { useAllowedMenus } from '../lib/my-menus';
 import {
@@ -157,6 +159,16 @@ function ShellLayout() {
     const currentGroup = groupForPath(currentPath);
     // AccountsTree exposes only fetchChart; never infer access for other screens.
     const chartReadOnly = currentPath.replace(/\/+$/, '') === '/accounts';
+    const isAdmin = auth.user?.role === 'admin';
+    const radarQuery = useQuery({
+        queryKey: ['ai-radar'],
+        queryFn: ({ signal }) => fetchRadar(signal),
+        staleTime: 60_000,
+        refetchInterval: 120_000,
+        retry: 0,
+        enabled: isAdmin,
+    });
+    const radarCount = (radarQuery.data?.critical ?? 0) + (radarQuery.data?.high ?? 0);
 
     useDocumentMeta(currentTitle);
 
@@ -582,6 +594,12 @@ function ShellLayout() {
                                 ) : null}
                             </div>
                         </div>
+                        {isAdmin ? (
+                            <Link to="/ai-assistant" title="المساعد الذكي — صاحي دايمًا" className="ai-fab" aria-label="المساعد الذكي">
+                                <ShellIcon name="spark" />
+                                {radarCount > 0 ? <span className="ai-fab__badge" data-level={radarQuery.data?.critical ? 'critical' : 'high'}>{radarCount}</span> : null}
+                            </Link>
+                        ) : null}
                         <Link to="/pos-entry" title="فتح نقطة البيع داخل النظام" className="erp-shell__command-trigger erp-shell__pos-link">
                             <ShellIcon name="monitor" />
                             <span>الكاشير</span>

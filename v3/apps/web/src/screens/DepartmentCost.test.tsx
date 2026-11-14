@@ -91,7 +91,9 @@ describe('وضع القسم', () => {
         await waitFor(() => {
             expect(screen.getByText('162,878.09')).toBeTruthy();
         });
-        screen.getAllByRole('tab')[1].click();
+        const departmentTab = screen.getAllByRole('tab')[1];
+        expect(departmentTab).toBeTruthy();
+        departmentTab!.click();
         await waitFor(() => {
             expect(calls.some((c) => c.includes('/api/pos/reports/department-issues'))).toBe(true);
         });

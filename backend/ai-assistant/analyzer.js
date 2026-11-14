@@ -36,9 +36,30 @@ function addDays(iso, delta) {
 }
 
 /** الفترتان: الحالية والسابقة — نفس الطول، أيام كاملة. */
-function periods(range) {
+function periods(range, custom) {
     const today = riyadhToday();
     const end = addDays(today, -1);   // آخر يوم كامل
+    if (range === 'custom' && custom && /^\d{4}-\d{2}-\d{2}$/.test(String(custom.from || '')) && /^\d{4}-\d{2}-\d{2}$/.test(String(custom.to || ''))) {
+        const from = String(custom.from);
+        const to = String(custom.to);
+        if (from > to) {
+            return {
+                current: { from: to, to: from },
+                previous: { from: addDays(to, -(Math.round((Date.parse(from + 'T00:00:00Z') - Date.parse(to + 'T00:00:00Z')) / 86400000))), to: addDays(to, -1) },
+                days: Math.max(1, Math.round((Date.parse(from + 'T00:00:00Z') - Date.parse(to + 'T00:00:00Z')) / 86400000) + 1),
+                label: 'فترة مخصصة',
+            };
+        }
+        const days = Math.max(1, Math.round((Date.parse(to + 'T00:00:00Z') - Date.parse(from + 'T00:00:00Z')) / 86400000) + 1);
+        const prevTo = addDays(from, -1);
+        const prevFrom = addDays(prevTo, -(days - 1));
+        return {
+            current: { from, to },
+            previous: { from: prevFrom, to: prevTo },
+            days,
+            label: 'فترة مخصصة',
+        };
+    }
     if (range === 'week') {
         return {
             current: { from: addDays(end, -6), to: end },
@@ -520,11 +541,11 @@ function buildAlerts({ analysis, alertPct, minCategory = 500 }) {
  * @param {any} [dbPool]
  * @param {{range?: 'week'|'month', alertPct?: number}} [opts]
  */
-async function buildAnalytics(dbPool, { range = 'week', alertPct = 0 } = {}) {
+async function buildAnalytics(dbPool, { range = 'week', alertPct = 0, from, to } = {}) {
     const p = dbPool || pool;
-    const safeRange = range === 'month' ? 'month' : 'week';
+    const safeRange = range === 'month' || range === 'custom' ? range : 'week';
     const safeAlert = Math.min(50, Math.max(0, num(alertPct)));
-    const { current, previous, days, label } = periods(safeRange);
+    const { current, previous, days, label } = periods(safeRange, { from, to });
 
     const [curSales, prevSales, curDaily, curRev, prevRev,
         curExp, prevExp, curExpDept, prevExpDept,
@@ -875,7 +896,7 @@ let cache = { at: 0, key: null, value: null };
 const CACHE_MS = Number(process.env.ANALYZER_CACHE_MS || 60000);
 
 async function cachedAnalytics(opts) {
-    const key = JSON.stringify(opts);
+    const key = JSON.stringify({ range: opts.range, alertPct: opts.alertPct, from: opts.from || null, to: opts.to || null });
     if (cache.key === key && cache.value && Date.now() - cache.at < CACHE_MS) {return cache.value;}
     const value = await buildAnalytics(undefined, opts);
     cache = { at: Date.now(), key, value };

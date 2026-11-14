@@ -487,6 +487,95 @@
 
 .ai-count--amber { background: #b7791f; }
 
+/* ─── الرادار الحي ─── */
+.ai-radar {
+    display: flex;
+    flex-direction: column;
+    gap: 0.4rem;
+    padding: 0.55rem 0.85rem;
+    border-radius: 14px;
+    background: #fff7ed;
+    border: 1px solid #f3d5b0;
+    border-inline-start: 4px solid #d97706;
+}
+.ai-radar--clear {
+    background: #effaf3;
+    border-color: #bfe6cd;
+    border-inline-start-color: #168653;
+    flex-direction: row;
+    align-items: center;
+    gap: 0.6rem;
+    padding: 0.5rem 0.85rem;
+}
+.ai-radar--clear span:last-child { font-size: 0.78rem; color: #2f5741; font-weight: 600; }
+.ai-radar__head { display: flex; align-items: center; gap: 0.5rem; }
+.ai-radar__dot {
+    inline-size: 0.55rem;
+    block-size: 0.55rem;
+    border-radius: 999px;
+    background: #d97706;
+    animation: ai-radar-blink 1.4s ease-in-out infinite;
+}
+.ai-radar__dot--ok { background: #168653; animation: none; }
+@keyframes ai-radar-blink { 0%, 100% { opacity: 1; transform: scale(1); } 50% { opacity: 0.35; transform: scale(0.8); } }
+.ai-radar__head strong { font-size: 0.82rem; color: #7c4a12; }
+.ai-radar--clear .ai-radar__head strong { color: #0f6d42; }
+.ai-radar__meta { font-size: 0.7rem; color: #a1702a; margin-inline-start: auto; font-variant-numeric: tabular-nums; }
+.ai-radar__list { list-style: none; margin: 0; padding: 0; display: flex; flex-direction: column; gap: 0.3rem; }
+.ai-radar__item {
+    display: flex;
+    gap: 0.55rem;
+    align-items: flex-start;
+    padding: 0.35rem 0.5rem;
+    background: rgb(255 255 255 / 65%);
+    border-radius: 10px;
+    border: 1px solid #f0dfc4;
+}
+.ai-radar__item--critical { border-color: #f2b8b8; background: #fff3f3; }
+.ai-radar__item--high { border-color: #f2d4c0; }
+.ai-radar__area {
+    flex: 0 0 auto;
+    font-size: 0.6rem;
+    font-weight: 800;
+    color: #a1702a;
+    background: #fdf1d7;
+    border-radius: 6px;
+    padding: 0.15rem 0.4rem;
+    margin-block-start: 0.1rem;
+}
+.ai-radar__item--critical .ai-radar__area { background: #fde2e2; color: #a03030; }
+.ai-radar__body { display: flex; flex-direction: column; gap: 0.1rem; min-inline-size: 0; }
+.ai-radar__body strong { font-size: 0.76rem; color: #20292f; line-height: 1.45; }
+.ai-radar__body span { font-size: 0.68rem; color: #5b6773; line-height: 1.45; }
+
+/* ─── الفترة المخصصة ─── */
+.ai-custom-range {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.35rem 0.6rem;
+    background: #eef2f6;
+    border: 1px solid #e3e9ee;
+    border-radius: 12px;
+}
+.ai-threshold__field { display: flex; align-items: center; gap: 0.35rem; font-size: 0.72rem; font-weight: 700; color: #5b6773; }
+.ai-threshold__field input {
+    block-size: 2rem; border: 1px solid #e3e9ee; border-radius: 8px;
+    padding-inline: 0.45rem; background: #fff; font-size: 0.78rem; color: #20292f;
+}
+.ai-threshold__field input:focus { outline: none; border-color: #168653; box-shadow: 0 0 0 3px rgb(22 134 83 / 12%); }
+
+/* ─── البحث الذكي بكلمة ─── */
+.ai-lookup { display: flex; flex-direction: column; gap: 0.5rem; }
+.ai-lookup__form { display: flex; gap: 0.5rem; }
+.ai-lookup__form input {
+    flex: 1; min-inline-size: 0; block-size: 2.5rem;
+    border: 1px solid #e3e9ee; border-radius: 12px;
+    padding-inline: 0.8rem; font-size: 0.9rem; color: #20292f; background: #fff;
+}
+.ai-lookup__form input:focus { outline: none; border-color: #168653; box-shadow: 0 0 0 3px rgb(22 134 83 / 12%); }
+.ai-lookup__kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(145px, 1fr)); gap: 0.6rem; }
+
 /* ─── هيكل تحميل ─── */
 .ai-skeleton { display: grid; grid-template-columns: repeat(6, 1fr); gap: 0.6rem; }
 .ai-skeleton span {

@@ -16,8 +16,10 @@ import { useEffect, useMemo, useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Link } from '@tanstack/react-router';
 import {
-    explainAnalytics, fetchAnalytics, type AnalyticsRange, type AnalyticsReport,
+    explainAnalytics, fetchAnalytics, fetchLookup, fetchRadar,
+    type AnalyticsRange, type AnalyticsReport, type LookupReport, type RadarReport,
 } from '../lib/ai-assistant';
+import { printOfficialSheet, type OfficialSheetColumn } from '../lib/official-print';
 import { Button } from '../ui';
 import '../styles/ai-assistant.css';
 import { errorMessage } from '../lib/reporting';
@@ -111,11 +113,34 @@ function ExplainPanel({ report }: { report: AnalyticsReport }) {
 export function AiAssistant() {
     const { toast } = useToast();
     const [range, setRange] = useState<AnalyticsRange>('week');
+    const [fromDate, setFromDate] = useState(() => new Date(Date.now() - 29 * 86400000).toISOString().slice(0, 10));
+    const [toDate, setToDate] = useState(() => new Date().toISOString().slice(0, 10));
     const [alertPct, setAlertPct] = useState(0);
+    const [keyword, setKeyword] = useState('شاورما');
+    const [appliedKeyword, setAppliedKeyword] = useState('شاورما');
+
+    const radarQuery = useQuery({
+        queryKey: ['ai-radar'],
+        queryFn: ({ signal }) => fetchRadar(signal),
+        staleTime: 60_000,
+        refetchInterval: 120_000,
+        retry: 0,
+    });
+    const radar: RadarReport | undefined = radarQuery.data;
+
+    const lookupQuery = useQuery({
+        queryKey: ['ai-lookup', appliedKeyword, fromDate, toDate],
+        queryFn: ({ signal }) => fetchLookup(appliedKeyword, { from: fromDate, to: toDate }, signal),
+        enabled: appliedKeyword.trim().length >= 2,
+        staleTime: 30_000,
+        retry: 0,
+        placeholderData: (prev) => prev,
+    });
+    const lookup: LookupReport | undefined = lookupQuery.data;
 
     const query = useQuery({
-        queryKey: ['ai-analytics', range, alertPct],
-        queryFn: ({ signal }) => fetchAnalytics(range, alertPct, signal),
+        queryKey: ['ai-analytics', range, alertPct, range === 'custom' ? fromDate : '', range === 'custom' ? toDate : ''],
+        queryFn: ({ signal }) => fetchAnalytics(range, alertPct, signal, range === 'custom' ? fromDate : undefined, range === 'custom' ? toDate : undefined),
         staleTime: 60_000,
         retry: 1,
         placeholderData: (prev) => prev,
@@ -131,55 +156,58 @@ export function AiAssistant() {
 
     const printOfficial = () => {
         if (!report) { return; }
-        const win = window.open('', '_blank', 'width=900,height=1000');
-        if (!win) {
-            toast({ title: 'المتصفح حجب نافذة الطباعة — اسمح بالنوافذ المنبثقة', variant: 'error' });
-            return;
-        }
-        const escape = (v: unknown) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        const metricRows = METRIC_ORDER.map((key) => report.metrics[key]).map((m) =>
-            `<tr><td>${escape(m.label)}</td><td>${escape(money(m.current))} ${escape(m.unit)}</td><td>${escape(money(m.previous))} ${escape(m.unit)}</td><td dir="ltr">${m.deltaPct >= 0 ? '+' : ''}${m.deltaPct.toFixed(1)}%</td></tr>`,
-        ).join('');
-        const alertRows = alerts.slice(0, 12).map((a) =>
-            `<tr><td>${escape(a.area)}</td><td>${escape(a.title)}</td><td>${escape(a.action)}</td></tr>`,
-        ).join('');
-        const reductionRows = reduction.map((t) =>
-            `<tr><td>${escape(t.area)}</td><td>+${escape(money(t.increase))} ر.س (${t.increasePct.toFixed(1)}%)</td><td>${escape(t.note)}</td></tr>`,
-        ).join('');
-        win.document.open();
-        win.document.write(`<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8">
-<title>المساعد الذكي — مقارنة الفترة</title><style>
-  @page{size:A4 portrait;margin:13mm 11mm}
-  body{font-family:'Tajawal','Cairo','Segoe UI',Tahoma,sans-serif;color:#111;margin:0;font-size:11px}
-  .head{display:flex;align-items:center;gap:14px;border-bottom:2.5px double #000;padding-bottom:8px;margin-bottom:10px}
-  .head img{width:56px;height:56px;object-fit:contain}
-  .head h1{font-size:19px;margin:0 0 2px}
-  .head p{margin:0;font-size:11px;color:#444}
-  .meta{display:flex;gap:16px;font-size:10.5px;margin-bottom:10px;color:#333;flex-wrap:wrap}
-  table{width:100%;border-collapse:collapse;margin-bottom:12px}
-  th{border:1px solid #000;background:#eee;padding:5px;text-align:right;font-size:10.5px}
-  td{border:1px solid #999;padding:4px 5px;font-size:10px}
-  thead{display:table-header-group} tr{break-inside:avoid}
-  h2{font-size:13px;margin:14px 0 6px;border-bottom:1.4px solid #000;padding-bottom:3px}
-  .sign{display:flex;justify-content:space-between;margin-top:18px;font-size:10.5px}
-  .sign div{border-top:1px solid #000;padding-top:4px;min-width:130px;text-align:center}
-  .note{font-size:9px;color:#555;border:1px dashed #bbb;border-radius:6px;padding:6px 8px;margin-bottom:10px}
-</style></head><body>
-  <div class="head">
-    <img src="/app/assets/karim-logo.png" alt="شعار المطعم">
-    <div><h1>المساعد الذكي — مقارنة الفترة</h1><p>مطاعم الشرفة العالمي — تحليل حتمي من بيانات النظام الحقيقية</p></div>
-  </div>
-  <div class="meta"><span><strong>الفترة:</strong> ${escape(report.current.from)} → ${escape(report.current.to)} (${report.days} يوم)</span><span><strong>المقارنة:</strong> ${escape(report.previous.from)} → ${escape(report.previous.to)}</span><span><strong>حدّ التنبيه:</strong> ${report.alertPct}%</span><span><strong>الإصدار:</strong> ${escape(new Date().toISOString().slice(0, 10))}</span></div>
-  ${report.fairNotes && report.fairNotes.length ? `<div class="note">ملاحظة منهجية: ${escape(report.fairNotes.join(' · '))}</div>` : ''}
-  <h2>المؤشرات</h2>
-  <table><thead><tr><th>المؤشر</th><th>الحالية</th><th>السابقة</th><th>التغيّر</th></tr></thead><tbody>${metricRows}</tbody></table>
-  ${alertRows ? `<h2>التنبيهات</h2><table><thead><tr><th>المجال</th><th>التنبيه</th><th>الإجراء المقترح</th></tr></thead><tbody>${alertRows}</tbody></table>` : '<p>لا توجد تنبيهات — كل الأرقام ضمن الحدود.</p>'}
-  ${reductionRows ? `<h2>فرص التخفيض</h2><table><thead><tr><th>البند</th><th>الزيادة</th><th>ملاحظة</th></tr></thead><tbody>${reductionRows}</tbody></table>` : ''}
-  <div class="sign"><div>إعداد</div><div>مراجعة</div><div>اعتماد</div></div>
-</body></html>`);
-        win.document.close();
-        win.focus();
-        win.setTimeout(() => win.print(), 350);
+        printOfficialSheet({
+            title: 'المساعد الذكي «وين الزيادة؟»',
+            englishTitle: 'AI Assistant — Where did it increase?',
+            subtitle: 'تقرير حتمي من بيانات النظام',
+            from: report.current.from ?? '',
+            to: report.current.to ?? '',
+            kpis: METRIC_ORDER.map((key) => {
+                const m = report.metrics[key];
+                if (!m) { return null; }
+                return { label: m.label ?? key, value: `${m.unit === 'إذن' ? int(m.current) : money(m.current)} ${m.unit ?? ''}`, hint: m.deltaPct !== undefined ? `${m.deltaPct >= 0 ? '+' : ''}${m.deltaPct.toFixed(1)}% vs الفترة السابقة` : '' };
+            }).filter((k): k is NonNullable<typeof k> => k !== null),
+            sections: [
+                {
+                    heading: 'المؤشرات',
+                    columns: [
+                        { key: 'label', header: 'المؤشر', width: '30%' } as const,
+                        { key: 'current', header: 'الحالية', align: 'end' as const },
+                        { key: 'previous', header: 'السابقة', align: 'end' as const },
+                        { key: 'delta', header: 'التغيّر', align: 'end' as const },
+                    ] as OfficialSheetColumn[],
+                    rows: METRIC_ORDER.map((key) => {
+                        const m = report.metrics[key];
+                        return {
+                            label: m.label ?? key,
+                            current: `${m.unit === 'إذن' ? int(m.current) : money(m.current)} ${m.unit ?? ''}`,
+                            previous: `${m.unit === 'إذن' ? int(m.previous) : money(m.previous)} ${m.unit ?? ''}`,
+                            delta: `${m.deltaPct >= 0 ? '+' : ''}${m.deltaPct.toFixed(1)}%`,
+                        };
+                    }),
+                },
+                ...(alerts.length ? [{
+                    heading: 'التنبيهات',
+                    columns: [
+                        { key: 'area', header: 'المجال', width: '18%' } as const,
+                        { key: 'title', header: 'التنبيه' } as const,
+                        { key: 'action', header: 'الإجراء المقترح', width: '34%' } as const,
+                    ] as OfficialSheetColumn[],
+                    rows: alerts.slice(0, 12).map((a) => ({ area: a.area ?? '', title: a.title ?? '', action: a.action ?? '' })),
+                }] : []),
+                ...(reduction.length ? [{
+                    heading: 'فرص التخفيض',
+                    columns: [
+                        { key: 'area', header: 'البند', width: '30%' } as const,
+                        { key: 'increase', header: 'الزيادة', align: 'end' as const },
+                        { key: 'note', header: 'الملاحظة' } as const,
+                    ] as OfficialSheetColumn[],
+                    rows: reduction.map((t) => ({ area: t.area ?? '', increase: `+${money(t.increase)} ر.س (${t.increasePct.toFixed(1)}%)`, note: t.note ?? '' })),
+                }] : []),
+            ],
+            notes: (report.fairNotes ?? []).filter((n): n is string => typeof n === 'string' && n.length > 0),
+            signatures: [{ role: 'إعداد' }, { role: 'مراجعة' }, { role: 'اعتماد' }],
+        }) || toast({ title: 'المتصفح حجب نافذة الطباعة — اسمح بالنوافذ المنبثقة', variant: 'error' });
     };
 
     return (
@@ -198,10 +226,39 @@ export function AiAssistant() {
                     </Button>
                 </header>
 
+
+                {/* ═══════ الرادار — صاحي دايمًا ═══════ */}
+                {radar && radar.total > 0 ? (
+                    <div className="ai-radar" role="alert" aria-label="تنبيهات الرادار">
+                        <div className="ai-radar__head">
+                            <span className="ai-radar__dot" aria-hidden="true" />
+                            <strong>الرادار الحي</strong>
+                            <span className="ai-radar__meta">فحص كل دقيقتين · {radar.total} تنبيه{radar.critical > 0 ? ` · ${radar.critical} حرج` : ''}{radar.high > 0 ? ` · ${radar.high} مهم` : ''}</span>
+                        </div>
+                        <ul className="ai-radar__list">
+                            {radar.items.slice(0, 4).map((a) => (
+                                <li key={a.id} className={`ai-radar__item ai-radar__item--${a.severity}`}>
+                                    <span className="ai-radar__area">{a.area}</span>
+                                    <div className="ai-radar__body">
+                                        <strong>{a.title}</strong>
+                                        <span>{a.action}</span>
+                                    </div>
+                                </li>
+                            ))}
+                        </ul>
+                    </div>
+                ) : radar && radar.total === 0 ? (
+                    <div className="ai-radar ai-radar--clear" role="status">
+                        <span className="ai-radar__dot ai-radar__dot--ok" aria-hidden="true" />
+                        <strong>الرادار الحي</strong>
+                        <span>لا شيء خارج الحدود — النظام كله سليم.</span>
+                    </div>
+                ) : null}
+
                 {/* ═══════ أدوات التحكم: الفترة وحدّ التنبيه ═══════ */}
                 <div className="ai-controls">
                     <div className="ai-seg" role="tablist" aria-label="الفترة">
-                        {([['week', 'هذا الأسبوع vs الأسبوع الماضي'], ['month', 'هذا الشهر vs الشهر الماضي']] as const).map(([key, label]) => (
+                        {([['week', 'هذا الأسبوع'], ['month', 'هذا الشهر'], ['custom', 'فترة محددة']] as const).map(([key, label]) => (
                             <button
                                 key={key}
                                 type="button"
@@ -214,6 +271,12 @@ export function AiAssistant() {
                             </button>
                         ))}
                     </div>
+                    {range === 'custom' ? (
+                        <div className="ai-custom-range" role="group" aria-label="فترة مخصصة">
+                            <label className="ai-threshold__field">من<input type="date" value={fromDate} onChange={(e) => setFromDate(e.target.value)} /></label>
+                            <label className="ai-threshold__field">إلى<input type="date" value={toDate} onChange={(e) => setToDate(e.target.value)} /></label>
+                        </div>
+                    ) : null}
 
                     <label className="ai-threshold">
                         <span className="ai-threshold__label">حدّ التنبيه: <strong dir="ltr">{alertPct}%</strong> {alertPct === 0 ? '(أي زيادة)' : ''}</span>
@@ -450,6 +513,63 @@ export function AiAssistant() {
                                     </tbody>
                                 </table>
                             </div>
+                        </div>
+
+
+                        {/* ═══════ بحث ذكي بكلمة ═══════ */}
+                        <div className="ai-lookup">
+                            <div className="ai-section-head">
+                                <h3 className="ai-section-head__title">بحث ذكي بكلمة <small>(شاورما · مشويات · أي شيء)</small></h3>
+                                <span className="ai-section-head__hint">مبيعات + صرف + قيمة مخزنية لأي كلمة</span>
+                            </div>
+                            <form className="ai-lookup__form" onSubmit={(e) => { e.preventDefault(); setAppliedKeyword(keyword.trim()); }}>
+                                <input
+                                    type="text"
+                                    value={keyword}
+                                    onChange={(e) => setKeyword(e.target.value)}
+                                    placeholder="اكتب: شاورما أو مشويات أو كبسة…"
+                                    dir="auto"
+                                    aria-label="كلمة البحث"
+                                />
+                                <Button type="submit" variant="primary" size="sm">ابحث</Button>
+                            </form>
+                            {lookupQuery.isPending && !lookup ? <div className="ai-skeleton"><span /><span /><span /></div> : null}
+                            {lookupQuery.isError ? <p className="text-body-sm text-danger" role="alert">{errorMessage(lookupQuery.error)}</p> : null}
+                            {lookup ? (
+                                <>
+                                    <div className="ai-lookup__kpis">
+                                        <div className="ai-kpi"><span className="ai-kpi__label">الإيراد</span><strong className="ai-kpi__value" dir="ltr">{money(lookup.sales.revenue)}<small> ر.س</small></strong><span className="ai-kpi__sub">{lookup.sales.share_of_revenue}% من إجمالي المبيعات</span></div>
+                                        <div className="ai-kpi"><span className="ai-kpi__label">الفواتير</span><strong className="ai-kpi__value" dir="ltr">{int(lookup.sales.invoices)}</strong><span className="ai-kpi__sub">{int(lookup.sales.lines)} صنف · {money(lookup.sales.qty)} قطعة</span></div>
+                                        <div className="ai-kpi"><span className="ai-kpi__label">صرف المخزن</span><strong className="ai-kpi__value" dir="ltr">{money(lookup.issues_cost)}<small> ر.س</small></strong><span className="ai-kpi__sub">{(lookup.issues ?? []).reduce((s, i) => s + i.moves, 0)} حركة</span></div>
+                                        <div className="ai-kpi"><span className="ai-kpi__label">قيمة المخزون المطابق</span><strong className="ai-kpi__value" dir="ltr">{money(lookup.inventory.value)}<small> ر.س</small></strong><span className="ai-kpi__sub">{lookup.inventory.items} صنف</span></div>
+                                    </div>
+                                    <div className="ai-panels">
+                                        <div className="ai-panel">
+                                            <h3 className="ai-panel__title">الأكثر مبيعًا</h3>
+                                            <table className="ai-table">
+                                                <thead><tr><th>الصنف</th><th>الكمية</th><th>الإيراد</th></tr></thead>
+                                                <tbody>
+                                                    {(lookup.sales_breakdown ?? []).map((row) => (
+                                                        <tr key={row.name}><td>{row.name}</td><td className="erp-numeric">{money(row.qty)}</td><td className="erp-numeric">{money(row.revenue)}</td></tr>
+                                                    ))}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                        <div className="ai-panel">
+                                            <h3 className="ai-panel__title">المنصرف من المخزن</h3>
+                                            <table className="ai-table">
+                                                <thead><tr><th>الصنف</th><th>الكمية</th><th>التكلفة</th></tr></thead>
+                                                <tbody>
+                                                    {(lookup.issues ?? []).map((row) => (
+                                                        <tr key={row.item_id}><td>{row.name}</td><td className="erp-numeric">{money(row.qty)} {row.unit}</td><td className="erp-numeric">{money(row.cost)}</td></tr>
+                                                    ))}
+                                                    {(lookup.issues ?? []).length === 0 ? (<tr><td colSpan={3} className="text-body-sm text-muted">لا توجد أصناف مطابقة في الصرف</td></tr>) : null}
+                                                </tbody>
+                                            </table>
+                                        </div>
+                                    </div>
+                                </>
+                            ) : null}
                         </div>
 
                         {/* ═══════ لوحة الذكاء الاصطناعي (اختياري — محلي ومجاني) ═══════ */}

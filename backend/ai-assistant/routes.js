@@ -26,6 +26,12 @@ const { riyadhToday } = require('../riyadh-date');
 /* الأدمن وحده — طلب المالك صراحة: الإدارة العليا فقط (لا مدير ولا محاسب). */
 const ANALYTICS_ROLES = ['admin'];
 
+/** تحقق صارم من تاريخ ISO. */
+function isoStrict(value) {
+    const s = String(value || '').trim();
+    return /^\d{4}-\d{2}-\d{2}$/.test(s) && !Number.isNaN(Date.parse(s + 'T00:00:00Z')) ? s : null;
+}
+
 const router = express.Router();
 
 /* محدّد المساعد: 12 طلبًا لكل مستخدم كل 5 دقائق. */
@@ -126,10 +132,16 @@ router.post('/drafts/:id/reject', jwtAuth, requireRole('admin'), asyncHandler(as
 
 /** تحليلات مقارنة (أسبوع/شهر) — حتمية من القاعدة، بلا نموذج. */
 router.get('/analytics', jwtAuth, requireRole(...ANALYTICS_ROLES), asyncHandler(async (req, res) => {
-    const range = req.query.range === 'month' ? 'month' : 'week';
+    const rangeRaw = String(req.query.range || 'week');
+    const range = rangeRaw === 'month' ? 'month' : rangeRaw === 'custom' ? 'custom' : 'week';
+    const fromParam = isoStrict(req.query.from);
+    const toParam = isoStrict(req.query.to);
     const alertPct = Number(req.query.alertPct ?? 0);
     res.set('Cache-Control', 'no-store');
-    res.json(await analyzer.cachedAnalytics({ range, alertPct: Number.isFinite(alertPct) ? alertPct : 0 }));
+    if (range === 'custom' && (!fromParam || !toParam)) {
+        return res.status(422).json({ error: 'RANGE_REQUIRED', message: 'custom يحتاج from وto بصيغة YYYY-MM-DD' });
+    }
+    res.json(await analyzer.cachedAnalytics({ range, alertPct: Number.isFinite(alertPct) ? alertPct : 0, from: fromParam, to: toParam }));
 }));
 
 /** شرح الصورة بالنموذج المحلي المجاني (اختياري — عند الطلب فقط). */
@@ -140,6 +152,13 @@ router.post('/analytics/explain', jwtAuth, requireRole(...ANALYTICS_ROLES), assi
     const report = await analyzer.cachedAnalytics({ range, alertPct: Number.isFinite(alertPct) ? alertPct : 0 });
     const out = await analyzer.explain(report);
     res.json({ ...out, range: report.range, days: report.days, alertPct: report.alertPct });
+}));
+
+
+/** رادار النظام — كل الفحوصات في ملف واحد (٥ دقائق كاش). */
+router.get('/radar', jwtAuth, requireRole(...ANALYTICS_ROLES), asyncHandler(async (req, res) => {
+    res.set('Cache-Control', 'no-store');
+    res.json(await require('./radar').cachedRadar());
 }));
 
 /** سؤال واحد ⇒ رد واحد. */

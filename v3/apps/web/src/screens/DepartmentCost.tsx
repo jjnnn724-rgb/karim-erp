@@ -1,6 +1,6 @@
 /**
  * DepartmentCost — وضع القسم «كل شيء بالجرام»
- * ═════════════════════════════════════════════════════════════════════════
+ * ══════════════════════════════════════════════════════════════
  * تبويبان:
  *   ١. وضع القسم  : كل ما سُحب من المخزن لقسم ما في فترة — كمية + تكلفة
  *                  + وزن بالجرام للأصناف الموزونة (من الأذونات الفعلية).
@@ -17,8 +17,8 @@ import {
 } from '../lib/department-cost';
 import { Button } from '../ui';
 import '../styles/department-cost.css';
-import { useToast } from '../ui/Toast';
 import { intOf, errorMessage } from '../lib/reporting';
+import { printOfficialSheet, type OfficialSheetColumn } from '../lib/official-print';
 
 const money2 = (v: number | null | undefined) => Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const gramsText = (g: number | null | undefined) => (g === null || g === undefined ? '—' : `${g.toLocaleString('en-US')} ج`);
@@ -33,48 +33,8 @@ function monthStartIso(): string {
     return first < '2026-11-01' ? '2026-11-01' : first;
 }
 
-/* ─────────────── طباعة ورقة رسمية A4 ─────────────── */
-function buildOfficialSheet(opts: { title: string; subtitle: string; from: string; to: string; rows: string; kpiHtml: string }) {
-    const { title, subtitle, from, to, rows, kpiHtml } = opts;
-    const escape = (v: unknown) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-    return `<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8">
-<title>${escape(title)}</title><style>
-  @page{size:A4 portrait;margin:13mm 11mm}
-  body{font-family:'Tajawal','Cairo','Segoe UI',Tahoma,sans-serif;color:#111;margin:0;font-size:11px}
-  .head{display:flex;align-items:center;gap:14px;border-bottom:2.5px double #000;padding-bottom:8px;margin-bottom:10px}
-  .head img{width:56px;height:56px;object-fit:contain}
-  .head h1{font-size:19px;margin:0 0 2px}
-  .head p{margin:0;font-size:11px;color:#444}
-  .meta{display:flex;gap:16px;font-size:10.5px;margin-bottom:10px;color:#333;flex-wrap:wrap}
-  .kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:6px;margin-bottom:12px}
-  .kpi{border:1px solid #bbb;border-radius:8px;padding:6px 8px}
-  .kpi span{font-size:10px;color:#444;display:block}
-  .kpi strong{font-size:14px}
-  table{width:100%;border-collapse:collapse;margin-bottom:12px}
-  th{border:1px solid #000;background:#eee;padding:5px;font-size:10.5px;text-align:right}
-  td{border:1px solid #999;padding:4px 5px;font-size:10px}
-  thead{display:table-header-group} tr{break-inside:avoid}
-  h2{font-size:13px;margin:14px 0 6px;border-bottom:1.4px solid #000;padding-bottom:3px}
-  .sign{display:flex;justify-content:space-between;margin-top:18px;font-size:10.5px}
-  .sign div{border-top:1px solid #000;padding-top:4px;min-width:130px;text-align:center}
-  .note{font-size:9px;color:#555;border:1px dashed #bbb;border-radius:6px;padding:6px 8px;margin-top:6px;line-height:1.6}
-</style></head><body>
-  <div class="head">
-    <img src="/app/assets/karim-logo.png" alt="شعار المطعم">
-    <div><h1>${escape(title)}</h1><p>${escape(subtitle)} — مطاعم الشرفة العالمي</p></div>
-  </div>
-  <div class="meta"><span><strong>الفترة:</strong> ${escape(from)} → ${escape(to)}</span><span><strong>الإصدار:</strong> ${escape(todayIso())}</span><span><strong>النظام:</strong> KARIM ERP</span></div>
-  ${kpiHtml}
-  ${rows}
-  <div class="sign"><div>إعداد</div><div>مراجعة</div><div>اعتماد</div></div>
-</body></html>`;
-}
-
-/* ═════════════════════════════════════════════════════════════════
-   تبويب: وضع القسم
-   ═════════════════════════════════════════════════════════════════ */
+/* ─── تبويب: وضع القسم ─── */
 function DepartmentTab({ from, to }: { from: string; to: string }) {
-    const { toast } = useToast();
     const departmentsQuery = useQuery({
         queryKey: ['issue-departments'],
         queryFn: ({ signal }) => fetchIssueDepartments(signal),
@@ -96,27 +56,40 @@ function DepartmentTab({ from, to }: { from: string; to: string }) {
 
     const printOfficial = () => {
         if (!data) { return; }
-        const escape = (v: unknown) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         const totals = data.totals;
-        const kpis = `<div class="kpis">
-      <div class="kpi"><span>عدد الأصناف</span><strong>${totals.items}</strong></div>
-      <div class="kpi"><span>عدد الحركات</span><strong>${totals.moves}</strong></div>
-      <div class="kpi"><span>التكلفة الإجمالية</span><strong>${money2(totals.cost)} ر.س</strong></div>
-      <div class="kpi"><span>الوزن الكلي (كجم)</span><strong>${(totals.grams / 1000).toLocaleString('en-US', { maximumFractionDigits: 2 })}</strong></div>
-    </div>`;
-        const rows = `<h2>تفاصيل الأصناف المسحوبة من المخزن</h2>
-    <table><thead><tr><th>الصنف</th><th>الوحدة</th><th>الكمية</th><th>الوزن (جرام)</th><th>التكلفة</th><th>النسبة</th></tr></thead><tbody>
-    ${data.items.map((r) => `<tr><td>${escape(r.name)}</td><td>${escape(r.unit)}</td><td>${r.qty}</td><td dir="ltr">${r.grams ?? '—'}</td><td>${money2(r.cost)} ر.س</td><td dir="ltr">${r.share}%</td></tr>`).join('')}
-    </tbody></table>`;
-        const html = buildOfficialSheet({
+        printOfficialSheet({
             title: `وضع القسم — ${data.department}`,
+            englishTitle: 'Department Issues from Warehouse',
             subtitle: 'صرف فعلي من المخزن (أذونات)',
             from: data.from ?? from, to: data.to ?? to,
-            rows, kpiHtml: kpis,
+            kpis: [
+                { label: 'عدد الأصناف', value: intOf(totals.items) },
+                { label: 'عدد الحركات', value: intOf(totals.moves) },
+                { label: 'التكلفة الإجمالية', value: `${money2(totals.cost)} ر.س` },
+                { label: 'الوزن الكلي', value: `${(totals.grams / 1000).toLocaleString('en-US', { maximumFractionDigits: 2 })} كجم` },
+            ],
+            sections: [
+                {
+                    heading: 'تفاصيل الأصناف المسحوبة من المخزن',
+                    columns: [
+                        { key: 'name', header: 'الصنف', width: '28%' },
+                        { key: 'unit', header: 'الوحدة', width: '12%' },
+                        { key: 'qty', header: 'الكمية', align: 'end' },
+                        { key: 'grams', header: 'الوزن (جرام)', align: 'end' },
+                        { key: 'cost', header: 'التكلفة', align: 'end' },
+                        { key: 'share', header: 'النسبة', align: 'end' },
+                    ] as OfficialSheetColumn[],
+                    rows: data.items.map((r) => ({
+                        name: r.name ?? '',
+                        unit: r.unit ?? '',
+                        qty: String(r.qty),
+                        grams: r.grams !== null && r.grams !== undefined ? String(r.grams) : '—',
+                        cost: `${money2(r.cost)} ر.س`,
+                        share: `${r.share}%`,
+                    })),
+                },
+            ],
         });
-        const win = window.open('', '_blank', 'width=900,height=1000');
-        if (!win) { toast({ title: 'المتصفح حجب نافذة الطباعة', variant: 'error' }); return; }
-        win.document.open(); win.document.write(html); win.document.close(); win.focus(); win.setTimeout(() => win.print(), 350);
     };
 
     return (
@@ -179,11 +152,8 @@ function DepartmentTab({ from, to }: { from: string; to: string }) {
     );
 }
 
-/* ═════════════════════════════════════════════════════════════════
-   تبويب: تحليل الفطار
-   ═════════════════════════════════════════════════════════════════ */
+/* ─── تبويب: تحليل الفطار ─── */
 function BreakfastTab({ from, to }: { from: string; to: string }) {
-    const { toast } = useToast();
     const query = useQuery({
         queryKey: ['breakfast-cost', from, to],
         queryFn: ({ signal }) => fetchBreakfastCost({ from, to }, signal),
@@ -197,40 +167,59 @@ function BreakfastTab({ from, to }: { from: string; to: string }) {
 
     const printOfficial = () => {
         if (!data) { return; }
-        const escape = (v: unknown) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-        const kpis = `<div class="kpis">
-      <div class="kpi"><span>إيراد الفطار (كاشير 3)</span><strong>${money2(data.revenue)} ر.س</strong></div>
-      <div class="kpi"><span>تكلفة المكونات</span><strong>${money2(data.total_cost)} ر.س</strong></div>
-      <div class="kpi"><span>نسبة التكلفة</span><strong>${data.cost_pct}%</strong></div>
-      <div class="kpi"><span>عدد الأصناف</span><strong>${data.groups.reduce((s, g) => s + g.items.length, 0)}</strong></div>
-    </div>`;
-        const rows = `<h2>تفاصيل مكونات الافطار (من أذونات المطبخ)</h2>
-    <table><thead><tr><th>المجموعة</th><th>الصنف</th><th>الوحدة</th><th>الكمية</th><th>التكلفة</th><th>النسبة</th></tr></thead><tbody>
-    ${data.groups.map((g) => g.items.map((it, i) => `<tr><td>${i === 0 ? escape(g.group) : ''}</td><td>${escape(it.name)}</td><td>${escape(it.unit)}</td><td>${it.qty}</td><td>${money2(it.cost)} ر.س</td><td></td></tr>`).join('')).join('')}
-    <tr><td colspan="4"><strong>الإجمالي</strong></td><td><strong>${money2(data.total_cost)} ر.س</strong></td><td><strong>100%</strong></td></tr>
-    </tbody></table>
-    <h2>الإيرادات مقابل التكلفة</h2>
-    <table><thead><tr><th>المصدر</th><th>القيمة</th></tr></thead><tbody>
-      <tr><td>إيراد الفطار — كاشير 3 (سجل الإيرادات، ${intOf(data.revenue_entries)} قيد)</td><td>${money2(data.revenue)} ر.س</td></tr>
-      <tr><td>إيراد الفطار — YaraSoft (${intOf(2275)} فاتورة)</td><td>${money2(data.revenue_ys)} ر.س</td></tr>
-      <tr><td><strong>نسبة تكلفة المكونات من الإيراد</strong></td><td><strong>${data.cost_pct}%</strong></td></tr>
-    </tbody></table>
-    <div class="note">${data.notes.map((n) => escape(n)).join('<br>')}</div>`;
-        const html = buildOfficialSheet({
+        printOfficialSheet({
             title: 'تحليل تكلفة الافطار',
-            subtitle: `مقارنة الإيراد بالتكلفة — كاشير 3`,
+            englishTitle: 'Breakfast Cost Analysis',
+            subtitle: 'مقارنة الإيراد بالتكلفة — كاشير 3',
             from: data.from ?? from, to: data.to ?? to,
-            rows, kpiHtml: kpis,
+            kpis: [
+                { label: 'إيراد الفطار (كاشير 3)', value: `${money2(data.revenue)} ر.س`, hint: `${intOf(data.revenue_entries)} قيد` },
+                { label: 'تكلفة المكونات', value: `${money2(data.total_cost)} ر.س` },
+                { label: 'نسبة التكلفة', value: `${data.cost_pct}%`, hint: data.verdict.text ?? '' },
+                { label: 'عدد الأصناف', value: intOf(data.groups.reduce((s, g) => s + g.items.length, 0)) },
+            ],
+            sections: [
+                {
+                    heading: 'تفاصيل مكونات الافطار (من أذونات المطبخ)',
+                    columns: [
+                        { key: 'group', header: 'المجموعة', width: '16%' },
+                        { key: 'name', header: 'الصنف' },
+                        { key: 'unit', header: 'الوحدة', width: '12%' },
+                        { key: 'qty', header: 'الكمية', align: 'end' },
+                        { key: 'cost', header: 'التكلفة', align: 'end' },
+                        { key: 'share', header: 'النسبة', align: 'end' },
+                    ] as OfficialSheetColumn[],
+                    rows: data.groups.flatMap((g) => g.items.map((it) => ({
+                        group: g.group ?? '',
+                        name: it.name ?? '',
+                        unit: it.unit ?? '',
+                        qty: String(it.qty),
+                        cost: `${money2(it.cost)} ر.س`,
+                        share: `${g.share}%`,
+                    }))),
+                    totalsRow: [{ group: 'الإجمالي', name: '', unit: '', qty: '', cost: `${money2(data.total_cost)} ر.س`, share: '100%' }],
+                },
+                {
+                    heading: 'الإيرادات مقابل التكلفة',
+                    columns: [
+                        { key: 'src', header: 'المصدر', width: '60%' },
+                        { key: 'val', header: 'القيمة', align: 'end' },
+                    ] as OfficialSheetColumn[],
+                    rows: [
+                        { src: `إيراد الفطار — كاشير 3 (سجل الإيرادات، ${intOf(data.revenue_entries)} قيد)`, val: `${money2(data.revenue)} ر.س` },
+                        { src: 'إيراد الفطار — YaraSoft', val: `${money2(data.revenue_ys)} ر.س` },
+                        { src: 'نسبة تكلفة المكونات من الإيراد', val: `${data.cost_pct}%` },
+                    ],
+                },
+            ],
+            notes: data.notes ?? [],
         });
-        const win = window.open('', '_blank', 'width=900,height=1000');
-        if (!win) { toast({ title: 'المتصفح حجب نافذة الطباعة', variant: 'error' }); return; }
-        win.document.open(); win.document.write(html); win.document.close(); win.focus(); win.setTimeout(() => win.print(), 350);
     };
 
     return (
         <>
             <div className="dcost__filters">
-                <span className="dcost__hint">إيراد الافطار = كاشير 3 · التكلفة = مكونات الفطار من أذونات المطبخ · مواد فقط</span>
+                <span className="dcost__hint">إيراد الافطار = كاشير 3 · التكلفة = مكونات الافطار من أذونات المطبخ · مواد فقط</span>
                 <Button variant="secondary" size="sm" onClick={printOfficial} disabled={!data}>🖨 طباعة ورقة رسمية A4</Button>
             </div>
 
@@ -241,7 +230,7 @@ function BreakfastTab({ from, to }: { from: string; to: string }) {
                 <>
                     <div className="dcost__versus">
                         <div className="dcost__versus-cell">
-                            <span className="dcost__versus-label">إيراد الافطار (كاشير 3)</span>
+                            <span className="dcost__versus-label">إيراد الفطار (كاشير 3)</span>
                             <strong className="dcost__versus-num" dir="ltr">{money2(data.revenue)} <small>ر.س</small></strong>
                             <span className="dcost__versus-sub">{intOf(data.revenue_entries)} قيد · YaraSoft {money2(data.revenue_ys)} ر.س</span>
                         </div>
@@ -259,7 +248,6 @@ function BreakfastTab({ from, to }: { from: string; to: string }) {
                         </div>
                     </div>
 
-                    {/* المكونات بالترتيب */}
                     <h3 className="dcost__h3">مكونات الافطار (من أذونات المطبخ)</h3>
                     <div className="dcost__groups">
                         {data.groups.map((g) => (
@@ -282,7 +270,6 @@ function BreakfastTab({ from, to }: { from: string; to: string }) {
                         ))}
                     </div>
 
-                    {/* ملاحظات صادقة */}
                     <ul className="dcost__notes">
                         {data.notes.map((note, i) => <li key={i}>{note}</li>)}
                     </ul>
@@ -292,9 +279,7 @@ function BreakfastTab({ from, to }: { from: string; to: string }) {
     );
 }
 
-/* ═════════════════════════════════════════════════════════════════
-   الشاشة الرئيسية
-   ═════════════════════════════════════════════════════════════════ */
+/* ─── الشاشة الرئيسية ─── */
 export function DepartmentCost() {
     const [tab, setTab] = useState<Tab>('breakfast');
     const [from, setFrom] = useState(monthStartIso());

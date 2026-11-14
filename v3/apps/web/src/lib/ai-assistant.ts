@@ -306,15 +306,21 @@ export const explainSchema = z
 
 export type ExplainResult = z.infer<typeof explainSchema>;
 
-export type AnalyticsRange = 'week' | 'month';
+export type AnalyticsRange = 'week' | 'month' | 'custom';
 
 /** التحليل المقارن (حتمي من القاعدة — لا نموذج). */
 export async function fetchAnalytics(
     range: AnalyticsRange,
     alertPct: number,
     signal?: AbortSignal,
+    from?: string,
+    to?: string,
 ): Promise<AnalyticsReport> {
     const qs = new URLSearchParams({ range, alertPct: String(alertPct) });
+    if (range === 'custom' && from && to) {
+        qs.set('from', from);
+        qs.set('to', to);
+    }
     const token = getAccessToken();
     const options = signal ? { signal } : {};
     return fetchJson(analyticsSchema, `/api/ai-assistant/analytics?${qs}`, token, options);
@@ -332,4 +338,90 @@ export async function explainAnalytics(
         body: { range, alertPct },
         ...(signal ? { signal } : {}),
     });
+}
+
+/* ─── رادار النظام — يسأل نفسه كل دقيقة ─── */
+export const radarAlertSchema = z
+    .object({
+        id: text,
+        severity: text,
+        area: text,
+        title: text,
+        detail: text,
+        action: text,
+    })
+    .passthrough();
+
+export const radarSchema = z
+    .object({
+        generatedAt: text,
+        scanMs: num,
+        items: z.array(radarAlertSchema),
+        critical: num,
+        high: num,
+        total: num,
+    })
+    .passthrough();
+
+export type RadarReport = z.infer<typeof radarSchema>;
+export type RadarAlert = z.infer<typeof radarAlertSchema>;
+
+/** الرادار: فحوصات حية للنظام — يُستدعى كل دقيقتين. */
+export async function fetchRadar(signal?: AbortSignal): Promise<RadarReport> {
+    const token = getAccessToken();
+    return fetchJson(radarSchema, '/api/ai-assistant/radar', token, signal ? { signal } : {});
+}
+
+/* ─── بحث ذكي بكلمة (شاورما · مشويات · أي شيء) ─── */
+const lookupBreakdownSchema = z
+    .object({
+        name: text,
+        qty: num,
+        revenue: num,
+        invoices: num,
+    })
+    .passthrough();
+
+const lookupIssueSchema = z
+    .object({
+        item_id: text,
+        name: text,
+        unit: text,
+        qty: num,
+        cost: num,
+        moves: num,
+    })
+    .passthrough();
+
+export const lookupSchema = z
+    .object({
+        keyword: text,
+        from: text,
+        to: text,
+        sales: z.object({
+            invoices: num,
+            lines: num,
+            qty: num,
+            revenue: num,
+            share_of_revenue: num,
+        }).passthrough(),
+        sales_breakdown: z.array(lookupBreakdownSchema).optional(),
+        issues: z.array(lookupIssueSchema).optional(),
+        issues_cost: num,
+        inventory: z.object({ items: num, value: num }).passthrough(),
+        notes: z.array(text).optional(),
+    })
+    .passthrough();
+
+export type LookupReport = z.infer<typeof lookupSchema>;
+
+/** بحث ذكي بكلمة: مبيعات + صرف + قيمة مخزنية لأي كلمة. */
+export async function fetchLookup(
+    keyword: string,
+    range: { from: string; to: string },
+    signal?: AbortSignal,
+): Promise<LookupReport> {
+    const qs = new URLSearchParams({ keyword, from: range.from, to: range.to });
+    const token = getAccessToken();
+    return fetchJson(lookupSchema, `/api/pos/reports/lookup?${qs}`, token, signal ? { signal } : {});
 }

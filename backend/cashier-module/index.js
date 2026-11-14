@@ -100,6 +100,8 @@ function register(app, opts = {}) {
 const posReportsRoutes = require('./pos-reports');
     app.use('/api/pos/printers', printerRoutes.router);
     app.use('/api/pos', posReportsRoutes.router);
+    const lookupRoutes = require('./lookup');
+    app.use('/api/pos', lookupRoutes.router);
     const departmentCostRoutes = require('./department-cost');
     app.use('/api/pos', departmentCostRoutes.router);
 
