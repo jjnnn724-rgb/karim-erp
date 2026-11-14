@@ -23,9 +23,9 @@
  * cost-centers POST — القديم لا يستخدمها في هذه الشاشة.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.339';
-import { fetchCurrency } from './reports-repo.js?v=4.9.339';
-import { fetchMainSettings } from './portal-repo.js?v=4.9.339';
+import { apiFetch } from '../../core/api.js?v=4.9.340';
+import { fetchCurrency } from './reports-repo.js?v=4.9.340';
+import { fetchMainSettings } from './portal-repo.js?v=4.9.340';
 
 /** بوابة القراءة/الكتابة مرآة الخادم (accounting-routes.js:26-27). */
 export const CFO_READ_ROLES = ['admin', 'accountant', 'manager', 'auditor'];

@@ -25,7 +25,7 @@
  *   · This file NEVER writes: no method, no body, no token handling.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.339';
+import { apiFetch } from '../../core/api.js?v=4.9.340';
 
 const TTL_MS = 30_000;
 

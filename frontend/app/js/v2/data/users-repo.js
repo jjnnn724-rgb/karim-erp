@@ -15,9 +15,9 @@
  *     (10 دقائق، استخدام واحد — features/auth-navigation.js:85-94)
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.339';
-import { fetchEmployees, fetchDepartments as fetchHrDepartments } from './employees-repo.js?v=4.9.339';
-import { fetchDepartments as fetchOperationalDepartments } from './finance-repo.js?v=4.9.339';
+import { apiFetch } from '../../core/api.js?v=4.9.340';
+import { fetchEmployees, fetchDepartments as fetchHrDepartments } from './employees-repo.js?v=4.9.340';
+import { fetchDepartments as fetchOperationalDepartments } from './finance-repo.js?v=4.9.340';
 
 /** الإنشاء/الكتابة: admin يمنح الأدوار؛ manager ينشئ بلا تعيين دور (الخادم يحسم). */
 export const USERS_WRITE_ROLES = ['admin', 'manager'];
