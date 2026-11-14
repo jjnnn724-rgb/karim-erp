@@ -1,24 +1,34 @@
 <#
 .SYNOPSIS
-  install-watchdog.ps1 — تسجيل watchdog-health كجدولة Windows (SCHTASKS /schtasks create)
+  install-watchdog.ps1 — تسجيل حارس الصحة كجدولة Windows (يعمل كل دقيقة)
 
 .DESCRIPTION
-  تُنفّذ على أجهزتك الإنتاجية. يحتاج PowerShell admin.
-  يسجل watchdog ليتحقق كل 60 ثانية من /api/health. إذا فشل WATCHDOG_HEALTH_URL
-  أكثر من مرة متتالية، يُكتب إلى logs/watchdog-YYYY-MM-DD.log، وإذا 3 متتالية → POST إلى WATCHDOG_WEBHOOK.
+  ينشئ wrapper watchdog-run.cmd حول scripts/watchdog-health.mjs ثم يسجله
+  عبر schtasks بصلاحية محدودة (LIMITED — بلا admin). لا يعدّل أي بيانات؛
+  كل ما يفعله هو طلب /api/health مرة كل 60 ثانية وتسجيل النتيجة في
+  logs/watchdog-YYYY-MM-DD.log.
+
+  ملاحظة: يفضّل تشغيله من PowerShell معضوب اليد:
+  PowerShell -ExecutionPolicy Bypass -File .\scripts\install-watchdog.ps1
+
+  إلغاء:  schtasks /delete /tn "KarimERP-Health-Watchdog" /f
 #>
 
 $ErrorActionPreference = 'Stop'
 $Root = Split-Path -Parent $MyInvocation.MyCommand.Path
-$Watch = Join-Path $Root 'scripts' 'watchdog-health.mjs'
+$Wrapper = Join-Path $Root 'scripts' 'watchdog-run.cmd'
+$ScriptPath = Join-Path $Root 'scripts' 'watchdog-health.mjs'
 $TaskName = 'KarimERP-Health-Watchdog'
-$RunAs = $env:USERNAME
-$Cmd = "node `"$Watch`""
 
-# التسجيل الأول يقبل التنفيذ كل دقيقة مرة واحدة على الأقل
-schtasks /create /tn $TaskName /tr "cmd /c $Cmd" /sc minute /mo 1 /ru $RunAs /rl LIMITED /f 2>&1 | Out-String | Write-Host
+# (1) wrapper — schtasks /tr لا يحب الأقواس والاقتباسات المتداخلة في cmd /c node "..."
+Set-Content -Path $Wrapper -Value "@echo off`r`nnode `"$ScriptPath`"" -NoNewline -Encoding ascii
+Write-Host "✓ wrapper جاهز: $Wrapper"
 
-Write-Host "✓ Watchdog مسجلة تحت الاسم: $TaskName"
-Write-Host "   مكان الفحص: $Watch"
-Write-Host "   النتائج:      logs/watchdog-<YYYY-MM-DD>.log"
-Write-Host "   إلغاء التسجيل:  schtasks /delete /tn $TaskName /f"
+# (2) التسجيل — صلاحية محدودة (بلا admin)
+& schtasks /create /tn $TaskName /tr $Wrapper /sc minute /mo 1 /rl LIMITED /f | Out-String | Write-Host
+
+# (3) تحقق فوري
+& schtasks /query /tn $TaskName /v /fo LIST | Select-String 'TaskName|Next Run|Last Result|Status' | ForEach-Object { Write-Host $_.Line }
+
+Write-Host "✓ الحارس يعمل كل دقيقة — السجل: $Root\logs\watchdog-<YYYY-MM-DD>.log"
+Write-Host "  الإلغاء: schtasks /delete /tn $TaskName /f"
