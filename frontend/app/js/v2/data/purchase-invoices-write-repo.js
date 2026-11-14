@@ -32,8 +32,8 @@
  * authority on roles, balances and the confirmation phrase.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.338';
-import { normalizeExpiryDate, readExpiryField } from './expiry-policy.js?v=4.9.338';
+import { apiFetch } from '../../core/api.js?v=4.9.339';
+import { normalizeExpiryDate, readExpiryField } from './expiry-policy.js?v=4.9.339';
 
 /** Mirrors requireRole('admin','manager','warehouse') on POST/PUT. */
 export const INVOICE_CREATE_ROLES = ['admin', 'manager', 'warehouse'];

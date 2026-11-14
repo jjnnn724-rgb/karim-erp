@@ -30,21 +30,21 @@
  *     total returned, so the cap is declared when 200 rows arrive.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.338';
-import { openInAppReport } from '../report-viewer.js?v=4.9.338';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.339';
+import { openInAppReport } from '../report-viewer.js?v=4.9.339';
 import {
     fetchSalesReport, fetchCurrency, reportToRow, buildReportKpis, paymentBreakdown,
     periodRange, formatInt, formatQty, formatMoney,
     GROUP_BY, PERIODS, composeSalesFromRegister,
-} from '../data/reports-repo.js?v=4.9.338';
+} from '../data/reports-repo.js?v=4.9.339';
 import {
     fetchLocalBundle, fetchHrAttendance,
     computeGeneral, computeDepartments, computeKitchen, computeReturns,
     computeWarehouse, computeHr, fetchYaraDepartments, fetchYaraCashierItems,
     fetchYaraInvoiceDetail, fetchRevenuesRange, fetchRegisterDepartments,
     composeDeptRevenueFromRegister,
-} from '../data/reports-extra.js?v=4.9.338';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.338';
+} from '../data/reports-extra.js?v=4.9.339';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.339';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
