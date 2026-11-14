@@ -132,25 +132,25 @@ ${hasTotals && section.totalsRow ? `                <tr class="totals-row">${sec
   .lh-ref { margin-inline-start: auto; text-align: end; font-size: 9pt; color: #34414e; line-height: 1.6; }
   .lh-ref strong { font-size: 11pt; color: #0f3d3e; font-variant-numeric: tabular-nums; }
 
-  .doc-title { text-align: center; margin: 10px 0 2px; font-size: 17pt; font-weight: 900; color: #0f3d3e; }
-  .doc-english { text-align: center; font-size: 10pt; letter-spacing: 0.08em; text-transform: uppercase; color: #68768a; margin-bottom: 8px; }
-  .doc-subtitle { text-align: center; font-size: 10pt; color: #34414e; margin-bottom: 4px; }
-  .period-line { text-align: center; font-size: 10pt; color: #20292f; padding: 5px 0; border-block: 1px solid #d8e0e6; margin-bottom: 12px; }
+  .doc-title { text-align: center; margin: 6px 0 2px; font-size: 17pt; font-weight: 900; color: #0f3d3e; }
+  .doc-english { text-align: center; font-size: 10pt; letter-spacing: 0.08em; text-transform: uppercase; color: #68768a; margin-bottom: 6px; }
+  .doc-subtitle { text-align: center; font-size: 10pt; color: #34414e; margin-bottom: 2px; }
+  .period-line { text-align: center; font-size: 10pt; color: #20292f; padding: 4px 0; border-block: 1px solid #d8e0e6; margin-bottom: 8px; }
   .period-line b { color: #0f3d3e; }
 
   /* ── KPI band ── */
-  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(120px, 1fr)); gap: 6px; margin-bottom: 12px; }
-  .kpi { border: 1px solid #cfd8dd; border-inline-start: 3px solid #168653; border-radius: 6px; padding: 6px 8px; }
+  .kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(110px, 1fr)); gap: 5px; margin-bottom: 8px; }
+  .kpi { border: 1px solid #cfd8dd; border-inline-start: 3px solid #168653; border-radius: 6px; padding: 4px 7px; }
   .kpi-label { font-size: 7.5pt; font-weight: 700; color: #5b6773; display: block; letter-spacing: 0.02em; }
   .kpi-value { font-size: 13pt; font-weight: 800; color: #111; font-variant-numeric: tabular-nums; }
   .kpi-hint { font-size: 7pt; color: #68768a; display: block; }
 
   /* ── الجداول الرسمية ── */
-  .sheet-section { margin-bottom: 12px; break-inside: avoid; }
-  .section-title { font-size: 11.5pt; font-weight: 800; color: #0f3d3e; border-bottom: 1.3px solid #0f3d3e; padding-bottom: 3px; margin: 0 0 5px; }
-  table.sheet { width: 100%; border-collapse: collapse; font-size: 8.6pt; }
-  .sheet th { background: #eef3f0; border: 1px solid #c5d2ca; color: #0f3d3e; padding: 4px 6px; font-size: 8pt; text-align: right; font-weight: 800; }
-  .sheet td { border: 1px solid #d5ded8; padding: 3.5px 6px; text-align: right; font-variant-numeric: tabular-nums; }
+  .sheet-section { margin-bottom: 8px; break-inside: avoid; page-break-inside: avoid; }
+  .section-title { font-size: 11.5pt; font-weight: 800; color: #0f3d3e; border-bottom: 1.3px solid #0f3d3e; padding-bottom: 2px; margin: 0 0 4px; }
+  table.sheet { width: 100%; border-collapse: collapse; font-size: 8.2pt; }
+  .sheet th { background: #eef3f0; border: 1px solid #c5d2ca; color: #0f3d3e; padding: 3.5px 6px; font-size: 8pt; text-align: right; font-weight: 800; }
+  .sheet td { border: 1px solid #d5ded8; padding: 3px 6px; text-align: right; font-variant-numeric: tabular-nums; }
   .sheet tbody tr:nth-child(even) td { background: #f7faf8; }
   .sheet .totals-row td { background: #0f3d3e; color: #fff; font-weight: 800; border-color: #0f3d3e; }
   thead { display: table-header-group; } tr { break-inside: avoid; }
@@ -162,7 +162,7 @@ ${hasTotals && section.totalsRow ? `                <tr class="totals-row">${sec
   .notes p { margin: 0 0 2px; }
 
   /* ── التذييل: خانات التوقيع + رقم الصفحة ── */
-  .signatures { display: flex; justify-content: space-between; gap: 24px; margin-top: 26px; break-inside: avoid; }
+  .signatures { display: flex; justify-content: space-between; gap: 24px; margin-top: 12px; break-inside: avoid; page-break-inside: avoid; }
   .sig { flex: 1; border-top: 1.4px solid #0f3d3e; padding-top: 4px; text-align: center; font-size: 9.5pt; font-weight: 700; color: #20292f; }
   .sig small { display: block; font-size: 7pt; color: #68768a; font-weight: 500; margin-top: 2px; }
   .footer { position: fixed; bottom: 0; left: 0; right: 0; display: flex; justify-content: space-between; font-size: 7pt; color: #98a5b3; border-top: 1px solid #e3e9ee; padding-top: 4px; }

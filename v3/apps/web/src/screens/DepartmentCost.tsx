@@ -258,11 +258,9 @@ function BreakfastTab({ from, to }: { from: string; to: string }) {
                         { src: 'إيراد الفطار — YaraSoft', val: `${money2(data.revenue_ys)} ر.س` },
                         { src: 'التكلفة الشاملة (أذونات + مكونات تقديرية)', val: `${money2(combinedCost)} ر.س` },
                         { src: 'نسبة التكلفة من الإيراد (شاملة)', val: `${combinedPct}%` },
-                        { src: 'نسبة التكلفة من المخزن فقط', val: `${data.cost_pct}%` },
                     ],
                 },
             ],
-            notes: market ? [...(data.notes ?? []), ...(market.notes ?? [])] : (data.notes ?? []),
         });
     };
 
@@ -392,15 +390,8 @@ function BreakfastTab({ from, to }: { from: string; to: string }) {
                                 </div>
                             </div>
 
-                            <ul className="dcost__notes">
-                                {market.notes.map((note, i) => <li key={`m-${i}`}>{note}</li>)}
-                            </ul>
                         </>
                     ) : null}
-
-                    <ul className="dcost__notes">
-                        {data.notes.map((note, i) => <li key={i}>{note}</li>)}
-                    </ul>
                 </>
             ) : null}
         </>
