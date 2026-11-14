@@ -102,7 +102,7 @@ function pgDumpBackup(ctx, label = 'audit') {
 
 /** مسار HTTP الأساسي للخادم المحلي (للفحوصات الحية الاختيارية) */
 function httpBase(env) {
-    const port = envValue(env, 'PORT') || '5001';
+    const port = envValue(env, 'PORT') || '5000';
     const hasCert = isSet(envValue(env, 'SSL_CERT')) && isSet(envValue(env, 'SSL_KEY'));
     return `${hasCert ? 'https' : 'http'}://127.0.0.1:${port}`;
 }

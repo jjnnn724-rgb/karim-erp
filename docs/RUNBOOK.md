@@ -15,13 +15,15 @@
 
 ## 1. الفحص السريع — 30 ثانية
 
+> ملاحظة أساسية: التطبيق يسمع محليًا على **HTTPS** في `127.0.0.1:5000` بشهادة self-signed (الـ `-k` إلزامي محليًا). الـ `karimeg.online` عام يصل عبر Cloudflare Tunnel إلى نفس المنفذ — الـ TLS العام صح، والمحلي بدوره self-signed مقصود. لا يوجد أي شيء يستمع على HTTP.
+
 ```powershell
 # على جهاز المطعم
-curl.exe -s -o $null -w "%{http_code}" http://127.0.0.1:5001/api/health
+curl.exe -sk -o $null -w "%{http_code}" https://127.0.0.1:5000/api/health
 # المتوقع: 200
 
 # من أي مكان
-curl.exe -s -o $null -w "%{http_code}" https://karimeg.online/api/health
+curl.exe -sk -o $null -w "%{http_code}" https://karimeg.online/api/health
 # المتوقع: 200
 ```
 
@@ -74,7 +76,7 @@ Restart-Service KarimERP-Server
 Start-Sleep -Seconds 5
 
 # 3) الفحص
-curl.exe -s -o $null -w "%{http_code}" http://127.0.0.1:5001/api/health
+curl.exe -sk -o $null -w "%{http_code}" https://127.0.0.1:5000/api/health
 # إن 200 → عاد يعمل
 ```
 
@@ -89,7 +91,7 @@ Get-Content logs\app-out.log -Tail 80
 ```powershell
 Restart-Service postgresql-x64-18
 Start-Sleep -Seconds 10
-curl.exe -s -o $null -w "%{http_code}" http://127.0.0.1:5001/api/health
+curl.exe -sk -o $null -w "%{http_code}" https://127.0.0.1:5000/api/health
 ```
 
 ---
@@ -111,7 +113,7 @@ cd v3 && pnpm --filter @karim/web build ; cd ..
 node v3/scripts/sync-build.mjs     # يعيد نسخ v3/apps/web/dist → frontend/v3 + تأكيد 200
 
 # 4) تأكيد
-curl.exe -I http://127.0.0.1:5001/app/ /v3/ ; curl.exe -s -o $null -w "%{http_code}`n" http://127.0.0.1:5001/api/health
+curl.exe -kI https://127.0.0.1:5000/app/ /v3/ ; curl.exe -sk -o $null -w "%{http_code}`n" https://127.0.0.1:5000/api/health
 ```
 
 تغييرات الباك-إند (backend/cashier-module) تتطلب:
@@ -129,7 +131,7 @@ Restart-Service KarimERP-Server
 لا تُكتشف الطابعات وحدها. التسجيل مرة واحدة:
 
 ```powershell
-curl.exe -X POST http://127.0.0.1:5001/api/pos/printer `
+curl.exe -sk -X POST https://127.0.0.1:5000/api/pos/printer `
   -H "Authorization: Bearer <admin-token>" `
   -H "content-type: application/json" `
   -d '{"name":"Kitchen","connection_type":"network","address":"192.168.1.50:9100","paper_width_mm":58}'
@@ -137,13 +139,13 @@ curl.exe -X POST http://127.0.0.1:5001/api/pos/printer `
 
 ```powershell
 # الرد إن الطابعة غير مسجلة: 404 أو 422
-curl.exe http://127.0.0.1:5001/api/pos/printer -H "Authorization: Bearer <admin-token>"
+curl.exe -sk https://127.0.0.1:5000/api/pos/printer -H "Authorization: Bearer <admin-token>"
 ```
 
 ### 4.2 فتح الوردية
 
 ```powershell
-curl.exe -X POST http://127.0.0.1:5001/api/pos/shift/open `
+curl.exe -sk -X POST https://127.0.0.1:5000/api/pos/shift/open `
   -H "Authorization: Bearer <admin-token>" `
   -H "content-type: application/json" `
   -d "{\"departmentId\": 1}"
@@ -158,7 +160,7 @@ curl.exe -X POST http://127.0.0.1:5001/api/pos/shift/open `
 
 ```powershell
 # الوردية مفتوحة ولا تُغلق
-curl.exe -X POST http://127.0.0.1:5001/api/pos/shift/close -H "Authorization: Bearer <admin-token>" -H "content-type: application/json" -d "{\"sessionId\": <id>}"
+curl.exe -sk -X POST https://127.0.0.1:5000/api/pos/shift/close -H "Authorization: Bearer <admin-token>" -H "content-type: application/json" -d "{\"sessionId\": <id>}"
 ```
 
 ---
@@ -183,8 +185,8 @@ psql.exe -U karim_app -h 127.0.0.1 -d karim_erp -c "SELECT count(*) FROM pos_ord
 إذا لم تفتح `/app/` أو `/v3/pos-entry`:
 
 ```powershell
-curl.exe -I http://127.0.0.1:5001/app/
-curl.exe -I http://127.0.0.1:5001/v3/pos-entry
+curl.exe -kI https://127.0.0.1:5000/app/
+curl.exe -kI https://127.0.0.1:5000/v3/pos-entry
 ```
 
 إن 200 → المشكلة في المتصفح: `Ctrl + F5`.

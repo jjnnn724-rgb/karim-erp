@@ -70,8 +70,8 @@ Start-Sleep -Seconds 5
 $Health = $null
 for ($i = 0; $i -lt 20; $i++) {
     try {
-        $resp = Invoke-WebRequest -Uri 'http://127.0.0.1:5001/api/health' -UseBasicParsing -TimeoutSec 5
-        if ($resp.StatusCode -eq 200) { $Health = $resp.StatusCode; break }
+        $resp = & curl.exe -sk -m 5 -o NUL -w '%{http_code}' 'https://127.0.0.1:5000/api/health'
+        if ($resp -eq '200') { $Health = 200; break }
     } catch { Start-Sleep -Seconds 2 }
 }
 

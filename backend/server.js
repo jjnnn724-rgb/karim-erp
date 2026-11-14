@@ -153,14 +153,14 @@ const fs = require('fs'); // FIX 2026-10-11: moved to module scope — was block
 
 /*
  * المنفذ: `PORT=0` أو قيمة غير رقمية تعني «أي منفذ يختاره النظام» في Node،
- * فيستمع الخادم على منفذ عشوائي بينما المشغّل والمتصفح ينتظران 5001 — فيبدو
+ * فيستمع الخادم على منفذ عشوائي بينما الـ Cloudflare Tunnel ينتظر 5000 — فيبدو
  * النظام متوقفًا رغم أنه يعمل. نرفض هذا الإعداد بدل الاستماع في مكان لا
- * يعرفه أحد: القيمة الصالحة وحدها تُستخدم، وما عداها يرجع للمنفذ الرسمي 5001.
+ * يعرفه أحد: القيمة الصالحة وحدها تُستخدم، وما عداها يرجع للمنفذ الإنتاجي 5000.
  */
 const RAW_PORT = String(process.env.PORT ?? '').trim();
 const PORT_NUMBER = Number(RAW_PORT);
 const PORT =
-    /^\d+$/.test(RAW_PORT) && PORT_NUMBER >= 1 && PORT_NUMBER <= 65535 ? PORT_NUMBER : 5001;
+    /^\d+$/.test(RAW_PORT) && PORT_NUMBER >= 1 && PORT_NUMBER <= 65535 ? PORT_NUMBER : 5000;
 if (RAW_PORT !== '' && String(PORT) !== RAW_PORT) {
     logger.warn(
         `[PORT] قيمة PORT غير صالحة (${RAW_PORT}) — استُخدم ${PORT} بدلًا منها. صحّح PORT في .env.`,
