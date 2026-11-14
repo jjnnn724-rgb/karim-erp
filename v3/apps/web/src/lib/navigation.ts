@@ -122,6 +122,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             'sales-analyzer',
             'sales-inquiry',
             'received-analyzer',
+            'dept-cost',
         ],
     },
     {
@@ -212,6 +213,7 @@ export const NAV_TITLES: Readonly<Record<string, string>> = {
     '/sales-inquiry': 'استعلام المبيعات',
     '/received-analyzer': 'تحليل المستلَم',
     '/wh-vs-pos': 'المخزن مقابل نقطة البيع',
+    '/dept-cost': 'وضع القسم',
     '/yarasoft': 'تكامل قاعدة الكاشير',
 };
 

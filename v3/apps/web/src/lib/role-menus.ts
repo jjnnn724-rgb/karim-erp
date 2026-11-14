@@ -22,6 +22,7 @@ export const ROLES = {
         'menu-board',
         'cfo',
         'ai-assistant',
+        'dept-cost',
         'accounts',
         'journal',
         'cash-register',

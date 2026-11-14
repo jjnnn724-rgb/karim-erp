@@ -100,6 +100,8 @@ function register(app, opts = {}) {
 const posReportsRoutes = require('./pos-reports');
     app.use('/api/pos/printers', printerRoutes.router);
     app.use('/api/pos', posReportsRoutes.router);
+    const departmentCostRoutes = require('./department-cost');
+    app.use('/api/pos', departmentCostRoutes.router);
 
     // درج النقدية: فتح بنبضة ESC/POS مع أثر تدقيق (لا يفتح بلا طابعة متصلة)
     const drawerRoutes = require('./drawer-routes');

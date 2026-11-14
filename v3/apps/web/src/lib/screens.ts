@@ -62,6 +62,7 @@ export const V3_SCREENS = [
     'pnl',
     'cfo',
     'ai-assistant',
+    'dept-cost',
     'monthly-comparison',
     'reports',
     'vat-return',

@@ -51,6 +51,7 @@ export function shellIconForPath(path: string): ShellIconName {
     if (/balance-sheet|cash-flow/.test(path)) return 'finance';
     if (/bank-rec/.test(path)) return 'wallet';
     if (/ai-assistant/.test(path)) return 'spark';
+    if (/dept-cost/.test(path)) return 'chart';
     if (/reports|analyzer|inquiry|cost-|pnl|cfo|comparison|wh-vs-pos/.test(path)) return 'chart';
     if (/payments|revenues|expenses|payroll|cash-register|cashier-sales/.test(path)) return 'wallet';
     if (/kitchen|recipes|menu-board/.test(path)) return 'kitchen';

@@ -472,6 +472,13 @@ export const posReportsRoute = createRoute({
 });
 posReportsRoute.lazy(() => import('../screens/PosReports.lazy').then((module) => module.Route));
 
+/** وضع القسم — تحليل التكلفة والأذونات الفعلية. */
+export const departmentCostRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/dept-cost',
+});
+departmentCostRoute.lazy(() => import('../screens/DepartmentCost.lazy').then((module) => module.Route));
+
 /** المساعد الذكي — «وين الزيادة؟»: مقارنات وتخفيض + تنبيهات (admin/manager/accountant). */
 export const aiAssistantRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -610,6 +617,7 @@ export const routeTree = rootRoute.addChildren([
     cashierMonitorRoute,
     posEntryRoute,
     posReportsRoute,
+    departmentCostRoute,
     aiAssistantRoute,
     cashierKioskRoute,
     legacySourceRoute,
