@@ -374,8 +374,66 @@
 }
 
 .pos-entry--light .pos-cart__head {
+    background: #FFFFFF;
+    border-block-end: 1px solid var(--pos-hairline);
     border-color: #F1F4F6;
 }
+.pos-entry--light .pos-cart__head .erp-card__title {
+    color: #202A35;
+}
+.pos-entry--light .pos-cart__order {
+    color: #8B95A3;
+}
+
+/* ─── الأسطح الداكنة المتبقية من الثيم الليلي — Light Enterprise ─── */
+.pos-entry--light .pos-cart__empty,
+.pos-entry--light .pos-cart__empty-icon {
+    background: #F7F8FA;
+    border-color: #E5E9EE;
+}
+.pos-entry--light .pos-cart__empty-icon { color: #8B95A3; border: 1px dashed #E5E9EE; }
+.pos-entry--light .pos-cart__empty p { color: #8B95A3; }
+
+.pos-entry--light .pos-cart__line {
+    background: #FFFFFF;
+    border: 1px solid #F1F4F6;
+}
+.pos-entry--light .pos-cart__line:hover { border-color: #CBE0D5; }
+.pos-entry--light .pos-cart__line small { color: #8B95A3; }
+
+.pos-entry--light .pos-held__row {
+    background: #FFFFFF;
+    border: 1px solid #E5E9EE;
+}
+.pos-entry--light .pos-live { background: #F1F4F6; border-color: #E5E9EE; color: #687586; }
+.pos-entry--light .pos-live__pill { background: #FFFFFF; border-color: #E5E9EE; color: #202A35; }
+
+.pos-entry--light .pos-overlay__panel { background: #FFFFFF; border-color: #E5E9EE; }
+.pos-entry--light .pos-overlay__bar { background: #FFFFFF; border-color: #F1F4F6; }
+.pos-entry--light .pos-overlay__title { color: #202A35; }
+
+.pos-entry--light .pos-topbar__pod {
+    background: #F1F4F6;
+    border-color: #E5E9EE;
+}
+.pos-entry--light .pos-topbar__pod-copy strong { color: #202A35; }
+.pos-entry--light .pos-topbar__pod-copy small,
+.pos-entry--light .pos-topbar__clock small { color: #8B95A3; }
+
+.pos-entry--light .pos-cashier {
+    background: #F1F4F6;
+    border-color: #E5E9EE;
+}
+.pos-entry--light .pos-cashier__copy strong { color: #202A35; }
+.pos-entry--light .pos-cashier__copy small { color: #8B95A3; }
+.pos-entry--light .pos-cashier__avatar { background: #168653; color: #FFFFFF; }
+
+.pos-entry--light .pos-product__add { background: #168653; color: #FFFFFF; }
+.pos-entry--light .pos-product__add:hover { background: #117247; }
+
+.pos-entry--light .pos-pane-dock__btn { background: #168653; border-color: #117247; color: #FFFFFF; }
+.pos-entry--light .pos-customer-done { background: #168653; border-color: #117247; color: #FFFFFF; }
+.pos-entry--light .pos-customer-done:hover { background: #117247; }
 
 .pos-entry--light .pos-cart__head h2,
 .pos-entry--light .pos-cart__order {

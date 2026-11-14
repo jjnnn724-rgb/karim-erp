@@ -21,19 +21,19 @@
  * bridge tracked in docs/esm-migration/DEPRECATION_LOG.md.
  */
 
-import { pwaInstall, pwaUpdateOfflineBar } from './core/pwa.js?v=4.9.319';
-import { I18N, t, readLangLocal, persistLangLocal, ROLE_NAMES, MENU_STRINGS, applyI18nMaps, applyLangAttrs, applyLoginI18n } from './core/i18n.js?v=4.9.319';
-import { uid, esc, safeImgSrc, today, nowTime, fN, fC, fD, fHijri, HIJRI_MONTHS, gregToHijriParts, hijriToGregorian, hijriDateField, toggleDateMode, syncGregToHijri, syncHijriToGreg, fDT } from './core/utils.js?v=4.9.319';
-import { toast, showLoad, hideLoad } from './ui/toast.js?v=4.9.319';
-import { STATE, PERSISTED_ENTITIES, ROLE_ENTITY_EXCLUSIONS } from './core/state.js?v=4.9.319';
-import { API_BASE, apiFetch, SERVER_CODE_AR, serverErrorInfo } from './core/api.js?v=4.9.319';
-import { CONFIG, ROLES } from './core/config.js?v=4.9.319';
-import { initDatabase, loadData, saveData, uiPreferencesPayload } from './core/storage.js?v=4.9.319';
+import { pwaInstall, pwaUpdateOfflineBar } from './core/pwa.js?v=4.9.321';
+import { I18N, t, readLangLocal, persistLangLocal, ROLE_NAMES, MENU_STRINGS, applyI18nMaps, applyLangAttrs, applyLoginI18n } from './core/i18n.js?v=4.9.321';
+import { uid, esc, safeImgSrc, today, nowTime, fN, fC, fD, fHijri, HIJRI_MONTHS, gregToHijriParts, hijriToGregorian, hijriDateField, toggleDateMode, syncGregToHijri, syncHijriToGreg, fDT } from './core/utils.js?v=4.9.321';
+import { toast, showLoad, hideLoad } from './ui/toast.js?v=4.9.321';
+import { STATE, PERSISTED_ENTITIES, ROLE_ENTITY_EXCLUSIONS } from './core/state.js?v=4.9.321';
+import { API_BASE, apiFetch, SERVER_CODE_AR, serverErrorInfo } from './core/api.js?v=4.9.321';
+import { CONFIG, ROLES } from './core/config.js?v=4.9.321';
+import { initDatabase, loadData, saveData, uiPreferencesPayload } from './core/storage.js?v=4.9.321';
 import {
     announce, callText, speakableText, nativeTts, pickVoice,
     readVoicePref, writeVoicePref, readQuietPref, writeQuietPref,
     isSilentRoute, isPriorityCategory,
-} from './v2/callout.js?v=4.9.319';
+} from './v2/callout.js?v=4.9.321';
 
 // BRIDGE-001: PWA — extracted from app.js (2026-09-27)
 window.pwaInstall = pwaInstall;
@@ -146,38 +146,38 @@ window.__karimReady = new Promise((res) => { __karimReadyResolve = res; });
 // تُجلب كلها دفعةً واحدة عبر modulepreload (جلبٌ فقط بلا تنفيذ) ثم تُقيَّم
 // بالترتيب أدناه: بعض الوحدات تقرأ عند التقييم جسورًا زرعتها سابقتها.
 const FEATURE_MODULES = [
-  ['./features/smart-card.js?v=4.9.319', 'BRIDGE-008'],
-  ['./features/bulk-import.js?v=4.9.319', 'BRIDGE-009'],
-  ['./features/zkteco.js?v=4.9.319', 'BRIDGE-010'],
-  ['./v2/punch-statement.js?v=4.9.319', 'BRIDGE-PS'],
-  ['./features/kitchen.js?v=4.9.319', 'BRIDGE-013'],
-  ['./features/finance.js?v=4.9.319', 'BRIDGE-014'],
-  ['./features/hr.js?v=4.9.319', 'BRIDGE-015'],
-  ['./features/yarasoft.js?v=4.9.319', 'BRIDGE-016'],
-  ['./features/cashier-monitor.js?v=4.9.319', 'BRIDGE-027'],
-  ['./features/sales-analyzer.js?v=4.9.319', 'BRIDGE-SA'],
-  ['./features/received-analyzer.js?v=4.9.319', 'BRIDGE-RA'],
-  ['./features/wh-vs-pos.js?v=4.9.319', 'BRIDGE-WV'],
-  ['./features/inventory-inquiry.js?v=4.9.319', 'BRIDGE-INQ'],
-  ['./features/whatsapp.js?v=4.9.319', 'BRIDGE-017'],
-  ['./features/departments.js?v=4.9.319', 'BRIDGE-018'],
-  ['./features/reports.js?v=4.9.319', 'BRIDGE-019'],
-  ['./features/settings-users.js?v=4.9.319', 'BRIDGE-020'],
-  ['./features/permissions.js?v=4.9.319', 'BRIDGE-PERM'],
-  ['./features/cfo.js?v=4.9.319', 'BRIDGE-021'],
-  ['./features/dashboard.js?v=4.9.319', 'BRIDGE-022'],
-  ['./features/employee-portal.js?v=4.9.319', 'BRIDGE-023'],
-  ['./ui/enhancement.js?v=4.9.319', 'BRIDGE-024'],
-  ['./features/auth-navigation.js?v=4.9.319', 'BRIDGE-026'],
-  ['./features/roster.js?v=4.9.319', 'BRIDGE-ROSTER'],
-  ['./features/veg-requests.js?v=4.9.319', 'BRIDGE-028'],
-  ['./features/branches.js?v=4.9.319', 'BRIDGE-BR'],
-  ['./features/report-viewer.js?v=4.9.319', 'BRIDGE-031'],
-  ['./features/page-router.js?v=4.9.319', 'BRIDGE-027'],
-  ['./features/mobile-shell.js?v=4.9.319', 'BRIDGE-029'],
-  ['./features/dept-employees.js?v=4.9.319', 'BRIDGE-030'],
-  ['./features/employees.js?v=4.9.319', 'BRIDGE-011'],
-  ['./features/warehouse.js?v=4.9.319', 'BRIDGE-012'],
+  ['./features/smart-card.js?v=4.9.321', 'BRIDGE-008'],
+  ['./features/bulk-import.js?v=4.9.321', 'BRIDGE-009'],
+  ['./features/zkteco.js?v=4.9.321', 'BRIDGE-010'],
+  ['./v2/punch-statement.js?v=4.9.321', 'BRIDGE-PS'],
+  ['./features/kitchen.js?v=4.9.321', 'BRIDGE-013'],
+  ['./features/finance.js?v=4.9.321', 'BRIDGE-014'],
+  ['./features/hr.js?v=4.9.321', 'BRIDGE-015'],
+  ['./features/yarasoft.js?v=4.9.321', 'BRIDGE-016'],
+  ['./features/cashier-monitor.js?v=4.9.321', 'BRIDGE-027'],
+  ['./features/sales-analyzer.js?v=4.9.321', 'BRIDGE-SA'],
+  ['./features/received-analyzer.js?v=4.9.321', 'BRIDGE-RA'],
+  ['./features/wh-vs-pos.js?v=4.9.321', 'BRIDGE-WV'],
+  ['./features/inventory-inquiry.js?v=4.9.321', 'BRIDGE-INQ'],
+  ['./features/whatsapp.js?v=4.9.321', 'BRIDGE-017'],
+  ['./features/departments.js?v=4.9.321', 'BRIDGE-018'],
+  ['./features/reports.js?v=4.9.321', 'BRIDGE-019'],
+  ['./features/settings-users.js?v=4.9.321', 'BRIDGE-020'],
+  ['./features/permissions.js?v=4.9.321', 'BRIDGE-PERM'],
+  ['./features/cfo.js?v=4.9.321', 'BRIDGE-021'],
+  ['./features/dashboard.js?v=4.9.321', 'BRIDGE-022'],
+  ['./features/employee-portal.js?v=4.9.321', 'BRIDGE-023'],
+  ['./ui/enhancement.js?v=4.9.321', 'BRIDGE-024'],
+  ['./features/auth-navigation.js?v=4.9.321', 'BRIDGE-026'],
+  ['./features/roster.js?v=4.9.321', 'BRIDGE-ROSTER'],
+  ['./features/veg-requests.js?v=4.9.321', 'BRIDGE-028'],
+  ['./features/branches.js?v=4.9.321', 'BRIDGE-BR'],
+  ['./features/report-viewer.js?v=4.9.321', 'BRIDGE-031'],
+  ['./features/page-router.js?v=4.9.321', 'BRIDGE-027'],
+  ['./features/mobile-shell.js?v=4.9.321', 'BRIDGE-029'],
+  ['./features/dept-employees.js?v=4.9.321', 'BRIDGE-030'],
+  ['./features/employees.js?v=4.9.321', 'BRIDGE-011'],
+  ['./features/warehouse.js?v=4.9.321', 'BRIDGE-012'],
 ];
 
 (function preloadFeatureModules(){

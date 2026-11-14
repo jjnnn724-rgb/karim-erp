@@ -19,7 +19,7 @@
  * قيد الحالة في الجدول لا يحوي 'completed' — الخادم يستخدم 'received' للإتمام.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.319';
+import { apiFetch } from '../../core/api.js?v=4.9.321';
 
 /** مرآة أدوار الخادم (dept-transfer-routes.js) — لا تُخترع هنا. */
 export const WRITE_ROLES = ['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'dept_head'];
