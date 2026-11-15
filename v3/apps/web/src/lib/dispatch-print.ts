@@ -293,7 +293,7 @@ export function buildDispatchPrintHtml(record: DispatchPrintRecord, opts: { curr
 * { box-sizing: border-box; }
 body {
     margin: 0; padding: 24px 12px 48px; direction: rtl;
-    font-family: 'Tajawal', 'IBM Plex Sans Arabic', 'Cairo', 'Segoe UI', Tahoma, sans-serif;
+    font-family: 'Tajawal', 'Cairo', 'Segoe UI', Tahoma, sans-serif;
     color: #14231f; background: #e9ebe8;
 }
 .sheet {
