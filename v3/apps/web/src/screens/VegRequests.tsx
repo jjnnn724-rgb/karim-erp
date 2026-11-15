@@ -1007,7 +1007,7 @@ export function VegRequests() {
     const auth = useAuthState();
     const { toast } = useToast();
     const canCreate = vegCreateVisible(auth.user?.role, auth.user?.dept_code);
-    const canReceive = vegReceiveVisible(auth.user?.role);
+    const canReceive = vegReceiveVisible(auth.user?.role, auth.user?.dept_code);
     const canPrice = vegPriceVisible(auth.user?.role);
     const isContactsAdmin = auth.user?.role === 'admin' || auth.user?.role === 'owner';
 

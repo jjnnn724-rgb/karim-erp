@@ -5,9 +5,10 @@
  * يرسله للمخازن، ويطبعه الطرفان بنموذج A4 احترافي (توقيعات + رقم طلب).
  *
  * القواعد:
- *   • إنشاء: kitchen / sous_chef / dept_head / admin / owner / manager
- *   • قراءة: أعلاه + warehouse (المخازن يشوف كل الطلبات ويستلم)
- *   • استلام: warehouse / admin / owner / manager — من حالة «قيد الانتظار» فقط
+ *   • إنشاء: sous_chef / admin / owner · dept_head بقسم «salads» (رئيس قسم السلطات)
+ *   • قراءة: أعلاه + warehouse
+ *   • استلام: sous_chef / admin / owner · dept_head بقسم «salads» ← نفس طبقة الإنشاء (من «قيد الانتظار» فقط)
+ *   • تسعير: warehouse / admin / owner / manager ← بعد الاستلام — يُحمَّل الإجمالي خزينة المطبخ مصروفًا
  *   • إلغاء: صاحب الطلب نفسه أو admin/owner — قبل الاستلام فقط
  *   • كل النصوص الحرة تُنظّف من <> وقصّ الطول (لا HTML مخزّن)
  *   • الطلب يُنبَّه له لحظيًا عبر io.emit('veg_request:new')
@@ -24,7 +25,16 @@ const router = express.Router();
 
 const CREATE_ROLES = ['sous_chef', 'admin', 'owner'];
 const READ_ROLES = [...CREATE_ROLES, 'warehouse'];
-const RECEIVE_ROLES = ['sous_chef', 'admin', 'owner'];
+
+// استلام الطلبية: نفس طبقة الإنشاء (السو شيف + الإدارة + رئيس قسم السلطات بالتحديد)
+const isVegReceiveEligible = (role, deptCode) => {
+    const r = String(role || '');
+    if (r === 'sous_chef' || r === 'admin' || r === 'owner') {return true;}
+    if (r === 'dept_head') {
+        return String(deptCode || '').toLowerCase().split(',').map((s) => s.trim()).includes('salads');
+    }
+    return false;
+};
 
 // إنشاء الطلبية: السو شيف + الإدارة + رئيس قسم السلطات (dept_head · dept_code=salads) بالتحديد
 const isVegitCreateEligible = (role, deptCode) => {
@@ -224,8 +234,8 @@ router.get('/', jwtAuth, requireRole(...READ_ROLES), async (req, res, next) => {
 // ─── استلام — السو شيف فقط (+ الإدارة) — قرار المالك 2026-10-10 ───────────
 
 const receiveGate = [jwtAuth, (req, res, next) => {
-    if (RECEIVE_ROLES.includes(req.user?.role)) {return next();}
-    return res.status(403).json({ ok: false, error: 'FORBIDDEN', message: 'الاستلام والتوقيع للسو شيف فقط' });
+    if (isVegReceiveEligible(req.user?.role, req.user?.dept_code)) {return next();}
+    return res.status(403).json({ ok: false, error: 'FORBIDDEN', message: 'استلام الطلبية للسو شيف أو رئيس قسم السلطات أو الإدارة فقط' });
 }];
 
 router.post('/:id/receive', ...receiveGate, async (req, res, next) => {

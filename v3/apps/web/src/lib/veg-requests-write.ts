@@ -27,8 +27,11 @@ export function vegCreateVisible(role: string | null | undefined, deptCode?: str
         && String(deptCode ?? '').toLowerCase().split(',').map((s) => s.trim()).includes('salads');
 }
 
-export function vegReceiveVisible(role: string | null | undefined): boolean {
-    return isWriteRole(role, VEG_RECEIVE_ROLES);
+export function vegReceiveVisible(role: string | null | undefined, deptCode?: string | null | undefined): boolean {
+    if (isWriteRole(role, VEG_RECEIVE_ROLES)) {return true;}
+    // رئيس قسم السلطات تحديدًا (dept_head · dept_code=salads)
+    return String(role || '') === 'dept_head'
+        && String(deptCode ?? '').toLowerCase().split(',').map((s) => s.trim()).includes('salads');
 }
 
 export function vegPriceVisible(role: string | null | undefined): boolean {
