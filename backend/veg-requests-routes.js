@@ -179,7 +179,8 @@ router.post('/', ...vegCreateGate, async (req, res, next) => {
                             'الاستلام والتسعير من صفحة «طلبات خضار» في Karim ERP.',
                         ].join('\n');
                         for (const jid of jids) {
-                            sender.enqueue(jid, text, { clientKey: `veg-new:${saved.id}:${jid}` })
+                            const jidFull = String(jid).includes('@') ? String(jid) : `${String(jid).replace(/\D/g, '')}@s.whatsapp.net`;
+                            sender.enqueue(jidFull, text, { clientKey: `veg-new:${saved.id}:${jidFull}` })
                                 .catch((err) => logger.warn('[veg-requests] whatsapp failed (non-fatal)', { msg: err && err.message }));
                         }
                         logger.info('[veg-requests] whatsapp notify queued', { request_no: requestNo, targets: jids.length });
@@ -636,7 +637,8 @@ router.post('/:id/notify', ...vegCreateGate, async (req, res) => {
             return res.status(503).json({ ok: false, error: 'WHATSAPP_UNAVAILABLE', message: 'واتساب غير متاح الآن — حاول مرة أخرى' });
         }
         const text = buildVegNotifyText(row, target, items);
-        await sender.enqueue(digits, text, { clientKey: `veg-notify:${row.id}:${target}` });
+        const jidFull = digits.includes('@') ? digits : `${digits}@s.whatsapp.net`;
+        await sender.enqueue(jidFull, text, { clientKey: `veg-notify:${row.id}:${target}` });
         try { await store.logEvent('veg_notify', String(row.id), `${target}->${digits}`); } catch (_) { /* أفضل جهد */ }
         logger.info('[veg-requests] رسايل واتساب انزرعوا', { id: row.id, target, by: req.user && req.user.username });
         res.json({ ok: true, sent: 1, target });

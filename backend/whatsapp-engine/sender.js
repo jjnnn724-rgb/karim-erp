@@ -128,9 +128,10 @@ class WhatsappSender {
         }
 
         // 2) سقف التهيئة اليومي حسب عمر الجلسة — الرد على وارد معفي (محادثة مطلوبة)
+        let age = 1;
         if (!replyToInbound) {
             const firstSeen = await store.sessionFirstSeen();
-            const age = this._sessionAgeDays(firstSeen);
+            age = this._sessionAgeDays(firstSeen);
             const warmCap = scheduleAllowance(parseSchedule(cfg.warmupSchedule), age);
             const sentToday = await store.sendsToday();
             if (sentToday >= warmCap) {
