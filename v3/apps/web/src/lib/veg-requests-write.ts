@@ -170,9 +170,13 @@ export async function notifyVegRequest(id: string | number, target: 'supplier' |
 
 /* ── الكتالوج ─────────────────────────────────────────────────────────── */
 
+export type VegCatalogItem = { name: string; unit: string };
 export type VegCatalog = {
-    categories: Record<string, string[]>;
+    /** تسمية القسم → أصنافه بوحداتها الافتراضية («النسخة النهائية» من الورقة الرسمية) */
+    categories: Record<string, VegCatalogItem[]>;
     units: string[];
+    /** خريطة صنف → وحدة افتراضية من الكتالوج — لملء الوحدة تلقائيًا في واجهة الإنشاء */
+    unitOf: Record<string, string>;
 };
 
 export async function fetchVegCatalog(signal?: AbortSignal): Promise<VegCatalog> {
@@ -201,18 +205,23 @@ export async function fetchVegCatalog(signal?: AbortSignal): Promise<VegCatalog>
         signal ? { signal } : {},
     );
 
-    // السيرفر يرجع مصفوفة {key, label, items[{name, unit}]} — نحوّلها لكاتالوج مسطّح
-    const flat: Record<string, string[]> = {};
+    // السيرفر يرجع مصفوفة {key, label, items[{name, unit}]} — نحوّلها لكنتج مسطّح مع وحداته
+    const flat: Record<string, VegCatalogItem[]> = {};
+    const unitOf: Record<string, string> = {};
     const units: string[] = [...(body.units ?? [])];
     for (const group of body.categories ?? []) {
         const label = group.label ?? group.key ?? 'أصناف';
-        const names: string[] = [];
+        const items: VegCatalogItem[] = [];
         for (const item of group.items ?? []) {
-            if (item.name && !names.includes(item.name)) { names.push(item.name); }
+            const name = String(item.name ?? '').trim();
+            if (!name || items.some((candidate) => candidate.name === name)) { continue; }
+            const unit = String(item.unit ?? '').trim() || 'وحدة';
+            items.push({ name, unit });
+            if (!unitOf[name]) { unitOf[name] = unit; }
         }
-        if (names.length) { flat[label] = names; }
+        if (items.length) { flat[label] = items; }
     }
-    return { categories: flat, units };
+    return { categories: flat, units, unitOf };
 }
 
 /* ── دوال تأكيد ───────────────────────────────────────────────────────── */

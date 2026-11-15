@@ -210,7 +210,12 @@ describe('veg-repo — الثوابت مرايا الخادم والقديم ب�
         const wr = source(VR);
         const list = (a) => `[${a.map((r) => `'${r}'`).join(', ')}]`;   // مسافات الخادم
         expect(wr).toContain(`const CREATE_ROLES = ${list(repo.VEG_CREATE_ROLES)};`);
-        expect(wr).toContain(`const RECEIVE_ROLES = ${list(repo.VEG_RECEIVE_ROLES)};`);
+        // الحالة بعد قرار المالك (2026-10): بوابة استلام دالية — السو شيف/الإدارة
+        // + رئيس السلطات (dept_head بحقل dept_code يحتوي «salads») — لا توجد قائمة حرفيّة بعد الآن.
+        expect(wr).toMatch(/const isVegReceiveEligible = \(role, deptCode\)/);
+        expect(wr).toContain("if (r === 'dept_head') {");
+        expect(wr).toContain(".includes('salads');");
+        expect(wr).toContain("const receiveGate = [jwtAuth, (req, res, next) => {");
         expect(wr).toContain(`const EDIT_ROLES = ${list(repo.VEG_EDIT_ROLES)};`);
         // القراء = الإنشاء + warehouse، بلا تكرار حرفي
         expect(wr).toContain("const READ_ROLES = [...CREATE_ROLES, 'warehouse'];");
@@ -223,7 +228,7 @@ describe('veg-repo — الثوابت مرايا الخادم والقديم ب�
         const wr = source(VR);
         for (const line of [
             "router.get('/catalog', jwtAuth, requireRole(...READ_ROLES)",
-            "router.post('/', jwtAuth, requireRole(...CREATE_ROLES)",
+            "router.post('/', ...vegCreateGate, async (req, res, next) => {",
             "router.get('/', jwtAuth, requireRole(...READ_ROLES)",
             "router.post('/:id/receive', ...receiveGate",
             "router.post('/:id/price', jwtAuth, requireRole('warehouse', 'admin', 'owner', 'manager')",
@@ -233,8 +238,11 @@ describe('veg-repo — الثوابت مرايا الخادم والقديم ب�
         ]) {
             expect(wr).toContain(line);
         }
-        // بوابة الاستلام المسمّاة — كلمتها تصل الشاشة حرفًا
-        expect(wr).toContain("return res.status(403).json({ ok: false, error: 'FORBIDDEN', message: 'الاستلام والتوقيع للسو شيف فقط' });");
+        // بوابة الإنشاء المسمّاة — توسع رئيس السلطات وفق قرار المالك (2026-10)
+        expect(wr).toContain("const vegCreateGate = [jwtAuth, (req, res, next) => {");
+        expect(wr).toContain("const isVegitCreateEligible = (role, deptCode)");
+        // بوابة الاستلام — تحتضن السو شيف ورئيس السلطات والإدارة (الكلمة الحالية كما ترد للواجهة)
+        expect(wr).toContain("return res.status(403).json({ ok: false, error: 'FORBIDDEN', message: 'استلام الطلبية للسو شيف أو رئيس قسم السلطات أو الإدارة فقط' });");
         // الحالات المخزنة والحراسة المزدوجة داخل المعالجات
         expect(wr).toContain("CHECK (status IN ('pending','received','priced','cancelled'))");
         expect(wr).toContain("'التسعير بعد استلام رئيس القسم — الطلب حالته ' + row.status");
@@ -490,8 +498,8 @@ describe('شاشة 14 — العقد المصدَّر من المصدر', () => 
         expect(s).toContain("if (!vegPriceVisible(role, st)) {notify('التسعير للمخزن والإدارة فقط'); return;}");
         expect(s).toContain("if (!vegEditVisible(role, st, raw, userId)) {notify('التعديل لصاحب الطلب أو الإدارة فقط'); return;}");
         expect(s).toContain("if (!vegCancelVisible(role, st, raw, userId)) {notify('الإلغاء لصاحب الطلب أو الإدارة فقط'); return;}");
-        // كلمة الاستلام من الخادم :196 نفسها
-        expect(source(VR)).toContain('الاستلام والتوقيع للسو شيف فقط');
+        // كلمة الاستلام من الخادم — راعت قرار المالك لـ رئيس السلطات (2026-10)
+        expect(source(VR)).toContain('استلام الطلبية للسو شيف أو رئيس قسم السلطات أو الإدارة فقط');
         // البوابة تُحسم قبل أي تغيير حالة — لا لوحة عالقة بحالة مرفوضة
         const open = s.slice(s.indexOf('function openPanel'), s.indexOf('const seq = ++panelSeq;'));
         expect(open).not.toContain('panelKind =');

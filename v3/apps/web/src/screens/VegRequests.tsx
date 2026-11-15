@@ -158,16 +158,16 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
     const [priority, setPriority] = useState<'normal' | 'urgent'>('normal');
     const [notes, setNotes] = useState('');
     const [selected, setSelected] = useState('');
+    const [category, setCategory] = useState('');
     const [qty, setQty] = useState('1');
     const [unit, setUnit] = useState('كجم');
     const [error, setError] = useState('');
 
     const MANUAL_UNITS = ['كجم', 'جرام', 'طن', 'كرتونة', 'ربطة', 'حبة', 'صندوق', 'كيس', 'شيكارة', 'لتر', 'جالون', 'وحدة'];
 
-    const allItems = useMemo(() => {
-        if (!catalog) return [];
-        return Object.values(catalog.categories).flat();
-    }, [catalog]);
+    const categoryNames = useMemo(() => (catalog ? Object.keys(catalog.categories) : []), [catalog]);
+    const activeCategory = category && categoryNames.includes(category) ? category : (categoryNames[0] ?? '');
+    const itemsForCategory = useMemo(() => (catalog?.categories[activeCategory] ?? []), [catalog, activeCategory]);
 
     useEffect(() => {
         if (open) {
@@ -176,11 +176,21 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
             setPriority('normal');
             setNotes('');
             setSelected('');
+            setCategory('');
             setQty('1');
             setUnit('كجم');
             setError('');
         }
     }, [open]);
+
+    // عند وصول الكتالوج: كل فئة تُعرض كما هي في الورقة الرسمية، مع الوحدة الافتراضية للصنف الملتقى
+    useEffect(() => {
+        if (!catalog) return;
+        const keys = Object.keys(catalog.categories);
+        if (keys.length && !keys.includes(category)) {
+            setCategory(keys[0] ?? '');
+        }
+    }, [catalog]);
 
     function addLine() {
         setError('');
@@ -258,13 +268,30 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
             }
         >
             <form id={CREATE_FORM_ID} onSubmit={(event) => void save(event)} className="flex flex-col gap-sm">
-                <div className="grid gap-sm sm:grid-cols-[1fr_120px_100px]">
+                <div className="grid gap-sm sm:grid-cols-[1fr_1.3fr_96px_96px]">
+                    <Select
+                        label="القسم"
+                        name="category"
+                        value={activeCategory}
+                        onValueChange={(value) => {
+                            setCategory(String(value ?? ''));
+                            setSelected('');
+                        }}
+                        options={categoryNames.map((label) => ({ label, value: label }))}
+                    />
                     <Select
                         label="الصنف من الكتالوج"
                         name="item"
                         value={selected}
-                        onValueChange={(value) => setSelected(String(value ?? ''))}
-                        options={allItems.map((name) => ({ label: name, value: name }))}
+                        onValueChange={(value) => {
+                            const next = String(value ?? '');
+                            setSelected(next);
+                            const found = itemsForCategory.find((candidate) => candidate.name === next);
+                            if (found) {
+                                setUnit(found.unit);
+                            }
+                        }}
+                        options={itemsForCategory.map((item) => ({ label: `${item.name} — ${item.unit}`, value: item.name }))}
                     />
                     <Input
                         label="الكمية"
@@ -277,6 +304,11 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
                     />
                     <Input label="الوحدة" name="unit" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="كجم" />
                 </div>
+                {activeCategory ? (
+                    <p className="text-caption text-faint">
+                        <span dir="ltr" lang="en" className="font-mono">OFFICIAL SHEET</span> · «{activeCategory}» — {itemsForCategory.length} صنف · الوحدة تُملأ تلقائيًا من الورقة ويمكن تعديلها
+                    </p>
+                ) : null}
                 <div>
                     <Button type="button" variant="secondary" size="sm" onClick={addLine}>
                         إضافة الصنف

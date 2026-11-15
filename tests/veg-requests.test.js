@@ -8,23 +8,44 @@
 
 const { cleanText, validateItems, applyPrices, UNITS, VEG_CATALOG } = require('../backend/veg-requests-logic');
 
-describe('كتالوج الخضار', () => {
-    test('مصنّف بأقسام وكل صنف له اسم ووحدة افتراضية من قائمة السماح', () => {
-        expect(VEG_CATALOG.length).toBeGreaterThanOrEqual(4);
+describe('كتالوج الخضار — «النسخة النهائية» المعتمدة من المطعم (30 رئيسيًا + 5 إضافية)', () => {
+    test('قسمان رسميان بمفتاح وتسمية داعمة، وكل الوحدات من قائمة السماح، والأسماء فريدة', () => {
+        expect(VEG_CATALOG.map((c) => c.key)).toEqual(['main', 'extras']);
+        const labels = Object.fromEntries(VEG_CATALOG.map((c) => [c.key, c.label]));
+        expect(labels.main).toBe('الأصناف الرئيسية');
+        expect(labels.extras).toBe('أصناف إضافية');
+        const seen = new Set();
         for (const cat of VEG_CATALOG) {
-            expect(cat.key).toBeTruthy();
             expect(cat.label).toBeTruthy();
             expect(cat.items.length).toBeGreaterThan(0);
             for (const it of cat.items) {
                 expect(it.name).toBeTruthy();
                 expect(UNITS).toContain(it.unit);
+                const key = it.name.toLowerCase();
+                expect(seen.has(key)).toBe(false);   // لا تكرار عبر الأقسام
+                seen.add(key);
             }
         }
     });
-    test('أصناف أساسية موجودة (طماطم/بطاطس/بصل/ملوخية)', () => {
+    test('أصناف الورقة الرسمية موجودة حرفيًا (30 رئيسي + 5 إضافي)', () => {
         const names = VEG_CATALOG.flatMap((c) => c.items.map((i) => i.name));
-        for (const must of ['طماطم', 'بطاطس', 'بصل', 'ملوخية']) {
-            expect(names).toContain(must);
+        // من الورقة الرسمية 5fd80a4f — القائمة الكاملة
+        const main = VEG_CATALOG.find((c) => c.key === 'main').items.map((i) => i.name);
+        const extras = VEG_CATALOG.find((c) => c.key === 'extras').items.map((i) => i.name);
+        expect(main).toHaveLength(30);
+        expect(extras).toHaveLength(5);
+        for (const must of [
+            'طماطم', 'خيار', 'بصل أحمر', 'بطاطس', 'بقدونس', 'شبت', 'كزبرة خضراء',
+            'كرفس', 'كرنب أبيض', 'كرنب أحمر', 'خس مدور', 'جرجير', 'كرات بلدي',
+            'فلفل أحمر حار', 'خس ألوان', 'باذنجان عروس', 'باذنجان رومي', 'كوسة',
+            'فلفل أخضر رومي', 'فلفل ألوان (أحمر وأصفر)', 'زهرة', 'خس بلدي',
+            'بروكيل', 'نعناع', 'زنجبيل', 'ثوم مقشر', 'فلفل أخضر حار', 'جزر',
+            'بصل أخضر', 'ليمون بلدي',
+        ]) {
+            expect(main).toContain(must);
+        }
+        for (const must of ['طماطم شيري', 'زعتر فريش', 'بقدونس فرنسي', 'دبة', 'فرع بلدي']) {
+            expect(extras).toContain(must);
         }
     });
 });
