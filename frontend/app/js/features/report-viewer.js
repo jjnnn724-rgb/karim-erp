@@ -13,8 +13,8 @@
  *   w.document.write(html); w.document.close(); // يُعرض فورًا داخل التطبيق
  * وضع URL: window.openInAppReport('إيصال', url) — يعرض رابطًا جاهزًا.
  */
-import { esc } from '../core/utils.js?v=4.9.354';
-import { applyPrintSystem } from '../core/print-system.js?v=4.9.354';
+import { esc } from '../core/utils.js?v=4.9.355';
+import { applyPrintSystem } from '../core/print-system.js?v=4.9.355';
 
 let overlayEl = null;
 let frameLoaded = false;
@@ -31,7 +31,7 @@ function ensurePdfShareLegacy() {
     if (pdfScriptL || window.__karimPdfShare) { return Promise.resolve(window.__karimPdfShare || null); }
     return new Promise(function (resolve) {
         const tag = document.createElement('script');
-        tag.src = '/app/js/pdf-share-legacy.js?v=4.9.354';
+        tag.src = '/app/js/pdf-share-legacy.js?v=4.9.355';
         tag.onload = function () { pdfScriptL = true; resolve(window.__karimPdfShare || null); };
         tag.onerror = function () { resolve(null); };
         document.head.appendChild(tag);

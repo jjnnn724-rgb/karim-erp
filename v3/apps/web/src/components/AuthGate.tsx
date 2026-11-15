@@ -16,7 +16,6 @@ import {
     useAuthState,
     verifyMfa,
 } from '../lib/auth';
-import { APP_NAME } from '../lib/navigation';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import './auth-premium.css';
@@ -755,37 +754,41 @@ function LoginScreen({ kiosk = false }: { kiosk?: boolean }) {
                 </section>
             </main>
             {!kiosk ? (
-                <aside className="erp-login__story" aria-label="عن النظام">
-                    <div className="erp-login__brand">
-                        <span className="erp-login__mark" aria-hidden="true">
-                            <svg
-                                aria-hidden="true"
-                                focusable="false"
-                                viewBox="0 0 24 24"
-                                width="28"
-                                height="28"
-                                fill="none"
-                                stroke="currentColor"
-                                strokeWidth="1.3"
-                            >
-                                <path d="M5 19V5h14v14H5Z M9 19V9h6v10 M5 13h4 M15 13h4" />
-                                <path d="M3 21h18 M8 3h8" />
-                            </svg>
-                        </span>
-                        <span>{APP_NAME}</span>
-                    </div>
-                    <div className="erp-login__intro">
-                        <div className="erp-login__eyebrow" lang="en" dir="ltr">
-                            KARIM / ENTERPRISE RESOURCE PLANNING
+                <aside className="erp-login__story" aria-label="مطاعم الشرفة العالمي — AL SHURFA AL ALAMI RESTAURANTS">
+                    <div className="erp-login--luxe-frame">
+                        <figure className="erp-login__brand-big" aria-hidden="true">
+                            <img
+                                className="erp-login__logo"
+                                src="/app/assets/karim-logo.png"
+                                alt="مطاعم الشرفة العالمي — AL SHURFA AL ALAMI RESTAURANTS"
+                                loading="eager"
+                                decoding="sync"
+                                width={320}
+                                height={320}
+                            />
+                            <span className="erp-login__brand-name">مطاعم الشرفة العالمي</span>
+                            <span className="erp-login__brand-tag" lang="en" dir="ltr">AL SHURFA AL ALAMI</span>
+                            <span className="erp-login__brand-cloud" lang="en" dir="ltr">RESTAURANTS GROUP</span>
+                        </figure>
+                        <div className="erp-login__rule" aria-hidden="true" />
+                        <div className="erp-login__intro">
+                            <p className="erp-login__eyebrow-luxe" lang="en" dir="ltr">KARIM ERP · ENTERPRISE RESOURCE PLANNING</p>
+                            <h2 className="erp-login__headline-luxe">
+                                تفاصيل أكثر وضوحًا.<br />
+                                قرارات <em>أكثر ثقة</em>.
+                            </h2>
+                            <p className="erp-login__sub-luxe">
+                                المحاسبة والمخزون والبصمة والرواتب — في مكان واحد، لقيادة تفاهم تفاصيل يومك بأدق طريقة.
+                            </p>
+                            <div className="erp-login__chip-row" aria-hidden="true">
+                                <span className="erp-login__chip">الفروع السبعة</span>
+                                <span className="erp-login__chip">فواتير إلكترونية</span>
+                                <span className="erp-login__chip">بصمة + Face ID</span>
+                                <span className="erp-login__chip">تقارير KPIs</span>
+                            </div>
                         </div>
-                        <h2>
-                            تفاصيل أكثر وضوحًا.
-                            <br />
-                            قرارات أكثر ثقة.
-                        </h2>
-                        <p>المحاسبة والمخزون والموارد البشرية في مساحة عمل واحدة. مصمّمة لتفاصيل يومك.</p>
+                        <p className="erp-login__foot-luxe" lang="en" dir="ltr">AL SHURFA AL ALAMI · Riyadh 2026</p>
                     </div>
-                    <p className="erp-login__footer">كاريم · نظام إدارة المطاعم</p>
                 </aside>
             ) : null}
         </div>
