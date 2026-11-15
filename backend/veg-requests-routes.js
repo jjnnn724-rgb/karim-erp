@@ -26,6 +26,20 @@ const CREATE_ROLES = ['sous_chef', 'admin', 'owner'];
 const READ_ROLES = [...CREATE_ROLES, 'warehouse'];
 const RECEIVE_ROLES = ['sous_chef', 'admin', 'owner'];
 
+// إنشاء الطلبية: السو شيف + الإدارة + رئيس قسم السلطات (dept_head · dept_code=salads) بالتحديد
+const isVegitCreateEligible = (role, deptCode) => {
+    const r = String(role || '');
+    if (r === 'sous_chef' || r === 'admin' || r === 'owner') {return true;}
+    if (r === 'dept_head') {
+        return String(deptCode || '').toLowerCase().split(',').map((s) => s.trim()).includes('salads');
+    }
+    return false;
+};
+const vegCreateGate = [jwtAuth, (req, res, next) => {
+    if (isVegitCreateEligible(req.user?.role, req.user?.dept_code)) {return next();}
+    return res.status(403).json({ ok: false, error: 'FORBIDDEN', message: 'أنشئ الطلبية رئيس قسم السلطات أو السو شيف أو الإدارة فقط' });
+}];
+
 // ─── المخطط (lazy — أول لمسة تُنشئ الجدول) ───────────────────────────────────
 
 let schemaReady = null;
@@ -94,7 +108,7 @@ router.get('/catalog', jwtAuth, requireRole(...READ_ROLES), async (req, res, nex
 
 // ─── إنشاء طلب ───────────────────────────────────────────────────────────────
 
-router.post('/', jwtAuth, requireRole(...CREATE_ROLES), async (req, res, next) => {
+router.post('/', ...vegCreateGate, async (req, res, next) => {
     try {
         await ensureSchema();
         const checked = validateItems(req.body?.items);
@@ -579,7 +593,7 @@ function buildVegNotifyText(row, target, items) {
     ].join('\n');
 }
 
-router.post('/:id/notify', jwtAuth, requireRole(...CREATE_ROLES), async (req, res) => {
+router.post('/:id/notify', ...vegCreateGate, async (req, res) => {
     const target = String(req.body?.target || '').trim().toLowerCase();
     if (!NOTIFY_TARGETS.has(target)) {
         return res.status(422).json({ ok: false, error: 'TARGET_INVALID', message: 'الهدف: supplier أو warehouse' });

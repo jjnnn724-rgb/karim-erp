@@ -39,7 +39,7 @@
  *   network — and returns a Blob; the screen only saves it.
  */
 
-import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.349';
+import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.350';
 
 /** @returns {Promise<{running:boolean,devices:any[],totals:object}>} */
 export async function fetchZkStatus() {

@@ -36,7 +36,6 @@ import {
     vegCancelConfirm,
     vegCreateVisible,
     vegPriceVisible,
-    vegReceiveConfirm,
     vegReceiveVisible,
 } from '../lib/veg-requests-write';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
@@ -395,6 +394,207 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
     );
 }
 
+/* ── نموذج استلام الطلب ──────────────────────────────────────────────── */
+
+interface ReceiveDialogProps {
+    open: boolean;
+    row: VegRequestRow | null;
+    items: ReadonlyArray<{ name: string; qty: number; unit?: string | undefined }>;
+    pending: boolean;
+    receiverName?: string | undefined;
+    onClose: () => void;
+    onSubmit: (payload: { quantities: Array<{ name: string; receivedQty: number }>; rejections: string[] }) => Promise<void>;
+}
+
+const RECEIVE_FORM_ID = 'erp-veg-receive-form';
+
+function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSubmit }: ReceiveDialogProps) {
+    const [received, setReceived] = useState<Record<string, string>>({});
+    const [rejected, setRejected] = useState<ReadonlySet<string>>(new Set());
+    const [confirmStage, setConfirmStage] = useState(false);
+    const [error, setError] = useState('');
+
+    useEffect(() => {
+        if (open) {
+            const next: Record<string, string> = {};
+            for (const item of items) { next[item.name] = String(item.qty ?? 0); }
+            setReceived(next);
+            setRejected(new Set());
+            setConfirmStage(false);
+            setError('');
+        }
+    }, [open, items]);
+
+    const stats = useMemo(() => {
+        let asked = 0, got = 0, spoiled = 0, rejectedCount = 0;
+        for (const item of items) {
+            const q = Number(item.qty) || 0;
+            const g = Number(received[item.name]);
+            asked += q;
+            if (Number.isFinite(g) && g >= 0) { got += g; }
+            spoiled += Math.max(0, q - (Number.isFinite(g) && g >= 0 ? g : 0));
+            if (rejected.has(item.name)) { rejectedCount += 1; }
+        }
+        return { asked: Math.round(asked * 1000) / 1000, got: Math.round(got * 1000) / 1000, spoiled: Math.round(spoiled * 1000) / 1000, rejectedCount };
+    }, [items, received, rejected]);
+
+    function tabularNumber(v: string | undefined): number {
+        const n = Number(v);
+        return Number.isFinite(n) ? n : NaN;
+    }
+
+    async function doSubmit(): Promise<void> {
+        setError('');
+        const quantities: Array<{ name: string; receivedQty: number }> = [];
+        for (const item of items) {
+            const g = tabularNumber(received[item.name]);
+            if (!Number.isFinite(g) || g < 0 || g > 1000000) {
+                setError(`كمية الاستلام للصنف «${item.name}» غير صحيحة`);
+                return;
+            }
+            quantities.push({ name: item.name, receivedQty: Math.round(g * 1000) / 1000 });
+        }
+        try {
+            await onSubmit({ quantities, rejections: [...rejected] });
+            onClose();
+        } catch (cause) {
+            setError(writeErrorMessage(cause, 'تعذر تأكيد الاستلام — حاول مرة أخرى'));
+        }
+    }
+
+    return (
+        <Dialog
+            open={open}
+            onOpenChange={(next) => { if (!next) { onClose(); } }}
+            title={row ? `استلام الطلب — ${row.number}` : 'استلام الطلب'}
+            size="lg"
+            footer={confirmStage ? (
+                <>
+                    <Button type="button" variant="secondary" size="sm" onClick={() => setConfirmStage(false)}>رجوع للتعديل</Button>
+                    <Button type="button" size="sm" variant="danger" loading={pending} onClick={() => void doSubmit()}>
+                        تأكيد الاستلام النهائي
+                    </Button>
+                </>
+            ) : (
+                <>
+                    <Button type="button" variant="secondary" size="sm" onClick={onClose}>{VEG_TEXT.cancel}</Button>
+                    <Button type="button" size="sm" onClick={() => {
+                        if (!items.length) { setError('لا توجد أصناف في الطلب'); return; }
+                        for (const item of items) {
+                            const g = tabularNumber(received[item.name]);
+                            if (!Number.isFinite(g) || g < 0 || g > 1000000) { setError(`كمية الاستلام للصنف «${item.name}» غير صحيحة`); return; }
+                        }
+                        setConfirmStage(true);
+                    }}>استكمال ←</Button>
+                </>
+            )}
+        >
+            <form id={RECEIVE_FORM_ID} onSubmit={(event) => event.preventDefault()} className="flex flex-col gap-sm">
+                {!confirmStage ? (
+                    <>
+                        <div className="rounded-md border border-hairline bg-surface-sunken p-sm">
+                            <p className="text-label-md font-bold text-ink">السو شيف — تسجيل ما وصل بالفعل</p>
+                            <p className="text-body-xs leading-relaxed text-muted">
+                                اكتب الكمية المستلمة فعليًا لكل صنف. التسعير والترحيل للمطبخ هيبقوا على الكمية المستلمة فقط — والصنف المرفوض يستبعد بالكامل.
+                            </p>
+                        </div>
+
+                        <div className="overflow-hidden rounded-md border border-hairline">
+                            <table className="w-full border-collapse text-body-sm">
+                                <thead>
+                                    <tr className="bg-surface-sunken text-caption font-bold text-muted">
+                                        <th scope="col" className="px-sm py-xs text-start">#</th>
+                                        <th scope="col" className="px-sm py-xs text-start">الصنف</th>
+                                        <th scope="col" className="px-sm py-xs text-end">المطلوب</th>
+                                        <th scope="col" className="px-sm py-xs text-end">المستلم</th>
+                                        <th scope="col" className="px-sm py-xs text-end">التالف</th>
+                                        <th scope="col" className="px-sm py-xs text-center">مرفوض</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {items.map((item, idx) => {
+                                        const asked = Number(item.qty) || 0;
+                                        const got = Number(received[item.name]);
+                                        const gotSafe = Number.isFinite(got) && got >= 0 ? got : 0;
+                                        const spoiled = Math.max(0, Math.round((asked - gotSafe) * 1000) / 1000);
+                                        const isRejected = rejected.has(item.name);
+                                        return (
+                                            <tr key={item.name} className={`border-t border-hairline ${isRejected ? 'bg-red-50/40 opacity-70' : ''}`}>
+                                                <td className="px-sm py-xs text-caption text-faint">{idx + 1}</td>
+                                                <td className="px-sm py-xs font-semibold text-ink">{item.name}</td>
+                                                <td className="erp-numeric px-sm py-xs text-end text-ink" dir="ltr">{asked.toLocaleString('en-US', { maximumFractionDigits: 3 })} {item.unit ?? ''}</td>
+                                                <td className="px-sm py-xs">
+                                                    <Input
+                                                        aria-label={`المستلم من ${item.name}`}
+                                                        name={`received-${item.name}`}
+                                                        type="number"
+                                                        min={0}
+                                                        step={0.001}
+                                                        inputMode="decimal"
+                                                        className="text-end tabular-nums"
+                                                        value={received[item.name] ?? ''}
+                                                        onChange={(e) => setReceived((previous) => ({ ...previous, [item.name]: e.target.value }))}
+                                                        disabled={isRejected}
+                                                        dir="ltr"
+                                                    />
+                                                </td>
+                                                <td className="erp-numeric px-sm py-xs text-end font-bold text-danger-text" dir="ltr">{spoiled > 0 ? spoiled.toLocaleString('en-US', { maximumFractionDigits: 3 }) : '—'}</td>
+                                                <td className="px-sm py-xs text-center">
+                                                    <label className="inline-flex cursor-pointer items-center gap-xxs text-caption text-danger-text">
+                                                        <input
+                                                            type="checkbox"
+                                                            checked={isRejected}
+                                                            onChange={(e) => {
+                                                                const checked = e.target.checked;
+                                                                setRejected((prev) => {
+                                                                    const next = new Set(prev);
+                                                                    if (checked) { next.add(item.name); } else { next.delete(item.name); }
+                                                                    return next;
+                                                                });
+                                                            }}
+                                                        />
+                                                        مرفوض
+                                                    </label>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })}
+                                </tbody>
+                                <tfoot>
+                                    <tr className="border-t-2 border-hairline-strong bg-surface-sunken">
+                                        <td colSpan={2} className="px-sm py-xs text-body-sm font-bold text-ink">الإجمالي</td>
+                                        <td className="erp-numeric px-sm py-xs text-end text-body-sm text-ink" dir="ltr">{stats.asked.toLocaleString('en-US', { maximumFractionDigits: 3 })}</td>
+                                        <td className="erp-numeric px-sm py-xs text-end font-extrabold text-success-text" dir="ltr">{stats.got.toLocaleString('en-US', { maximumFractionDigits: 3 })}</td>
+                                        <td className="erp-numeric px-sm py-xs text-end font-bold text-danger-text" dir="ltr">{stats.spoiled.toLocaleString('en-US', { maximumFractionDigits: 3 })}</td>
+                                        <td />
+                                    </tr>
+                                </tfoot>
+                            </table>
+                        </div>
+                        {error ? <p role="alert" className="text-body-sm text-danger-text">{error}</p> : null}
+                        <p className="text-body-xs text-faint">الاستلام بواسطة: {receiverName ?? '…'} — التالف يُوثَّق ولا يُسعَّر ولا يُحمّل على المطبخ.</p>
+                    </>
+                ) : (
+                    <div className="flex flex-col gap-sm">
+                        <p className="text-label-md font-bold text-ink">تأكيد الاستلام النهائي — راجع قبل ما يتسجل</p>
+                        <div className="rounded-md border border-hairline bg-surface-sunken p-sm text-body-sm text-ink">
+                            <p className="mb-xs font-semibold">ملخص ما سيتم تسجيله:</p>
+                            <ul className="list-disc ps-5 leading-relaxed text-muted">
+                                <li>أصناف سيتم استلامها: <b className="text-ink">{items.length - stats.rejectedCount} صنف</b></li>
+                                <li>الكمية المستلمة الكلية: <b className="text-ink" dir="ltr">{stats.got.toLocaleString('en-US', { maximumFractionDigits: 3 })}</b></li>
+                                <li>التالف والموثق: <b className="text-ink" dir="ltr">{stats.spoiled.toLocaleString('en-US', { maximumFractionDigits: 3 })}</b></li>
+                                <li>أصناف مرفوضة كاملة: <b className="text-ink">{stats.rejectedCount}</b></li>
+                            </ul>
+                            <p className="mt-xs text-body-xs text-faint">مرفوض = ممنوع تمامًا من التسعير والترحيل — يُعتبر غير موجود نهائيًا.</p>
+                        </div>
+                        {error ? <p role="alert" className="text-body-sm text-danger-text">{error}</p> : null}
+                    </div>
+                )}
+            </form>
+        </Dialog>
+    );
+}
+
 /* ── نموذج تعديل كميات ──────────────────────────────────────────────────── */
 
 interface EditItemsDialogProps {
@@ -495,8 +695,9 @@ function EditItemsDialog({ open, row, items, pending, onClose, onSubmit }: EditI
 interface PriceDialogProps {
     open: boolean;
     row: VegRequestRow | null;
-    items: ReadonlyArray<{ name: string; qty: number; unit?: string | undefined }>;
+    items: ReadonlyArray<{ name: string; qty: number; unit?: string | undefined; rejected?: boolean | undefined }>;
     pending: boolean;
+    approverName?: string | undefined;
     onClose: () => void;
     onSubmit: (prices: { name: string; price: number; qty?: number | undefined }[]) => Promise<void>;
 }
@@ -523,6 +724,7 @@ function PriceDialog({ open, row, items, pending, onClose, onSubmit }: PriceDial
     const math = useMemo(() => {
         let total = 0;
         const lines = items.map((item) => {
+            if (item.rejected) { return { item, raw: '', price: null, valid: true, lineTotal: null }; }
             const raw = String(prices[item.name] ?? '').trim();
             const price = raw === '' ? null : Number(raw);
             const valid = price !== null && Number.isFinite(price) && price >= 0 && price <= 1000000;
@@ -530,7 +732,7 @@ function PriceDialog({ open, row, items, pending, onClose, onSubmit }: PriceDial
             if (lineTotal !== null) { total += lineTotal; }
             return { item, raw, price, valid, lineTotal };
         });
-        const unpriced = lines.reduce((count, l) => count + (l.valid ? 0 : 1), 0);
+        const unpriced = lines.reduce((count, l) => count + ((l.item.rejected || l.valid) ? 0 : 1), 0);
         return { total: Math.round(total * 100) / 100, unpriced };
     }, [items, prices]);
 
@@ -543,6 +745,7 @@ function PriceDialog({ open, row, items, pending, onClose, onSubmit }: PriceDial
         }
         const payload: { name: string; price: number; qty?: number | undefined }[] = [];
         for (const item of items) {
+            if (item.rejected) { continue; }
             const raw = String(prices[item.name] ?? '').trim();
             const price = Number(raw);
             if (raw === '' || !Number.isFinite(price) || price < 0 || price > 1000000) {
@@ -606,7 +809,8 @@ function PriceDialog({ open, row, items, pending, onClose, onSubmit }: PriceDial
                         </thead>
                         <tbody>
                             {items.map((item, idx) => {
-                                const line = math ? (() => {
+                                const isRejected = item.rejected === true;
+                                const line = (!isRejected && math) ? (() => {
                                     const raw = String(prices[item.name] ?? '').trim();
                                     const price = raw === '' ? null : Number(raw);
                                     const valid = price !== null && Number.isFinite(price) && price >= 0 && price <= 1000000;
@@ -614,27 +818,31 @@ function PriceDialog({ open, row, items, pending, onClose, onSubmit }: PriceDial
                                     return { raw, lineTotal };
                                 })() : { raw: '', lineTotal: null };
                                 return (
-                                    <tr key={item.name} className="border-t border-hairline">
+                                    <tr key={item.name} className={`border-t border-hairline${isRejected ? ' bg-red-50/40' : ''}`}>
                                         <td className="px-sm py-xs text-caption text-faint">{idx + 1}</td>
-                                        <td className="px-sm py-xs font-semibold text-ink">{item.name}</td>
+                                        <td className={`px-sm py-xs font-semibold ${isRejected ? 'text-muted line-through' : 'text-ink'}`}>{item.name}</td>
                                         <td className="px-sm py-xs text-center text-muted">{item.unit ?? 'كجم'}</td>
                                         <td className="erp-numeric px-sm py-xs text-end text-ink" dir="ltr">{(item.qty ?? 0).toLocaleString('en-US', { maximumFractionDigits: 3 })}</td>
                                         <td className="px-sm py-xs">
-                                            <Input
-                                                aria-label={`سعر ${item.name}`}
-                                                name={`price-${item.name}`}
-                                                type="number"
-                                                min={0}
-                                                step={0.01}
-                                                inputMode="decimal"
-                                                className="text-end tabular-nums"
-                                                value={prices[item.name] ?? ''}
-                                                onChange={(e) => setPrices((previous) => ({ ...previous, [item.name]: e.target.value }))}
-                                                dir="ltr"
-                                            />
+                                            {isRejected ? (
+                                                <span className="inline-flex rounded-full bg-red-100 px-sm py-xxs text-caption font-bold text-danger-text">مرفوض — لا يُسعّر</span>
+                                            ) : (
+                                                <Input
+                                                    aria-label={`سعر ${item.name}`}
+                                                    name={`price-${item.name}`}
+                                                    type="number"
+                                                    min={0}
+                                                    step={0.01}
+                                                    inputMode="decimal"
+                                                    className="text-end tabular-nums"
+                                                    value={prices[item.name] ?? ''}
+                                                    onChange={(e) => setPrices((previous) => ({ ...previous, [item.name]: e.target.value }))}
+                                                    dir="ltr"
+                                                />
+                                            )}
                                         </td>
                                         <td className="erp-numeric px-sm py-xs text-end font-bold text-ink" dir="ltr">
-                                            {line.lineTotal !== null ? moneyFmt(line.lineTotal) : <span className="text-muted">—</span>}
+                                            {isRejected ? <span className="text-muted">—</span> : (line.lineTotal !== null ? moneyFmt(line.lineTotal) : <span className="text-muted">—</span>)}
                                         </td>
                                     </tr>
                                 );
@@ -798,7 +1006,7 @@ function VegContactsDialog({ open, pending, current, onClose, onSave }: {
 export function VegRequests() {
     const auth = useAuthState();
     const { toast } = useToast();
-    const canCreate = vegCreateVisible(auth.user?.role);
+    const canCreate = vegCreateVisible(auth.user?.role, auth.user?.dept_code);
     const canReceive = vegReceiveVisible(auth.user?.role);
     const canPrice = vegPriceVisible(auth.user?.role);
     const isContactsAdmin = auth.user?.role === 'admin' || auth.user?.role === 'owner';
@@ -816,12 +1024,14 @@ export function VegRequests() {
     const [editItems, setEditItems] = useState<ReadonlyArray<{ name: string; qty: number; unit?: string | undefined }>>([]);
     const [priceOpen, setPriceOpen] = useState(false);
     const [priceRow, setPriceRow] = useState<VegRequestRow | null>(null);
-    const [priceItems, setPriceItems] = useState<ReadonlyArray<{ name: string; qty: number; unit?: string | undefined }>>([]);
+    const [priceItems, setPriceItems] = useState<ReadonlyArray<{ name: string; qty: number; unit?: string | undefined; rejected?: boolean | undefined }>>([]);
     const [actionOpen, setActionOpen] = useState(false);
     const [actionRow, setActionRow] = useState<VegRequestRow | null>(null);
-    const [actionKind, setActionKind] = useState<'receive' | 'price' | 'cancel'>('receive');
     const [actionTitle, setActionTitle] = useState('');
     const [actionMessage, setActionMessage] = useState('');
+    const [receiveOpen, setReceiveOpen] = useState(false);
+    const [receiveRow, setReceiveRow] = useState<VegRequestRow | null>(null);
+    const [receiveItems, setReceiveItems] = useState<ReadonlyArray<{ name: string; qty: number; unit?: string | undefined }>>([]);
 
     const vegQuery = useQuery({
         queryKey: ['veg-requests', status],
@@ -886,14 +1096,14 @@ export function VegRequests() {
         onSuccess: () => setCreateOpen(false),
     });
 
-    const receiveMutation = useWriteMutation<string, void>({
-        mutationFn: (id) => receiveVegRequest(id).then(() => undefined),
-        successTitle: () => VEG_TEXT.receiveSuccess,
+    const receiveMutation = useWriteMutation<{ id: string | number; payload: { quantities: Array<{ name: string; receivedQty: number }>; rejections: string[] } }, void>({
+        mutationFn: ({ id, payload }) => receiveVegRequest(id, payload).then(() => undefined),
+        successTitle: () => '✓ تم استلام الطلب',
         invalidate: [['veg-requests']],
         silentError: true,
         onSuccess: () => {
-            setActionOpen(false);
-            setActionRow(null);
+            setReceiveOpen(false);
+            setReceiveRow(null);
         },
     });
 
@@ -963,11 +1173,25 @@ export function VegRequests() {
         setEditOpen(true);
     }
 
-    function openAction(row: VegRequestRow, kind: 'receive' | 'price' | 'cancel') {
+    function openReceive(row: VegRequestRow) {
+        const raw = vegQuery.data?.requests.find((request) => request.id === row.id);
+        const items = Array.isArray(raw?.items)
+            ? (raw.items as Array<{ name?: string; qty?: number; quantity?: number; unit?: string; rejected?: boolean }>)
+            : [];
+        setReceiveRow(row);
+        setReceiveItems(items.map((item) => ({
+            name: String(item.name ?? ''),
+            qty: Number(item.qty ?? item.quantity ?? 0),
+            unit: item.unit ? String(item.unit) : undefined,
+        })));
+        setReceiveOpen(true);
+    }
+
+    function openAction(row: VegRequestRow, kind: 'price' | 'cancel') {
         if (kind === 'price') {
             const raw = vegQuery.data?.requests.find((request) => request.id === row.id);
             const items = Array.isArray(raw?.items)
-                ? (raw.items as Array<{ name?: string; qty?: number; quantity?: number; unit?: string }>)
+                ? (raw.items as Array<{ name?: string; qty?: number; quantity?: number; unit?: string; rejected?: boolean }>)
                 : [];
             setPriceRow(row);
             setPriceItems(
@@ -975,30 +1199,21 @@ export function VegRequests() {
                     name: String(item.name ?? ''),
                     qty: Number(item.qty ?? item.quantity ?? 0),
                     unit: item.unit ? String(item.unit) : undefined,
+                    rejected: item.rejected === true,
                 })),
             );
             setPriceOpen(true);
             return;
         }
-        if (kind === 'receive') {
-            setActionTitle('استلام الطلب');
-            setActionMessage(vegReceiveConfirm(row.number));
-        } else {
-            setActionTitle('إلغاء الطلب');
-            setActionMessage(vegCancelConfirm(row.number));
-        }
+        setActionTitle('إلغاء الطلب');
+        setActionMessage(vegCancelConfirm(row.number));
         setActionRow(row);
-        setActionKind(kind);
         setActionOpen(true);
     }
 
     async function confirmAction() {
         if (!actionRow) return;
-        if (actionKind === 'receive') {
-            await receiveMutation.mutateAsync(actionRow.id);
-        } else {
-            await cancelMutation.mutateAsync(actionRow.id);
-        }
+        await cancelMutation.mutateAsync(actionRow.id);
     }
 
     function printRequest(row: VegRequestRow) {
@@ -1280,7 +1495,7 @@ export function VegRequests() {
                                                                     size="sm"
                                                                     variant="secondary"
                                                                     title="استلام الطلب"
-                                                                    onClick={() => openAction(row, 'receive')}
+                                                                    onClick={() => openReceive(row)}
                                                                 >
                                                                     استلام
                                                                 </Button>
@@ -1375,6 +1590,7 @@ export function VegRequests() {
                 row={priceRow}
                 items={priceItems}
                 pending={priceMutation.isPending}
+                approverName={String(auth.user?.name ?? auth.user?.username ?? '')}
                 onClose={() => {
                     setPriceOpen(false);
                     setPriceRow(null);
@@ -1384,11 +1600,26 @@ export function VegRequests() {
                     await priceMutation.mutateAsync({ id: priceRow.id, prices });
                 }}
             />
+            <ReceiveDialog
+                open={receiveOpen}
+                row={receiveRow}
+                items={receiveItems}
+                pending={receiveMutation.isPending}
+                receiverName={String(auth.user?.name ?? auth.user?.username ?? '')}
+                onClose={() => {
+                    setReceiveOpen(false);
+                    setReceiveRow(null);
+                }}
+                onSubmit={async (payload) => {
+                    if (!receiveRow) return;
+                    await receiveMutation.mutateAsync({ id: receiveRow.id, payload });
+                }}
+            />
             <ConfirmDialog
                 open={actionOpen}
                 title={actionTitle}
                 message={actionMessage}
-                pending={receiveMutation.isPending || priceMutation.isPending || cancelMutation.isPending}
+                pending={priceMutation.isPending || cancelMutation.isPending}
                 onConfirm={confirmAction}
                 onClose={() => {
                     setActionOpen(false);

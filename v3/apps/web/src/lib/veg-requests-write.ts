@@ -20,8 +20,11 @@ export const VEG_CREATE_ROLES = ['sous_chef', 'admin', 'owner'] as const;
 export const VEG_RECEIVE_ROLES = ['sous_chef', 'admin', 'owner'] as const;
 export const VEG_PRICE_ROLES = ['warehouse', 'admin', 'owner', 'manager'] as const;
 
-export function vegCreateVisible(role: string | null | undefined): boolean {
-    return isWriteRole(role, VEG_CREATE_ROLES);
+export function vegCreateVisible(role: string | null | undefined, deptCode?: string | null | undefined): boolean {
+    if (isWriteRole(role, VEG_CREATE_ROLES)) {return true;}
+    // رئيس قسم السلطات تحديدًا (dept_head · dept_code=salads)
+    return String(role || '') === 'dept_head'
+        && String(deptCode ?? '').toLowerCase().split(',').map((s) => s.trim()).includes('salads');
 }
 
 export function vegReceiveVisible(role: string | null | undefined): boolean {
@@ -92,8 +95,11 @@ export async function createVegRequest(input: VegCreateInput): Promise<VegResult
     });
 }
 
-export async function receiveVegRequest(id: string | number): Promise<VegResult> {
-    return writeJson(vegResultSchema, `/api/veg-requests/${encodeURIComponent(String(id))}/receive`, 'POST', {});
+export async function receiveVegRequest(
+    id: string | number,
+    payload?: { quantities?: Array<{ name: string; receivedQty: number }>; rejections?: string[] },
+): Promise<VegResult> {
+    return writeJson(vegResultSchema, `/api/veg-requests/${encodeURIComponent(String(id))}/receive`, 'POST', payload ?? {});
 }
 
 export async function priceVegRequest(
