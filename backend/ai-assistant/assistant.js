@@ -281,10 +281,14 @@ function ruleBasedAnswer(mode, context) {
       code: 'المقاطع المطلوبة (من المشروع مباشرة):',
       cfo: 'المراجعة المالية (من دفتر القيود وقراءات التشغيل مباشرة):',
     }[mode] || 'ما في النظام مباشرة:';
+  const body = String(context || '').trim();
+  const trimmed = body.length > 1500
+    ? body.slice(0, 1500) + '\n… (اقتطعنا السياق — للتفاصيل افتح «الذكاء» أو اسأل في وضع «تشخيص»)'
+    : body;
   return [
     head,
-    context,
-    '— المصدر: النظام نفسه. (تحليلٌ لفظي أعمق يحتاج محرّكًا لغويًا: Gemini مجاني أو النموذج المحلي حين يسبق ضمن ميزانيته.)',
+    trimmed,
+    '— المصدر: النظام نفسه. (تحليلٌ لفظي أعمق يُكتب عند سؤالك بـ /ask/deep حين يكون النموذج المحلي جاهزًا.)',
   ].join('\n\n');
 }
 
@@ -376,8 +380,8 @@ async function ask(input = {}) {
   } else {
     const map = projectMap();
     // النموذج الصغير يغرق في السياق الطويل ⇒ خريطةٌ مختصرة تكفي.
-    parts.push('شاشات المشروع (سجل الترحيل):', map.registry.slice(0, 18).join('\n'));
-    parts.push('القواعد الثابتة:', map.rules.slice(0, 6).join('\n'));
+    parts.push('شاشات المشروع (سجل الترحيل):', map.registry.slice(0, 8).join('\n'));
+    parts.push('القواعد الثابتة:', map.rules.slice(0, 4).join('\n'));
     const ctx = screenContext(input.screen);
     if (ctx) {
       parts.push('الشاشة الحالية:', ctx);
@@ -390,7 +394,7 @@ async function ask(input = {}) {
   //    يحتاج ٢٠–٦٠ ثانية ⇒ لا نفرض الانتظار على سؤالٍ عادي.
   //    المسار السريع = الحقائق من النظام فورًا؛ والتحليلُ اللفظي مسارٌ
   //    منفصل (/ask/deep) يختاره المالك.
-  const localAvailable = await localLlm.available().catch(() => false);
+    const localAvailable = await localLlm.available().catch(() => false);
 
   if (!gemini.enabled()) {
     // فوري: الحقائق من النظام، بلا انتظار نموذج.
@@ -408,18 +412,18 @@ async function ask(input = {}) {
     const res = await gemini.generateWithRetry({
       system: systemGuard(mode),
       prompt: question,
-      dataText,
+      dataText: fullContext,
       maxWords: 260,
     });
     return { text: res.text, mode, model: res.model || gemini.model(), fallback: false, grounded };
   } catch (e) {
     const msg = String(e && e.message ? e.message : e);
     if (/GEMINI_DISABLED/.test(msg)) {
-      return { text: ruleBasedAnswer(mode, dataText), mode, model: null, fallback: true, grounded };
+      return { text: ruleBasedAnswer(mode, fullContext), mode, model: null, fallback: true, grounded };
     }
     // حصة مجانية منتهية أو خطأ شبكة: نخبره بالحقائق بدل أن نُفشل الطلب.
     return {
-      text: `تعذّر الوصول للنموذج الآن (${msg.slice(0, 80)}). هذه الحقائق من النظام:\n\n${dataText}`,
+      text: `تعذّر الوصول للنموذج الآن (${msg.slice(0, 80)}). هذه الحقائق من النظام:\n\n${fullContext}`,
       mode,
       model: null,
       fallback: true,
