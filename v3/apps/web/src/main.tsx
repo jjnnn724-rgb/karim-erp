@@ -10,6 +10,7 @@ import './styles.css';
 import './mobile.css';
 import './luxe-premium.css';
 import './login-luxe.css';
+import './login-luxe-full-page.css';
 // بعد `styles.css` كي تتقدّم قواعد `@media print` على قواعد الشاشة.
 import './print.css';
 

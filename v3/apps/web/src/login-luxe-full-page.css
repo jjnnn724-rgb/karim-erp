@@ -1,0 +1,321 @@
+/* ╔════════════════════════════════════════════════════════════════════════╗
+   ║  Karim ERP — «Luxe Single Page» — صفحة واحدة واسعة باعلي احترافية       ║
+   ║   (v4.9.356)                                                          ║
+   ║   • صفحة واحدة كاملة بلا سباين رأسي — logo + headline كبير ضمن shell    ║
+   ║   • backend ما يطوّع نفسه: الشعور بان يكون «ورقة من صفحة نادرة»         ║
+   ║   • h1 width screenالكامل + rail gold ـــــ storyline ـــ footer         ║
+   ╚════════════════════════════════════════════════════════════════════════╝ */
+
+/* ـــ الـframe outer: كل الصفحة دولياً تكتب في سيراكسيد ذهبي كبير ـــ */
+.erp-login--luxe-flat {
+    background:
+        radial-gradient(1500px 900px at 50% 0%, rgb(255 226 130 / 0.16), transparent 60%),
+        radial-gradient(1200px 800px at 50% 100%, rgb(191 161 91 / 0.10), transparent 55%),
+        linear-gradient(160deg, #0d2724 0%, #06110f 60%, #020806 100%);
+    color: #fff8e0;
+    position: relative;
+    min-block-size: 100dvh;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    overflow: hidden;
+    width: 100%;
+}
+
+/* إطار ذهبي خارجي — أركان مزدوجة CSS-only */
+.erp-luxe-outer {
+    position: absolute;
+    inset: clamp(18px, 2.2vw, 28px);
+    pointer-events: none;
+    border-radius: 22px;
+    border: 1px solid rgb(200 162 74 / 0.35);
+    box-shadow:
+        inset 0 0 0 1px rgb(255 226 130 / 0.10),
+        inset 0 0 60px rgb(0 0 0 / 0.5);
+    z-index: 0;
+}
+
+/* ـــ top eyebrow line ـــ */
+.erp-luxe-eyebrow-bar {
+    position: absolute;
+    inset-block-start: clamp(26px, 3vw, 36px);
+    inset-inline-start: clamp(32px, 5vw, 72px);
+    inset-inline-end: clamp(32px, 5vw, 72px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    color: #e0c56f;
+    font-size: 10px;
+    font-weight: 700;
+    letter-spacing: 0.28em;
+    padding-block: 10px;
+    border-bottom: 1px solid rgb(200 162 74 / 0.25);
+    z-index: 1;
+}
+.erp-luxe-toprail {
+    font-size: 10px;
+    letter-spacing: 0.30em;
+    color: #e0c56f;
+    font-family: var(--font-mono);
+}
+
+/* ـــ hero: logo in front, then headline, chips under ـــ */
+.erp-luxe-hero {
+    position: relative;
+    z-index: 1;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+    padding-block: clamp(80px, 12dvh, 130px) clamp(28px, 4dvh, 40px);
+    inline-size: min(1240px, 94vw);
+    text-align: center;
+}
+
+.erp-luxe-logo {
+    inline-size: clamp(170px, 22vw, 260px);
+    filter: drop-shadow(0 8px 30px rgb(0 0 0 / 0.7)) drop-shadow(0 0 46px rgb(255 226 130 / 0.16));
+    border-radius: 26px;
+}
+.erp-luxe-brand-cloud {
+    margin: 0;
+    font-size: 11px;
+    letter-spacing: 0.34em;
+    font-weight: 700;
+    color: #c8a24a;
+    text-transform: uppercase;
+    font-family: var(--font-mono);
+}
+.erp-luxe-brand-name {
+    margin: 0;
+    font-size: clamp(22px, 2.4vw, 30px);
+    letter-spacing: 0.08em;
+    color: #fff8e0;
+    font-weight: 800;
+    line-height: 1.4;
+}
+
+.erp-luxe-brand-name {
+    margin: 0;
+    font-size: clamp(28px, 3vw, 40px);
+    letter-spacing: 0.06em;
+    font-weight: 700;
+    color: #fff8e0;
+    line-height: 1.3;
+}
+.erp-luxe-brand-cloud {
+    font-size: 11px;
+    letter-spacing: 0.32em;
+    font-weight: 700;
+    color: #c8a24a;
+    text-transform: uppercase;
+    font-family: var(--font-mono);
+}
+
+.erp-luxe-rule {
+    inline-size: 200px;
+    block-size: 2px;
+    border-radius: 999px;
+    background: linear-gradient(90deg,
+        rgb(200 162 74 / 0) 0%,
+        #c8a24a 18%,
+        #fff3c4 50%,
+        #c8a24a 82%,
+        rgb(200 162 74 / 0) 100%);
+}
+
+.erp-luxe-eyebrow-luxe {
+    margin: 0;
+    color: #e0c56f;
+    font-size: 10px;
+    letter-spacing: 0.32em;
+    text-transform: uppercase;
+    font-family: var(--font-mono);
+}
+.erp-luxe-h1 {
+    margin: 0;
+    font-size: clamp(44px, 6vw, 84px);
+    line-height: 1.15;
+    font-weight: 800;
+    color: #fff8e0;
+    text-shadow: 0 4px 22px rgb(0 0 0 / 0.7);
+}
+.erp-luxe-h1 em {
+            font-style: normal;
+            background: linear-gradient(180deg, #fff3c4 0%, #e0c56f 60%, #8a6b2f 100%);
+            -webkit-background-clip: text;
+                    background-clip: text;
+            -webkit-text-fill-color: transparent;
+                    color: transparent;
+}
+
+.erp-luxe-sub {
+    margin: 0;
+    max-inline-size: 680px;
+    font-size: clamp(15px, 1.15vw, 19px);
+    line-height: 1.85;
+    color: rgb(255 248 224 / 0.78);
+}
+
+.erp-luxe-chips {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+    justify-content: center;
+}
+.erp-luxe-chips span {
+    background: rgb(200 162 74 / 0.12);
+    border: 1px solid rgb(200 162 74 / 0.4);
+    border-radius: 999px;
+    padding-inline: 16px;
+    padding-block: 7px;
+    font-size: 12px;
+    font-weight: 700;
+    color: #fff3c4;
+    letter-spacing: 0.02em;
+}
+
+/* ـــ المنتصف المهني: أيقونة | فورم بقليل من طلاء ـــ */
+.erp-luxe-shellgrid {
+    position: relative;
+    z-index: 1;
+    display: grid;
+    grid-template-columns: 1fr 480px;
+    gap: 0;
+    inline-size: min(1280px, 94vw);
+    border-radius: 26px;
+    overflow: hidden;
+    background: linear-gradient(160deg, #0d2724 0%, #071b19 100%);
+    border: 1px solid rgb(200 162 74 / 0.28);
+    box-shadow:
+        0 0 0 1px rgb(0 0 0 / 0.4),
+        0 32px 60px -24px rgb(0 0 0 / 0.7),
+        0 0 80px rgb(200 162 74 / 0.18);
+    margin-block-end: 32px;
+}
+
+.erp-luxe-story {
+    padding: clamp(28px, 4vw, 52px);
+    display: flex;
+    flex-direction: column;
+    gap: 28px;
+    align-items: flex-start;
+    text-align: start;
+    color: #fff8e0;
+    position: relative;
+    border-inline-end: 1px solid rgb(200 162 74 / 0.22);
+}
+
+.erp-luxe-story h2 {
+    margin: 0;
+    font-size: clamp(30px, 3.4vw, 48px);
+    line-height: 1.3;
+    font-weight: 700;
+}
+.erp-luxe-story p {
+    margin: 0;
+    color: rgb(255 248 224 / 0.78);
+    font-size: 15px;
+    line-height: 1.9;
+    max-inline-size: 460px;
+}
+
+.erp-luxe-cta-row {
+    display: flex;
+    gap: 12px;
+    flex-wrap: wrap;
+}
+.erp-luxe-cta-banner {
+    display: inline-flex;
+    align-items: center;
+    gap: 12px;
+    padding-inline: 18px;
+    padding-block: 10px;
+    border-radius: 999px;
+    background: linear-gradient(180deg, #c8a24a 0%, #9b7937 100%);
+    color: #1b1205;
+    font-weight: 800;
+    font-size: 13px;
+    letter-spacing: 0.01em;
+    border: 1px solid #6d4e1e;
+    box-shadow: 0 6px 18px -6px rgb(109 78 30 / 0.55);
+}
+.erp-luxe-cta-banner::before { content: "★"; color: #c8a24a; -webkit-text-fill-color: #c8a24a; }
+
+.erp-luxe-story-eyebrow {
+    margin: 0;
+    color: #e0c56f;
+    font-size: 10px;
+    letter-spacing: 0.30em;
+    text-transform: uppercase;
+    font-family: var(--font-mono);
+}
+
+/* ـــ active lane: form column ـــ */
+.erp-luxe-form-col {
+    padding: clamp(24px, 3vw, 40px);
+    background: linear-gradient(180deg, #050a09 0%, #040807 100%);
+    display: flex;
+    flex-direction: column;
+    justify-content: center;
+}
+
+.erp-login__form--luxe-card {
+    inline-size: 100%;
+    padding: 0;
+    border: none;
+    background: transparent;
+    box-shadow: none;
+}
+.erp-login__form--luxe-card h1 {
+    color: #fff8e0;
+    font-size: 22px;
+    line-height: 1.35;
+}
+.erp-login__form--luxe-card .erp-login__subtitle { color: rgb(255 248 224 / 0.6); }
+
+/* ـــ bottom brand rail ـــ */
+.erp-luxe-foot {
+    position: absolute;
+    inset-block-end: 22px;
+    inset-inline-start: 0;
+    inset-inline-end: 0;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    gap: 16px;
+    padding-inline: clamp(28px, 5vw, 72px);
+    z-index: 1;
+}
+.erp-luxe-rail {
+    inline-size: 70px;
+    block-size: 1px;
+    background: linear-gradient(90deg, transparent, #c8a24a, transparent);
+}
+.erp-luxe-foot-text {
+    margin: 0;
+    color: rgb(255 248 224 / 0.55);
+    font-size: 10px;
+    letter-spacing: 0.32em;
+    font-family: var(--font-mono);
+}
+
+/* ـــ responsive finesse ـــ */
+@media (max-width: 1180px) {
+    .erp-luxe-shellgrid { grid-template-columns: 1fr; }
+    .erp-luxe-story { border-inline-end: none; border-block-end: 1px solid rgb(200 162 74 / 0.22); padding: 24px; }
+    .erp-luxe-form-col { padding: 24px; }
+    .erp-luxe-logo { inline-size: clamp(150px, 30vw, 200px); }
+    .erp-luxe-h1 { font-size: clamp(36px, 7vw, 56px); }
+    .erp-luxe-sub { font-size: 14px; }
+}
+
+@media (max-width: 640px) {
+    .erp-luxe-eyebrow-bar { inset-inline-start: 18px; inset-inline-end: 18px; font-size: 8px; flex-direction: column; gap: 4px; align-items: flex-start; }
+    .erp-luxe-hero { padding-block: 64px 20px; }
+    .erp-luxe-eyebrow-luxe { font-size: 10px; }
+    .erp-luxe-foot { inset-block-end: 12px; }
+    .erp-luxe-foot-text { font-size: 8.5px; }
+    .erp-luxe-chips span { font-size: 10px; }
+}

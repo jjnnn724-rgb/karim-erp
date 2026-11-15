@@ -361,437 +361,249 @@ function LoginScreen({ kiosk = false }: { kiosk?: boolean }) {
     }
 
     return (
-        <div className={`erp-login${kiosk ? ' erp-login--kiosk' : ''}`} dir="rtl">
-            <main className="erp-login__form-area">
-                {kiosk ? (
+        <div className={`erp-login${kiosk ? ' erp-login--kiosk' : ' erp-login--luxe-flat'}`} dir="rtl">
+            {kiosk ? (
+                <main className="erp-login__form-area">
                     <div className="erp-login__kiosk-brand">
-                        <span className="erp-login__kiosk-mark" aria-hidden="true">
-                            K
-                        </span>
+                        <span className="erp-login__kiosk-mark" aria-hidden="true">K</span>
                         <span>Karim POS</span>
                     </div>
-                ) : null}
-                <section className="erp-login__form" aria-live="polite">
-                    {pane === 'password' ? (
-                        <form onSubmit={onLogin} aria-busy={busy}>
-                            <PaneHeader
-                                eyebrow={kiosk ? 'CASHIER ACCESS' : 'YOUR WORKSPACE'}
-                                title={kiosk ? 'دخول الكاشير' : 'Karim ERP — الإصدار الثالث'}
-                                subtitle={
-                                    kiosk
-                                        ? 'سجّل الدخول بحساب الكاشير لبدء الوردية. لا تظهر هنا إلا بيانات الكاشير.'
-                                        : 'سجّل الدخول إلى مساحة عملك باستخدام حساب المنشأة.'
-                                }
-                            />
-                            <div className="mt-lg flex flex-col gap-md">
-                                <Input
-                                    id="erp-v3-username"
-                                    label="اسم المستخدم"
-                                    name="username"
-                                    autoComplete="username"
-                                    autoCapitalize="none"
-                                    spellCheck={false}
-                                    value={username}
-                                    onChange={(event) => setUsername(event.target.value)}
-                                    size="lg"
-                                    disabled={busy}
+                    <section className="erp-login__form" aria-live="polite">
+                        {pane === 'password' ? (
+                            <form onSubmit={onLogin} aria-busy={busy}>
+                                <PaneHeader
+                                    eyebrow="CASHIER ACCESS"
+                                    title="دخول الكاشير"
+                                    subtitle="سجّل الدخول بحساب الكاشير لبدء الوردية. لا تظهر هنا إلا بيانات الكاشير."
                                 />
-                                <Input
-                                    id="erp-v3-password"
-                                    label="كلمة المرور"
-                                    name="password"
-                                    type="password"
-                                    autoComplete="current-password"
-                                    value={password}
-                                    onChange={(event) => setPassword(event.target.value)}
-                                    size="lg"
-                                    disabled={busy}
-                                />
-                            </div>
-                            <PaneAlerts error={error} notice={notice} />
-                            <div className="mt-lg flex flex-col gap-sm">
-                                <Button type="submit" size="lg" fullWidth loading={busy}>
-                                    {busy ? 'جارٍ الدخول…' : 'دخول'}
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="md"
-                                    fullWidth
-                                    disabled={busy}
-                                    onClick={() => {
-                                        setError('');
-                                        setNotice('');
-                                        setPane('forgot');
-                                    }}
-                                >
-                                    نسيت كلمة المرور؟
-                                </Button>
-                            </div>
-                            <p className="erp-login__note">
-                                {kiosk
-                                    ? 'استخدم حساب الكاشير المخصّص للوردية. لإدارة الحساب، تواصل مع مسؤول النظام.'
-                                    : 'صلاحياتك تحدّد الشاشات والإجراءات المتاحة لك. لإدارة حسابك، تواصل مع مسؤول النظام.'}
-                            </p>
-                        </form>
-                    ) : null}
-
-                    {pane === 'mfa' ? (
-                        <form
-                            onSubmit={(event) => {
-                                event.preventDefault();
-                                void onVerifyMfa();
-                            }}
-                            aria-busy={busy}
-                        >
-                            <PaneHeader
-                                eyebrow="SECOND FACTOR"
-                                title="خطوة التحقق الثانية"
-                                subtitle="حسابك محمي بمصادقة ثنائية. أكمل التحقق للمتابعة."
-                            />
-                            <div className="mt-lg flex flex-col gap-md">
-                                {recoveryMode ? (
-                                    <Input
-                                        id="erp-v3-recovery"
-                                        label="رمز الاسترداد"
-                                        name="recovery"
-                                        autoComplete="one-time-code"
-                                        autoCapitalize="none"
-                                        spellCheck={false}
-                                        value={recoveryCode}
-                                        onChange={(event) => setRecoveryCode(event.target.value)}
-                                        size="lg"
-                                        disabled={busy}
-                                        hint="أدخله كما ظهر عند التسجيل — كل رمز يعمل مرة واحدة."
-                                    />
-                                ) : (
-                                    <Input
-                                        id="erp-v3-mfa"
-                                        label="رمز التطبيق"
-                                        name="code"
-                                        inputMode="numeric"
-                                        autoComplete="one-time-code"
-                                        maxLength={6}
-                                        value={mfaCode}
-                                        onChange={(event) => setMfaCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
-                                        size="lg"
-                                        disabled={busy}
-                                        hint="6 أرقام من تطبيق المصادقة — تتغيّر كل 30 ثانية."
-                                    />
-                                )}
-                            </div>
-                            <PaneAlerts error={error} notice={notice} />
-                            <div className="mt-lg flex flex-col gap-sm">
-                                <Button type="submit" size="lg" fullWidth loading={busy}>
-                                    تحقق ودخول
-                                </Button>
-                                {methods.passkey ? (
-                                    <Button
-                                        type="button"
-                                        variant="secondary"
-                                        size="lg"
-                                        fullWidth
-                                        disabled={busy || recoveryMode}
-                                        onClick={() => void onPasskey()}
-                                    >
-                                        الدخول بالبصمة أو Face ID
-                                    </Button>
-                                ) : null}
-                                {methods.totp ? (
-                                    <Button
-                                        type="button"
-                                        variant="ghost"
-                                        size="md"
-                                        fullWidth
-                                        disabled={busy}
-                                        onClick={() => {
-                                            setRecoveryMode((current) => !current);
-                                            setError('');
-                                        }}
-                                    >
-                                        {recoveryMode ? 'استخدام رمز التطبيق' : 'استخدام رمز استرداد'}
-                                    </Button>
-                                ) : null}
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    fullWidth
-                                    disabled={busy}
-                                    onClick={() => backToPassword('')}
-                                >
-                                    العودة لتسجيل الدخول
-                                </Button>
-                            </div>
-                        </form>
-                    ) : null}
-
-                    {pane === 'enroll' ? (
-                        <form
-                            onSubmit={(event) => {
-                                event.preventDefault();
-                                void onConfirmEnrollment();
-                            }}
-                            aria-busy={busy}
-                        >
-                            <PaneHeader
-                                eyebrow="ENROLLMENT"
-                                title="تسجيل المصادقة الثنائية"
-                                subtitle="إدارة المنشأة تطلب عاملًا ثانيًا. امسح رمز QR بتطبيق المصادقة ثم أدخل الرمز الظاهر."
-                            />
-                            <div className="mt-lg flex flex-col gap-md">
-                                <div className="grid place-items-center rounded-md border border-hairline-strong bg-surface p-md">
-                                    {enrollment?.qrDataUrl ? (
-                                        <img src={enrollment.qrDataUrl} alt="رمز QR لتسجيل المصادقة الثنائية" width={200} height={200} />
+                                <div className="mt-lg flex flex-col gap-md">
+                                    <Input id="erp-v3-username" label="اسم المستخدم" name="username" autoComplete="username" autoCapitalize="none" spellCheck={false} value={username} onChange={(event) => setUsername(event.target.value)} size="lg" disabled={busy} />
+                                    <Input id="erp-v3-password" label="كلمة المرور" name="password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} size="lg" disabled={busy} />
+                                </div>
+                                <PaneAlerts error={error} notice={notice} />
+                                <div className="mt-lg flex flex-col gap-sm">
+                                    <Button type="submit" size="lg" fullWidth loading={busy}>{busy ? 'جارٍ الدخول…' : 'دخول'}</Button>
+                                    <Button type="button" variant="ghost" size="md" fullWidth disabled={busy} onClick={() => { setError(''); setNotice(''); setPane('forgot'); }}>نسيت كلمة المرور؟</Button>
+                                </div>
+                                <p className="erp-login__note">سجّل بحساب خاص بالكاشير. لإدارة الحساب، تواصل مع مسؤول النظام.</p>
+                            </form>
+                        ) : null}
+                        {pane === 'mfa' ? (
+                            <form onSubmit={(event) => { event.preventDefault(); void onVerifyMfa(); }} aria-busy={busy}>
+                                <PaneHeader eyebrow="SECOND FACTOR" title="خطوة التحقق الثانية" subtitle="حسابك محمي بمصادقة ثنائية. أكمل التحقق للمتابعة." />
+                                <PaneAlerts error={error} notice={notice} />
+                                <div className="mt-lg flex flex-col gap-md">
+                                    {recoveryMode ? (
+                                        <Input id="erp-v3-recovery" label="رمز الاسترداد" name="recovery" autoComplete="one-time-code" autoCapitalize="none" spellCheck={false} value={recoveryCode} onChange={(event) => setRecoveryCode(event.target.value)} size="lg" disabled={busy} hint="أدخله كما ظهر عند التسجيل — كل رمز يعمل مرة واحدة." />
                                     ) : (
-                                        <p role="status" className="text-body-sm text-muted">
-                                            {busy ? 'جارٍ تجهيز رمز QR…' : 'تعذّر تجهيز رمز QR — استخدم المفتاح اليدوي.'}
-                                        </p>
+                                        <Input id="erp-v3-mfa" label="رمز التطبيق" name="code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={mfaCode} onChange={(event) => setMfaCode(event.target.value.replace(/\D/g, '').slice(0, 6))} size="lg" disabled={busy} hint="6 أرقام من تطبيق المصادقة — تتغيّر كل 30 ثانية." />
                                     )}
                                 </div>
-                                {enrollment ? (
-                                    <div className="flex flex-col gap-xs">
-                                        <span className="text-caption text-muted">أو أدخل المفتاح يدويًا:</span>
-                                        <code
-                                            className="select-all break-all rounded-sm bg-surface-sunken p-xs font-mono text-body-sm text-ink"
-                                            dir="ltr"
-                                        >
-                                            {enrollment.secret}
-                                        </code>
-                                    </div>
-                                ) : null}
-                                <Input
-                                    id="erp-v3-enroll-code"
-                                    label="رمز التطبيق"
-                                    name="code"
-                                    inputMode="numeric"
-                                    autoComplete="one-time-code"
-                                    maxLength={6}
-                                    value={enrollCode}
-                                    onChange={(event) => setEnrollCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
-                                    size="lg"
-                                    disabled={busy || !enrollment}
-                                />
-                            </div>
-                            <PaneAlerts error={error} notice={notice} />
-                            <div className="mt-lg flex flex-col gap-sm">
-                                <Button type="submit" size="lg" fullWidth loading={busy} disabled={!enrollment}>
-                                    تأكيد التسجيل
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    fullWidth
-                                    disabled={busy}
-                                    onClick={() => backToPassword('')}
-                                >
-                                    العودة لتسجيل الدخول
-                                </Button>
-                            </div>
-                        </form>
-                    ) : null}
-
-                    {pane === 'codes' ? (
-                        <div>
-                            <PaneHeader
-                                eyebrow="RECOVERY CODES"
-                                title="احفظ رموز الاسترداد"
-                                subtitle="تُعرض مرة واحدة فقط. كل رمز يصلح للدخول مرة واحدة بدل رمز التطبيق."
-                            />
-                            <ol className="mt-lg grid grid-cols-2 gap-xs" dir="ltr">
-                                {recoveryCodes.map((code) => (
-                                    <li
-                                        key={code}
-                                        className="rounded-sm border border-hairline bg-surface px-xs py-xxs text-center font-mono text-body-sm text-ink"
-                                    >
-                                        {code}
-                                    </li>
-                                ))}
-                            </ol>
-                            <PaneAlerts error={error} notice={notice} />
-                            <div className="mt-lg flex flex-col gap-sm">
-                                <Button type="button" variant="secondary" size="md" fullWidth onClick={() => void copyCodes()}>
-                                    نسخ الرموز
-                                </Button>
-                                <Button type="button" size="lg" fullWidth onClick={enterAfterCodes}>
-                                    حفظتها — دخول
-                                </Button>
-                            </div>
-                        </div>
-                    ) : null}
-
-                    {pane === 'forgot' ? (
-                        <form onSubmit={onForgot} aria-busy={busy}>
-                            <PaneHeader
-                                eyebrow="ACCOUNT RECOVERY"
-                                title="استعادة كلمة المرور"
-                                subtitle="اطلب رمز استرداد من مسؤول النظام، ثم عيّن كلمة مرور جديدة."
-                            />
-                            <div className="mt-lg flex flex-col gap-md">
-                                <Input
-                                    id="erp-v3-forgot-username"
-                                    label="اسم المستخدم"
-                                    name="username"
-                                    autoComplete="username"
-                                    autoCapitalize="none"
-                                    spellCheck={false}
-                                    value={username}
-                                    onChange={(event) => setUsername(event.target.value)}
-                                    size="lg"
-                                    disabled={busy}
-                                />
-                                <Input
-                                    id="erp-v3-forgot-code"
-                                    label="رمز الاسترداد"
-                                    name="code"
-                                    autoComplete="one-time-code"
-                                    autoCapitalize="none"
-                                    spellCheck={false}
-                                    value={forgotCode}
-                                    onChange={(event) => setForgotCode(event.target.value)}
-                                    size="lg"
-                                    disabled={busy}
-                                />
-                                <Input
-                                    id="erp-v3-forgot-password"
-                                    label="كلمة المرور الجديدة"
-                                    name="new_password"
-                                    type="password"
-                                    autoComplete="new-password"
-                                    value={newPassword}
-                                    onChange={(event) => setNewPassword(event.target.value)}
-                                    size="lg"
-                                    disabled={busy}
-                                />
-                                <Input
-                                    id="erp-v3-forgot-confirm"
-                                    label="تأكيد كلمة المرور"
-                                    name="confirm_password"
-                                    type="password"
-                                    autoComplete="new-password"
-                                    value={confirmPassword}
-                                    onChange={(event) => setConfirmPassword(event.target.value)}
-                                    size="lg"
-                                    disabled={busy}
-                                />
-                            </div>
-                            <PaneAlerts error={error} notice={notice} />
-                            <div className="mt-lg flex flex-col gap-sm">
-                                <Button type="submit" size="lg" fullWidth loading={busy}>
-                                    تعيين كلمة المرور
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    fullWidth
-                                    disabled={busy}
-                                    onClick={() => {
-                                        setError('');
-                                        setNotice('');
-                                        setNewPassword('');
-                                        setConfirmPassword('');
-                                        setForgotCode('');
-                                        setPane('password');
-                                    }}
-                                >
-                                    العودة لتسجيل الدخول
-                                </Button>
-                            </div>
-                        </form>
-                    ) : null}
-
-                    {pane === 'change' ? (
-                        <form onSubmit={onChangePassword} aria-busy={busy}>
-                            <PaneHeader
-                                eyebrow="PASSWORD ROTATION"
-                                title="تدوير كلمة المرور"
-                                subtitle="كلمة مرورك الحالية انتهت صلاحيتها أو تحتاج تغييرًا إلزاميًا. عيّن كلمة مرور جديدة قبل المتابعة."
-                            />
-                            <div className="mt-lg flex flex-col gap-md">
-                                <Input
-                                    id="erp-v3-change-password"
-                                    label="كلمة المرور الجديدة"
-                                    name="new_password"
-                                    type="password"
-                                    autoComplete="new-password"
-                                    value={newPassword}
-                                    onChange={(event) => setNewPassword(event.target.value)}
-                                    size="lg"
-                                    disabled={busy}
-                                />
-                                <Input
-                                    id="erp-v3-change-confirm"
-                                    label="تأكيد كلمة المرور"
-                                    name="confirm_password"
-                                    type="password"
-                                    autoComplete="new-password"
-                                    value={confirmPassword}
-                                    onChange={(event) => setConfirmPassword(event.target.value)}
-                                    size="lg"
-                                    disabled={busy}
-                                />
-                            </div>
-                            <PaneAlerts error={error} notice={notice} />
-                            <div className="mt-lg flex flex-col gap-sm">
-                                <Button type="submit" size="lg" fullWidth loading={busy}>
-                                    تغيير ومتابعة
-                                </Button>
-                                <Button
-                                    type="button"
-                                    variant="ghost"
-                                    size="sm"
-                                    fullWidth
-                                    disabled={busy}
-                                    onClick={() => backToPassword('')}
-                                >
-                                    العودة لتسجيل الدخول
-                                </Button>
-                            </div>
-                        </form>
-                    ) : null}
-                </section>
-            </main>
-            {!kiosk ? (
-                <aside className="erp-login__story" aria-label="مطاعم الشرفة العالمي — AL SHURFA AL ALAMI RESTAURANTS">
-                    <div className="erp-login--luxe-frame">
-                        <figure className="erp-login__brand-big" aria-hidden="true">
-                            <img
-                                className="erp-login__logo"
-                                src="/app/assets/karim-logo.png"
-                                alt="مطاعم الشرفة العالمي — AL SHURFA AL ALAMI RESTAURANTS"
-                                loading="eager"
-                                decoding="sync"
-                                width={320}
-                                height={320}
-                            />
-                            <span className="erp-login__brand-name">مطاعم الشرفة العالمي</span>
-                            <span className="erp-login__brand-tag" lang="en" dir="ltr">AL SHURFA AL ALAMI</span>
-                            <span className="erp-login__brand-cloud" lang="en" dir="ltr">RESTAURANTS GROUP</span>
-                        </figure>
-                        <div className="erp-login__rule" aria-hidden="true" />
-                        <div className="erp-login__intro">
-                            <p className="erp-login__eyebrow-luxe" lang="en" dir="ltr">KARIM ERP · ENTERPRISE RESOURCE PLANNING</p>
-                            <h2 className="erp-login__headline-luxe">
-                                تفاصيل أكثر وضوحًا.<br />
-                                قرارات <em>أكثر ثقة</em>.
-                            </h2>
-                            <p className="erp-login__sub-luxe">
-                                المحاسبة والمخزون والبصمة والرواتب — في مكان واحد، لقيادة تفاهم تفاصيل يومك بأدق طريقة.
-                            </p>
-                            <div className="erp-login__chip-row" aria-hidden="true">
-                                <span className="erp-login__chip">الفروع السبعة</span>
-                                <span className="erp-login__chip">فواتير إلكترونية</span>
-                                <span className="erp-login__chip">بصمة + Face ID</span>
-                                <span className="erp-login__chip">تقارير KPIs</span>
-                            </div>
-                        </div>
-                        <p className="erp-login__foot-luxe" lang="en" dir="ltr">AL SHURFA AL ALAMI · Riyadh 2026</p>
+                                <div className="mt-lg flex flex-col gap-sm">
+                                    <Button type="submit" size="lg" fullWidth loading={busy}>تحقق ودخول</Button>
+                                    {methods.passkey ? (
+                                        <Button type="button" variant="secondary" size="lg" fullWidth disabled={busy || recoveryMode} onClick={() => void onPasskey()}>
+                                            الدخول بالبصمة أو Face ID
+                                        </Button>
+                                    ) : null}
+                                    <Button type="button" variant="ghost" size="md" fullWidth disabled={busy} onClick={() => { setRecoveryMode((current) => !current); setError(''); }}>{recoveryMode ? 'استخدام رمز التطبيق' : 'استخدام رمز استرداد'}</Button>
+                                    <Button type="button" variant="ghost" size="sm" fullWidth disabled={busy} onClick={() => backToPassword('')}>العودة لتسجيل الدخول</Button>
+                                </div>
+                            </form>
+                        ) : null}
+                        {pane === 'forgot' ? (
+                            <form onSubmit={onForgot} aria-busy={busy}>
+                                <PaneHeader eyebrow="ACCOUNT RECOVERY" title="استرجاع كلمة المرور" subtitle="اطلب رابطًا عبر مدير النظام — لاحقًا استقبل رمز مرة واحدة." />
+                                <div className="mt-lg flex flex-col gap-md">
+                                    <Input id="erp-v3-forgot-username" label="اسم المستخدم" name="username" autoComplete="username" autoCapitalize="none" spellCheck={false} value={username} onChange={(event) => setUsername(event.target.value)} size="lg" disabled={busy} />
+                                    <Input id="erp-v3-forgotcode" label="رمز الاسترداد" name="code" autoComplete="one-time-code" autoCapitalize="none" spellCheck={false} value={forgotCode} onChange={(event) => setForgotCode(event.target.value)} size="lg" disabled={busy} />
+                                    <Input id="erp-v3-newpassword" label="كلمة المرور الجديدة" name="newpassword" type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} size="lg" disabled={busy} />
+                                    <Input id="erp-v3-confirmpassword" label="تأكيد كلمة المرور" name="confirmpassword" type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} size="lg" disabled={busy} />
+                                </div>
+                                <PaneAlerts error={error} notice={notice} />
+                                <div className="mt-lg flex flex-col gap-sm">
+                                    <Button type="submit" size="lg" fullWidth loading={busy}>{busy ? 'جارٍ التحقق…' : 'تعيين كلمة المرور'}</Button>
+                                    <Button type="button" variant="ghost" size="md" fullWidth disabled={busy} onClick={() => backToPassword('')}>إلغاء</Button>
+                                </div>
+                            </form>
+                        ) : null}
+                        {pane === 'enroll' ? (
+                            <form onSubmit={(event) => { event.preventDefault(); void onConfirmEnrollment(); }} aria-busy={busy}>
+                                <PaneHeader eyebrow="ENROLLMENT" title="تسجيل المصادقة الثنائية" subtitle="إدارة المنشأة تطلب عاملًا ثانيًا. امسح رمز QR بتطبيق المصادقة ثم أدخل الرمز الظاهر." />
+                                <PaneAlerts error={error} notice={notice} />
+                                <div className="mt-lg grid place-items-center rounded-md border border-hairline-strong bg-surface p-md">{enrollment ? <img src={enrollment.qrDataUrl ?? undefined} alt="رمز QR لتسجيل المصادقة الثنائية" width={200} height={200} /> : <p className="text-body-sm text-muted">جارٍ توليد الرمز…</p>}</div>
+                                <div className="mt-lg flex flex-col gap-md">
+                                    <Input id="erp-v3-enrollcode" label="رمز التطبيق" name="code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={enrollCode} onChange={(event) => setEnrollCode(event.target.value.replace(/\D/g, '').slice(0, 6))} size="lg" disabled={busy} hint="6 أرقام من تطبيق المصادقة" />
+                                </div>
+                                <div className="mt-lg flex flex-col gap-sm">
+                                    <Button type="submit" size="lg" fullWidth loading={busy}>{busy ? 'جارٍ التحقق…' : 'تأكيد التسجيل'}</Button>
+                                    <Button type="button" variant="ghost" size="md" fullWidth disabled={busy} onClick={() => backToPassword('')}>تأجيل</Button>
+                                </div>
+                            </form>
+                        ) : null}
+                        {pane === 'change' ? (
+                            <form onSubmit={onChangePassword} aria-busy={busy}>
+                                <PaneHeader eyebrow="PASSWORD CHANGE" title="تدوير كلمة المرور" subtitle="يجب تغيير كلمة المرور وفق طلب المنشأة. أكّد التغيير للمتابعة." />
+                                <PaneAlerts error={error} notice={notice} />
+                                <div className="mt-lg flex flex-col gap-md">
+                                    <Input id="erp-v3-change-current" label="كلمة المرور" name="password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} size="lg" disabled={busy} />
+                                    <Input id="erp-v3-change-new" label="كلمة المرور الجديدة" name="newpassword" type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} size="lg" disabled={busy} />
+                                    <Input id="erp-v3-change-confirm" label="تأكيد كلمة المرور" name="confirmpassword" type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} size="lg" disabled={busy} />
+                                </div>
+                                <div className="mt-lg flex flex-col gap-sm">
+                                    <Button type="submit" size="lg" fullWidth loading={busy}>{busy ? 'جارٍ التغيير…' : 'تغيير ومتابعة'}</Button>
+                                    <Button type="button" variant="ghost" size="md" fullWidth disabled={busy} onClick={() => backToPassword('')}>رجوع</Button>
+                                </div>
+                            </form>
+                        ) : null}
+                        {pane === 'codes' ? (
+                            <section aria-labelledby="erp-v3-codes-title">
+                                <PaneHeader eyebrow="RECOVERY CODES" title="احفظ رموز الاسترداد" subtitle="احفظ هذه الرموز في مكان آمن — كل رمز يعمل مرة واحدة فقط." />
+                                <ol className="mt-lg grid grid-cols-1 gap-sm sm:grid-cols-2">{recoveryCodes.map((code, index) => <li key={index} className="rounded-md border border-hairline bg-surface-sunken p-sm font-mono text-center text-body-md" dir="ltr">{code}</li>)}</ol>
+                                <div className="mt-lg flex flex-col gap-sm">
+                                    <Button type="button" variant="secondary" fullWidth onClick={() => void copyCodes()}>نسخ الرموز</Button>
+                                        <Button type="button" fullWidth onClick={enterAfterCodes}>حفظتها — دخول</Button>
+                                </div>
+                            </section>
+                        ) : null}
+                    </section>
+                </main>
+            ) : (
+                /* ── صفحة الدخول الفخامة — خانة واحدة واسعة، حتى الشعارات لا تُحجر ── */
+                <main className="erp-login__luxe-flat" aria-label="تسجيل الدخول">
+                    <div className="erp-luxe-eyebrow-bar">
+                        <span>KARIM ERP · YOUR WORKSPACE · Riyadh 2026</span>
+                        <span className="erp-luxe-toprail" lang="en" dir="ltr">AL SHURFA AL ALAMI</span>
                     </div>
-                </aside>
-            ) : null}
-        </div>
+                    <div className="erp-luxe-outer" aria-hidden="true" />
+                    <section className="erp-luxe-hero">
+                        <img className="erp-luxe-logo" src="/app/assets/karim-logo.png" alt="مطاعم الشرفة العالمي — AL SHURFA AL ALAMI RESTAURANTS" loading="eager" decoding="sync" width={280} height={280} />
+                        <p className="erp-luxe-brand-cloud" lang="en" dir="ltr">AL SHURFA AL ALAMI · RESTAURANTS GROUP</p>
+                        <span className="erp-luxe-rule" aria-hidden="true" />
+                        <p className="erp-luxe-h1">تفاصيل <em>أكثر وضوحًا.</em><br />قرارات <em>أكثر ثقة.</em></p>
+                        <p className="erp-luxe-sub">كل تفاصيل يومك — من الكاشير والبصمة إلى الحسابات والمخزون — في مكان واحد، بأعلى معايير الاحترافية.</p>
+                        <div className="erp-luxe-chips">
+                            <span>٧ فروع بالسعودية</span>
+                            <span>فواتير إلكترونية</span>
+                            <span>بصمة + Face ID</span>
+                            <span>تقارير KPIs</span>
+                        </div>
+                    </section>
+                    <section className="erp-luxe-shellgrid">
+                        <aside className="erp-luxe-story">
+                            <p className="erp-luxe-story-eyebrow" lang="en" dir="ltr">ABOUT THE SYSTEM</p>
+                            <h2>لاحظ كل شيء في لمحة واحدة — بدون وش وراء شاشات متعددة.</h2>
+                            <p>من الكاشير والبصمة للرواتب والمخزون — كل قرار مدير مطاعم يثق في نظام متكامل، أكثر رقمية من أي يوم سبق.</p>
+                        </aside>
+                        <section className="erp-login__form erp-login__form--luxe-card" aria-live="polite">
+                            {pane === 'password' ? (
+                                <form onSubmit={onLogin} aria-busy={busy}>
+                                    <PaneHeader eyebrow="YOUR WORKSPACE" title="Karim ERP — الإصدار الثالث" subtitle="سجّل الدخول إلى مساحة عملك باستخدام حساب المنشأة." />
+                                    <div className="mt-lg flex flex-col gap-md">
+                                        <Input id="erp-v3-username" label="اسم المستخدم" name="username" autoComplete="username" autoCapitalize="none" spellCheck={false} value={username} onChange={(event) => setUsername(event.target.value)} size="lg" disabled={busy} />
+                                        <Input id="erp-v3-password" label="كلمة المرور" name="password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} size="lg" disabled={busy} />
+                                    </div>
+                                    <PaneAlerts error={error} notice={notice} />
+                                    <div className="mt-lg flex flex-col gap-sm">
+                                        <Button type="submit" size="lg" fullWidth loading={busy}>{busy ? 'جارٍ الدخول…' : 'دخول'}</Button>
+                                        <Button type="button" variant="ghost" size="md" fullWidth disabled={busy} onClick={() => { setError(''); setNotice(''); setPane('forgot'); }}>نسيت كلمة المرور؟</Button>
+                                    </div>
+                                    <p className="erp-login__note">صلاحياتك تحدّد الشاشات والإجراءات المتاحة لك. لإدارة حسابك، تواصل مع مسؤول النظام.</p>
+                                </form>
+                            ) : null}
+                            {pane === 'mfa' ? (
+                                <form onSubmit={(event) => { event.preventDefault(); void onVerifyMfa(); }} aria-busy={busy}>
+                                    <PaneHeader eyebrow="SECOND FACTOR" title="خطوة التحقق الثانية" subtitle="حسابك محمي بمصادقة ثنائية. أكمل التحقق للمتابعة." />
+                                    <PaneAlerts error={error} notice={notice} />
+                                    <div className="mt-lg flex flex-col gap-md">
+                                        {recoveryMode ? (
+                                            <Input id="erp-v3-recovery" label="رمز الاسترداد" name="recovery" autoComplete="one-time-code" autoCapitalize="none" spellCheck={false} value={recoveryCode} onChange={(event) => setRecoveryCode(event.target.value)} size="lg" disabled={busy} hint="أدخله كما ظهر عند التسجيل — كل رمز يعمل مرة واحدة." />
+                                        ) : (
+                                            <Input id="erp-v3-mfa" label="رمز التطبيق" name="code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={mfaCode} onChange={(event) => setMfaCode(event.target.value.replace(/\D/g, '').slice(0, 6))} size="lg" disabled={busy} hint="6 أرقام من تطبيق المصادقة — تتغيّر كل 30 ثانية." />
+                                        )}
+                                    </div>
+                                    <div className="mt-lg flex flex-col gap-sm">
+                                        <Button type="submit" size="lg" fullWidth loading={busy}>تحقق ودخول</Button>
+                                    {methods.passkey ? (
+                                        <Button type="button" variant="secondary" size="lg" fullWidth disabled={busy || recoveryMode} onClick={() => void onPasskey()}>
+                                            الدخول بالبصمة أو Face ID
+                                        </Button>
+                                    ) : null}
+                                        <Button type="button" variant="ghost" size="md" fullWidth disabled={busy} onClick={() => { setRecoveryMode((current) => !current); setError(''); }}>{recoveryMode ? 'استخدام رمز التطبيق' : 'استخدام رمز استرداد'}</Button>
+                                        <Button type="button" variant="ghost" size="sm" fullWidth disabled={busy} onClick={() => backToPassword('')}>العودة لتسجيل الدخول</Button>
+                                    </div>
+                                </form>
+                            ) : null}
+                            {pane === 'forgot' ? (
+                                <form onSubmit={onForgot} aria-busy={busy}>
+                                    <PaneHeader eyebrow="ACCOUNT RECOVERY" title="استرجاع كلمة المرور" subtitle="اطلب رابطًا عبر مدير النظام." />
+                                    <div className="mt-lg flex flex-col gap-md">
+                                        <Input id="erp-v3-forgot-username-luxe" label="اسم المستخدم" name="username" autoComplete="username" autoCapitalize="none" spellCheck={false} value={username} onChange={(event) => setUsername(event.target.value)} size="lg" disabled={busy} />
+                                        <Input id="erp-v3-forgotcode" label="رمز الاسترداد" name="code" autoComplete="one-time-code" autoCapitalize="none" spellCheck={false} value={forgotCode} onChange={(event) => setForgotCode(event.target.value)} size="lg" disabled={busy} />
+                                        <Input id="erp-v3-newpassword" label="كلمة المرور الجديدة" name="newpassword" type="password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} size="lg" disabled={busy} />
+                                        <Input id="erp-v3-confirmpassword" label="تأكيد كلمة المرور" name="confirmpassword" type="password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} size="lg" disabled={busy} />
+                                    </div>
+                                    <PaneAlerts error={error} notice={notice} />
+                                    <div className="mt-lg flex flex-col gap-sm">
+                                        <Button type="submit" size="lg" fullWidth loading={busy}>{busy ? 'جارٍ التحقق…' : 'تعيين كلمة المرور'}</Button>
+                                        <Button type="button" variant="ghost" size="md" fullWidth disabled={busy} onClick={() => backToPassword('')}>إلغاء</Button>
+                                    </div>
+                                </form>
+                            ) : null}
+                            {pane === 'enroll' ? (
+                                <form onSubmit={(event) => { event.preventDefault(); void onConfirmEnrollment(); }} aria-busy={busy}>
+                                    <PaneHeader eyebrow="ENROLLMENT" title="تسجيل المصادقة الثنائية" subtitle="امسح رمز QR بتطبيق المصادقة ثم أدخل الرمز الظاهر." />
+                                    <PaneAlerts error={error} notice={notice} />
+                                    <div className="mt-lg flex flex-col items-center gap-sm rounded-md border border-hairline-strong bg-surface p-md">
+                                        {enrollment ? <img src={enrollment.qrDataUrl ?? undefined} alt="رمز QR لتسجيل المصادقة الثنائية" width={200} height={200} /> : <p className="text-body-sm text-muted">جارٍ توليد الرمز…</p>}
+                                        {enrollment?.secret ? (
+                                            <small className="text-caption text-muted">السر يدوي: <code dir="ltr" className="select-all rounded bg-surface-sunken px-2 py-1 font-mono">{enrollment.secret}</code></small>
+                                        ) : null}
+                                    </div>
+                                    <div className="mt-lg flex flex-col gap-md">
+                                        <Input id="erp-v3-enrollcode" label="رمز التطبيق" name="code" inputMode="numeric" autoComplete="one-time-code" maxLength={6} value={enrollCode} onChange={(event) => setEnrollCode(event.target.value.replace(/\D/g, '').slice(0, 6))} size="lg" disabled={busy} hint="6 أرقام من تطبيق المصادقة" />
+                                    </div>
+                                    <div className="mt-lg flex flex-col gap-sm">
+                                        <Button type="submit" size="lg" fullWidth loading={busy}>{busy ? 'جارٍ التحقق…' : 'تأكيد التسجيل'}</Button>
+                                        <Button type="button" variant="ghost" size="md" fullWidth disabled={busy} onClick={() => backToPassword('')}>تأجيل</Button>
+                                    </div>
+                                </form>
+                            ) : null}
+                            {pane === 'change' ? (
+                            <form onSubmit={onChangePassword} aria-busy={busy}>
+                                <PaneHeader eyebrow="PASSWORD CHANGE" title="تدوير كلمة المرور" subtitle="يجب تغيير كلمة المرور وفق طلب المنشأة. أكّد التغيير للمتابعة." />
+                                <PaneAlerts error={error} notice={notice} />
+                                <div className="mt-lg flex flex-col gap-md">
+                                    <Input id="erp-v3-change-current" label="كلمة المرور" name="password" type="password" autoComplete="current-password" value={password} onChange={(event) => setPassword(event.target.value)} size="lg" disabled={busy} />
+                                    <Input id="erp-v3-change-new" label="كلمة المرور الجديدة" name="newpassword" type="password" autoComplete="new-password" value={newPassword} onChange={(event) => setNewPassword(event.target.value)} size="lg" disabled={busy} />
+                                    <Input id="erp-v3-change-confirm" label="تأكيد كلمة المرور" name="confirmpassword" type="password" autoComplete="new-password" value={confirmPassword} onChange={(event) => setConfirmPassword(event.target.value)} size="lg" disabled={busy} />
+                                </div>
+                                <div className="mt-lg flex flex-col gap-sm">
+                                    <Button type="submit" size="lg" fullWidth loading={busy}>{busy ? 'جارٍ التغيير…' : 'تغيير ومتابعة'}</Button>
+                                    <Button type="button" variant="ghost" size="md" fullWidth disabled={busy} onClick={() => backToPassword('')}>رجوع</Button>
+                                </div>
+                            </form>
+                        ) : null}
+                        {pane === 'codes' ? (
+                                <section aria-labelledby="erp-v3-codes-title">
+                                    <PaneHeader eyebrow="RECOVERY CODES" title="احفظ رموز الاسترداد" subtitle="احفظ هذه الرموز في مكان آمن — كل رمز يعمل مرة واحدة فقط." />
+                                    <ol id="erp-v3-codes-title" className="mt-lg grid grid-cols-1 gap-sm sm:grid-cols-2">{recoveryCodes.map((code, index) => <li key={index} className="rounded-md border border-hairline bg-surface-sunken p-sm font-mono text-center text-body-md" dir="ltr">{code}</li>)}</ol>
+                                    <div className="mt-lg flex flex-col gap-sm">
+                                        <Button type="button" variant="secondary" fullWidth onClick={() => void copyCodes()}>نسخ الرموز</Button>
+                                        <Button type="button" fullWidth onClick={enterAfterCodes}>حفظتها — دخول</Button>
+                                    </div>
+                                </section>
+                            ) : null}
+                        </section>
+                    </section>
+                    <footer className="erp-luxe-foot">
+                        <span className="erp-luxe-rail" aria-hidden="true" />
+                        <p className="erp-luxe-foot-text" lang="en" dir="ltr">AL SHURFA AL ALAMI · RESTAURANTS GROUP · Riyadh 2026</p>
+                        <span className="erp-luxe-rail" aria-hidden="true" />
+                    </footer>
+                </main>
+            )}
+</div>
     );
 }
 
