@@ -8,11 +8,12 @@
  *   · التاريخ يُحفظ محليًا (localStorage) — لا شيء يُرفع لخادم خارج نظامك.
  *   · حماية من المعدل: الخادم 12 سؤالًا/5 دقائق لكل مدير — الرسائل تظهر كما هي.
  */
-import { useEffect, useRef, useState, type KeyboardEvent } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
 import { useQuery } from '@tanstack/react-query';
 import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
 import { askAssistant, fetchStatus } from '../lib/ai-chat';
+import { createSpeechSession, listen, voiceSupport, type ListenSession, type SpeakSession } from '../lib/voice';
 import { printOfficialSheet } from '../lib/official-print';
 
 type ChatRole = 'user' | 'assistant';
@@ -82,6 +83,13 @@ export function AssistantChat() {
     const { toast } = useToast();
     const listRef = useRef<HTMLDivElement | null>(null);
     const inputRef = useRef<HTMLTextAreaElement | null>(null);
+    const micSessionRef = useRef<ListenSession | null>(null);
+    const speechSessionRef = useRef<SpeakSession | null>(null);
+
+    const support = useMemo(() => voiceSupport(), []);
+    const [listening, setListening] = useState(false);
+    const [interim, setInterim] = useState('');
+    const [speakingId, setSpeakingId] = useState<string | null>(null);
 
     const statusQuery = useQuery({
         queryKey: ['ai-assistant-status'],
@@ -107,6 +115,58 @@ export function AssistantChat() {
         if (!busy) { return undefined; }
         const t = window.setInterval(() => setElapsed((s) => s + 1), 1000);
         return () => window.clearInterval(t);
+    }, [busy]);
+
+    // ── الميكروفون: زر ضغط واحد يبدأ/يوقف؛ النص النهائي يُطير تلقائيًا ──
+    const toggleMic = useCallback((): void => {
+        if (listening) {
+            micSessionRef.current?.stop();
+            return;
+        }
+        const session = listen({ lang: 'ar-SA' });
+        if (!session) {
+            toast({ title: 'المتصفح لا يدعم التعرف على الصوت — جرّب Chrome أو Edge', variant: 'error' });
+            return;
+        }
+        micSessionRef.current?.cancel();
+        micSessionRef.current = session;
+        session.onInterim((text) => setInterim(text));
+        session.onFinal((text) => { setInterim(''); void send(text); });
+        session.onError((friendly) => { setInterim(''); toast({ title: friendly, variant: 'error' }); });
+        session.onStateChange((active) => {
+            setListening(active);
+            if (!active) { micSessionRef.current = null; }
+        });
+        setInterim('');
+        session.start();
+    }, [listening, send, toast]);
+
+    // ── النطق: زر استماع لكل رد ──
+    const toggleSpeak = useCallback((messageId: string, text: string): void => {
+        if (!speechSessionRef.current) { speechSessionRef.current = createSpeechSession(); }
+        const speech = speechSessionRef.current;
+        if (!speech) {
+            toast({ title: 'المتصفح لا يدعم النطق — جرّب Chrome أو Edge', variant: 'error' });
+            return;
+        }
+        if (speakingId === messageId) {
+            speech.stop();
+            setSpeakingId(null);
+            return;
+        }
+        speech.stop(); // لا يتراكم
+        speech.speak(text);
+        setSpeakingId(messageId);
+    }, [speakingId, toast]);
+
+    useEffect(() => () => {
+        micSessionRef.current?.cancel();
+        speechSessionRef.current?.stop();
+    }, []);
+
+    useEffect(() => {
+        // عند بدء ردّ جديد: سكوت عن أي نطق سابق
+        if (busy) { speechSessionRef.current?.stop(); setSpeakingId(null); }
     }, [busy]);
 
     async function send(textRaw?: string): Promise<void> {
@@ -219,6 +279,17 @@ export function AssistantChat() {
                                     <p className="ai-chat__meta">
                                         <time>{m.at}</time>
                                         {m.role === 'assistant' && m.meta ? <span>{metaLine(m.meta)}</span> : null}
+                                        {m.role === 'assistant' && support.speech ? (
+                                            <button
+                                                type="button"
+                                                className={`ai-chat__speak${speakingId === m.id ? ' ai-chat__speak--on' : ''}`}
+                                                aria-label={speakingId === m.id ? 'إيقاف القراءة' : 'استمع للرد'}
+                                                aria-pressed={speakingId === m.id}
+                                                onClick={() => toggleSpeak(m.id, m.text)}
+                                            >
+                                                {speakingId === m.id ? '⏹ إيقاف' : '🔊 استمع'}
+                                            </button>
+                                        ) : null}
                                     </p>
                                 </div>
                             </li>
@@ -243,6 +314,13 @@ export function AssistantChat() {
                 )}
             </div>
 
+            {listening ? (
+                <div className="ai-chat__listening" role="status" aria-live="polite">
+                    <span className="ai-chat__mic-pulse" aria-hidden="true" />
+                    <span>{interim ? interim : 'يسمعك… اضغط الميك مرة أخرى للتثبيت'}</span>
+                </div>
+            ) : null}
+
             <form
                 className="ai-chat__composer"
                 onSubmit={(event) => { event.preventDefault(); void send(); }}
@@ -258,6 +336,18 @@ export function AssistantChat() {
                     onChange={(event) => setInput(event.target.value)}
                     onKeyDown={handleKeyDown}
                 />
+                {support.mic ? (
+                    <button
+                        type="button"
+                        className={`ai-chat__mic${listening ? ' ai-chat__mic--on' : ''}`}
+                        onClick={toggleMic}
+                        aria-label={listening ? 'أوقف الاستماع' : 'اسأل بصوتك'}
+                        aria-pressed={listening}
+                        title="اسأل بصوتك — الميكروفون"
+                    >
+                        <span aria-hidden="true">🎙</span>
+                    </button>
+                ) : null}
                 <button
                     type="submit"
                     className="ai-chat__send"

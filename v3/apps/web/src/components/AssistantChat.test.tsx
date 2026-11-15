@@ -48,6 +48,79 @@ function renderChat() {
     );
 }
 
+function installSpeechRecognitionMock() {
+    const instances: Array<{ lang: string; onstart: null | (() => void); onresult: null | ((e: unknown) => void); onerror: null | ((e: { error: string }) => void); onend: null | (() => void) }> = [];
+    class MockRecognition {
+        onstart: null | (() => void) = null;
+        onresult: null | ((e: unknown) => void) = null;
+        onerror: null | ((e: { error: string }) => void) = null;
+        onend: null | (() => void) = null;
+        lang = '';
+        interimResults = true;
+        continuous = false;
+        maxAlternatives = 1;
+        constructor() { instances.push(this as never); }
+        start() { this.onstart?.(); }
+        stop() { this.onend?.(); }
+        abort() { this.onend?.(); }
+    }
+    (window as unknown as { SpeechRecognition: unknown }).SpeechRecognition = MockRecognition;
+    return instances;
+}
+
+describe('الصوت', () => {
+    it('زر الميك يبدأ الاستماع، وينقل السؤال، ويُقرأ الرد بنقرة زر استمع', async () => {
+        stubFetch();
+        const instances = installSpeechRecognitionMock();
+        const speakMock = vi.fn((utterance: { onstart?: () => void; onend?: () => void }) => {
+            utterance.onstart?.();
+            utterance.onend?.();
+        });
+        Object.defineProperty(window, 'speechSynthesis', {
+            configurable: true,
+            value: {
+                speak: speakMock,
+                cancel: vi.fn(),
+                getVoices: () => [{ lang: 'ar-SA', name: 'Microsoft Zariya' } as SpeechSynthesisVoice],
+                onvoiceschanged: null,
+            },
+        });
+        (window as unknown as { SpeechSynthesisUtterance: unknown }).SpeechSynthesisUtterance = class MockUtterance {
+            text: string;
+            lang = 'ar-SA';
+            rate = 1;
+            pitch = 1;
+            volume = 1;
+            onstart: null | (() => void) = null;
+            onend: null | (() => void) = null;
+            onerror: null | (() => void) = null;
+            voice: SpeechSynthesisVoice | null = null;
+            constructor(text: string) { this.text = text; }
+        };
+        renderChat();
+        fireEvent.click(screen.getByRole('button', { name: 'اسأل بصوتك' }));
+        expect(instances.length).toBe(1);
+        const rec = instances[0] as unknown as {
+            onresult: null | ((e: unknown) => void);
+            lang: string;
+            stop(): void;
+        };
+        expect(rec.lang).toBe('ar-SA');
+        rec.onresult?.({
+            resultIndex: 0,
+            results: [{ isFinal: true, 0: { transcript: 'تقرير اليوم', confidence: 0.9 } }],
+        });
+        // المتصفّح يُطلق onend بعد النتيجة النهائية — هذا ما يحرّر الإرسال التلقائي
+        rec.stop();
+        await waitFor(() => {
+            expect(screen.getByText(/المبيعات 430 ألف/)).toBeTruthy();
+        });
+        fireEvent.click(screen.getAllByRole('button', { name: 'استمع للرد' })[0] as HTMLElement);
+        expect(speakMock).toHaveBeenCalledTimes(1);
+        expect(String((speakMock.mock.calls[0] as [{ text: string }])[0]?.text ?? '')).toContain('المبيعات');
+    });
+});
+
 describe('ذكاء المحادثة', () => {
     it('تعرض اقتراحات البدء، وتعرض رد الموديل مع أرضيته', async () => {
         const calls = stubFetch();

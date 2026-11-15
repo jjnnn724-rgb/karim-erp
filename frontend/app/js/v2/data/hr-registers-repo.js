@@ -3,7 +3,7 @@
  *  - read-only registers, one door per entity.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.366';
+import { apiFetch } from '../../core/api.js?v=4.9.367';
 
 export const WALK_PAGES = 8;
 
