@@ -337,8 +337,8 @@ router.post('/purchase-invoices', jwtAuth, requireRole('admin', 'manager', 'ware
         });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[pr_create]', error);
-        logger.error('[warehouse_purchase_invoice]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[pr_create]');
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[warehouse_purchase_invoice]');
         res.status(500).json({ error: 'PURCHASE_INVOICE_FAILED', message: 'تعذر حفظ فاتورة الشراء وتحديث المخزن', detail: error?.message || String(error) });
     } finally {
         client.release();
@@ -672,7 +672,7 @@ router.put('/purchase-invoices/:id', jwtAuth, requireRole('admin', 'manager', 'w
         res.json({ invoice: updated, inventory: freshInventory, transactions, mode: itemsOnly ? 'items_only' : 'full', message: itemsOnly ? 'تم تعديل الأصناف فقط — الفاتورة مدفوعة' : undefined });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[warehouse_purchase_invoice_edit]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[warehouse_purchase_invoice_edit]');
         if (error.code === 'INSUFFICIENT_STOCK') {
             return fail(res, 409, 'EDIT_INSUFFICIENT_STOCK', 'لا يمكن تعديل الفاتورة لأن بعض كمياتها صُرفت بالفعل؛ راجع رصيد المخزون قبل التعديل');
         }
@@ -730,8 +730,8 @@ router.delete('/inventory/:id/force', jwtAuth, requireRole('admin', 'warehouse')
         res.json({ ok: true, item: { id: itemId, name: item.name }, removed: counts });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[pr_create]', error);
-        logger.error('[inventory_force_delete]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[pr_create]');
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[inventory_force_delete]');
         res.status(500).json({ error: 'FORCE_DELETE_FAILED', message: 'تعذر الحذف النهائي: ' + String(error.message).slice(0, 160) });
     } finally { client.release(); }
 });
@@ -801,7 +801,7 @@ router.put('/inventory/:id/direct', jwtAuth, requireRole('admin'), async (req, r
         res.json({ ok: true, item: upd, delta });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[inventory_direct_edit]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[inventory_direct_edit]');
         return fail(res, 500, 'DIRECT_EDIT_FAILED', 'تعذر التعديل المباشر: ' + String(error.message).slice(0, 160));
     } finally { client.release(); }
 });
