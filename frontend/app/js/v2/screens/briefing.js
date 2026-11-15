@@ -39,7 +39,7 @@
  *     stamped act in accounting.
  */
 
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.353';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.354';
 import {
     fetchBriefing,
     fetchTodayStats,
@@ -49,13 +49,13 @@ import {
     buildBriefingView,
     formatMoney,
     formatInt,
-} from '../data/briefing-repo.js?v=4.9.353';
-import { fetchCurrency } from '../data/reports-repo.js?v=4.9.353';
-import { openInAppReport } from '../report-viewer.js?v=4.9.353';
-import { trapFocus } from '../focus-trap.js?v=4.9.353';
+} from '../data/briefing-repo.js?v=4.9.354';
+import { fetchCurrency } from '../data/reports-repo.js?v=4.9.354';
+import { openInAppReport } from '../report-viewer.js?v=4.9.354';
+import { trapFocus } from '../focus-trap.js?v=4.9.354';
 
-import { barChart, donutChart, niceCeiling } from '../charts.js?v=4.9.353';
-import { kpiStrip, deltaPill } from '../role-dash-parts.js?v=4.9.353';
+import { barChart, donutChart, niceCeiling } from '../charts.js?v=4.9.354';
+import { kpiStrip, deltaPill } from '../role-dash-parts.js?v=4.9.354';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

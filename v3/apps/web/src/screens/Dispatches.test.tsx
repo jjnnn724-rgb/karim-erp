@@ -358,7 +358,7 @@ describe('أذون الصرف — الأزرار حسب الدور والحال�
         for (const id of ['101', '102', '103', '104']) {
             const buttons = within(rowOf(id)).queryAllByRole('button');
             expect(buttons).toHaveLength(1);
-            expect(buttons[0].textContent).toContain('طباعة');
+            expect(buttons[0]?.textContent).toContain('طباعة');
         }
     });
 

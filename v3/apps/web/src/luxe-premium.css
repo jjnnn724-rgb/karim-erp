@@ -1,0 +1,199 @@
+/* ╔════════════════════════════════════════════════════════════════════════╗
+   ║  K A R I M   E R P — «Luxury Passe Partout» (v4.9.354)                ║
+   ║  طبقة فخامة عابرة تتحرق على كـل الشاشات بأقل تدخل: أي مكوّن يستفيد      ║
+   ║  من العملات الجذرية المضافه — خلفية، ظل، زخرفة، لمعان باستيل الذهب     ║
+   ║  المعتّق — بلا أي كسر للتكاملات المواكبة على components + print.      ║
+   ╚════════════════════════════════════════════════════════════════════════╝ */
+
+@layer components {
+    /* ── أيقونات دافئة ببقع ذهبية بدلاً من zimmermoss العادي ──────────── */
+    .erp-card .text-brand-text {
+        color: #8a6b2f;
+    }
+
+    /* ── البطاقة الرئيسية: لمعان ذهبي أوتلجي مميز ────────────────────── */
+    .erp-card {
+        border: 1px solid rgb(138 107 47 / 0.22);
+        border-radius: 18px;
+        background:
+            linear-gradient(180deg, rgb(255 255 255 / 0.94), rgb(255 255 255 / 0.97)),
+            radial-gradient(700px 300px at 100% -10%, rgb(255 226 130 / 0.35), transparent 60%),
+            radial-gradient(700px 420px at -10% 110%, rgb(191 161 91 / 0.16), transparent 55%),
+            var(--erp-surface);
+        box-shadow:
+            0 1px 2px rgb(12 61 62 / 0.07),
+            0 18px 40px -22px rgb(12 61 62 / 0.30);
+        position: relative;
+        isolation: isolate;
+    }
+
+    .erp-card::before {
+        content: "";
+        position: absolute;
+        inset-inline-start: 14px;
+        inset-inline-end: 14px;
+        inset-block-start: 0;
+        block-size: 1.5px;
+        background: linear-gradient(90deg,
+            rgb(138 107 47 / 0.00),
+            rgb(191 161 91 / 0.85) 18%,
+            rgb(255 226 130 / 1) 45%,
+            rgb(191 161 91 / 0.85) 75%,
+            rgb(138 107 47 / 0.00));
+        border-radius: 999px;
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .erp-card > * { position: relative; z-index: 1; }
+
+    /* ــ Edge hover accent ─────────────────────────────────────────────── */
+    .erp-card:hover {
+        border-color: rgb(138 107 47 / 0.35);
+        box-shadow:
+            0 2px 3px rgb(12 61 62 / 0.08),
+            0 22px 46px -20px rgb(191 161 91 / 0.55),
+            0 18px 32px -22px rgb(12 61 62 / 0.32);
+    }
+
+    /* ── البطاقات الرئيسية (KPI highlight): ✦ لامعة ────────────────────── */
+    .erp-kpi-glass::before,
+    .luxury-hero::before {
+        content: "";
+        position: absolute;
+        inset: 0;
+        border-radius: inherit;
+        background:
+            radial-gradient(600px 280px at 100% 0%, rgb(255 240 180 / 0.42), transparent 60%),
+            radial-gradient(500px 300px at 0% 100%, rgb(155 121 55 / 0.30), transparent 55%);
+        pointer-events: none;
+        z-index: 0;
+    }
+
+    .erp-kpi-glass,
+    .luxury-hero {
+        border: 1px solid rgb(138 107 47 / 0.28);
+        border-radius: 18px;
+        position: relative;
+        box-shadow:
+            0 1px 2px rgb(12 61 62 / 0.07),
+            0 24px 50px -24px rgb(155 121 55 / 0.45);
+    }
+
+    .erp-kpi-glass > *,
+    .luxury-hero > * { position: relative; z-index: 1; }
+
+    /* ── الدالة الرطبة: مسافة تو سيارات للاكريلي ─────────────────────── */
+    .erp-ink,
+    .text-ink { letter-spacing: 0.01em; }
+
+    .erp-numeric,
+    .text-numeric,
+    [data-numeric] {
+        font-variant-numeric: tabular-nums;
+        font-feature-settings: "tnum" 1, "lnum" 1;
+    }
+
+    /* ── زر ذهبي بسيط للإجراء المهم ─────────────────────────────────────── */
+    .erp-button-luxury {
+        background: linear-gradient(180deg, #c8a24a 0%, #9b7937 100%);
+        color: #1b1205;
+        border: 1px solid #6d4e1e;
+        box-shadow:
+            0 1px 0 rgb(255 255 255 / 0.55) inset,
+            0 6px 18px -6px rgb(109 78 30 / 0.55),
+            0 2px 4px rgb(27 18 5 / 0.35);
+        transition: filter 140ms, transform 140ms;
+    }
+    .erp-button-luxury:hover:not(:disabled) { filter: brightness(1.06); transform: translateY(-1px); }
+    .erp-button-luxury:active:not(:disabled) { transform: translateY(0.5px); }
+
+    /* ــ─ focus واضح ذهبي للتنقّل بالكيبورد ───────────────────────────── */
+    :focus-visible {
+        outline-color: #c8a24a;
+        outline-offset: 2px;
+    }
+
+    /* ــ─ dark theme ────────────────────────────────────────────────────── */
+    .dark .erp-card {
+        border: 1px solid rgb(200 162 74 / 0.22);
+        background:
+            linear-gradient(180deg, rgb(26 32 30 / 0.92), rgb(18 22 21 / 0.96)),
+            radial-gradient(700px 300px at 100% -10%, rgb(200 162 74 / 0.18), transparent 60%),
+            radial-gradient(700px 420px at -10% 110%, rgb(140 106 44 / 0.22), transparent 55%),
+            var(--erp-surface);
+        box-shadow:
+            0 1px 2px rgb(0 0 0 / 0.35),
+            0 24px 48px -20px rgb(0 0 0 / 0.55);
+    }
+
+    .dark .erp-card::before {
+        background: linear-gradient(90deg,
+            rgb(200 162 74 / 0.00),
+            rgb(255 226 130 / 0.55) 18%,
+            rgb(255 240 180 / 0.85) 45%,
+            rgb(255 226 130 / 0.55) 75%,
+            rgb(200 162 74 / 0.00));
+    }
+
+    .dark .erp-card:hover {
+        border-color: rgb(200 162 74 / 0.38);
+        box-shadow:
+            0 2px 3px rgb(0 0 0 / 0.38),
+            0 26px 52px -18px rgb(200 162 74 / 0.32);
+    }
+
+    .dark .erp-card .text-brand-text { color: #e0c56f; }
+}
+
+/* ــ─ sidebar/topbar brand luxe addendum (shell-premium لا تتلاعب) ────── */
+.erp-shell__brand-mark {
+    box-shadow:
+        0 0 0 1.5px rgb(200 162 74 / 0.65),
+        0 0 0 4px rgb(200 162 74 / 0.12),
+        0 6px 16px -6px rgb(0 0 0 / 0.55);
+}
+
+.erp-shell__sidebar::after,
+.erp-shell__topbar::after {
+    content: "";
+    position: absolute;
+    inset-inline-start: 8px;
+    inset-inline-end: 8px;
+    inset-block-end: 0;
+    block-size: 2px;
+    background: linear-gradient(90deg,
+        rgb(200 162 74 / 0) 0%,
+        rgb(200 162 74 / 0.55) 28%,
+        rgb(255 226 130 / 0.85) 50%,
+        rgb(200 162 74 / 0.55) 72%,
+        rgb(200 162 74 / 0) 100%);
+    border-radius: 999px;
+    pointer-events: none;
+}
+.erp-shell__sidebar, .erp-shell__topbar { position: relative; }
+
+/* ــ─ وسام رقم ميزة الكوين صغيرة للسيرفر ─────────────────────────── */
+.erp-shell__pos-link {
+    background: linear-gradient(180deg, #ffb84d 0%, #b45309 100%) !important;
+    color: #1b0f00 !important;
+    border: 1px solid #7c3f06 !important;
+    border-radius: 18px !important;
+    box-shadow:
+        0 1px 0 rgb(255 255 255 / 0.6) inset,
+        0 14px 32px -10px rgb(180 83 9 / 0.55);
+}
+.erp-shell__pos-link:hover { filter: brightness(1.07); }
+
+/* ــ─ كروت KPI تظهر بلون عسل معتّق ───────────────────────────────── */
+.erp-family-kpi {
+    background: linear-gradient(160deg, #fffcf0 0%, #fdf0c0 120%);
+    border-color: #d9b56a !important;
+}
+.dark .erp-family-kpi {
+    background: linear-gradient(160deg, #332a15 0%, #1d1610 120%);
+    border-color: #8b6925 !important;
+    color: #fff8e0;
+}
+.dark .erp-family-kpi .text-muted { color: #d9c994; }
+.dark .erp-family-kpi .text-ink { color: #fff8e0; }

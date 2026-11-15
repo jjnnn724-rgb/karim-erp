@@ -8,6 +8,7 @@ import { LanguageProvider } from './lib/i18n';
 import { applyInitialTheme } from './ui/theme';
 import './styles.css';
 import './mobile.css';
+import './luxe-premium.css';
 // بعد `styles.css` كي تتقدّم قواعد `@media print` على قواعد الشاشة.
 import './print.css';
 
