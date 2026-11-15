@@ -275,6 +275,19 @@
     line-height: 1.35;
 }
 .erp-login__form--luxe-card .erp-login__subtitle { color: rgb(255 248 224 / 0.6); }
+/* الحقول تظل بيضاء بخلفية — النص الداكن ليُرى بوضوح (لم تكن مشكلة متوارثة) */
+.erp-login__form--luxe-card .erp-control,
+.erp-login__form--luxe-card input,
+.erp-login__form--luxe-card textarea,
+.erp-login__form--luxe-card select {
+    color: #172b3b !important;
+    -webkit-text-fill-color: #172b3b !important;
+    background-color: #fff !important;
+    color-scheme: light;
+}
+.erp-login__form--luxe-card .erp-control::placeholder,
+.erp-login__form--luxe-card input::placeholder,
+.erp-login__form--luxe-card textarea::placeholder { color: #596e80 !important; }
 .erp-login__form--luxe-card label { color: #d8c992 !important; text-shadow: 0 1px 2px rgb(0 0 0 / 0.6); }
 .erp-login__form--luxe-card .text-caption,
 .erp-login__form--luxe-card small { color: rgb(255 248 224 / 0.55) !important; }
