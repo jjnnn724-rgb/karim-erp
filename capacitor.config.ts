@@ -11,8 +11,10 @@ const config: CapacitorConfig = {
   appName: 'Karim ERP',
   webDir: 'frontend/app',
   // التطبيق واجهة للسيرفر مباشرة (لا نسخ ملفات) — التحديثات فورية بلا إعادة نشر APK
+  // النسخة الحالية — V3 (واجهة كاريم المهنية) — يفتحها التطبق الرئيسي للشركة
+  // مخصّص: V3 فيه كل الوحدات بشرفة (وضع القسم + تحليل الافطار + المساعد الذكي)
   server: {
-    url: `${PUBLIC_SERVER}/app/v2.html?live=1`,
+    url: `${PUBLIC_SERVER}/v3/`,
     cleartext: false,
     androidScheme: 'https',
   },
