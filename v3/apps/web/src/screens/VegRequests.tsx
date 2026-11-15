@@ -65,19 +65,16 @@ function formatInt(value: number): string {
     return value.toLocaleString('en-US');
 }
 
-function Kpi({ label, english, value, hint }: { label: string; english: string; value: string; hint: string }) {
+function Kpi({ label, english, value }: { label: string; english: string; value: string }) {
     return (
         <div className="rounded-lg border border-hairline bg-surface p-md shadow-card">
-            <p className="text-label-md text-muted">
-                {label}{' '}
-                <span className="text-caption text-faint" dir="ltr" lang="en">
-                    {english}
-                </span>
+            <p className="text-caption text-faint" dir="ltr" lang="en">
+                {english}
             </p>
-            <p className="erp-numeric mt-xs text-heading-lg text-ink" dir="ltr">
+            <p className="erp-numeric mt-xxs text-heading-lg font-bold text-ink" dir="ltr">
                 {value}
             </p>
-            <p className="mt-xxs text-caption text-muted">{hint}</p>
+            <p className="text-label-sm text-muted">{label}</p>
         </div>
     );
 }
@@ -103,18 +100,22 @@ function SortableTh({
     );
 }
 
-/** نبرة الحالة من `v2/status.js:172-175` — النص نفسه من السجل. */
+/** شارة الحالة — pill بالدرجات المعتمدة في النظام (soft/text/border من @theme). */
 function statusTone(status: string): string {
+    const base = 'inline-flex items-center whitespace-nowrap rounded-full border px-sm py-xxs text-caption font-bold';
     if (status === 'received') {
-        return 'text-success-text';
+        return `${base} border-success bg-success-soft text-success-text`;
     }
     if (status === 'priced') {
-        return 'text-info-text';
+        return `${base} border-info bg-info-soft text-info-text`;
     }
     if (status === 'pending') {
-        return 'text-warning-text';
+        return `${base} border-warning bg-warning-soft text-warning-text`;
     }
-    return 'text-muted';
+    if (status === 'cancelled') {
+        return `${base} border-danger bg-danger-soft text-danger-text`;
+    }
+    return `${base} border-hairline bg-surface-sunken text-muted`;
 }
 
 function compare(a: VegRequestRow, b: VegRequestRow, key: SortKey): number {
@@ -304,11 +305,6 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
                     />
                     <Input label="الوحدة" name="unit" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="كجم" />
                 </div>
-                {activeCategory ? (
-                    <p className="text-caption text-faint">
-                        <span dir="ltr" lang="en" className="font-mono">OFFICIAL SHEET</span> · «{activeCategory}» — {itemsForCategory.length} صنف · الوحدة تُملأ تلقائيًا من الورقة ويمكن تعديلها
-                    </p>
-                ) : null}
                 <div>
                     <Button type="button" variant="secondary" size="sm" onClick={addLine}>
                         إضافة الصنف
@@ -318,7 +314,7 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
                 {/* ── أصناف يدوية خارج الكتالوج (زي v2) ── */}
                 <div className="rounded-md border border-dashed border-hairline p-sm">
                     <div className="mb-xs flex flex-wrap items-center justify-between gap-sm">
-                        <span className="text-label-md text-muted">صنف يدوي (زي v2 — خارج الكتالوج)</span>
+                        <span className="text-label-md text-muted">أصناف من خارج الكتالوج</span>
                         <Button type="button" variant="secondary" size="sm" onClick={() => setManualRows((prev) => [...prev, { id: Date.now() + prev.length, name: '', qty: '1', unit: 'كجم', note: '' }])}>
                             + أضف صنف يدوي
                         </Button>
@@ -367,9 +363,7 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
                                 </li>
                             ))}
                         </ul>
-                    ) : (
-                        <p className="text-body-sm text-muted">مفيش صنف يدوي — لإضافة صنف خارج الكتالوج، اضغط «+ أضف صنف يدوي».</p>
-                    )}
+                    ) : null}
                 </div>
 
                 {catalogLoading ? <p className="text-body-sm text-muted">جارٍ تحميل الكتالوج…</p> : null}
@@ -1005,17 +999,13 @@ function VegContactsDialog({ open, pending, current, onClose, onSave }: {
             }
         >
             <form id={CONTACTS_FORM_ID} onSubmit={(event) => void save(event)} className="flex flex-col gap-sm">
-                <p className="text-body-sm text-muted">
-                    تحفظ الأرقام هنا مرة واحدة، وتقدر تبعث أي طلبية لاحقًا بضغطة زر من جدول الطلبات («📤 للمورد» / «🏬 للمخزن»).
-                </p>
                 <Input
-                    label="واتساب المورد (رقم المورد)"
+                    label="واتساب المورد"
                     name="supplier_jid"
                     dir="ltr"
                     value={supplier}
                     onChange={(e) => setSupplier(e.target.value)}
                     placeholder="مثال: 9665XXXXXXXX"
-                    hint="رقم المورد أو مكان استلام الخضار — رسالة الطلبية هتوصل لهفورًا"
                 />
                 <Input
                     label="واتساب المخزن"
@@ -1024,7 +1014,6 @@ function VegContactsDialog({ open, pending, current, onClose, onSave }: {
                     value={warehouse}
                     onChange={(e) => setWarehouse(e.target.value)}
                     placeholder="مثال: 9665XXXXXXXX"
-                    hint="رقم المسؤول/مجموعة المخزن — استلام وتسعير الطلبية بيوصلها"
                 />
                 {error ? <p role="alert" className="text-body-sm text-danger-text">{error}</p> : null}
             </form>
@@ -1296,9 +1285,8 @@ export function VegRequests() {
                             Vegetable Requests
                         </span>
                     </h1>
-                    <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        طلبات المطبخ إلى المخازن — الإنشاء والاستلام والتسعير وتعديل الكميات والإلغاء مثل الشاشة القديمة. الخادم يقرّر أدوار
-                        الكتابة ويُعرض رفضه كما هو.
+                    <p className="mt-xs text-body-sm text-muted">
+                        طلبات المطبخ ← المخازن — إنشاء، استلام، تسعير.
                     </p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>
@@ -1326,20 +1314,10 @@ export function VegRequests() {
             </header>
 
             <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
-                <Kpi label="معلقة" english="Pending" value={formatInt(summary.pending)} hint="عدّاد الخادم لكل السجل" />
-                <Kpi
-                    label="معلقة اليوم"
-                    english="Pending today"
-                    value={formatInt(summary.pendingToday)}
-                    hint="بانتظار المعالجة ومُنشأة اليوم"
-                />
-                <Kpi label="طلبات اليوم" english="Today" value={formatInt(summary.today)} hint="كل الحالات المُنشأة اليوم" />
-                <Kpi
-                    label="عاجل في العرض"
-                    english="Urgent"
-                    value={formatInt(counts.urgent)}
-                    hint={`من ${formatInt(counts.total)} طلبًا محمّلًا`}
-                />
+                <Kpi label="معلقة" english="Pending" value={formatInt(summary.pending)} />
+                <Kpi label="معلقة اليوم" english="Today" value={formatInt(summary.pendingToday)} />
+                <Kpi label="طلبات اليوم" english="All" value={formatInt(summary.today)} />
+                <Kpi label="عاجل" english="Urgent" value={formatInt(counts.urgent)} />
             </div>
 
             <Card className="p-sm">
@@ -1386,18 +1364,7 @@ export function VegRequests() {
                     >
                         مسح المرشّحات
                     </button>
-                    <span className="text-body-sm text-muted" role="status" aria-live="polite">
-                        {`معلقة ${formatInt(summary.pending)} · معلقة اليوم ${formatInt(summary.pendingToday)} · طلبات اليوم ${formatInt(summary.today)}`}
-                    </span>
                 </div>
-                <p className="mt-sm text-body-sm text-muted" role="status">
-                    {filtered ? `${formatInt(sorted.length)} طلبًا مطابقًا` : `${formatInt(counts.total)} طلبًا محمّلًا`}
-                    {counts.priced ? ` · ${formatInt(counts.priced)} مسعّر` : ''}
-                    {counts.cancelled ? ` · ${formatInt(counts.cancelled)} ملغي` : ''}
-                </p>
-                {search.folded ? (
-                    <p className="mt-sm text-body-sm text-muted">بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.</p>
-                ) : null}
             </Card>
 
             <Card>

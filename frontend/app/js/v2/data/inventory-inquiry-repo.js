@@ -24,9 +24,9 @@
  *   لا يُجمعان في رقم واحد أبدًا؛ من يعرضهما يسمّي كل واحد بمصدره.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.363';
-import { rangeError, spanDays } from './yara-reports-repo.js?v=4.9.363';
-import { formatInt, formatQty, formatMoney } from './reports-repo.js?v=4.9.363';
+import { apiFetch } from '../../core/api.js?v=4.9.364';
+import { rangeError, spanDays } from './yara-reports-repo.js?v=4.9.364';
+import { formatInt, formatQty, formatMoney } from './reports-repo.js?v=4.9.364';
 
 export { rangeError, spanDays };
 
