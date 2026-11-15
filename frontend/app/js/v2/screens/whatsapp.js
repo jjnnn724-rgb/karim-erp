@@ -29,9 +29,9 @@ import {
     stopWhatsapp,
     testWhatsappAutomation,
     updateWhatsappChatMeta,
-} from '../data/whatsapp-repo.js?v=4.9.351';
-import { ensureQrCode } from '../vendor.js?v=4.9.351';
-import { formatInt } from '../data/reports-repo.js?v=4.9.351';
+} from '../data/whatsapp-repo.js?v=4.9.352';
+import { ensureQrCode } from '../vendor.js?v=4.9.352';
+import { formatInt } from '../data/reports-repo.js?v=4.9.352';
 
 const esc = (value) => String(value ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

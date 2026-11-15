@@ -179,7 +179,20 @@ export async function fetchVegCatalog(signal?: AbortSignal): Promise<VegCatalog>
     const body = await fetchJson(
         z
             .object({
-                categories: z.record(z.string(), z.array(z.string())).nullable().optional(),
+                categories: z
+                    .array(
+                        z
+                            .object({
+                                key: z.string().optional(),
+                                label: z.string().optional(),
+                                items: z
+                                    .array(z.object({ name: z.string(), unit: z.string().optional() }).passthrough())
+                                    .default([]),
+                            })
+                            .passthrough(),
+                    )
+                    .nullable()
+                    .optional(),
                 units: z.array(z.string()).nullable().optional(),
             })
             .passthrough(),
@@ -187,10 +200,19 @@ export async function fetchVegCatalog(signal?: AbortSignal): Promise<VegCatalog>
         getAccessToken(),
         signal ? { signal } : {},
     );
-    return {
-        categories: body.categories ?? {},
-        units: body.units ?? [],
-    };
+
+    // السيرفر يرجع مصفوفة {key, label, items[{name, unit}]} — نحوّلها لكاتالوج مسطّح
+    const flat: Record<string, string[]> = {};
+    const units: string[] = [...(body.units ?? [])];
+    for (const group of body.categories ?? []) {
+        const label = group.label ?? group.key ?? 'أصناف';
+        const names: string[] = [];
+        for (const item of group.items ?? []) {
+            if (item.name && !names.includes(item.name)) { names.push(item.name); }
+        }
+        if (names.length) { flat[label] = names; }
+    }
+    return { categories: flat, units };
 }
 
 /* ── دوال تأكيد ───────────────────────────────────────────────────────── */
