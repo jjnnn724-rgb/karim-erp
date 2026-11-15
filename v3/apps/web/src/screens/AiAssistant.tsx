@@ -24,6 +24,7 @@ import { Button } from '../ui';
 import '../styles/ai-assistant.css';
 import { errorMessage } from '../lib/reporting';
 import { useToast } from '../ui/Toast';
+import { AssistantChat } from '../components/AssistantChat';
 
 const money = (v: number | null | undefined) =>
     Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
@@ -224,6 +225,9 @@ export function AiAssistant() {
                         🖨 طباعة ورقة رسمية
                     </Button>
                 </header>
+
+                {/* ═══════ المحادثة الذكية — اسأل أي رقم في النظام ═══════ */}
+                <AssistantChat />
 
 
                 {/* ═══════ الرادار — صاحي دايمًا ═══════ */}
