@@ -129,7 +129,7 @@ function applyPrices(items, rawPrices) {
   const byKey = new Map();
   for (const p of rawPrices) {
     const name = cleanText(p?.name, 80).toLowerCase();
-    const unitPrice = Number(p?.unitPrice);
+    const unitPrice = Number(p?.unitPrice ?? p?.price);
     if (!name) {
       continue;
     }

@@ -122,6 +122,43 @@ export async function markVegPrinted(id: string | number): Promise<z.infer<typeo
     return writeJson(vegPrintedSchema, `/api/veg-requests/${encodeURIComponent(String(id))}/printed`, 'POST');
 }
 
+/* ── أرقام واتساب (مورد / مخزن) للطلبات ── */
+export type VegContacts = {
+    supplier_jid: string;
+    warehouse_jid: string;
+};
+
+export async function fetchVegContacts(): Promise<VegContacts> {
+    return fetchJson(
+        z
+            .object({
+                supplier_jid: z.string().optional().default(''),
+                warehouse_jid: z.string().optional().default(''),
+            })
+            .passthrough(),
+        '/api/veg-requests/contacts',
+        getAccessToken(),
+    );
+}
+
+export async function saveVegContacts(input: VegContacts): Promise<{ ok?: boolean | undefined }> {
+    return writeJson(
+        z.object({ ok: z.boolean().optional() }).passthrough(),
+        '/api/veg-requests/contacts',
+        'PUT',
+        { supplier_jid: input.supplier_jid, warehouse_jid: input.warehouse_jid },
+    );
+}
+
+export async function notifyVegRequest(id: string | number, target: 'supplier' | 'warehouse'): Promise<{ ok?: boolean | undefined; sent?: number | undefined }> {
+    return writeJson(
+        z.object({ ok: z.boolean().optional(), sent: z.number().optional() }).passthrough(),
+        `/api/veg-requests/${encodeURIComponent(String(id))}/notify`,
+        'POST',
+        { target },
+    );
+}
+
 /* ── الكتالوج ─────────────────────────────────────────────────────────── */
 
 export type VegCatalog = {

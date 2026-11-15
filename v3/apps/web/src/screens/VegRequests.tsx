@@ -23,11 +23,15 @@ import {
     createVegRequest,
     editVegItems,
     fetchVegCatalog,
+    fetchVegContacts,
     markVegPrinted,
+    notifyVegRequest,
     priceVegRequest,
     receiveVegRequest,
+    saveVegContacts,
     VEG_TEXT,
     type VegCatalog,
+    type VegContacts,
     type VegItemInput,
     vegCancelConfirm,
     vegCreateVisible,
@@ -514,17 +518,38 @@ function PriceDialog({ open, row, items, pending, onClose, onSubmit }: PriceDial
         }
     }, [open, items]);
 
+    const moneyFmt = (value: number) => Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+
+    const math = useMemo(() => {
+        let total = 0;
+        const lines = items.map((item) => {
+            const raw = String(prices[item.name] ?? '').trim();
+            const price = raw === '' ? null : Number(raw);
+            const valid = price !== null && Number.isFinite(price) && price >= 0 && price <= 1000000;
+            const lineTotal = valid ? Math.round(price! * item.qty * 100) / 100 : null;
+            if (lineTotal !== null) { total += lineTotal; }
+            return { item, raw, price, valid, lineTotal };
+        });
+        const unpriced = lines.reduce((count, l) => count + (l.valid ? 0 : 1), 0);
+        return { total: Math.round(total * 100) / 100, unpriced };
+    }, [items, prices]);
+
     async function save(event: React.FormEvent<HTMLFormElement>): Promise<void> {
         event.preventDefault();
         setError('');
+        if (!items.length) {
+            setError('لا توجد أصناف في الطلب');
+            return;
+        }
         const payload: { name: string; price: number; qty?: number | undefined }[] = [];
         for (const item of items) {
-            const p = Number(prices[item.name]);
-            if (!Number.isFinite(p) || p < 0) {
-                setError(`أدخل سعرًا صحيحًا للصنف ${item.name}`);
+            const raw = String(prices[item.name] ?? '').trim();
+            const price = Number(raw);
+            if (raw === '' || !Number.isFinite(price) || price < 0 || price > 1000000) {
+                setError(`أدخل سعرًا صحيحًا للصنف «${item.name}»`);
                 return;
             }
-            payload.push({ name: item.name, price: p, qty: item.qty });
+            payload.push({ name: item.name, price: Math.round(price * 100) / 100, qty: item.qty });
         }
         try {
             await onSubmit(payload);
@@ -540,49 +565,104 @@ function PriceDialog({ open, row, items, pending, onClose, onSubmit }: PriceDial
             onOpenChange={(next) => {
                 if (!next) onClose();
             }}
-            title={row ? `تسعير ${row.number}` : 'تسعير الطلب'}
+            title={row ? `التسعير والاعتماد — ${row.number}` : 'التسعير والاعتماد'}
             size="lg"
             footer={
                 <>
                     <Button type="button" variant="secondary" size="sm" onClick={onClose}>
                         {VEG_TEXT.cancel}
                     </Button>
-                    <Button type="submit" form={PRICE_FORM_ID} size="sm" loading={pending}>
-                        اعتماد التسعير
+                    <Button type="submit" form={PRICE_FORM_ID} size="md" loading={pending} disabled={!items.length || math.unpriced > 0}>
+                        ✓ اعتمد وترحّل للمطبخ
                     </Button>
                 </>
             }
         >
             <form id={PRICE_FORM_ID} onSubmit={(event) => void save(event)} className="flex flex-col gap-sm">
-                <p className="rounded-md border border-hairline bg-surface-sunken p-sm text-body-sm text-muted">
-                    سعر الوحدة لكل صنف. سيُحمَّل الإجمالي كمصروف على قسم المطبخ تلقائيًا.
-                </p>
-                <ul className="flex flex-col gap-sm">
-                    {items.map((item) => (
-                        <li key={item.name} className="grid grid-cols-[1fr_140px] items-end gap-sm">
-                            <span className="text-ink">
-                                {item.name}{' '}
-                                <span className="erp-numeric text-caption text-muted" dir="ltr">
-                                    ({item.qty} {item.unit ?? ''})
-                                </span>
-                            </span>
-                            <Input
-                                label="السعر"
-                                name={`price-${item.name}`}
-                                type="number"
-                                min={0}
-                                step={0.01}
-                                value={prices[item.name] ?? ''}
-                                onChange={(e) => setPrices((previous) => ({ ...previous, [item.name]: e.target.value }))}
-                            />
-                        </li>
-                    ))}
-                </ul>
+                <div className="flex flex-wrap items-center justify-between gap-sm rounded-md border border-hairline bg-surface-sunken p-sm">
+                    <div className="min-w-0">
+                        <p className="text-label-md font-bold text-ink">وزارة الحسابات ← الاعتماد السعري</p>
+                        <p className="text-body-xs leading-relaxed text-muted">
+                            سعر الوحدة لكل صنف مُستلم فقط. بضغطة واحدة يُقفل التسعير، ويُحمَّل الإجمالي كمصروف على قسم المطبخ تلقائيًا (category: خضار، adjustment veg_request).
+                        </p>
+                    </div>
+                    <div className="text-end">
+                        <p className="text-caption text-muted">الإجمالي الحالي</p>
+                        <p className="erp-numeric text-heading-lg font-extrabold text-success-text" dir="ltr">{moneyFmt(math.total)} ر.س</p>
+                    </div>
+                </div>
+
+                <div className="overflow-hidden rounded-md border border-hairline">
+                    <table className="w-full border-collapse text-body-sm">
+                        <thead>
+                            <tr className="bg-surface-sunken text-caption font-bold text-muted">
+                                <th scope="col" className="px-sm py-xs text-start">#</th>
+                                <th scope="col" className="px-sm py-xs text-start">الصنف</th>
+                                <th scope="col" className="px-sm py-xs text-center">الوحدة</th>
+                                <th scope="col" className="px-sm py-xs text-end">الكمية</th>
+                                <th scope="col" className="px-sm py-xs text-end">سعر الوحدة (ر.س)</th>
+                                <th scope="col" className="px-sm py-xs text-end">الإجمالي (ر.س)</th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {items.map((item, idx) => {
+                                const line = math ? (() => {
+                                    const raw = String(prices[item.name] ?? '').trim();
+                                    const price = raw === '' ? null : Number(raw);
+                                    const valid = price !== null && Number.isFinite(price) && price >= 0 && price <= 1000000;
+                                    const lineTotal = valid ? Math.round(price! * item.qty * 100) / 100 : null;
+                                    return { raw, lineTotal };
+                                })() : { raw: '', lineTotal: null };
+                                return (
+                                    <tr key={item.name} className="border-t border-hairline">
+                                        <td className="px-sm py-xs text-caption text-faint">{idx + 1}</td>
+                                        <td className="px-sm py-xs font-semibold text-ink">{item.name}</td>
+                                        <td className="px-sm py-xs text-center text-muted">{item.unit ?? 'كجم'}</td>
+                                        <td className="erp-numeric px-sm py-xs text-end text-ink" dir="ltr">{(item.qty ?? 0).toLocaleString('en-US', { maximumFractionDigits: 3 })}</td>
+                                        <td className="px-sm py-xs">
+                                            <Input
+                                                aria-label={`سعر ${item.name}`}
+                                                name={`price-${item.name}`}
+                                                type="number"
+                                                min={0}
+                                                step={0.01}
+                                                inputMode="decimal"
+                                                className="text-end tabular-nums"
+                                                value={prices[item.name] ?? ''}
+                                                onChange={(e) => setPrices((previous) => ({ ...previous, [item.name]: e.target.value }))}
+                                                dir="ltr"
+                                            />
+                                        </td>
+                                        <td className="erp-numeric px-sm py-xs text-end font-bold text-ink" dir="ltr">
+                                            {line.lineTotal !== null ? moneyFmt(line.lineTotal) : <span className="text-muted">—</span>}
+                                        </td>
+                                    </tr>
+                                );
+                            })}
+                        </tbody>
+                        <tfoot>
+                            <tr className="border-t-2 border-hairline-strong bg-surface-sunken">
+                                <td colSpan={4} className="px-sm py-xs text-body-sm font-bold text-ink">الإجمالي النهائي</td>
+                                <td colSpan={2} className="erp-numeric px-sm py-xs text-end text-heading-md font-extrabold text-success-text" dir="ltr">{moneyFmt(math.total)} ر.س</td>
+                            </tr>
+                        </tfoot>
+                    </table>
+                </div>
+
                 {error ? (
                     <p role="alert" className="text-body-sm text-danger-text">
                         {error}
                     </p>
                 ) : null}
+
+                <div className="flex flex-wrap items-center justify-between gap-sm">
+                    <p className="text-body-sm text-muted">
+                        {math.unpriced > 0
+                            ? `متبقي ${math.unpriced} صنف بلا سعر — أكمل كل الأسعار للتسديد`
+                            : '✓ كل الأصناف مسعرة — اضغط «اعتمد واترحّل للمطبخ»'}
+                    </p>
+                    <p className="text-body-xs text-faint">يحفظ مع الطلب رقم: {row?.number ?? ''}</p>
+                </div>
             </form>
         </Dialog>
     );
@@ -622,7 +702,98 @@ function ConfirmDialog({ open, title, message, pending, onConfirm, onClose }: Co
     );
 }
 
+/* ── نافذة أرقام واتساب (مورد / مخزن) ───────────────────────────────── */
+
+const CONTACTS_FORM_ID = 'erp-veg-contacts-form';
+
+function VegContactsDialog({ open, pending, current, onClose, onSave }: {
+    open: boolean;
+    pending: boolean;
+    current: VegContacts | null;
+    onClose: () => void;
+    onSave: (value: VegContacts) => Promise<void>;
+}) {
+    const [supplier, setSupplier] = useState('');
+    const [warehouse, setWarehouse] = useState('');
+    const [error, setError] = useState('');
+
+    useEffect(() => {
+        if (open) {
+            setSupplier(current?.supplier_jid ?? '');
+            setWarehouse(current?.warehouse_jid ?? '');
+            setError('');
+        }
+    }, [open, current]);
+
+    const valid = (digits: string) => {
+        const clean = digits.replace(/\D/g, '');
+        return clean === '' || (clean.length >= 7 && clean.length <= 13);
+    };
+
+    async function save(event: React.FormEvent<HTMLFormElement>): Promise<void> {
+        event.preventDefault();
+        setError('');
+        const supplierDigits = supplier.replace(/\D/g, '');
+        const warehouseDigits = warehouse.replace(/\D/g, '');
+        if (!valid(supplierDigits) || !valid(warehouseDigits)) {
+            setError('رقم غير صالح — استخدم صيغة دولية بدون + أو 00 (مثال: 9665XXXXXXXX)');
+            return;
+        }
+        if (!supplierDigits && !warehouseDigits) {
+            setError('أدخل رقم المورد أو المخزن على الأقل');
+            return;
+        }
+        try {
+            await onSave({ supplier_jid: supplierDigits, warehouse_jid: warehouseDigits });
+            onClose();
+        } catch {
+            setError('تعذر الحفظ — حاول مرة أخرى');
+        }
+    }
+
+    return (
+        <Dialog
+            open={open}
+            onOpenChange={(next) => { if (!next) { onClose(); } }}
+            title="أرقام واتساب — المورد والمخزن"
+            size="md"
+            footer={
+                <>
+                    <Button type="button" variant="secondary" size="sm" onClick={onClose}>{VEG_TEXT.cancel}</Button>
+                    <Button type="submit" form={CONTACTS_FORM_ID} size="sm" loading={pending}>حفظ</Button>
+                </>
+            }
+        >
+            <form id={CONTACTS_FORM_ID} onSubmit={(event) => void save(event)} className="flex flex-col gap-sm">
+                <p className="text-body-sm text-muted">
+                    تحفظ الأرقام هنا مرة واحدة، وتقدر تبعث أي طلبية لاحقًا بضغطة زر من جدول الطلبات («📤 للمورد» / «🏬 للمخزن»).
+                </p>
+                <Input
+                    label="واتساب المورد (رقم المورد)"
+                    name="supplier_jid"
+                    dir="ltr"
+                    value={supplier}
+                    onChange={(e) => setSupplier(e.target.value)}
+                    placeholder="مثال: 9665XXXXXXXX"
+                    hint="رقم المورد أو مكان استلام الخضار — رسالة الطلبية هتوصل لهفورًا"
+                />
+                <Input
+                    label="واتساب المخزن"
+                    name="warehouse_jid"
+                    dir="ltr"
+                    value={warehouse}
+                    onChange={(e) => setWarehouse(e.target.value)}
+                    placeholder="مثال: 9665XXXXXXXX"
+                    hint="رقم المسؤول/مجموعة المخزن — استلام وتسعير الطلبية بيوصلها"
+                />
+                {error ? <p role="alert" className="text-body-sm text-danger-text">{error}</p> : null}
+            </form>
+        </Dialog>
+    );
+}
+
 /* ── الشاشة ───────────────────────────────────────────────────────────── */
+
 
 export function VegRequests() {
     const auth = useAuthState();
@@ -630,6 +801,7 @@ export function VegRequests() {
     const canCreate = vegCreateVisible(auth.user?.role);
     const canReceive = vegReceiveVisible(auth.user?.role);
     const canPrice = vegPriceVisible(auth.user?.role);
+    const isContactsAdmin = auth.user?.role === 'admin' || auth.user?.role === 'owner';
 
     const [query, setQuery] = useState('');
     const [status, setStatus] = useState<VegStatusFilter>('all');
@@ -638,6 +810,7 @@ export function VegRequests() {
     const [printingId, setPrintingId] = useState<string | null>(null);
 
     const [createOpen, setCreateOpen] = useState(false);
+    const [contactsOpen, setContactsOpen] = useState(false);
     const [editOpen, setEditOpen] = useState(false);
     const [editRow, setEditRow] = useState<VegRequestRow | null>(null);
     const [editItems, setEditItems] = useState<ReadonlyArray<{ name: string; qty: number; unit?: string | undefined }>>([]);
@@ -663,6 +836,13 @@ export function VegRequests() {
         queryKey: ['veg-catalog'],
         queryFn: ({ signal }) => fetchVegCatalog(signal),
         staleTime: 5 * 60 * 1000,
+    });
+    const contactsQuery = useQuery({
+        queryKey: ['veg-contacts'],
+        queryFn: () => fetchVegContacts(),
+        staleTime: 5 * 60 * 1000,
+        enabled: isContactsAdmin,
+        retry: 0,
     });
     const currency = String(currencyQuery.data ?? '');
 
@@ -748,6 +928,21 @@ export function VegRequests() {
             setActionOpen(false);
             setActionRow(null);
         },
+    });
+
+    const notifyMutation = useWriteMutation<{ id: string; target: 'supplier' | 'warehouse' }, void>({
+        mutationFn: ({ id, target }) => notifyVegRequest(id, target).then(() => undefined),
+        successTitle: ({ target }) => (target === 'supplier' ? '📤 اتبعتت للمورد على واتساب' : '🏬 اتبعتت للمخزن على واتساب'),
+        errorTitle: 'تعذر الإرسال على واتساب',
+        invalidate: [],
+    });
+
+    const contactsMutation = useWriteMutation<VegContacts, void>({
+        mutationFn: (value) => saveVegContacts(value).then(() => undefined),
+        successTitle: () => '✓ اتحفظ أرقام الواتساب',
+        errorTitle: 'تعذر حفظ الأرقام',
+        invalidate: [['veg-contacts']],
+        onSuccess: () => setContactsOpen(false),
     });
 
     async function openEdit(row: VegRequestRow) {
@@ -863,6 +1058,11 @@ export function VegRequests() {
                     {canCreate ? (
                         <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
                             طلب جديد
+                        </Button>
+                    ) : null}
+                    {isContactsAdmin ? (
+                        <Button type="button" size="sm" variant="secondary" onClick={() => setContactsOpen(true)} title="أرقام واتساب المورد والمخزن">
+                            📞 أرقام واتساب
                         </Button>
                     ) : null}
                     <PrintActions title="طلبات شراء الخضار" />
@@ -1039,6 +1239,28 @@ export function VegRequests() {
                                                     >
                                                         طباعة
                                                     </Button>
+                                                    {row.status !== 'cancelled' ? (
+                                                        <>
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                variant="secondary"
+                                                                title="إرسال الطلبية للمورد على واتساب"
+                                                                onClick={() => notifyMutation.mutate({ id: row.id, target: 'supplier' })}
+                                                            >
+                                                                📤 للمورد
+                                                            </Button>
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                variant="secondary"
+                                                                title="إرسال الطلبية للمخزن على واتساب"
+                                                                onClick={() => notifyMutation.mutate({ id: row.id, target: 'warehouse' })}
+                                                            >
+                                                                🏬 للمخزن
+                                                            </Button>
+                                                        </>
+                                                    ) : null}
                                                     {row.status === 'pending' && (
                                                         <>
                                                             {canCreate ? (
@@ -1172,6 +1394,13 @@ export function VegRequests() {
                     setActionOpen(false);
                     setActionRow(null);
                 }}
+            />
+            <VegContactsDialog
+                open={contactsOpen}
+                pending={contactsMutation.isPending}
+                current={contactsQuery.data ?? null}
+                onClose={() => setContactsOpen(false)}
+                onSave={async (value) => { await contactsMutation.mutateAsync(value); }}
             />
         </div>
     );

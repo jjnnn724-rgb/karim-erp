@@ -12,7 +12,7 @@
  * لا id ولا حقل نظامي يُرسَل؛ الخادم يولّده/يحميه.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.348';
+import { apiFetch } from '../../core/api.js?v=4.9.349';
 
 export const DEPARTMENT_WRITE_ROLES = ['admin', 'manager'];
 export const HR_DEPARTMENT_WRITE_ROLES = ['admin', 'manager', 'hr'];

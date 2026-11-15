@@ -15,7 +15,7 @@
  * client could choose whose sessions to list.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.348';
+import { apiFetch } from '../../core/api.js?v=4.9.349';
 
 /**
  * @returns {Promise<{currentSessionId: string|null, sessions: Array}>}
