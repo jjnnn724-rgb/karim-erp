@@ -5,6 +5,7 @@ import { useConfirm } from '../components/ConfirmProvider';
 import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
+import { printOfficialSheet, type OfficialSheetColumn } from '../lib/official-print';
 import {
     arSearchKey,
     DISPATCH_STATUS,
@@ -24,7 +25,6 @@ import {
     type ApproveBody,
     type ApproveDispatchResult,
     type ApproveDraft,
-    anyActionVisible,
     approveDispatch,
     approveDraftError,
     approveErrorText,
@@ -1204,10 +1204,8 @@ export function Dispatches() {
     const cap = scope === 'all' ? MAX_PAGES_ALL : MAX_PAGES_MONTH;
     const capped = (dispatchesQuery.data?.length ?? 0) >= 1000 * cap;
 
-    const showActions = pageRows.some((row) => {
-        const raw = rawById.get(row.id);
-        return raw ? anyActionVisible(role, dispatchGate(raw), gateUser) : false;
-    });
+    // الطباعة متاحة دائمًا — لا حاجة لإخفاء العمود بحسب الدور.
+    const showActions = pageRows.length > 0;
 
     const statesLine = Object.entries(counts)
         .map(([key, value]) => `${statusOf(key).label} ${formatInt(value)}`)
@@ -1225,11 +1223,82 @@ export function Dispatches() {
         setPage(1);
     }
 
+    /** ورقة A4 رسمية لإذن الصرف — يعتمد نفس طراز الورق الرسمي لكل الأوراق الرسمية. */
+    function printDispatch(dispatch: Dispatch): void {
+        const rawItems = (dispatch.items ?? []) as Array<{
+            itemName?: string | null;
+            name?: string | null;
+            unit?: string | null;
+            qty?: number | string | null;
+            approvedQty?: number | string | null;
+            receivedQty?: number | string | null;
+        }>;
+        const rows = rawItems.map((item, idx) => ({
+            idx: String(idx + 1),
+            name: String(item.itemName ?? item.name ?? 'صنف'),
+            unit: String(item.unit ?? '').trim() || '—',
+            qty: String(item.qty ?? '—'),
+            approved: item.approvedQty !== null && item.approvedQty !== undefined && String(item.approvedQty).trim() ? String(item.approvedQty) : '—',
+            received: item.receivedQty !== null && item.receivedQty !== undefined && String(item.receivedQty).trim() ? String(item.receivedQty) : '—',
+        }));
+        const createdBy = String(dispatch.createdBy ?? '').trim();
+        const signedName = String(dispatch.kitchenReceivedBy ?? '').trim();
+        const deptLabel = String(dispatch.deptName ?? dispatch.deptCode ?? '—');
+        printOfficialSheet({
+            title: 'إذن صرف',
+            englishTitle: 'Issue Authorization',
+            subtitle: `القسم: ${deptLabel} · قيد رقم #${dispatch.id}`,
+            from: String(dispatch.date ?? '').slice(0, 10),
+            to: String(dispatch.date ?? '').slice(0, 10),
+            ref: `DIS-${dispatch.id}`,
+            kpis: [
+                { label: 'رقم الإذن', value: String(dispatch.id) },
+                { label: 'القسم', value: deptLabel },
+                { label: 'الحالة', value: String(dispatch.status ?? '—') },
+                { label: 'التاريخ', value: String(dispatch.date ?? '—') },
+                { label: 'عدد الأصناف', value: String(rows.length) },
+            ],
+            sections: [
+                {
+                    heading: 'الأصناف المسحوبة من المخزن',
+                    columns: [
+                        { key: 'idx', header: '#', width: '6%' },
+                        { key: 'name', header: 'الصنف' },
+                        { key: 'unit', header: 'الوحدة', width: '12%' },
+                        { key: 'qty', header: 'المطلوب', align: 'end' },
+                        { key: 'approved', header: 'المعتمد', align: 'end' },
+                        { key: 'received', header: 'المستلم', align: 'end' },
+                    ] as OfficialSheetColumn[],
+                    rows,
+                    totalsRow: [{ idx: '', name: `الإجمالي: ${rows.length} صنف`, unit: '', qty: '', approved: '', received: '' }],
+                },
+            ],
+            signatures: [
+                { role: 'التوقيع / المُعد', ...(createdBy ? { name: createdBy } : {}) },
+                { role: 'التوقيع / المستلم', ...(signedName ? { name: signedName } : {}) },
+            ],
+            notes: ['استلام الأصناف بالتوقيع بعد العدّ والتدقيق — أي نقص يُسجّل قبل الاعتماد أو التسليم.'],
+        });
+    }
+
     /** أزرار الصف — نفس شروط V2 وحالاتها وقائمة أدوارها. */
     function actionsFor(dispatch: Dispatch): ReactNode {
         const row: DispatchGateRow = dispatchGate(dispatch);
         const buttons: ReactNode[] = [];
         const id = row.id;
+        // طباعة — متاحة للمخزن والمطبخ وتوافق الورق الرسمي.
+        buttons.push(
+            <Button
+                key="print"
+                type="button"
+                size="sm"
+                variant="ghost"
+                aria-label={`طباعة إذن الصرف #${id}`}
+                onClick={() => printDispatch(dispatch)}
+            >
+                طباعة
+            </Button>,
+        );
         if (editVisible(role, row, gateUser)) {
             buttons.push(
                 <Button

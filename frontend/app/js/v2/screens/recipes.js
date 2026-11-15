@@ -29,18 +29,18 @@
  * extended_cost يرد من GET /pos/products/:id/ingredients (shift-routes.js:402).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.352';
-import { fetchRecipes, fetchRecipesCatalog, indexCatalog, recipeToRow } from '../data/recipes-repo.js?v=4.9.352';
-import { formatMoney, formatInt, fetchCurrency } from '../data/reports-repo.js?v=4.9.352';
-import { fetchDepartments } from '../data/finance-repo.js?v=4.9.352';
-import { canWrite } from '../session.js?v=4.9.352';
-import { recipeWriteEnabled } from '../write-flags.js?v=4.9.352';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.353';
+import { fetchRecipes, fetchRecipesCatalog, indexCatalog, recipeToRow } from '../data/recipes-repo.js?v=4.9.353';
+import { formatMoney, formatInt, fetchCurrency } from '../data/reports-repo.js?v=4.9.353';
+import { fetchDepartments } from '../data/finance-repo.js?v=4.9.353';
+import { canWrite } from '../session.js?v=4.9.353';
+import { recipeWriteEnabled } from '../write-flags.js?v=4.9.353';
 import {
     RECIPE_WRITE_ROLES, RECIPE_BOM_ROLES, costRatioPercent,
     ingredientLine, newIngredientLine, createRecipe, updateRecipe, removeRecipe,
     syncRecipeToCashier, fetchProductIngredients, fetchRecipeInventory,
     fetchRecipeUnits, saveProductIngredients, uploadProductImage, removeProductImage,
-} from '../data/recipes-edit-repo.js?v=4.9.352';
+} from '../data/recipes-edit-repo.js?v=4.9.353';
 
 const esc = (v) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;').replace(/'/g, '&#39;');
 const money = (v, c) => { const m = formatMoney(v, c); return '<span class="erp-num" dir="ltr">' + m.amount + '</span>' + (m.hasUnit ? ' <span class="erp-text-sm erp-text-muted">' + esc(m.unit) + '</span>' : ''); };

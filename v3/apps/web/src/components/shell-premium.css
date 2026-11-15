@@ -782,3 +782,40 @@
     0%, 100% { box-shadow: 0 0 0 0 rgb(192 57 43 / 50%); }
     50% { box-shadow: 0 0 0 6px rgb(192 57 43 / 22%); }
 }
+/* Language toggle: Arabic / English */
+.erp-shell__lang-toggle {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.45rem;
+    padding-inline: 0.55rem;
+    block-size: 2.25rem;
+    border: 1px solid var(--erp-border, #e5e7eb);
+    border-radius: 999px;
+    background: var(--erp-surface, #fff);
+    color: #1f2937;
+    font-size: 0.78rem;
+    font-weight: 800;
+    letter-spacing: 0.02em;
+    cursor: pointer;
+    transition: background 160ms, border-color 160ms;
+}
+.erp-shell__lang-toggle:hover { background: #f3f4f6; border-color: #d1d5db; }
+.erp-shell__lang-toggle:focus-visible {
+    outline: 2px solid #168653;
+    outline-offset: 2px;
+}
+.erp-shell__lang-toggle-code {
+    display: inline-grid;
+    place-items: center;
+    inline-size: 1.55rem;
+    block-size: 1.55rem;
+    border-radius: 999px;
+    background: #0f3d3e;
+    color: #fff;
+    font-size: 0.62rem;
+    font-weight: 800;
+}
+.erp-shell__lang-toggle-word { font-size: 0.75rem; font-weight: 700; color: #1f2937; }
+[data-theme='dark'] .erp-shell__lang-toggle { background: var(--erp-surface-2, #1f2937); border-color: var(--erp-border, #374151); color: #e5e7eb; }
+[data-theme='dark'] .erp-shell__lang-toggle:hover { background: #253141; }
+[data-theme='dark'] .erp-shell__lang-toggle-word { color: #e5e7eb; }

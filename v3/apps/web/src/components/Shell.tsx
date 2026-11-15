@@ -4,6 +4,8 @@ import { useQuery } from '@tanstack/react-query';
 import { logout, useAuthState } from '../lib/auth';
 import { fetchRadar } from '../lib/ai-assistant';
 import { useHiddenNavKeys } from '../lib/hidden-nav';
+import { useLanguage } from '../lib/i18n';
+import { enLabel } from '../lib/nav-en';
 import { useAllowedMenus } from '../lib/my-menus';
 import {
     APP_NAME,
@@ -357,11 +359,18 @@ function ShellLayout() {
         return allowedMenusSet.includes(item.to.slice(1));
     });
 
+    /* اللغة النشطة — تتحول النصوص في العربية/الإنجليزية فعليًا. */
+    const { lang, setLang } = useLanguage();
+    const localizedNavItems = useMemo(
+        () => (lang === 'en' ? navItems.map((item) => ({ ...item, label: enLabel(item.to) })) : navItems),
+        [lang, navItems],
+    );
+
     const renderNav = (compact: boolean, suffix: string) => (
         <nav aria-label="أقسام النظام" className="erp-shell__nav">
             {NAV_GROUPS.map((group) => {
                 const items = group.keys
-                    .map((key) => navItems.find((item) => item.to === `/${key}`))
+                    .map((key) => localizedNavItems.find((item) => item.to === `/${key}`))
                     .filter((item): item is NavItem => Boolean(item));
                 if (items.length === 0) return null;
                 const isCollapsed = prefs.collapsed.includes(group.id);
@@ -618,6 +627,16 @@ function ShellLayout() {
                             </span>
                             <kbd dir="ltr">Ctrl K</kbd>
                         </button>
+                        <button
+                            type="button"
+                            className="erp-shell__lang-toggle"
+                            aria-pressed={lang === 'en'}
+                            aria-label={lang === 'ar' ? 'التبديل إلى الإنجليزية' : 'Switch to Arabic'}
+                            onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
+                        >
+                            <span aria-hidden="true" className="erp-shell__lang-toggle-code">{lang === 'ar' ? 'EN' : 'ع'}</span>
+                            <span className="erp-shell__lang-toggle-word">{lang === 'ar' ? 'English' : 'العربية'}</span>
+                        </button>
                         <div className="erp-shell__session-context">
                             <span className="erp-shell__session-icon" aria-hidden="true">
                                 <ShellIcon name="users" />
@@ -657,7 +676,7 @@ function ShellLayout() {
                                         <span>{entry.label}</span>
                                     </Link>
                                 );
-                            const item = navItems.find((candidate) => candidate.to === `/${entry.key}`);
+                            const item = localizedNavItems.find((candidate) => candidate.to === `/${entry.key}`);
                             if (!item) return null;
                             return (
                                 <Link
@@ -696,7 +715,7 @@ function ShellLayout() {
                 actions={paletteActions}
                 items={[
                     { to: HOME_PATH, label: HOME_TITLE, hint: 'Home' },
-                    ...navItems.map((item) => ({ to: item.to, label: item.label, hint: item.hint })),
+                    ...localizedNavItems.map((item) => ({ to: item.to, label: item.label, hint: item.hint })),
                 ]}
                 onClose={() => {
                     setPaletteOpen(false);
@@ -706,7 +725,7 @@ function ShellLayout() {
                         void navigate({ to: HOME_PATH });
                         return;
                     }
-                    const target = navItems.find((item) => item.to === to);
+                    const target = localizedNavItems.find((item) => item.to === to);
                     if (target) {
                         void navigate({ to: target.to });
                     }

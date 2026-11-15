@@ -350,12 +350,15 @@ describe('أذون الصرف — الأزرار حسب الدور والحال�
         });
     }
 
-    it('محاسب: بلا زر إنشاء وبلا عمود إجراءات', async () => {
+    it('محاسب: بلا زر إنشاء وبلا قرارات تخدم الأدوار، ويرى فقط زر «طباعة»', async () => {
         await ready();
         expect(screen.queryByRole('button', { name: 'طلب صرف جديد' })).toBeNull();
-        expect(screen.queryByText('إجراءات')).toBeNull();
+        // عمود الإجراءات يظهر فقط لزر الطباعة (لا قرار اعتماد/رفض/استلام/تعديل/إرجاع/حذف)
+        expect(screen.getByText('إجراءات')).toBeTruthy();
         for (const id of ['101', '102', '103', '104']) {
-            expect(within(rowOf(id)).queryAllByRole('button')).toHaveLength(0);
+            const buttons = within(rowOf(id)).queryAllByRole('button');
+            expect(buttons).toHaveLength(1);
+            expect(buttons[0].textContent).toContain('طباعة');
         }
     });
 

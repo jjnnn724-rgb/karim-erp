@@ -29,13 +29,13 @@
  * daily_series / by_department the tables read; nothing is recomputed.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.352';
-import { openInAppReport } from '../report-viewer.js?v=4.9.352';
-import { lineChart, barChart } from '../charts.js?v=4.9.352';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.353';
+import { openInAppReport } from '../report-viewer.js?v=4.9.353';
+import { lineChart, barChart } from '../charts.js?v=4.9.353';
 import {
     fetchPnl, fetchPnlPrintHtml, PNL_PRESETS, pnlPresetRange,
-} from '../data/finance-repo.js?v=4.9.352';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.352';
+} from '../data/finance-repo.js?v=4.9.353';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.353';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

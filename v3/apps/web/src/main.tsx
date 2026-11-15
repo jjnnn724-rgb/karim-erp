@@ -4,6 +4,7 @@ import { createRoot } from 'react-dom/client';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { App } from './App';
 import { registerCashierPwa } from './lib/pwa';
+import { LanguageProvider } from './lib/i18n';
 import { applyInitialTheme } from './ui/theme';
 import './styles.css';
 import './mobile.css';
@@ -69,9 +70,11 @@ registerCashierPwa();
 createRoot(container).render(
     <StrictMode>
         <I18nProvider locale="ar-SA">
-            <TooltipProvider delayDuration={200}>
-                <App />
-            </TooltipProvider>
+            <LanguageProvider>
+                <TooltipProvider delayDuration={200}>
+                    <App />
+                </TooltipProvider>
+            </LanguageProvider>
         </I18nProvider>
     </StrictMode>,
 );
