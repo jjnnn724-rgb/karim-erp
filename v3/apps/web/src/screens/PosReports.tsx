@@ -210,6 +210,7 @@ export function PosReports() {
             return;
         }
         const title = tab === 'department' ? 'تقرير الأقسام' : tab === 'product' ? 'تقرير الأصناف' : tab === 'inventory' ? 'تقرير حركة المخزن' : 'النظرة التنفيذية';
+        const titleEn = tab === 'department' ? 'Departments Report' : tab === 'product' ? 'Products Report' : tab === 'inventory' ? 'Inventory Movement Report' : 'Executive Overview';
         const escape = (v: unknown) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
         const rowsHtml = (() => {
             if (tab === 'department' && departmentQuery.data) {
@@ -277,7 +278,7 @@ export function PosReports() {
 </style></head><body>
   <div class="head">
     <img src="/app/assets/karim-logo.png" alt="شعار المطعم">
-    <div><h1>${escape(title)}</h1><p>مطاعم الشرفة العالمي — تقرير رسمي معتمد</p></div>
+    <div><h1>${escape(title)} <span style="font-size:.55em;letter-spacing:.05em;color:#6b5d2f" lang="en" dir="ltr">${escape(titleEn)}</span></h1><p>مطاعم الشرفة العالمي — تقرير رسمي معتمد</p></div>
   </div>
   <div class="meta"><span><strong>الفترة:</strong> ${escape(from)} → ${escape(to)}</span><span><strong>الإصدار:</strong> ${escape(todayIso())}</span><span><strong>النظام:</strong> KARIM ERP</span></div>
   ${kpisHtml}

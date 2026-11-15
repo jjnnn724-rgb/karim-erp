@@ -50,7 +50,7 @@ describe('عارض القيود', () => {
             expect(screen.getByRole('table')).toBeTruthy();
         });
 
-        expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('القيود اليومية');
+        expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('القيود اليومية');
         expect(screen.getByText(`${String(entries.length)} قيدًا معروضًا`)).toBeTruthy();
 
         const row = firstRow();

@@ -289,7 +289,7 @@ function reportHtml(report: BuffetReport, invoices: readonly BuffetInvoiceRow[])
         .join('');
 
     return (
-        `<h1>تقرير البوفيه المفتوح — ${escapeHtml(report.date)}</h1>` +
+        `<h1>تقرير البوفيه المفتوح <span style="font-size:.55em;letter-spacing:.05em;color:#6b5d2f" lang="en" dir="ltr">OPEN BUFFET REPORT</span> — ${escapeHtml(report.date)}</h1>` +
         '<div class="cards">' +
         cards
             .map(([label, value]) => `<div class="card"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`)

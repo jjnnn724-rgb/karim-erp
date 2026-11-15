@@ -56,7 +56,7 @@ describe('تطبيق v3', () => {
         render(<App />);
 
         await waitFor(() => {
-            expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('شجرة الحسابات');
+            expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('شجرة الحسابات');
         });
 
         // القشرة: رابط لكل شاشة + شارة «للقراءة فقط».
@@ -76,7 +76,7 @@ describe('تطبيق v3', () => {
         render(<App />);
 
         await waitFor(() => {
-            expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('شجرة الحسابات');
+            expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('شجرة الحسابات');
         });
         expect(screen.getAllByRole('link', { name: /شجرة الحسابات/ }).length).toBeGreaterThan(0);
         expect(screen.queryAllByRole('link', { name: /القيود اليومية/ })).toHaveLength(0);

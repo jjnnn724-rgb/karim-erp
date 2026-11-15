@@ -63,7 +63,7 @@ describe('شجرة الحسابات', () => {
         const { container } = renderTree();
         const table = await waitForDataTable();
 
-        expect(screen.getByRole('heading', { level: 1 }).textContent).toBe('شجرة الحسابات');
+        expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('شجرة الحسابات');
         expect(screen.getByText(`${String(chart.length)} حساب مطابق · 9 مجموعة حساب رئيسية`)).toBeTruthy();
         expect(visibleCodes()).toContain('1');
         expect(visibleCodes()).toContain('11');

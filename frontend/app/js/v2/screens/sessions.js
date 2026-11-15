@@ -30,21 +30,21 @@
  * session must not be able to add a permanent key or to weaken the account.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.358';
-import { statusBadge } from '../status.js?v=4.9.358';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.359';
+import { statusBadge } from '../status.js?v=4.9.359';
 import {
     fetchSessions,
     revokeSession,
     revokeOtherSessions,
     formatMoment,
-} from '../data/sessions-repo.js?v=4.9.358';
+} from '../data/sessions-repo.js?v=4.9.359';
 import {
     fetchPasskeys,
     registerPasskey,
     removePasskey,
     passkeySupport,
     defaultDeviceLabel,
-} from '../data/passkeys-repo.js?v=4.9.358';
+} from '../data/passkeys-repo.js?v=4.9.359';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

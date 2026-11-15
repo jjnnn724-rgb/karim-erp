@@ -32,7 +32,7 @@ export function JournalViewer() {
         <div className="journal-premium flex flex-col gap-md">
             <header className="flex flex-wrap items-end justify-between gap-sm">
                 <div>
-                    <h1 className="text-display-lg text-ink">القيود اليومية</h1>
+                    <h1 className="text-display-lg text-ink"> القيود اليومية{' '} <span className="text-body-sm text-muted" dir="ltr" lang="en"> Journal Entries </span> </h1>
                     <p className="text-body-sm text-muted">{query.isSuccess ? `${String(entries.length)} قيدًا معروضًا` : 'دفتر القيود'}</p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>

@@ -1441,7 +1441,7 @@ export function PosEntry() {
         <div
             className={`flex flex-col premium-screen pos-entry pos-entry--workspace${posTheme === 'light' ? ' pos-entry--light' : ''} pos-entry--pane-${mobilePane}`}
         >
-            <h1 className="sr-only">الكاشير — نقطة البيع</h1>
+            <h1 className="sr-only">الكاشير — نقطة البيع{' '} <span dir="ltr" lang="en">POS Terminal</span></h1>
             {shift ? (
                 <section className="pos-topbar" aria-label="شريط الكاشير">
                     <div className="pos-topbar__brand" title="مطاعم الشرف العالمي — AL SHARFA INTERNATIONAL">

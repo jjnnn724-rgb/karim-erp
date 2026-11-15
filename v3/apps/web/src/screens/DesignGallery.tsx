@@ -403,7 +403,7 @@ function GalleryContent() {
         <div className="mx-auto flex w-full max-w-6xl flex-col gap-xl p-md pb-xxl">
             <header className="flex flex-wrap items-start justify-between gap-md">
                 <div className="flex flex-col gap-xxs">
-                    <h1 className="text-display-lg text-ink">معرض نظام التصميم</h1>
+                    <h1 className="text-display-lg text-ink"> معرض نظام التصميم{' '} <span className="text-body-sm text-muted" dir="ltr" lang="en"> Design System Gallery </span> </h1>
                     <p className="max-w-2xl text-body-md text-muted">
                         KARIM — مكوّنات ERP في الوضعين الفاتح والداكن. دمج HeroUI تدريجيًا في الأزرار والحقول والبطاقات والشارات، مع الحفاظ
                         على المكونات المتخصصة. كل بيانات هذه الصفحة أمثلة توضيحية وليست بيانات المنشأة.
