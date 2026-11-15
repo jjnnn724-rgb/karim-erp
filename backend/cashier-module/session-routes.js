@@ -72,7 +72,7 @@ async function listHandler(req, res) {
         res.set('Cache-Control', 'no-store');
         return res.json({ ok: true, current_session_id: req.user.sid || null, sessions });
     } catch (err) {
-        logger.error('[sessions] list failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[sessions] list failed:');
         return res.status(500).json({ error: 'SESSIONS_UNAVAILABLE', message: 'تعذر جلب الجلسات — حاول مجددًا.' });
     }
 }
@@ -99,11 +99,11 @@ async function revokeOneHandler(req, res) {
             reason: isCurrent ? 'إبطال الجلسة الحالية من شاشة الجلسات' : 'إبطال جهاز من شاشة الجلسات',
             metadata: { current: isCurrent },
             actor: { userId: req.user.id, userName: req.user.username || req.user.name, role: req.user.role, ip: req.ip, requestId: req.id },
-        }).catch((e) => logger.error('[sessions] audit log failed:', e.message));
+        }).catch((e) => logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[sessions] audit log failed:'));
         logger.info({ userId: req.user.id, sessionId, current: isCurrent }, '[sessions] session revoked');
         return res.json({ ok: true, revoked: r.rowCount, current: isCurrent, message: isCurrent ? 'أُبطلت هذه الجلسة — سجّل الدخول من جديد.' : 'أُبطل الجهاز المحدد.' });
     } catch (err) {
-        logger.error('[sessions] revoke failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[sessions] revoke failed:');
         return res.status(500).json({ error: 'SESSION_REVOKE_FAILED', message: 'تعذر إبطال الجلسة — حاول مجددًا.' });
     }
 }
@@ -128,11 +128,11 @@ async function revokeOthersHandler(req, res) {
             reason: 'إبطال كل الأجهزة الأخرى من شاشة الجلسات',
             metadata: { revoked: r.rowCount, kept: sid },
             actor: { userId: req.user.id, userName: req.user.username || req.user.name, role: req.user.role, ip: req.ip, requestId: req.id },
-        }).catch((e) => logger.error('[sessions] audit log failed:', e.message));
+        }).catch((e) => logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[sessions] audit log failed:'));
         logger.info({ userId: req.user.id, revoked: r.rowCount }, '[sessions] other sessions revoked');
         return res.json({ ok: true, revoked: r.rowCount, message: r.rowCount ? `أُبطلت ${r.rowCount} جلسة أخرى.` : 'لا توجد جلسات أخرى نشطة.' });
     } catch (err) {
-        logger.error('[sessions] revoke-others failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[sessions] revoke-others failed:');
         return res.status(500).json({ error: 'SESSION_REVOKE_FAILED', message: 'تعذر إبطال الجلسات — حاول مجددًا.' });
     }
 }

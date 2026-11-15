@@ -282,7 +282,7 @@ function ensureBudgetAlertsSchema() {
     return (async () => {
         if (fs.existsSync(file)) {await pool.query(fs.readFileSync(file, 'utf8'));}
         logger.info('[BUDGET_ALERTS] ready (budgets/alert_state)');
-    })().catch((e) => { logger.error('[BUDGET_ALERTS] init skipped:', e.message); });
+    })().catch((e) => { logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[BUDGET_ALERTS] init skipped:'); });
 }
 
 module.exports = {

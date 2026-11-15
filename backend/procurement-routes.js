@@ -339,14 +339,14 @@ async function ensureProcurementSchema() {
         CREATE INDEX IF NOT EXISTS idx_suppliers_tax_status ON suppliers (tax_registration_status);
         CREATE INDEX IF NOT EXISTS idx_suppliers_cr
             ON suppliers (commercial_register) WHERE commercial_register IS NOT NULL;
-    `).catch((e) => logger.warn('[procurement_tax_schema] skipped:', e.message));
+    `).catch((e) => logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[procurement_tax_schema] skipped:'));
     try {
         await pool.query('CREATE EXTENSION IF NOT EXISTS pg_trgm');
         await pool.query(`CREATE INDEX IF NOT EXISTS idx_suppliers_name_trgm
             ON suppliers USING gin (name gin_trgm_ops)`);
         await pool.query(`CREATE INDEX IF NOT EXISTS idx_suppliers_vat_trgm
             ON suppliers USING gin (vat_number gin_trgm_ops)`);
-    } catch (e) { logger.warn('[procurement_trgm] skipped:', e.message); }
+    } catch (e) { logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[procurement_trgm] skipped:'); }
     // ترقية الفواتير القديمة: استنتاج المسدد والحالة من طريقة الدفع
     await pool.query(`
         UPDATE "purchaseInvoices"
@@ -403,7 +403,7 @@ router.get('/summary', jwtAuth, requireRole(...READ_ROLES), async (req, res) => 
             invoicesRemaining: roundMoney(s.invoicesRemaining),
         });
     } catch (error) {
-        logger.error('[procurement_summary]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[procurement_summary]');
         fail(res, 500, 'PROCUREMENT_SUMMARY_FAILED', 'تعذر تحميل ملخص المشتريات');
     }
 });
@@ -442,7 +442,7 @@ router.get('/suppliers', jwtAuth, requireRole(...READ_ROLES), async (req, res) =
         }));
         res.json(rows);
     } catch (error) {
-        logger.error('[procurement_suppliers_list]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[procurement_suppliers_list]');
         fail(res, 500, 'SUPPLIERS_LIST_FAILED', 'تعذر تحميل دليل الموردين');
     }
 });
@@ -502,7 +502,7 @@ router.get('/suppliers/search', jwtAuth, requireRole(...READ_ROLES), async (req,
         const pages = total === 0 ? 0 : Math.ceil(total / limit);
         res.json({ data: rows, pagination: { page, limit, total, pages } });
     } catch (error) {
-        logger.error('[procurement_suppliers_search]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[procurement_suppliers_search]');
         fail(res, 500, 'SUPPLIERS_SEARCH_FAILED', 'تعذر البحث في الموردين');
     }
 });
@@ -530,7 +530,7 @@ router.post('/suppliers', jwtAuth, requireRole(...SUPPLIER_WRITE_ROLES), async (
         emit(req, 'procurement', 'create', row);
         res.status(201).json(row);
     } catch (error) {
-        logger.error('[procurement_supplier_create]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[procurement_supplier_create]');
         fail(res, 500, 'SUPPLIER_CREATE_FAILED', 'تعذر حفظ المورد');
     } finally {
         client.release();
@@ -614,14 +614,14 @@ router.put('/suppliers/:id', jwtAuth, requireRole(...SUPPLIER_WRITE_ROLES), asyn
                         cur.vat_number || null, next.vat_number || null,
                         String(req.body?.tax_change_reason ?? '').slice(0, 300) || null]
                 );
-            } catch (auditErr) { logger.warn('[supplier_tax_audit] skipped:', auditErr.message); }
+            } catch (auditErr) { logger.warn({ err: { message: String(auditErr.message), stack: (auditErr && auditErr.stack) || null } }, '[supplier_tax_audit] skipped:'); }
         }
         await client.query('COMMIT');
         emit(req, 'procurement', 'update', row);
         res.json(row);
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[procurement_supplier_update]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[procurement_supplier_update]');
         fail(res, 500, 'SUPPLIER_UPDATE_FAILED', 'تعذر تحديث المورد');
     } finally {
         client.release();
@@ -639,7 +639,7 @@ router.post('/suppliers/:id/toggle', jwtAuth, requireRole(...SUPPLIER_WRITE_ROLE
         emit(req, 'procurement', 'update', row);
         res.json(row);
     } catch (error) {
-        logger.error('[procurement_supplier_toggle]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[procurement_supplier_toggle]');
         fail(res, 500, 'SUPPLIER_TOGGLE_FAILED', 'تعذر تغيير حالة المورد');
     }
 });
@@ -668,7 +668,7 @@ router.delete('/suppliers/:id', jwtAuth, requireRole(...SUPPLIER_WRITE_ROLES), a
         res.json({ ok: true, deleted: supplierId });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[procurement_supplier_delete]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[procurement_supplier_delete]');
         fail(res, 500, 'SUPPLIER_DELETE_FAILED', 'تعذر حذف المورد');
     } finally {
         client.release();
@@ -692,7 +692,7 @@ router.get('/suppliers/:id/statement', jwtAuth, requireRole(...READ_ROLES), asyn
         const statement = buildStatementRows(supplier.openingBalance, invoices, payments, req.query.from, req.query.to);
         res.json({ supplier, statement });
     } catch (error) {
-        logger.error('[procurement_statement]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[procurement_statement]');
         fail(res, 500, 'STATEMENT_FAILED', 'تعذر توليد كشف الحساب');
     }
 });
@@ -715,7 +715,7 @@ router.get('/payments', jwtAuth, requireRole(...READ_ROLES), async (req, res) =>
         `, params)).rows.map(r => ({ ...r, amount: roundMoney(r.amount) }));
         res.json(rows);
     } catch (error) {
-        logger.error('[procurement_payments_list]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[procurement_payments_list]');
         fail(res, 500, 'PAYMENTS_LIST_FAILED', 'تعذر تحميل الدفعات');
     }
 });
@@ -793,7 +793,7 @@ router.post('/payments', jwtAuth, requireRole(...PAYMENT_WRITE_ROLES), async (re
                 ],
             });
         } catch (jeErr) {
-            logger.warn("[payment_ledger] best-effort skipped:", jeErr.message);
+            logger.warn({ err: { message: String(jeErr.message), stack: (jeErr && jeErr.stack) || null } }, "[payment_ledger] best-effort skipped:");
             const { recordPostingFailure } = require('../posting-failures');
             await recordPostingFailure(pool, {
                 module: 'procurement',
@@ -811,7 +811,7 @@ router.post('/payments', jwtAuth, requireRole(...PAYMENT_WRITE_ROLES), async (re
 res.status(201).json({ payment, invoice, supplierDueTotal: roundMoney(totals.due) });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[procurement_payment_create]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[procurement_payment_create]');
         fail(res, 500, 'PAYMENT_CREATE_FAILED', 'تعذر تسجيل الدفعة');
     } finally {
         client.release();
@@ -852,7 +852,7 @@ router.post('/invoices/:id/pay', jwtAuth, requireRole(...PAYMENT_WRITE_ROLES), a
         res.status(201).json({ payment, invoice: updatedInvoice });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[procurement_invoice_pay]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[procurement_invoice_pay]');
         fail(res, 500, 'INVOICE_PAY_FAILED', 'تعذر تسديد الفاتورة');
     } finally {
         client.release();
@@ -897,13 +897,13 @@ router.delete('/payments/:id', jwtAuth, requireRole(...PAYMENT_DELETE_ROLES), as
                 actor: req.user?.username || String(req.user?.id || ''), actorUserId: req.user?.id,
             });
             if (v.voided) {logger.info(`[payment_ledger_void] ${paymentId} → ${v.entries.map((e) => e.entry_no).join(', ')}`);}
-        } catch (jeErr) { logger.warn("[payment_ledger_void]", jeErr.message); }
+        } catch (jeErr) { logger.warn({ err: { message: String(jeErr.message), stack: (jeErr && jeErr.stack) || null } }, "[payment_ledger_void]"); }
         emit(req, 'procurement', 'delete', payment);
         if (invoice) {emit(req, 'purchaseInvoices', 'update', invoice, 'فواتير الشراء');}
         res.json({ ok: true, deleted: paymentId, invoice });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[procurement_payment_delete]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[procurement_payment_delete]');
         fail(res, 500, 'PAYMENT_DELETE_FAILED', 'تعذر حذف الدفعة');
     } finally {
         client.release();

@@ -73,7 +73,7 @@ function register(app, opts = {}) {
         app.use('/api/pos', dayCloseRoutes.router);
         dayCloseRoutes.ensureDayCloseSchema();
     } catch (e) {
-        logger.error('[day-close] module failed to load — Z close disabled, POS still running:', e.message);
+        logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[day-close] module failed to load — Z close disabled, POS still running:');
     }
 
     // Orders (relational — replaces app_state JSON blob for orders module)
@@ -92,7 +92,7 @@ function register(app, opts = {}) {
 
     // Kitchen Order Tickets (KOT) — settings screen + printable ticket page
     const kotRoutes = require('./kot-routes');
-    kotRoutes.ensureKotSchema().catch((e) => logger.error('[kot] schema bootstrap failed:', e.message));
+    kotRoutes.ensureKotSchema().catch((e) => logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[kot] schema bootstrap failed:'));
     app.use('/api/pos/kot', kotRoutes.router);
 
     // Task 36 (التسليم): إدارة الطابعات + الاكتشاف + نظافة التوكنات الأوتوماتيكية

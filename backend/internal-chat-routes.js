@@ -107,7 +107,7 @@ function register(app, opts = {}) {
       );
       res.json({ ok: true, messages: r.rows.reverse() });
     } catch (e) {
-      logger.error('[chat] history failed:', e.message);
+      logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[chat] history failed:');
       res.status(500).json({ error: 'CHAT_HISTORY_FAILED', message: 'تعذر جلب سجل الشات' });
     }
   });
@@ -127,7 +127,7 @@ function register(app, opts = {}) {
       }
       res.json({ ok: true, users: r.rows.map(u => ({ ...u, online: online.has(Number(u.id)) })) });
     } catch (e) {
-      logger.error('[chat] users failed:', e.message);
+      logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[chat] users failed:');
       res.status(500).json({ error: 'CHAT_USERS_FAILED', message: 'تعذر جلب الموظفين' });
     }
   });

@@ -97,7 +97,7 @@ router.get('/summary', GUARD, async (req, res) => {
             }),
         });
     } catch (error) {
-        logger.error('[cashier-monitor/summary]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[cashier-monitor/summary]');
         res.status(500).json({ error: 'CM_SUMMARY_FAILED', message: 'تعذر جلب ملخص الكاشيرية' });
     }
 });
@@ -128,7 +128,7 @@ router.get('/orders', GUARD, async (req, res) => {
             [...params, limit, offset])).rows;
         res.json({ ok: true, date: day, cashier: cashier || null, total, limit, offset, orders: rows });
     } catch (error) {
-        logger.error('[cashier-monitor/orders]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[cashier-monitor/orders]');
         res.status(500).json({ error: 'CM_ORDERS_FAILED', message: 'تعذر جلب الأوردرات' });
     }
 });
@@ -147,7 +147,7 @@ router.get('/orders/:doc', GUARD, async (req, res) => {
         if (!row) {return res.status(404).json({ error: 'ORDER_NOT_FOUND', message: 'الأوردر غير موجود في المراقبة' });}
         res.json({ ok: true, order: row });
     } catch (error) {
-        logger.error('[cashier-monitor/orders/:doc]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[cashier-monitor/orders/:doc]');
         res.status(500).json({ error: 'CM_ORDER_FAILED', message: 'تعذر جلب الأوردر' });
     }
 });

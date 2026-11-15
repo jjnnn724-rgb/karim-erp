@@ -185,8 +185,8 @@ router.post('/returns', jwtAuth, requireRole(...RETURN_ROLES), async (req, res) 
         res.status(201).json({ return: returnRow, stockChanges, transactions, expenses, totalValue: round(totalValue, 2) });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[pr_create]', error);
-        logger.error('[warehouse_return]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[pr_create]');
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[warehouse_return]');
         if (error.code === 'INSUFFICIENT_STOCK') {
             return res.status(409).json({ error: 'INSUFFICIENT_STOCK', message: 'رصيد مخزن القسم لا يكفي لإرجاع هذه الكمية — قد تكون المواد مستهلكة بالفعل', available: error.available, requested: error.requested });
         }
@@ -273,8 +273,8 @@ router.delete('/returns/:id', jwtAuth, requireRole('admin', 'manager', 'warehous
         res.json({ ok: true, message: 'تم حذف سجل المرتجع وعكس أثره المخزني بالكامل' });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[pr_create]', error);
-        logger.error('[warehouse_return_delete]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[pr_create]');
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[warehouse_return_delete]');
         if (error.code === 'INSUFFICIENT_STOCK') {
             return res.status(409).json({ error: 'INSUFFICIENT_STOCK', message: 'رصيد المخزن الرئيسي لا يكفي لعكس المرتجع — راجع الحركات اللاحقة' });
         }
@@ -339,7 +339,7 @@ router.post('/inventory/:id/receipt', jwtAuth, requireRole('admin', 'manager', '
         return res.status(201).json({ inventory: fresh, transaction: tx });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[warehouse_manual_receipt]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[warehouse_manual_receipt]');
         if (error.code === 'INSUFFICIENT_STOCK') {return fail(res, 409, 'INSUFFICIENT_STOCK', 'رصيد المخزن لا يسمح بإتمام الحركة');}
         return res.status(500).json({ error: 'MANUAL_RECEIPT_FAILED', message: 'تعذر تسجيل حركة الإضافة المخزنية' });
     } finally { client.release(); }
@@ -423,7 +423,7 @@ router.post('/inventory/bulk-receipt', jwtAuth, requireRole('admin', 'manager', 
         return res.status(201).json({ inventory: freshInventory, transactions, batchId });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[warehouse_bulk_receipt]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[warehouse_bulk_receipt]');
         return res.status(500).json({ error: 'BULK_RECEIPT_FAILED', message: 'تعذر تسجيل استيراد المخزون' });
     } finally { client.release(); }
 });
@@ -518,7 +518,7 @@ router.get('/inventory/search', jwtAuth, requireRole('admin', 'manager', 'wareho
         const pages = total === 0 ? 0 : Math.ceil(total / limit);
         res.json({ data: rows, pagination: { page, limit, total, pages }, categories, fuzzy: fuzzyUsed });
     } catch (error) {
-        logger.error('[warehouse_inventory_search]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[warehouse_inventory_search]');
         fail(res, 500, 'INVENTORY_SEARCH_FAILED', 'تعذر البحث في الأصناف');
     }
 });

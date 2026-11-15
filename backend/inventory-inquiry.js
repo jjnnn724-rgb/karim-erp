@@ -449,7 +449,7 @@ router.get('/items', jwtAuth, requireRoleOrPerm(READ_ROLES, READ_PERM), async (r
             },
         });
     } catch (error) {
-        logger.error('[inventory_inquiry_items]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[inventory_inquiry_items]');
         return fail(res, 500, 'INQUIRY_ITEMS_FAILED', 'تعذّر تجميع حركة الأصناف: ' + String(error.message).slice(0, 120));
     }
 });
@@ -629,7 +629,7 @@ router.get('/item/:id', jwtAuth, requireRoleOrPerm(READ_ROLES, READ_PERM), async
             },
         });
     } catch (error) {
-        logger.error('[inventory_inquiry_item]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[inventory_inquiry_item]');
         return fail(res, 500, 'INQUIRY_ITEM_FAILED', 'تعذّر بناء ملف الصنف: ' + String(error.message).slice(0, 120));
     }
 });
@@ -771,7 +771,7 @@ router.get('/departments', jwtAuth, requireRoleOrPerm(READ_ROLES, READ_PERM), as
             },
         });
     } catch (error) {
-        logger.error('[inventory_inquiry_departments]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[inventory_inquiry_departments]');
         return fail(res, 500, 'INQUIRY_DEPARTMENTS_FAILED', 'تعذّر تجميع تكاليف الأقسام: ' + String(error.message).slice(0, 120));
     }
 });

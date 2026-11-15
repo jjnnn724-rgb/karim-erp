@@ -126,7 +126,7 @@ router.post('/inventory/merge', jwtAuth, requireRole('admin'), async (req, res) 
         res.json({ ok: true, keeper: updated, movedQty: round(movedQty, 3), sweptTables, mergedCount: dups.length });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[inventory_merge]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[inventory_merge]');
         return fail(res, 500, 'INVENTORY_MERGE_FAILED', 'تعذر دمج الأصناف: ' + String(error.message).slice(0, 160));
     } finally { client.release(); }
 });
@@ -265,8 +265,8 @@ router.post('/purchase-invoices/:id/void', jwtAuth, requireRole('admin'), crudLi
         res.json({ ok: true, invoiceNumber: inv.invoiceNumber, reversedItems: reversed, deletedPayments, force: !!force });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[pr_create]', error);
-        logger.error('[purchase_invoice_void]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[pr_create]');
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[purchase_invoice_void]');
         res.status(500).json({ error: 'INVOICE_VOID_FAILED', message: 'تعذر إلغاء الفاتورة: ' + String(error.message).slice(0, 160) });
     } finally { client.release(); }
 });
@@ -313,7 +313,7 @@ router.get('/opening-balance/report', jwtAuth, requireRole('admin', 'manager', '
         }
         res.json({ invoices: out });
     } catch (error) {
-        logger.error('[opening_balance_report]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[opening_balance_report]');
         return fail(res, 500, 'OPENING_REPORT_FAILED', 'تعذر تقرير الأرصدة الافتتاحية');
     }
 });
@@ -329,7 +329,7 @@ router.get('/main-availability', jwtAuth, async (req, res) => {
              WHERE l.code='MAIN-WAREHOUSE' AND l.active=true`)).rows;
         res.json({ items: rows.map(r => ({ id: Number(r.id), on_hand: n(r.on_hand) })) });
     } catch (error) {
-        logger.error('[main_availability]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[main_availability]');
         return fail(res, 500, 'MAIN_AVAILABILITY_FAILED', 'تعذر حساب أرصدة المخزن الرئيسي');
     }
 });
@@ -374,7 +374,7 @@ router.get('/system-health', jwtAuth, requireRole('admin'), async (req, res) => 
             lowStock,
         });
     } catch (error) {
-        logger.error('[system_health]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[system_health]');
         return fail(res, 500, 'SYSTEM_HEALTH_FAILED', 'تعذر فحص النظام: ' + String(error.message).slice(0, 120));
     }
 });
@@ -393,7 +393,7 @@ router.get('/issued-totals', jwtAuth, requireRole('admin', 'manager', 'warehouse
              ORDER BY issued DESC`)).rows;
         res.json({ items: rows });
     } catch (error) {
-        logger.error('[issued_totals]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[issued_totals]');
         return fail(res, 500, 'ISSUED_TOTALS_FAILED', 'تعذر حساب إجمالي المنصرف');
     }
 });
@@ -455,7 +455,7 @@ router.post('/purchase-invoices/clear-all', jwtAuth, requireRole('admin'), async
         res.json({ ok: true, deletedInvoices: del.rowCount, reversedLedgerRows: led.rowCount, deletedTransactions: txDeleted, voidedJournals });
     } catch (e) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[purchase_invoices_clear_all]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[purchase_invoices_clear_all]');
         res.status(500).json({ error: 'CLEAR_INVOICES_FAILED', message: 'تعذر حذف الفواتير — راجع سجل الخادم' });
     } finally { client.release(); }
 });

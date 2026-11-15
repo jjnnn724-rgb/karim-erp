@@ -576,7 +576,7 @@ router.get('/reports/department', jwtAuth, requireReportRole(...REPORT_ROLES), a
         const data = await departmentReport({ from, to, departmentId });
         res.json(data);
     } catch (err) {
-        logger.error('[pos/reports] department failed', err);
+        logger.error({ err: { message: (err && err.message) || String(err), stack: (err && err.stack) || null } }, '[pos/reports] department failed');
         res.status(500).json({ error: 'REPORT_FAILED', message: 'تعذر إعداد تقرير الأقسام' });
     }
 });
@@ -591,7 +591,7 @@ router.get('/reports/product', jwtAuth, requireReportRole(...REPORT_ROLES), asyn
         });
         res.json(data);
     } catch (err) {
-        logger.error('[pos/reports] product failed', err);
+        logger.error({ err: { message: (err && err.message) || String(err), stack: (err && err.stack) || null } }, '[pos/reports] product failed');
         res.status(500).json({ error: 'REPORT_FAILED', message: 'تعذر إعداد تقرير الأصناف' });
     }
 });
@@ -606,7 +606,7 @@ router.get('/reports/inventory', jwtAuth, requireReportRole(...REPORT_ROLES), as
         });
         res.json(data);
     } catch (err) {
-        logger.error('[pos/reports] inventory failed', err);
+        logger.error({ err: { message: (err && err.message) || String(err), stack: (err && err.stack) || null } }, '[pos/reports] inventory failed');
         res.status(500).json({ error: 'REPORT_FAILED', message: 'تعذر إعداد تقرير المخزن' });
     }
 });

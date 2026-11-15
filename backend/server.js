@@ -122,10 +122,10 @@ function runBackup() {
         });
         backupProcess.unref();
         backupProcess.on('error', (e) => {
-            logger.error('[backup-spawn] error:', e.message);
+            logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[backup-spawn] error:');
         });
     } catch (e) {
-        logger.error('Failed to trigger backup (non-critical):', e.message);
+        logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, 'Failed to trigger backup (non-critical):');
     }
 }
 
@@ -638,7 +638,7 @@ app.use('/api/hr', (req, res, next) => { req.io = io; next(); }, hrRouter);
 try {
     require('./hr-routes').startShiftRollover();
 } catch (e) {
-    logger.error('[SHIFT_ROLLOVER] scheduler failed to start:', e.message);
+    logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[SHIFT_ROLLOVER] scheduler failed to start:');
 }
 // R3 (قرار المالك 2026-10-03): كاسح جسر الإيراد اللحظي — يلتقط أي صف إيراد
 // يارسوفت فشل ترحيله اللحظي (سقوط/إعادة تشغيل). الحدث الأساسي داخل importer
@@ -655,7 +655,7 @@ try {
                 logger.warn(`[YARA-GL] sweep بقيت ${out.remaining} صفًا غير مرحّلة — راجع جسر الدفتر`);
             }
         } catch (e) {
-            logger.warn('[YARA-GL] sweep failed:', e.message);
+            logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[YARA-GL] sweep failed:');
         } finally {
             yaraGlSweepRunning = false;
         }
@@ -663,7 +663,7 @@ try {
     setTimeout(yaraGlSweep, 90_000);
     setInterval(yaraGlSweep, 5 * 60_000);
 } catch (e) {
-    logger.error('[YARA-GL] sweep scheduler failed to start:', e.message);
+    logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[YARA-GL] sweep scheduler failed to start:');
 }
 // ─── تقرير الامتثال الشهري: يُولَّد آليًا مرة وحدة بعد كل أول يوم ───────────
 // التوليد خفيف (بيانات داخلية فقط، بلا نداء خارجي)، ويحترم قانون ADR-008:
@@ -690,7 +690,7 @@ try {
     const complianceTimer = setInterval(complianceReminder, 6 * 60 * 60_000);
     if (complianceTimer.unref) {complianceTimer.unref();}
 } catch (e) {
-    logger.error('[COMPLIANCE] تعذر بدء مجدول تقرير الامتثال:', e.message);
+    logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[COMPLIANCE] تعذر بدء مجدول تقرير الامتثال:');
 }
 // Leave approval workflow: employee → direct manager → operations manager → general manager → HR.
 app.use('/api/hr', (req, res, next) => { req.io = io; next(); }, leaveWorkflowRouter);
@@ -704,7 +704,7 @@ app.use('/api/attendance', require('./punch-statement-routes'));
 
 // وحدة جدول الدومات حُذفت من جذورها (2026-09-30) — الدوام الثابت هو المصدر.
 
-ensureLeaveWorkflowSchema().catch((error) => logger.error('[LEAVE_WORKFLOW_SCHEMA] initialization failed:', error.message));
+ensureLeaveWorkflowSchema().catch((error) => logger.error({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[LEAVE_WORKFLOW_SCHEMA] initialization failed:'));
 // Atomic warehouse/accounting workflows: dispatch approval, kitchen returns, and purchase invoices.
 app.use('/api/warehouse', (req, res, next) => { req.io = io; next(); }, warehouseRouter);
 // Inventory counting sessions and admin-only operational reset.
@@ -715,7 +715,7 @@ app.use('/api/warehouse', (req, res, next) => { req.io = io; next(); }, inventor
 app.use('/api/warehouse', (req, res, next) => { req.io = io; next(); }, deptTransferRouter);
 // Professional stocktaking studio: live counting, bulk counts, cancel, printable sheets.
 app.use('/api/warehouse', (req, res, next) => { req.io = io; next(); }, stocktakingRouter);
-ensureStocktakingSchema().catch((error) => logger.error('[STOCKTAKING_SCHEMA] initialization failed:', error.message));
+ensureStocktakingSchema().catch((error) => logger.error({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[STOCKTAKING_SCHEMA] initialization failed:'));
 // إذن التوليد (خام ← مصنّع بتكلفة الوصفة) — نظام تكلفة المراكز، المرحلة 3 (2026-10-25)
 const { router: productionRouter } = require('./production-routes');
 app.use('/api/productions', (req, res, next) => { req.io = io; next(); }, productionRouter);
@@ -724,17 +724,17 @@ app.use('/api/productions', (req, res, next) => { req.io = io; next(); }, produc
 const rtRecovery = require('./realtime/recovery-routes');
 app.use('/api/rt', rtRecovery.router);
 require('./realtime/publisher').startOutboxPublisher({ io, pool, logger })
-    .catch((error) => logger.error('[OUTBOX_PUBLISHER] start failed (non-fatal):', error.message));
+    .catch((error) => logger.error({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[OUTBOX_PUBLISHER] start failed (non-fatal):'));
 // Kitchen production control: flexible/monitor/strict policies, kitchen transfers, production and exceptions.
 app.use('/api/kitchen', (req, res, next) => { req.io = io; next(); }, kitchenProductionRouter);
-ensureKitchenSchema().catch((error) => logger.error('[KITCHEN_SCHEMA] initialization failed:', error.message));
+ensureKitchenSchema().catch((error) => logger.error({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[KITCHEN_SCHEMA] initialization failed:'));
 // طلبات شراء الخضار: المطبخ (شيف/سو شيف) يبني الطلب من قايمة جاهزة → المخازن تستلم ويطبع الطرفان (2026-10-04)
 const vegRequestsRouter = require('./veg-requests-routes'); // module.exports = router
 app.use('/api/veg-requests', (req, res, next) => { req.io = io; next(); }, vegRequestsRouter);
-ensureLegacyKitchenReceiptLedger().catch((error) => logger.error('[KITCHEN_RECEIPT_LEDGER] initialization failed:', error.message));
+ensureLegacyKitchenReceiptLedger().catch((error) => logger.error({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[KITCHEN_RECEIPT_LEDGER] initialization failed:'));
 // Procurement center: suppliers directory, payments, statements, invoice payment status.
 app.use('/api/procurement', (req, res, next) => { req.io = io; next(); }, procurementRouter);
-ensureProcurementSchema().catch((error) => logger.error('[PROCUREMENT_SCHEMA] initialization failed:', error.message));
+ensureProcurementSchema().catch((error) => logger.error({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[PROCUREMENT_SCHEMA] initialization failed:'));
 // Finance P&L: live income statement built from real recorded movements (sales, COGS, shrinkage, opex, payroll).
 app.use('/api/finance', (req, res, next) => { req.io = io; next(); }, financeRouter);
 // Accounting dept: chart of accounts + double-entry journal + CFO summary.
@@ -751,14 +751,14 @@ try {
     app.use('/api/accounting', (req, res, next) => { req.io = io; next(); }, acctPeriods.router);
     acctPeriods.ensureAccountingPeriodsSchema();
 } catch (e) {
-    logger.error('[ACCOUNTING_PERIODS] module failed to load — controls disabled, ledger still running:', e.message);
+    logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[ACCOUNTING_PERIODS] module failed to load — controls disabled, ledger still running:');
 }
 try {
     const acctGrowth = require('./accounting-growth');
     app.use('/api/accounting', (req, res, next) => { req.io = io; next(); }, acctGrowth.router);
     acctGrowth.ensureAccountingGrowthSchema();
 } catch (e) {
-    logger.error('[ACCOUNTING_GROWTH] module failed to load — growth disabled, ledger still running:', e.message);
+    logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[ACCOUNTING_GROWTH] module failed to load — growth disabled, ledger still running:');
 }
 try {
     const budgetAlerts = require('./budget-alerts');
@@ -766,7 +766,7 @@ try {
     budgetAlerts.ensureBudgetAlertsSchema();
     budgetAlerts.startAlertsScheduler(io);
 } catch (e) {
-    logger.error('[BUDGET_ALERTS] module failed to load — alerts disabled, ledger still running:', e.message);
+    logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[BUDGET_ALERTS] module failed to load — alerts disabled, ledger still running:');
 }
 // لا سلسلة «حوكمة/استكمال» مجدولة: الحضور يُسجَّل من المصدرين المعتمدَين فقط.
 // User permission grants (admin assigns; additive over roles).
@@ -774,8 +774,8 @@ const { router: permissionRouter } = require('./permission-routes');
 app.use('/api/permissions', (req, res, next) => { req.io = io; next(); }, permissionRouter);
 
 // Task 20: صندوق إشعارات كل مستخدم — جرس حي بعدّاد غير المقروء + إشعارات سلسلة الصرف
-ensureNotificationsSchema().catch((error) => logger.error('[NOTIFICATIONS_SCHEMA] initialization failed:', error.message));
-ensureDispatchCreatorSchema().catch((error) => logger.error('[DISPATCH_CREATOR_SCHEMA] initialization failed:', error.message));
+ensureNotificationsSchema().catch((error) => logger.error({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[NOTIFICATIONS_SCHEMA] initialization failed:'));
+ensureDispatchCreatorSchema().catch((error) => logger.error({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[DISPATCH_CREATOR_SCHEMA] initialization failed:'));
 // SECURITY ROOT FIX 2026-10-02: كانت مفتوحة بلا jwtAuth — أي متصفح كان يستطيع
 // إرسال/قراءة إشعارات النظام. مُحمية الآن بمصادقة الحسابات.
 app.use('/api/notifications', jwtAuth, (req, res, next) => { req.io = io; next(); }, notificationRouter);
@@ -790,7 +790,7 @@ try {
     const { router: expenseRegisterRouter } = require('./expense-register-routes');
     app.use('/api/expense-register', expenseRegisterRouter);
 } catch (e) {
-    logger.error('[EXPENSE_REGISTER] module failed to load — register disabled:', e.message);
+    logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[EXPENSE_REGISTER] module failed to load — register disabled:');
 }
 
 // ─── مبيعات الكاشير: كل الفواتير وتفاصيل الأصناف (قراءة فقط من المرآة) ───
@@ -800,7 +800,7 @@ try {
     const { router: cashierSalesRouter } = require('./cashier-sales-routes');
     app.use('/api/cashier-sales', (req, res, next) => { req.io = io; next(); }, cashierSalesRouter);
 } catch (e) {
-    logger.error('[CASHIER_SALES] module failed to load — sales register disabled:', e.message);
+    logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[CASHIER_SALES] module failed to load — sales register disabled:');
 }
 
 // ─── موجز المدير: طلب واحد لكل أرقام اللوحة (قراءة فقط، الأدمن فقط) ─────
@@ -808,7 +808,7 @@ try {
     const { router: executiveRouter } = require('./executive-routes');
     app.use('/api/executive', executiveRouter);
 } catch (e) {
-    logger.error('[EXECUTIVE] module failed to load — summary disabled:', e.message);
+    logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[EXECUTIVE] module failed to load — summary disabled:');
 }
 
 // ─── مساعد المشروع (V2) — الأدمن فقط ────────────────────────────────────
@@ -819,7 +819,7 @@ try {
     const { router: aiAssistantRouter } = require('./ai-assistant/routes');
     app.use('/api/ai-assistant', aiAssistantRouter);
 } catch (e) {
-    logger.error('[AI_ASSISTANT] module failed to load — assistant disabled:', e.message);
+    logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[AI_ASSISTANT] module failed to load — assistant disabled:');
 }
 
 // ─── ZKTeco biometric sync (inside the ERP process) ───
@@ -864,7 +864,7 @@ let whatsappRouter = null, ensureWhatsappSchema = null, whatsappEngine = null;
 try {
     ({ router: whatsappRouter, ensureWhatsappSchema, whatsappEngine } = require('./whatsapp-engine'));
 } catch (e) {
-    logger.error('[WHATSAPP] تعذر تحميل محرك واتساب — يعمل النظام بدونه:', e.message);
+    logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[WHATSAPP] تعذر تحميل محرك واتساب — يعمل النظام بدونه:');
 }
 app.use('/api/whatsapp', (req, res, next) => {
     req.io = io;
@@ -944,7 +944,7 @@ io.on('connection', (socket) => {
             if (client) {client.userId = user.id;}
             socket.emit('user_registered', { userId: user.id, role: user.role, dept_code: user.dept_code || null });
         } catch (error) {
-            logger.warn('[Socket] register_user failed:', error.message);
+            logger.warn({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[Socket] register_user failed:');
         }
     });
 
@@ -981,7 +981,7 @@ io.on('connection', (socket) => {
                 socket.emit('sync_data', result.rows[0].state_data);
             }
         } catch (e) {
-            logger.error('[Socket] Failed to send sync data:', e.message);
+            logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[Socket] Failed to send sync data:');
         }
     });
 
@@ -1114,7 +1114,7 @@ app.use('/api', idempotency({
     methods: ['POST', 'PUT', 'PATCH', 'DELETE'],
     requireKey: false,
 }));
-ensureIdempotencySchema(pool).catch((e) => logger.warn('[idempotency] schema skipped:', e.message));
+ensureIdempotencySchema(pool).catch((e) => logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[idempotency] schema skipped:'));
 
 // Network info + connected clients — مُستخلص إلى network-routes.js (خلف JWT)
 require('./network-routes').register(app, { connectedClients, PORT });
@@ -1122,7 +1122,7 @@ require('./network-routes').register(app, { connectedClients, PORT });
 // ─── Runtime metrics (enterprise observability) ─────────────
 // لقطة حية: عدّادات الطلبات ومئينات زمن الاستجابة وتأخر حلقة الأحداث
 // وذاكرة العملية واستغلال مسبّح قاعدة البيانات — للمالك/المدير فقط.
-ensurePasswordVaultSchema().catch((e) => logger.warn('[pw-vault] schema skipped:', e.message));
+ensurePasswordVaultSchema().catch((e) => logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[pw-vault] schema skipped:'));
 
 // Password vault view + runtime metrics + schema constraints — مُستخلص إلى ops-inspect-routes.js
 require('./ops-inspect-routes').register(app, { metrics });
@@ -1234,7 +1234,7 @@ async function voidExpenseJournal(expenseId, actor = null) {
             reason: 'تعديل/حذف المصروف — إبطال القيد المرآتي (سياسة void-only)',
             actor: actor?.username || actor?.name || null, actorUserId: actor?.id || null,
         });
-    } catch (e) { logger.warn('[expense-journal-void]', e.message); return { voided: 0, entries: [] }; }
+    } catch (e) { logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[expense-journal-void]'); return { voided: 0, entries: [] }; }
 }
 async function postExpenseJournal(expenseRow, actor = null) {
     try {
@@ -1256,7 +1256,7 @@ async function postExpenseJournal(expenseRow, actor = null) {
             ],
             created_by: actor?.id || null,
         });
-    } catch (e) { logger.warn("[expense-ledger]", e.message); }
+    } catch (e) { logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, "[expense-ledger]"); }
 }
 
 app.delete('/api/state', jwtAuth, requireRole('admin'), asyncHandler(async (req, res) => {
@@ -1679,7 +1679,7 @@ async function validateEmployeeUserLink(entity, filtered, currentId = null) {   
     }
 }
 
-ensureEmployeeUserLinkSchema().catch((error) => logger.error('[EMPLOYEE_USER_LINK] initialization failed:', error.message));
+ensureEmployeeUserLinkSchema().catch((error) => logger.error({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[EMPLOYEE_USER_LINK] initialization failed:'));
 
 app.put('/api/users/:id/employee', jwtAuth, requireRole('admin', 'manager'), crudLimiter, asyncHandler(async (req, res) => {
     const userId = Number(req.params.id);
@@ -1821,7 +1821,7 @@ app.get('/api/attendance/audit', jwtAuth, requireRole('admin', 'hr', 'manager'),
         });
         res.json(result);
     } catch (error) {
-        logger.error('[attendance-audit] list failed:', error.message);
+        logger.error({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[attendance-audit] list failed:');
         res.status(500).json({ error: 'ATTENDANCE_AUDIT_FAILED', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 }));
@@ -2144,7 +2144,7 @@ entities.forEach(entity => {
                     reason: 'إنشاء حساب مستخدم',
                     metadata: { target_username: result.rows[0].username, target_role: result.rows[0].role },
                     actor: { userId: req.user?.id, userName: req.user?.name, role: req.user?.role, ip: req.ip, requestId: req.id },
-                }).catch((e) => logger.warn('[user-audit] create:', e.message));
+                }).catch((e) => logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[user-audit] create:'));
             }
             // ROOT FIX 2026-10-02 + حديد 2026-10-06: الجداول تُبنى من أرصدة المواقع، والرصيد
             // الافتتاحي للصنف الجديد يُقيَّد في الدفتر (opening_balance) — الرصيد والدفتر يولدان
@@ -2175,7 +2175,7 @@ entities.forEach(entity => {
                         }
                     }
                     await c2.query('COMMIT');
-                } catch (e) { logger.warn('[inventory-balance-seed]', e.message); } finally { if (c2) {c2.release();} }
+                } catch (e) { logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[inventory-balance-seed]'); } finally { if (c2) {c2.release();} }
             }
             if (entity === 'expenses') { await postExpenseJournal(result.rows[0], req.user); }
             emitEntityChange(entity, 'create', publicRow, req);
@@ -2363,7 +2363,7 @@ entities.forEach(entity => {
                         }
                     }
                     await c3.query('COMMIT');
-                } catch (e) { logger.warn('[inventory-balance-seed]', e.message); await c3?.query('ROLLBACK').catch(() => {}); } finally { if (c3) {c3.release();} }
+                } catch (e) { logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[inventory-balance-seed]'); await c3?.query('ROLLBACK').catch(() => {}); } finally { if (c3) {c3.release();} }
             }
             if (entity === 'expenses') { await postExpenseJournal(result.rows[0], req.user); }
             emitEntityChange(entity, 'create', publicRow, req);
@@ -2386,7 +2386,7 @@ entities.forEach(entity => {
                             [wf.id, done ? 'approve' : 'reject', 'إنشاء مباشر معتمد إداريًا',
                              req.user?.id ?? null, req.user?.role ?? null]);
                     }
-                } catch (e) { logger.warn('[leave-workflow-auto]', e.message); }
+                } catch (e) { logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[leave-workflow-auto]'); }
             }
             res.status(201).json(publicRow);
         }));
@@ -2567,7 +2567,7 @@ entities.forEach(entity => {
             // 365 يومًا عبر /api/auth/refresh بعد تغيير كلمة المرور.
             if (entity === 'users' && (req._passwordChanged === true || req._identityChanged === true || filtered.active === false)) {
                 try { await pool.query('DELETE FROM pos_refresh_tokens WHERE user_id = $1', [id]); }
-                catch (e) { logger.warn('[refresh-revoke]', e.message); }
+                catch (e) { logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[refresh-revoke]'); }
             }
             if (entity === 'users' && req._userAudit) {
                 await writeAuditLog({
@@ -2577,7 +2577,7 @@ entities.forEach(entity => {
                     reason: 'تعديل حساب مستخدم',
                     metadata: { ...req._userAudit, actor_role: req.user?.role },
                     actor: { userId: req.user?.id, userName: req.user?.name, role: req.user?.role, ip: req.ip, requestId: req.id },
-                }).catch((e) => logger.warn('[user-audit] update:', e.message));
+                }).catch((e) => logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[user-audit] update:'));
             }
             if (entity === 'expenses' && (filtered.amount !== undefined || filtered.date !== undefined || filtered.notes !== undefined)) {
                 await voidExpenseJournal(id, req.user);
@@ -2730,7 +2730,7 @@ entities.forEach(entity => {
             // 365 يومًا عبر /api/auth/refresh بعد تغيير كلمة المرور.
             if (entity === 'users' && (req._passwordChanged === true || filtered.active === false)) {
                 try { await pool.query('DELETE FROM pos_refresh_tokens WHERE user_id = $1', [id]); }
-                catch (e) { logger.warn('[refresh-revoke]', e.message); }
+                catch (e) { logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[refresh-revoke]'); }
             }
             if (entity === 'expenses' && (filtered.amount !== undefined || filtered.date !== undefined || filtered.notes !== undefined)) {
                 await voidExpenseJournal(id, req.user);
@@ -2763,7 +2763,7 @@ entities.forEach(entity => {
                  req.user?.username || req.user?.name || null,
                  Number(req.user?.id) || null,
                  String(reason || req.query?.reason || req.body?.reason || 'admin force delete').slice(0, 500)]);
-        } catch (e) { logger.warn('[admin-force-delete-audit] skipped:', e.message); }
+        } catch (e) { logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[admin-force-delete-audit] skipped:'); }
     }
     // حذف تتابعي لمتعلقات إذن صرف (للأدمن فقط) — دفتر/حركات/مصاريف/قيود/أحداث/تنبيهات.
     // الأرصدة المخزنية والمتوسطات لا تُمس عمدًا (واقع فيزيائي — تُسوّى بجرد تأكيدي).
@@ -2803,7 +2803,7 @@ entities.forEach(entity => {
             out.notifications = (await pool.query(
                 `DELETE FROM notifications WHERE entity='dispatches' AND entity_id=$1 RETURNING id`,
                 [String(dispatchId)])).rows.length;
-        } catch (e) { logger.warn('[purge-dispatch] partial:', e.message); }
+        } catch (e) { logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[purge-dispatch] partial:'); }
         return out;
     }
     if (requiresAdminRole || entity === 'dispatches') {
@@ -2846,7 +2846,7 @@ entities.forEach(entity => {
 
                 await pool.query('UPDATE users SET active=FALSE WHERE id=$1', [id]);
                 try { await pool.query('DELETE FROM pos_refresh_tokens WHERE user_id = $1', [id]); }
-                catch (e) { logger.warn('[refresh-revoke]', e.message); }
+                catch (e) { logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[refresh-revoke]'); }
                 await writeAuditLog({
                     action: 'USER_DEACTIVATED',
                     tableName: 'users',
@@ -2854,7 +2854,7 @@ entities.forEach(entity => {
                     reason: 'تعطيل حساب مستخدم (حذف ناعم) مع حفظ كلمة المرور والتاريخ',
                     metadata: { target_username: targetUser.username, target_role: targetUser.role, actor_role: req.user?.role },
                     actor: { userId: req.user?.id, userName: req.user?.name, role: req.user?.role, ip: req.ip, requestId: req.id },
-                }).catch((e) => logger.warn('[user-audit] delete:', e.message));
+                }).catch((e) => logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[user-audit] delete:'));
                 emitEntityChange(entity, 'update', { id, active: false }, req);
                 logger.info('[user] soft-deactivated', { id, by: req.user?.username || req.user?.id });
                 return res.json({
@@ -2917,7 +2917,7 @@ entities.forEach(entity => {
                     await pool.query(`DELETE FROM inventory_location_balances WHERE inventory_id = $1`, [id]);
                     await pool.query(`DELETE FROM inventory_ledger WHERE inventory_id = $1`, [id]);
                     await pool.query(`DELETE FROM "inventoryTx" WHERE "itemId" = $1`, [id]);
-                } catch (e2) { logger.warn("[inventory-force-cleanup]", e2.message); }
+                } catch (e2) { logger.warn({ err: { message: String(e2.message), stack: (e2 && e2.stack) || null } }, "[inventory-force-cleanup]"); }
             }
             const result = await pool.query(`DELETE FROM "${entity}" WHERE id = $1 RETURNING *`, [id]);
             if (result.rows.length === 0) {return res.status(404).json({ error: 'NOT_FOUND', message: 'السجل المطلوب غير موجود' });}
@@ -2993,7 +2993,7 @@ entities.forEach(entity => {
                     await pool.query(`DELETE FROM inventory_location_balances WHERE inventory_id = $1`, [id]);
                     await pool.query(`DELETE FROM inventory_ledger WHERE inventory_id = $1`, [id]);
                     await pool.query(`DELETE FROM "inventoryTx" WHERE "itemId" = $1`, [id]);
-                } catch (e2) { logger.warn("[inventory-force-cleanup]", e2.message); }
+                } catch (e2) { logger.warn({ err: { message: String(e2.message), stack: (e2 && e2.stack) || null } }, "[inventory-force-cleanup]"); }
             }
             /* الحضور: الحذف وسطرُ التدقيق في معاملةٍ واحدة. */
             let result;
@@ -3188,7 +3188,7 @@ app.get('/app/v2.html', (req, res) => {
     try {
         res.type('html').send(v2PageHtml(rollout.v3Entry()));
     } catch (err) {
-        logger.error('[v3] تعذّر تقديم صفحة V2 المعدّلة —', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[v3] تعذّر تقديم صفحة V2 المعدّلة —');
         res.status(500).type('text').send('V2 page unavailable');
     }
 });
@@ -3242,7 +3242,7 @@ try {
     logger.info('[v3] الواجهة الثالثة مركّبة على /v3');
 } catch (err) {
     // فشل تركيب V3 لا يُسقط V2: المدخل يعود إلى V2 تلقائيًا عبر fallback.
-    logger.error('[v3] تعذّر تركيب /v3 —', err.message);
+    logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[v3] تعذّر تركيب /v3 —');
 }
 
 // -------------------------------------------------------
@@ -3255,7 +3255,7 @@ try {
     const cashierModule = require('./cashier-module');
     cashierModule.register(app, { io });
 } catch (err) {
-    logger.error('[cashier-module] Failed to register (continuing without POS module):', err.message);
+    logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[cashier-module] Failed to register (continuing without POS module):');
     logger.error('  → Run `npm install` to install new deps (bullmq, ioredis, uuid, qrcode, bcryptjs).');
 }
 
@@ -3266,7 +3266,7 @@ try {
 try {
     require('./menu-board-routes').register(app, { io });
 } catch (err) {
-    logger.error('[menu-board] Failed to register (continuing without menu board):', err.message);
+    logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[menu-board] Failed to register (continuing without menu board):');
 }
 
 // ─── 404 catch-all (mounted AFTER all real routes) ───
@@ -3427,7 +3427,7 @@ async function onServerListening() {
     try {
         await startup.runAll({ pool, failFast: false });
     } catch (e) {
-        logger.error('[STARTUP] فحص الصحة قبل الإقلاع فشل:', e.message);
+        logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[STARTUP] فحص الصحة قبل الإقلاع فشل:');
     }
     markBootComplete(); // flips /health/startup → 200
 
@@ -3452,21 +3452,21 @@ async function onServerListening() {
                 },
                 logger,
             });
-        } catch (e) { logger.warn('[LAN_BEACON] تعذر بدء الإعلان (سيستمر الخادم بدونه):', e.message); }
+        } catch (e) { logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[LAN_BEACON] تعذر بدء الإعلان (سيستمر الخادم بدونه):'); }
     }
 
     stopDailyReportScheduler = startDailyReportScheduler(pool);
     // ─── مزامنة البصمة داخل النظام: طبّق المخطط ثم ابدأ المحرك ───
     ensureZktecoSchema()
         .then(() => attendanceEngine.start(io))
-        .catch((error) => logger.error('[ZKTECO] تعذر تهيئة مزامنة البصمة (سيستمر الخادم بدونها):', error.message));
+        .catch((error) => logger.error({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[ZKTECO] تعذر تهيئة مزامنة البصمة (سيستمر الخادم بدونها):'));
     // ─── تنظيف الإشعارات: ROOT FIX 2026-10-02 — جدول الإشعارات كان يكبر بلا
     // تنظيف — المقروء الأقدم من 30 يومًا يُمسح يوميًا (fail-open). ───
     const purgeReadNotifications = async () => {
         try {
             const r = await pool.query("DELETE FROM notifications WHERE read = true AND read_at < NOW() - INTERVAL '30 days'");
             if (r.rowCount) {logger.info(`[notifications] purged ${r.rowCount} read notifications`);}
-        } catch (e) { logger.warn("[notifications-purge]", e.message); }
+        } catch (e) { logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, "[notifications-purge]"); }
     };
     purgeReadNotifications();
     const _notifPurgeTimer = setInterval(purgeReadNotifications, 24 * 60 * 60 * 1000);
@@ -3477,7 +3477,7 @@ async function onServerListening() {
     try {
         const { startEscalationWorker } = require('./callout-escalation');
         startEscalationWorker({ io });
-    } catch (error) { logger.warn('[callout-escalation] تعذر بدء عامل التصعيد (سيستمر الخادم بدونه):', error.message); }
+    } catch (error) { logger.warn({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[callout-escalation] تعذر بدء عامل التصعيد (سيستمر الخادم بدونه):'); }
     // ─── استيراد فواتير Yarasoft داخل النظام: المخطط ثم المحرك (معطّل حتى YARASOFT_ENABLED=true) ───
     ensureYarasoftSchema()
         .then(async () => {
@@ -3489,7 +3489,7 @@ async function onServerListening() {
             }
             return yarasoftEngine.start(io);
         })
-        .catch((error) => logger.error('[YARASOFT] تعذر تهيئة استيراد الفواتير (سيستمر الخادم بدونها):', error.message));
+        .catch((error) => logger.error({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[YARASOFT] تعذر تهيئة استيراد الفواتير (سيستمر الخادم بدونها):'));
     // ─── الربط المباشر Oracle (معطّل حتى YARASOFT_ORACLE_ENABLED=true) ───
     // الدورة تُنفَّذ في عملية قصيرة العمر (scripts/oracle-poll-worker.js): خيوط
     // oracledb Thick الأصلية لا تبقى في عملية السيرفر — راجع تعليق العامل لتفاصيل
@@ -3517,7 +3517,7 @@ async function onServerListening() {
                     activeOracleWorker = worker;
                     worker.once('error', (e) => {
                         if (activeOracleWorker === worker) {activeOracleWorker = null;}
-                        logger.error('[YARASOFT_ORACLE] تعذر تشغيل عامل الدورة:', e.message);
+                        logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[YARASOFT_ORACLE] تعذر تشغيل عامل الدورة:');
                     });
                     worker.once('exit', (code, signal) => {
                         if (activeOracleWorker === worker) {activeOracleWorker = null;}
@@ -3527,7 +3527,7 @@ async function onServerListening() {
                     });
                 } catch (e) {
                     activeOracleWorker = null;
-                    logger.error('[YARASOFT_ORACLE] تعذر تشغيل عامل الدورة:', e.message);
+                    logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[YARASOFT_ORACLE] تعذر تشغيل عامل الدورة:');
                 }
             };
             runOracleWorker(); // دورة أولى بعد الإقلاع مباشرة
@@ -3536,7 +3536,7 @@ async function onServerListening() {
             logger.info(`[YARASOFT_ORACLE] عامل دورة Oracle نشط (كل ${oraCfg.pollMinutes} دقيقة، عملية معزولة)`);
         }
     }
-    catch (error) { logger.error('[YARASOFT_ORACLE] تعذر بدء الربط المباشر (سيستمر الخادم بدونه):', error.message); }
+    catch (error) { logger.error({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[YARASOFT_ORACLE] تعذر بدء الربط المباشر (سيستمر الخادم بدونه):'); }
     // ─── محرك المزامنة الذكي: لحاق تلقائي بالفواتير الفائتة بعد الإقلاع ───
     // نُقل إلى scripts/oracle-poll-worker.js (عملية معزولة) — راجع تعليق عامل Oracle
     // (كان: try { require('./yarasoft/sync-doctor').bootCatchUp(io); } catch ...)
@@ -3544,7 +3544,7 @@ async function onServerListening() {
     if (ensureWhatsappSchema && whatsappEngine) {
         ensureWhatsappSchema()
             .then(() => whatsappEngine.start(io))
-            .catch((error) => logger.error('[WHATSAPP] تعذر تهيئة محرك واتساب (سيستمر الخادم بدونه):', error.message));
+            .catch((error) => logger.error({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[WHATSAPP] تعذر تهيئة محرك واتساب (سيستمر الخادم بدونه):'));
     }
     logger.info(`${'='.repeat(50)}\n`);
 }

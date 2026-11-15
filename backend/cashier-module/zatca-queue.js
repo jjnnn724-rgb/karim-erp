@@ -36,7 +36,7 @@ if (!SKIP_BULLMQ) {
         dlqQueue = new Queue('zatca-dlq', { connection });
         logger.info('[pos-zatca-queue] BullMQ connected to', REDIS_URL);
     } catch (err) {
-        logger.warn('[pos-zatca-queue] BullMQ unavailable, falling back to SQL-only queue:', err.message);
+        logger.warn({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[pos-zatca-queue] BullMQ unavailable, falling back to SQL-only queue:');
         SKIP_BULLMQ = true;
     }
 }
@@ -71,7 +71,7 @@ async function enqueueZatcaReporting({ orderId, priority = 1 }) {
             );
         } catch (e) {
             if (!/Job already exist/i.test(e.message)) {
-                logger.error('[pos-zatca-queue] enqueue failed (SQL mirror still ok):', e.message);
+                logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[pos-zatca-queue] enqueue failed (SQL mirror still ok):');
             }
         }
     }
@@ -99,7 +99,7 @@ async function sweepStaleZatcaJobs() {
 }
 
 setInterval(() => {
-    sweepStaleZatcaJobs().catch(e => logger.error('[pos-zatca-sweeper] error:', e.message));
+    sweepStaleZatcaJobs().catch(e => logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[pos-zatca-sweeper] error:'));
 }, 5 * 60 * 1000).unref();
 
 module.exports = {

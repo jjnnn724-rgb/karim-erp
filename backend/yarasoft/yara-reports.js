@@ -143,7 +143,7 @@ router.get('/cashiers-live', requireRole(...READ_ROLES), async (req, res) => {
             cashiers: cards,
         });
     } catch (e) {
-        logger.error('[YARASOFT] cashiers-live failed:', e.message);
+        logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[YARASOFT] cashiers-live failed:');
         res.status(500).json({ ok: false, error: 'CASHIERS_LIVE_FAILED' });
     }
 });
@@ -238,7 +238,7 @@ async function loadMonthlyLinkedCashierRevenue(from, to, options = {}) {
               ORDER BY src_name`
         )).rows || [];
     } catch (e) {
-        logger.error('[YARASOFT] linked cashier map read failed:', e.message);
+        logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[YARASOFT] linked cashier map read failed:');
         const err = new Error('تعذّرت قراءة خريطة الكاشيرات المرتبطة بيارا سوفت.');
         err.statusCode = 503;
         err.code = 'LINKED_CASHIER_MAP_UNAVAILABLE';
@@ -370,7 +370,7 @@ async function loadMonthlyLinkedCashierRevenue(from, to, options = {}) {
     } catch (e) {
         if (e && e.statusCode) {throw e;}
         const safeMessage = sanitizeError(e && e.message);
-        logger.error('[YARASOFT] monthly linked cashier revenue failed:', safeMessage);
+        logger.error({ err: { message: (safeMessage && safeMessage.message) || String(safeMessage), stack: (safeMessage && safeMessage.stack) || null } }, '[YARASOFT] monthly linked cashier revenue failed:');
         const err = new Error(`تعذّر قراءة إيرادات الكاشيرات المرتبطة مباشرة من يارا سوفت: ${safeMessage}`);
         err.statusCode = 503;
         err.code = 'YARASOFT_REVENUE_UNAVAILABLE';
@@ -736,7 +736,7 @@ router.get('/daily-locks', requireRole(...READ_ROLES), async (req, res) => {
         }), { gross: 0, refund: 0, net: 0, invoices: 0, refunds: 0 });
         res.json({ ok: true, date: today, total: rows.length, locked, unlocked: rows.length - locked, rows, totals });
     } catch (e) {
-        logger.error('[daily-locks]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[daily-locks]');
         res.status(500).json({ ok: false, error: 'DAILY_LOCKS_FAILED' });
     }
 });
@@ -825,7 +825,7 @@ router.get('/item-sales', requireRole('sous_chef', 'admin', 'owner'), async (req
         res.set('Cache-Control', 'no-store');
         res.json({ ok: true, from, to, group, rows, totals, count: rows.length });
     } catch (e) {
-        logger.error('[item-sales]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[item-sales]');
         res.status(500).json({ ok: false, error: 'ITEM_SALES_FAILED' });
     }
 });
@@ -1174,7 +1174,7 @@ router.get('/item-sales/print', requireRole('sous_chef', 'admin', 'owner'), asyn
         res.set('Cache-Control', 'no-store');
         res.send(html);
     } catch (e) {
-        logger.error('[item-sales/print]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[item-sales/print]');
         res.status(500).json({ ok: false, error: 'ITEM_SALES_PRINT_FAILED', message: 'تعذّر توليد ورقة الطباعة' });
     }
 });
@@ -1237,7 +1237,7 @@ router.get('/orders', requireRole('sous_chef', 'admin', 'owner'), async (req, re
         res.set('Cache-Control', 'no-store');
         res.json({ ok: true, from, to, orders: out, total: cnt, limit, offset });
     } catch (e) {
-        logger.error('[orders]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[orders]');
         res.status(500).json({ ok: false, error: 'ORDERS_FAILED' });
     }
 });
@@ -1268,7 +1268,7 @@ router.get('/order-detail/:docNo', requireRole('sous_chef', 'admin', 'owner'), a
             lines: Array.isArray(r.lines) ? r.lines : [],
         }});
     } catch (e) {
-        logger.error('[order-detail]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[order-detail]');
         res.status(500).json({ ok: false, error: 'ORDER_DETAIL_FAILED' });
     }
 });
@@ -1397,7 +1397,7 @@ router.get('/item-invoices', requireRole('sous_chef', 'admin', 'owner'), async (
             vat: Math.round(Number(totals.vat || 0) * 100) / 100,
         }, limit, offset });
     } catch (e) {
-        logger.error('[item-invoices]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[item-invoices]');
         res.status(500).json({ ok: false, error: 'ITEM_INVOICES_FAILED' });
     }
 });
@@ -1464,7 +1464,7 @@ router.get('/received-items', requireRole('sous_chef', 'admin', 'owner'), async 
         res.set('Cache-Control', 'no-store');
         res.json({ ok: true, from, to, group, rows, totals, count: rows.length });
     } catch (e) {
-        logger.error('[received-items]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[received-items]');
         res.status(500).json({ ok: false, error: 'RECEIVED_ITEMS_FAILED' });
     }
 });
@@ -1514,7 +1514,7 @@ router.get('/received-dispatches', requireRole('sous_chef', 'admin', 'owner'), a
         res.set('Cache-Control', 'no-store');
         res.json({ ok: true, from, to, dispatches: out, total: cnt, limit, offset });
     } catch (e) {
-        logger.error('[received-dispatches]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[received-dispatches]');
         res.status(500).json({ ok: false, error: 'RECEIVED_DISPATCHES_FAILED' });
     }
 });
@@ -1546,7 +1546,7 @@ router.get('/received-dispatch-detail/:id', requireRole('sous_chef', 'admin', 'o
             warehouse_approved_at: r.warehouseApprovedAt, warehouse_approved_by: r.warehouseApprovedBy,
         }});
     } catch (e) {
-        logger.error('[received-dispatch-detail]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[received-dispatch-detail]');
         res.status(500).json({ ok: false, error: 'DISPATCH_DETAIL_FAILED' });
     }
 });
@@ -1666,7 +1666,7 @@ router.get('/item-outflow', requireRole('sous_chef', 'admin', 'owner'), async (r
         res.set('Cache-Control', 'no-store');
         res.json({ ok: true, from, to, spanDays, rows, totals, count: rows.length, details, alerts, balances: [...balMap.entries()].map(([name, b]) => ({ item_name: name, ...b })).sort((a, b) => a.balance - b.balance).slice(0, 100) });
     } catch (e) {
-        logger.error('[item-outflow]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[item-outflow]');
         res.status(500).json({ ok: false, error: 'ITEM_OUTFLOW_FAILED' });
     }
 });
@@ -1691,7 +1691,7 @@ router.get('/item-suggest', requireRole('sous_chef', 'admin', 'owner'), async (r
         res.set('Cache-Control', 'no-store');
         res.json({ ok: true, suggestions: rows.map(r => ({ name: r.name, total_in: Number(r.total_in), total_out: Number(r.total_out), balance: Math.round((Number(r.total_in) - Number(r.total_out)) * 100) / 100 })) });
     } catch (e) {
-        logger.error('[item-suggest]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[item-suggest]');
         res.status(500).json({ ok: false, error: 'SUGGEST_FAILED' });
     }
 });
@@ -1847,7 +1847,7 @@ router.get('/wh-vs-pos', requireRole('sous_chef', 'admin', 'owner'), async (req,
         res.set('Cache-Control', 'no-store');
         res.json({ ok: true, from, to, spanDays, liveSynced, lastSyncAt, rows: filtered, summary, count: filtered.length });
     } catch (e) {
-        logger.error('[wh-vs-pos]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[wh-vs-pos]');
         res.status(500).json({ ok: false, error: 'WH_VS_POS_FAILED' });
     }
 });

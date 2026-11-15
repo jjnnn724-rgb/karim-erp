@@ -1074,7 +1074,7 @@ router.get('/vat-return', jwtAuth, requireRole(...READ_ROLES), async (req, res) 
       },
     });
   } catch (error) {
-    logger.error('[ledger/vat-return]', error);
+    logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[ledger/vat-return]');
     res.status(500).json({ error: 'LEDGER_VAT_RETURN_FAILED', message: 'تعذر حساب الإقرار الضريبي' });
   }
 });
@@ -1177,7 +1177,7 @@ router.post('/vat-settlement', jwtAuth, requireRole(...WRITE_ROLES), async (req,
     if (error.statusCode === 423) {
       return res.status(423).json({ error: 'PERIOD_CLOSED', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
-    logger.error('[ledger/vat-settlement]', error);
+    logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[ledger/vat-settlement]');
     res.status(500).json({ error: 'LEDGER_VAT_SETTLEMENT_FAILED', message: 'تعذر ترحيل تصفية الضريبة' });
   }
 });
@@ -1191,7 +1191,7 @@ router.get('/chart', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
     );
     res.json(rows);
   } catch (error) {
-    logger.error('[ledger/chart]', error);
+    logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[ledger/chart]');
     res.status(500).json({ error: 'LEDGER_CHART_FAILED', message: 'تعذر جلب شجرة الحسابات' });
   }
 });
@@ -1232,7 +1232,7 @@ router.post('/chart', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => 
     if (error.code === '23505') {
       return res.status(409).json({ error: 'LEDGER_CODE_EXISTS', message: 'كود الحساب موجود بالفعل' });
     }
-    logger.error('[ledger/chart:create]', error);
+    logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[ledger/chart:create]');
     res.status(500).json({ error: 'LEDGER_ACCOUNT_CREATE_FAILED', message: 'تعذر إنشاء الحساب' });
   }
 });
@@ -1281,7 +1281,7 @@ router.get('/trial-balance', jwtAuth, requireRole(...READ_ROLES), async (req, re
       integrity: { unbalanced_posted_entries: unbalancedEntries },
     });
   } catch (error) {
-    logger.error('[ledger/trial-balance]', error);
+    logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[ledger/trial-balance]');
     res.status(500).json({ error: 'LEDGER_TB_FAILED', message: 'تعذر حساب ميزان المراجعة' });
   }
 });
@@ -1294,7 +1294,7 @@ router.get('/balance-sheet', jwtAuth, requireRole(...READ_ROLES), async (req, re
     const bs = await generateBalanceSheet(pool, asOf);
     res.json(bs);
   } catch (error) {
-    logger.error('[ledger/balance-sheet]', error);
+    logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[ledger/balance-sheet]');
     res.status(500).json({ error: 'LEDGER_BS_FAILED', message: 'تعذر استخراج قائمة المركز المالي' });
   }
 });
@@ -1307,7 +1307,7 @@ router.get('/income-statement', jwtAuth, requireRole(...READ_ROLES), async (req,
     const is = await generateIncomeStatement(pool, from, to);
     res.json(is);
   } catch (error) {
-    logger.error('[ledger/income-statement]', error);
+    logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[ledger/income-statement]');
     res.status(500).json({ error: 'LEDGER_IS_FAILED', message: 'تعذر استخراج قائمة الدخل' });
   }
 });
@@ -1328,7 +1328,7 @@ router.get('/journal', jwtAuth, requireRole(...READ_ROLES), async (req, res) => 
     );
     res.json(rows);
   } catch (error) {
-    logger.error('[ledger/journal]', error);
+    logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[ledger/journal]');
     res.status(500).json({ error: 'LEDGER_JOURNAL_FAILED', message: 'تعذر جلب القيود' });
   }
 });
@@ -1399,7 +1399,7 @@ router.post('/journal/:id/void', jwtAuth, requireRole(...WRITE_ROLES), crudLimit
     }
     res.json({ ok: true, entry: rows[0] });
   } catch (error) {
-    logger.error('[ledger/void]', error);
+    logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[ledger/void]');
     res.status(500).json({ error: 'LEDGER_VOID_FAILED', message: 'تعذر إلغاء القيد' });
   }
 });
@@ -1586,7 +1586,7 @@ router.get('/cfo-summary', jwtAuth, requireRole(...READ_ROLES), async (req, res)
       },
     });
   } catch (error) {
-    logger.error('[ledger/cfo-summary]', error);
+    logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[ledger/cfo-summary]');
     res.status(500).json({ error: 'LEDGER_CFO_FAILED', message: 'تعذر حساب ملخص المدير المالي' });
   }
 });

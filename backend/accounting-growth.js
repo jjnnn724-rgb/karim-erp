@@ -412,7 +412,7 @@ router.post('/depreciation/run', jwtAuth, requireRole(...WRITE_ROLES), async (re
         logger.info(`[DEPRECIATION] شهر ${month}: ${total} على ${lines.length} أصل بواسطة ${req.user?.name || req.user?.id}`);
         res.json({ ok: true, month, posted: lines.length, total, journal });
     } catch (e) {
-        logger.error('[DEPRECIATION]', e.message);
+        logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[DEPRECIATION]');
         const code = e.statusCode || 500;
         res.status(code).json({
             error: code === 423 ? 'PERIOD_LOCKED' : 'DEPRECIATION_FAILED',
@@ -427,7 +427,7 @@ function ensureAccountingGrowthSchema() {
         if (fs.existsSync(file)) {await pool.query(fs.readFileSync(file, 'utf-8'));}
         try { require('./accounting-routes').resetCcCache?.(); } catch (_) {}
         logger.info('[ACCOUNTING_GROWTH] ready (cc/assets/bank/custody)');
-    })().catch((e) => { logger.error('[ACCOUNTING_GROWTH] init skipped:', e.message); });
+    })().catch((e) => { logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[ACCOUNTING_GROWTH] init skipped:'); });
 }
 
 module.exports = { router, ensureAccountingGrowthSchema };

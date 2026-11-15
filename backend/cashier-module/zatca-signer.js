@@ -56,7 +56,7 @@ function loadKeyPair() {
             logger.info('[zatca-signer] loaded CSID-class key (env) — signing will be compliance-grade');
             return cached;
         } catch (err) {
-            logger.error('[zatca-signer] ZATCA_PRIVATE_KEY_PEM غير صالح:', err.message);
+            logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[zatca-signer] ZATCA_PRIVATE_KEY_PEM غير صالح:');
         }
     }
 

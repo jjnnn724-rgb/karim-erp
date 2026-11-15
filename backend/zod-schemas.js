@@ -401,7 +401,7 @@ function validate(schema, options = {}) {
             
             next();
         } catch (err) {
-            logger.error('[zod] Validation error:', err);
+            logger.error({ err: { message: (err && err.message) || String(err), stack: (err && err.stack) || null } }, '[zod] Validation error:');
             res.status(500).json({
                 error: 'INTERNAL_ERROR',
                 message: 'Validation process failed',

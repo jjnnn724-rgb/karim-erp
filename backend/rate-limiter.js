@@ -106,7 +106,7 @@ class RedisStore {
             
             return { count, resetTime };
         } catch (err) {
-            logger.error('[rate-limiter] Redis error, falling back to in-memory:', err.message);
+            logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[rate-limiter] Redis error, falling back to in-memory:');
             // Fallback to in-memory on Redis failure
             return memoryStore.increment(key, windowMs);
         }
@@ -121,7 +121,7 @@ class RedisStore {
             }
             return { count: Math.max(0, value), resetTime: Date.now() + windowMs };
         } catch (err) {
-            logger.error('[rate-limiter] Redis decrement failed:', err.message);
+            logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[rate-limiter] Redis decrement failed:');
             return memoryStore.decrement(key, windowMs);
         }
     }
@@ -241,7 +241,7 @@ function createRateLimiter(options = {}) {
             
             next();
         } catch (err) {
-            logger.error('[rate-limiter] Error:', err.message);
+            logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[rate-limiter] Error:');
             // On error, allow request through (fail-open)
             next();
         }

@@ -58,7 +58,7 @@ async function storeGet(redis, pool, key) {
         try {
             const v = await redis.get(`idem:${key}`);
             if (v) {return JSON.parse(v);}
-        } catch (e) { logger.warn('[idempotency] redis get failed:', e.message); }
+        } catch (e) { logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[idempotency] redis get failed:'); }
     }
     // PG fallback
     if (pool) {
@@ -94,7 +94,7 @@ async function storeSet(redis, pool, key, value, ttlMs = DEFAULT_TTL_MS) {
     const payload = JSON.stringify(value);
     if (redis) {
         try { await redis.setex(`idem:${key}`, Math.ceil(ttlMs / 1000), payload); }
-        catch (e) { logger.warn('[idempotency] redis set failed:', e.message); }
+        catch (e) { logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[idempotency] redis set failed:'); }
     }
     if (pool) {
         try {
@@ -124,7 +124,7 @@ async function storeLock(redis, pool, key, hash, ttlMs = DEFAULT_INFLIGHT_TTL_MS
             const ok = await redis.set(`idem-lock:${key}`, hash, 'PX', ttlMs, 'NX');
             if (ok === 'OK') {return true;}
             return false;
-        } catch (e) { logger.warn('[idempotency] redis lock failed:', e.message); }
+        } catch (e) { logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[idempotency] redis lock failed:'); }
     }
     // PG advisory lock or upsert condition — simpler: try insert in_progress row
     if (pool) {
@@ -338,7 +338,7 @@ async function ensureIdempotencySchema(pool) {
         await pool.query(`DELETE FROM idempotency_keys WHERE expires_at < NOW() - INTERVAL '7 days'`);
         logger.info('[idempotency] schema ensured');
     } catch (e) {
-        logger.warn('[idempotency] schema ensure failed:', e.message);
+        logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[idempotency] schema ensure failed:');
     }
 }
 

@@ -207,7 +207,7 @@ async function sweepEscalations({ db, io, now = Date.now(), notify, ensureSchema
                         [ESCALATION_DONE, ids],
                     ).catch((markErr) => {
                         // لا نبتلع الفشل: صفٌّ لم يُعلَّم قد يُصعَّد ثانيةً بعد 15د.
-                        logger.warn('[callout-escalation] تعذر تعليم صفوف التصعيد نهايةً للسلّم:', markErr.message);
+                        logger.warn({ err: { message: String(markErr.message), stack: (markErr && markErr.stack) || null } }, '[callout-escalation] تعذر تعليم صفوف التصعيد نهايةً للسلّم:');
                     });
                 }
                 logger.info(`[callout-escalation] ${level === 1 ? 'نائب' : 'مدير'} ← تصعيد مستوى ${level} لإشعار ${row.id} (${made.length} مستلم)`);
@@ -234,7 +234,7 @@ function startEscalationWorker({ io, intervalMs = SWEEP_MS, ...sweepDeps } = {})
             const r = await sweepEscalations({ io, ...sweepDeps });
             if (r.claimed) {logger.info(`[callout-escalation] دورة: ${r.claimed} تصعيد من ${r.candidates} مرشّح`);}
         } catch (error) {
-            logger.warn('[callout-escalation] دورة متعثرة (ستُعاد في الدورة التالية):', error.message);
+            logger.warn({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[callout-escalation] دورة متعثرة (ستُعاد في الدورة التالية):');
         } finally {
             running = false;
         }

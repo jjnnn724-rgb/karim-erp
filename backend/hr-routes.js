@@ -165,7 +165,7 @@ router.post('/employees/:id/qr/regenerate', jwtAuth, requireRole('admin', 'hr', 
         res.json({ ...card, qrAvailable: true });
     } catch (e) {
         await client.query('ROLLBACK');
-        logger.error('[hr_qr_regenerate]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[hr_qr_regenerate]');
         res.status(500).json({ error: 'QR_REGENERATE_FAILED', message: 'تعذر تجديد بطاقة QR' });
     } finally { client.release(); }
 });
@@ -240,7 +240,7 @@ router.get('/attendance/report', jwtAuth, async (req, res) => {
     summary.totalKarim = Number((summary.totalMinutes / 60).toFixed(2));
     res.json({ employee: result.rows[0] ? { id: employeeId, name: result.rows[0].name, employeeId: result.rows[0].employeeId, position: result.rows[0].position, shift_start: empRow?.shift_start, shift_karim: empRow?.shift_karim, day_off: empRow?.day_off } : null, records, summary });
     } catch (e) {
-        logger.error('[hr_attendance_report]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[hr_attendance_report]');
         res.status(500).json({ error: 'ATTENDANCE_REPORT_FAILED', message: 'تعذر جلب تقرير الحضور والانصراف' });
     }
 });
@@ -253,7 +253,7 @@ router.get('/card-settings', jwtAuth, async (req, res) => {
         const o = Object.fromEntries(rows.map(r => [r.key, r.value]));
         res.json({ ok: true, verifyBase: o.verify_base || process.env.CARD_VERIFY_BASE || 'https://192.168.1.165:5000', emergencyPhone: o.emergency_phone || process.env.EMERGENCY_PHONE || '' });
     } catch (e) {
-        logger.error('[hr_card_settings_get]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[hr_card_settings_get]');
         res.status(500).json({ error: 'CARD_SETTINGS_FAILED' });
     }
 });
@@ -267,7 +267,7 @@ router.put('/card-settings', jwtAuth, requireRole('admin'), async (req, res) => 
         await pool.query(`INSERT INTO hr_card_settings (key, value, updated_at) VALUES ('emergency_phone', $1, NOW()) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`, [emg]);
         res.json({ ok: true });
     } catch (e) {
-        logger.error('[hr_card_settings_put]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[hr_card_settings_put]');
         res.status(500).json({ error: 'CARD_SETTINGS_SAVE_FAILED' });
     }
 });
@@ -306,7 +306,7 @@ router.get('/employees/:id/lux-card', jwtAuth, async (req, res) => {
     const file = path.join(__dirname, '..', 'tools', 'employee-card', 'out', `card-${fp}.html`);
     res.type('html').send(fs.readFileSync(file, 'utf8'));
     } catch (e) {
-        logger.error('[hr_lux_card]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[hr_lux_card]');
         res.status(500).json({ error: 'LUX_CARD_FAILED', message: 'تعذر توليد البطاقة' });
     }
 });
@@ -381,7 +381,7 @@ router.get('/attendance/monthly', jwtAuth, async (req, res) => {
     }
     res.json({ ok: true, ...out });
     } catch (e) {
-        logger.error('[hr_attendance_monthly]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[hr_attendance_monthly]');
         res.status(500).json({ error: 'ATTENDANCE_MONTHLY_FAILED', message: 'تعذر جلب الكشف الشهري' });
     }
 });
@@ -394,7 +394,7 @@ router.get('/strict-audit', jwtAuth, requireRole(...ADMIN_ROLES), async (req, re
     const result = await runStrictAudit(m);
     res.json({ ok: result.ok, ...result });
     } catch (e) {
-        logger.error('[hr_strict_audit]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[hr_strict_audit]');
         res.status(500).json({ error: 'STRICT_AUDIT_FAILED', message: 'تعذر تشغيل التدقيق الصارم' });
     }
 });
@@ -541,7 +541,7 @@ router.post('/payroll-runs/generate', jwtAuth, requireRole(...ADMIN_ROLES), asyn
         });
     } catch (e) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[hr_payroll_run]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[hr_payroll_run]');
         res.status(500).json({ error: 'PAYROLL_RUN_FAILED', message: 'تعذر توليد المسير' });
     } finally { client.release(); }
 });
@@ -575,7 +575,7 @@ router.get('/card/v/:code', cardVerifyLimiter, async (req, res) => {
         req.shortVerified = emp;
         return shortVerifyRender(req, res);
     } catch (e) {
-        logger.error('[hr_card_verify_short]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[hr_card_verify_short]');
         res.status(500).send('تعذر التحقق حاليًا');
     }
 });
@@ -667,7 +667,7 @@ ${logoB64 ? `<img class="logo" src="data:image/png;base64,${logoB64}">` : ''}
 <div class="meta">تم التحقق لحظيًا من نظام Karim ERP — ${esc(new Date().toISOString().slice(0, 16).replace('T', ' '))}</div>
 </div></body></html>`);
     } catch (e) {
-        logger.error('[hr_card_verify]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[hr_card_verify]');
         res.status(500).send('تعذر التحقق حاليًا');
     }
 });
@@ -707,7 +707,7 @@ router.get('/employees/ledger', jwtAuth, requireRole('admin', 'hr', 'manager'), 
         const { rows: [countRow] } = await pool.query(`SELECT COUNT(*)::int AS total FROM employees`);
         res.json({ ok:true, employees, total: countRow.total, page, limit });
     } catch (error) {
-            logger.error('[hr/ledger]', error);
+            logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[hr/ledger]');
             res.status(500).json({ error: 'LEDGER_FAILED', message: 'تعذر جلب دفتر الموظفين' });
         }
 });
@@ -860,7 +860,7 @@ router.get('/deductions/preview', jwtAuth, requireRole(...ADMIN_ROLES), async (r
             late: Math.round(totals.late * 100) / 100, absent: Math.round(totals.absent * 100) / 100, total: Math.round(totals.total * 100) / 100,
         }, employees: detail });
     } catch (e) {
-        logger.error('[hr_deductions_preview]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[hr_deductions_preview]');
         res.status(500).json({ error: 'DEDUCTIONS_PREVIEW_FAILED', message: 'تعذر حساب معاينة الخصومات' });
     }
 });
@@ -920,7 +920,7 @@ router.post('/deductions/apply', jwtAuth, requireRole(...ADMIN_ROLES), async (re
             employees: detail.filter(e => e.totalDeduction > 0).length });
     } catch (e) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[hr_deductions_apply]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[hr_deductions_apply]');
         res.status(500).json({ error: 'DEDUCTIONS_APPLY_FAILED', message: 'تعذر تطبيق الخصومات' });
     } finally { client.release(); }
 });
@@ -959,11 +959,11 @@ async function rosterValidDepts() {
     try {
         const a = await pool.query('SELECT code FROM "hrDepartments"');
         a.rows.forEach((r) => { if (r.code) {codes.add(String(r.code));} });
-    } catch (e) { logger.warn('[roster] فشل قراءة أقسام HR:', e.message); }
+    } catch (e) { logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[roster] فشل قراءة أقسام HR:'); }
     try {
         const b = await pool.query('SELECT code FROM departments');
         b.rows.forEach((r) => { if (r.code) {codes.add(String(r.code));} });
-    } catch (e) { logger.warn('[roster] فشل قراءة الأقسام:', e.message); }
+    } catch (e) { logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[roster] فشل قراءة الأقسام:'); }
     return codes;
 }
 
@@ -1028,7 +1028,7 @@ router.get('/dept-roster', jwtAuth, requireRole(...ROSTER_ROLES), async (req, re
                 );
                 recentLog = rl.rows;
             }
-        } catch (e) { logger.warn('[dept-roster] تعذر قراءة آخر تغييرات الدوام:', e.message); }
+        } catch (e) { logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[dept-roster] تعذر قراءة آخر تغييرات الدوام:'); }
         res.json({
             ok: true, depts: scope.depts, fixed: scope.fixed,
             canSeeUnassigned,
@@ -1040,7 +1040,7 @@ router.get('/dept-roster', jwtAuth, requireRole(...ROSTER_ROLES), async (req, re
             today: todayStr,
         });
     } catch (e) {
-        logger.error('[dept-roster list]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[dept-roster list]');
         res.status(500).json({ error: 'ROSTER_LIST_FAILED', message: 'تعذر جلب جدول القسم' });
     }
 });
@@ -1162,7 +1162,7 @@ router.post('/dept-roster', jwtAuth, requireRole(...ROSTER_ROLES), async (req, r
         res.json({ ok: true, updated: updates.length, rows: updates, effective_from: effRaw, appliedNow: applyNow });
     } catch (e) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[dept-roster save]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[dept-roster save]');
         res.status(500).json({ error: 'ROSTER_SAVE_FAILED', message: 'تعذر حفظ الجدول' });
     } finally {
         client.release();
@@ -1197,7 +1197,7 @@ router.get('/dept-roster-week', jwtAuth, requireRole(...ROSTER_ROLES), async (re
                 `SELECT requested_name, requested_at::text AS requested_at, approved_name, approved_at::text AS approved_at
                    FROM roster_approvals WHERE dept_key=$1 AND week_start=$2::date LIMIT 1`,
                 [rosterApprovalKey(scope), weekStart])).rows[0] || null;
-        } catch (e) { logger.warn('[dept-roster-week] تعذر قراءة حالة الاعتماد:', e.message); }
+        } catch (e) { logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[dept-roster-week] تعذر قراءة حالة الاعتماد:'); }
         const emps = (await pool.query(
             `SELECT e.id, e.name, e."employeeId", e.position, e.department, e.shift_start, e.shift_karim, e.day_off, e.status
                FROM employees e WHERE e.status = 'active' ORDER BY e.name`
@@ -1285,7 +1285,7 @@ router.get('/dept-roster-week', jwtAuth, requireRole(...ROSTER_ROLES), async (re
             today: todayStr, validDepts: [...valid], recentLog, approval,
         });
     } catch (e) {
-        logger.error('[dept-roster-week list]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[dept-roster-week list]');
         res.status(500).json({ error: 'ROSTER_WEEK_FAILED', message: 'تعذر جلب شبكة الأسبوع' });
     }
 });
@@ -1320,7 +1320,7 @@ router.post('/dept-roster-approval/request', jwtAuth, requireRole(...ROSTER_ROLE
         );
         res.json({ ok: true });
     } catch (e) {
-        logger.error('[roster-approval request]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[roster-approval request]');
         res.status(500).json({ error: 'APPROVAL_REQUEST_FAILED', message: 'تعذر إرسال طلب الاعتماد' });
     }
 });
@@ -1338,7 +1338,7 @@ router.get('/dept-roster-approval/pending', jwtAuth, requireRole('hr', 'admin'),
         )).rows;
         res.json({ ok: true, week: ws, pending: rows });
     } catch (e) {
-        logger.error('[roster-approval pending]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[roster-approval pending]');
         res.status(500).json({ error: 'APPROVAL_PENDING_FAILED', message: 'تعذر جلب طلبات الاعتماد' });
     }
 });
@@ -1359,7 +1359,7 @@ router.post('/dept-roster-approval/approve', jwtAuth, requireRole('hr', 'admin')
         if (!r.rows.length) {return res.status(422).json({ error: 'APPROVAL_NOT_FOUND', message: 'لا طلب اعتماد مفتوح لهذا القسم في هذا الأسبوع' });}
         res.json({ ok: true, approval: { approved_name: r.rows[0].approved_name, approved_at: r.rows[0].approved_at } });
     } catch (e) {
-        logger.error('[roster-approval approve]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[roster-approval approve]');
         res.status(500).json({ error: 'APPROVAL_FAILED', message: 'تعذر اعتماد الدوامات' });
     }
 });
@@ -1499,14 +1499,14 @@ router.post('/dept-roster-week', jwtAuth, requireRole(...ROSTER_ROLES), async (r
         try {
             await ensureRosterApprovals();
             await pool.query(`DELETE FROM roster_approvals WHERE dept_key=$1 AND week_start=$2::date`, [rosterApprovalKey(scope), wsRaw]);
-        } catch (e) { logger.warn('[dept-roster-week] تعذر تصفير الاعتمادات:', e.message); }
+        } catch (e) { logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[dept-roster-week] تعذر تصفير الاعتمادات:'); }
         try {
             makeEmitScoped(req.io)('entity_changed', { entity: 'employees', entityName: 'الموظفون', action: 'update', changedBy: req.user?.name || req.user?.username || 'roster', changedAt: new Date().toISOString() });
         } catch (e) { logger.debug('[dept-roster-week] تعذر بث entity_changed:', e.message); }
         res.json({ ok: true, updated: clean.length, week_start: wsRaw });
     } catch (e) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[dept-roster-week save]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[dept-roster-week save]');
         res.status(500).json({ error: 'ROSTER_WEEK_SAVE_FAILED', message: 'تعذر حفظ شبكة الأسبوع' });
     } finally {
         client.release();

@@ -102,7 +102,7 @@ function _attachPoolHandlers(p) {
     logger.debug('[shared-pool] idle connection closed');
   });
   p.on('error', err => {
-    logger.error('[shared-pool] Unexpected error on idle client:', err.message);
+    logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[shared-pool] Unexpected error on idle client:');
   });
 }
 _attachPoolHandlers(_pool);

@@ -51,7 +51,7 @@ async function loadPunchSettings() {
         _punchSettingsCacheAt = Date.now();
         return _punchSettingsCache;
     } catch (e) {
-        logger.error('[punch-portal] تعذر قراءة الإعدادات — الافتراضي: الميزة مغلقة:', e.message);
+        logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[punch-portal] تعذر قراءة الإعدادات — الافتراضي: الميزة مغلقة:');
         // fail-safe: أي خلل في الإعدادات = الميزة مغلقة (ولا يُسمَّم الكاش بقيم خاطئة)
         return resolvePunchSettings([], process.env);
     }
@@ -74,7 +74,7 @@ async function portalDeviceId() {
         _portalDeviceId = rows[0]?.id ?? null;
         return _portalDeviceId;
     } catch (e) {
-        logger.error('[punch-portal] تعذر إيجاد جهاز البوابة الافتراضي (migration 128 مطبّق؟):', e.message);
+        logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[punch-portal] تعذر إيجاد جهاز البوابة الافتراضي (migration 128 مطبّق؟):');
         return null;
     }
 }
@@ -151,7 +151,7 @@ async function ensurePunchAuditCols() {
                           ALTER TABLE punch_attempts ADD COLUMN IF NOT EXISTS trust_score INTEGER;
                           ALTER TABLE punch_attempts ADD COLUMN IF NOT EXISTS trust_signals TEXT;
                           ALTER TABLE punch_attempts ADD COLUMN IF NOT EXISTS teleport_kmh NUMERIC(10,1);`);
-    } catch (e) { logger.warn('[punch-portal] audit cols skipped:', e.message); }
+    } catch (e) { logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[punch-portal] audit cols skipped:'); }
 }
 async function auditAttempt(entry) {
     try {
@@ -173,7 +173,7 @@ async function auditAttempt(entry) {
                 entry.teleportKmh ?? null]
         );
     } catch (e) {
-        logger.error('[punch-portal] فشل تدقيق المحاولة (لا يوقف الحكم):', e.message);
+        logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[punch-portal] فشل تدقيق المحاولة (لا يوقف الحكم):');
     }
 }
 
@@ -307,7 +307,7 @@ router.get('/status', jwtAuth, async (req, res, next) => {
                     }
                 }
             } catch (e) {
-                logger.error('[punch-portal] تعذر قراءة حالة اليوم:', e.message);
+                logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[punch-portal] تعذر قراءة حالة اليوم:');
             }
         }
         res.json({
@@ -510,7 +510,7 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
                         });
                     }
                 }
-            } catch (e) { logger.warn('[punch-portal] teleport check skipped:', e.message); }
+            } catch (e) { logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[punch-portal] teleport check skipped:'); }
         }
 
         // L5-v2: التحقق بالوجه بمحرك ArcFace 512-d على السيرفر (Apache-2.0) —
@@ -680,7 +680,7 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
             at: now.toISOString(),
         });
     } catch (e) {
-        logger.error('[punch-portal] punch failed:', e.message);
+        logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[punch-portal] punch failed:');
         return next(e);
     }
 });

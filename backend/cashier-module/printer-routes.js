@@ -217,7 +217,7 @@ router.get('/', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
         );
         return res.json({ printers: result.rows });
     } catch (err) {
-        logger.error('[printers] list failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[printers] list failed:');
         return res.status(500).json({ error: 'PRINTERS_LIST_FAILED', message: 'فشل جلب قائمة الطابعات' });
     }
 });
@@ -284,7 +284,7 @@ router.post('/', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
         logger.info(`[printers] registered ${printerId} (${data.connection_type} ${data.address}) by ${req.user?.username}`);
         return res.status(201).json({ printer: finalRow.rows[0], normalized_address: address, probe: probeInfo });
     } catch (err) {
-        logger.error('[printers] register failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[printers] register failed:');
         return res.status(500).json({ error: 'PRINTER_REGISTER_FAILED', message: 'فشل تسجيل الطابعة' });
     }
 });
@@ -328,7 +328,7 @@ router.put('/:id', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
         logger.info(`[printers] updated ${printerId} by ${req.user?.username}`);
         return res.json({ printer: updated.rows[0] });
     } catch (err) {
-        logger.error('[printers] update failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[printers] update failed:');
         return res.status(500).json({ error: 'PRINTER_UPDATE_FAILED', message: 'فشل تعديل الطابعة' });
     }
 });
@@ -343,7 +343,7 @@ router.delete('/:id', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => 
         logger.info(`[printers] deleted ${printerId} by ${req.user?.username}`);
         return res.json({ deleted: printerId });
     } catch (err) {
-        logger.error('[printers] delete failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[printers] delete failed:');
         return res.status(500).json({ error: 'PRINTER_DELETE_FAILED', message: 'فشل حذف الطابعة' });
     }
 });
@@ -387,7 +387,7 @@ router.post('/probe', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => 
             error: result.error,
         });
     } catch (err) {
-        logger.error('[printers] probe failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[printers] probe failed:');
         return res.status(500).json({ error: 'PRINTER_PROBE_FAILED', message: 'فشل فحص الطابعة' });
     }
 });
@@ -430,7 +430,7 @@ router.post('/scan', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
             reachable,
         });
     } catch (err) {
-        logger.error('[printers] scan failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[printers] scan failed:');
         return res.status(500).json({ error: 'PRINTER_SCAN_FAILED', message: 'فشل فحص الشبكة' });
     }
 });
@@ -451,7 +451,7 @@ router.get('/discover', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) =
             local = await listLocalPrintQueues();
         } catch (err) {
             localError = err.code || err.message;
-            logger.warn('[printers] local queue discovery failed:', localError);
+            logger.warn({ err: { message: (localError && localError.message) || String(localError), stack: (localError && localError.stack) || null } }, '[printers] local queue discovery failed:');
         }
 
         const network = [];
@@ -490,7 +490,7 @@ router.get('/discover', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) =
             scanned_at: new Date().toISOString(),
         });
     } catch (err) {
-        logger.error('[printers] discover failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[printers] discover failed:');
         return res.status(500).json({ error: 'PRINTER_DISCOVER_FAILED', message: 'فشل اكتشاف الطابعات' });
     }
 });
@@ -609,7 +609,7 @@ router.post('/auto', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
                 : 'حُفظت الطابعة لكنها غير متاحة الآن؛ سيعيد عامل الطباعة المحاولة تلقائيًا عند توفرها.',
         });
     } catch (err) {
-        logger.error('[printers] auto link failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[printers] auto link failed:');
         return res.status(500).json({ error: 'PRINTER_AUTO_FAILED', message: 'فشل الربط التلقائي بالطابعة' });
     }
 });

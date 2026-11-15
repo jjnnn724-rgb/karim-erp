@@ -373,7 +373,7 @@ async function loginHandler(req, res) {
         try {
             ok = await bcrypt.compare(password, user.password);
         } catch (bcryptErr) {
-            logger.error('[auth] bcrypt.compare failed:', bcryptErr);
+            logger.error({ err: { message: (bcryptErr && bcryptErr.message) || String(bcryptErr), stack: (bcryptErr && bcryptErr.stack) || null } }, '[auth] bcrypt.compare failed:');
             return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'bcrypt comparison failed', detail: bcryptErr?.message || String(bcryptErr) });
         }
         if (!ok) {
@@ -434,7 +434,7 @@ async function loginHandler(req, res) {
             user: publicUser(),
         });
 } catch (err) {
-        logger.error('[auth] login handler error:', err);
+        logger.error({ err: { message: (err && err.message) || String(err), stack: (err && err.stack) || null } }, '[auth] login handler error:');
         if (!res.headersSent) {res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر تسجيل الدخول — حاول مرة أخرى', detail: err?.message || String(err) });}
     } finally {
         client.release();
@@ -506,7 +506,7 @@ async function changePasswordHandler(req, res) {
             user: { id: user.id, name: user.name, role: user.role, username: user.username, dept_code: user.dept_code || null },
         });
     } catch (err) {
-        logger.error('[auth] change-password failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[auth] change-password failed:');
         res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر تغيير كلمة المرور — حاول مرة أخرى' });
     } finally {
         client.release();
@@ -573,7 +573,7 @@ function jwtAuth(req, res, next) {
         .catch((err) => {
             // Fail-closed: تعذّر إثبات أن الحساب نشط ⇒ لا يمرّ الطلب.
             // 503 لا 401 حتى لا يمسح العميل جلسة سليمة بسبب ضغط مؤقت.
-            logger.warn('[auth] active-check failed (fail-closed):', err.message);
+            logger.warn({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[auth] active-check failed (fail-closed):');
             return res.status(503).json({
                 error: 'ACCOUNT_CHECK_UNAVAILABLE',
                 message: 'تعذّر التحقق من حالة الحساب مؤقتًا — أعد المحاولة.',
@@ -706,7 +706,7 @@ async function refreshHandler(req, res) {
         return res.json(sessionPayload(nextRaw));
     } catch (err) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[auth] refresh failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[auth] refresh failed:');
         return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر تجديد الجلسة — حاول مجدداً.' });
     } finally {
         client.release();
@@ -726,7 +726,7 @@ async function logoutHandler(req, res) {
         logger.info({ userId: req.user.id, revoked: deleted.rowCount }, '[auth] logout — refresh tokens revoked');
         return res.json({ ok: true, revoked: deleted.rowCount, message: 'تم تسجيل الخروج وإبطال جلسات التجديد.' });
     } catch (err) {
-        logger.error('[auth] logout failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[auth] logout failed:');
         return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر تسجيل الخروج — حاول مجدداً.' });
     } finally {
         client.release();

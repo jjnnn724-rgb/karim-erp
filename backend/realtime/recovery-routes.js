@@ -94,7 +94,7 @@ router.get('/events', jwtAuth, async (req, res) => {
             observability: { outboxLagSeconds },
         });
     } catch (e) {
-        logger.error('[rt-recovery]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[rt-recovery]');
         res.status(500).json({ error: 'RECOVERY_FAILED', message: 'تعذر جلب الأحداث الفائتة' });
     }
 });
@@ -117,7 +117,7 @@ router.post('/ack', jwtAuth, async (req, res) => {
             [installationId, req.user.id, lastSequence]);
         res.json({ ok: true });
     } catch (e) {
-        logger.error('[rt-ack]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[rt-ack]');
         res.status(500).json({ error: 'ACK_FAILED', message: 'تعذر تسجيل الاعتراف' });
     }
 });

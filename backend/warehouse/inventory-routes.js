@@ -661,7 +661,7 @@ router.put('/purchase-invoices/:id', jwtAuth, requireRole('admin', 'manager', 'w
         try {
             await require('../accounting-routes').postPurchaseToLedger(invoiceId, { sourceId: revisedSourceId });
         } catch (ledgerError) {
-            logger.warn('[purchase_edit_ledger] best-effort posting skipped:', ledgerError.message);
+            logger.warn({ err: { message: String(ledgerError.message), stack: (ledgerError && ledgerError.stack) || null } }, '[purchase_edit_ledger] best-effort posting skipped:');
         }
         const freshInventory = inventoryRows.length
             ? (await pool.query('SELECT * FROM inventory WHERE id=ANY($1::bigint[]) ORDER BY id', [inventoryRows])).rows

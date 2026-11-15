@@ -121,7 +121,7 @@ router.get('/inventory/audits', jwtAuth, requireRole(...AUDIT_READ_ROLES), async
         `);
         res.json(result.rows);
     } catch (error) {
-        logger.error('[inventory_audits_list]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[inventory_audits_list]');
         res.status(500).json({ error: 'INVENTORY_AUDITS_LIST_FAILED', message: 'تعذر تحميل سجلات الجرد' });
     }
 });
@@ -132,7 +132,7 @@ router.post('/inventory/audits', jwtAuth, requireRole(...AUDIT_WRITE_ROLES), asy
         await client.query('BEGIN');
         // Task 20: جرد كل مخزن على حدة — اللقطة تُبنى من رصيد المخزن المختار
         // (inventory_location_balances) وليس من الإسقاط العالمي inventory.qty.
-        try { await ensureAuditLocationSchema(); } catch (error) { logger.error('[inventory_audits_location_schema]', error); }
+        try { await ensureAuditLocationSchema(); } catch (error) { logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[inventory_audits_location_schema]'); }
         const countedItems = normalizeCountedItems(req.body?.items);
         const locationRow = (await client.query(
             `SELECT id, code, name_ar, dept_code FROM inventory_locations
@@ -221,7 +221,7 @@ router.post('/inventory/audits/:id/submit', jwtAuth, requireRole(...AUDIT_WRITE_
         res.json(updated);
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[inventory_audit_submit]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[inventory_audit_submit]');
         res.status(500).json({ error: 'INVENTORY_AUDIT_SUBMIT_FAILED', message: 'تعذر إرسال الجرد للمراجعة' });
     } finally { client.release(); }
 });
@@ -229,7 +229,7 @@ router.post('/inventory/audits/:id/submit', jwtAuth, requireRole(...AUDIT_WRITE_
 router.post('/inventory/audits/:id/approve', jwtAuth, requireRole(...AUDIT_WRITE_ROLES), async (req, res) => {
     const approvalSignature = getSignature(req, res);
     if (!approvalSignature) {return;}
-    try { await ensureLocationDeptSchema(); } catch (error) { logger.error('[inventory_location_dept_schema]', error); }
+    try { await ensureLocationDeptSchema(); } catch (error) { logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[inventory_location_dept_schema]'); }
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -241,7 +241,7 @@ router.post('/inventory/audits/:id/approve', jwtAuth, requireRole(...AUDIT_WRITE
         if (!items.length) { await client.query('ROLLBACK'); return fail(res, 422, 'AUDIT_EMPTY', 'جلسة الجرد لا تحتوي أصنافاً'); }
         // Task 20: المخزن يُقرأ من جلسة الجرد نفسها (location_id) مع ترحيل آمن
         // للجلسات القديمة عبر warehouse_scope، ثم يُقفل رصيد المخزن المقصود.
-        try { await ensureAuditLocationSchema(); } catch (error) { logger.error('[inventory_audits_location_schema]', error); }
+        try { await ensureAuditLocationSchema(); } catch (error) { logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[inventory_audits_location_schema]'); }
         let auditLocationId = Number(audit.location_id || 0);
         if (!auditLocationId) {
             const legacyCode = audit.warehouse_scope === 'main' ? 'MAIN-WAREHOUSE' : audit.warehouse_scope;
@@ -329,7 +329,7 @@ router.post('/inventory/audits/:id/approve', jwtAuth, requireRole(...AUDIT_WRITE
         res.json({ audit: updated, stockChanges, transactions, expenses, totalVarianceValue: round(totalVarianceValue, 2) });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[inventory_audit_approve]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[inventory_audit_approve]');
         res.status(500).json({ error: 'INVENTORY_AUDIT_APPROVE_FAILED', message: 'تعذر اعتماد الجرد وتطبيق الفروقات' });
     } finally { client.release(); }
 });
@@ -339,7 +339,7 @@ router.get('/fiscal-years', jwtAuth, requireRole('admin', 'manager', 'accountant
         const result = await pool.query('SELECT * FROM fiscal_years ORDER BY start_date DESC');
         res.json(result.rows);
     } catch (error) {
-        logger.error('[fiscal_years_list]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[fiscal_years_list]');
         res.status(500).json({ error: 'FISCAL_YEARS_LIST_FAILED', message: 'تعذر تحميل السنوات المالية' });
     }
 });
@@ -356,7 +356,7 @@ router.post('/fiscal-years', jwtAuth, requireRole('admin', 'manager', 'accountan
         res.status(201).json(row);
     } catch (error) {
         if (error.code === '23505') {return fail(res, 409, 'FISCAL_YEAR_EXISTS', 'السنة المالية موجودة أو توجد سنة مفتوحة بالفعل');}
-        logger.error('[fiscal_year_create]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[fiscal_year_create]');
         res.status(500).json({ error: 'FISCAL_YEAR_CREATE_FAILED', message: 'تعذر إنشاء السنة المالية' });
     } finally { client.release(); }
 });
@@ -383,7 +383,7 @@ router.post('/fiscal-years/:id/close', jwtAuth, requireRole('admin'), async (req
         res.json({ fiscalYear: updated, closingSnapshot });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[fiscal_year_close]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[fiscal_year_close]');
         res.status(500).json({ error: 'FISCAL_YEAR_CLOSE_FAILED', message: 'تعذر إقفال السنة المالية؛ لم يتم تطبيق أي تغيير' });
     } finally { client.release(); }
 });
@@ -404,7 +404,7 @@ router.post('/fiscal-years/:id/create-next', jwtAuth, requireRole('admin'), asyn
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
         if (error.code === '23505') {return fail(res, 409, 'OPEN_FISCAL_YEAR_EXISTS', 'توجد سنة مالية مفتوحة بالفعل');}
-        logger.error('[fiscal_year_create_next]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[fiscal_year_create_next]');
         res.status(500).json({ error: 'FISCAL_YEAR_CREATE_NEXT_FAILED', message: 'تعذر إنشاء السنة الجديدة' });
     } finally { client.release(); }
 });

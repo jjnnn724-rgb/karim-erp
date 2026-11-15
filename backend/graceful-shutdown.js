@@ -91,7 +91,7 @@ async function gracefulShutdown(context = {}, options = {}) {
         try {
             await onShutdown(signal);
         } catch (err) {
-            logger.error('[shutdown] onShutdown callback error:', err.message);
+            logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[shutdown] onShutdown callback error:');
         }
     }
     
@@ -108,7 +108,7 @@ async function gracefulShutdown(context = {}, options = {}) {
             logger.info('[shutdown] ✅ HTTP server closed');
         });
     } catch (err) {
-        logger.error('[shutdown] Error closing HTTP server:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[shutdown] Error closing HTTP server:');
     }
 
     // ─── Step 2: Disconnect Socket.io clients ────────────
@@ -135,7 +135,7 @@ async function gracefulShutdown(context = {}, options = {}) {
                 logger.info('[shutdown] ✅ Socket.io closed');
             });
         } catch (err) {
-            logger.error('[shutdown] Error closing Socket.io:', err.message);
+            logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[shutdown] Error closing Socket.io:');
         }
     } else {
         logger.info('[shutdown] Step 2/5: No Socket.io instance, skipping');
@@ -148,7 +148,7 @@ async function gracefulShutdown(context = {}, options = {}) {
             await pool.end();
             logger.info('[shutdown] ✅ Database pool drained');
         } catch (err) {
-            logger.error('[shutdown] Error draining pool:', err.message);
+            logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[shutdown] Error draining pool:');
         }
     } else {
         logger.info('[shutdown] Step 3/5: No database pool, skipping');
@@ -161,7 +161,7 @@ async function gracefulShutdown(context = {}, options = {}) {
             await redisClient.quit();
             logger.info('[shutdown] ✅ Redis connection closed');
         } catch (err) {
-            logger.error('[shutdown] Error closing Redis:', err.message);
+            logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[shutdown] Error closing Redis:');
         }
     } else {
         logger.info('[shutdown] Step 4/5: No Redis client, skipping');
@@ -174,7 +174,7 @@ async function gracefulShutdown(context = {}, options = {}) {
             await bullMQ.close();
             logger.info('[shutdown] ✅ BullMQ queues closed');
         } catch (err) {
-            logger.error('[shutdown] Error closing BullMQ:', err.message);
+            logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[shutdown] Error closing BullMQ:');
         }
     } else {
         logger.info('[shutdown] Step 5/5: No BullMQ instance, skipping');
@@ -191,7 +191,7 @@ async function gracefulShutdown(context = {}, options = {}) {
         try {
             await onCleanup(shutdownDuration);
         } catch (err) {
-            logger.error('[shutdown] onCleanup callback error:', err.message);
+            logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[shutdown] onCleanup callback error:');
         }
     }
 

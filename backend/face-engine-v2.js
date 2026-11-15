@@ -27,7 +27,7 @@ const EMB_DIM = 512;
 function lazyDeps() {
     // الوحدة الأصلية قد لا تكون مثبَّتة (بيئة CI مثلاً) ⇒ لا نُسقط الخادم:
     // محرّك البصمة يعود معطّلًا برسالة واضحة بدل crash.
-    if (!ort) {try {ort = require('onnxruntime-node');} catch (e) {ort = null; logger.warn('[FACE] onnxruntime غير متاح — محرّك البصمة معطّل:', e.message);}}
+    if (!ort) {try {ort = require('onnxruntime-node');} catch (e) {ort = null; logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[FACE] onnxruntime غير متاح — محرّك البصمة معطّل:');}}
     if (!sharpLib) {sharpLib = require('sharp');}
     return { ort, sharp: sharpLib };
 }

@@ -61,7 +61,7 @@ async function publishCycle({ io, pool, logger }) {
         await client.query('COMMIT');
     } catch (e) {
         try { await client.query('ROLLBACK'); } catch (_) {}
-        logger.error('[outbox-publisher] claim failed:', e.message);
+        logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[outbox-publisher] claim failed:');
         stats.lastError = e.message;
         return;
     } finally {
@@ -93,7 +93,7 @@ async function publishCycle({ io, pool, logger }) {
                       WHERE id = $1 AND claim_id = $3`,
                     [event.id, String(e.message || e).slice(0, 500), WORKER_ID]);
             } catch (e2) {
-                logger.error('[outbox-publisher] failure-record failed:', e2.message);
+                logger.error({ err: { message: String(e2.message), stack: (e2 && e2.stack) || null } }, '[outbox-publisher] failure-record failed:');
             }
         }
     }
@@ -117,10 +117,10 @@ async function cycle({ io, pool, logger }) {
                     stats.deadLettered = n;
                     if (n > 0) {logger.warn(`[outbox-publisher] dead-lettered events: ${n} (abandoned after ${MAX_ATTEMPTS} attempts — audit only, never deleted)`);}
                 }
-            } catch (e) {logger.warn('[outbox-publisher] dead-letter check failed:', e.message);}
+            } catch (e) {logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[outbox-publisher] dead-letter check failed:');}
         }
     } catch (e) {
-        logger.error('[outbox-publisher] cycle error:', e.message);
+        logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[outbox-publisher] cycle error:');
         stats.lastError = e.message;
     } finally {
         running = false;
@@ -139,7 +139,7 @@ async function startOutboxPublisher({ io, pool, logger }) {
             return { active: false };
         }
     } catch (e) {
-        logger.warn('[outbox-publisher] تعذر فحص event_outbox — الناشر خامل:', e.message);
+        logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[outbox-publisher] تعذر فحص event_outbox — الناشر خامل:');
         return { active: false };
     }
     timer = setInterval(() => cycle({ io, pool, logger }).catch(() => {}), INTERVAL_MS);

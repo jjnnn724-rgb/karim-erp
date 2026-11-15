@@ -142,7 +142,7 @@ router.get('/config', jwtAuth, requireRole(...SALE_ROLES, 'accountant'), async (
             tiers,
         });
     } catch (e) {
-        logger.error('[buffet/config]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[buffet/config]');
         res.status(500).json({ error: 'BUFFET_CONFIG_FAILED', message: 'تعذر تحميل إعدادات البوفيه' });
     }
 });
@@ -191,7 +191,7 @@ router.put('/config/prices', jwtAuth, requireRole(...ADMIN_ROLES), async (req, r
         const tiers = await loadTiers();
         res.json({ saved, tiers, message: 'تم حفظ قائمة الأسعار — الفواتير الجديدة فقط تتأثر بالأسعار الجديدة' });
     } catch (e) {
-        logger.error('[buffet/prices]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[buffet/prices]');
         res.status(500).json({ error: 'BUFFET_PRICES_FAILED', message: 'تعذر حفظ أسعار البوفيه' });
     }
 });
@@ -230,7 +230,7 @@ router.post('/config/tiers', jwtAuth, requireRole(...ADMIN_ROLES), async (req, r
         res.status(201).json({ created: { ...created, id: Number(created.id), price: Number(created.price), vat_rate: Number(created.vat_rate) }, tiers });
     } catch (e) {
         if (e.code === 'DUPLICATE_TIER') {return res.status(409).json({ error: e.code, message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });}
-        logger.error('[buffet/add-tier]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[buffet/add-tier]');
         res.status(500).json({ error: 'BUFFET_ADD_TIER_FAILED', message: 'تعذر إضافة الفئة' });
     }
 });
@@ -289,7 +289,7 @@ router.put('/config/tiers/:id', jwtAuth, requireRole(...ADMIN_ROLES), async (req
         const tiers = await loadTiers();
         res.json({ updated: { id: Number(upd.rows[0].id), name_ar: upd.rows[0].name_ar, price: Number(upd.rows[0].price) }, tiers });
     } catch (e) {
-        logger.error('[buffet/update-tier]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[buffet/update-tier]');
         res.status(500).json({ error: 'BUFFET_UPDATE_TIER_FAILED', message: 'تعذر تحديث الفئة' });
     }
 });
@@ -312,7 +312,7 @@ router.delete('/config/tiers/:id', jwtAuth, requireRole(...ADMIN_ROLES), async (
         const tiers = await loadTiers();
         res.json({ disabled: Number(id), tiers, message: 'تم تعطيل الفئة (يبقى سجل مبيعاتها محفوظًا)' });
     } catch (e) {
-        logger.error('[buffet/disable-tier]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[buffet/disable-tier]');
         res.status(500).json({ error: 'BUFFET_DISABLE_TIER_FAILED', message: 'تعذر تعطيل الفئة' });
     }
 });
@@ -390,7 +390,7 @@ router.get('/live', jwtAuth, requireRole(...SALE_ROLES, 'accountant'), async (re
             } : null,
         });
     } catch (e) {
-        logger.error('[buffet/live]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[buffet/live]');
         res.status(500).json({ error: 'BUFFET_LIVE_FAILED', message: 'تعذر تحميل العداد الحي' });
     }
 });
@@ -453,7 +453,7 @@ router.get('/invoices', jwtAuth, requireRole(...SALE_ROLES, 'accountant'), async
         }));
         res.json({ data, count: data.length, date: day?.date || null, session_id: sessionId });
     } catch (e) {
-        logger.error('[buffet/invoices]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[buffet/invoices]');
         res.status(500).json({ error: 'BUFFET_INVOICES_FAILED', message: 'تعذر تحميل فواتير البوفيه' });
     }
 });
@@ -589,7 +589,7 @@ router.get('/report', jwtAuth, requireRole(...SALE_ROLES, 'accountant'), async (
             cashiers: cashiers.rows.map(c => ({ cashier: c.cashier, invoices: c.invoices, revenue: Number(c.revenue) })),
         });
     } catch (e) {
-        logger.error('[buffet/report]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[buffet/report]');
         res.status(500).json({ error: 'BUFFET_REPORT_FAILED', message: 'تعذر توليد تقرير البوفيه' });
     }
 });

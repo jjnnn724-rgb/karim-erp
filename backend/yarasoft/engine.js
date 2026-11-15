@@ -97,7 +97,7 @@ class YarasoftEngine {
         clearTimeout(this.timer);
         const delay = (delaySec ?? this.config.scanIntervalSec) * 1000;
         this.timer = setTimeout(() => this.runCycle().catch(err => {
-            logger.error('[YARASOFT] دورة غير متوقعة:', err.message);
+            logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[YARASOFT] دورة غير متوقعة:');
             this.lastError = err.message;
             this.scheduleScan(this.config.networkRetryIntervalSec);
         }), delay);
@@ -182,7 +182,7 @@ class YarasoftEngine {
                     this.lastError = error.message;
                     break; // أوقف الدوران — الشبكة ساقطة، الدورة القادمة تعيد
                 }
-                logger.error('[YARASOFT] فشل معالجة ملف:', error.message);
+                logger.error({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[YARASOFT] فشل معالجة ملف:');
                 this.lastError = error.message;
             } finally {
                 this.inFlight.delete(key);

@@ -31,7 +31,7 @@ router.get('/devices', async (req, res) => {
         const tokens = await pushTokensForUsers([req.user.id]);
         res.json({ devices: tokens.map((t) => ({ token: String(t).slice(0, 8) + '…', tokenHash8: t.slice(-6) })) });
     } catch (error) {
-        logger.error('[push_devices]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[push_devices]');
         res.status(500).json({ error: 'PUSH_DEVICES_FAILED', message: 'تعذر جلب أجهزتك' });
     }
 });
@@ -48,7 +48,7 @@ router.post('/register', async (req, res) => {
         logger.info({ userId: req.user.id, platform: String(req.body?.platform || 'android') }, '[push] device registered');
         res.json({ ok: true });
     } catch (error) {
-        logger.error('[push_register]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[push_register]');
         res.status(500).json({ error: 'PUSH_REGISTER_FAILED', message: 'تعذر تسجيل الجهاز' });
     }
 });
@@ -59,7 +59,7 @@ router.post('/unregister', async (req, res) => {
         const ok = await deletePushToken(req.body?.token);
         res.json({ ok });
     } catch (error) {
-        logger.error('[push_unregister]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[push_unregister]');
         res.status(500).json({ error: 'PUSH_UNREGISTER_FAILED', message: 'تعذر إلغاء التسجيل' });
     }
 });

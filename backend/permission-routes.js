@@ -32,7 +32,7 @@ router.get('/catalog', jwtAuth, requireRole(...ADMIN_ONLY), async (req, res) => 
             entitiesRead: p.entitiesRead, entitiesWrite: p.entitiesWrite,
         })));
     } catch (error) {
-        logger.error('[permissions/catalog]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[permissions/catalog]');
         fail(res, 500, 'CATALOG_FAILED', 'تعذر جلب كتالوج الصلاحيات');
     }
 });
@@ -50,7 +50,7 @@ router.get('/users/:id', jwtAuth, requireRole(...ADMIN_ONLY), async (req, res) =
               WHERE user_id = $1 ORDER BY id DESC LIMIT 50`, [userId])).rows;
         res.json({ user, grants, denies: [...denies], menus: menusForGrants(grants), audit });
     } catch (error) {
-        logger.error('[permissions/user-get]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[permissions/user-get]');
         fail(res, 500, 'PERMISSIONS_GET_FAILED', 'تعذر جلب صلاحيات المستخدم');
     }
 });
@@ -132,7 +132,7 @@ router.put('/users/:id', jwtAuth, requireRole(...ADMIN_ONLY), async (req, res) =
         const { grants, denies } = await getUserPerms(userId);
         res.json({ ok: true, user: target, grants: [...grants], denies: [...denies], menus: menusForGrants([...grants]) });
     } catch (error) {
-        logger.error('[permissions/user-put]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[permissions/user-put]');
         fail(res, 500, 'PERMISSIONS_SAVE_FAILED', 'تعذر حفظ الصلاحيات');
     }
 });
@@ -146,7 +146,7 @@ router.get('/me', jwtAuth, async (req, res) => {
         const menus = menusForGrants(g).filter((m) => !denySet.has(m));
         res.json({ grants: g, denies: d, menus, deniedMenus: [...denySet] });
     } catch (error) {
-        logger.error('[permissions/me]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[permissions/me]');
         fail(res, 500, 'PERMISSIONS_ME_FAILED', 'تعذر جلب صلاحياتك');
     }
 });

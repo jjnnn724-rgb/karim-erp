@@ -199,7 +199,7 @@ router.post('/journal/:id/approve', jwtAuth, requireRole(...WRITE_ROLES), async 
         if (req.io) {req.io.emit('entity_changed', { entity: 'journal', action: 'approve', data: rows[0] });}
         res.json({ ok: true, entry: rows[0] });
     } catch (e) {
-        logger.error('[LEDGER_APPROVE]', e.message);
+        logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[LEDGER_APPROVE]');
         const code = e.statusCode || 500;
         res.status(code).json({
             error: code === 423 ? 'PERIOD_LOCKED' : 'LEDGER_APPROVE_FAILED',
@@ -287,7 +287,7 @@ router.get('/cash-flow', jwtAuth, requireRole(...READ_ROLES), async (req, res, n
             openBal = Number(ob.rows[0]?.b || 0);
         } catch (e) {
             // رقم مالي تحميلي — لا يصح تجاهله بصمت؛ نُبلغ ونُعلّم الاستجابة.
-            logger.error('[CASH_FLOW] opening balance query failed:', e.message);
+            logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[CASH_FLOW] opening balance query failed:');
             openBal = 0;
             res.locals.openingUnavailable = true;
         }
@@ -317,7 +317,7 @@ function ensureAccountingPeriodsSchema() {
     return (async () => {
         if (fs.existsSync(file)) {await pool.query(fs.readFileSync(file, 'utf-8'));}
         logger.info('[ACCOUNTING_PERIODS] controls ready (status/draft/periods)');
-    })().catch((e) => { logger.error('[ACCOUNTING_PERIODS] init skipped:', e.message); });
+    })().catch((e) => { logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[ACCOUNTING_PERIODS] init skipped:'); });
 }
 
 module.exports = { router, isPeriodClosed, assertPeriodOpen, assertPeriodOpenInTx, closedError, ensureAccountingPeriodsSchema };

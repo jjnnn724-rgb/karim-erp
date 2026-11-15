@@ -214,7 +214,7 @@ async function audit(action, reason, metadata, req) {
             [action, reason || null, JSON.stringify({ ...(metadata || {}), by: req?.user?.id || null })]
         );
     } catch (e) {
-        logger.warn('[zatca-settings] audit write failed (non-fatal):', e.message);
+        logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[zatca-settings] audit write failed (non-fatal):');
     }
 }
 
@@ -233,7 +233,7 @@ router.get('/settings', jwtAuth, requireRole(...READ_ROLES), async (req, res) =>
             },
         });
     } catch (e) {
-        logger.error('[zatca/settings]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[zatca/settings]');
         res.status(500).json({ error: 'ZATCA_SETTINGS_READ_FAILED', message: 'تعذر قراءة إعدادات ZATCA' });
     }
 });
@@ -267,7 +267,7 @@ router.put('/settings', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) =
         await audit('UPDATE', 'حفظ إعدادات ZATCA', { fields: keys }, req);
         res.json({ ok: true, config: publicConfig(await loadConfig()) });
     } catch (e) {
-        logger.error('[zatca/settings PUT]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[zatca/settings PUT]');
         res.status(500).json({ error: 'ZATCA_SETTINGS_SAVE_FAILED', message: 'تعذر حفظ الإعدادات' });
     }
 });
@@ -308,7 +308,7 @@ router.post('/toggle', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) =>
         logger.info(`[zatca-settings] integration ${enabled ? 'ENABLED' : 'DISABLED'} by user ${req.user.id}`);
         res.json({ ok: true, enabled, config: publicConfig(await loadConfig()) });
     } catch (e) {
-        logger.error('[zatca/toggle]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[zatca/toggle]');
         res.status(500).json({ error: 'ZATCA_TOGGLE_FAILED', message: 'تعذر تغيير حالة الربط' });
     }
 });
@@ -366,7 +366,7 @@ router.post('/csr', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
         res.json({ ok: true, csr_pem: csr.csrPem, subject: csr.subject });
     } catch (e) {
         if (e.code === 'INVALID_VAT') {return res.status(422).json({ error: e.code, message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });}
-        logger.error('[zatca/csr]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[zatca/csr]');
         res.status(500).json({ error: 'CSR_FAILED', message: 'تعذر توليد CSR' });
     }
 });
@@ -418,7 +418,7 @@ router.post('/csid', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
             errors: data.errors || data,
         });
     } catch (e) {
-        logger.error('[zatca/csid]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[zatca/csid]');
         const networked = ['ENOTFOUND', 'EAI_AGAIN', 'ECONNREFUSED', 'ETIMEDOUT'].includes(e.code);
         res.status(502).json({
             error: 'CSID_REQUEST_FAILED',
@@ -467,7 +467,7 @@ router.post('/csid/manual', jwtAuth, requireRole(...WRITE_ROLES), async (req, re
         logger.info(`[zatca-settings] manual CSID stored by user ${req.user.id}`);
         res.json({ ok: true, csid_masked: maskSecret(token, 6), config: publicConfig(await loadConfig()) });
     } catch (e) {
-        logger.error('[zatca/csid/manual]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[zatca/csid/manual]');
         res.status(500).json({ error: 'CSID_MANUAL_FAILED', message: 'تعذر حفظ الشهادة' });
     }
 });
@@ -500,7 +500,7 @@ router.post('/apply-vat', jwtAuth, requireRole(...WRITE_ROLES), async (req, res)
             departments: updated.rows.map((r) => ({ id: String(r.id), name_ar: r.name_ar })),
         });
     } catch (e) {
-        logger.error('[zatca/apply-vat]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[zatca/apply-vat]');
         res.status(500).json({ error: 'APPLY_VAT_FAILED', message: 'تعذر تطبيق الرقم الضريبي على الأقسام' });
     }
 });
@@ -541,7 +541,7 @@ router.get('/queue', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
             })),
         });
     } catch (e) {
-        logger.error('[zatca/queue]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[zatca/queue]');
         res.status(500).json({ error: 'ZATCA_QUEUE_READ_FAILED', message: 'تعذر قراءة طابور ZATCA' });
     }
 });
@@ -567,7 +567,7 @@ router.post('/queue/retry', jwtAuth, requireRole(...WRITE_ROLES), async (req, re
         await audit('UPDATE', `إعادة جدولة فواتير ZATCA (${scope})`, { count: rows.rows.length }, req);
         res.json({ ok: true, requeued: rows.rows.length, scope });
     } catch (e) {
-        logger.error('[zatca/queue/retry]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[zatca/queue/retry]');
         res.status(500).json({ error: 'ZATCA_RETRY_FAILED', message: 'تعذر إعادة الجدولة' });
     }
 });

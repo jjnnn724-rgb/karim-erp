@@ -230,7 +230,7 @@ async function savePushToken(userId, token, platform) {
         );
         return true;
     } catch (error) {
-        logger.warn('[push] savePushToken failed:', error.message);
+        logger.warn({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[push] savePushToken failed:');
         return false;
     }
 }
@@ -244,7 +244,7 @@ async function deletePushToken(token) {
         const r = await pool.query('DELETE FROM push_tokens WHERE token = $1', [t]);
         return (r.rowCount || 0) > 0;
     } catch (error) {
-        logger.warn('[push] deletePushToken failed:', error.message);
+        logger.warn({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[push] deletePushToken failed:');
         return false;
     }
 }
@@ -259,7 +259,7 @@ async function pushTokensForUsers(userIds) {
         const r = await pool.query('SELECT token FROM push_tokens WHERE user_id = ANY($1::bigint[]) LIMIT 500', [ids]);
         return r.rows.map((x) => x.token);
     } catch (error) {
-        logger.warn('[push] pushTokensForUsers failed:', error.message);
+        logger.warn({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[push] pushTokensForUsers failed:');
         return [];
     }
 }
@@ -273,7 +273,7 @@ async function removePushTokens(tokens) {
         const r = await pool.query('DELETE FROM push_tokens WHERE token = ANY($1::text[])', [list]);
         return r.rowCount || 0;
     } catch (error) {
-        logger.warn('[push] removePushTokens failed:', error.message);
+        logger.warn({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[push] removePushTokens failed:');
         return 0;
     }
 }
@@ -289,7 +289,7 @@ async function notifyBestEffort(client, opts) {
         if (rows.length) {void sendRowsAsPush(rows);}
         return rows.length;
     } catch (error) {
-        logger.warn('[notifications] best-effort notify failed:', error.message);
+        logger.warn({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[notifications] best-effort notify failed:');
         return 0;
     }
 }

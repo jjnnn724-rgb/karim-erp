@@ -86,7 +86,7 @@ function createV3AccountingReadRouter(db = pool) {
             const { rows } = await db.query(SQL_CHART);
             res.json(rows);
         } catch (error) {
-            logger.error('[v3/accounting/chart]', error);
+            logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[v3/accounting/chart]');
             res.status(500).json({ error: 'LEDGER_CHART_FAILED', message: 'تعذر جلب شجرة الحسابات' });
         }
     });
@@ -98,7 +98,7 @@ function createV3AccountingReadRouter(db = pool) {
             const { rows } = await db.query(SQL_JOURNAL_LIST, [limit]);
             res.json(await attachLines(db, rows));
         } catch (error) {
-            logger.error('[v3/accounting/journal]', error);
+            logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[v3/accounting/journal]');
             res.status(500).json({ error: 'LEDGER_JOURNAL_FAILED', message: 'تعذر جلب القيود' });
         }
     });
@@ -116,7 +116,7 @@ function createV3AccountingReadRouter(db = pool) {
             const [entry] = await attachLines(db, rows);
             res.json(entry);
         } catch (error) {
-            logger.error('[v3/accounting/journal:id]', error);
+            logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[v3/accounting/journal:id]');
             res.status(500).json({ error: 'LEDGER_JOURNAL_FAILED', message: 'تعذر جلب القيد' });
         }
     });

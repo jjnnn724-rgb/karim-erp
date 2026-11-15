@@ -145,7 +145,7 @@ async function statusHandler(req, res) {
             })),
         });
     } catch (err) {
-        logger.error('[webauthn] status failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[webauthn] status failed:');
         return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذّر قراءة أجهزة الدخول — حاول مجددًا.' });
     }
 }
@@ -199,7 +199,7 @@ async function registerOptionsHandler(req, res) {
         res.set('Cache-Control', 'no-store');
         return res.json({ ok: true, options, device_label: sanitizeLabel(req.body && req.body.device_label, '') });
     } catch (err) {
-        logger.error('[webauthn] register options failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[webauthn] register options failed:');
         return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذّر بدء تسجيل الجهاز — حاول مجددًا.' });
     }
 }
@@ -266,10 +266,10 @@ async function registerVerifyHandler(req, res) {
             reason: 'تسجيل جهاز جديد للدخول بالبصمة / Face ID',
             metadata: { backed_up: Boolean(info.credentialBackedUp), device_type: info.credentialDeviceType || null },
             actor: { userId: live.id, userName: live.name, role: live.role, ip: req.ip, requestId: req.id },
-        }).catch((e) => logger.error('[webauthn] audit log failed:', e.message));
+        }).catch((e) => logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[webauthn] audit log failed:'));
         return res.json({ ok: true, message: 'تم تسجيل الجهاز — يمكنك الآن الدخول بالبصمة أو Face ID.' });
     } catch (err) {
-        logger.error('[webauthn] register verify failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[webauthn] register verify failed:');
         return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذّر إتمام تسجيل الجهاز — حاول مجددًا.' });
     }
 }
@@ -304,7 +304,7 @@ async function loginOptionsHandler(req, res) {
         res.set('Cache-Control', 'no-store');
         return res.json({ ok: true, options });
     } catch (err) {
-        logger.error('[webauthn] login options failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[webauthn] login options failed:');
         return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذّر بدء التحقق بالجهاز — حاول مجددًا.' });
     }
 }
@@ -364,10 +364,10 @@ async function loginVerifyHandler(req, res) {
             reason: 'دخول بمفتاح مرور (بصمة / Face ID)',
             metadata: {},
             actor: { userId: live.id, userName: live.name, role: live.role, ip: req.ip, requestId: req.id },
-        }).catch((e) => logger.error('[webauthn] audit log failed:', e.message));
+        }).catch((e) => logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[webauthn] audit log failed:'));
         return sendSession(req, res, live, { webauthn: true });
     } catch (err) {
-        logger.error('[webauthn] login verify failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[webauthn] login verify failed:');
         return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذّر التحقق من الجهاز — حاول مجددًا.' });
     }
 }
@@ -401,10 +401,10 @@ async function removeCredentialHandler(req, res) {
             reason: 'حذف جهاز دخول بالبصمة / Face ID',
             metadata: {},
             actor: { userId: live.id, userName: live.name, role: live.role, ip: req.ip, requestId: req.id },
-        }).catch((e) => logger.error('[webauthn] audit log failed:', e.message));
+        }).catch((e) => logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[webauthn] audit log failed:'));
         return res.json({ ok: true, message: 'تم حذف الجهاز.' });
     } catch (err) {
-        logger.error('[webauthn] remove failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[webauthn] remove failed:');
         return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذّر حذف الجهاز — حاول مجددًا.' });
     }
 }

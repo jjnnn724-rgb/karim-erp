@@ -108,7 +108,7 @@ router.get('/day-close/status', jwtAuth, requireRole('manager', 'admin', 'accoun
             can_close: !existing && sessions.length > 0,
         });
     } catch (e) {
-        logger.error('[day-close/status]', e.message);
+        logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[day-close/status]');
         res.status(500).json({ error: 'DAYCLOSE_STATUS_FAILED', message: 'تعذر جلب حالة الإقفال' });
     }
 });
@@ -253,7 +253,7 @@ router.post('/day-close', jwtAuth, requireRole('manager', 'admin'), async (req, 
                 }
                 if (journalsRepaired) { logger.warn(`[day-close] أُعيد ترحيل ${journalsRepaired} قيد بيع مفقود ليوم ${date}`); }
                 if (journalsVoided) { logger.warn(`[day-close] ${journalsVoided} قيد بيع مُبطَل عمدًا — لم يُعد ترحيله ليوم ${date}`); }
-            } catch (sweepErr) { logger.error('[day-close] journal sweep failed (non-fatal):', sweepErr.message); }
+            } catch (sweepErr) { logger.error({ err: { message: String(sweepErr.message), stack: (sweepErr && sweepErr.stack) || null } }, '[day-close] journal sweep failed (non-fatal):'); }
 
             // ROOT FIX 2026-10-27: نفس الحلقة لأذون الصرف المعتمدة — ترحيل
             // قيدها best-effort بعد COMMIT، فإذن بلا قيد = مخزون خرج بلا تكلفة
@@ -325,14 +325,14 @@ router.post('/day-close', jwtAuth, requireRole('manager', 'admin'), async (req, 
                 metadata: { z: result.z.z_number, date, variance: result.z.total_variance },
                 actor: { userId: req.user.id, userName: req.user.name, role: req.user.role, ip: req.ip, requestId: req.id },
             });
-        } catch (e) { logger.error('[day-close] audit failed (non-fatal):', e.message); }
+        } catch (e) { logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[day-close] audit failed (non-fatal):'); }
         if (req.io) {req.io.emit('entity_changed', { entity: 'pos_day_close', action: 'close', data: result.z });}
         res.status(201).json({ ok: true, ...result });
     } catch (err) {
         const map = { 404: 'NOT_FOUND', 409: 'DAYCLOSE_EXISTS', 422: 'DAYCLOSE_INVALID', 423: 'PERIOD_LOCKED', 428: 'NEEDS_MANAGER', 23505: 'DAYCLOSE_EXISTS' };
         const code = err.code || err.statusCode || 500;
         if (map[code]) {return res.status(String(code) === '23505' ? 409 : code).json({ error: map[code], message: code === '23505' ? 'الإقفال اليومي مسجل مسبقًا لهذا التاريخ' : err.message });}
-        logger.error('[day-close]', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[day-close]');
         res.status(500).json({ error: 'DAYCLOSE_FAILED', message: 'تعذر الإقفال اليومي' });
     }
 });
@@ -345,7 +345,7 @@ router.get('/day-close/:zNumber', jwtAuth, requireRole('manager', 'admin', 'acco
         if (!rows[0]) {return res.status(404).json({ error: 'Z_NOT_FOUND', message: 'رقم الإقفال غير موجود' });}
         res.json({ ok: true, z: rows[0] });
     } catch (e) {
-        logger.error('[day-close/get]', e.message);
+        logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[day-close/get]');
         res.status(500).json({ error: 'DAYCLOSE_FETCH_FAILED', message: 'تعذر جلب الإقفال' });
     }
 });
@@ -359,7 +359,7 @@ function ensureDayCloseSchema() {
     return (async () => {
         if (fs.existsSync(file)) {await pool.query(fs.readFileSync(file, 'utf8'));}
         logger.info('[DAY_CLOSE_SCHEMA] ready (pos_day_closes)');
-    })().catch((e) => logger.error('[DAY_CLOSE_SCHEMA] skipped:', e.message));
+    })().catch((e) => logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[DAY_CLOSE_SCHEMA] skipped:'));
 }
 
 module.exports = { router, ensureDayCloseSchema, VARIANCE_THRESHOLD };

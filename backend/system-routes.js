@@ -171,7 +171,7 @@ function listBackups({ verify = false } = {}) {
 let lastBackupAt = 0;
 router.get('/backups', jwtAuth, requireRole('admin'), async (req, res) => {
     try { res.json({ ok: true, ...listBackups({ verify: req.query.verify === '1' }) }); }
-    catch (e) { logger.error('[system/backups]', e.message); res.status(500).json({ error: 'SYS_BACKUP_LIST_FAILED', message: 'تعذر جلب قائمة النسخ' }); }
+    catch (e) { logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[system/backups]'); res.status(500).json({ error: 'SYS_BACKUP_LIST_FAILED', message: 'تعذر جلب قائمة النسخ' }); }
 });
 
 router.post('/backup', jwtAuth, requireRole('admin'), async (req, res) => {
@@ -196,7 +196,7 @@ router.post('/backup', jwtAuth, requireRole('admin'), async (req, res) => {
             }
         } catch (e) { logger.warn('[system/backup] env snapshot skipped: ' + e.message); }
         res.json({ ok: true, ...listBackups() });
-    } catch (e) { logger.error('[system/backup]', e.message); res.status(500).json({ error: 'BACKUP_FAILED', message: 'فشل النسخ الاحتياطي' }); }
+    } catch (e) { logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[system/backup]'); res.status(500).json({ error: 'BACKUP_FAILED', message: 'فشل النسخ الاحتياطي' }); }
 });
 
 // ─── رفع نسخة احتياطية خارجية (.sql) لتظهر في القائمة وتكون قابلة للاستعادة ───
@@ -248,7 +248,7 @@ router.post('/upload', jwtAuth, requireRole('admin'), (req, res) => {
             return res.status(201).json({ ok: true, file: base, ...listBackups() });
         } catch (e) {
             try { if (req.file?.path && fs.existsSync(req.file.path)) {fs.unlinkSync(req.file.path);} } catch (e) { logger.debug('[system/upload] تعذر حذف الملف المؤقت:', e.message); }
-            logger.error('[system/upload]', e.message);
+            logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[system/upload]');
             return res.status(500).json({ error: 'UPLOAD_FAILED', message: 'فشل حفظ الملف' });
         }
     });
@@ -274,13 +274,13 @@ router.post('/restore', jwtAuth, requireRole('admin'), async (req, res) => {
         // فصل باقي اتصالات القاعدة حتى لا تعلق الاستعادة على الأقفال
         try {
             await pool.query(`SELECT pg_terminate_backend(pid) FROM pg_stat_activity WHERE datname = current_database() AND pid <> pg_backend_pid()`);
-        } catch (e) { logger.warn('[system/restore] تعذر قطع اتصالات قاعدة البيانات النشطة:', e.message); }
+        } catch (e) { logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[system/restore] تعذر قطع اتصالات قاعدة البيانات النشطة:'); }
         const r = await runNode(path.join(rootDir(), 'database', 'scripts', 'restore.js'), [full, '--yes'], 600000);
         if (!r.ok) {return res.status(500).json({ error: 'RESTORE_FAILED', message: 'فشلت الاستعادة — نسخة الأمان موجودة', log: (r.err || r.out || '').slice(-800) });}
         // FIX 2026-10-11 (M22): re-initialize the DB pool after restore —
         // pg_terminate_backend killed all connections but the Pool object
         // still held dead sockets. reinitPool() creates fresh connections.
-        try { await require('./shared-pool').reinitPool(); } catch (e) { logger.warn('[system/restore] pool reinit failed:', e.message); }
+        try { await require('./shared-pool').reinitPool(); } catch (e) { logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[system/restore] pool reinit failed:'); }
         // استعادة .env إن طُلبت (تتطلب إعادة تشغيل السيرفر لتُطبق)
         let envRestored = false;
         if (req.body?.restoreEnv === true && fs.existsSync(`${full}.env`)) {
@@ -292,7 +292,7 @@ router.post('/restore', jwtAuth, requireRole('admin'), async (req, res) => {
         }
         try { if (req.io) {req.io.emit('system:restored', { file, at: new Date().toISOString(), ms: Date.now() - t0 });} } catch (e) { logger.debug('[system/restore] تعذر البث:', e.message); }
         res.json({ ok: true, file, ms: Date.now() - t0, envRestored, restartNeeded: true, message: 'تمت الاستعادة — أعد تشغيل خدمة السيرفر' });
-    } catch (e) { logger.error('[system/restore]', e.message); res.status(500).json({ error: 'RESTORE_FAILED', message: 'فشلت الاستعادة' }); }
+    } catch (e) { logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[system/restore]'); res.status(500).json({ error: 'RESTORE_FAILED', message: 'فشلت الاستعادة' }); }
 });
 
 // ─── مدقق النظام الشامل (فحص + إصلاح آمن) — مدير فقط ───
@@ -305,7 +305,7 @@ router.get('/audit', jwtAuth, requireRole('admin'), async (req, res) => {
         const result = await runSystemAudit({ fix: false, domains, save: true, ctx: auditCtx() });
         res.json({ ok: true, ...result });
     } catch (e) {
-        logger.error('[system/audit]', e.message);
+        logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[system/audit]');
         res.status(500).json({ error: 'AUDIT_FAILED', message: 'تعذر تشغيل مدقق النظام' });
     }
 });
@@ -319,7 +319,7 @@ router.post('/audit/fix', jwtAuth, requireRole('admin'), async (req, res) => {
         try { if (req.io) {req.io.emit('system:audited', { score: result.score, grade: result.grade, fix: true, dryRun, at: new Date().toISOString() });} } catch (e) { logger.debug('[system/audit] تعذر البث:', e.message); }
         res.json({ ok: true, ...result });
     } catch (e) {
-        logger.error('[system/audit/fix]', e.message);
+        logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[system/audit/fix]');
         res.status(500).json({ error: 'AUDIT_FIX_FAILED', message: 'تعذر تنفيذ إصلاحات المدقق' });
     }
 });
@@ -352,7 +352,7 @@ router.post('/brotli-cache/invalidate', jwtAuth, requireRole('admin'), (req, res
         logger.info(`[system/brotli-cache] invalidate ${result.scope} removed=${result.removed} bytes=${result.bytes} by ${req.user?.name || req.user?.id || 'admin'}`);
         res.json({ ok: true, ...result, policyVersion: brotli.policyVersion, cacheDir: brotli.cacheDir });
     } catch (e) {
-        logger.error('[system/brotli-cache]', e.message);
+        logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[system/brotli-cache]');
         res.status(500).json({ error: 'INVALIDATE_FAILED', message: 'تعذر إبطال كاش Brotli' });
     }
 });

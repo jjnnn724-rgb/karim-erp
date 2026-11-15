@@ -138,7 +138,7 @@ router.get('/purchase-requests/shortages', jwtAuth, requireRole(...PR_READ_ROLES
             suggestedQty: prShortageSuggestion(row.qty, row.minQty),
         })));
     } catch (error) {
-        logger.error('[pr_shortages]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[pr_shortages]');
         res.status(500).json({ error: 'PR_SHORTAGES_FAILED', message: 'تعذر جلب نواقص المخزن' });
     }
 });
@@ -149,7 +149,7 @@ router.get('/purchase-requests', jwtAuth, requireRole(...PR_READ_ROLES), async (
         const r = await pool.query('SELECT * FROM purchase_requests ORDER BY created_at DESC LIMIT 200');
         res.json(r.rows);
     } catch (error) {
-        logger.error('[pr_list]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[pr_list]');
         res.status(500).json({ error: 'PR_LIST_FAILED', message: 'تعذر جلب طلبات الشراء' });
     }
 });
@@ -221,7 +221,7 @@ router.post('/purchase-requests', jwtAuth, requireRole(...PR_CREATE_ROLES), asyn
         res.status(201).json(inserted);
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[pr_create]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[pr_create]');
         res.status(500).json({ error: 'PR_CREATE_FAILED', message: 'تعذر إنشاء طلب الشراء' });
     } finally { client.release(); }
 });
@@ -254,8 +254,8 @@ router.post('/purchase-requests/:id/chef-approve', jwtAuth, requireRole(...PR_CH
         res.json(updated);
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[pr_create]', error);
-        logger.error('[pr_chef_approve]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[pr_create]');
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[pr_chef_approve]');
         res.status(500).json({ error: 'PR_CHEF_APPROVE_FAILED', message: 'تعذر توقيع الشيف على طلب الشراء' });
     } finally { client.release(); }
 });
@@ -289,8 +289,8 @@ router.post('/purchase-requests/:id/chef-reject', jwtAuth, requireRole(...PR_CHE
         res.json(updated);
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[pr_create]', error);
-        logger.error('[pr_chef_reject]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[pr_create]');
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[pr_chef_reject]');
         res.status(500).json({ error: 'PR_CHEF_REJECT_FAILED', message: 'تعذر رفض طلب الشراء' });
     } finally { client.release(); }
 });
@@ -323,8 +323,8 @@ router.post('/purchase-requests/:id/gm-approve', jwtAuth, requireRole(...PR_GM_R
         res.json(updated);
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[pr_create]', error);
-        logger.error('[pr_gm_approve]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[pr_create]');
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[pr_gm_approve]');
         res.status(500).json({ error: 'PR_GM_APPROVE_FAILED', message: 'تعذر اعتماد المدير العام لطلب الشراء' });
     } finally { client.release(); }
 });
@@ -355,7 +355,7 @@ router.post('/purchase-requests/:id/revert-to-chef-approved', jwtAuth, requireRo
         res.json({ ok: true, request: updated, message: 'تمت إعادة الطلب إلى الشيف للتعديل' });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[pr_revert_to_chef_approved]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[pr_revert_to_chef_approved]');
         res.status(500).json({ error: 'PR_REVERT_FAILED', message: 'تعذر إعادة الطلب إلى الشيف للتعديل' });
     } finally { client.release(); }
 });
@@ -389,8 +389,8 @@ router.post('/purchase-requests/:id/gm-reject', jwtAuth, requireRole(...PR_GM_RO
         res.json(updated);
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[pr_create]', error);
-        logger.error('[pr_gm_reject]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[pr_create]');
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[pr_gm_reject]');
         res.status(500).json({ error: 'PR_GM_REJECT_FAILED', message: 'تعذر رفض طلب الشراء' });
     } finally { client.release(); }
 });
@@ -597,7 +597,7 @@ async function _retiredPRReceive(req, res) {
         res.json({ ...updated, stockChanges, transactions, expenses, deliverMode: finalMode });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[pr_create]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[pr_create]');
         logger.error({ err: error.message, stack: String(error.stack || '').slice(0, 500) }, '[pr_wh_receive]');
         res.status(500).json({ error: 'PR_RECEIVE_FAILED', message: 'تعذر تسجيل استلام المخزن' });
     } finally { client.release(); }
@@ -626,8 +626,8 @@ router.post('/purchase-requests/:id/cancel', jwtAuth, requireRole(...PR_CANCEL_R
         res.json(updated);
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[pr_create]', error);
-        logger.error('[pr_cancel]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[pr_create]');
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[pr_cancel]');
         res.status(500).json({ error: 'PR_CANCEL_FAILED', message: 'تعذر إلغاء طلب الشراء' });
     } finally { client.release(); }
 });
@@ -653,7 +653,7 @@ router.delete('/purchase-requests/:id', jwtAuth, requireRole(...PR_GM_ROLES), as
         res.json({ ok: true, id: pr.id });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[pr_delete]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[pr_delete]');
         res.status(500).json({ error: 'PR_DELETE_FAILED', message: 'تعذر حذف طلب الشراء' });
     } finally { client.release(); }
 });

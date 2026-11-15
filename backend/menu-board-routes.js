@@ -391,7 +391,7 @@ async function loadSettings() {
             };
         }
     } catch (e) {
-        logger.warn('[menu-board] settings load failed, using defaults:', e.message);
+        logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[menu-board] settings load failed, using defaults:');
     }
     return {
         title: 'مطاعم الشرفه العالمي',
@@ -547,13 +547,13 @@ async function getPublicBoardCached() {
 
 function register(app, opts = {}) {
     ensureV2StateTable().catch(e => {
-        try { logger.error('[menu-board] v2 state table init failed:', e.message); } catch (_) { /* logging only */ }
+        try { logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[menu-board] v2 state table init failed:'); } catch (_) { /* logging only */ }
     });
     /* جدول المنيو المستقل + ترحيل لمرة واحدة من الكاشير (قراءة فقط) */
     ensureMenuItemsTable()
         .then(() => migrateFromCashierOnce())
         .then(() => { try { opts.io.emit('menu_board_changed', { at: new Date().toISOString() }); } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ } })
-        .catch(e => { try { logger.error('[menu-board] independent table init failed:', e.message); } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ } });
+        .catch(e => { try { logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[menu-board] independent table init failed:'); } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ } });
     // ─── عام: بيانات العرض للشاشة (معلومات منيو علنية بطبيعتها — معروضة في المول) ───
     app.get('/api/menu-board/public', async (req, res) => {
         try {
@@ -569,7 +569,7 @@ function register(app, opts = {}) {
             });
             res.json(board);
         } catch (e) {
-            logger.error('[menu-board] public load failed:', e.message);
+            logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[menu-board] public load failed:');
             res.status(500).json({ error: 'INTERNAL_ERROR' });
         }
     });
@@ -589,7 +589,7 @@ function register(app, opts = {}) {
                 updatedAt: row?.updated_at ? new Date(row.updated_at).toISOString() : null,
             });
         } catch (e) {
-            logger.error('[menu-board] v2 state load failed:', e.message);
+            logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[menu-board] v2 state load failed:');
             res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر تحميل بيانات v2' });
         }
     });
@@ -652,7 +652,7 @@ function register(app, opts = {}) {
                     });
                 }
             } catch (e) {
-                logger.warn('[menu-board] v2 change notification failed:', e.message);
+                logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[menu-board] v2 change notification failed:');
             }
             res.json({
                 version: Number(saved.version),
@@ -662,7 +662,7 @@ function register(app, opts = {}) {
             if (transactionOpen && client) {
                 await client.query('ROLLBACK').catch(() => {});
             }
-            logger.error('[menu-board] v2 state save failed:', e.message);
+            logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[menu-board] v2 state save failed:');
             res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر حفظ بيانات v2' });
         } finally {
             if (client) {
@@ -686,7 +686,7 @@ function register(app, opts = {}) {
             });
             res.send(Buffer.from(match[1], 'base64'));
         } catch (e) {
-            logger.error('[menu-board] background load failed:', e.message);
+            logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[menu-board] background load failed:');
             res.status(500).json({ error: 'INTERNAL_ERROR' });
         }
     });
@@ -811,7 +811,7 @@ function register(app, opts = {}) {
             try { if (opts.io) {opts.io.emit('menu_board_changed', { at: new Date().toISOString() });} } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
             res.json({ ...row, board_categories: savedCategories });
         } catch (e) {
-            logger.error('[menu-board] settings save failed:', e.message);
+            logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[menu-board] settings save failed:');
             res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر حفظ الإعدادات' });
         }
     });
@@ -830,7 +830,7 @@ function register(app, opts = {}) {
                 })),
             });
         } catch (e) {
-            logger.error('[menu-board] weekly load failed:', e.message);
+            logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[menu-board] weekly load failed:');
             res.status(500).json({ error: 'INTERNAL_ERROR' });
         }
     });
@@ -864,7 +864,7 @@ function register(app, opts = {}) {
             try { if (opts.io) {opts.io.emit('menu_board_changed', { at: new Date().toISOString() });} } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
             res.json({ ok: true, days: clean.length });
         } catch (e) {
-            logger.error('[menu-board] weekly save failed:', e.message);
+            logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[menu-board] weekly save failed:');
             res.status(500).json({ error: 'INTERNAL_ERROR' });
         }
     });
@@ -877,7 +877,7 @@ function register(app, opts = {}) {
                   FROM menu_board_items ORDER BY section, sort_order, id LIMIT 500`);
             res.json({ items: r.rows });
         } catch (e) {
-            logger.error('[menu-board] items load failed:', e.message);
+            logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[menu-board] items load failed:');
             res.status(500).json({ error: 'INTERNAL_ERROR' });
         }
     });
@@ -915,7 +915,7 @@ function register(app, opts = {}) {
             try { if (opts.io) {opts.io.emit('menu_board_changed', { at: new Date().toISOString() });} } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
             res.json(r.rows[0]);
         } catch (e) {
-            logger.error('[menu-board] item patch failed:', e.message);
+            logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[menu-board] item patch failed:');
             res.status(500).json({ error: 'INTERNAL_ERROR' });
         }
     });
@@ -940,7 +940,7 @@ function register(app, opts = {}) {
             try { if (opts.io) {opts.io.emit('menu_board_changed', { at: new Date().toISOString() });} } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
             res.status(201).json(r.rows[0]);
         } catch (e) {
-            logger.error('[menu-board] item create failed:', e.message);
+            logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[menu-board] item create failed:');
             res.status(500).json({ error: 'INTERNAL_ERROR' });
         }
     });
@@ -956,7 +956,7 @@ function register(app, opts = {}) {
             try { if (opts.io) {opts.io.emit('menu_board_changed', { at: new Date().toISOString() });} } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
             res.json({ ok: true, id: pid });
         } catch (e) {
-            logger.error('[menu-board] item delete failed:', e.message);
+            logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[menu-board] item delete failed:');
             res.status(500).json({ error: 'INTERNAL_ERROR' });
         }
     });

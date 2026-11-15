@@ -245,7 +245,7 @@ router.get('/inventory/locations', jwtAuth, requireRole(...AUDIT_READ_ROLES), as
         `)).rows;
         res.json(rows);
     } catch (error) {
-        logger.error('[stocktaking_locations]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[stocktaking_locations]');
         res.status(500).json({ error: 'STOCKTAKING_LOCATIONS_FAILED', message: 'تعذر تحميل مخازن الجرد' });
     }
 });
@@ -268,7 +268,7 @@ router.get('/inventory/locations/:id/preview', jwtAuth, requireRole(...AUDIT_REA
         const qty = filtered.reduce((sum, row) => sum + Math.max(Number(row.system_qty), 0), 0);
         res.json({ items_count: filtered.length, on_hand_value: Math.round(value * 100) / 100, on_hand_qty: Math.round(qty * 1000) / 1000 });
     } catch (error) {
-        logger.error('[stocktaking_location_preview]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[stocktaking_location_preview]');
         res.status(500).json({ error: 'STOCKTAKING_PREVIEW_FAILED', message: 'تعذر توليد معاينة نطاق الجرد' });
     }
 });
@@ -281,7 +281,7 @@ router.get('/inventory/audits/:id', jwtAuth, requireRole(...AUDIT_READ_ROLES), a
         if (!detail) {return res.status(404).json({ error: 'AUDIT_NOT_FOUND', message: 'جلسة الجرد غير موجودة' });}
         res.json(detail);
     } catch (error) {
-        logger.error('[stocktaking_detail]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[stocktaking_detail]');
         res.status(500).json({ error: 'STOCKTAKING_DETAIL_FAILED', message: 'تعذر تحميل تفاصيل جلسة الجرد' });
     }
 });
@@ -324,7 +324,7 @@ router.put('/inventory/audits/:id/counts/:itemId', jwtAuth, requireRole(...AUDIT
         });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[stocktaking_save_count]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[stocktaking_save_count]');
         res.status(500).json({ error: 'STOCKTAKING_COUNT_SAVE_FAILED', message: 'تعذر حفظ العد' });
     } finally { client.release(); }
 });
@@ -369,7 +369,7 @@ router.post('/inventory/audits/:id/counts', jwtAuth, requireRole(...AUDIT_WRITE_
         res.json({ saved_count: saved.length, rejected, counted_items: countedItems });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[stocktaking_bulk_counts]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[stocktaking_bulk_counts]');
         res.status(500).json({ error: 'STOCKTAKING_BULK_FAILED', message: 'تعذر حفظ دفعة العد' });
     } finally { client.release(); }
 });
@@ -404,7 +404,7 @@ router.delete('/inventory/audits/:id/counts/:itemId', jwtAuth, requireRole(...AU
         res.json({ item: { ...cleared, is_counted: false }, counted_items: countedItems });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[stocktaking_clear_count]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[stocktaking_clear_count]');
         res.status(500).json({ error: 'STOCKTAKING_CLEAR_FAILED', message: 'تعذر مسح العد' });
     } finally { client.release(); }
 });
@@ -447,7 +447,7 @@ router.post('/inventory/audits/:id/cancel', jwtAuth, requireRole(...AUDIT_WRITE_
         res.json({ audit: updated, message: 'تم إلغاء جلسة الجرد دون أي تأثير على الأرصدة' });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[stocktaking_cancel]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[stocktaking_cancel]');
         res.status(500).json({ error: 'STOCKTAKING_CANCEL_FAILED', message: 'تعذر إلغاء جلسة الجرد' });
     } finally { client.release(); }
 });
@@ -555,7 +555,7 @@ ${auditHeader(detail.audit, 'ورقة جرد المخزون — عدّ يدوي'
         res.set('Content-Type', 'text/html; charset=utf-8');
         res.send(printShell(`ورقة جرد ${detail.audit.audit_number}`, body));
     } catch (error) {
-        logger.error('[stocktaking_count_sheet]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[stocktaking_count_sheet]');
         res.status(500).json({ error: 'STOCKTAKING_SHEET_FAILED', message: 'تعذر توليد ورقة الجرد' });
     }
 });
@@ -613,7 +613,7 @@ ${audit.status === 'approved' ? `<div class="meta"><div><span>اعتُمد بو�
         res.set('Content-Type', 'text/html; charset=utf-8');
         res.send(printShell(`تقرير جرد ${audit.audit_number}`, body));
     } catch (error) {
-        logger.error('[stocktaking_report]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[stocktaking_report]');
         res.status(500).json({ error: 'STOCKTAKING_REPORT_FAILED', message: 'تعذر توليد تقرير الجرد' });
     }
 });

@@ -44,7 +44,7 @@ async function getMode() {
         const mode = result.rows[0]?.value?.mode;
         return MODES.includes(mode) ? mode : 'connected';
     } catch (error) {
-        logger.warn('[legacy-source] تعذّرت قراءة الوضع، سيُعامل كمستقل:', error.message);
+        logger.warn({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[legacy-source] تعذّرت قراءة الوضع، سيُعامل كمستقل:');
         return 'standalone';
     }
 }
@@ -77,7 +77,7 @@ function applyMode(mode, app) {
             logger.info('[legacy-source] الوضع المتصل: أُعيد تشغيل مزامنة Yarasoft.');
         }
     } catch (error) {
-        logger.warn('[legacy-source] تعذّر تطبيق الوضع على المحرك:', error.message);
+        logger.warn({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[legacy-source] تعذّر تطبيق الوضع على المحرك:');
     }
 }
 

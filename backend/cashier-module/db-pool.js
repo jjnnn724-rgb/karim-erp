@@ -7,7 +7,7 @@ const { logger } = require("../logger");
 const { pool } = require('../shared-pool');
 
 pool.on('error', (err) => {
-    logger.error('[pos db-pool] Unexpected idle client error:', err.message);
+    logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[pos db-pool] Unexpected idle client error:');
 });
 
 // Healthy pool monitoring

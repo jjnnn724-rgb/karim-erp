@@ -63,7 +63,7 @@ router.get('/status', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
             openSections,
         });
     } catch (error) {
-        logger.error('[yarasoft/status]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/status]');
         res.status(500).json({ error: 'YARASOFT_STATUS_FAILED', message: 'تعذر جلب حالة تكامل قاعدة الكاشير' });
     }
 });
@@ -87,7 +87,7 @@ router.get('/log', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
              ORDER BY created_at DESC LIMIT $1`, params);
         res.json(rows);
     } catch (error) {
-        logger.error('[yarasoft/log]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/log]');
         res.status(500).json({ error: 'YARASOFT_LOG_FAILED', message: 'تعذر جلب سجل الاستيراد' });
     }
 });
@@ -100,7 +100,7 @@ router.post('/run-now', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) =
         const r = await eng.runNow();
         res.json({ ok: true, ...r, status: eng.getStatus() });
     } catch (error) {
-        logger.error('[yarasoft/run-now]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/run-now]');
         res.status(502).json({ error: 'YARASOFT_RUN_FAILED', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
@@ -118,7 +118,7 @@ router.post('/reprocess/:id', jwtAuth, requireRole(...WRITE_ROLES), async (req, 
         // أعد الملف من Failed/Processing إلى Invoices ليكتشفه المحرك من جديد
         res.json({ ok: true, message: 'أُعيد فتح الفاتورة — سيُعاد اكتشاف الملف في الدورة القادمة', row: row.rows[0] });
     } catch (error) {
-        logger.error('[yarasoft/reprocess]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/reprocess]');
         res.status(500).json({ error: 'YARASOFT_REPROCESS_FAILED', message: 'تعذر إعادة فتح الفاتورة' });
     }
 });
@@ -136,7 +136,7 @@ router.get('/review', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
             [req.query.open === '1' ? false : req.query.open === '0' ? true : null]);
         res.json(rows);
     } catch (error) {
-        logger.error('[yarasoft/review]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/review]');
         res.status(500).json({ error: 'YARASOFT_REVIEW_FAILED', message: 'تعذر جلب أصناف المراجعة' });
     }
 });
@@ -180,7 +180,7 @@ router.post('/review/:id/resolve', jwtAuth, requireRole(...WRITE_ROLES), async (
         res.json({ ok: true, remainingForInvoice: remaining, message: remaining === 0 ? 'اكتملت أصناف الفاتورة — ستُستورد في الدورة القادمة' : `بقي ${remaining} صنفًا بلا ربط لهذه الفاتورة` });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[yarasoft/review/resolve]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/review/resolve]');
         res.status(500).json({ error: 'YARASOFT_RESOLVE_FAILED', message: 'تعذر حل صنف المراجعة' });
     } finally {
         client.release();
@@ -198,7 +198,7 @@ router.get('/mappings', jwtAuth, requireRole(...READ_ROLES), async (req, res) =>
              ORDER BY m.updated_at DESC LIMIT 500`);
         res.json(rows);
     } catch (error) {
-        logger.error('[yarasoft/mappings]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/mappings]');
         res.status(500).json({ error: 'YARASOFT_MAPPINGS_FAILED', message: 'تعذر جلب روابط المنتجات' });
     }
 });
@@ -214,7 +214,7 @@ router.post('/mappings', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) 
         if (['INTERNAL_PRODUCT_REQUIRED', 'EXTERNAL_KEY_REQUIRED', 'PRODUCT_NOT_FOUND'].includes(error.code)) {
             return res.status(422).json({ error: error.code, message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
         }
-        logger.error('[yarasoft/mappings POST]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/mappings POST]');
         res.status(500).json({ error: 'YARASOFT_MAPPING_FAILED', message: 'تعذر حفظ الربط' });
     }
 });
@@ -227,7 +227,7 @@ router.delete('/mappings/:id', jwtAuth, requireRole(...WRITE_ROLES), async (req,
         if (!rows[0]) {return res.status(404).json({ error: 'NOT_FOUND', message: 'الربط غير موجود' });}
         res.json({ ok: true });
     } catch (error) {
-        logger.error('[yarasoft/mappings DELETE]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/mappings DELETE]');
         res.status(500).json({ error: 'YARASOFT_MAPPING_DELETE_FAILED', message: 'تعذر تعطيل الربط' });
     }
 });
@@ -243,7 +243,7 @@ router.get('/sections/map', jwtAuth, requireRole(...READ_ROLES), async (req, res
              FROM yarasoft_revenue_map m ORDER BY m.src_table, m.display_ar`);
         res.json(rows);
     } catch (error) {
-        logger.error('[yarasoft/sections-map]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/sections-map]');
         res.status(500).json({ error: 'YS_SECTIONS_FAILED', message: 'تعذر جلب خريطة الأقسام' });
     }
 });
@@ -256,7 +256,7 @@ router.get('/sections/unmapped', jwtAuth, requireRole(...READ_ROLES), async (req
              FROM yarasoft_unmapped_sections WHERE resolved = false ORDER BY last_seen DESC LIMIT 200`);
         res.json(rows);
     } catch (error) {
-        logger.error('[yarasoft/sections-unmapped]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/sections-unmapped]');
         res.status(500).json({ error: 'YS_UNMAPPED_FAILED', message: 'تعذر جلب الأقسام غير المعتمدة' });
     }
 });
@@ -345,7 +345,7 @@ router.post('/sections/unmapped/:id/approve', jwtAuth, requireRole(...WRITE_ROLE
         res.json({ ok: true, mapId: mapRow?.id || null, deptCode, displayAr: name, reopenedInvoices: replayed || 0 });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[yarasoft/sections-approve]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/sections-approve]');
         res.status(500).json({ error: 'YS_APPROVE_FAILED', message: 'تعذر اعتماد القسم' });
     } finally {
         client.release();
@@ -364,7 +364,7 @@ router.get('/log/:id/detail', jwtAuth, requireRole(...READ_ROLES), async (req, r
         if (typeof payload === 'string') { try { payload = JSON.parse(payload); } catch (_) { payload = null; } }
         res.json({ ...rows[0], payload });
     } catch (error) {
-        logger.error('[yarasoft/log-detail]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/log-detail]');
         res.status(500).json({ error: 'YS_DETAIL_FAILED', message: 'تعذر جلب تفاصيل الفاتورة' });
     }
 });
@@ -389,7 +389,7 @@ router.post('/sections/map/:id/rename', jwtAuth, requireRole(...WRITE_ROLES), as
         res.json({ ok: true, id, displayAr });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[yarasoft/sections-rename]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/sections-rename]');
         res.status(500).json({ error: 'YS_RENAME_FAILED', message: 'تعذر إعادة التسمية' });
     } finally {
         client.release();
@@ -417,7 +417,7 @@ router.post('/sections/manual', jwtAuth, requireRole(...WRITE_ROLES), async (req
         res.status(201).json({ ok: true, mapId: mapRow?.id || null, deptCode, displayAr });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[yarasoft/sections-manual]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/sections-manual]');
         res.status(500).json({ error: 'YS_MANUAL_FAILED', message: 'تعذر إنشاء القسم اليدوي' });
     } finally {
         client.release();
@@ -450,7 +450,7 @@ router.post('/dry-run-preview', jwtAuth, requireRole(...WRITE_ROLES), express.js
             throw error;
         }
     } catch (error) {
-        logger.error('[yarasoft/dry-run-preview]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/dry-run-preview]');
         res.status(500).json({ error: 'YARASOFT_PREVIEW_FAILED', message: 'تعذر تحليل النص' });
     }
 });
@@ -463,22 +463,22 @@ router.get('/oracle/status', jwtAuth, requireRole(...READ_ROLES), async (req, re
         const { oracleBreakerStatus } = require('./oracle-link');
         res.json({ ok: true, oracle: oracleEngine.status(), breaker: oracleBreakerStatus() });
     }
-    catch (error) { logger.error('[yarasoft/oracle-status]', error); res.status(500).json({ error: 'ORACLE_STATUS_FAILED', message: 'تعذر جلب حالة الربط المباشر' }); }
+    catch (error) { logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/oracle-status]'); res.status(500).json({ error: 'ORACLE_STATUS_FAILED', message: 'تعذر جلب حالة الربط المباشر' }); }
 });
 router.post('/oracle/test', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
     try { res.json(await testConnection()); }
-    catch (error) { logger.error('[yarasoft/oracle-test]', error); res.status(500).json({ ok: false, error: 'ORACLE_TEST_FAILED', message: 'تعذر فحص الاتصال' }); }
+    catch (error) { logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/oracle-test]'); res.status(500).json({ ok: false, error: 'ORACLE_TEST_FAILED', message: 'تعذر فحص الاتصال' }); }
 });
 router.get('/oracle/tables', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
     try { res.json(await discoverTables(Number(req.query.limit) || 100)); }
-    catch (error) { logger.error('[yarasoft/oracle-tables]', error); res.status(500).json({ ok: false, error: 'ORACLE_TABLES_FAILED', message: 'تعذر اكتشاف الجداول' }); }
+    catch (error) { logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/oracle-tables]'); res.status(500).json({ ok: false, error: 'ORACLE_TABLES_FAILED', message: 'تعذر اكتشاف الجداول' }); }
 });
 router.post('/oracle/consume', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
     try {
         const { consumeAllPending } = require('./oracle-consume');
         res.json(await consumeAllPending({ io: req.io || null }));
     }
-    catch (error) { logger.error('[yarasoft/oracle-consume]', error); res.status(500).json({ error: 'ORACLE_CONSUME_FAILED', message: 'تعذر ترحيل المسحوب' }); }
+    catch (error) { logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/oracle-consume]'); res.status(500).json({ error: 'ORACLE_CONSUME_FAILED', message: 'تعذر ترحيل المسحوب' }); }
 });
 // ─── سحب فوري من Oracle الآن (تجاوز المؤقت الدوري) ───
 router.post('/oracle/poll-now', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
@@ -487,16 +487,16 @@ router.post('/oracle/poll-now', jwtAuth, requireRole(...WRITE_ROLES), async (req
         const r = await oracleEngine.pollNow();
         res.json({ ok: r.ok !== false, ...r });
     }
-    catch (error) { logger.error('[yarasoft/oracle-poll-now]', error); res.status(502).json({ ok: false, error: 'ORACLE_POLL_FAILED', message: 'تعذر السحب الفوري' }); }
+    catch (error) { logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/oracle-poll-now]'); res.status(502).json({ ok: false, error: 'ORACLE_POLL_FAILED', message: 'تعذر السحب الفوري' }); }
 });
 // ─── استيراد دليل أصناف يارسوفت إلى مخزون karim (idempotent، كمية صفر) ───
 router.get('/oracle/import-items/preview', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
     try { res.json(await previewItemImport()); }
-    catch (error) { logger.error('[yarasoft/oracle-item-preview]', error); res.status(500).json({ ok: false, error: 'ITEM_PREVIEW_FAILED', message: 'تعذر المعاينة' }); }
+    catch (error) { logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/oracle-item-preview]'); res.status(500).json({ ok: false, error: 'ITEM_PREVIEW_FAILED', message: 'تعذر المعاينة' }); }
 });
 router.post('/oracle/import-items', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
     try { res.json(await importItems()); }
-    catch (error) { logger.error('[yarasoft/oracle-item-import]', error); res.status(500).json({ ok: false, error: 'ITEM_IMPORT_FAILED', message: 'تعذر استيراد الأصناف' }); }
+    catch (error) { logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/oracle-item-import]'); res.status(500).json({ ok: false, error: 'ITEM_IMPORT_FAILED', message: 'تعذر استيراد الأصناف' }); }
 });
 
 async function previewItemImport() {
@@ -580,7 +580,7 @@ router.post('/oracle/organize', jwtAuth, requireRole(...WRITE_ROLES), async (req
         const { organizeCategories } = require('./oracle-catalog');
         res.json(await organizeCategories());
     } catch (error) {
-        logger.error('[yarasoft/oracle-organize]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/oracle-organize]');
         res.status(500).json({ error: 'ORGANIZE_FAILED', message: 'تعذر تنظيم الفئات' });
     }
 });
@@ -590,7 +590,7 @@ router.post('/oracle/sync-balances', jwtAuth, requireRole(...WRITE_ROLES), async
         const { syncBalancesSafe } = require('./oracle-catalog');
         res.json(await syncBalancesSafe({ force: req.body?.force === true }));
     } catch (error) {
-        logger.error('[yarasoft/oracle-balances]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/oracle-balances]');
         res.status(500).json({ error: 'BALANCE_SYNC_FAILED', message: 'تعذر مزامنة الأرصدة' });
     }
 });
@@ -602,7 +602,7 @@ router.get('/quality/quarantine', jwtAuth, requireRole(...READ_ROLES), async (re
              FROM yarasoft_quality_quarantine ORDER BY created_at DESC LIMIT 300`);
         res.json(rows);
     } catch (error) {
-        logger.error('[yarasoft/quarantine]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/quarantine]');
         res.status(500).json({ error: 'YS_QUARANTINE_FAILED', message: 'تعذر جلب تقرير الجودة' });
     }
 });
@@ -612,7 +612,7 @@ router.get('/oracle/catalog-status', jwtAuth, requireRole(...READ_ROLES), async 
         const { catalogStatus } = require('./oracle-catalog');
         res.json({ ok: true, ...(await catalogStatus()) });
     } catch (error) {
-        logger.error('[yarasoft/catalog-status]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/catalog-status]');
         res.status(500).json({ error: 'CATALOG_STATUS_FAILED', message: 'تعذر جلب حالة الكتالوج' });
     }
 });
@@ -680,7 +680,7 @@ router.get('/daily-closing', jwtAuth, requireRole(...READ_ROLES), async (req, re
         });
         res.json({ ok: true, day, departments });
     } catch (error) {
-        logger.error('[yarasoft/daily-closing]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/daily-closing]');
         res.status(500).json({ error: 'YS_DAILY_CLOSE_FAILED', message: 'تعذر جلب تقرير التقفيل اليومي' });
     }
 });
@@ -723,7 +723,7 @@ router.post('/daily-closing/close', jwtAuth, requireRole(...WRITE_ROLES), async 
         }
         res.json({ ok: true, day, closed: out });
     } catch (error) {
-        logger.error('[yarasoft/daily-close]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/daily-close]');
         res.status(500).json({ error: 'YS_CLOSE_FAILED', message: 'تعذر قفل اليوم' });
     }
 });
@@ -736,7 +736,7 @@ router.post('/daily-closing/reopen', jwtAuth, requireRole(...WRITE_ROLES), async
         await pool.query(`DELETE FROM ys_daily_closings WHERE day = $1::date AND dept_code = $2`, [day, code]);
         res.json({ ok: true, day, dept_code: code, reopened: true });
     } catch (error) {
-        logger.error('[yarasoft/daily-reopen]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/daily-reopen]');
         res.status(500).json({ error: 'YS_REOPEN_FAILED', message: 'تعذر إعادة الفتح' });
     }
 });
@@ -769,7 +769,7 @@ router.get('/sections/invoices', jwtAuth, requireRole(...READ_ROLES), async (req
               WHERE ${where} ORDER BY r.date DESC, r.id DESC LIMIT ${limit} OFFSET ${off}`, params)).rows;
         res.json({ ok: true, section: map, page, limit, total, pages: Math.max(1, Math.ceil(total / limit)), rows });
     } catch (error) {
-        logger.error('[yarasoft/section-invoices]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/section-invoices]');
         res.status(500).json({ error: 'YS_SEC_INV_FAILED', message: 'تعذر جلب فواتير القسم' });
     }
 });
@@ -797,7 +797,7 @@ router.post('/sections/reclassify', jwtAuth, requireRole(...WRITE_ROLES), async 
         } catch (_) { /* التدقيق غير حرج */ }
         res.json({ ok: true, moved: r.rowCount, to_dept: target.dept_code, to_name: target.display_ar });
     } catch (error) {
-        logger.error('[yarasoft/reclassify]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/reclassify]');
         res.status(500).json({ error: 'YS_RECLASSIFY_FAILED', message: 'تعذر نقل الفواتير' });
     }
 });
@@ -851,7 +851,7 @@ router.get('/sections/invoice-detail', jwtAuth, requireRole(...READ_ROLES), asyn
         }));
         res.json({ ok: true, ref, local, header: null, lines: items, live: false });
     } catch (error) {
-        logger.error('[yarasoft/invoice-detail]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/invoice-detail]');
         res.status(500).json({ error: 'YS_INV_DETAIL_FAILED', message: 'تعذر جلب تفاصيل الفاتورة' });
     }
 });
@@ -865,7 +865,7 @@ router.get('/oracle/reconcile', jwtAuth, requireRole(...READ_ROLES), async (req,
         const { reconcile } = require('./sync-doctor');
         res.json(await reconcile(req.query.days));
     } catch (error) {
-        logger.error('[yarasoft/reconcile]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/reconcile]');
         res.status(502).json({ ok: false, error: 'RECONCILE_FAILED', message: String(error.message).slice(0, 200) });
     }
 });
@@ -878,7 +878,7 @@ router.post('/oracle/catch-up', jwtAuth, requireRole(...WRITE_ROLES), async (req
         res.json({ ok: true, started: true, job: jobStatus() });
         setImmediate(() => catchUp(req.body?.days, req.io || null).catch(() => {}));
     } catch (error) {
-        logger.error('[yarasoft/catch-up]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[yarasoft/catch-up]');
         res.status(502).json({ ok: false, error: 'CATCHUP_FAILED', message: 'تعذر بدء اللحاق' });
     }
 });
@@ -951,7 +951,7 @@ router.get('/mirror/cashiers', jwtAuth, requireRole(...READ_ROLES), async (req, 
             }),
         });
     } catch (error) {
-        logger.error('[mirror/cashiers]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[mirror/cashiers]');
         res.status(500).json({ error: 'MIRROR_CASHIERS_FAILED', message: 'تعذر جلب ملخص الكاشيرية' });
     }
 });
@@ -981,7 +981,7 @@ router.get('/mirror/orders', jwtAuth, requireRole(...READ_ROLES), async (req, re
             [...params, limit, offset])).rows;
         res.json({ ok: true, date: day, cashier: cashier || null, total, limit, offset, orders: rows });
     } catch (error) {
-        logger.error('[mirror/orders]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[mirror/orders]');
         res.status(500).json({ error: 'MIRROR_ORDERS_FAILED', message: 'تعذر جلب الأوردرات' });
     }
 });
@@ -992,7 +992,7 @@ router.get('/mirror/orders/:doc', jwtAuth, requireRole(...READ_ROLES), async (re
         if (!row) {return res.status(404).json({ error: 'ORDER_NOT_FOUND', message: 'الأوردر غير موجود في المرآة' });}
         res.json({ ok: true, order: row });
     } catch (error) {
-        logger.error('[mirror/order-detail]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[mirror/order-detail]');
         res.status(500).json({ error: 'MIRROR_ORDER_FAILED', message: 'تعذر جلب تفاصيل الأوردر' });
     }
 });
@@ -1042,7 +1042,7 @@ router.get('/mirror/close', jwtAuth, requireRole(...READ_ROLES), async (req, res
             by_hour: byHour, top_items: topItems,
         });
     } catch (error) {
-        logger.error('[mirror/close]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[mirror/close]');
         res.status(500).json({ error: 'MIRROR_CLOSE_FAILED', message: 'تعذر تقرير التقفيل' });
     }
 });
@@ -1053,7 +1053,7 @@ router.post('/mirror/refresh', jwtAuth, requireRole(...WRITE_ROLES), async (req,
         const out = await refreshMirrorOrders({ days: 2, io: req.io || null });
         res.json(out);
     } catch (error) {
-        logger.error('[mirror/refresh]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[mirror/refresh]');
         res.status(500).json({ error: 'MIRROR_REFRESH_FAILED', message: 'تعذر التحديث اليدوي' });
     }
 });

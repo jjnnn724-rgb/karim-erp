@@ -142,7 +142,7 @@ async function statusHandler(req, res) {
             enrolled_at: state ? state.confirmedAt : null,
         });
     } catch (err) {
-        logger.error('[mfa] status failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[mfa] status failed:');
         return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر قراءة حالة المصادقة الثنائية.' });
     }
 }
@@ -180,7 +180,7 @@ async function setupHandler(req, res) {
                 color: { dark: '#123c39', light: '#ffffff' },
             });
         } catch (qrErr) {
-            logger.warn('[mfa] QR render failed — manual key still returned:', qrErr.message);
+            logger.warn({ err: { message: String(qrErr.message), stack: (qrErr && qrErr.stack) || null } }, '[mfa] QR render failed — manual key still returned:');
         }
         logger.info({ userId: user.id }, '[mfa] enrollment secret issued (pending)');
         res.set('Cache-Control', 'no-store');
@@ -199,7 +199,7 @@ async function setupHandler(req, res) {
             logger.error('[mfa] vault key unavailable — enrollment refused');
             return res.status(503).json({ error: 'MFA_KEY_NOT_CONFIGURED', message: 'خزنة الأسرار غير مهيأة على الخادم — تواصل مع مسؤول النظام.' });
         }
-        logger.error('[mfa] setup failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[mfa] setup failed:');
         return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر بدء تسجيل المصادقة الثنائية — حاول مجددًا.' });
     }
 }
@@ -233,7 +233,7 @@ async function confirmHandler(req, res) {
             reason: 'تسجيل مصادقة ثنائية (TOTP)',
             metadata: { recovery_codes: recoveryCodes.length },
             actor: { userId: req.user.id, userName: req.user.name, role: req.user.role, ip: req.ip, requestId: req.id },
-        }).catch((e) => logger.error('[mfa] audit log failed:', e.message));
+        }).catch((e) => logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[mfa] audit log failed:'));
 
         // التسجيل من تذكرة الدخول يُكمل الدخول مباشرة — لا خطوة إضافية.
         if (req.mfaTicket) {
@@ -250,7 +250,7 @@ async function confirmHandler(req, res) {
             message: 'تم تفعيل المصادقة الثنائية — احفظ رموز الاسترداد في مكان آمن، فهي تظهر مرة واحدة فقط.',
         });
     } catch (err) {
-        logger.error('[mfa] confirm failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[mfa] confirm failed:');
         return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر تأكيد المصادقة الثنائية — حاول مجددًا.' });
     }
 }
@@ -278,7 +278,7 @@ async function verifyHandler(req, res) {
                 reason: 'دخول برمز استرداد بدل تطبيق المصادقة',
                 metadata: {},
                 actor: { userId: live.id, userName: live.username, role: live.role, ip: req.ip, requestId: req.id },
-            }).catch((e) => logger.error('[mfa] audit log failed:', e.message));
+            }).catch((e) => logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[mfa] audit log failed:'));
             return sendSession(req, res, live);
         }
 
@@ -292,7 +292,7 @@ async function verifyHandler(req, res) {
         if (!await mfaStore.consumeStep(live.id, v.step)) {return res.status(409).json(CODE_REUSED);}
         return sendSession(req, res, live);
     } catch (err) {
-        logger.error('[mfa] verify failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[mfa] verify failed:');
         return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر التحقق من رمز المصادقة — حاول مجددًا.' });
     }
 }
@@ -337,10 +337,10 @@ async function disableHandler(req, res) {
             reason: 'تعطيل المصادقة الثنائية بطلب صاحب الحساب',
             metadata: {},
             actor: { userId: req.user.id, userName: req.user.name, role: req.user.role, ip: req.ip, requestId: req.id },
-        }).catch((e) => logger.error('[mfa] audit log failed:', e.message));
+        }).catch((e) => logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[mfa] audit log failed:'));
         return res.json({ ok: true, message: 'تم تعطيل المصادقة الثنائية لهذا الحساب.' });
     } catch (err) {
-        logger.error('[mfa] disable failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[mfa] disable failed:');
         return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر تعطيل المصادقة الثنائية — حاول مجددًا.' });
     }
 }
@@ -368,7 +368,7 @@ async function recoveryCodesHandler(req, res) {
             reason: 'إصدار رموز استرداد جديدة (القديمة أُبطلت)',
             metadata: { count: codes.length },
             actor: { userId: req.user.id, userName: req.user.name, role: req.user.role, ip: req.ip, requestId: req.id },
-        }).catch((e) => logger.error('[mfa] audit log failed:', e.message));
+        }).catch((e) => logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[mfa] audit log failed:'));
         res.set('Cache-Control', 'no-store');
         return res.json({
             ok: true,
@@ -376,7 +376,7 @@ async function recoveryCodesHandler(req, res) {
             message: 'الرموز السابقة أُبطلت. احفظ الرموز الجديدة في مكان آمن — تظهر مرة واحدة فقط.',
         });
     } catch (err) {
-        logger.error('[mfa] recovery rotation failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[mfa] recovery rotation failed:');
         return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر إصدار رموز الاسترداد — حاول مجددًا.' });
     }
 }
@@ -416,14 +416,14 @@ async function adminResetHandler(req, res) {
             reason: 'مسح تسجيل المصادقة الثنائية لمستخدم فقد جهازه',
             metadata: { target_username: target.username, target_role: target.role },
             actor: { userId: req.user.id, userName: req.user.name, role: req.user.role, ip: req.ip, requestId: req.id },
-        }).catch((e) => logger.error('[mfa] audit log failed:', e.message));
+        }).catch((e) => logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[mfa] audit log failed:'));
         return res.json({
             ok: true,
             username: target.username,
             message: 'تم مسح تسجيل المصادقة الثنائية — يسجّل المستخدم من جديد عبر شاشة الدخول.',
         });
     } catch (err) {
-        logger.error('[mfa] admin reset failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[mfa] admin reset failed:');
         return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر مسح تسجيل المصادقة — حاول مجددًا.' });
     }
 }

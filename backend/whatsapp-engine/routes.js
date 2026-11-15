@@ -38,7 +38,7 @@ router.get('/status', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
     try {
         const h = await engineRef.health();
         res.json({ ok: true, ...h });
-    } catch (e) { logger.error('[wa/status]', e.message); res.status(500).json({ error: 'WA_STATUS_FAILED', message: 'تعذر جلب الحالة' }); }
+    } catch (e) { logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[wa/status]'); res.status(500).json({ error: 'WA_STATUS_FAILED', message: 'تعذر جلب الحالة' }); }
 });
 
 router.get('/health', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
@@ -141,7 +141,7 @@ router.post('/session/restore', jwtAuth, requireRole('admin'), async (req, res) 
         res.json({ ok: true, backup: String(used).split(/[\\/]/).pop() });
     } catch (e) {
         if (e && e.code === 'NO_BACKUP') {return res.status(422).json({ ok: false, error: 'NO_BACKUP', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });}
-        logger.error('[wa/session/restore]', e.message); res.status(500).json({ ok: false, error: 'WA_RESTORE_FAILED' });
+        logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[wa/session/restore]'); res.status(500).json({ ok: false, error: 'WA_RESTORE_FAILED' });
     }
 });
 
@@ -162,7 +162,7 @@ router.post('/send', jwtAuth, requireRole(...WRITE_ROLES), rateLimit({ windowMs:
         if (e && (e.code === 'INVALID_JID' || e.code === 'EMPTY_BODY')) {
             return res.status(422).json({ ok: false, error: e.code, message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
         }
-        logger.error('[wa/send]', e.message); res.status(500).json({ ok: false, error: 'WA_SEND_FAILED' });
+        logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[wa/send]'); res.status(500).json({ ok: false, error: 'WA_SEND_FAILED' });
     }
 });
 
@@ -184,7 +184,7 @@ router.post('/send-media', jwtAuth, requireRole(...WRITE_ROLES), rateLimit({ win
         if (e && (e.code === 'INVALID_JID' || e.code === 'INVALID_MEDIA_TYPE' || e.code === 'INVALID_MEDIA_URL' || e.code === 'EMPTY_MEDIA' || e.code === 'MEDIA_FILE_MISSING' || e.code === 'MEDIA_TOO_LARGE' || e.code === 'MEDIA_PATH_FORBIDDEN')) {
             return res.status(422).json({ ok: false, error: e.code, message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
         }
-        logger.error('[wa/send-media]', e.message); res.status(500).json({ ok: false, error: 'WA_SEND_MEDIA_FAILED' });
+        logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[wa/send-media]'); res.status(500).json({ ok: false, error: 'WA_SEND_MEDIA_FAILED' });
     }
 });
 
@@ -222,7 +222,7 @@ router.post('/chats/:jid/meta', jwtAuth, requireRole(...WRITE_ROLES), async (req
         }, req.user?.id);
         await store.logEvent('chat_meta_updated', jid, `by user ${req.user?.id || 'system'}`);
         res.json({ ok: true, meta });
-    } catch (e) { logger.error('[wa/chat-meta]', e.message); res.status(500).json({ ok: false, error: 'WA_CHAT_META_SAVE_FAILED' }); }
+    } catch (e) { logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[wa/chat-meta]'); res.status(500).json({ ok: false, error: 'WA_CHAT_META_SAVE_FAILED' }); }
 });
 
 router.get('/outbox', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
@@ -412,7 +412,7 @@ router.post('/templates/send', jwtAuth, requireRole(...WRITE_ROLES), rateLimit({
         if (e && (e.code === 'BULK_FROZEN' || e.code === 'WARMUP_CAP' || e.code === 'COLD_CAP' || e.code === 'SENDER_PAUSED')) {
             return res.status(429).json({ ok: false, error: e.code, message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
         }
-        logger.error('[wa/templates/send]', e.message); res.status(500).json({ ok: false, error: 'WA_TEMPLATE_SEND_FAILED' });
+        logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[wa/templates/send]'); res.status(500).json({ ok: false, error: 'WA_TEMPLATE_SEND_FAILED' });
     }
 });
 
@@ -450,7 +450,7 @@ router.post('/campaigns', jwtAuth, requireRole('admin'), async (req, res) => {
             await client.query('COMMIT');
             res.status(201).json({ ok: true, campaign: c });
         } catch (e) { await client.query('ROLLBACK'); throw e; } finally { client.release(); }
-    } catch (e) { logger.error('[wa/campaign-create]', e.message); res.status(500).json({ ok: false, error: 'CAMPAIGN_CREATE_FAILED' }); }
+    } catch (e) { logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[wa/campaign-create]'); res.status(500).json({ ok: false, error: 'CAMPAIGN_CREATE_FAILED' }); }
 });
 router.post('/campaigns/:id/approve', jwtAuth, requireRole('admin'), async (req, res) => {
     try {
@@ -584,7 +584,7 @@ router.post('/scheduled', jwtAuth, requireRole(...WRITE_ROLES), rateLimit({ wind
         if (e.message === 'INVALID_JID' || e.message === 'EMPTY_BODY' || e.message === 'NO_SCHEDULE_TIME' || e.message === 'INVALID_DATE') {
             return res.status(422).json({ ok: false, error: e.message });
         }
-        logger.error('[wa/scheduled]', e.message);
+        logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[wa/scheduled]');
         res.status(500).json({ ok: false, error: 'SCHEDULE_FAILED' });
     }
 });
@@ -615,7 +615,7 @@ router.post('/send-buttons', jwtAuth, requireRole(...WRITE_ROLES), rateLimit({ w
         if (e?.code === 'BULK_FROZEN' || e?.code === 'WARMUP_CAP' || e?.code === 'COLD_CAP' || e?.code === 'SENDER_PAUSED') {
             return res.status(429).json({ ok: false, error: e.code, message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
         }
-        logger.error('[wa/send-buttons]', e.message);
+        logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[wa/send-buttons]');
         res.status(500).json({ ok: false, error: 'BUTTONS_SEND_FAILED' });
     }
 });

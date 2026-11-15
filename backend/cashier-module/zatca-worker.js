@@ -51,7 +51,7 @@ if (!SKIP_BULLMQ) {
         worker.on('failed', (job, err) => logger.error(`[zatca-worker] ✗ ${job.id} failed:`, err.message));
         logger.info(`[zatca-worker] 🚀 BullMQ mode, concurrency=${process.env.ZATCA_WORKER_CONCURRENCY || 5}`);
     } catch (err) {
-        logger.warn('[zatca-worker] BullMQ unavailable, switching to SQL polling:', err.message);
+        logger.warn({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[zatca-worker] BullMQ unavailable, switching to SQL polling:');
     }
 }
 
@@ -65,7 +65,7 @@ async function loadZatcaConfig() {
         const res = await p.query(`SELECT * FROM zatca_settings WHERE id = 1;`);
         return res.rows[0] || null;
     } catch (e) {
-        logger.warn('[zatca-worker] config load failed (continuing with env defaults):', e.message);
+        logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[zatca-worker] config load failed (continuing with env defaults):');
         return null;
     }
 }
@@ -430,7 +430,7 @@ function startSqlPolling() {
     if (sqlPollingStarted) {return;}
     sqlPollingStarted = true;
     logger.info(`[zatca-worker] 🚀 SQL polling mode, interval=${POLL_INTERVAL_MS}ms`);
-    setInterval(() => { pollSqlQueue().catch(e => logger.error('[zatca-worker:poller]', e.message)); }, POLL_INTERVAL_MS);
+    setInterval(() => { pollSqlQueue().catch(e => logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[zatca-worker:poller]')); }, POLL_INTERVAL_MS);
 }
 
 if (!worker && require.main === module) {

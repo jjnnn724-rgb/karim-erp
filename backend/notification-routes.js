@@ -62,7 +62,7 @@ router.get('/', async (req, res) => {
         ]);
         res.json({ notifications: listRes.rows, unread_count: Number(unreadRes.rows[0].count) });
     } catch (error) {
-        logger.error('[notifications_list]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[notifications_list]');
         res.status(500).json({ error: 'NOTIFICATIONS_LIST_FAILED', message: 'تعذر تحميل الإشعارات' });
     }
 });
@@ -82,7 +82,7 @@ router.post('/', async (req, res) => {
         )).rows[0];
         res.status(201).json(row);
     } catch (error) {
-        logger.error('[notifications_create_self]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[notifications_create_self]');
         res.status(500).json({ error: 'NOTIFICATION_CREATE_FAILED', message: 'تعذر حفظ الإشعار' });
     }
 });
@@ -121,7 +121,7 @@ router.post('/read', async (req, res) => {
         );
         res.json({ updated: personal.rowCount + pub.rowCount });
     } catch (error) {
-        logger.error('[notifications_read]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[notifications_read]');
         res.status(500).json({ error: 'NOTIFICATIONS_READ_FAILED', message: 'تعذر تعليم الإشعارات كمقروءة' });
     }
 });
@@ -146,7 +146,7 @@ router.post('/read-all', async (req, res) => {
         );
         res.json({ updated: personal.rowCount + pub.rowCount });
     } catch (error) {
-        logger.error('[notifications_read_all]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[notifications_read_all]');
         res.status(500).json({ error: 'NOTIFICATIONS_READ_ALL_FAILED', message: 'تعذر تعليم الإشعارات كمقروءة' });
     }
 });
@@ -158,7 +158,7 @@ router.delete('/', async (req, res) => {
         const deleted = await pool.query('DELETE FROM notifications WHERE user_id = $1', [Number(req.user.id)]);
         res.json({ deleted: deleted.rowCount });
     } catch (error) {
-        logger.error('[notifications_clear_mine]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[notifications_clear_mine]');
         res.status(500).json({ error: 'NOTIFICATIONS_CLEAR_FAILED', message: 'تعذر مسح الإشعارات' });
     }
 });
@@ -173,7 +173,7 @@ router.delete('/:id', async (req, res) => {
         if (!deleted.rowCount) {return fail(res, 404, 'NOTIFICATION_NOT_OWNED', 'الإشعار غير موجود أو غير قابل للحذف');}
         res.json({ deleted: deleted.rowCount });
     } catch (error) {
-        logger.error('[notifications_delete]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[notifications_delete]');
         res.status(500).json({ error: 'NOTIFICATION_DELETE_FAILED', message: 'تعذر حذف الإشعار' });
     }
 });

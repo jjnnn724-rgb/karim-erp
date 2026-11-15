@@ -347,7 +347,7 @@ const QUERY_EXECUTORS = {
                 { label: 'معدل التأخير', value: `${Math.round(row.avg_delay_minutes)} دقيقة` }
             ], `للاستعلام عن موظف معين: اكتب "حضور <الاسم>"`);
         } catch (e) {
-            logger.error('[QUERY] attendance:', e.message);
+            logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[QUERY] attendance:');
             return '<div class="mcard" style="border:2px solid var(--red)"><b style="color:var(--red)">❌ تعذر جلب بيانات الحضور</b></div>';
         }
     },
@@ -378,7 +378,7 @@ const QUERY_EXECUTORS = {
                 { label: 'الحالة', value: latest.late ? 'متأخر' : 'في الوقت' },
             ], `آخر السجلات:<br>${lastChecks}`);
         } catch (e) {
-            logger.error('[QUERY] attendanceEmp:', e.message);
+            logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[QUERY] attendanceEmp:');
             return '<div class="mcard" style="border:2px solid var(--red)"><b style="color:var(--red)">❌ تعذر البحث</b></div>';
         }
     },
@@ -407,7 +407,7 @@ const QUERY_EXECUTORS = {
                 { label: 'معاملات الشهر', value: fmt(mr.month_orders) }
             ]);
         } catch (e) {
-            logger.error('[QUERY] revenue:', e.message);
+            logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[QUERY] revenue:');
             return '<div class="mcard" style="border:2px solid var(--red)"><b style="color:var(--red)">❌ تعذر جلب الإيرادات</b></div>';
         }
     },
@@ -432,7 +432,7 @@ const QUERY_EXECUTORS = {
                 { label: 'القيمة الإجمالية', value: `💵 ${fmt(rv.total_value)}` }
             ]);
         } catch (e) {
-            logger.error('[QUERY] inventory:', e.message);
+            logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[QUERY] inventory:');
             return '<div class="mcard" style="border:2px solid var(--red)"><b style="color:var(--red)">❌ تعذر جلب المخزون</b></div>';
         }
     },
@@ -453,7 +453,7 @@ const QUERY_EXECUTORS = {
                 { label: 'غير نشط', value: fmt(row.inactive) }
             ]);
         } catch (e) {
-            logger.error('[QUERY] employees:', e.message);
+            logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[QUERY] employees:');
             return '<div class="mcard" style="border:2px solid var(--red)"><b style="color:var(--red)">❌ تعذر جلب الموظفين</b></div>';
         }
     },
@@ -480,7 +480,7 @@ const QUERY_EXECUTORS = {
                 { label: 'صافي الربح', value: profit >= 0 ? `✅ ${fmt(profit)}` : `❌ ${fmt(Math.abs(profit))}` }
             ]);
         } catch (e) {
-            logger.error('[QUERY] financial:', e.message);
+            logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[QUERY] financial:');
             return '<div class="mcard" style="border:2px solid var(--red)"><b style="color:var(--red)">❌ تعذر جلب البيانات المالية</b></div>';
         }
     },
@@ -509,7 +509,7 @@ const QUERY_EXECUTORS = {
             });
             return makeCard(`📄 وثائق تنتهي خلال 30 يوم (${r.rows.length})`, rows);
         } catch (e) {
-            logger.error('[QUERY] documents:', e.message);
+            logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[QUERY] documents:');
             return '<div class="mcard" style="border:2px solid var(--red)"><b style="color:var(--red)">❌ تعذر جلب الوثائق</b></div>';
         }
     },
@@ -529,7 +529,7 @@ const QUERY_EXECUTORS = {
                 { label: 'سينفد قريبًا', value: fmt((b.forecast || []).length) },
             ]);
         } catch (e) {
-            logger.error('[QUERY] gaps:', e.message);
+            logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[QUERY] gaps:');
             return '<div class="mcard" style="border:2px solid var(--red)"><b style="color:var(--red)">❌ تعذر جلب النواقص</b></div>';
         }
     },
@@ -585,7 +585,7 @@ async function executeQuery(text) {
         }
         return results.join('');
     } catch (e) {
-        logger.error('[QUERY] executeQuery:', e.message);
+        logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[QUERY] executeQuery:');
         return '<div class="mcard" style="border:2px solid var(--red)"><b style="color:var(--red)">خطأ في الاستعلام</b></div>';
     }
 }

@@ -198,7 +198,7 @@ router.post('/', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
                     { account_code: '1200', debit: 0, credit: totalValue, memo: 'استهلاك خام', cost_center_code: cc },
                 ],
             });
-        } catch (ledgerErr) { logger.warn('[production_ledger] best-effort skipped:', ledgerErr.message); }
+        } catch (ledgerErr) { logger.warn({ err: { message: String(ledgerErr.message), stack: (ledgerErr && ledgerErr.stack) || null } }, '[production_ledger] best-effort skipped:'); }
 
         logger.info(`[production] ${recipe.name} × ${batches} = ${totalValue} (${plan.length} مكوّنًا)`);
         res.json({
@@ -209,7 +209,7 @@ router.post('/', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
         });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[production_create]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[production_create]');
         if (error.code === '55P03') {
             return fail(res, 409, 'PRODUCTION_BUSY', 'صنف من مكونات الوصفة مستخدم في عملية أخرى — أعد المحاولة بعد ثانية');
         }
@@ -233,7 +233,7 @@ router.get('/', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
         const total = round(rows.reduce((s, r) => s + n(r.amount), 0), 2);
         res.json({ data: rows, total, count: rows.length });
     } catch (error) {
-        logger.error('[production_list]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[production_list]');
         return fail(res, 500, 'PRODUCTION_LIST_FAILED', 'تعذر قراءة سجل التوليد');
     }
 });

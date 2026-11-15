@@ -167,7 +167,7 @@ class AttendanceSyncEngine {
             ).catch(() => {});
             // لا مصالحة ولا استكمال: البصمة تُسجَّل وتُحفظ — لا تصحيح صامت بعد وقوعه.
         } catch (error) {
-            logger.error('[ZKTECO_ENGINE] دورة المزامنة فشلت:', error.message);
+            logger.error({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[ZKTECO_ENGINE] دورة المزامنة فشلت:');
         } finally {
             this._ticking = false;
             this._tickStartedAt = 0;

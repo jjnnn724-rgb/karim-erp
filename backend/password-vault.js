@@ -60,7 +60,7 @@ function encryptForVault(plaintext) {
         const tag = cipher.getAuthTag();
         return VAULT_PREFIX + iv.toString('base64') + ':' + tag.toString('base64') + ':' + ct.toString('base64');
     } catch (e) {
-        logger.warn('[pw-vault] encrypt failed:', e.message);
+        logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[pw-vault] encrypt failed:');
         return null;
     }
 }
@@ -97,7 +97,7 @@ function ensurePasswordVaultSchema() {
             logger.warn('[PW_VAULT] VAULT_KEY env var not set — using JWT-derived key (legacy). Set VAULT_KEY in .env for full key separation.');
         }
         logger.info('[PW_VAULT] ready (users.password_vault)');
-    })().catch((e) => { logger.error('[PW_VAULT] init skipped:', e.message); });
+    })().catch((e) => { logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[PW_VAULT] init skipped:'); });
 }
 
 module.exports = { encryptForVault, decryptFromVault, ensurePasswordVaultSchema };

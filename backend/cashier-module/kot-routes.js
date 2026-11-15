@@ -66,7 +66,7 @@ async function getPrintSettings() {
             updated_by: row.updated_by,
         };
     } catch (e) {
-        logger.warn('[kot] settings read failed — using defaults:', e.message);
+        logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[kot] settings read failed — using defaults:');
         return { kot_enabled: true, kot_copies: 1, kot_include_notes: true };
     }
 }
@@ -98,7 +98,7 @@ router.get('/settings', jwtAuth, requireRole(...READ_ROLES), async (req, res) =>
         const cfg = await getPrintSettings();
         res.json(cfg);
     } catch (e) {
-        logger.error('[kot/settings GET]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[kot/settings GET]');
         res.status(500).json({ error: 'KOT_SETTINGS_READ_FAILED' });
     }
 });
@@ -135,7 +135,7 @@ router.put('/settings', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) =
             updated_by: row.updated_by,
         });
     } catch (e) {
-        logger.error('[kot/settings PUT]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[kot/settings PUT]');
         res.status(500).json({ error: 'KOT_SETTINGS_SAVE_FAILED' });
     }
 });
@@ -171,7 +171,7 @@ router.get('/orders/:id/html', jwtAuth, async (req, res) => {  // any authentica
         res.set('Content-Type', 'text/html; charset=utf-8');
         res.send(kotHtml(datas));
     } catch (e) {
-        logger.error('[kot/orders/:id/html]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[kot/orders/:id/html]');
         res.status(500).json({ error: 'KOT_HTML_FAILED' });
     }
 });

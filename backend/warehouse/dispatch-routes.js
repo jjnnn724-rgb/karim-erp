@@ -6,7 +6,7 @@ const { __scope } = require('../warehouse-routes');
 const { router, APPROVAL_ROLES, RECEIVE_ROLES, CHEF_APPROVAL_ROLES, pool, jwtAuth, requireRole, logger, postInventoryLedgerEntry, emitDomainEvent, ensureDispatchCreatorSchema, notifyChainEvent, latestExpiryFor, beginDispatchOp, endDispatchOp, canReceiveDispatch, canWarehouseApprove, canChefDecide, resolveDeptHeadDispatch, canAccessDeptPanel, resolvePanelDept, aggregatePanelExpenses, id, n, round, dateOnly, cleanName, json, emit, fail, signatureHash, appendDispatchEvent, requireSignature, normalizeRequestedItems, dispatchStockGate, getWarehouseLocation, getDispatchTargetLocation, ensureLocationBalance, ensureLegacyKitchenReceiptLedger } = __scope;
 
 router.use(async (req, res, next) => {
-    try { await ensureLegacyKitchenReceiptLedger(); } catch (error) { logger.error('[dispatch_kitchen_receipt_backfill]', error); }
+    try { await ensureLegacyKitchenReceiptLedger(); } catch (error) { logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[dispatch_kitchen_receipt_backfill]'); }
     next();
 });
 
@@ -70,7 +70,7 @@ router.get('/dept-panel', jwtAuth, async (req, res) => {
             generatedAt: new Date().toISOString(),
         });
     } catch (error) {
-        logger.error('[warehouse_dept_panel]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[warehouse_dept_panel]');
         res.status(500).json({ error: 'DEPT_PANEL_FAILED', message: 'تعذر تحميل لوحة القسم' });
     } finally {
         client.release();
@@ -289,7 +289,7 @@ const mainLocation = await getWarehouseLocation(client, 'MAIN-WAREHOUSE', 'ال�
         res.json({ dispatch: updatedDispatch, stockChanges, transactions, expenses, totalValue: round(totalValue, 2) });
     } catch (error) {
         if (client) {await client.query('ROLLBACK').catch(() => {});}
-        logger.error('[warehouse_dispatch_approve]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[warehouse_dispatch_approve]');
         if (error.code === '55P03') {
             return fail(res, 409, 'DISPATCH_STOCK_BUSY', 'الصنف مستخدم في عملية صرف أخرى الآن — أعد المحاولة بعد ثانية');
         }
@@ -450,7 +450,7 @@ router.post('/dispatches/:id/reopen', jwtAuth, requireRole('admin', 'manager'), 
         res.json({ ok: true, dispatch: updated, reopenId, totalValue: round(totalValue, 2) });
     } catch (error) {
         if (client) {await client.query('ROLLBACK').catch(() => {});}
-        logger.error('[warehouse_dispatch_reopen]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[warehouse_dispatch_reopen]');
         res.status(500).json({ error: 'DISPATCH_REOPEN_FAILED', message: 'تعذر إرجاع الإذن للمخازن وعكس أثره' });
     } finally {
         endDispatchOp(req.params.id, 'reopen');
@@ -510,8 +510,8 @@ router.post('/dispatches/:id/chef-approve', jwtAuth, requireRole(...CHEF_APPROVA
         res.json({ dispatch: updated, availabilityWarnings });
     } catch (error) {
         if (client) {await client.query('ROLLBACK').catch(() => {});}
-        logger.error('[pr_create]', error);
-        logger.error('[chef_dispatch_approve]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[pr_create]');
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[chef_dispatch_approve]');
         res.status(500).json({ error: 'CHEF_APPROVE_FAILED', message: 'تعذر اعتماد الطلب من الشيف العمومي بشكل موثق' });
     } finally { endDispatchOp(req.params.id, 'chef-approve'); if (client) {client.release();} }
 });
@@ -554,8 +554,8 @@ router.post('/dispatches/:id/chef-reject', jwtAuth, requireRole(...CHEF_APPROVAL
         res.json({ dispatch: updated });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[pr_create]', error);
-        logger.error('[chef_dispatch_reject]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[pr_create]');
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[chef_dispatch_reject]');
         res.status(500).json({ error: 'CHEF_REJECT_FAILED', message: 'تعذر رفض الطلب من الشيف العمومي بشكل موثق' });
     } finally { client.release(); }
 });
@@ -667,7 +667,7 @@ router.put('/dispatches/:id/edit', jwtAuth, async (req, res) => {
         res.json({ ok: true, dispatch: updated, chefApprovalReset: wasChefApproved, deptChanged });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[dispatch_edit]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[dispatch_edit]');
         res.status(500).json({ error: 'DISPATCH_EDIT_FAILED', message: 'تعذر تعديل إذن الصرف' });
     } finally { client.release(); }
 });
@@ -707,8 +707,8 @@ router.post('/dispatches/:id/reject', jwtAuth, requireRole(...APPROVAL_ROLES), a
         res.json({ dispatch: updated });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[pr_create]', error);
-        logger.error('[warehouse_dispatch_reject]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[pr_create]');
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[warehouse_dispatch_reject]');
         res.status(500).json({ error: 'DISPATCH_REJECT_FAILED', message: 'تعذر رفض طلب الصرف بشكل موثق' });
     } finally { client.release(); }
 });
@@ -832,8 +832,8 @@ router.post('/dispatches/:id/receive', jwtAuth, requireRole(...RECEIVE_ROLES), a
         res.json({ dispatch: updated, receivedItems, ledgerMovements });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[pr_create]', error);
-        logger.error('[kitchen_dispatch_receive]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[pr_create]');
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[kitchen_dispatch_receive]');
         const status = error.code === 'INSUFFICIENT_STOCK' ? 409 : 500;
         const message = error.code === 'INSUFFICIENT_STOCK' ? 'تعذر إضافة الاستلام؛ تحقق من رصيد المخزن الرئيسي' : 'تعذر تسجيل استلام المطبخ بشكل موثق';
         res.status(status).json({ error: error.code || 'DISPATCH_RECEIVE_FAILED', message });
@@ -953,8 +953,8 @@ async function directReturn(client, req, res) {
         res.json({ return: returnRow, stockChanges, transactions, expenses, totalValue: round(totalValue, 2), direct: true });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
-        logger.error('[pr_create]', error);
-        logger.error('[warehouse/direct-return]', error.message);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[pr_create]');
+        logger.error({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[warehouse/direct-return]');
         res.status(500).json({ error: 'DIRECT_RETURN_FAILED', message: 'تعذر تنفيذ الإرجاع المباشر' });
     }
     // ملاحظة: التحرير على المتصل الخارجي (finally في POST /returns) — تحرير مزدوج يفسد الـ pool

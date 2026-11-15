@@ -63,7 +63,7 @@ function ensurePushInit() {
     try {
         admin = require('firebase-admin');
     } catch (error) {
-        logger.warn('[push] حزمة firebase-admin غير مثبتة — إشعارات الهاتف مطفأة:', error.message);
+        logger.warn({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[push] حزمة firebase-admin غير مثبتة — إشعارات الهاتف مطفأة:');
         return false;
     }
     try {
@@ -75,7 +75,7 @@ function ensurePushInit() {
         logger.info(`[push] Firebase جاهز — مشروع ${serviceAccount.project_id || 'غير معروف'}.`);
         return true;
     } catch (error) {
-        logger.warn('[push] فشل تهيئة Firebase:', error.message);
+        logger.warn({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[push] فشل تهيئة Firebase:');
         messaging = null;
         return false;
     }
@@ -128,7 +128,7 @@ async function sendToTokens(tokens, notice) {
         const response = await messaging.sendEach(messages);
         return { sent: response.successCount || 0, stale: staleTokensOf(response.responses, list) };
     } catch (error) {
-        logger.warn('[push] فشل إرسال دفعة:', error.message);
+        logger.warn({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[push] فشل إرسال دفعة:');
         return { sent: 0, stale: [] };
     }
 }

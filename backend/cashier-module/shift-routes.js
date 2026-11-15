@@ -321,7 +321,7 @@ router.get('/products', jwtAuth, requireRole('cashier','manager','admin','audito
     try {
         await syncRecipeCatalog(req);
     } catch (e) {
-        logger.error('[pos/products] recipe catalog synchronization failed', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[pos/products] recipe catalog synchronization failed');
         return res.status(500).json({ error: 'RECIPE_CATALOG_SYNC_FAILED', message: 'تعذرت مزامنة وصفات الكاشير' });
     }
     const cached = productsCache.get(cacheKey);
@@ -336,7 +336,7 @@ router.get('/products', jwtAuth, requireRole('cashier','manager','admin','audito
             return res.json(rows);
         } catch (e) {
             productsCache.delete(cacheKey);
-            logger.error('[pos/products] pending query failed', e);
+            logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[pos/products] pending query failed');
             return res.status(500).json({ error: 'INTERNAL_ERROR' });
         }
     }
@@ -466,7 +466,7 @@ router.post('/recipes/sync-legacy', jwtAuth, requireRole('manager','admin'), asy
         res.json({ recipe_id: r.id, product, synced: true });
         emitCatalogChanged(req, existing.rows.length ? 'update' : 'create', product);
     } catch (e) {
-        logger.error('[sync_legacy_recipe]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[sync_legacy_recipe]');
         res.status(500).json({ error: 'RECIPE_SYNC_FAILED', message: 'تعذر مزامنة الوصفة مع منيو الكاشير' });
     }
 });
@@ -897,13 +897,13 @@ router.post('/shifts/open',
                     metadata: { department_id, opening_balance },
                     actor: { userId: req.user.id, userName: req.user.name, role: req.user.role, ip: req.ip, requestId: req.id },
                 });
-            } catch (auditError) { logger.error('[shifts/open] audit log failed (non-fatal):', auditError.message); }
+            } catch (auditError) { logger.error({ err: { message: String(auditError.message), stack: (auditError && auditError.stack) || null } }, '[shifts/open] audit log failed (non-fatal):'); }
             res.status(201).json({ session_id: result.id, status: 'open', opening_balance, new_session: newSessionRequested });
         } catch (err) {
             if (err.code === 'SHIFT_ALREADY_OPEN' || /already has an open shift/i.test(err.message)) {
                 return res.status(409).json({ error: 'SHIFT_ALREADY_OPEN', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
             }
-            logger.error('[shifts/open]', err); res.status(500).json({ error: 'INTERNAL_ERROR' });
+            logger.error({ err: { message: (err && err.message) || String(err), stack: (err && err.stack) || null } }, '[shifts/open]'); res.status(500).json({ error: 'INTERNAL_ERROR' });
         }
     }
 );
@@ -965,7 +965,7 @@ router.post('/shifts/:id/close', jwtAuth, requireRole('cashier','manager','admin
                 metadata: { actual_cash, expected_cash: result.expected_cash, variance: result.cash_variance },
                 actor: { userId: req.user.id, userName: req.user.name, role: req.user.role, ip: req.ip, requestId: req.id },
             });
-        } catch (auditError) { logger.error('[shifts/close] audit log failed (non-fatal):', auditError.message); }
+        } catch (auditError) { logger.error({ err: { message: String(auditError.message), stack: (auditError && auditError.stack) || null } }, '[shifts/close] audit log failed (non-fatal):'); }
 
         res.json({
             session_id: sessionId, status: 'closed',
@@ -979,7 +979,7 @@ router.post('/shifts/:id/close', jwtAuth, requireRole('cashier','manager','admin
         if (err.code === 404) {return res.status(404).json({ error: 'NOT_FOUND' });}
         if (err.code === 403) {return res.status(403).json({ error: 'FORBIDDEN' });}
         if (err.code === 409) {return res.status(409).json({ error: 'SHIFT_NOT_OPEN', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });}
-        logger.error('[shifts/close]', err); res.status(500).json({ error: 'INTERNAL_ERROR' });
+        logger.error({ err: { message: (err && err.message) || String(err), stack: (err && err.stack) || null } }, '[shifts/close]'); res.status(500).json({ error: 'INTERNAL_ERROR' });
     }
 });
 
@@ -1021,7 +1021,7 @@ router.get('/shifts/open', jwtAuth, requireRole('manager', 'admin', 'accountant'
         );
         res.json({ ok: true, count: r.rows.length, shifts: r.rows });
     } catch (e) {
-        logger.error('[shifts/open-all]', e.message);
+        logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[shifts/open-all]');
         res.status(500).json({ error: 'SHIFTS_FETCH_FAILED', message: 'تعذر جلب الورديات المفتوحة' });
     }
 });
@@ -1267,7 +1267,7 @@ router.get('/reports/sales', jwtAuth, requireRole('cashier','manager','admin','a
         if (e.statusCode === 422) {
             return res.status(422).json({ error: 'VALIDATION_ERROR', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
         }
-        logger.error('[pos/reports/sales]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[pos/reports/sales]');
         res.status(500).json({ error: 'INTERNAL_ERROR', message: 'Failed to build POS sales report' });
     }
 });
@@ -1289,7 +1289,7 @@ router.get('/dashboard', jwtAuth, requireRole('cashier','manager','admin','audit
                 return r.rows;
             })
             .catch((err) => {
-                logger.error('[pos/dashboard] refresh failed, keeping stale cache', err);
+                logger.error({ err: { message: (err && err.message) || String(err), stack: (err && err.stack) || null } }, '[pos/dashboard] refresh failed, keeping stale cache');
                 dashboardCache = { expiresAt: now + DASHBOARD_CACHE_TTL_MS, value: staleValue, pending: null };
                 throw err;
             });

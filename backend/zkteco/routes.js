@@ -127,7 +127,7 @@ router.get('/status', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
         _statusCacheAt = Date.now();
         res.json(payload);
     } catch (error) {
-        logger.error('[zkteco/status]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[zkteco/status]');
         res.status(500).json({ error: 'ZK_STATUS_FAILED', message: 'تعذر جلب حالة مزامنة البصمة' });
     }
 });
@@ -140,7 +140,7 @@ router.get('/devices', jwtAuth, requireRole(...READ_ROLES), async (req, res) => 
         const states = engine ? engine.getStatus().devices : [];
         res.json(rows.map(r => deviceStatusView(r, states.find(s => s.id === r.id))));
     } catch (error) {
-        logger.error('[zkteco/devices]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[zkteco/devices]');
         res.status(500).json({ error: 'ZK_DEVICES_FAILED', message: 'تعذر جلب أجهزة البصمة' });
     }
 });
@@ -162,7 +162,7 @@ router.post('/devices', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) =
         logger.info(`[zkteco] أُضيف جهاز بصمة: ${out.name} (${out.ipAddress}) بواسطة ${req.user.username}`);
         res.status(201).json(rows[0]);
     } catch (error) {
-        logger.error('[zkteco/devices:create]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[zkteco/devices:create]');
         res.status(500).json({ error: 'ZK_DEVICE_CREATE_FAILED', message: 'تعذر إضافة الجهاز' });
     }
 });
@@ -195,7 +195,7 @@ router.put('/devices/:id', jwtAuth, requireRole(...WRITE_ROLES), async (req, res
         }
         res.json(rows[0]);
     } catch (error) {
-        logger.error('[zkteco/devices:update]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[zkteco/devices:update]');
         res.status(500).json({ error: 'ZK_DEVICE_UPDATE_FAILED', message: 'تعذر تحديث الجهاز' });
     }
 });
@@ -207,7 +207,7 @@ router.delete('/devices/:id', jwtAuth, requireRole(...WRITE_ROLES), async (req, 
         if (!rows[0]) {return res.status(404).json({ error: 'ZK_DEVICE_NOT_FOUND', message: 'الجهاز غير موجود' });}
         res.json({ ok: true, message: `حُذف الجهاز "${rows[0].name}" مع سجل بصماته الخام` });
     } catch (error) {
-        logger.error('[zkteco/devices:delete]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[zkteco/devices:delete]');
         res.status(500).json({ error: 'ZK_DEVICE_DELETE_FAILED', message: 'تعذر حذف الجهاز' });
     }
 });
@@ -354,7 +354,7 @@ router.post('/devices/:id/import-users', jwtAuth, requireRole(...WRITE_ROLES), a
                 : 'لا يوجد مستخدمون جدد للاستيراد — الكل موجود مسبقًا',
         });
     } catch (error) {
-        logger.error('[zkteco/devices:import-users]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[zkteco/devices:import-users]');
         res.status(502).json({ ok: false, error: 'ZK_IMPORT_FAILED', message: `تعذر الاستيراد من الجهاز: ${error.message}` });
     }
 });
@@ -409,7 +409,7 @@ router.get('/mappings', jwtAuth, requireRole(...READ_ROLES), async (req, res) =>
         )).rows;
         res.json({ employees: rows, unmapped });
     } catch (error) {
-        logger.error('[zkteco/mappings]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[zkteco/mappings]');
         res.status(500).json({ error: 'ZK_MAPPINGS_FAILED', message: 'تعذر جلب ربط الموظفين' });
     }
 });
@@ -466,7 +466,7 @@ router.put('/mappings/:employeeId', jwtAuth, requireRole(...WRITE_ROLES), async 
         }
         res.json({ ...rows[0], attached });
     } catch (error) {
-        logger.error('[zkteco/mappings:update]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[zkteco/mappings:update]');
         res.status(500).json({ error: 'ZK_MAPPING_FAILED', message: 'تعذر حفظ الربط' });
     }
 });
@@ -528,7 +528,7 @@ router.post('/mappings/auto', jwtAuth, requireRole(...WRITE_ROLES), async (req, 
         res.json({ ok: true, linked, linkedNames: linkedNames.slice(0, 50),
             message: linked ? `تم ربط ${linked} موظفًا تلقائيًا برقمه الوظيفي` : 'لا يوجد موظفون بحاجة لربط تلقائي' });
     } catch (error) {
-        logger.error('[zkteco/mappings:auto]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[zkteco/mappings:auto]');
         res.status(500).json({ error: 'ZK_AUTO_LINK_FAILED', message: 'فشل الربط التلقائي' });
     }
 });
@@ -559,7 +559,7 @@ router.get('/logs', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
         );
         res.json(rows);
     } catch (error) {
-        logger.error('[zkteco/logs]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[zkteco/logs]');
         res.status(500).json({ error: 'ZK_LOGS_FAILED', message: 'تعذر جلب سجل البصمات' });
     }
 });
@@ -620,7 +620,7 @@ async function togglePunchIgnore(req, res, ignored) {
             log: { id: log.id, employeeId: log.employeeId, attendanceTime: log.attendanceTime },
         });
     } catch (error) {
-        logger.error('[zkteco/logs:ignore]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[zkteco/logs:ignore]');
         res.status(500).json({ error: 'ZK_PUNCH_UPDATE_FAILED', message: `تعذر تصحيح البصمة: ${error.message}` });
     }
 }
@@ -665,7 +665,7 @@ router.get('/logs/export', jwtAuth, requireRole(...READ_ROLES), async (req, res)
         res.setHeader('Content-Disposition', `attachment; filename="${fname}"`);
         res.send(lines.join('\n'));
     } catch (error) {
-        logger.error('[zkteco/logs/export]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[zkteco/logs/export]');
         res.status(500).json({ error: 'ZK_EXPORT_FAILED', message: 'تعذر التصدير' });
     }
 });
@@ -689,7 +689,7 @@ router.get('/fingerprints', jwtAuth, requireRole(...READ_ROLES), async (req, res
         );
         res.json({ ok:true, from, to, count: rows.length, fingerprints: rows });
     } catch (error) {
-        logger.error('[zkteco/fingerprints]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[zkteco/fingerprints]');
         res.status(500).json({ error: 'FINGERPRINTS_FAILED', message: 'تعذر جلب البصمات' });
     }
 });
@@ -732,7 +732,7 @@ router.get('/my-punches', jwtAuth, async (req, res) => {
             punches, todayRecord, devices,
         });
     } catch (error) {
-        logger.error('[zkteco/my-punches]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[zkteco/my-punches]');
         res.status(500).json({ error: 'ZK_MY_PUNCHES_FAILED', message: 'تعذر جلب بصمات اليوم' });
     }
 });
@@ -822,7 +822,7 @@ router.get('/coverage', jwtAuth, requireRole(...READ_ROLES), async (req, res) =>
             unmapped_device_users: unmappedDeviceUsers,
         });
     } catch (error) {
-        logger.error('[ZKTECO] coverage failed:', error.message);
+        logger.error({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[ZKTECO] coverage failed:');
         res.status(500).json({ error: 'ZK_COVERAGE_FAILED', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
@@ -843,7 +843,7 @@ router.get('/reconciliation', jwtAuth, requireRole(...READ_ROLES), async (req, r
         });
         res.json(report);
     } catch (error) {
-        logger.error('[ZKTECO] reconciliation failed:', error.message);
+        logger.error({ err: { message: String(error.message), stack: (error && error.stack) || null } }, '[ZKTECO] reconciliation failed:');
         res.status(500).json({ error: 'ZK_RECONCILIATION_FAILED', message: 'حدث خطأ داخلي — يرجى المحاولة مرة أخرى' });
     }
 });
@@ -964,7 +964,7 @@ router.post('/scan', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
                 : 'لا توجد أجهزة بصمة ZKTeco على الشبكة — تأكد من تشغيل الجهاز وتوصيله بالشبكة',
         });
     } catch (error) {
-        logger.error('[zkteco/scan]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[zkteco/scan]');
         res.status(500).json({ error: 'ZK_SCAN_FAILED', message: 'تعذر مسح الشبكة: ' + error.message });
     }
 });
@@ -1092,7 +1092,7 @@ router.get('/control', jwtAuth, requireRole(...CONTROL_ROLES), async (req, res) 
             limits: { rebuildMaxDays: REBUILD_MAX_DAYS },
         });
     } catch (error) {
-        logger.error('[zkteco/control]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[zkteco/control]');
         res.status(500).json({ error: 'ZK_CONTROL_FAILED', message: 'تعذر جلب حالة التحكم' });
     }
 });
@@ -1127,7 +1127,7 @@ router.post('/engine/:action', jwtAuth, requireRole(...CONTROL_ROLES), async (re
             : (action === 'restart' ? 'أُعيد تشغيل المحرك — أول دورة بعد 3 ثوانٍ' : 'المحرك يعمل — أول دورة بعد 3 ثوانٍ');
         res.json({ ok: true, running, message });
     } catch (error) {
-        logger.error('[zkteco/engine:action]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[zkteco/engine:action]');
         res.status(500).json({ error: 'ZK_ENGINE_FAILED', message: `تعذر تنفيذ الإجراء: ${error.message}` });
     }
 });
@@ -1313,7 +1313,7 @@ router.post('/rebuild-days', jwtAuth, requireRole(...CONTROL_ROLES), async (req,
             message: `أُعيد بناء ${tail}: ${replayed} بصمة — صفوف جديدة ${created}، محدَّثة ${updated}، بلا صف ${removed}`,
         });
     } catch (error) {
-        logger.error('[zkteco/rebuild-days]', error);
+        logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[zkteco/rebuild-days]');
         res.status(500).json({ error: 'ZK_REBUILD_FAILED', message: `تعذر إعادة البناء: ${error.message}` });
     } finally {
         _rebuildBusy.delete(employeeId);

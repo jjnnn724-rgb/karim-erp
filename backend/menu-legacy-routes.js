@@ -113,7 +113,7 @@ function register(app, opts = {}) {
                 return res.json({ ok: true, data: JSON.parse(raw) });
             }
         } catch (e) {
-            logger.warn('[buffet-menu] Read error:', e.message);
+            logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[buffet-menu] Read error:');
         }
         res.json({ ok: false, data: null });
     });
@@ -134,7 +134,7 @@ function register(app, opts = {}) {
             } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
             res.json({ ok: true, timestamp: Date.now() });
         } catch (e) {
-            logger.error('[buffet-menu] Save error:', e.message);
+            logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[buffet-menu] Save error:');
             res.status(500).json({ error: 'SAVE_FAILED' });
         }
     });

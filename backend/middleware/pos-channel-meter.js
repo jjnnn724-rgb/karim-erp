@@ -136,7 +136,7 @@ class PosChannelMeter {
             const key = sessionKey(req);
             if (key && bucket.sessions.size < MAX_SESSIONS_PER_CHANNEL) {bucket.sessions.add(key);}
         } catch (err) {
-            logger.warn('[pos-channel-meter] record failed (non-fatal):', err.message);
+            logger.warn({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[pos-channel-meter] record failed (non-fatal):');
         }
     }
 
@@ -199,7 +199,7 @@ class PosChannelMeter {
                 await fs.promises.writeFile(tmp, JSON.stringify(merged, null, 2), 'utf8');
                 await fs.promises.rename(tmp, file);
             } catch (err) {
-                logger.warn('[pos-channel-meter] flush failed (non-fatal):', err.message);
+                logger.warn({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[pos-channel-meter] flush failed (non-fatal):');
             }
         }).catch(() => {});
         return this.writeChain;

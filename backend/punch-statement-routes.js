@@ -54,7 +54,7 @@ router.get('/punches', jwtAuth, async (req, res) => {
         }), { minutesWorked: 0, employeesWithPunches: 0, openSegments: 0, reviewRows: 0 });
         res.json({ ...statement, totals: { ...totals, hoursWorked: Number((totals.minutesWorked / 60).toFixed(2)) } });
     } catch (e) {
-        logger.error('[punch_statement]', e);
+        logger.error({ err: { message: (e && e.message) || String(e), stack: (e && e.stack) || null } }, '[punch_statement]');
         res.status(500).json({ error: 'PUNCH_STATEMENT_FAILED', message: 'تعذر جلب كشف البصمات' });
     }
 });

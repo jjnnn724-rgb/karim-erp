@@ -138,7 +138,7 @@ async function consumeStagingFile(filePath, { io = null } = {}) {
         } catch (e) {
             out.failed++;
             out.errors.push(`${inv.key}: ${String(e.message).slice(0, 160)}`);
-            logger.error('[yarasoft_oracle_consume]', e.message);
+            logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[yarasoft_oracle_consume]');
         }
     }
     // أرشفة الملف المستهلك (لا يُعاد قراءته)

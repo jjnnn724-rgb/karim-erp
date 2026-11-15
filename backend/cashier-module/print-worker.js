@@ -218,7 +218,7 @@ async function sendToPrinter(printer, payloadBuffer) {
 if (require.main === module) {
     logger.info('[print-worker] 🖨 started, polling every 2s');
     const timer = setInterval(() => {
-        pollAndPrint().catch(err => logger.error('[print-worker] poll error:', err.message));
+        pollAndPrint().catch(err => logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[print-worker] poll error:'));
     }, POLL_INTERVAL_MS);
 
     async function shutdown(signal) {

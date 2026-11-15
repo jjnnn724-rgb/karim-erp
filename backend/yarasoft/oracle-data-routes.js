@@ -155,7 +155,7 @@ setTimeout(() => {
                 } catch {}
             }
             logger.info(`[Oracle Refresh] ${refreshed}/${meta.rows.length} tables updated`);
-        } catch (e) { logger.error('[Oracle Refresh]', e.message); }
+        } catch (e) { logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[Oracle Refresh]'); }
     }, DAILY_REFRESH_MS);
     logger.info('[Oracle Refresh] Daily scheduler started (every 24h)');
 }, 5000); // start after 5 seconds

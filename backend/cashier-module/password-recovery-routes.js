@@ -92,7 +92,7 @@ async function requestCodeHandler(req, res, ctx = {}) {
                 reason: authzReset.message,
                 metadata: { target_username: u.username, target_role: u.role, actor_role: req.user?.role },
                 actor: { userId: req.user.id, userName: req.user.name, role: req.user.role, ip: req.ip, requestId: req.id },
-            }).catch((e) => logger.error('[pw-recovery] audit log failed:', e.message));
+            }).catch((e) => logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[pw-recovery] audit log failed:'));
             return res.status(authzReset.status).json({ error: authzReset.code, message: authzReset.message });
         }
 
@@ -115,7 +115,7 @@ async function requestCodeHandler(req, res, ctx = {}) {
             reason: 'إصدار رمز استعادة لمرة واحدة لموظف نسي كلمة المرور',
             metadata: { target_username: u.username, target_role: u.role, ttl_seconds: RESET_CODE_TTL_MS / 1000 },
             actor: { userId: req.user.id, userName: req.user.name, role: req.user.role, ip: req.ip, requestId: req.id },
-        }).catch((e) => logger.error('[pw-recovery] audit log failed:', e.message));
+        }).catch((e) => logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[pw-recovery] audit log failed:'));
 
         logger.info({ userId: u.id, username: u.username, by: req.user.id },
             '[pw-recovery] reset code issued (valid 10 min, single use)');
@@ -210,7 +210,7 @@ async function resetHandler(req, res, ctx = {}) {
             reason: 'استعادة ذاتية لكلمة المرور برمز لمرة واحدة',
             metadata: { target_username: u.username, code_id: row.id },
             actor: { userId: null, userName: u.username, role: 'self', ip: req.ip, requestId: req.id },
-        }).catch((e) => logger.error('[pw-recovery] audit log failed:', e.message));
+        }).catch((e) => logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[pw-recovery] audit log failed:'));
 
         logger.info({ userId: u.id, username: u.username }, '[pw-recovery] password self-reset completed');
         return res.json({
@@ -218,7 +218,7 @@ async function resetHandler(req, res, ctx = {}) {
             message: 'تم تغيير كلمة المرور بنجاح — سجّل الدخول بكلمة المرور الجديدة.',
         });
     } catch (err) {
-        logger.error('[pw-recovery] reset failed:', err.message);
+        logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[pw-recovery] reset failed:');
         return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر استعادة كلمة المرور — حاول مرة أخرى.' });
     } finally {
         client.release();
