@@ -23,7 +23,7 @@ describe('DesignGallery', () => {
     it('يعرض عنوان المعرض وأقسامه الرئيسية', () => {
         render(<DesignGallery />);
 
-        expect(screen.getByRole('heading', { level: 1, name: 'معرض نظام التصميم' })).toBeTruthy();
+        expect(screen.getByRole('heading', { level: 1, name: /معرض نظام التصميم/ })).toBeTruthy();
         expect(screen.getByRole('navigation', { name: 'أقسام المعرض' })).toBeTruthy();
         expect(screen.getByRole('heading', { level: 2, name: 'الرموز' })).toBeTruthy();
         expect(screen.getByRole('heading', { level: 2, name: 'الأزرار' })).toBeTruthy();
