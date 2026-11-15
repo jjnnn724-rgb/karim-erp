@@ -22,17 +22,17 @@
  *   • الأخطاء تُطبع من ردّ الخادم (e.message) لا من نصوص مخترعة.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.356';
-import { openInAppReport } from '../report-viewer.js?v=4.9.356';
-import { statusBadge } from '../status.js?v=4.9.356';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.358';
+import { openInAppReport } from '../report-viewer.js?v=4.9.358';
+import { statusBadge } from '../status.js?v=4.9.358';
 import {
     fetchVegRequests, fetchVegCatalog, fetchVegRequestById, vegRequestToRow, vegItemsOf,
     VEG_STATUS_FILTERS,
     vegCreateVisible, vegReceiveVisible, vegPriceVisible, vegEditVisible, vegCancelVisible,
     collectVegItems, vegCreatePayload, vegReceivePayload, vegEditPayload,
     createVegRequest, receiveVegRequest, priceVegRequest, editVegItems, cancelVegRequest, markVegPrinted,
-} from '../data/veg-repo.js?v=4.9.356';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.356';
+} from '../data/veg-repo.js?v=4.9.358';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.358';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

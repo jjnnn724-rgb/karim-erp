@@ -12,7 +12,7 @@ import {
     fetchGosiRates,
     fetchGosiPreview,
     fetchQiwaReadiness,
-} from '../data/integration-repo.js?v=4.9.356';
+} from '../data/integration-repo.js?v=4.9.358';
 
 const MONTH_RE = /^\d{4}-(0[1-9]|1[0-2])$/;
 

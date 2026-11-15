@@ -495,6 +495,7 @@ function LoginScreen({ kiosk = false }: { kiosk?: boolean }) {
                             <h2>لاحظ كل شيء في لمحة واحدة — بدون وش وراء شاشات متعددة.</h2>
                             <p>من الكاشير والبصمة للرواتب والمخزون — كل قرار مدير مطاعم يثق في نظام متكامل، أكثر رقمية من أي يوم سبق.</p>
                         </aside>
+                        <div className="erp-luxe-form-col">
                         <section className="erp-login__form erp-login__form--luxe-card" aria-live="polite">
                             {pane === 'password' ? (
                                 <form onSubmit={onLogin} aria-busy={busy}>
@@ -595,6 +596,7 @@ function LoginScreen({ kiosk = false }: { kiosk?: boolean }) {
                                 </section>
                             ) : null}
                         </section>
+                        </div>
                     </section>
                     <footer className="erp-luxe-foot">
                         <span className="erp-luxe-rail" aria-hidden="true" />
