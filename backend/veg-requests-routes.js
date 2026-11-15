@@ -156,12 +156,12 @@ router.post('/', ...vegCreateGate, async (req, res, next) => {
                 });
             }
         } catch (_) { /* الإشعار اللحظي لا يوقف العملية */ }
-        // إشعار واتساب للمشرفين (طابور المخزن/المورد) — أفضل جهد، لا يعطل الحفظ ولا يرمي
+        // إشعار واتساب للمديرين (نفس مسار تقرير الإدارة: wa_settings أولاً) — أفضل جهد
         try {
-            if (String(process.env.WHATSAPP_ENABLED || '').toLowerCase() === 'true') {
-                const jids = String(process.env.WHATSAPP_MANAGER_JIDS || '')
-                    .split(',').map((s) => s.replace(/\D/g, '').trim()).filter((s) => s.length >= 7).slice(0, 5);
-                if (jids.length) {
+            const store = require('./whatsapp-engine/store');
+            const nums = await store.managerJids().catch(() => []);
+            const jids = nums.slice(0, 5).map((n) => `${String(n).replace(/\D/g, '')}@s.whatsapp.net`).filter((j) => /^\d{7,20}@/.test(j));
+            if (jids.length) {
                     const mod = require('./whatsapp-engine');
                     const engine = (typeof mod.getEngine === 'function' ? mod.getEngine() : null)
                         || mod.whatsappEngine || mod.engine || null;
@@ -179,13 +179,11 @@ router.post('/', ...vegCreateGate, async (req, res, next) => {
                             'الاستلام والتسعير من صفحة «طلبات خضار» في Karim ERP.',
                         ].join('\n');
                         for (const jid of jids) {
-                            const jidFull = String(jid).includes('@') ? String(jid) : `${String(jid).replace(/\D/g, '')}@s.whatsapp.net`;
-                            sender.enqueue(jidFull, text, { clientKey: `veg-new:${saved.id}:${jidFull}` })
+                            sender.enqueue(jid, text, { clientKey: `veg-new:${saved.id}:${jid}` })
                                 .catch((err) => logger.warn('[veg-requests] whatsapp failed (non-fatal)', { msg: err && err.message }));
                         }
                         logger.info('[veg-requests] whatsapp notify queued', { request_no: requestNo, targets: jids.length });
                     }
-                }
             }
         } catch (_) { /* إشعار أفضل جهد فقط */ }
         return res.json({ ok: true, request: saved });
