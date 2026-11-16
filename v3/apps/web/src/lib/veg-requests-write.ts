@@ -20,15 +20,19 @@ export const VEG_CREATE_ROLES = ['sous_chef', 'admin', 'owner'] as const;
 export const VEG_RECEIVE_ROLES = ['sous_chef', 'admin', 'owner'] as const;
 export const VEG_PRICE_ROLES = ['warehouse', 'admin', 'owner', 'manager'] as const;
 
-export function vegCreateVisible(role: string | null | undefined, deptCode?: string | null | undefined): boolean {
+export function vegCreateVisible(role: string | null | undefined, deptCode?: string | null | undefined, grants?: ReadonlySet<string>): boolean {
     if (isWriteRole(role, VEG_CREATE_ROLES)) {return true;}
+    // منح مباشر من الأدمن يفتح التدفق بغض النظر عن دور/تخصص المستخدم
+    if (grants?.has('veg.create')) {return true;}
     // رئيس قسم السلطات تحديدًا (dept_head · dept_code=salads)
     return String(role || '') === 'dept_head'
         && String(deptCode ?? '').toLowerCase().split(',').map((s) => s.trim()).includes('salads');
 }
 
-export function vegReceiveVisible(role: string | null | undefined, deptCode?: string | null | undefined): boolean {
+export function vegReceiveVisible(role: string | null | undefined, deptCode?: string | null | undefined, grants?: ReadonlySet<string>): boolean {
     if (isWriteRole(role, VEG_RECEIVE_ROLES)) {return true;}
+    // منح مباشر من الأدمن يفتح التدفق بغض النظر عن دور/تخصص المستخدم
+    if (grants?.has('veg.receive')) {return true;}
     // رئيس قسم السلطات تحديدًا (dept_head · dept_code=salads)
     return String(role || '') === 'dept_head'
         && String(deptCode ?? '').toLowerCase().split(',').map((s) => s.trim()).includes('salads');

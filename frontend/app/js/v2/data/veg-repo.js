@@ -67,7 +67,7 @@
  * PAIRS WITH: screens/veg-requests.js (screen 14 in js/v2/MIGRATION.md).
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.374';
+import { apiFetch } from '../../core/api.js?v=4.9.375';
 
 const num = (v) => {
     const n = Number(v);
@@ -247,12 +247,23 @@ export function vegEditPayload(rows = []) {
 
 /* ── بوابات الأزرار — شروط القديم :18-26 و:340 و:508-513 ─────────────── */
 
-/** زر «طلب جديد» — vegCanCreate :18 يساوي CREATE_ROLES الخادمية حرفيًا. */
-export function vegCreateVisible(role) {return VEG_UI_CREATE_ROLES.includes(role);}
+/** زر «طلب جديد» — السو شيف/الإدارة + رئيس السلطات (dept_code=salads) + من مُنح صلاحية veg.create من المدير. */
+export function vegCreateVisible(role, deptCode, grants) {
+    if (VEG_UI_CREATE_ROLES.includes(role)) {return true;}
+    const g = Array.isArray(grants) ? grants : (typeof window !== 'undefined' && Array.isArray(window.STATE?.permissions?.grants) ? window.STATE.permissions.grants : []);
+    if (g.includes('veg.create')) {return true;}
+    return String(role || '') === 'dept_head'
+        && String(deptCode ?? '').toLowerCase().split(',').map((s) => s.trim()).includes('salads');
+}
 
-/** زر الاستلام — pending && vegCanReceive :22-25 (يساوي RECEIVE_ROLES). */
-export function vegReceiveVisible(role, status) {
-    return status === 'pending' && VEG_RECEIVE_ROLES.includes(role);
+/** زر الاستلام — pending && (السو شيف/الإدارة/من مُنح veg.receive/رئيس السلطات). */
+export function vegReceiveVisible(role, status, deptCode, grants) {
+    if (status !== 'pending') {return false;}
+    if (VEG_RECEIVE_ROLES.includes(role)) {return true;}
+    const g = Array.isArray(grants) ? grants : (typeof window !== 'undefined' && Array.isArray(window.STATE?.permissions?.grants) ? window.STATE.permissions.grants : []);
+    if (g.includes('veg.receive')) {return true;}
+    return String(role || '') === 'dept_head'
+        && String(deptCode ?? '').toLowerCase().split(',').map((s) => s.trim()).includes('salads');
 }
 
 /** زر السعر — received && vegCanPrice :19 (الخادم يضم manager أيضًا —

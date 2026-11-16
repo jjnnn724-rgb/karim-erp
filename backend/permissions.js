@@ -38,6 +38,11 @@ const PERMISSIONS = [
     // استعلامات المخزون (قراءة فقط — محرك الاستعلامات وبطاقة الصنف)
     { key: 'inventory-inquiry.view', ar: 'استعلامات المخزون', group: 'المخزون',
       menus: ['query', 'professional'], entitiesRead: [], entitiesWrite: [] },
+    // طلبيات الخضار — فتح تدفق الخضار لسلطة رئيس قسم محدد (قرار المالك 2026-11-16)
+    { key: 'veg.create', ar: 'إنشاء طلبية الخضار', group: 'التشغيل',
+      menus: ['veg-requests'], entitiesRead: [], entitiesWrite: [] },
+    { key: 'veg.receive', ar: 'استلام طلبية الخضار وتوقيعها', group: 'التشغيل',
+      menus: ['veg-requests'], entitiesRead: [], entitiesWrite: [] },
     // المشتريات
     { key: 'purchasing.view', ar: 'عرض المشتريات والموردين', group: 'المشتريات',
       menus: ['procurement'], entitiesRead: ['purchaseInvoices'], entitiesWrite: [] },

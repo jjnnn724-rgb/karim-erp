@@ -3,6 +3,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
+import { fetchMyPermissions } from '../lib/my-menus';
 import { fetchCurrency } from '../lib/finance';
 import { formatMoney } from '../lib/format';
 import { printSmart } from '../lib/print-viewer';
@@ -1027,8 +1028,15 @@ function VegContactsDialog({ open, pending, current, onClose, onSave }: {
 export function VegRequests() {
     const auth = useAuthState();
     const { toast } = useToast();
-    const canCreate = vegCreateVisible(auth.user?.role, auth.user?.dept_code);
-    const canReceive = vegReceiveVisible(auth.user?.role, auth.user?.dept_code);
+    const meQuery = useQuery({
+        queryKey: ['permissions', 'me'],
+        queryFn: ({ signal }) => fetchMyPermissions(signal),
+        staleTime: 5 * 60 * 1000,
+        retry: false,
+    });
+    const vegGrants = useMemo(() => new Set<string>(meQuery.data?.grants ?? []), [meQuery.data]);
+    const canCreate = vegCreateVisible(auth.user?.role, auth.user?.dept_code, vegGrants);
+    const canReceive = vegReceiveVisible(auth.user?.role, auth.user?.dept_code, vegGrants);
     const canPrice = vegPriceVisible(auth.user?.role);
     const isContactsAdmin = auth.user?.role === 'admin' || auth.user?.role === 'owner';
 

@@ -212,10 +212,12 @@ describe('veg-repo — الثوابت مرايا الخادم والقديم ب�
         expect(wr).toContain(`const CREATE_ROLES = ${list(repo.VEG_CREATE_ROLES)};`);
         // الحالة بعد قرار المالك (2026-10): بوابة استلام دالية — السو شيف/الإدارة
         // + رئيس السلطات (dept_head بحقل dept_code يحتوي «salads») — لا توجد قائمة حرفيّة بعد الآن.
-        expect(wr).toMatch(/const isVegReceiveEligible = \(role, deptCode\)/);
+        expect(wr).toMatch(/const isVegReceiveEligible = async \(role, deptCode/);
+        expect(wr).toMatch(/const isVegitCreateEligible = async \(role, deptCode/);
         expect(wr).toContain("if (r === 'dept_head') {");
-        expect(wr).toContain(".includes('salads');");
-        expect(wr).toContain("const receiveGate = [jwtAuth, (req, res, next) => {");
+        // بوابة الاستلام تحتفظ بفحص تخصص السلطات inline (صلاحيات العميان على veg.receive بمنح إضافي)
+        expect(wr).toContain("d.includes('salads')");
+        expect(wr).toContain("const receiveGate = [jwtAuth, async (req, res, next) => {");
         expect(wr).toContain(`const EDIT_ROLES = ${list(repo.VEG_EDIT_ROLES)};`);
         // القراء = الإنشاء + warehouse، بلا تكرار حرفي
         expect(wr).toContain("const READ_ROLES = [...CREATE_ROLES, 'warehouse'];");
@@ -239,10 +241,10 @@ describe('veg-repo — الثوابت مرايا الخادم والقديم ب�
             expect(wr).toContain(line);
         }
         // بوابة الإنشاء المسمّاة — توسع رئيس السلطات وفق قرار المالك (2026-10)
-        expect(wr).toContain("const vegCreateGate = [jwtAuth, (req, res, next) => {");
-        expect(wr).toContain("const isVegitCreateEligible = (role, deptCode)");
+        expect(wr).toContain("const vegCreateGate = [jwtAuth, async (req, res, next) => {");
+        expect(wr).toContain("const isVegitCreateEligible = async (role, deptCode");
         // بوابة الاستلام — تحتضن السو شيف ورئيس السلطات والإدارة (الكلمة الحالية كما ترد للواجهة)
-        expect(wr).toContain("return res.status(403).json({ ok: false, error: 'FORBIDDEN', message: 'استلام الطلبية للسو شيف أو رئيس قسم السلطات أو الإدارة فقط' });");
+        expect(wr).toContain("return res.status(403).json({ ok: false, error: 'FORBIDDEN', message: 'الاستلام والتوقيع للسو شيف أو رئيس قسم السلطات أو الإدارة، أو لمن مُنح صلاحية veg.receive من المدير' });");
         // الحالات المخزنة والحراسة المزدوجة داخل المعالجات
         expect(wr).toContain("CHECK (status IN ('pending','received','priced','cancelled'))");
         expect(wr).toContain("'التسعير بعد استلام رئيس القسم — الطلب حالته ' + row.status");
@@ -493,24 +495,24 @@ describe('شاشة 14 — العقد المصدَّر من المصدر', () => 
 
     test('بوابات openPanel بكلماتها — والبوابة قبل أي حالة، والقرار النهائي للخادم', () => {
         const s = src();
-        expect(s).toContain("if (!vegCreateVisible(role)) {notify('إنشاء طلبات الخضار للسو شيف والإدارة فقط'); return;}");
-        expect(s).toContain("if (!vegReceiveVisible(role, st)) {notify('الاستلام والتوقيع للسو شيف فقط'); return;}");
+        expect(s).toContain("if (!vegCreateVisible(role, deptCode, grants)) {notify('إنشاء طلبات الخضار للسو شيف والإدارة ورئيس السلطات أو من مُنح صلاحية مباشرة'); return;}");
+        expect(s).toContain("if (!vegReceiveVisible(role, st, deptCode, grants)) {notify('الاستلام والتوقيع للسو شيف أو رئيس قسم السلطات أو الإدارة / من مُنح صلاحية'); return;}");
         expect(s).toContain("if (!vegPriceVisible(role, st)) {notify('التسعير للمخزن والإدارة فقط'); return;}");
         expect(s).toContain("if (!vegEditVisible(role, st, raw, userId)) {notify('التعديل لصاحب الطلب أو الإدارة فقط'); return;}");
         expect(s).toContain("if (!vegCancelVisible(role, st, raw, userId)) {notify('الإلغاء لصاحب الطلب أو الإدارة فقط'); return;}");
         // كلمة الاستلام من الخادم — راعت قرار المالك لـ رئيس السلطات (2026-10)
-        expect(source(VR)).toContain('استلام الطلبية للسو شيف أو رئيس قسم السلطات أو الإدارة فقط');
+        expect(source(VR)).toContain('الاستلام والتوقيع للسو شيف أو رئيس قسم السلطات أو الإدارة، أو لمن مُنح صلاحية veg.receive من المدير');
         // البوابة تُحسم قبل أي تغيير حالة — لا لوحة عالقة بحالة مرفوضة
         const open = s.slice(s.indexOf('function openPanel'), s.indexOf('const seq = ++panelSeq;'));
         expect(open).not.toContain('panelKind =');
         // زر الإنشاء نفسه لا يُرسم إلا لأصحاب الدور
-        expect(s).toMatch(/template\(vegCreateVisible\(role\)\)/);
+        expect(s).toMatch(/template\(vegCreateVisible\(role, deptCode, grants\)\)/);
     });
 
     test('أزرار الصف من بواباتها بترتيب القديم :357-364 — طباعة ← استلام ← سعر ← تعديل ← إلغاء', () => {
         const s = src();
         const actions = s.slice(s.indexOf('function rowActionsHtml'), s.indexOf('/* ── اللوحة'));
-        for (const gate of ['vegReceiveVisible(role, st)', 'vegPriceVisible(role, st)',
+        for (const gate of ['vegReceiveVisible(role, st, deptCode, grants)', 'vegPriceVisible(role, st)',
             'vegEditVisible(role, st, raw, userId)', 'vegCancelVisible(role, st, raw, userId)']) {
             expect(actions).toContain(gate);
         }

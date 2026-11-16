@@ -7,9 +7,9 @@
  * 8,000 rows; newest-first; client-side date filter (table/page also).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.374';
-import { invTxToRow, INV_TYPE_TONE, fetchInventoryTx, isoDay, firstOfMonth } from '../data/warehouse-repo.js?v=4.9.374';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.374';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.375';
+import { invTxToRow, INV_TYPE_TONE, fetchInventoryTx, isoDay, firstOfMonth } from '../data/warehouse-repo.js?v=4.9.375';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.375';
 
 const esc = (v) => String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 const money = (v, c) => { const m = formatMoney(v, c); return `<span class="erp-num" dir="ltr">${m.amount}</span>` + (m.hasUnit ? ` <span class="erp-text-sm erp-text-muted">${esc(m.unit)}</span>` : ''); };

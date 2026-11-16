@@ -26,28 +26,35 @@ const router = express.Router();
 const CREATE_ROLES = ['sous_chef', 'admin', 'owner'];
 const READ_ROLES = [...CREATE_ROLES, 'warehouse'];
 
-// استلام الطلبية: نفس طبقة الإنشاء (السو شيف + الإدارة + رئيس قسم السلطات بالتحديد)
-const isVegReceiveEligible = (role, deptCode) => {
+// استلام الطلبية: السو شيف/الإدارة/المالك، أو رئيس السلطات (dept_head · dept_code=salads)،
+// أو أي مستخدم مُنح veg.receive صراحةً
+const userHasPerm = require('./permissions').userHasPerm;
+
+const isVegReceiveEligible = async (role, deptCode, userId) => {
     const r = String(role || '');
     if (r === 'sous_chef' || r === 'admin' || r === 'owner') {return true;}
     if (r === 'dept_head') {
-        return String(deptCode || '').toLowerCase().split(',').map((s) => s.trim()).includes('salads');
+        const d = String(deptCode || '').toLowerCase().split(',').map((s) => s.trim());
+        if (d.includes('salads')) {return true;}
     }
-    return false;
+    if (userId == null) {return false;}
+    return userHasPerm({ id: Number(userId), role }, 'veg.receive', []);
 };
 
-// إنشاء الطلبية: السو شيف + الإدارة + رئيس قسم السلطات (dept_head · dept_code=salads) بالتحديد
-const isVegitCreateEligible = (role, deptCode) => {
+// إنشاء الطلبية: نفس الشرط — الدور، أو تخصص السلطات، أو منح مباشر veg.create
+const isVegitCreateEligible = async (role, deptCode, userId) => {
     const r = String(role || '');
     if (r === 'sous_chef' || r === 'admin' || r === 'owner') {return true;}
     if (r === 'dept_head') {
-        return String(deptCode || '').toLowerCase().split(',').map((s) => s.trim()).includes('salads');
+        const d = String(deptCode || '').toLowerCase().split(',').map((s) => s.trim());
+        if (d.includes('salads')) {return true;}
     }
-    return false;
+    if (userId == null) {return false;}
+    return userHasPerm({ id: Number(userId), role }, 'veg.create', []);
 };
-const vegCreateGate = [jwtAuth, (req, res, next) => {
-    if (isVegitCreateEligible(req.user?.role, req.user?.dept_code)) {return next();}
-    return res.status(403).json({ ok: false, error: 'FORBIDDEN', message: 'أنشئ الطلبية رئيس قسم السلطات أو السو شيف أو الإدارة فقط' });
+const vegCreateGate = [jwtAuth, async (req, res, next) => {
+    if (await isVegitCreateEligible(req.user?.role, req.user?.dept_code, req.user?.id)) {return next();}
+    return res.status(403).json({ ok: false, error: 'FORBIDDEN', message: 'إنشاء طلبات الخضار متاح للسو شيف والإدارة ورئيس السلطات، أو لمن مُنح صلاحية veg.create من المدير' });
 }];
 
 // ─── المخطط (lazy — أول لمسة تُنشئ الجدول) ───────────────────────────────────
@@ -232,9 +239,9 @@ router.get('/', jwtAuth, requireRole(...READ_ROLES), async (req, res, next) => {
 
 // ─── استلام — السو شيف فقط (+ الإدارة) — قرار المالك 2026-10-10 ───────────
 
-const receiveGate = [jwtAuth, (req, res, next) => {
-    if (isVegReceiveEligible(req.user?.role, req.user?.dept_code)) {return next();}
-    return res.status(403).json({ ok: false, error: 'FORBIDDEN', message: 'استلام الطلبية للسو شيف أو رئيس قسم السلطات أو الإدارة فقط' });
+const receiveGate = [jwtAuth, async (req, res, next) => {
+    if (await isVegReceiveEligible(req.user?.role, req.user?.dept_code, req.user?.id)) {return next();}
+    return res.status(403).json({ ok: false, error: 'FORBIDDEN', message: 'الاستلام والتوقيع للسو شيف أو رئيس قسم السلطات أو الإدارة، أو لمن مُنح صلاحية veg.receive من المدير' });
 }];
 
 router.post('/:id/receive', ...receiveGate, async (req, res, next) => {

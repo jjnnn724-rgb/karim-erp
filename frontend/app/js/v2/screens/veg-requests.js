@@ -22,17 +22,17 @@
  *   • الأخطاء تُطبع من ردّ الخادم (e.message) لا من نصوص مخترعة.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.374';
-import { openInAppReport } from '../report-viewer.js?v=4.9.374';
-import { statusBadge } from '../status.js?v=4.9.374';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.375';
+import { openInAppReport } from '../report-viewer.js?v=4.9.375';
+import { statusBadge } from '../status.js?v=4.9.375';
 import {
     fetchVegRequests, fetchVegCatalog, fetchVegRequestById, vegRequestToRow, vegItemsOf,
     VEG_STATUS_FILTERS,
     vegCreateVisible, vegReceiveVisible, vegPriceVisible, vegEditVisible, vegCancelVisible,
     collectVegItems, vegCreatePayload, vegReceivePayload, vegEditPayload,
     createVegRequest, receiveVegRequest, priceVegRequest, editVegItems, cancelVegRequest, markVegPrinted,
-} from '../data/veg-repo.js?v=4.9.374';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.374';
+} from '../data/veg-repo.js?v=4.9.375';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.375';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -186,7 +186,8 @@ function template(canCreate) {
 
 /**
  * @param {ParentNode} host where the screen is inserted
- * @param {{role?: string|null, userId?: number|null, userName?: string|null,
+ * @param {{role?: string|null, userId?: number|null, userName?: string|null, deptCode?: string|null,
+ *          grants?: readonly string[],
  *          notify?: (message:string)=>void, confirmFn?: (message:string)=>Promise<boolean>|boolean}} [ctx]
  * @returns {{el: HTMLElement, reload: ()=>Promise<void>, getRows: ()=>any[], destroy: ()=>void}}
  */
@@ -196,6 +197,8 @@ export function mountVegScreen(host, ctx = {}) {
         ? ctx.confirmFn
         : (message) => Promise.resolve(window.confirm(message));
     const role = ctx.role ? String(ctx.role) : '';
+    const deptCode = ctx.deptCode ? String(ctx.deptCode) : (typeof window !== 'undefined' ? String((window.STATE && window.STATE.currentUser && window.STATE.currentUser.dept_code) || '') : '');
+    const grants = Array.isArray(ctx.grants) ? ctx.grants : (typeof window !== 'undefined' && Array.isArray(window.STATE?.permissions?.grants) ? window.STATE.permissions.grants : []);
     const userId = ctx.userId != null ? Number(ctx.userId) : null;
     const userName = String(ctx.userName || '');
 
@@ -212,7 +215,7 @@ export function mountVegScreen(host, ctx = {}) {
     let priority = 'normal';                // normal | urgent — حالة لوحة الإنشاء
     let status = 'all';
 
-    host.insertAdjacentHTML('beforeend', template(vegCreateVisible(role)));
+    host.insertAdjacentHTML('beforeend', template(vegCreateVisible(role, deptCode, grants)));
     const el = host.lastElementChild;
     const q = (sel) => el.querySelector(sel);
     const panelEl = q('[data-v2-panel]');
@@ -293,7 +296,7 @@ export function mountVegScreen(host, ctx = {}) {
         const id = raw.id;
         const st = raw.status ? String(raw.status) : '';
         const out = [btn('print', id, 'printer', 'طباعة')];
-        if (vegReceiveVisible(role, st)) {out.push(btn('receive', id, 'check', 'استلام / إرجاع', 'erp-btn--primary'));}
+        if (vegReceiveVisible(role, st, deptCode, grants)) {out.push(btn('receive', id, 'check', 'استلام / إرجاع', 'erp-btn--primary'));}
         if (vegPriceVisible(role, st)) {out.push(btn('price', id, 'coins', 'سعرها', 'erp-btn--primary'));}
         if (vegEditVisible(role, st, raw, userId)) {out.push(btn('edit', id, 'pencil', 'تعديل الكميات'));}
         if (vegCancelVisible(role, st, raw, userId)) {out.push(btn('cancel', id, 'circle-x', 'إلغاء', 'erp-btn--danger'));}
@@ -609,11 +612,11 @@ export function mountVegScreen(host, ctx = {}) {
         if (busy) {notify('جارٍ تنفيذ عملية — انتظر النتيجة'); return;}
         const st = raw ? String(raw.status || '') : '';
         if (kind === 'create') {
-            if (!vegCreateVisible(role)) {notify('إنشاء طلبات الخضار للسو شيف والإدارة فقط'); return;}
+            if (!vegCreateVisible(role, deptCode, grants)) {notify('إنشاء طلبات الخضار للسو شيف والإدارة ورئيس السلطات أو من مُنح صلاحية مباشرة'); return;}
         } else if (!raw) {
             return;
         } else if (kind === 'receive') {
-            if (!vegReceiveVisible(role, st)) {notify('الاستلام والتوقيع للسو شيف فقط'); return;}
+            if (!vegReceiveVisible(role, st, deptCode, grants)) {notify('الاستلام والتوقيع للسو شيف أو رئيس قسم السلطات أو الإدارة / من مُنح صلاحية'); return;}
         } else if (kind === 'price') {
             if (!vegPriceVisible(role, st)) {notify('التسعير للمخزن والإدارة فقط'); return;}
         } else if (kind === 'edit') {

@@ -10,16 +10,16 @@
  * department and accounts belong to hr/admin (legacy header, verbatim).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.374';
-import { statusBadge } from '../status.js?v=4.9.374';
-import { canWrite } from '../session.js?v=4.9.374';
-import { formatInt } from '../data/reports-repo.js?v=4.9.374';
-import { openInAppReport } from '../report-viewer.js?v=4.9.374';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.375';
+import { statusBadge } from '../status.js?v=4.9.375';
+import { canWrite } from '../session.js?v=4.9.375';
+import { formatInt } from '../data/reports-repo.js?v=4.9.375';
+import { openInAppReport } from '../report-viewer.js?v=4.9.375';
 import {
     fetchDeptEmployees, deptEmpToRow, deptScopeLabel, validateDeptEmpForm,
     DEPT_EMP_WRITE_ROLES, createDeptEmployee, updateDeptEmployee, deactivateDeptEmployee,
-} from '../data/dept-employees-repo.js?v=4.9.374';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.374';
+} from '../data/dept-employees-repo.js?v=4.9.375';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.375';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
