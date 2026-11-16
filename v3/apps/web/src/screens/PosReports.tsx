@@ -24,6 +24,7 @@ import {
 import { Badge, Button, Input } from '../ui';
 import '../styles/pos-reports.css';
 import { errorMessage } from '../lib/reporting';
+import { printViewerDocument } from '../lib/print-viewer';
 import { useToast } from '../ui/Toast';
 
 type ReportTab = 'overview' | 'department' | 'product' | 'inventory';
@@ -286,11 +287,8 @@ export function PosReports() {
   <div class="sign"><div>إعداد</div><div>مراجعة</div><div>اعتماد</div></div>
 </body></html>`;
 
-        win.document.open();
-        win.document.write(html);
-        win.document.close();
+        printViewerDocument(win, html, { autoPrint: true, printDelayMs: 350 });
         win.focus();
-        win.setTimeout(() => win.print(), 350);
     };
 
     const execTabActive = tab === 'overview';

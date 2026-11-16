@@ -6,7 +6,8 @@ import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { buildDispatchPrintHtml, fetchDispatchFull, parseDispatchPrintRecord } from '../lib/dispatch-print';
-import { openBlankTab, writeHtmlDocument } from '../lib/print-document';
+import { openBlankTab } from '../lib/print-document';
+import { printViewerDocument } from '../lib/print-viewer';
 import {
     arSearchKey,
     DISPATCH_STATUS,
@@ -1233,12 +1234,11 @@ export function Dispatches() {
         }
         try {
             const record = (await fetchDispatchFull(String(dispatch.id))) ?? parseDispatchPrintRecord(dispatch);
-            writeHtmlDocument(win, buildDispatchPrintHtml(record, { printedBy: signerName || undefined }));
+            printViewerDocument(win, buildDispatchPrintHtml(record, { printedBy: signerName || undefined }), { printDelayMs: 350 });
         } catch {
-            writeHtmlDocument(win, buildDispatchPrintHtml(parseDispatchPrintRecord(dispatch), { printedBy: signerName || undefined }));
+            printViewerDocument(win, buildDispatchPrintHtml(parseDispatchPrintRecord(dispatch), { printedBy: signerName || undefined }), { printDelayMs: 350 });
         }
         win.focus();
-        win.setTimeout(() => win.print(), 350);
     }
 
     /** أزرار الصف — نفس شروط V2 وحالاتها وقائمة أدوارها. */

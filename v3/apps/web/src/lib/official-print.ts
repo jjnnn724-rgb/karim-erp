@@ -1,6 +1,11 @@
 /**
  * official-print.ts — ورقة A4 رسمية «شركة محترمة» (هوية كربون + ذهبي)
- * ─────────────────────────────────────────────
+ * ─────────────────────────────────────────────────────────────────
+ * هذا الملف يبني «داخل الورقة فقط» — شريط الأزرار (طباعة/إغلاق) يعاد استخدامه
+ * من `print-viewer.ts` ويربط بأحدث سند: حذف أي تأشير inline (CSP-safe).
+ */
+import { printViewerDocument } from './print-viewer';
+/**
  * لغة واحدة مع إذن الصرف: شريط كربوني/ذهبي بشارة الشعار، عناوين قابلة
  * للقراءة باللغة العربية والإنجليزية، شبكة KPI عصرية، وجداول بحد أحمر أو
  * كريمي — كل ورقة تخرج من النظام تبدو واحدة ولا لعازة فيها.
@@ -241,23 +246,14 @@ ${hasTotals && section.totalsRow ? `                <tr class="totals-row">${sec
       font-size: 6.5pt; color: #6b6556;
   }
   .sheet-foot b { color: ${INK}; }
-  /* ── أزرار الشاشة فقط ── */
-  .controls { position: fixed; inset-block-start: 10px; inset-inline-start: 10px; display: flex; gap: 8px; z-index: 20; }
-  .controls button {
-      border: 0; border-radius: 8px; padding: 8px 18px; font: inherit; font-weight: 800; cursor: pointer;
-      background: ${CARBON}; color: ${GOLD_DEEP}; box-shadow: 0 2px 8px rgb(0 0 0 / 0.25);
-  }
-  .controls button.ghost { background: #555; color: #fff; }
   @media print {
       body { padding: 0; background: #fff; }
       .sheet { box-shadow: none; border: 0; border-radius: 0; max-width: none; }
-      .controls { display: none !important; }
       .sheet-head, .sheet thead th, .totals-row td, .status-stamp, .stamp {
           -webkit-print-color-adjust: exact; print-color-adjust: exact;
       }
   }
 </style></head><body>
-<div class="controls"><button type="button" onclick="window.print()">طباعة الآن</button><button type="button" class="ghost" onclick="window.close()">إغلاق</button></div>
 <article class="sheet">
   <header class="sheet-head">
     <img class="sheet-logo" src="/app/assets/karim-logo.png" alt="شعار الشركة" />
@@ -297,17 +293,14 @@ ${hasTotals && section.totalsRow ? `                <tr class="totals-row">${sec
 </body></html>`;
 }
 
-/** فتح المستند في تبويب مستقل مع زر الطباعة والتلقائية. */
+/** فتح المستند في تبويب مستقل مع أزرار الإغلاق والطباعة القياسية (print-viewer). */
 export function printOfficialSheet(input: OfficialSheetInput): boolean {
     const html = buildOfficialSheetHtml(input);
     const win = window.open('', '_blank', 'width=1000,height=1100');
     if (!win) {
         return false;
     }
-    win.document.open();
-    win.document.write(html);
-    win.document.close();
+    printViewerDocument(win, html, { autoPrint: true, printDelayMs: 350 });
     win.focus();
-    win.setTimeout(() => win.print(), 350);
     return true;
 }

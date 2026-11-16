@@ -393,17 +393,9 @@ table.sheet-items {
     font-size: 6.5pt; color: #6b6556; letter-spacing: 0.02em;
 }
 .sheet-foot b { color: #14231f; }
-/* ── أزرار الشاشة فقط ── */
-.controls { position: fixed; inset-block-start: 10px; inset-inline-start: 10px; display: flex; gap: 8px; z-index: 10; }
-.controls button {
-    border: 0; border-radius: 8px; padding: 8px 18px; font: inherit; font-weight: 800; cursor: pointer;
-    background: #0d0f0b; color: #fff3c4; box-shadow: 0 2px 8px rgb(0 0 0 / 0.25);
-}
-.controls button.ghost { background: #555; color: #fff; }
 @media print {
     body { padding: 0; background: #fff; }
     .sheet { box-shadow: none; border: 0; border-radius: 0; max-width: none; }
-    .controls { display: none !important; }
     .sheet-head, .sheet-totals td, .sheet-items thead th, .status-stamp {
         -webkit-print-color-adjust: exact; print-color-adjust: exact;
     }
@@ -415,7 +407,6 @@ table.sheet-items {
     .chain-box { min-width: calc(50% - 10px); }
 }
 </style></head><body>
-<div class="controls"><button type="button" onclick="window.print()">طباعة الآن</button><button type="button" class="ghost" onclick="window.close()">إغلاق</button></div>
 <article class="sheet">
     <header class="sheet-head">
         <img class="sheet-logo" src="/app/assets/karim-logo.png" alt="شعار الشركة" />
