@@ -11,9 +11,9 @@
  *   · رسوم SVG من مكتبة المشروع (بلا مكتبة خارجية) ⇒ بلا vendor جديد.
  *   · الأنيميشن CSS فقط (لا JS) ⇒ لا إعادة رسم.
  */
-import { apiFetch } from '../../core/api.js?v=4.9.371';
-import { barChart, lineChart, donutChart } from '../charts.js?v=4.9.371';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.371';
+import { apiFetch } from '../../core/api.js?v=4.9.372';
+import { barChart, lineChart, donutChart } from '../charts.js?v=4.9.372';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.372';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

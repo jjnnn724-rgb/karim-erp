@@ -14,19 +14,22 @@
  * الاستدعاءات تمر عبر `printViewerDocument` أو `printViewerHtml` (يفتح تبويبًا مُعَدًّا).
  */
 import { writeHtmlDocument } from './print-document';
+import { exportElementPdf } from './pdf-share';
 
 const TOOLBAR = `
 <div class="erp-print-toolbar" role="toolbar" aria-label="أدوات الطباعة والإغلاق">
-  <button type="button" class="erp-pt erp-pt--print" data-erp-pt="print">🖨 طباعة</button>
-  <button type="button" class="erp-pt erp-pt--close" data-erp-pt="close">✕ إغلاق</button>
+  <button type="button" class="erp-pt" data-erp-pt="print" aria-label="طباعة">🖨</button>
+  <button type="button" class="erp-pt erp-pt--share" data-erp-pt="share" aria-label="مشاركة PDF">⤴</button>
+  <button type="button" class="erp-pt erp-pt--close" data-erp-pt="close" aria-label="إغلاق">✕</button>
 </div>
 <style>
-.erp-print-toolbar{position:fixed;inset-block-start:12px;inset-inline-end:14px;z-index:2147483647;display:flex;gap:10px;direction:rtl}
-.erp-pt{border:0;border-radius:999px;padding:11px 22px;font:800 14px/1 'Tajawal','IBM Plex Sans Arabic','Cairo',Tahoma,sans-serif;cursor:pointer;box-shadow:0 6px 18px rgba(0,0,0,.4);transition:transform 120ms ease,filter 120ms ease}
-.erp-pt:hover{transform:translateY(-1px);filter:brightness(1.06)}
-.erp-pt--print{background:#c8a24a;color:#1b1205}
-.erp-pt--close{background:#131a12;color:#fff8e0;border:1px solid #c8a24a}
+.erp-print-toolbar{position:fixed;inset-block-end:22px;inset-inline-end:18px;z-index:2147483647;display:flex;gap:6px;direction:rtl;padding:5px;background:#131a12;border:1px solid rgb(200 162 74 / .45);border-radius:999px;box-shadow:0 10px 30px rgba(0,0,0,.45), 0 0 0 1px rgba(0,0,0,.3)}
+.erp-pt{inline-size:34px;block-size:34px;border:0;border-radius:999px;display:grid;place-items:center;background:transparent;color:#e0c56f;font-size:15px;line-height:1;cursor:pointer;transition:background 140ms ease,color 140ms ease,transform 140ms ease}
+.erp-pt:hover{background:rgb(200 162 74 / .25);color:#fff3c4;transform:translateY(-1px)}
+.erp-pt--close{color:#f5a9a2}
+.erp-pt--close:hover{background:rgb(224 82 82 / .3);color:#fff}
 @media print{.erp-print-toolbar{display:none !important}}
+@media (max-width:640px){.erp-print-toolbar{inset-block-end:12px;inset-inline-end:10px;padding:4px}.erp-pt{inline-size:30px;block-size:30px;font-size:14px}}
 </style>`;
 
 export interface PrintViewerOptions {
@@ -64,11 +67,27 @@ export function printViewerDocument(win: Window, html: string, opts: PrintViewer
     // فنربط الأوامر بحوادث «خارج» المستند (النافذة الحالية) بدل السطّر في الورقة.
     try {
         const doc = win.document;
-        doc?.querySelector('[data-erp-pt="print"]')?.addEventListener('click', () => { try { win.print(); } catch { /* noop */ } });
+        // طباعة — المحاولة الأفضل على الأجهزة التي تدعمها (أندرويد WEBVIEW قد لا يدعم).
+        doc?.querySelector('[data-erp-pt="print"]')?.addEventListener('click', () => {
+            try { win.print(); } catch { shareInnerAsPdf(); }
+        });
+        // مشاركة PDF — المسار الموثوق على أندرويد/APK (html2canvas + jsPDF vendored + Capacitor Share).
+        doc?.querySelector('[data-erp-pt="share"]')?.addEventListener('click', () => {
+            shareInnerAsPdf();
+        });
+        // إغلاق — _close أولاً ثم الرجوع بالتاريخ كبديل.
         doc?.querySelector('[data-erp-pt="close"]')?.addEventListener('click', () => {
             try { win.close(); } catch { /* noop */ }
             try { if (!win.closed) { win.history.back(); } } catch { /* noop */ }
         });
+
+        function shareInnerAsPdf(): void {
+            const title = String(doc?.querySelector('title')?.textContent ?? doc?.title ?? 'Karim ERP').trim() || 'Karim ERP';
+            const target = (doc?.querySelector('.sheet') as HTMLElement | null) ?? doc?.body ?? null;
+            void exportElementPdf(target, title, { mode: 'share' })
+                .then((result) => { if (!result.ok) { /* لا نقاطع التجربة - الشاشة مستطيعة الطباعة/الإغلاق */ } })
+                .catch(() => { /* noop */ });
+        }
     } catch { /* نافذة غير قابلة للوصول — المعالجة باليد */ }
     if (autoPrint) {
         window.setTimeout(() => { try { win.print(); } catch { /* المستخدم يغلق يدويًا */ } }, delay);
