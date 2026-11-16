@@ -252,7 +252,7 @@ export const rematchGroupSchema = z.object({
     name: z.string(),
     norm: z.string(),
     count: z.number(),
-    lines: z.array(z.number()),
+    lines: z.array(z.union([z.string(), z.number()]).transform((v) => Number(v))),
     best: rematchBestSchema.nullable(),
     alternatives: z.array(rematchBestSchema).default([]),
     autoApply: z.boolean(),

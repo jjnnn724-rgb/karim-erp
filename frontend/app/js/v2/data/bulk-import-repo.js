@@ -16,11 +16,11 @@
  * القراءة (users/employees/hrDepartments) تعود عبر أبوابها القائمة.
  */
 
-import { fetchUsers } from './portal-repo.js?v=4.9.378';
+import { fetchUsers } from './portal-repo.js?v=4.9.379';
 import {
     fetchEmployees, fetchDepartments, createEmployee,
-} from './employees-repo.js?v=4.9.378';
-import { createUser, deleteUser } from './users-repo.js?v=4.9.378';
+} from './employees-repo.js?v=4.9.379';
+import { createUser, deleteUser } from './users-repo.js?v=4.9.379';
 
 export const BULK_IMPORT_WRITE_ROLES = ['admin'];
 

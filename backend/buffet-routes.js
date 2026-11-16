@@ -688,7 +688,7 @@ router.post('/rematch', jwtAuth, writeGate, async (req, res, next) => {
             name: g.name,
             norm: g.key,
             count: g.lines.length,
-            lines: g.lines.map((l) => l.id),
+            lines: g.lines.map((l) => Number(l.id)),
             best: g.best,
             alternatives: g.alternatives,
             autoApply: (g.best?.score ?? 0) >= threshold,
