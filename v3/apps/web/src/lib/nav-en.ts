@@ -37,6 +37,7 @@ export const NAV_LABELS_EN: Readonly<Record<string, string>> = {
     branches: 'Branches',
     permissions: 'Permissions',
     'veg-requests': 'Vegetable Requests',
+    buffet: 'Buffet Cost',
     recipes: 'Recipes',
     briefing: 'Director Briefing',
     'command-center': 'Unified Command Center',

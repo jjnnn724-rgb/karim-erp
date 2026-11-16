@@ -43,6 +43,11 @@ const PERMISSIONS = [
       menus: ['veg-requests'], entitiesRead: [], entitiesWrite: [] },
     { key: 'veg.receive', ar: 'استلام طلبية الخضار وتوقيعها', group: 'التشغيل',
       menus: ['veg-requests'], entitiesRead: [], entitiesWrite: [] },
+    // كوست أصناف بوفيه الشرفة — عرض الكوست، وفكاه من المخزن (2026-11-16)
+    { key: 'buffet.view', ar: 'عرض كوست أصناف البوفيه', group: 'التشغيل',
+      menus: ['buffet'], entitiesRead: [], entitiesWrite: [] },
+    { key: 'buffet.link', ar: 'ربط مكوّنات البوفيه بالمخزن', group: 'التشغيل',
+      menus: ['buffet'], entitiesRead: [], entitiesWrite: [] },
     // المشتريات
     { key: 'purchasing.view', ar: 'عرض المشتريات والموردين', group: 'المشتريات',
       menus: ['procurement'], entitiesRead: ['purchaseInvoices'], entitiesWrite: [] },

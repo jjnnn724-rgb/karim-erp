@@ -845,6 +845,8 @@ const { router: yaraReportsRouter } = require('./yarasoft/yara-reports');
 app.use('/api/yara-reports', yaraReportsRouter);
 // ─── محرك استعلامات المخزون (قراءة فقط — الدفتر هو المرجع، للمدير والسو-شيف) ──
 app.use('/api/inventory-inquiry', require('./inventory-inquiry').router);
+// كوست أصناف بوفيه الشرفة العالمي — التكلفة حيًّا من أسعار المخزن (2026-11-16)
+app.use('/api/buffet', require('./buffet-routes').router);
 // ─── متابعة الكاشير للأونر (مرآة يارا سوفت 1/4/5/6/9 — قراءة فقط + بث حي) ──
 app.use('/api/cashier-monitor', (req, res, next) => { req.io = io; next(); }, require('./cashier-monitor-routes'));
 // ─── النسخ الاحتياطي الكامل والاستعادة بزر واحد (مدير فقط) ─────────────

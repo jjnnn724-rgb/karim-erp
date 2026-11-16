@@ -72,6 +72,7 @@ export const NAV_ITEMS = [
     { to: '/permissions', label: 'الصلاحيات', hint: 'Permissions' },
     { to: '/veg-requests', label: 'طلبات الخضار', hint: 'Vegetables' },
     { to: '/recipes', label: 'الوصفات', hint: 'Recipes' },
+    { to: '/buffet', label: 'كوست البوفيه', hint: 'Buffet Cost' },
     { to: '/briefing', label: 'موجز المدير', hint: 'Briefing' },
     { to: '/command-center', label: 'مركز القيادة الموحّد', hint: 'Command Center' },
     { to: '/bank-rec', label: 'مطابقة البنك', hint: 'Bank Reconciliation' },

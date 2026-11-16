@@ -289,6 +289,13 @@ export const recipesRoute = createRoute({
 });
 recipesRoute.lazy(() => import('../screens/Recipes.lazy').then((module) => module.Route));
 
+/** كوست أصناف بوفيه الشرفة العالمي — تُحسب حيًّا من أسعار المخزن. */
+export const buffetRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/buffet',
+});
+buffetRoute.lazy(() => import('../screens/Buffet.lazy').then((module) => module.Route));
+
 /** الأجهزة والجلسات النشطة — قراءة وإبطال. */
 export const sessionsRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -590,6 +597,7 @@ export const routeTree = rootRoute.addChildren([
     vegRequestsRoute,
     weightRoute,
     recipesRoute,
+    buffetRoute,
     sessionsRoute,
     whatsappRoute,
     briefingRoute,

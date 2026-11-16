@@ -35,6 +35,7 @@ export const V3_SCREENS = [
     'veg-requests',
     'weight',
     'recipes',
+    'buffet',
     'goods-scan',
     'attendance',
     'leaves',

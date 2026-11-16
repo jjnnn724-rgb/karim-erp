@@ -19,7 +19,7 @@
  *     لا كاميرا تعمل بعد الإغلاق.
  */
 
-import { trapFocus } from './focus-trap.js?v=4.9.375';
+import { trapFocus } from './focus-trap.js?v=4.9.376';
 
 const FACE_API_SRC = 'vendor/face-api.js?v=4.9.77';
 const FACE_MODELS_URI = 'vendor/face-models';

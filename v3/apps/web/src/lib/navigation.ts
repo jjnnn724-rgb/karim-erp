@@ -37,7 +37,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         id: 'operations',
         label: 'التشغيل',
         shortLabel: 'تشغيل',
-        keys: ['pos-entry', 'pos-reports', 'cashier-monitor', 'kitchen', 'menu-board', 'recipes', 'departments', 'dept-transfers', 'whatsapp'],
+        keys: ['pos-entry', 'pos-reports', 'cashier-monitor', 'kitchen', 'menu-board', 'recipes', 'buffet', 'departments', 'dept-transfers', 'whatsapp'],
     },
     {
         id: 'finance',
@@ -174,6 +174,7 @@ export const NAV_TITLES: Readonly<Record<string, string>> = {
     '/veg-requests': 'طلبات الخضار',
     '/weight': 'الميزان',
     '/recipes': 'الوصفات',
+    '/buffet': 'كوست البوفيه',
     '/goods-scan': 'مسح البضاعة',
     '/briefing': 'موجز المدير',
     '/command-center': 'مركز القيادة الموحّد',
