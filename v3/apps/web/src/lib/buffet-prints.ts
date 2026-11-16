@@ -89,9 +89,9 @@ body { margin: 0; direction: rtl; font-family: 'Segoe UI', Tahoma, 'Noto Kufi Ar
 
 function cardHtml(dish: BuffetDish, opts: PrintOptions): string {
     const pp = nutritionPerServing(dish);
-    const ings = dish.lines.map((l) =>
-        `<li><b>${esc(l.qty)} ${esc(l.unit)}</b><span>${esc(l.name)}</span></li>`
-    ).join('');
+    const ings = dish.lines
+        .map((l) => `<li><span>${esc(l.name)}</span></li>`)
+        .join('');
     const description = (dish.description ?? '').trim();
     const allergens = pp?.allergens ?? [];
     const allergyHtml = allergens.length
@@ -239,6 +239,141 @@ tr:nth-child(even) td { background: #faf8ee; }
 /** طباعة مستند واحد عبر جسر printSmart (Capacitor وWindows متّسقان تمامًا) */
 export function printBuffetDoc(html: string): boolean {
     return printSmart(html, { autoPrint: true, printDelayMs: 350 });
+}
+
+/**
+ * منيو/وصفة الصنف الرسمية — للشيف والفريق (داخلي).
+ *  • كل المكونات **بكمياتها ووحداتها** كما في الوصفة المعتمدة
+ *  • «طريقة التحضير» من حقل الوصفة (notes) — القيم حقيقية لأصناف البوفيه
+ *  • القيم الغذائية + المسببات موسومة «تقديري USDA SR Legacy / EU FIC 1169/2011»
+ *  • توقيعات: إعداد الشيف · مراجعة المساعد · اعتماد المدير + المصادر في «الاحترافية» فقط
+ */
+const RECIPE_CSS = `
+@page { size: A4; margin: 12mm; }
+* { box-sizing: border-box; }
+body { margin: 0; direction: rtl; font-family: 'Segoe UI', Tahoma, 'Noto Kufi Arabic', sans-serif; color: #141a14; background: #fff; }
+.recipe { max-width: 180mm; margin: 0 auto; padding: 2mm 2mm; }
+.recipe__top { display: flex; align-items: center; gap: 12px; border-bottom: 3px double #c8a24a; padding-bottom: 10px; }
+.recipe__top img { width: 46px; height: 46px; object-fit: contain; border-radius: 8px; background: #fffdf8; border: 1px solid #e5d9b8; }
+.recipe__kicker { letter-spacing: 3px; font-size: 8px; color: #8a6d2f; font-weight: 800; direction: ltr; }
+.recipe__top h1 { font-family: Georgia, 'Times New Roman', Tahoma, serif; font-size: 23px; margin: 2px 0 0; font-weight: 900; color: #141a14; }
+.recipe__top h1 small { display: block; font-size: 9px; letter-spacing: 1.5px; color: #8a6d2f; font-family: 'Segoe UI', sans-serif; }
+.recipe__ref { margin-inline-start: auto; text-align: end; font-size: 8px; color: #8a6d2f; line-height: 1.8; font-weight: 700; direction: ltr; }
+.recipe__ref b { font-size: 10px; letter-spacing: 1.5px; color: #141a14; direction: ltr; display: block; }
+.recipe__desc { background: #f7f3e6; border: 1px solid #e5d9b8; border-radius: 8px; padding: 8px 12px; font-size: 9.5px; line-height: 2; color: #3d4a40; margin: 10px 0; }
+.recipe__desc b { color: #8a6d2f; }
+.recipe__h { font-size: 8px; letter-spacing: 2.5px; font-weight: 800; color: #8a6d2f; margin: 12px 0 6px; display: flex; align-items: center; gap: 8px; }
+.recipe__h span[dir="ltr"] { color: #141a14; letter-spacing: 0; font-size: 7px; }
+table { width: 100%; border-collapse: collapse; font-size: 9.5px; }
+thead th { background: #141a14; color: #cbbd8d; text-align: right; padding: 7px 10px; font-size: 8px; letter-spacing: 1px; }
+tbody td { border-bottom: 1px solid #eeeadd; padding: 7px 10px; }
+tbody tr:nth-child(even) td { background: #faf8ee; }
+.r-num { color: #a89a68; width: 30px; }
+.r-name { font-weight: 700; }
+.r-qty { direction: ltr; text-align: start; width: 90px; font-variant-numeric: tabular-nums; }
+.r-unit { width: 90px; color: #4e5a53; }
+.recipe__method { background: #f7f6ef; border: 1px solid #e3dec9; border-inline-start: 4px solid #c8a24a; border-radius: 8px; padding: 10px 14px; font-size: 9px; line-height: 2.1; color: #24312a; white-space: pre-line; }
+.recipe__nutri { display: grid; grid-template-columns: repeat(6, 1fr); gap: 6px; background: #0d0f0b; border-radius: 8px; padding: 8px; }
+.recipe__nutri-cell { text-align: center; }
+.recipe__nutri-num { display: block; font-size: 12px; font-weight: 800; color: #f4ecc9; direction: ltr; font-variant-numeric: tabular-nums; }
+.recipe__nutri-label { display: block; font-size: 5.8px; letter-spacing: 0.5px; color: #a89a68; font-weight: 700; }
+.recipe__allerg { font-size: 8px; color: #5a4623; background: #f7f3e6; border: 1px solid #e5d9b8; border-radius: 6px; padding: 6px 10px; line-height: 1.9; margin-top: 8px; }
+.recipe__allerg b { color: #8a6d2f; }
+.recipe__cost { display: flex; gap: 12px; margin-top: 8px; font-size: 8.5px; color: #4e5a53; }
+.recipe__cost b { direction: ltr; color: #141a14; font-variant-numeric: tabular-nums; }
+.recipe__foot { display: flex; justify-content: space-between; gap: 12px; margin-top: 14px; padding-top: 8px; border-top: 2px solid #141a14; font-size: 8px; color: #4e5a53; }
+.recipe__foot b { display: inline-block; min-width: 100px; border-bottom: 1.5px solid #a89a68; }
+.recipe__sources { font-size: 6.6px; color: #87928b; margin-top: 8px; border-top: 1px dashed #d8d2bd; padding-top: 6px; line-height: 1.9; }
+.recipe__miss { font-size: 6.6px; color: #b45309; margin-top: 6px; }
+`;
+
+function recipeBody(dish: BuffetDish, opts: PrintOptions = {}): string {
+    const pp = nutritionPerServing(dish);
+    const ref = `BUFFET-RECIPE-${String(dish.id).padStart(3, '0')}`;
+    const description = (dish.description ?? '').trim();
+    const method = (dish.notes ?? '').trim();
+    const nutritionNote = pp?.unmatched && pp.unmatched > 0
+        ? `مكوّنات خارج جدول USDA: ${pp.unmatched} — تُراجع لاحقًا.`
+        : '';
+    const ingredientsRows = dish.lines.map((line, i) => `
+        <tr>
+            <td class="r-num">${i + 1}</td>
+            <td class="r-name">${esc(line.name)}</td>
+            <td class="r-qty">${esc(line.qty)}</td>
+            <td class="r-unit">${esc(line.unit)}</td>
+        </tr>`).join('');
+    const sources = opts.pro ? `<p class="recipe__sources"><b>المصادر:</b> USDA FoodData Central — SR Legacy · EU FIC 1169/2011 (القائمة الـ14 لمسببات الحساسية) · HACCP / ISO 22000 · القيم تقديرية وقد تختلف حسب مصدر الخامات.</p>` : '';
+    return `<section class="recipe">
+    <div class="recipe__top">
+        <img src="${LOGO}" alt="شعار مطاعم الشرفة العالمي" width="46" height="46">
+        <div>
+            <div class="recipe__kicker">AL SHURFA AL ALAMI · BUFFET RECIPE</div>
+            <h1>${esc(dish.name)}<small>${esc(dish.category)} · ${esc(dish.yields)} · يتكرر ×${esc(String(dish.freq))}</small></h1>
+        </div>
+        <div class="recipe__ref"><b>${ref}</b>INTERNAL · ${esc(new Date().toLocaleDateString('ar-SA'))}</div>
+    </div>
+
+    ${description ? `<p class="recipe__desc"><b>نبذة:</b> ${esc(description)}</p>` : ''}
+
+    <h2 class="recipe__h">المكوّنات والمقادير · <span dir="ltr">INGREDIENTS</span></h2>
+    <table>
+        <thead><tr><th>#</th><th>المكوّن</th><th>الكمية</th><th>الوحدة</th></tr></thead>
+        <tbody>${ingredientsRows || '<tr><td colspan="4" style="text-align:center;color:#a89a68;padding:16px">سجلّ المكوّنات قيد الإعداد</td></tr>'}</tbody>
+    </table>
+
+    <h2 class="recipe__h">طريقة التحضير · <span dir="ltr">METHOD</span></h2>
+    <div class="recipe__method">${method ? esc(method) : 'طريقة التحضير: تُراجع مع الشيف التنفيذي (لم تُرفق بعد مع الوصفة المعتمدة).'}</div>
+
+    <h2 class="recipe__h">القيم الغذائية للحصة · <span dir="ltr">NUTRITION / SERVING</span></h2>
+    <div class="recipe__nutri">
+        <div class="recipe__nutri-cell"><span class="recipe__nutri-num">${numInt(pp?.kcal)}</span><span class="recipe__nutri-label">سعرات KCAL</span></div>
+        <div class="recipe__nutri-cell"><span class="recipe__nutri-num">${num(pp?.protein)}</span><span class="recipe__nutri-label">بروتين G</span></div>
+        <div class="recipe__nutri-cell"><span class="recipe__nutri-num">${num(pp?.carbs)}</span><span class="recipe__nutri-label">كارب G</span></div>
+        <div class="recipe__nutri-cell"><span class="recipe__nutri-num">${num(pp?.fat)}</span><span class="recipe__nutri-label">دهون G</span></div>
+        <div class="recipe__nutri-cell"><span class="recipe__nutri-num">${num(pp?.fiber)}</span><span class="recipe__nutri-label">ألياف G</span></div>
+        <div class="recipe__nutri-cell"><span class="recipe__nutri-num">${numInt(pp?.sodium)}</span><span class="recipe__nutri-label">صوديوم MG</span></div>
+    </div>
+    ${nutritionNote ? `<p class="recipe__miss">${esc(nutritionNote)}</p>` : ''}
+    <div class="recipe__allerg"><b>⚠ مسببات الحساسية (EU FIC 1169/2011):</b> ${pp?.allergens?.length ? esc(pp.allergens.join(' · ')) : 'لا توجد مسببات معروفة (حسب المكونات المسجّلة)'}</div>
+
+    <div class="recipe__cost"><span>تكلفة السفنديش (داخلي): <b>${num(dish.batchCost)} ر.س</b></span><span>العائد: <b>35–40 شخص</b></span><span>سطور مسعرة: <b>${dish.pricedLines}/${dish.totalLines}</b></span></div>
+
+    <div class="recipe__foot"><span>إعداد الشيف / Chef: <b></b></span><span>مراجعة المساعد / Steward: <b></b></span><span>اعتماد المدير / Manager: <b></b></span></div>
+    ${sources}
+</section>`;
+}
+
+export function buildDishRecipeHtml(dish: BuffetDish, opts: PrintOptions = {}): string {
+    return `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>منيو الصنف — ${esc(dish.name)} · AL SHURFA AL ALAMI</title>
+<style>${RECIPE_CSS}</style>
+</head>
+<body>
+${recipeBody(dish, opts)}
+</body>
+</html>`;
+}
+
+/** كل الوصفات — ورقة A4 لكل صنف */
+export function buildAllRecipesHtml(dishes: BuffetDish[], opts: PrintOptions = {}): string {
+    const pages = dishes.map((d) => `<div class="recipe-page">${recipeBody(d, opts)}</div>`);
+    return `<!DOCTYPE html>
+<html lang="ar" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>منيو البوفيه الكامل — Buffet Recipe Packet</title>
+<style>${RECIPE_CSS}
+.recipe-page { page-break-after: always; }
+.recipe-page:last-child { page-break-after: auto; }
+</style>
+</head>
+<body>
+${pages.join('\n')}
+</body>
+</html>`;
 }
 
 export function printDishCard(dish: BuffetDish, opts: PrintOptions = {}): boolean {

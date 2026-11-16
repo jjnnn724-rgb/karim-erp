@@ -13,14 +13,14 @@
  * counter + grouped cards + audit badges — same gates, better experience.
  */
 
-import { canWrite } from '../session.js?v=4.9.376';
-import { ROLES } from '../../core/config.js?v=4.9.376';
-import { formatInt } from '../data/reports-repo.js?v=4.9.376';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.376';
+import { canWrite } from '../session.js?v=4.9.378';
+import { ROLES } from '../../core/config.js?v=4.9.378';
+import { formatInt } from '../data/reports-repo.js?v=4.9.378';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.378';
 import {
     PERM_WRITE_ROLES, fetchPermCatalog, fetchUserPerms, saveUserPerms,
     fetchPermissionUsers, groupCatalog, permMode, auditActionLabel,
-} from '../data/permissions-repo.js?v=4.9.376';
+} from '../data/permissions-repo.js?v=4.9.378';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

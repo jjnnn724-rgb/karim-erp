@@ -22,10 +22,10 @@
  *   • الأخطاء تُطبع من ردّ الخادم (e.message) لا من نصوص مخترعة.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.376';
-import { openInAppReport } from '../report-viewer.js?v=4.9.376';
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.376';
-import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.376';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.378';
+import { openInAppReport } from '../report-viewer.js?v=4.9.378';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.378';
+import { formatInt, formatQty } from '../data/reports-repo.js?v=4.9.378';
 import {
     PR_CREATE_ROLES,
     fetchPurchaseRequests, fetchShortages, fetchPRDepartments, fetchPRInventoryNames,
@@ -34,11 +34,11 @@ import {
     collectPRItems, prCreateError, prReasonError,
     prCreatePayload, prNotesPayload, prRejectPayload,
     createPR, chefApprovePR, chefRejectPR, gmApprovePR, gmRejectPR, cancelPR, deletePR,
-} from '../data/pr-repo.js?v=4.9.376';
+} from '../data/pr-repo.js?v=4.9.378';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.376';
+} from '../signature.js?v=4.9.378';
 
 const SIG_IDS = {
     prCreate: 'v2pr-create-sig',

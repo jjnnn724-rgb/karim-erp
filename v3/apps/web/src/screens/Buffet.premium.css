@@ -258,3 +258,33 @@
     .bf-nutrition__grid { grid-template-columns: repeat(3, 1fr); }
     .bf-ing-row { grid-template-columns: 1fr 60px 90px 30px; }
 }
+
+/* ═══ محرك الربط — مراجعة وطول ✓ ═══ */
+.bf-link-btn { border: 1px solid #c8a24a; background: #fffdf8; color: #8a6d2f; font-weight: 800; border-radius: 10px; padding: 9px 16px; font-size: 12px; cursor: pointer; }
+.bf-link-btn:hover { background: #fdf3d8; }
+.bf-rematch { display: flex; flex-direction: column; gap: 10px; min-height: 320px; }
+.bf-rematch__head { display: flex; flex-direction: column; gap: 10px; border-bottom: 1px solid #e7e2d2; padding-bottom: 10px; }
+.bf-rematch__stats { display: flex; gap: 18px; flex-wrap: wrap; }
+.bf-rematch__stats span { font-size: 10.5px; color: #4e5a53; }
+.bf-rematch__stats b { display: inline-block; min-width: 26px; color: #172b3b; font-size: 13px; }
+.bf-rematch__filters { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
+.bf-rematch__filters .erp-control { max-width: 220px; }
+.bf-rematch__filters input.erp-control { flex: 1 1 180px; max-width: none; }
+.bf-rematch__list { max-height: 420px; overflow-y: auto; display: flex; flex-direction: column; gap: 6px; padding-inline-end: 4px; }
+.bf-rematch-row { display: flex; gap: 10px; background: #fff; border: 1px solid #e3dec9; border-radius: 10px; padding: 8px 10px; cursor: pointer; align-items: flex-start; transition: border-color .12s ease; }
+.bf-rematch-row:hover { border-color: #c8a24a; }
+.bf-rematch-row.is-checked { border-color: #c8a24a; background: #fffdf4; box-shadow: inset 3px 0 0 #c8a24a; }
+.bf-rematch-row input[type="checkbox"] { margin-top: 4px; transform: scale(1.15); accent-color: #c8a24a; }
+.bf-rematch-row__main { flex: 1; display: flex; flex-direction: column; gap: 5px; min-width: 0; }
+.bf-rematch-row__head { display: flex; justify-content: space-between; align-items: baseline; gap: 10px; }
+.bf-rematch-row__head b { color: #172b3b; font-size: 12px; }
+.bf-rematch-row__count { font-size: 9.5px; color: #87928b; white-space: nowrap; }
+.bf-rematch-row__proposal { display: flex; gap: 8px; align-items: center; }
+.bf-rematch-row__proposal select.erp-control { flex: 1; min-width: 0; }
+.bf-rematch-row__pack { font-size: 9px; color: #92610a; }
+.bf-rematch-row__reasons { font-size: 9px; color: #5f6b60; line-height: 1.7; }
+.bf-score { flex: none; width: 38px; height: 26px; display: inline-flex; align-items: center; justify-content: center; border-radius: 6px; font-size: 10.5px; font-weight: 800; direction: ltr; font-variant-numeric: tabular-nums; }
+.bf-score--hi { background: #e8f3eb; color: #166534; }
+.bf-score--mid { background: #fdf3d8; color: #92610a; }
+.bf-score--lo { background: #fbe4e1; color: #b91c1c; }
+.bf-rematch__empty { text-align: center; color: #87928b; padding: 30px 12px; font-size: 11.5px; }

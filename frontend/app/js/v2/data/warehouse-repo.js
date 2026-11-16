@@ -47,7 +47,7 @@
  *   approval data we keep as RAW read-only facts.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.376';
+import { apiFetch } from '../../core/api.js?v=4.9.378';
 
 export function isoDay(offsetDays = 0, base = new Date()) {
     const d = new Date(base);

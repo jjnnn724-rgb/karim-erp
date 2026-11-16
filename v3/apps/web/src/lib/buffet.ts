@@ -235,7 +235,75 @@ export function useBuffetDeleteDishMutation() {
     });
 }
 
-/** ─── خطة الأسبوع ─────────────────────────────────────────────── */
+/** ─── محرك الربط الآلي ─────────────────────────────────────────── */
+
+export const rematchBestSchema = z.object({
+    inventoryId: z.union([z.string(), z.number()]).transform((v) => String(v)),
+    name: z.string(),
+    unit: z.string(),
+    avgCost: nullableMoney,
+    score: moneyValue,
+    reasons: z.array(z.string()).default([]),
+    packKg: nullableMoney,
+}).passthrough();
+export type RematchBest = z.infer<typeof rematchBestSchema>;
+
+export const rematchGroupSchema = z.object({
+    name: z.string(),
+    norm: z.string(),
+    count: z.number(),
+    lines: z.array(z.number()),
+    best: rematchBestSchema.nullable(),
+    alternatives: z.array(rematchBestSchema).default([]),
+    autoApply: z.boolean(),
+}).passthrough();
+export type RematchGroup = z.infer<typeof rematchGroupSchema>;
+
+export const rematchResultSchema = z.object({
+    ok: z.boolean().optional(),
+    dryRun: z.boolean().optional(),
+    threshold: z.number(),
+    generatedAt: z.string(),
+    inventoryCount: z.number(),
+    unlinkedBefore: z.number(),
+    summary: z.object({
+        totalGroups: z.number(),
+        autoGroups: z.number(),
+        autoLines: z.number(),
+        reviewGroups: z.number(),
+    }),
+    groups: z.array(rematchGroupSchema),
+}).passthrough();
+export type RematchResponse = z.infer<typeof rematchResultSchema>;
+
+export async function fetchBuffetRematch(): Promise<RematchResponse> {
+    return fetchJson(rematchResultSchema, '/api/buffet/rematch', getAccessToken(), { method: 'POST', body: {} });
+}
+
+export interface RematchLinkInput {
+    name: string;
+    inventoryId: string | number;
+    lines: number[];
+    rule: string;
+    score?: number | undefined;
+    packKg?: number | null | undefined;
+}
+
+export function useBuffetRematchApplyMutation() {
+    return useWriteMutation<{ links: RematchLinkInput[] }, { applied: number; skipped: Array<{ reason?: string }> }>({
+        mutationFn: async (input) => {
+            const r = await fetchJson(
+                z.object({ ok: z.boolean().optional(), applied: z.number(), skipped: z.array(z.any()).default([]) }).passthrough(),
+                '/api/buffet/rematch/apply',
+                getAccessToken(),
+                { method: 'POST', body: input },
+            );
+            return { applied: r.applied, skipped: r.skipped };
+        },
+        successTitle: (vars) => `تم الربط — ${vars.links.reduce((sum, l) => sum + (l.lines?.length ?? 0), 0)} سطر`,
+        invalidate: [['buffet', 'overview']],
+    });
+}
 export function useBuffetAddWeekSlotMutation() {
     return useWriteMutation<{ day: string; meal: string; dishId: string | number }, void>({
         mutationFn: async ({ day, meal, dishId }) => {

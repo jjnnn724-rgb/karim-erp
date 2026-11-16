@@ -5,6 +5,7 @@ import { Card, StateError, StateLoading, TableScroll, TableSkeleton } from '../c
 import { useAuthState } from '../lib/auth';
 import {
     fetchBuffetOverview,
+    fetchBuffetRematch,
     searchInventoryForLink,
     dishStatus,
     LINE_STATE_AR,
@@ -15,12 +16,14 @@ import {
     useBuffetLinkGroupMutation,
     useBuffetLinkMutation,
     useBuffetRemoveWeekSlotMutation,
+    useBuffetRematchApplyMutation,
     useBuffetUnlinkMutation,
     useBuffetUpdateDishMutation,
     type AutofillDraft,
     type BuffetDish,
     type BuffetLine,
     type BuffetNutrition,
+    type RematchBest,
 } from '../lib/buffet';
 import { printBoard, printAllCards, printDishCard } from '../lib/buffet-prints';
 import { printOfficialSheet, type OfficialSheetColumn } from '../lib/official-print';
@@ -108,10 +111,15 @@ export function Buffet() {
     const [draftNutrition, setDraftNutrition] = useState<BuffetNutrition | null>(null);
     const [autofilling, setAutofilling] = useState(false);
 
-    // خطة الأسبوع + الطابعات
+    // خطة الأسبوع + الطابعات + محرك الربط
     const [weekPick, setWeekPick] = useState<Record<string, string>>({});
     const [boardDay, setBoardDay] = useState<(typeof DAYS)[number]>('السبت');
     const [proPrints, setProPrints] = useState(true);
+    const [rematchOpen, setRematchOpen] = useState(false);
+    const [rematchFilter, setRematchFilter] = useState<'all' | 'auto' | 'review'>('auto');
+    const [rematchSearch, setRematchSearch] = useState('');
+    const [checked, setChecked] = useState<Record<string, boolean>>({});
+    const [choices, setChoices] = useState<Record<string, string>>({});
 
     const query = useQuery({
         queryKey: ['buffet', 'overview'],
@@ -128,6 +136,7 @@ export function Buffet() {
     const deleteDish = useBuffetDeleteDishMutation();
     const addWeekSlot = useBuffetAddWeekSlotMutation();
     const removeWeekSlot = useBuffetRemoveWeekSlotMutation();
+    const applyRematch = useBuffetRematchApplyMutation();
 
     const linkResults = useQuery({
         queryKey: ['buffet', 'search', linkQuery],
@@ -135,6 +144,41 @@ export function Buffet() {
         enabled: linkLineId != null && linkQuery.trim().length >= 2,
         staleTime: 60_000,
     });
+
+    // محرك الربط — dry-run عند فتح النافذة
+    const rematchQuery = useQuery({
+        queryKey: ['buffet', 'rematch'],
+        queryFn: () => fetchBuffetRematch(),
+        enabled: rematchOpen,
+        staleTime: 60_000,
+        retry: false,
+    });
+    const rematchGroups = rematchQuery.data?.groups ?? [];
+    const filteredGroups = useMemo(() => {
+        const q = rematchSearch.trim();
+        return rematchGroups.filter((g) => {
+            if (rematchFilter === 'auto' && !g.autoApply) {return false;}
+            if (rematchFilter === 'review' && g.autoApply) {return false;}
+            if (q && !g.name.includes(q) && !(g.best?.name ?? '').includes(q)) {return false;}
+            return true;
+        });
+    }, [rematchGroups, rematchFilter, rematchSearch]);
+    const checkedCount = useMemo(
+        () => rematchGroups.filter((g) => checked[g.norm]).reduce((sum, g) => sum + g.count, 0),
+        [rematchGroups, checked],
+    );
+    // تهيئة الاختيارات الافتراضية عند وصول النتائج — ≥0.8 مُعتمدة، والباقي للمراجعة
+    useEffect(() => {
+        if (!rematchQuery.data) {return;}
+        const nextChecked: Record<string, boolean> = {};
+        const nextChoices: Record<string, string> = {};
+        for (const g of rematchQuery.data.groups) {
+            nextChecked[g.norm] = g.autoApply;
+            nextChoices[g.norm] = g.best?.inventoryId ?? '';
+        }
+        setChecked(nextChecked);
+        setChoices(nextChoices);
+    }, [rematchQuery.data]);
 
     const dishes = useMemo(() => data?.dishes ?? [], [data]);
     const categories = useMemo(() => {
@@ -279,6 +323,31 @@ export function Buffet() {
     const removeIngredientRow = (index: number) => setForm((prev) => ({ ...prev, ingredients: prev.ingredients.filter((_, i) => i !== index) }));
     const updateIngredientRow = (index: number, patch: Partial<FormIngredient>) =>
         setForm((prev) => ({ ...prev, ingredients: prev.ingredients.map((ing, i) => (i === index ? { ...ing, ...patch } : ing)) }));
+
+    const applyRematchLinks = () => {
+        const links = rematchGroups
+            .filter((g) => checked[g.norm])
+            .map((g) => {
+                const chosenId = choices[g.norm] ?? g.best?.inventoryId ?? '';
+                const options = [g.best, ...(g.alternatives ?? [])].filter(Boolean) as RematchBest[];
+                const chosen = options.find((o) => o.inventoryId === chosenId) ?? options[0] ?? null;
+                return {
+                    name: g.name,
+                    inventoryId: chosenId,
+                    lines: g.lines,
+                    rule: 'rematch-ui v1',
+                    score: chosen?.score,
+                    packKg: chosen?.packKg ?? null,
+                };
+            })
+            .filter((l) => l.inventoryId);
+        applyRematch.mutate({ links }, {
+            onSuccess: () => {
+                setRematchOpen(false);
+                void query.refetch();
+            },
+        });
+    };
 
     const boardDishesFor = (day: string, meal: string): BuffetDish[] => {
         const ids = (weekByDay.get(day)?.get(meal) ?? []).map((entry) => String(entry.dishId));
@@ -434,6 +503,11 @@ export function Buffet() {
                 {canWrite ? (
                     <button type="button" className="bf-add-btn" onClick={openAdd}>
                         ＋ صنف جديد
+                    </button>
+                ) : null}
+                {canLink ? (
+                    <button type="button" className="bf-link-btn" onClick={() => setRematchOpen(true)}>
+                        🔗 مراجعة ربط المخزن
                     </button>
                 ) : null}
                 {tab === 'dishes' ? (
@@ -736,6 +810,86 @@ export function Buffet() {
                     </aside>
                 </>
             ) : null}
+
+            {/* ═══ Dialog: مراجعة ربط المكونات بالمخزن ═══ */}
+            <Dialog open={rematchOpen} onOpenChange={setRematchOpen} title="مراجعة ربط المكوّنات بالمخزن" size="lg"
+                description="المحرك يحلل كل سطر بلا ربط ويقترح أقرب صنف مخزن مع درجته وسببه — أنت تراجع وتعتمد، ولا يُطبّق شيء دون إذنك."
+                footer={(
+                    <div className="bf-dialog-foot">
+                        <Button variant="secondary" onClick={() => setRematchOpen(false)}>إغلاق</Button>
+                        <Button onClick={applyRematchLinks} disabled={checkedCount === 0 || applyRematch.isPending}>
+                            {applyRematch.isPending ? 'جارٍ الربط…' : `تطبيق المحدد (${checkedCount} سطور)`}
+                        </Button>
+                    </div>
+                )}
+            >
+                {rematchQuery.isLoading ? (
+                    <StateLoading label="المحرك يحلل السطور بلا ربط…" />
+                ) : rematchQuery.isError ? (
+                    <StateError title="تعذر تشغيل المحرك" message={rematchQuery.error instanceof Error ? rematchQuery.error.message : 'تعذر الاتصال بالخادم'} onRetry={() => void rematchQuery.refetch()} />
+                ) : (
+                    <div className="bf-rematch">
+                        <div className="bf-rematch__head">
+                            <span className="bf-live"><i className="bf-live__dot" aria-hidden="true" />المحرك جاهز</span>
+                            <div className="bf-rematch__stats">
+                                <span><b>{rematchQuery.data?.summary.totalGroups ?? 0}</b> صنف فريد</span>
+                                <span><b>{rematchQuery.data?.summary.autoLines ?? 0}</b> سطور بدرجة ≥0.8</span>
+                                <span><b>{rematchQuery.data?.unlinkedBefore ?? 0}</b> سطر بلا ربط</span>
+                            </div>
+                            <div className="bf-rematch__filters">
+                                <select aria-label="فلتر الدرجة" className="erp-control" value={rematchFilter} onChange={(e) => setRematchFilter(e.target.value as 'all' | 'auto' | 'review')}>
+                                    <option value="all">الكل ({rematchQuery.data?.summary.totalGroups ?? 0})</option>
+                                    <option value="auto">جاهزة للاعتماد ({rematchQuery.data?.summary.autoGroups ?? 0})</option>
+                                    <option value="review">تتطلب مراجعة ({rematchQuery.data?.summary.reviewGroups ?? 0})</option>
+                                </select>
+                                <Input aria-label="ابحث في الاقتراحات" placeholder="ابحث عن مكوّن أو صنف مخزن…" value={rematchSearch} onChange={(e) => setRematchSearch(e.target.value)} />
+                                <button type="button" className="bf-mini-btn" onClick={() => {
+                                    const next: Record<string, boolean> = {};
+                                    for (const g of filteredGroups) {next[g.norm] = true;}
+                                    setChecked((prev) => ({ ...prev, ...next }));
+                                }}>اعتماد الظاهر</button>
+                            </div>
+                        </div>
+                        <div className="bf-rematch__list" role="list">
+                            {filteredGroups.map((g) => {
+                                const chosenId = choices[g.norm] ?? g.best?.inventoryId ?? '';
+                                const options = [g.best, ...(g.alternatives ?? [])].filter(Boolean) as RematchBest[];
+                                const chosen = options.find((o) => o.inventoryId === chosenId) ?? null;
+                                return (
+                                    <label key={g.norm} className={`bf-rematch-row${checked[g.norm] ? ' is-checked' : ''}`}>
+                                        <input type="checkbox" checked={Boolean(checked[g.norm])} onChange={(e) => setChecked((p) => ({ ...p, [g.norm]: e.target.checked }))} aria-label={`اعتماد ${g.name}`} />
+                                        <div className="bf-rematch-row__main">
+                                            <div className="bf-rematch-row__head">
+                                                <b>{g.name}</b>
+                                                <span className="bf-rematch-row__count">{g.count} سطر</span>
+                                            </div>
+                                            <div className="bf-rematch-row__proposal">
+                                                <select className="erp-control" value={chosenId} onChange={(e) => setChoices((p) => ({ ...p, [g.norm]: e.target.value }))} onClick={(e) => e.preventDefault()} aria-label={`صنف المخزن المقترح لـ ${g.name}`}>
+                                                    {options.map((o) => (
+                                                        <option key={o.inventoryId} value={o.inventoryId}>
+                                                            {o.name} — {o.avgCost != null ? `${o.avgCost} ر.س` : 'بلا سعر'} / {o.unit}
+                                                        </option>
+                                                    ))}
+                                                </select>
+                                                {chosen ? (
+                                                    <span className={`bf-score bf-score--${chosen.score >= 0.8 ? 'hi' : chosen.score >= 0.6 ? 'mid' : 'lo'}`} title="درجة المطابقة">{chosen.score.toFixed(2)}</span>
+                                                ) : null}
+                                            </div>
+                                            {chosen?.packKg ? (
+                                                <div className="bf-rematch-row__pack">عبوة معلومة الوزن {chosen.packKg} كجم — السعر للكيلو = العبوة ÷ {chosen.packKg}</div>
+                                            ) : null}
+                                            {chosen?.reasons?.length ? <div className="bf-rematch-row__reasons">{chosen.reasons.join(' · ')}</div> : null}
+                                        </div>
+                                    </label>
+                                );
+                            })}
+                            {filteredGroups.length === 0 ? (
+                                <p className="bf-rematch__empty">لا مجموعات مطابقة — جرّب فلتر «الكل» أو امسح البحث.</p>
+                            ) : null}
+                        </div>
+                    </div>
+                )}
+            </Dialog>
 
             {/* ═══ Dialog: إضافة/تعديل صنف + المساعد الشخصي ═══ */}
             <Dialog open={dishOpen} onOpenChange={setDishOpen} title={editingDish ? `تعديل «${editingDish.name}»` : 'صنف جديد للبوفيه'} size="lg"

@@ -19,9 +19,9 @@
  * الصلاحية قرار الخادم (admin + sous_chef أو inventory-inquiry.view).
  */
 
-import { fetchInquiryItems, rangeError } from '../data/inventory-inquiry-repo.js?v=4.9.376';
-import { mountItemDossier } from '../data-display/item-dossier.js?v=4.9.376';
-import { formatInt } from '../data/reports-repo.js?v=4.9.376';
+import { fetchInquiryItems, rangeError } from '../data/inventory-inquiry-repo.js?v=4.9.378';
+import { mountItemDossier } from '../data-display/item-dossier.js?v=4.9.378';
+import { formatInt } from '../data/reports-repo.js?v=4.9.378';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

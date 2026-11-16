@@ -29,6 +29,7 @@ const { computeDishCost, summarizeDishes, parsePackKg } = require('./buffet-logi
 const { userHasPerm } = require('./permissions');
 const localLlm = require('./ai-assistant/local-llm');
 const { computeNutrition } = require('./buffet-nutrition');
+const { proposeLinks, groupProposals } = require('./buffet-match');
 const { z } = require('zod');
 
 const router = express.Router();
@@ -656,4 +657,127 @@ router.post('/dishes/autofill', jwtAuth, dishWriteGate, async (req, res, next) =
     }
 });
 
+// ═══ محرك الربط الآلي: اقتراح + مراجعة + تطبيق ═══════════════════════
+// dry-run: لا يكتب شيئًا — يُرجع اقتراحات مجمّعة مع درجات وأسباب.
+// apply:   يطبّق القرارات التي اعتمدها المستخدم في الواجهة فقط (+ سجلًا في buffet_link_audit).
+
+// POST /api/buffet/rematch — اقتراحات الربط (dry-run)
+router.post('/rematch', jwtAuth, writeGate, async (req, res, next) => {
+    try {
+        const threshold = Math.min(0.99, Math.max(0.3, Number(req.body?.threshold) || 0.8));
+        const [invRows, lineRows] = await Promise.all([
+            pool.query('SELECT id, name, unit, category, "avgCost" FROM inventory ORDER BY id'),
+            pool.query(`SELECT i.id, i.dish_id, i.name, i.qty::float AS qty, i.unit
+                          FROM buffet_ingredients i
+                         WHERE i.inventory_id IS NULL
+                         ORDER BY i.id`),
+        ]);
+        const inventory = invRows.rows.map((r) => ({
+            id: r.id,
+            name: r.name,
+            unit: r.unit,
+            category: r.category,
+            avgCost: r.avgCost == null ? null : Number(r.avgCost),
+        }));
+        const { proposals } = proposeLinks(
+            lineRows.rows.map((r) => ({ id: r.id, name: r.name, qty: Number(r.qty) || 0, unit: r.unit })),
+            inventory,
+            { threshold },
+        );
+        const groups = groupProposals(proposals).map((g) => ({
+            name: g.name,
+            norm: g.key,
+            count: g.lines.length,
+            lines: g.lines.map((l) => l.id),
+            best: g.best,
+            alternatives: g.alternatives,
+            autoApply: (g.best?.score ?? 0) >= threshold,
+        }));
+        const auto = groups.filter((g) => g.autoApply);
+        res.json({
+            ok: true,
+            dryRun: true,
+            threshold,
+            generatedAt: new Date().toISOString(),
+            inventoryCount: inventory.length,
+            unlinkedBefore: lineRows.rows.length,
+            summary: {
+                totalGroups: groups.length,
+                autoGroups: auto.length,
+                autoLines: auto.reduce((sum, g) => sum + g.count, 0),
+                reviewGroups: groups.length - auto.length,
+            },
+            groups,
+        });
+    } catch (error) {
+        logger.error({ err: { message: error?.message || String(error), stack: error?.stack || null } }, '[buffet/rematch]');
+        next(error);
+    }
+});
+
+// POST /api/buffet/rematch/apply — تطبيق القرارات المعتمدة من الواجهة
+router.post('/rematch/apply', jwtAuth, writeGate, async (req, res, next) => {
+    try {
+        const links = Array.isArray(req.body?.links) ? req.body.links.slice(0, 500) : [];
+        if (!links.length) {
+            return res.status(422).json({ ok: false, error: 'NO_LINKS', message: 'لم يتم اختيار أي ربط' });
+        }
+        const actor = String(req.user?.name || req.user?.username || req.user?.id || 'user').slice(0, 120);
+        let applied = 0;
+        const skipped = [];
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            for (const link of links) {
+                const inventoryId = Number(link.inventoryId);
+                const rule = String(link.rule || 'rematch').slice(0, 120);
+                const score = link.score == null ? null : Number(link.score);
+                const packKg = link.packKg == null ? null : Number(link.packKg);
+                if (!Number.isInteger(inventoryId) || inventoryId <= 0) {
+                    skipped.push({ rule, reason: 'معرّف صنف مخزن غير صالح' });
+                    continue;
+                }
+                const inv = await client.query('SELECT id, name FROM inventory WHERE id = $1 LIMIT 1', [String(inventoryId)]);
+                if (!inv.rows[0]) {
+                    skipped.push({ rule, inventoryId, reason: 'صنف المخزن غير موجود' });
+                    continue;
+                }
+                const lineIds = [...new Set((Array.isArray(link.lines) ? link.lines.map(Number) : []).filter((n) => Number.isInteger(n) && n > 0))];
+                for (const lineId of lineIds) {
+                    const upd = await client.query(
+                        `UPDATE buffet_ingredients
+                            SET inventory_id = $2,
+                                pack_kg = COALESCE($3, pack_kg_for($2, unit)),
+                                updated_at = now()
+                          WHERE id = $1 AND inventory_id IS NULL
+                          RETURNING dish_id, name`,
+                        [lineId, String(inventoryId), packKg && packKg > 0 ? packKg : null],
+                    );
+                    if (upd.rows[0]) {
+                        applied += 1;
+                        await client.query(
+                            `INSERT INTO buffet_link_audit (dish_id, line_id, ingredient, inventory_id, rule, score, pack_kg, actor)
+                             VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+                            [upd.rows[0].dish_id, lineId, upd.rows[0].name, String(inventoryId), rule, score, packKg && packKg > 0 ? packKg : null, actor],
+                        );
+                    } else {
+                        skipped.push({ lineId, reason: 'السطر مربوط مسبقًا أو غير موجود' });
+                    }
+                }
+            }
+            await client.query('COMMIT');
+            res.json({ ok: true, applied, skipped });
+        } catch (e) {
+            await client.query('ROLLBACK');
+            throw e;
+        } finally {
+            client.release();
+        }
+    } catch (error) {
+        logger.error({ err: { message: error?.message || String(error), stack: error?.stack || null } }, '[buffet/rematch-apply]');
+        next(error);
+    }
+});
+
 module.exports = { router };
+
