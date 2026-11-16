@@ -6,7 +6,7 @@
  * (v1 متجهات / v2 لقطات). الأدوار مرآة الخادم، والخادم يبقى الحاكم.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.367';
+import { apiFetch } from '../../core/api.js?v=4.9.368';
 
 export const WALK_PAGES = 8;
 

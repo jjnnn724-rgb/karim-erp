@@ -1,4 +1,5 @@
 import './Departments.premium.css';
+import { DepartmentsLive } from './DepartmentsLive';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { PrintActions } from '../components/PrintActions';
@@ -238,6 +239,8 @@ export function Departments() {
     });
     const [page, setPage] = useState(1);
 
+    const [tab, setTab] = useState<'departments' | 'live'>('departments');
+
     const departmentsQuery = useQuery({
         queryKey: ['departments', 'all'],
         queryFn: ({ signal }) => fetchDepartments(signal),
@@ -370,23 +373,19 @@ export function Departments() {
 
     return (
         <div className="erp-premium-screen flex flex-col gap-md">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        الأقسام{' '}
-                        <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted" dir="ltr" lang="en">
-                            Departments
-                        </span>
-                    </h1>
-                    <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        سجل الأقسام وإيراد ومصروف {monthLabel()} — إضافة وتعديل وحذف. القراءة من `/api/departments`، والكتابة لـ
-                        admin|manager والحذف للأدمن فقط.
-                    </p>
+            <header className="live-pane-hero">
+                <div className="live-pane-hero__text">
+                    <p className="live-pane-hero__eyebrow" dir="ltr" lang="en">AL SHURFA AL ALAMI · RESTAURANTS</p>
+                    <div className="live-pane-hero__titleline">
+                        <h1 id="departments-title" className="live-pane-hero__title">الأقسام</h1>
+                        <span className="live-pane-hero__en" dir="ltr" lang="en">Departments</span>
+                    </div>
+                    <p className="live-pane-hero__sub">أقسامك التشغيلية والكاشيرية الحيّة — من لحظة تسلسل المصروف بدخول المطبخ وحتى التوقيع الختامي.</p>
                 </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
+                <div className="live-pane-hero__actions" data-erp-print-hide>
                     {canWrite ? (
-                        <Button type="button" size="sm" onClick={() => openForm()}>
-                            إضافة قسم
+                        <Button type="button" className="erp-button-luxury" size="sm" onClick={() => openForm()}>
+                            + إضافة قسم
                         </Button>
                     ) : null}
                     <PrintActions title="الأقسام" />
@@ -397,13 +396,48 @@ export function Departments() {
                             void revenuesQuery.refetch();
                             void expensesQuery.refetch();
                         }}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                        className="live-pane-hero__refresh"
                     >
-                        تحديث
+                        ↻ تحديث
                     </button>
                 </div>
             </header>
 
+            {/* ═══ تبويبات «الأقسام» ═══ */}
+            <nav className="live-tabs" aria-label="تبويبات الأقسام">
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={tab === 'departments'}
+                    aria-controls="panel-departments"
+                    className={`live-tab${tab === 'departments' ? ' live-tab--active' : ''}`}
+                    onClick={() => setTab('departments')}
+                >
+                    الأقسام
+                    <span className="live-tab__en" dir="ltr">MANAGE</span>
+                </button>
+                <button
+                    type="button"
+                    role="tab"
+                    aria-selected={tab === 'live'}
+                    aria-controls="panel-live"
+                    className={`live-tab live-tab--live${tab === 'live' ? ' live-tab--active' : ''}`}
+                    onClick={() => setTab('live')}
+                >
+                    الكاشيرية الحيّة
+                    <span className="live-tab__dot" aria-hidden="true" />
+                    <span className="live-tab__en" dir="ltr">LIVE</span>
+                </button>
+            </nav>
+
+            {tab === 'live' ? (
+                <div id="panel-live" role="tabpanel">
+                    <DepartmentsLive />
+                </div>
+            ) : null}
+
+            {tab === 'departments' ? (
+            <div id="panel-departments" role="tabpanel" className="flex flex-col gap-md">
             <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
                 <Kpi
                     label="الأقسام التشغيلية"
@@ -629,6 +663,8 @@ export function Departments() {
                     </>
                 ) : null}
             </Card>
+            </div>
+            ) : null}
 
             {/* Dialogs */}
             <DepartmentFormDialog

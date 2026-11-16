@@ -22,16 +22,16 @@
  *   (زر «مصروف +» في تفاصيل القسم — شاشة 10).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.367';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.368';
 import {
     fetchExpenses, fetchDepartments, expenseKind,
     EXPENSE_KIND_AR, EXPENSE_KIND_TONE, riyadhToday, firstOfMonth,
-} from '../data/finance-repo.js?v=4.9.367';
-import { FINANCE_WRITE_ROLES, validateExpenseForm, updateExpense, deleteExpense } from '../data/finance-write-repo.js?v=4.9.367';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.367';
-import { canWrite } from '../session.js?v=4.9.367';
-import { financeWriteEnabled } from '../write-flags.js?v=4.9.367';
-import { paintFormErrors } from '../form-errors.js?v=4.9.367';
+} from '../data/finance-repo.js?v=4.9.368';
+import { FINANCE_WRITE_ROLES, validateExpenseForm, updateExpense, deleteExpense } from '../data/finance-write-repo.js?v=4.9.368';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.368';
+import { canWrite } from '../session.js?v=4.9.368';
+import { financeWriteEnabled } from '../write-flags.js?v=4.9.368';
+import { paintFormErrors } from '../form-errors.js?v=4.9.368';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
