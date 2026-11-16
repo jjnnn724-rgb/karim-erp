@@ -17,8 +17,8 @@ import { writeHtmlDocument } from './print-document';
 
 const TOOLBAR = `
 <div class="erp-print-toolbar" role="toolbar" aria-label="أدوات الطباعة والإغلاق">
-  <button type="button" class="erp-pt erp-pt--print" onclick="window.print()">🖨 طباعة</button>
-  <button type="button" class="erp-pt erp-pt--close" onclick="try{window.close();if(!window.closed){history.back();}}catch(e){history.back()}">✕ إغلاق</button>
+  <button type="button" class="erp-pt erp-pt--print" data-erp-pt="print">🖨 طباعة</button>
+  <button type="button" class="erp-pt erp-pt--close" data-erp-pt="close">✕ إغلاق</button>
 </div>
 <style>
 .erp-print-toolbar{position:fixed;inset-block-start:12px;inset-inline-end:14px;z-index:2147483647;display:flex;gap:10px;direction:rtl}
@@ -60,6 +60,16 @@ export function printViewerDocument(win: Window, html: string, opts: PrintViewer
     const autoPrint = opts.autoPrint !== false;
     const delay = typeof opts.printDelayMs === 'number' ? opts.printDelayMs : 350;
     writeHtmlDocument(win, injectViewer(html));
+    // CSP في مستندات الخادم (script-src-attr 'none') تحظر كل inline handlers —
+    // فنربط الأوامر بحوادث «خارج» المستند (النافذة الحالية) بدل السطّر في الورقة.
+    try {
+        const doc = win.document;
+        doc?.querySelector('[data-erp-pt="print"]')?.addEventListener('click', () => { try { win.print(); } catch { /* noop */ } });
+        doc?.querySelector('[data-erp-pt="close"]')?.addEventListener('click', () => {
+            try { win.close(); } catch { /* noop */ }
+            try { if (!win.closed) { win.history.back(); } } catch { /* noop */ }
+        });
+    } catch { /* نافذة غير قابلة للوصول — المعالجة باليد */ }
     if (autoPrint) {
         window.setTimeout(() => { try { win.print(); } catch { /* المستخدم يغلق يدويًا */ } }, delay);
     }
