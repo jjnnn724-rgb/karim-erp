@@ -19,7 +19,7 @@
  * THIS FILE NEVER WRITES.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.368';
+import { apiFetch } from '../../core/api.js?v=4.9.369';
 
 export async function fetchRecipes() {
     const rows = [];

@@ -25,7 +25,8 @@ import {
     type VoucherDispatch,
     voucherRef,
 } from '../lib/cash-register';
-import { openBlankTab, printHtmlDocument, writeHtmlDocument } from '../lib/print-document';
+import { openBlankTab, writeHtmlDocument } from '../lib/print-document';
+import { printViewerDocument } from '../lib/print-viewer';
 import { errorMessage } from '../lib/reporting';
 import { writeErrorMessage } from '../lib/write';
 import { useToast } from '../ui/Toast';
@@ -252,7 +253,7 @@ function VoucherDialog({ id, onClose }: { id: string; onClose: () => void }) {
         }
         setPrinting(true);
         try {
-            printHtmlDocument(win, await fetchVoucherHtml(dispatch?.id ?? id));
+            printViewerDocument(win, await fetchVoucherHtml(dispatch?.id ?? id));
         } catch (error) {
             win.close();
             toast({
@@ -655,7 +656,7 @@ export function CashRegister() {
         }
         setPrinting('register');
         try {
-            printHtmlDocument(win, await fetchRegisterHtml({ from, to, type, dept, q: search }));
+            printViewerDocument(win, await fetchRegisterHtml({ from, to, type, dept, q: search }));
         } catch (error) {
             win.close();
             toast({

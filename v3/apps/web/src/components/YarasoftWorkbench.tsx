@@ -2,7 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { type ReactNode, useMemo, useState } from 'react';
 import { useAuthState } from '../lib/auth';
 import { formatInt } from '../lib/format';
-import { openBlankTab, printHtmlDocument } from '../lib/print-document';
+import { openBlankTab } from '../lib/print-document';
+import { printViewerDocument } from '../lib/print-viewer';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import {
     approveSectionError,
@@ -1821,7 +1822,7 @@ function QualityPanel() {
             toast({ title: 'تعذّر فتح نافذة الطباعة. اسمح بالنوافذ المنبثقة ثم أعد المحاولة.', variant: 'error' });
             return;
         }
-        printHtmlDocument(printWindow, quarantineReportHtml(quarantine));
+        printViewerDocument(printWindow, quarantineReportHtml(quarantine), { autoPrint: true });
     }
 
     return (

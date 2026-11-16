@@ -23,7 +23,8 @@ import {
     type MonitorCashier,
     type MonitorOrder,
 } from '../lib/cashier-monitor';
-import { openBlankTab, printHtmlDocument } from '../lib/print-document';
+import { openBlankTab } from '../lib/print-document';
+import { printViewerDocument } from '../lib/print-viewer';
 import { errorMessage, intOf, moneyOf, textOf, todayIso } from '../lib/reporting';
 import { useToast } from '../ui/Toast';
 import { Button } from '../ui/Button';
@@ -123,7 +124,7 @@ export function DepartmentsLive() {
         }
         setPrintingDoc(docNo);
         try {
-            printHtmlDocument(win, await fetchMonitorInvoiceHtml(docNo));
+            printViewerDocument(win, await fetchMonitorInvoiceHtml(docNo));
         } catch (error) {
             win.close();
             toast({ variant: 'error', title: 'تعذّرت طباعة الفاتورة', description: errorMessage(error) });

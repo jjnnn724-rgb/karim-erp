@@ -21,11 +21,11 @@
  *     الرفض يظهر تنبيه واضح بدل فشل صامت.
  */
 
-import { applyPrintSystem } from '../core/print-system.js?v=4.9.368';
-import { trapFocus } from './focus-trap.js?v=4.9.368';
+import { applyPrintSystem } from '../core/print-system.js?v=4.9.369';
+import { trapFocus } from './focus-trap.js?v=4.9.369';
 import {
     buildFilename, buildPdfFromFrame, canShareFiles, downloadBlob, shareBlob, whatsappUrl,
-} from './pdf-share.js?v=4.9.368';
+} from './pdf-share.js?v=4.9.369';
 
 const OVERLAY_CLASS = 'erp-report-viewer';
 const OPEN_CLASS = 'erp-report-viewer-open';

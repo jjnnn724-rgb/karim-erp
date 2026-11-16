@@ -11,7 +11,7 @@
  * عارض V2.
  */
 
-import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.368';
+import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.369';
 
 /** قيم expenses.adjustmentType كما تُخزَّن، والواصف العربي لها. */
 const TYPE_LABEL = {

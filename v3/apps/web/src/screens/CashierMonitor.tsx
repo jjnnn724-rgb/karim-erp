@@ -11,7 +11,8 @@ import {
     monitorCashierLabel,
     orderTimeText,
 } from '../lib/cashier-monitor';
-import { openBlankTab, printHtmlDocument } from '../lib/print-document';
+import { openBlankTab } from '../lib/print-document';
+import { printViewerDocument } from '../lib/print-viewer';
 import { errorMessage, intOf, moneyOf, pctOf, shareOf, textOf, todayIso } from '../lib/reporting';
 import { useToast } from '../ui/Toast';
 
@@ -43,7 +44,7 @@ export function CashierMonitor() {
         }
         setPrintingDoc(docNo);
         try {
-            printHtmlDocument(win, await fetchMonitorInvoiceHtml(docNo));
+            printViewerDocument(win, await fetchMonitorInvoiceHtml(docNo));
         } catch (error) {
             win.close();
             toast({
