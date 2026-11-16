@@ -39,7 +39,7 @@ import {
     type WpsReadinessEmployee,
 } from '../lib/mudad';
 import { mudadReviewCsv, mudadReviewFilename, mudadReviewPrintHtml } from '../lib/mudad-print';
-import { openBlankTab, writeHtmlDocument } from '../lib/print-document';
+import { printSmart } from '../lib/print-viewer';
 import { isWriteRole, useWriteMutation, writeErrorMessage } from '../lib/write';
 
 /**
@@ -416,24 +416,14 @@ export function Mudad() {
         if (!readiness) {
             return;
         }
-        const win = openBlankTab('ورقة مراجعة الامتثال — ملف الأجور');
-        if (!win) {
-            setNotice('تعذّر فتح نافذة الطباعة — اسمح بالنوافذ المنبثقة ثم أعد المحاولة.');
-            return;
-        }
-        writeHtmlDocument(
-            win,
-            mudadReviewPrintHtml(readiness, {
-                month,
-                byName: auth.user?.name ?? '—',
-                requirements,
-                preview: preview ?? null,
-                rateSet: selectedRateSet,
-                qiwaChecks: qiwa?.checks ?? [],
-            }),
-        );
-        win.document.querySelector('[data-mudad-print]')?.addEventListener('click', () => win.print());
-        win.document.querySelector('[data-mudad-close]')?.addEventListener('click', () => win.close());
+        printSmart(mudadReviewPrintHtml(readiness, {
+            month,
+            byName: auth.user?.name ?? '—',
+            requirements,
+            preview: preview ?? null,
+            rateSet: selectedRateSet,
+            qiwaChecks: qiwa?.checks ?? [],
+        }));
     }
 
     function exportReviewCsv() {

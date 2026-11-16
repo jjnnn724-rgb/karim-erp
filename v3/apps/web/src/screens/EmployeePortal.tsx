@@ -45,7 +45,7 @@ import {
     reportClientReject,
 } from '../lib/portal-write';
 import { usePrintBrand } from '../lib/print';
-import { openBlankTab, writeHtmlDocument } from '../lib/print-document';
+import { printSmart } from '../lib/print-viewer';
 import { errorMessage, intOf, num, qtyOf, textOf, todayIso } from '../lib/reporting';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Badge } from '../ui/Badge';
@@ -343,31 +343,20 @@ export function EmployeePortal() {
             return;
         }
         const title = kind === 'day' ? `كشف حضور وانصراف يوم ${range.from}` : `كشف حضور وانصراف شهر ${printMonth}`;
-        const win = openBlankTab(title);
-        if (!win) {
-            toast({ variant: 'error', title: 'تعذّر فتح نافذة الطباعة', description: 'اسمح بالنوافذ المنبثقة ثم أعد المحاولة' });
-            return;
-        }
         setPrinting(kind);
         try {
             const report = await fetchAttendanceReport(selectedEmployee.id, range.from, range.to);
-            writeHtmlDocument(
-                win,
-                portalRegisterHtml({
-                    title,
-                    from: range.from,
-                    to: range.to,
-                    report,
-                    employeeName: textOf(selectedEmployee.name) || textOf(status?.employeeName) || '—',
-                    employeeId: textOf(selectedEmployee.employeeId),
-                    brandName: brand.name,
-                    logoSrc: brand.logoSrc,
-                }),
-            );
-            win.document.querySelector('[data-report-print]')?.addEventListener('click', () => win.print());
-            win.document.querySelector('[data-report-close]')?.addEventListener('click', () => win.close());
+            printSmart(portalRegisterHtml({
+                title,
+                from: range.from,
+                to: range.to,
+                report,
+                employeeName: textOf(selectedEmployee.name) || textOf(status?.employeeName) || '—',
+                employeeId: textOf(selectedEmployee.employeeId),
+                brandName: brand.name,
+                logoSrc: brand.logoSrc,
+            }));
         } catch (error) {
-            win.close();
             toast({
                 variant: 'error',
                 title: 'تعذّر تجهيز الكشف',

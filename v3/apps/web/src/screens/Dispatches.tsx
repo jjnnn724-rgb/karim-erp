@@ -6,8 +6,7 @@ import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { buildDispatchPrintHtml, fetchDispatchFull, parseDispatchPrintRecord } from '../lib/dispatch-print';
-import { openBlankTab } from '../lib/print-document';
-import { printViewerDocument } from '../lib/print-viewer';
+import { printSmart } from '../lib/print-viewer';
 import {
     arSearchKey,
     DISPATCH_STATUS,
@@ -1227,18 +1226,12 @@ export function Dispatches() {
 
     /** ورقة A4 رسمية لإذن الصرف — تجلب السجل الكامل (التواقيع الحبرية) ثم تطبع. */
     async function printDispatch(dispatch: Dispatch): Promise<void> {
-        const win = openBlankTab(`إذن صرف — #${dispatch.id}`);
-        if (!win) {
-            toast({ title: 'المتصفح حجب نافذة الطباعة — اسمح بالنوافذ المنبثقة', variant: 'error' });
-            return;
-        }
         try {
             const record = (await fetchDispatchFull(String(dispatch.id))) ?? parseDispatchPrintRecord(dispatch);
-            printViewerDocument(win, buildDispatchPrintHtml(record, { printedBy: signerName || undefined }), { printDelayMs: 350 });
+            printSmart(buildDispatchPrintHtml(record, { printedBy: signerName || undefined }), { printDelayMs: 350 });
         } catch {
-            printViewerDocument(win, buildDispatchPrintHtml(parseDispatchPrintRecord(dispatch), { printedBy: signerName || undefined }), { printDelayMs: 350 });
+            printSmart(buildDispatchPrintHtml(parseDispatchPrintRecord(dispatch), { printedBy: signerName || undefined }), { printDelayMs: 350 });
         }
-        win.focus();
     }
 
     /** أزرار الصف — نفس شروط V2 وحالاتها وقائمة أدوارها. */

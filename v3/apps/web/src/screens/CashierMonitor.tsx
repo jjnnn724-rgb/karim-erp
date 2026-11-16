@@ -11,8 +11,7 @@ import {
     monitorCashierLabel,
     orderTimeText,
 } from '../lib/cashier-monitor';
-import { openBlankTab } from '../lib/print-document';
-import { printViewerDocument } from '../lib/print-viewer';
+import { printSmart } from '../lib/print-viewer';
 import { errorMessage, intOf, moneyOf, pctOf, shareOf, textOf, todayIso } from '../lib/reporting';
 import { useToast } from '../ui/Toast';
 
@@ -33,20 +32,10 @@ export function CashierMonitor() {
         if (printingDoc) {
             return;
         }
-        const win = openBlankTab(`فاتورة ${docNo}`);
-        if (!win) {
-            toast({
-                variant: 'error',
-                title: 'تعذّرت الطباعة',
-                description: 'منع المتصفح فتح نافذة الطباعة — اسمح بالنوافذ المنبثقة ثم أعد المحاولة.',
-            });
-            return;
-        }
         setPrintingDoc(docNo);
         try {
-            printViewerDocument(win, await fetchMonitorInvoiceHtml(docNo));
+            printSmart(await fetchMonitorInvoiceHtml(docNo));
         } catch (error) {
-            win.close();
             toast({
                 variant: 'error',
                 title: 'تعذّرت طباعة الفاتورة',

@@ -169,11 +169,8 @@ td.c{text-align:center}td.n{direction:ltr;unicode-bidi:embed;text-align:right}
 .sign{flex:1;text-align:center}.sign .line{border-top:2px dotted #8496a5;margin-top:44px;padding-top:6px;font-weight:700;font-size:12.5px}
 .sign .who{color:#596e80;font-size:11.5px}
 .foot{border-top:2px solid #0f766e;margin-top:24px;padding-top:8px;display:flex;justify-content:space-between;color:#596e80;font-size:10.5px}
-.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#0f766e;color:#fff}
-.controls button.secondary{background:#555}
-@media print{body{padding:0}.controls{display:none!important}@page{size:A4;margin:13mm}}
+@media print{body{padding:0}@page{size:A4;margin:13mm}}
 </style></head><body>
-<div class="controls"><button type="button" data-vat-print>طباعة</button><button type="button" class="secondary" data-vat-close>إغلاق</button></div>
 <main class="sheet">
 <header class="head">
 <div class="brand"><h1>مسودة مراجعة ضريبة القيمة المضافة</h1><p>نظام Karim ERP — المراجعة الداخلية قبل أي إقرار رسمي</p></div>

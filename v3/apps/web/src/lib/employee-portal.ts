@@ -166,11 +166,8 @@ body{font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif;color:#172b3b;back
 .summary{display:flex;justify-content:center;gap:24px;margin:10px 0 14px;font-size:13px;color:#102a43}
 table{width:100%;border-collapse:collapse}th,td{border:1px solid #dce5ec;padding:6px;text-align:right;font-size:12px}
 th{background:#eaf0f5;color:#102a43}td.c,th.c{text-align:center}td.n{direction:ltr;unicode-bidi:embed}
-.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#0f766e;color:#fff}
-.controls button.secondary{background:#31485a}
-@media print{body{padding:0}.controls{display:none!important}@page{size:A4;margin:11mm}}
+@media print{body{padding:0}@page{size:A4;margin:11mm}}
 </style></head><body>
-<div class="controls"><button type="button" data-report-print>طباعة</button><button type="button" class="secondary" data-report-close>إغلاق</button></div>
 <main class="sheet">${brand}<header class="head"><h1>${escapeHtml(title)}</h1>
 <p>الموظف: ${escapeHtml(employeeName)} (${escapeHtml(employeeId)}) — الفترة: ${escapeHtml(from)} ← ${escapeHtml(to)}</p>
 <p>تاريخ التقرير: ${escapeHtml(stamp)}</p></header>

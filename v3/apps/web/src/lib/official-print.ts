@@ -4,7 +4,7 @@
  * هذا الملف يبني «داخل الورقة فقط» — شريط الأزرار (طباعة/إغلاق) يعاد استخدامه
  * من `print-viewer.ts` ويربط بأحدث سند: حذف أي تأشير inline (CSP-safe).
  */
-import { printViewerDocument } from './print-viewer';
+import { printSmart } from './print-viewer';
 /**
  * لغة واحدة مع إذن الصرف: شريط كربوني/ذهبي بشارة الشعار، عناوين قابلة
  * للقراءة باللغة العربية والإنجليزية، شبكة KPI عصرية، وجداول بحد أحمر أو
@@ -293,14 +293,8 @@ ${hasTotals && section.totalsRow ? `                <tr class="totals-row">${sec
 </body></html>`;
 }
 
-/** فتح المستند في تبويب مستقل مع أزرار الإغلاق والطباعة القياسية (print-viewer). */
+/** يفتح المستند فيما يتوافق مع المنصة (WebView أو متصفح) — لا توجد نوافذ تُسدّ. */
 export function printOfficialSheet(input: OfficialSheetInput): boolean {
     const html = buildOfficialSheetHtml(input);
-    const win = window.open('', '_blank', 'width=1000,height=1100');
-    if (!win) {
-        return false;
-    }
-    printViewerDocument(win, html, { autoPrint: true, printDelayMs: 350 });
-    win.focus();
-    return true;
+    return printSmart(html, { autoPrint: true, printDelayMs: 350 });
 }

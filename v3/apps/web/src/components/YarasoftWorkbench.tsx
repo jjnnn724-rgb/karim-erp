@@ -2,8 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { type ReactNode, useMemo, useState } from 'react';
 import { useAuthState } from '../lib/auth';
 import { formatInt } from '../lib/format';
-import { openBlankTab } from '../lib/print-document';
-import { printViewerDocument } from '../lib/print-viewer';
+import { printSmart } from '../lib/print-viewer';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import {
     approveSectionError,
@@ -1817,12 +1816,7 @@ function QualityPanel() {
     }
 
     function printQuarantine() {
-        const printWindow = openBlankTab('الحجر الصحي لقيم مخازن الكاشير');
-        if (!printWindow) {
-            toast({ title: 'تعذّر فتح نافذة الطباعة. اسمح بالنوافذ المنبثقة ثم أعد المحاولة.', variant: 'error' });
-            return;
-        }
-        printViewerDocument(printWindow, quarantineReportHtml(quarantine), { autoPrint: true });
+        printSmart(quarantineReportHtml(quarantine), { autoPrint: true });
     }
 
     return (

@@ -61,7 +61,8 @@ describe('vegRequestPrintHtml', () => {
         expect(html).toContain('خيار');
         expect(html).toContain('توقيع الشيف — فاروق عبد احمد');
         expect(html).toContain('نسخة رقم 3');
-        expect(html).toContain('data-veg-print');
+        // الشريط الذهبي الموحّد (طباعة/مشاركة/إغلاق) يُحقن في طبقة printSmart — لم يعد جزءًا من محتوى الورقة.
+        expect(html).not.toContain('data-veg-print');
         expect(html).toContain('background:#102a43');
         expect(html).toContain('border-bottom:3px solid #0f766e');
         expect(html).not.toContain('سعر الوحدة');

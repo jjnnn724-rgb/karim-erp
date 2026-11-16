@@ -169,7 +169,7 @@ describe('دليل الموظفين', () => {
         await waitFor(() => expect(printButton.hasAttribute('disabled')).toBe(false));
         fireEvent.click(printButton);
 
-        expect(window.open).toHaveBeenCalledWith('', '_blank');
+        expect(window.open).toHaveBeenCalledWith('', '_blank', expect.any(String));
         expect(popup.document.body.innerHTML).toContain('08:00');
         expect(popup.document.body.innerHTML).toContain('16:00');
         expect(print).toHaveBeenCalledOnce();

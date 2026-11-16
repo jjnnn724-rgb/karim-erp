@@ -5,7 +5,7 @@ import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton 
 import { useAuthState } from '../lib/auth';
 import { fetchCurrency } from '../lib/finance';
 import { formatMoney } from '../lib/format';
-import { openBlankTab, writeHtmlDocument } from '../lib/print-document';
+import { printSmart } from '../lib/print-viewer';
 import { vegRequestPrintHtml } from '../lib/veg-print';
 import {
     fetchVegRequests,
@@ -1248,27 +1248,12 @@ export function VegRequests() {
             });
             return;
         }
-        const win = openBlankTab(`طلب شراء خضار ${row.number}`);
-        if (!win) {
-            toast({
-                variant: 'error',
-                title: 'تعذّرت طباعة الطلب',
-                description: 'منع المتصفح فتح نافذة الطباعة — اسمح بالنوافذ المنبثقة ثم أعد المحاولة.',
-            });
-            return;
-        }
         setPrintingId(row.id);
         try {
-            writeHtmlDocument(
-                win,
-                vegRequestPrintHtml(raw, {
-                    byName: String(auth.user?.name ?? auth.user?.username ?? ''),
-                    currency,
-                }),
-            );
-            win.document.querySelector('[data-veg-print]')?.addEventListener('click', () => win.print());
-            win.document.querySelector('[data-veg-close]')?.addEventListener('click', () => win.close());
-            win.print();
+            printSmart(vegRequestPrintHtml(raw, {
+                byName: String(auth.user?.name ?? auth.user?.username ?? ''),
+                currency,
+            }));
             void markVegPrinted(row.id).catch(() => undefined);
         } finally {
             setPrintingId(null);

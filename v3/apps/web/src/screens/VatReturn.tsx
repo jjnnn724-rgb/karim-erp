@@ -5,7 +5,7 @@ import { KpiCard, RangeControls, ReportHeader, SectionCard } from '../components
 import { StateError, StateLoading } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { fetchCurrency } from '../lib/finance';
-import { openBlankTab, writeHtmlDocument } from '../lib/print-document';
+import { printSmart } from '../lib/print-viewer';
 import { errorMessage, intOf, moneyOf, num, presetRange, rangeProblem } from '../lib/reporting';
 import {
     applyVatSettlement,
@@ -334,25 +334,11 @@ export function VatReturn() {
         if (!report) {
             return;
         }
-        const win = openBlankTab('مراجعة ضريبة القيمة المضافة');
-        if (!win) {
-            toast({
-                title: 'تعذّر فتح نافذة الطباعة',
-                description: 'اسمح بالنوافذ المنبثقة ثم أعد المحاولة.',
-                variant: 'error',
-            });
-            return;
-        }
-        writeHtmlDocument(
-            win,
-            vatReviewPrintHtml(report, {
-                byName: auth.user?.name ?? '—',
-                currency,
-                settlement,
-            }),
-        );
-        win.document.querySelector('[data-vat-print]')?.addEventListener('click', () => win.print());
-        win.document.querySelector('[data-vat-close]')?.addEventListener('click', () => win.close());
+        printSmart(vatReviewPrintHtml(report, {
+            byName: auth.user?.name ?? '—',
+            currency,
+            settlement,
+        }));
     }
 
     function exportCsv() {

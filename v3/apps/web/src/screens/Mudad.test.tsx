@@ -303,7 +303,7 @@ describe('أتمتة شاشة الامتثال', () => {
         expect(await screen.findByText('IBAN لكل موظف')).toBeTruthy();
         fireEvent.click(screen.getByRole('button', { name: 'طباعة ورقة المراجعة' }));
 
-        expect(window.open).toHaveBeenCalledWith('', '_blank');
+        expect(window.open).toHaveBeenCalledWith('', '_blank', expect.any(String));
         await waitFor(() => {
             expect(popup.document.documentElement.textContent).toContain('ورقة مراجعة الامتثال');
         });

@@ -237,10 +237,8 @@ h1{margin:0 0 8px;color:#102a43;font-size:22px}.identity,.period,.stats{display:
 table{width:100%;border-collapse:collapse}th,td{border:1px solid #dce5ec;padding:7px 8px;text-align:right}
 th{background:#102a43;color:#f0f6fa;white-space:nowrap}tbody tr:nth-child(even){background:#f3f6fa}.numeric{direction:ltr;unicode-bidi:embed;text-align:center}
 .foot{margin-top:12px;color:#596e80;font-size:11px}.actions{margin:0 auto 16px;max-width:1100px}
-.actions button{border:0;border-radius:6px;padding:9px 18px;background:#0f766e;color:#fff;font:inherit;cursor:pointer}
-@media print{body{padding:0}.actions{display:none!important}.sheet{max-width:none}thead{display:table-header-group}tr{break-inside:avoid}}
+@media print{body{padding:0}.sheet{max-width:none}thead{display:table-header-group}tr{break-inside:avoid}}
 </style></head><body>
-<div class="actions"><button type="button" data-print>طباعة الكشف</button></div>
 <main class="sheet"><header class="head"><h1>${escapeHtml(title)}</h1>
 <div class="identity"><span>رقم الموظف: <strong>${escapeHtml(employeeCode || '—')}</strong></span>
 <span>القسم: <strong>${escapeHtml(department || '—')}</strong></span><span>الوظيفة: <strong>${escapeHtml(position || '—')}</strong></span></div></header>

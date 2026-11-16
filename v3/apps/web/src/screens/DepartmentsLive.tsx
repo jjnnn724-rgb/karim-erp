@@ -23,8 +23,7 @@ import {
     type MonitorCashier,
     type MonitorOrder,
 } from '../lib/cashier-monitor';
-import { openBlankTab } from '../lib/print-document';
-import { printViewerDocument } from '../lib/print-viewer';
+import { printSmart } from '../lib/print-viewer';
 import { errorMessage, intOf, moneyOf, textOf, todayIso } from '../lib/reporting';
 import { useToast } from '../ui/Toast';
 import { Button } from '../ui/Button';
@@ -117,16 +116,10 @@ export function DepartmentsLive() {
 
     async function printInvoice(docNo: string): Promise<void> {
         if (printingDoc) { return; }
-        const win = openBlankTab(`فاتورة ${docNo}`);
-        if (!win) {
-            toast({ variant: 'error', title: 'المتصفح حجب نافذة الطباعة', description: 'اسمح بالنوافذ المنبثقة ثم أعد المحاولة.' });
-            return;
-        }
         setPrintingDoc(docNo);
         try {
-            printViewerDocument(win, await fetchMonitorInvoiceHtml(docNo));
+            printSmart(await fetchMonitorInvoiceHtml(docNo));
         } catch (error) {
-            win.close();
             toast({ variant: 'error', title: 'تعذّرت طباعة الفاتورة', description: errorMessage(error) });
         } finally {
             setPrintingDoc('');

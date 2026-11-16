@@ -24,8 +24,7 @@ import {
 import { Badge, Button, Input } from '../ui';
 import '../styles/pos-reports.css';
 import { errorMessage } from '../lib/reporting';
-import { printViewerDocument } from '../lib/print-viewer';
-import { useToast } from '../ui/Toast';
+import { printSmart } from '../lib/print-viewer';
 
 type ReportTab = 'overview' | 'department' | 'product' | 'inventory';
 
@@ -72,7 +71,6 @@ const tooltipStyle = {
 };
 
 export function PosReports() {
-    const { toast } = useToast();
     const [tab, setTab] = useState<ReportTab>('overview');
     const [from, setFrom] = useState(daysAgoIso(30));
     const [to, setTo] = useState(todayIso());
@@ -205,11 +203,6 @@ export function PosReports() {
     const topProducts = useMemo(() => exec?.top_products.slice(0, 6) ?? [], [exec]);
 
     const printReport = () => {
-        const win = window.open('', '_blank', 'width=900,height=1000');
-        if (!win) {
-            toast({ title: 'المتصفح حجب نافذة الطباعة — اسمح بالنوافذ المنبثقة', variant: 'error' });
-            return;
-        }
         const title = tab === 'department' ? 'تقرير الأقسام' : tab === 'product' ? 'تقرير الأصناف' : tab === 'inventory' ? 'تقرير حركة المخزن' : 'النظرة التنفيذية';
         const titleEn = tab === 'department' ? 'Departments Report' : tab === 'product' ? 'Products Report' : tab === 'inventory' ? 'Inventory Movement Report' : 'Executive Overview';
         const escape = (v: unknown) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
@@ -287,8 +280,7 @@ export function PosReports() {
   <div class="sign"><div>إعداد</div><div>مراجعة</div><div>اعتماد</div></div>
 </body></html>`;
 
-        printViewerDocument(win, html, { autoPrint: true, printDelayMs: 350 });
-        win.focus();
+        printSmart(html, { autoPrint: true, printDelayMs: 350 });
     };
 
     const execTabActive = tab === 'overview';

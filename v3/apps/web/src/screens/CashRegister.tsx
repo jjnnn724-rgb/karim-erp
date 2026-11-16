@@ -25,8 +25,7 @@ import {
     type VoucherDispatch,
     voucherRef,
 } from '../lib/cash-register';
-import { openBlankTab, writeHtmlDocument } from '../lib/print-document';
-import { printViewerDocument } from '../lib/print-viewer';
+import { printSmart } from '../lib/print-viewer';
 import { errorMessage } from '../lib/reporting';
 import { writeErrorMessage } from '../lib/write';
 import { useToast } from '../ui/Toast';
@@ -242,20 +241,10 @@ function VoucherDialog({ id, onClose }: { id: string; onClose: () => void }) {
         if (printing) {
             return;
         }
-        const win = openBlankTab('إذن صرف');
-        if (!win) {
-            toast({
-                variant: 'error',
-                title: 'تعذّرت الطباعة',
-                description: 'منع المتصفح فتح نافذة الطباعة — اسمح بالنوافذ المنبثقة ثم أعد المحاولة.',
-            });
-            return;
-        }
         setPrinting(true);
         try {
-            printViewerDocument(win, await fetchVoucherHtml(dispatch?.id ?? id));
+            printSmart(await fetchVoucherHtml(dispatch?.id ?? id));
         } catch (error) {
-            win.close();
             toast({
                 variant: 'error',
                 title: 'تعذّرت طباعة الإذن',
@@ -637,28 +626,14 @@ export function CashRegister() {
         resetPage();
     }
 
-    function popupBlocked(title: string) {
-        toast({
-            variant: 'error',
-            title,
-            description: 'منع المتصفح فتح نافذة الطباعة — اسمح بالنوافذ المنبثقة ثم أعد المحاولة.',
-        });
-    }
-
     async function printRegister() {
         if (printing) {
             return;
         }
-        const win = openBlankTab('كشف سجلّ الصرف');
-        if (!win) {
-            popupBlocked('تعذّرت طباعة الكشف');
-            return;
-        }
         setPrinting('register');
         try {
-            printViewerDocument(win, await fetchRegisterHtml({ from, to, type, dept, q: search }));
+            printSmart(await fetchRegisterHtml({ from, to, type, dept, q: search }));
         } catch (error) {
-            win.close();
             toast({
                 variant: 'error',
                 title: 'تعذّرت طباعة الكشف',
@@ -682,29 +657,18 @@ export function CashRegister() {
             });
             return;
         }
-        const win = openBlankTab('تقرير مفصل — سجلّ الصرف');
-        if (!win) {
-            popupBlocked('تعذّر فتح التقرير المفصل');
-            return;
-        }
         setPrinting('multi');
         try {
             const report = await fetchCashRegister({ from, to, limit: MULTI_REPORT_SCAN });
-            writeHtmlDocument(
-                win,
-                multiReportHtml({
-                    from,
-                    to,
-                    tokens,
-                    rows: report.rows ?? [],
-                    totalCount: Number(report.totals?.count ?? 0),
-                    currency: String(report.currency ?? ''),
-                }),
-            );
-            win.document.querySelector('[data-report-print]')?.addEventListener('click', () => win.print());
-            win.document.querySelector('[data-report-close]')?.addEventListener('click', () => win.close());
+            printSmart(multiReportHtml({
+                from,
+                to,
+                tokens,
+                rows: report.rows ?? [],
+                totalCount: Number(report.totals?.count ?? 0),
+                currency: String(report.currency ?? ''),
+            }));
         } catch (error) {
-            win.close();
             toast({
                 variant: 'error',
                 title: 'تعذّر بناء التقرير المفصل',

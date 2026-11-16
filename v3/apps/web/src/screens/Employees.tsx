@@ -46,7 +46,7 @@ import {
     setEmployeeActive,
     updateEmployee,
 } from '../lib/employees-write';
-import { openBlankTab, writeHtmlDocument } from '../lib/print-document';
+import { printSmart } from '../lib/print-viewer';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
@@ -697,24 +697,13 @@ function AttendanceRangeSection({
             setNote('حمّل كشف اليوم أو الفترة قبل الطباعة');
             return;
         }
-        const title = `كشف حضور وانصراف — ${employeeName}`;
-        const win = openBlankTab(title);
-        if (!win) {
-            setNote('تعذّر فتح نافذة الطباعة؛ اسمح بالنوافذ المنبثقة ثم أعد المحاولة');
-            return;
-        }
-        writeHtmlDocument(
-            win,
-            employeeAttendancePrintHtml({
-                employeeName,
-                employeeCode,
-                department,
-                position,
-                report: model,
-            }),
-        );
-        win.document.querySelector<HTMLButtonElement>('[data-print]')?.addEventListener('click', () => win.print());
-        win.print();
+        printSmart(employeeAttendancePrintHtml({
+            employeeName,
+            employeeCode,
+            department,
+            position,
+            report: model,
+        }));
     }
 
     // biome-ignore lint/correctness/useExhaustiveDependencies: auto-reload only when the employee changes; load uses the latest range values.

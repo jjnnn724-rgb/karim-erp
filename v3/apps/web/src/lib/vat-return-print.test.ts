@@ -49,8 +49,9 @@ describe('ورقة مراجعة ضريبة القيمة المضافة', () => {
         expect(html).toContain('المحاسب — إعداد');
         expect(html).toContain('المراجع — اعتماد المراجعة الداخلية');
         expect(html).toContain('ليست إقرارًا رسميًا');
-        expect(html).toContain('data-vat-print');
-        expect(html).toContain('data-vat-close');
+        // الشريط الذهبي الموحّد (طباعة/مشاركة/إغلاق) يُحقن في طبقة printSmart — لم يعد جزءًا من محتوى الورقة.
+        expect(html).not.toContain('data-vat-print');
+        expect(html).not.toContain('data-vat-close');
     });
 
     it('تحذّر حين توجد حركات غير مصنّفة', () => {
