@@ -75,6 +75,14 @@ const BOOL_FIELDS = FIELDS.filter((field) => field.kind === 'bool');
 const NUMBER_FIELDS = FIELDS.filter((field) => field.kind !== 'bool' && field.kind !== 'coord');
 const COORD_FIELDS = FIELDS.filter((field) => field.kind === 'coord');
 
+/** قائمة المعرّفات (مفصولة بفواصل/فراغات) — مطابقة لمنطق الخادم تمامًا. */
+function parseExemptIds(raw: string): string[] {
+    return String(raw || '')
+        .split(/[\s,]+/)
+        .map((s) => s.trim())
+        .filter(Boolean);
+}
+
 interface PunchForm {
     values: Record<string, string>;
 }
@@ -158,6 +166,8 @@ export function PunchSection() {
     const [files, setFiles] = useState<File[]>([]);
     const [enrollError, setEnrollError] = useState('');
     const [locating, setLocating] = useState(false);
+    const [exemptError, setExemptError] = useState('');
+    const [exemptUserId, setExemptUserId] = useState('');
 
     const settingsQuery = useQuery({
         queryKey: ['settings', 'punch'],
@@ -252,6 +262,20 @@ export function PunchSection() {
         },
     });
 
+    const saveExempt = useWriteMutation<Record<string, unknown>, void>({
+        mutationFn: (payload) => savePunchSettings(payload),
+        successTitle: () => 'تم حفظ قائمة الاستثناء',
+        invalidate: [['settings', 'punch']],
+        silentError: true,
+        onSuccess: () => {
+            setExemptError('');
+            setExemptUserId('');
+        },
+        onError: (cause) => {
+            setExemptError(writeErrorMessage(cause, 'تعذّر حفظ قائمة الاستثناء'));
+        },
+    });
+
     if (!draft || !data) {
         return (
             <QueryBoundary pending={settingsQuery.isPending} error={settingsQuery.error} onRetry={() => void settingsQuery.refetch()}>
@@ -273,6 +297,7 @@ export function PunchSection() {
     const devices: PunchDevice[] = devicesQuery.data ?? [];
     const faces: PunchFace[] = facesQuery.data ?? [];
     const attempts: PunchAttempts | null = attemptsQuery.data ?? null;
+    const exemptIds = parseExemptIds(String(data?.values.punch_geo_exempt_user_ids ?? ''));
 
     const setField = (key: string, next: string) => {
         draft.set('values', { ...draft.value.values, [key]: next });
@@ -404,6 +429,70 @@ export function PunchSection() {
                     </Button>
                 </div>
             </SectionCard>
+
+            {isAdmin ? (
+                <SectionCard
+                    title="استثناء الموقع الجغرافي"
+                    english="Geo Exemptions"
+                    badge={<Badge variant="warning">{String(exemptIds.length)} مستثنى</Badge>}
+                >
+                    <p className="text-body-sm text-muted">
+                        المستثنون يبصمون من أي موقع — باقي طبقات الأمان (الوجه، الجهاز، السبام) كما هي.
+                    </p>
+                    {exemptError ? <p role="alert" className="text-body-sm text-danger-text">{exemptError}</p> : null}
+                    <div className="flex flex-wrap items-end gap-sm">
+                        <Select
+                            label="الموظف"
+                            name="exempt_user"
+                            value={exemptUserId}
+                            onValueChange={(value) => setExemptUserId(String(value ?? ''))}
+                            options={users}
+                            containerClassName="min-w-56"
+                        />
+                        <Button
+                            variant="primary"
+                            size="sm"
+                            disabled={!exemptUserId || saveExempt.isPending || exemptIds.includes(exemptUserId)}
+                            loading={saveExempt.isPending}
+                            onClick={() => {
+                                const id = exemptUserId.trim();
+                                if (!id) { return; }
+                                const merged = [...exemptIds.filter((x) => x !== id), id].join(',');
+                                saveExempt.mutate({ punch_geo_exempt_user_ids: merged });
+                            }}
+                        >
+                            استثناء
+                        </Button>
+                    </div>
+                    {exemptIds.length === 0 ? (
+                        <p className="text-body-sm text-muted">لا يوجد أحد مستثنى حاليًا.</p>
+                    ) : (
+                        <ul className="flex flex-wrap gap-xs">
+                            {exemptIds.map((userId) => (
+                                <li
+                                    key={userId}
+                                    className="inline-flex items-center gap-xs rounded-md border border-hairline bg-surface-sunken px-sm py-xxs text-body-sm"
+                                >
+                                    <span>{users.find((u) => u.value === userId)?.label ?? <span dir="ltr">{userId}</span>}</span>
+                                    <button
+                                        type="button"
+                                        aria-label={`إزالة ${userId} من الاستثناء`}
+                                        title="إزالة"
+                                        disabled={saveExempt.isPending}
+                                        className="text-danger-text"
+                                        onClick={() => {
+                                            const merged = exemptIds.filter((x) => x !== userId).join(',');
+                                            saveExempt.mutate({ punch_geo_exempt_user_ids: merged });
+                                        }}
+                                    >
+                                        ×
+                                    </button>
+                                </li>
+                            ))}
+                        </ul>
+                    )}
+                </SectionCard>
+            ) : null}
 
             <SectionCard title="التحقق بالوجه" english="Face Verification" badge={<ReadOnlyBadge visible={canWrite} />}>
                 <div className="grid grid-cols-1 gap-sm sm:grid-cols-2 xl:grid-cols-3">
