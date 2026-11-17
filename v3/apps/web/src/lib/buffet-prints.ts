@@ -193,63 +193,74 @@ ${pages.join('')}
 </html>`;
 }
 
-/** ورقة السبورة — غداء أو عشاء */
+/** ورقة السبورة — غداء أو عشاء — هوية الشرفة العالمي الكربونية الفاخرة (A4) */
 export function buildBoardHtml(day: string, meal: string, dishes: BuffetDish[], opts: PrintOptions = {}): string {
     const rows = dishes.map((d, i) => {
         const pp = nutritionPerServing(d);
         const allergens = pp?.allergens.length ? pp.allergens.join(' · ') : '—';
         return `<tr>
             <td class="b-num">${i + 1}</td>
-            <td class="b-name">${esc(d.name)}</td>
+            <td class="b-name">${esc(d.name)}<small>${esc(d.category)} · ${esc(d.yields || '')}</small></td>
             <td class="b-desc">${esc((d.description ?? '').trim() || '—')}</td>
             <td class="b-meta"><b>${numInt(pp?.kcal)}</b><span>سعرات</span></td>
             <td class="b-flag">${esc(allergens)}</td>
         </tr>`;
-    }).join('');
-    const sources = opts.pro ? `<p class="board__sources"><b>المصادر:</b> USDA FoodData Central — SR Legacy · EU FIC 1169/2011 · HACCP / ISO 22000 · القيم تقريبية</p>` : '';
+    }).join('') || '<tr><td colspan="5" style="text-align:center;color:#a89a68;padding:22px">لا أصناف مجدولة لهذا اليوم — أضف من الخطة الأسبوعية</td></tr>';
+    const printed = new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
+    const sources = opts.pro ? `<p class="board__sources"><b>المصادر:</b> USDA FoodData Central — SR Legacy · EU FIC 1169/2011 · HACCP / ISO 22000 · القيم تقريبية وقد تختلف حسب مصدر الخامات.</p>` : '';
     return `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
 <meta charset="UTF-8">
 <title>ورقة السبورة — ${esc(meal)} ${esc(day)}</title>
 <style>
-@page { size: A4; margin: 12mm; }
+${CARD_FONT_CSS}
+@page { size: A4; margin: 9mm; }
 * { box-sizing: border-box; }
-body { margin: 0; direction: rtl; font-family: 'Segoe UI', Tahoma, 'Noto Kufi Arabic', sans-serif; background: #fff; color: #141a14; }
-.board { padding: 2mm 2mm; }
-.board__top { display: flex; align-items: center; gap: 12px; border-bottom: 3px double #c8a24a; padding-bottom: 8px; }
-.board__top img { width: 46px; height: 46px; object-fit: contain; border-radius: 8px; background: #fffdf8; border: 1px solid #e5d9b8; }
-.board__kicker { letter-spacing: 3px; font-size: 8px; color: #8a6d2f; font-weight: 800; direction: ltr; text-align: right; }
-.board__top h1 { font-family: Georgia, 'Times New Roman', Tahoma, serif; font-size: 24px; margin: 2px 0 0; font-weight: 900; color: #141a14; }
-.board__top h1 small { display: block; font-size: 9.5px; letter-spacing: 2px; color: #8a6d2f; font-family: 'Segoe UI', sans-serif; }
-.board__meta { display: flex; gap: 14px; font-size: 8.5px; color: #4e5a53; border-bottom: 1px solid #e5d9b8; padding: 6px 0; margin-bottom: 8px; }
-.board__haccp { background: #0d0f0b; color: #cbbd8d; border-radius: 6px; padding: 4px 10px; font-size: 7px; font-weight: 700; margin-bottom: 10px; letter-spacing: .5px; }
-table { width: 100%; border-collapse: collapse; font-size: 9.5px; }
-th { background: #141a14; color: #cbbd8d; text-align: right; padding: 6px 8px; font-size: 8px; letter-spacing: 1px; }
-td { border-bottom: 1px solid #eeeadd; padding: 6px 8px; vertical-align: middle; }
-tr:nth-child(even) td { background: #faf8ee; }
-.b-num { color: #a89a68; width: 26px; }
-.b-name { font-weight: 800; width: 26%; }
-.b-desc { color: #4e5a53; font-size: 8px; line-height: 1.7; }
-.b-meta { width: 70px; text-align: center; }
-.b-meta b { display: block; font-size: 13px; color: #141a14; direction: ltr; font-variant-numeric: tabular-nums; }
-.b-meta span { font-size: 6px; color: #a89a68; letter-spacing: 1px; }
-.b-flag { font-size: 7px; color: #5a4623; }
-.board__foot { display: flex; justify-content: space-between; gap: 16px; margin-top: 12px; padding-top: 8px; border-top: 2px solid #141a14; font-size: 8px; color: #4e5a53; }
-.board__foot b { display: inline-block; min-width: 100px; border-bottom: 1.5px solid #a89a68; }
-.board__sources { font-size: 6.6px; color: #87928b; margin-top: 8px; border-top: 1px dashed #d8d2bd; padding-top: 6px; line-height: 1.9; }
+body { margin: 0; direction: rtl; font-family: 'Tajawal', 'Segoe UI', Tahoma, sans-serif; background: #EDEAE0; color: #141a14; }
+.board { max-width: 192mm; margin: 0 auto; background: linear-gradient(180deg, #FFFDF8 0%, #FBF8EC 100%); border: 1px solid #d8cfb4; border-radius: 14px; padding: 6mm 7mm 5mm; box-shadow: inset 0 0 0 2px #fffdf8, inset 0 0 0 4px #c8a24a; }
+.board__brand-row { display: flex; align-items: center; gap: 12px; direction: ltr; border-bottom: 3px double #c8a24a; padding-bottom: 9px; }
+.board__brand { letter-spacing: 3.4px; font-size: 10px; font-weight: 500; color: #a89a68; line-height: 1.8; flex: 1; }
+.board__brand b { color: #141a14; font-weight: 800; }
+.board__brand small { display: block; font-size: 6px; letter-spacing: 5px; color: #c8a24a; font-weight: 800; margin-top: 3px; }
+.board__brand-row img { width: 74px; height: 74px; object-fit: contain; border-radius: 10px; background: #fffdf8; border: 2px solid #c8a24a; box-shadow: 0 2px 8px rgba(13,15,11,.28); }
+.board__kicker { text-align: center; font-size: 7.4px; letter-spacing: 5px; color: #8a6d2f; font-weight: 800; margin: 10px 0 2px; direction: ltr; }
+.board__title { text-align: center; font-size: 27px; font-weight: 800; line-height: 1.35; color: #0d0f0b; margin: 0; }
+.board__title small { display: block; font-size: 8px; letter-spacing: 2.6px; color: #8a6d2f; font-weight: 800; margin-top: 4px; direction: ltr; }
+.board__rule { display: flex; align-items: center; gap: 12px; margin: 10px 0; }
+.board__rule i { font-style: normal; color: #c8a24a; font-size: 12px; line-height: 1; }
+.board__rule span { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, #c8a24a 18%, #c8a24a 82%, transparent); }
+.board__meta { display: flex; gap: 10px; font-size: 7.4px; font-weight: 800; color: #4e5a53; justify-content: center; margin-bottom: 8px; }
+.board__meta span { background: #fffdf8; border: 1px solid #e5d9b8; border-radius: 999px; padding: 3px 14px; display: flex; gap: 6px; align-items: center; }
+.board__haccp { background: #0d0f0b; color: #cbbd8d; border-radius: 8px; padding: 5px 12px; font-size: 7px; font-weight: 800; margin-bottom: 9px; letter-spacing: .6px; text-align: center; box-shadow: inset 0 0 0 1px rgba(200,162,74,.4); }
+table { width: 100%; border-collapse: collapse; font-size: 8.6px; }
+thead th { background: #141a14; color: #cbbd8d; text-align: right; padding: 7px 9px; font-size: 7px; letter-spacing: 1.6px; }
+tbody td { border-bottom: 1px solid #eeeadd; padding: 6px 9px; vertical-align: middle; }
+tbody tr:nth-child(even) td { background: #faf8ee; }
+.b-num { color: #a89a68; width: 22px; text-align: center; }
+.b-name { font-weight: 800; color: #141a14; width: 28%; line-height: 1.6; }
+.b-name small { display: block; font-weight: 500; font-size: 6px; color: #87928b; margin-top: 1px; letter-spacing: .4px; }
+.b-desc { color: #4e5a53; font-size: 6.8px; line-height: 1.8; }
+.b-meta { width: 54px; text-align: center; }
+.b-meta b { display: block; font-size: 12px; color: #141a14; direction: ltr; font-variant-numeric: tabular-nums; }
+.b-meta span { font-size: 5px; color: #a89a68; letter-spacing: 1px; }
+.b-flag { font-size: 6.4px; color: #5a4623; }
+.board__foot { display: flex; justify-content: space-between; gap: 14px; margin-top: 11px; padding-top: 10px; border-top: 2px solid #141a14; font-size: 8px; color: #4e5a53; }
+.board__foot b { display: inline-block; min-width: 92px; border-bottom: 1.75px solid #a89a68; }
+.board__meta--print { margin-top: 8px; font-size: 6.4px; color: #87928b; text-align: center; }
+.board__sources { font-size: 6.4px; color: #87928b; margin-top: 6px; border-top: 1px dashed #d8d2bd; padding-top: 6px; line-height: 1.9; }
 </style>
 </head>
 <body>
 <section class="board">
-    <div class="board__top">
-        <img src="${LOGO}" alt="شعار مطاعم الشرفة العالمي" width="46" height="46">
-        <div>
-            <div class="board__kicker">AL SHURFA AL ALAMI · KITCHEN BOARD</div>
-            <h1>${esc(meal)} ${esc(day)}<small>ورقة السبورة · سفنديش 5 سم · تكفي 35–40 شخصًا</small></h1>
-        </div>
+    <div class="board__brand-row">
+        <img src="${LOGO}" alt="شعار مطاعم الشرفة العالمي" width="74" height="74">
+        <div class="board__brand">AL SHURFA<br><b>AL ALAMI</b><small>RESTAURANTS · RIYADH</small></div>
     </div>
-    <div class="board__meta"><span>فريق / Team: ____________________</span><span>عدد الأطباق / Pans: ________</span><span>التاريخ / Date: ________</span></div>
+    <div class="board__kicker">AL SHURFA AL ALAMI · KITCHEN BOARD · CLEAN BUFFET</div>
+    <h1 class="board__title">${esc(meal)} — ${esc(day)}<small>ورقة السبورة · سفنديش 5 سم · تكفي 35–40 شخصًا</small></h1>
+    <div class="board__rule" aria-hidden="true"><span></span><i>✦</i><span></span></div>
+    <div class="board__meta"><span>التاريخ <b dir="ltr">${esc(new Date().toLocaleDateString('ar-SA'))}</b></span><span>الساعة <b dir="ltr">${esc(printed)}</b></span><span>الأطباق <b>${dishes.length}</b></span></div>
     <div class="board__haccp">HACCP · Hot ≥ 60°C · Cold ≤ 5°C · Reheat ≥ 75°C · FIFO · لا تخلط الدفعات</div>
     <table>
         <thead><tr><th>#</th><th>الصنف</th><th>نبذة</th><th>السعرات</th><th>مسببات الحساسية</th></tr></thead>

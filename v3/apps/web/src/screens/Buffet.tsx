@@ -355,6 +355,30 @@ export function Buffet() {
         });
     };
 
+    const applyAllReady = () => {
+        const links = rematchGroups
+            .filter((g) => g.autoApply)
+            .map((g) => ({
+                name: g.name,
+                inventoryId: g.best?.inventoryId ?? '',
+                lines: g.lines,
+                rule: 'rematch-ui auto',
+                score: g.best?.score,
+                packKg: g.best?.packKg ?? null,
+            }))
+            .filter((l) => l.inventoryId);
+        if (!links.length) {
+            toast({ title: 'لا توجد نتائج جاهزة للاعتماد حاليًا', variant: 'error' });
+            return;
+        }
+        applyRematch.mutate({ links }, {
+            onSuccess: () => {
+                setRematchOpen(false);
+                void query.refetch();
+            },
+        });
+    };
+
     const boardDishesFor = (day: string, meal: string): BuffetDish[] => {
         const ids = (weekByDay.get(day)?.get(meal) ?? []).map((entry) => String(entry.dishId));
         const byId = new Map(dishes.map((d) => [String(d.id), d] as const));
@@ -627,7 +651,7 @@ export function Buffet() {
                                                 <span>{meal}</span>
                                                 <span className="bf-meal__sum">{money(sum)}</span>
                                             </div>
-                                            {entries.length === 0 ? <p className="bf-slot" style={{ color: '#87928b' }}>لا أصناف مجدولة</p> : null}
+                                            {entries.length === 0 ? <p className="bf-day__empty">يوم مفتوح — أضف من القائمة أدناه</p> : null}
                                             {entries.map((entry) => (
                                                 <div key={`${day}-${meal}-${entry.position}`} className="bf-slot">
                                                     <i className={`bf-slot__dot bf-slot__dot--${entry.priced ? 'ok' : 'none'}`} aria-hidden="true" />
@@ -845,6 +869,9 @@ export function Buffet() {
                 footer={(
                     <div className="bf-dialog-foot">
                         <Button variant="secondary" onClick={() => setRematchOpen(false)}>إغلاق</Button>
+                        <Button variant="secondary" onClick={applyAllReady} disabled={applyRematch.isPending || (rematchQuery.data?.summary.autoLines ?? 0) === 0}>
+                            {`تطبيق الجاهز (${rematchQuery.data?.summary.autoLines ?? 0} سطور)`}
+                        </Button>
                         <Button onClick={applyRematchLinks} disabled={checkedCount === 0 || applyRematch.isPending}>
                             {applyRematch.isPending ? 'جارٍ الربط…' : `تطبيق المحدد (${checkedCount} سطور)`}
                         </Button>

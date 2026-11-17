@@ -156,6 +156,17 @@ function scoreMatch(ingredientName, inventoryItem, idf) {
     if (allInvInIng) {score += 0.10; reasons.push('كل توكنز المخزن موجودة في المكوّن');}
     if (pack && pack > 0 && coverage > 0) {score += 0.4; reasons.push(`عبوة معلومة الوزن (${pack} كجم) — سعر الكيلو = العبوة ÷ ${pack}`);}
 
+    // 6ب) توكن واحد مميز + احتواء كامل + مرشح يفضله بفارق ≤ كلمة واحدة → +0.25
+    //    (يحتاج إحكام هنا: المستخدم يثق بالمحرك للاعتماد التلقائي فقط عندما يكون الرد واضحًا)
+    if (ingDistinct.length === 1 && invTokens.includes(ingDistinct[0]) && invTokens.length - ingDistinct.length <= 1) {
+        const singleName = ingDistinct[0];
+        if (!reasons.includes('كل توكنز المخزن موجودة في المكوّن')) {
+            // تجنب الإفراط في الكرتون/علبة فقط مع «زبادي -جالون»
+            reasons.push(`المطابقة حتمية: «${singleName}» موجود حرفيًا في صنف المخزن`);
+        }
+        score = Math.min(1, score + 0.25);
+    }
+
     // 6) الرأس: أول توكن مميز في المكوّن يجب أن يتكرر في اسم المخزن — «حليب جوز الهند» ≠ «جوز الهند»
     if (ingDistinct.length >= 1) {
         const head = ingDistinct[0];
