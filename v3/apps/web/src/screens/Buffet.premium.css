@@ -106,7 +106,7 @@
 .bf-table tbody tr:last-child td { border-bottom: 0; }
 .bf-dish { font-weight: 700; color: #172b3b; }
 .bf-yields { font-size: 10px; color: #87928b; display: block; font-weight: 400; }
-.bf-cat { font-size: 10.5px; background: #eef2ea; color: #2f4a38; border-radius: 6px; padding: 3px 8px; white-space: nowrap; }
+.bf-cat { font-size: 10px; font-weight: 700; letter-spacing: .02em; background: #f5efdc; color: #5a4623; border: 1px solid #e0d2a8; border-radius: 999px; padding: 3px 12px; white-space: nowrap; }
 .bf-num { font-variant-numeric: tabular-nums; direction: ltr; text-align: end; white-space: nowrap; }
 .bf-per { font-size: 10px; color: #87928b; direction: ltr; text-align: end; }
 
@@ -215,12 +215,53 @@
 .bf-slot-add { padding-top: 6px; }
 .bf-slot-add .erp-control { font-size: 10.5px; padding: 4px 8px; height: auto; }
 
-.bf-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(210px, 1fr)); gap: 12px; }
-.bf-card-tile { background: #fff; border: 1px solid var(--hairline, #e7e2d2); border-radius: 14px; padding: 14px; display: flex; flex-direction: column; gap: 10px; box-shadow: 0 1px 2px rgba(16,24,16,.05); }
-.bf-card-tile__name { font-size: 13.5px; font-weight: 800; color: #172b3b; margin: 0; }
-.bf-card-tile__meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; }
-.bf-card-tile__kcal { font-size: 10.5px; color: #4e5a53; direction: ltr; }
-.bf-card-tile__kcal small { font-size: 8px; color: #a89a68; }
+.bf-cards-grid { display: grid; grid-template-columns: repeat(auto-fill, minmax(238px, 1fr)); gap: 14px; }
+
+.bf-card-tile {
+    position: relative; display: flex; flex-direction: column; overflow: hidden;
+    border: 1px solid #d8cfb4; border-radius: 18px;
+    background: linear-gradient(180deg, #fffdf8 0%, #fbf8ec 100%);
+    box-shadow: 0 1px 3px rgba(20, 26, 20, 0.08), 0 14px 34px -16px rgba(13, 15, 11, 0.4);
+    transition: transform 0.2s ease, box-shadow 0.2s ease, border-color 0.2s ease;
+}
+.bf-card-tile:hover {
+    transform: translateY(-4px); border-color: #c8a24a;
+    box-shadow: 0 2px 6px rgba(20, 26, 20, 0.1), 0 24px 48px -16px rgba(13, 15, 11, 0.5);
+}
+.bf-card-tile:focus-within { outline: 2px solid #c8a24a; outline-offset: 2px; }
+
+.bf-card-tile__ribbon {
+    display: flex; align-items: center; justify-content: space-between; gap: 10px;
+    padding: 9px 14px; direction: ltr;
+    background: linear-gradient(135deg, #0d0f0b 0%, #141b12 55%, #1c241c 100%);
+    border-bottom: 3px double #c8a24a;
+}
+.bf-card-tile__brand { font-size: 9px; font-weight: 600; letter-spacing: 0.34em; color: #d8c98a; }
+.bf-card-tile__brand b { color: #f4ecc9; font-weight: 800; }
+.bf-card-tile__eyebrow {
+    font-size: 8px; font-weight: 800; letter-spacing: 0.5em; color: #cbbd8d;
+    border: 1px solid rgba(200, 162, 74, 0.55); border-radius: 999px; padding: 2px 10px 2px 12px;
+}
+
+.bf-card-tile__body { padding: 12px 16px 6px; flex: 1; }
+.bf-card-tile__name { margin: 0; font-size: 20px; line-height: 1.5; font-weight: 800; color: #141a14; letter-spacing: 0; }
+.bf-card-tile__desc { margin: 8px 0 0; font-size: 11.5px; line-height: 2; color: #4e5a53; }
+
+.bf-card-tile__meta { display: flex; gap: 8px; align-items: center; flex-wrap: wrap; padding: 8px 16px 0; }
+.bf-card-tile__kcal { font-size: 12px; color: #141a14; font-variant-numeric: tabular-nums; }
+.bf-card-tile__kcal b { font-size: 15px; font-weight: 800; }
+.bf-card-tile__kcal small { font-size: 9.5px; color: #8a6d2f; font-weight: 700; }
+
+.bf-card-tile__foot {
+    display: flex; align-items: center; justify-content: space-between; gap: 8px;
+    margin-top: 12px; padding: 10px 16px 12px; border-top: 1px solid #eee7cf;
+}
+.bf-card-tile__ref { font-size: 8.5px; font-weight: 700; letter-spacing: 0.14em; color: #a89a68; font-variant-numeric: tabular-nums; }
+
+@media (prefers-reduced-motion: reduce) {
+    .bf-card-tile { transition: none; }
+    .bf-card-tile:hover { transform: none; }
+}
 
 .bf-drawer__desc { background: #f7f3e6; border: 1px solid #e5d9b8; border-radius: 10px; padding: 10px 12px; font-size: 11px; line-height: 1.9; color: #3d4a40; margin: 0; }
 .bf-dish-actions { display: flex; gap: 8px; flex-wrap: wrap; padding-top: 10px; border-top: 1px solid #e7e2d2; }

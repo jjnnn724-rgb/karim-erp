@@ -38,12 +38,12 @@
  * the owner's speed rule: no interval, no polling, no layout thrash.
  */
 
-import { buildNavTree } from '../layout/nav-model.js?v=4.9.385';
-import { setPref } from '../theme.js?v=4.9.385';
-import { hydrateStatusNodes } from '../status.js?v=4.9.385';
-import { barChart, donutChart, lineChart, niceCeiling } from '../charts.js?v=4.9.385';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.385';
-import { fetchExecutiveSummary, buildLiveBoard } from '../data/executive-repo.js?v=4.9.385';
+import { buildNavTree } from '../layout/nav-model.js?v=4.9.386';
+import { setPref } from '../theme.js?v=4.9.386';
+import { hydrateStatusNodes } from '../status.js?v=4.9.386';
+import { barChart, donutChart, lineChart, niceCeiling } from '../charts.js?v=4.9.386';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.386';
+import { fetchExecutiveSummary, buildLiveBoard } from '../data/executive-repo.js?v=4.9.386';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

@@ -658,18 +658,37 @@ export function Buffet() {
             {/* ═══ تبويب الكروت العالمية ═══ */}
             {tab === 'cards' ? (
                 <div className="bf-cards-grid">
-                    {dishes.map((d) => (
-                        <div key={String(d.id)} className="bf-card-tile">
-                            <h3 className="bf-card-tile__name">{d.name}</h3>
-                            <div className="bf-card-tile__meta">
-                                <span className="bf-cat">{d.category}</span>
-                                {d.nutrition?.perServing?.low ? (
-                                    <span className="bf-card-tile__kcal">{Math.round(d.nutrition.perServing.low.kcal ?? 0)} <small>سعرة / حصة</small></span>
-                                ) : null}
-                            </div>
-                            <button type="button" className="bf-mini-btn bf-mini-btn--gold" onClick={() => printDishCard(d, { pro: proPrints })}>🖨 كرت الصنف</button>
-                        </div>
-                    ))}
+                    {dishes.map((d) => {
+                        const kcal = d.nutrition?.perServing?.low?.kcal;
+                        return (
+                            <article key={String(d.id)} className="bf-card-tile">
+                                <div className="bf-card-tile__ribbon" aria-hidden="true">
+                                    <span className="bf-card-tile__brand" dir="ltr">
+                                        AL&nbsp;SHURFA <b>AL&nbsp;ALAMI</b>
+                                    </span>
+                                    <span className="bf-card-tile__eyebrow" dir="ltr">BUFFET</span>
+                                </div>
+                                <div className="bf-card-tile__body">
+                                    <h3 className="bf-card-tile__name">{d.name}</h3>
+                                    {d.description ? <p className="bf-card-tile__desc">{d.description}</p> : null}
+                                </div>
+                                <div className="bf-card-tile__meta">
+                                    <span className="bf-cat">{d.category}</span>
+                                    {kcal != null && !Number.isNaN(Number(kcal)) ? (
+                                        <span className="bf-card-tile__kcal" dir="ltr">
+                                            <b>{String(Math.round(Number(kcal)))}</b> <small>سعرة / حصة</small>
+                                        </span>
+                                    ) : null}
+                                </div>
+                                <div className="bf-card-tile__foot">
+                                    <span className="bf-card-tile__ref" dir="ltr">{`BUFFET-CARD-${String(d.id).padStart(3, '0')}`}</span>
+                                    <button type="button" className="bf-mini-btn bf-mini-btn--gold" onClick={() => printDishCard(d, { pro: proPrints })}>
+                                        طباعة الكرت
+                                    </button>
+                                </div>
+                            </article>
+                        );
+                    })}
                 </div>
             ) : null}
 
