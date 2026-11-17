@@ -197,9 +197,10 @@ router.get('/production/cost-cards',jwtAuth,requireRole(...READ),async(req,res)=
     ]){
       const scope=card.scope;
       // 1) الاستهلاك المفصل من أذون الصرف (حركات الخروج المرتبطة بإذن)
+      // dispatchId مخزن بصيغة 'DIS-<id>' — نطابق بها
       const consumedItems=(await pool.query(
-        `SELECT tx."itemName" AS name, tx.qty, COALESCE(tx.catch_weight_unit, i.unit, 'وحدة') AS unit, tx.cost, tx."totalValue" AS value, tx.date, tx."dispatchId" AS dispatch_no
-         FROM "inventoryTx" tx JOIN dispatches d ON d.id::text = tx."dispatchId" LEFT JOIN inventory i ON i.id = tx."itemId"
+        `SELECT tx."itemName" AS name, tx.qty, COALESCE(tx.catch_weight_unit, i.unit, 'وحدة') AS unit, tx.cost, tx."totalValue" AS value, tx.date, replace(tx."dispatchId", 'DIS-', '') AS dispatch_no
+         FROM "inventoryTx" tx JOIN dispatches d ON ('DIS-' || d.id::text) = tx."dispatchId" LEFT JOIN inventory i ON i.id = tx."itemId"
          WHERE tx.type='out' AND d."deptCode" = ANY($1::varchar[]) AND tx.date >= $2 AND tx.date <= $3
          ORDER BY tx.date DESC, tx.id DESC LIMIT 400`,
         [scope,from,to])).rows;

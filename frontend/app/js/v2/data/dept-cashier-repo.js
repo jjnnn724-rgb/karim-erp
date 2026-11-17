@@ -16,9 +16,9 @@
  * القديم حرفيًا — لا يختفي إيراد الكاشير من البطاقة في أي حال.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.390';
-import { fetchEntityNewest, deptWithChildren } from './finance-repo.js?v=4.9.390';
-import { CASHIER_DEPT_MAP } from './dept-detail.js?v=4.9.390';
+import { apiFetch } from '../../core/api.js?v=4.9.391';
+import { fetchEntityNewest, deptWithChildren } from './finance-repo.js?v=4.9.391';
+import { CASHIER_DEPT_MAP } from './dept-detail.js?v=4.9.391';
 
 export const LINKS_ENTITY = 'dept_cashier_links';
 export const DEPT_CASHIER_WRITE_ROLES = ['admin', 'manager'];
