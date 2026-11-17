@@ -83,6 +83,148 @@ export async function fetchKitchenOverview(signal?: AbortSignal): Promise<Kitche
     return fetchJson(kitchenOverviewSchema, '/api/kitchen/overview', getAccessToken(), signal ? { signal } : {});
 }
 
+/* ── بطاقات التكلفة (V2 «تكاليف» — نفس العقد حرفيًا) ───────────────────── */
+
+const costCardItemSchema = z
+    .object({
+        name: text,
+        qty: numLike,
+        unit: text,
+        cost: numLike,
+        value: numLike,
+        date: text,
+        dispatch_no: z.union([z.string(), z.number()]).nullable().optional(),
+    })
+    .passthrough();
+
+const costCardLineSchema = z
+    .object({
+        batch_id: z.union([z.string(), z.number()]).nullable().optional(),
+        product_name: text,
+        allocated_qty: numLike,
+        planned_qty: numLike,
+        batch_cost: numLike,
+        cost: numLike,
+        prod_date: text,
+    })
+    .passthrough();
+
+const costCardSchema = z
+    .object({
+        code: text,
+        name: text,
+        icon: text,
+        color: text,
+        from: z.string().nullable().optional(),
+        to: z.string().nullable().optional(),
+        consumption: z
+            .object({
+                gross: numLike,
+                returned: numLike,
+                dispatchItemsCount: z.union([z.string(), z.number()]).nullable().optional(),
+                items: z.array(costCardItemSchema).nullable().optional(),
+            })
+            .passthrough()
+            .nullable()
+            .optional(),
+        production: z
+            .object({
+                cost: numLike,
+                lines: z.array(costCardLineSchema).nullable().optional(),
+            })
+            .passthrough()
+            .nullable()
+            .optional(),
+        revenue: numLike,
+        totalCost: numLike,
+        net: numLike,
+        costRatio: numLike,
+    })
+    .passthrough();
+
+const kitchenCostCardsSchema = z
+    .object({
+        ok: z.boolean().optional(),
+        from: z.string().nullable().optional(),
+        to: z.string().nullable().optional(),
+        cards: z.array(costCardSchema).optional(),
+    })
+    .passthrough();
+
+export type CostCardItem = z.infer<typeof costCardItemSchema>;
+export type CostCardLine = z.infer<typeof costCardLineSchema>;
+export type KitchenCostCard = z.infer<typeof costCardSchema>;
+
+export interface KitchenCostCardsResult {
+    from: string;
+    to: string;
+    cards: KitchenCostCard[];
+}
+
+function riyadhDateParts(now: Date): { year: string; month: string; day: string } {
+    const formatter = new Intl.DateTimeFormat('en-GB', {
+        timeZone: 'Asia/Riyadh',
+        year: 'numeric',
+        month: '2-digit',
+        day: '2-digit',
+    });
+    const parts = formatter.format(now).split('/');
+    return { year: parts[2] ?? '', month: parts[1] ?? '', day: parts[0] ?? '' };
+}
+
+/** تاريخ الرياض اليوم (افتراضي حقل «إلى»). */
+export function riyadhToday(): string {
+    const { year, month, day } = riyadhDateParts(new Date());
+    return `${year}-${month}-${day}`;
+}
+
+/** أول الشهر الحالي بالرياض (افتراضي حقل «من»). */
+export function riyadhMonthStart(): string {
+    const { year, month } = riyadhDateParts(new Date());
+    return `${year}-${month}-01`;
+}
+
+export async function fetchKitchenCostCards(
+    from: string,
+    to: string,
+    signal?: AbortSignal,
+): Promise<KitchenCostCardsResult> {
+    const params = new URLSearchParams();
+    if (from) {
+        params.set('from', from);
+    }
+    if (to) {
+        params.set('to', to);
+    }
+    const suffix = params.toString() ? `?${params.toString()}` : '';
+    const body = await fetchJson(
+        kitchenCostCardsSchema,
+        `/api/kitchen/production/cost-cards${suffix}`,
+        getAccessToken(),
+        signal ? { signal } : {},
+    );
+    return {
+        from: body.from ?? from,
+        to: body.to ?? to,
+        cards: body.cards ?? [],
+    };
+}
+
+/** درجة التكلفة — 85%+ أحمر، 75%+ تحذير، وإلا أخضر (نفس منطق V2). */
+export function costRatioTone(ratio: number | null | undefined): 'danger' | 'warning' | 'success' | null {
+    if (ratio === null || ratio === undefined || Number.isNaN(Number(ratio))) {
+        return null;
+    }
+    const value = Number(ratio);
+    if (value > 85) {
+        return 'danger';
+    }
+    if (value > 75) {
+        return 'warning';
+    }
+    return 'success';
+}
+
 export const POLICY_MODE_AR: Record<string, string> = {
     flexible: 'مرن',
     monitor: 'مراقب',
