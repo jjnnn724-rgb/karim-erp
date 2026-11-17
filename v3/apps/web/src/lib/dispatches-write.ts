@@ -86,6 +86,34 @@ export function dispatchGate(source: {
     };
 }
 
+/** أكواد أقسام (canonical) — مرآة DEPT_CODE_ALIASES من warehouse-routes.js:41 */
+const DEPT_CODE_ALIASES: Record<string, string> = {
+    shop: 'CAF',
+    caf: 'CAF',
+    ca1: 'NAS',
+    nas: 'NAS',
+    juice: 'G',
+    g: 'G',
+    service: 'hot_hall',
+    hot_hall: 'hot_hall',
+    kitchen: 'kitchen',
+    storeroom: 'storeroom',
+    external_sales: 'external_sales',
+    salads: 'salads',
+    sweets: 'sweets',
+    bakery: 'bakery',
+    hot_kitchen: 'hot_kitchen',
+    butcher: 'butcher',
+    fnb: 'fnb',
+    open_buffet: 'open_buffet',
+    kstore: 'kstore',
+};
+
+function canonicalDeptCode(code: string): string {
+    const clean = String(code ?? '').trim().toLowerCase();
+    return (DEPT_CODE_ALIASES[clean] || clean).toLowerCase();
+}
+
 /** أكواد أقسام صاحب الحساب — dept_code يقبل قائمة مفصولة بفواصل. */
 export function deptCodesOf(user: GateUser | null | undefined): string[] {
     return String(user?.deptCode ?? '')
@@ -94,10 +122,17 @@ export function deptCodesOf(user: GateUser | null | undefined): string[] {
         .filter(Boolean);
 }
 
-/** هل الإذن يخص قسم صاحب الحساب؟ — مرآة deptsMatch في V2. */
+/** هل الإذن يخص قسم صاحب الحساب؟ — مرآة deptsMatch (warehouse-routes.js:69). */
 export function rowDeptMatches(user: GateUser | null | undefined, row: DispatchGateRow): boolean {
     const codes = deptCodesOf(user);
-    return codes.length > 0 && codes.includes(row.deptCode.trim().toLowerCase());
+    if (codes.length === 0) {return false;}
+    const d = String(row.deptCode ?? '').trim().toLowerCase();
+    if (!d) {return false;}
+    const canD = canonicalDeptCode(d);
+    return codes.some((c) => {
+        const canC = canonicalDeptCode(c);
+        return c === d || c === canD || canC === d || canC === canD;
+    });
 }
 
 /* ── بوابات ظهور الأزرار — حرفيًّا من dispatch-repo.js:210-250 ───────────── */

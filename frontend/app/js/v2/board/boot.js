@@ -13,8 +13,8 @@
 import {
     POLL_MS, FETCH_TIMEOUT_MS, BOARD_CACHE_KEY, LANGUAGE_KEY,
     DEFAULT_FOOTERS, fingerprint, isCacheFresh, isValidPayload, normalizeLanguage, tickerText,
-} from './board-data.js?v=4.9.381';
-import { mountPortraitBoard } from './portrait.js?v=4.9.381';
+} from './board-data.js?v=4.9.382';
+import { mountPortraitBoard } from './portrait.js?v=4.9.382';
 
 const ENDPOINT = '/api/menu-board/public';
 const query = new URLSearchParams(location.search);
