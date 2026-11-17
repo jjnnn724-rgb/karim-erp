@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import './Kitchen.premium.css';
 import { KitchenStudio } from '../components/KitchenStudio';
 import { PrintActions } from '../components/PrintActions';
@@ -27,6 +27,33 @@ import { Button } from '../ui/Button';
 import { useToast } from '../ui/Toast';
 
 /** المطبخ — نظرة التشغيل + استوديو التشغيل الكامل (استلام/إنتاج/جرد/مستندات). */
+/** يترجم أنواع الخادم المختلطة (boolean / 'true' / 1) إلى نعم/لا. */
+function boolYes(value: unknown): boolean {
+    if (typeof value === 'boolean') {
+        return value;
+    }
+    if (value === null || value === undefined) {
+        return false;
+    }
+    const text = String(value).trim().toLowerCase();
+    return text === 'true' || text === 't' || text === '1' || text === 'yes' || text === 'y';
+}
+
+const POLICY_MODE_TONE: Record<string, string> = {
+    flexible: 'text-success-text',
+    monitor: 'text-warning-text',
+    strict: 'text-danger-text',
+};
+
+const BATCH_FILTERS = [
+    ['all', 'الكل'],
+    ['open', 'مفتوحة'],
+    ['closed', 'مغلقة'],
+    ['cancelled', 'ملغاة'],
+] as const;
+
+type BatchFilter = (typeof BATCH_FILTERS)[number][0];
+
 export function Kitchen() {
     const auth = useAuthState();
     const canWrite = canWriteKitchenOps(auth.user?.role);
@@ -59,6 +86,35 @@ export function Kitchen() {
     const summary = overview ? summarizeKitchen(overview) : null;
     const batches = overview?.batches ?? [];
     const exceptions = overview?.exceptions ?? [];
+    const policies = overview?.policies ?? [];
+    const [batchFilter, setBatchFilter] = useState<BatchFilter>('all');
+    const openStatuses = useMemo(() => new Set(['draft', 'open']), []);
+    const batchCounts = useMemo(() => {
+        const counts = { all: batches.length, open: 0, closed: 0, cancelled: 0 };
+        for (const batch of batches) {
+            const status = String(batch.status ?? '');
+            if (openStatuses.has(status)) {
+                counts.open += 1;
+            } else if (status === 'closed') {
+                counts.closed += 1;
+            } else if (status === 'cancelled') {
+                counts.cancelled += 1;
+            }
+        }
+        return counts;
+    }, [batches, openStatuses]);
+    const filteredBatches = useMemo(() => {
+        if (batchFilter === 'all') {
+            return batches;
+        }
+        if (batchFilter === 'open') {
+            return batches.filter((batch) => openStatuses.has(String(batch.status ?? '')));
+        }
+        if (batchFilter === 'closed') {
+            return batches.filter((batch) => String(batch.status ?? '') === 'closed');
+        }
+        return batches.filter((batch) => String(batch.status ?? '') === 'cancelled');
+    }, [batches, batchFilter, openStatuses]);
     const top = overview ? topDistributions(overview) : [];
     const maxQty = top.reduce((max, row) => Math.max(max, row.qty), 0);
     const costCards = costCardsQuery.data?.cards ?? [];
@@ -173,9 +229,12 @@ export function Kitchen() {
                 title="المطبخ"
                 english="Kitchen Overview"
                 description="أوامر الإنتاج والاستثناءات والتوزيعات والسياسات — على نافذة الخادم المعلنة، لا ادعاء اكتمال خارجها."
-                pending={overviewQuery.isFetching}
+                pending={overviewQuery.isFetching || costCardsQuery.isFetching}
                 onRefresh={() => {
                     void overviewQuery.refetch();
+                    if (!costRangeInvalid) {
+                        void costCardsQuery.refetch();
+                    }
                 }}
             />
 
@@ -185,7 +244,14 @@ export function Kitchen() {
                         ? 'الاستلام والإنتاج والجرد تُسجَّل على الخادم وتظهر في الدفتر فورًا.'
                         : 'عرض فقط لدورك — التشغيل متاح للمخزن والمطبخ والمدير.'}
                 </span>
-                <Button type="button" size="sm" className="w-full sm:w-auto" onClick={() => setStudioOpen(true)}>
+                <Button
+                    type="button"
+                    size="sm"
+                    className="w-full sm:w-auto"
+                    onClick={() => setStudioOpen(true)}
+                    disabled={!canWrite}
+                    title={canWrite ? undefined : 'التشغيل متاح للمخزن والمطبخ والإدارة فقط'}
+                >
                     تشغيل المطبخ
                 </Button>
             </div>
@@ -232,13 +298,30 @@ export function Kitchen() {
                             title="أوامر الإنتاج"
                             english="Production batches"
                             actions={
-                                <span className="text-body-sm text-muted" role="status">
-                                    {`${intOf(batches.length)} أمرًا`}
-                                </span>
+                                <fieldset className="flex flex-wrap items-center gap-xs" aria-label="تصفية الأوامر حسب الحالة">
+                                    {BATCH_FILTERS.map(([key, label]) => {
+                                        const isActive = batchFilter === key;
+                                        return (
+                                            <button
+                                                key={key}
+                                                type="button"
+                                                aria-pressed={isActive}
+                                                onClick={() => setBatchFilter(key)}
+                                                className={`rounded-md border border-hairline-strong px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover ${
+                                                    isActive ? 'bg-surface-sunken font-medium' : 'bg-surface'
+                                                }`}
+                                            >
+                                                {`${label} (${intOf(batchCounts[key])})`}
+                                            </button>
+                                        );
+                                    })}
+                                </fieldset>
                             }
                         >
                             {batches.length === 0 ? (
                                 <StateEmpty title="لا أوامر إنتاج" hint="لم يُنشأ أمر إنتاج بعد." />
+                            ) : filteredBatches.length === 0 ? (
+                                <StateEmpty title="لا أوامر مطابقة للمرشح" hint="غيّر المرشح أعلاه." />
                             ) : (
                                 <TableScroll label="جدول أوامر إنتاج المطبخ">
                                     <table className="w-full border-collapse text-body-md">
@@ -259,7 +342,7 @@ export function Kitchen() {
                                             </tr>
                                         </thead>
                                         <tbody>
-                                            {batches.map((batch) => (
+                                            {filteredBatches.map((batch) => (
                                                 <tr key={batch.id} className="border-b border-hairline hover:bg-surface-hover">
                                                     <td className="px-sm py-xxs text-ink">
                                                         {textOf(batch.product_name) || `#${batch.id}`}{' '}
@@ -354,6 +437,76 @@ export function Kitchen() {
                                     </li>
                                 ))}
                             </ul>
+                        )}
+                    </SectionCard>
+
+                    <SectionCard
+                        title="سياسات الأقسام"
+                        english="Department policies"
+                        actions={
+                            <span className="text-body-sm text-muted" role="status">
+                                {`${intOf(policies.length)} سياسة`}
+                            </span>
+                        }
+                    >
+                        {policies.length === 0 ? (
+                            <StateEmpty title="لا توجد سياسات أقسام" hint="تُضبط سياسات الأقسام من استوديو التشغيل (الوضع/التجاوز/السبب)." />
+                        ) : (
+                            <TableScroll label="سياسات الأقسام في المطبخ">
+                                <table className="w-full border-collapse text-body-md">
+                                    <thead>
+                                        <tr className="bg-surface-sunken text-label-md text-ink-secondary">
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                القسم
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                موقع المطبخ
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الوضع
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                السماح بالتجاوز
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                السبب إلزامي
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                آخر تحديث
+                                            </th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {policies.map((policy, policyIndex) => {
+                                            const mode = String(policy.operation_mode ?? '');
+                                            return (
+                                                <tr key={String(policy.id ?? policyIndex)} className="border-b border-hairline hover:bg-surface-hover">
+                                                    <td className="px-sm py-xxs text-ink">
+                                                        {textOf(policy.department_name) || `#${String(policy.department_id ?? '—')}`}
+                                                    </td>
+                                                    <td className="px-sm py-xxs text-body-sm text-muted">
+                                                        {textOf(policy.kitchen_location_name) || '—'}
+                                                    </td>
+                                                    <td className="px-sm py-xxs text-body-sm font-semibold">
+                                                        <span className={POLICY_MODE_TONE[mode] ?? 'text-muted'}>
+                                                            {POLICY_MODE_AR[mode] ?? textOf(policy.operation_mode) ?? '—'}
+                                                        </span>
+                                                    </td>
+                                                    <td className="px-sm py-xxs text-body-sm text-muted">
+                                                        {boolYes(policy.allow_fallback) ? 'نعم' : 'لا'}
+                                                    </td>
+                                                    <td className="px-sm py-xxs text-body-sm text-muted">
+                                                        {boolYes(policy.require_reason) ? 'إلزامي' : 'اختياري'}
+                                                    </td>
+                                                    <td className="px-sm py-xxs text-body-sm text-muted" dir="ltr">
+                                                        {textOf(policy.updated_at).slice(0, 10) || '—'}
+                                                    </td>
+                                                </tr>
+                                            );
+                                        })}
+                                    </tbody>
+                                </table>
+                            </TableScroll>
                         )}
                     </SectionCard>
 

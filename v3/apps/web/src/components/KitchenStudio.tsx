@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuthState } from '../lib/auth';
 import {
     approveKitchenAudit,
@@ -28,6 +28,7 @@ import {
     submitKitchenAudit,
     validateKitchenProduction,
 } from '../lib/kitchen-ops';
+import { fetchKitchenOverview } from '../lib/kitchen';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
@@ -35,6 +36,7 @@ import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { SignaturePad } from '../ui/SignaturePad';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/Tabs';
+import { useConfirm } from './ConfirmProvider';
 import { StateEmpty, StateError, StateLoading, TableScroll } from './TableState';
 
 /**
@@ -105,6 +107,7 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
     const signerName = String(auth.user?.name ?? auth.user?.username ?? '').trim();
     const canWrite = canWriteKitchenOps(role);
     const canReview = canReviewKitchenExceptions(role);
+    const confirm = useConfirm();
 
     const [tab, setTab] = useState<TabKey>('receive');
 
@@ -141,6 +144,13 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
         queryFn: ({ signal }) => fetchKitchenDocuments(signal),
         enabled: open && tab === 'documents',
         staleTime: 30_000,
+    });
+
+    const overviewQuery = useQuery({
+        queryKey: ['kitchen', 'overview'],
+        queryFn: ({ signal }) => fetchKitchenOverview(signal),
+        enabled: open && tab === 'audits',
+        staleTime: 20_000,
     });
 
     useEffect(() => {
@@ -456,6 +466,25 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
     const audits = auditsQuery.data ?? [];
     const selectedAudit: KitchenAudit | undefined = audits.find((row) => String(row.id) === auditId);
 
+    const autoOpenNewestRef = useRef(false);
+    const autoStartCountingRef = useRef(false);
+
+    // بعد إنشاء جلسة جرد جديدة: افتح الجلسة الأحدث (القائمة مرتبة created_at DESC) وابدأ العدّ تلقائيًا.
+    useEffect(() => {
+        if (!autoOpenNewestRef.current || audits.length === 0) {
+            return;
+        }
+        autoOpenNewestRef.current = false;
+        autoStartCountingRef.current = true;
+        const newest = audits[0];
+        if (!newest) {
+            autoStartCountingRef.current = false;
+            return;
+        }
+        setAuditId(String(newest.id));
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [auditsQuery.data]);
+
     useEffect(() => {
         if (!selectedAudit) {
             return;
@@ -467,8 +496,23 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
         setCounts(next);
         setSignature(null);
         setAuditError('');
-        setIsCounting(false);
+        setIsCounting(autoStartCountingRef.current && String(selectedAudit.status) === 'draft');
+        autoStartCountingRef.current = false;
     }, [selectedAudit]);
+
+    /** توزيعات خلال فترة الجرد — بنفس التوزيعات الظاهرة في نظرة المطبخ (window 300). */
+    const movements = useMemo(() => {
+        if (!selectedAudit) {
+            return [];
+        }
+        const rows = overviewQuery.data?.distributions ?? [];
+        const start = String(selectedAudit.period_start ?? '').slice(0, 10);
+        const end = String(selectedAudit.period_end ?? '').slice(0, 10);
+        return rows.filter((row) => {
+            const day = String(row.created_at ?? '').slice(0, 10);
+            return (!start || day >= start) && (!end || day <= end);
+        });
+    }, [overviewQuery.data, selectedAudit]);
 
     const createAuditMutation = useWriteMutation<{ period: KitchenAuditPeriod; start: string; end: string; notes: string }, void>({
         mutationFn: (input) =>
@@ -481,6 +525,7 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
         successTitle: 'تم بدء جلسة جرد المطبخ',
         invalidate: [['kitchen', 'audits']],
         onSuccess: () => {
+            autoOpenNewestRef.current = true;
             setCreateOpen(false);
             setNewNotes('');
         },
@@ -709,7 +754,14 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                                 <span className="text-body-sm text-muted" role="status">
                                     {`أصناف مُدخلة: ${formatKitchenQty(receiveSelected.filter((line) => Number(line.qty) > 0).length)}`}
                                 </span>
-                                <Button type="button" size="sm" loading={receiveMutation.isPending} onClick={submitReceive}>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    loading={receiveMutation.isPending}
+                                    onClick={submitReceive}
+                                    disabled={!canWrite}
+                                    title={canWrite ? undefined : 'الاستلام متاح للمخزن والمطبخ والإدارة فقط'}
+                                >
                                     استلام في مخزن المطبخ
                                 </Button>
                             </div>
@@ -1048,6 +1100,51 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                                 </button>
                             </div>
 
+                            <details className="rounded-md border border-hairline bg-surface-sunken px-sm py-xs">
+                                <summary className="cursor-pointer text-body-sm text-ink hover:text-primary">
+                                    {`حركة الإنتاج والتوزيع خلال الفترة (${String(movements.length)})`}
+                                </summary>
+                                {movements.length === 0 ? (
+                                    <p className="mt-xs text-caption text-muted">
+                                        لا توجد توزيعات مسجلة ضمن فترة الجرد في نافذة الخادم (أحدث 300 توزيع).
+                                    </p>
+                                ) : (
+                                    <TableScroll label="حركة الإنتاج والتوزيع خلال فترة الجرد">
+                                        <table className="mt-xs w-full border-collapse text-body-md">
+                                            <thead>
+                                                <tr className="bg-surface text-label-md text-ink-secondary">
+                                                    <th scope="col" className="px-sm py-xs text-start font-medium">التاريخ</th>
+                                                    <th scope="col" className="px-sm py-xs text-start font-medium">الصنف</th>
+                                                    <th scope="col" className="px-sm py-xs text-start font-medium">القسم</th>
+                                                    <th scope="col" className="px-sm py-xs text-end font-medium">الكمية</th>
+                                                </tr>
+                                            </thead>
+                                            <tbody>
+                                                {movements.slice(0, 50).map((row, rowIndex) => (
+                                                    <tr key={String(row.id ?? rowIndex)} className="border-b border-hairline">
+                                                        <td className="px-sm py-xxs text-body-sm text-muted" dir="ltr">
+                                                            {String(row.created_at ?? '').slice(0, 10)}
+                                                        </td>
+                                                        <td className="px-sm py-xxs text-ink">
+                                                            {String(row.product_name ?? '—')}
+                                                        </td>
+                                                        <td className="px-sm py-xxs text-body-sm text-muted">
+                                                            {String(row.department_name ?? '—')}
+                                                        </td>
+                                                        <td className="erp-numeric px-sm py-xxs text-end" dir="ltr">
+                                                            {formatKitchenQty(Number(row.quantity ?? 0))}
+                                                        </td>
+                                                    </tr>
+                                                ))}
+                                            </tbody>
+                                        </table>
+                                    </TableScroll>
+                                )}
+                                {movements.length > 50 ? (
+                                    <p className="mt-xs text-caption text-muted">{`يعرض أحدث 50 بندًا من ${String(movements.length)} توزيع.`}</p>
+                                ) : null}
+                            </details>
+
                             <TableScroll label="بنود جرد المطبخ">
                                 <table className="w-full border-collapse text-body-md">
                                     <thead>
@@ -1176,16 +1273,25 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                                         </Button>
                                     </>
                                 ) : null}
-                                {['draft', 'submitted'].includes(String(selectedAudit.status)) ? (
+                                {String(selectedAudit.status) === 'submitted' ? (
                                     <Button
                                         type="button"
                                         size="sm"
                                         loading={approveMutation.isPending}
                                         onClick={() => {
                                             const value = requireSignature();
-                                            if (value) {
-                                                approveMutation.mutate({ audit: selectedAudit, signature: value });
+                                            if (!value) {
+                                                return;
                                             }
+                                            void (async () => {
+                                                const accepted = await confirm(
+                                                    'اعتماد الجرد؟ ستُرحَّل فروقات المخازن ومخزن المطبخ إلى الدفتر نهائيًا — لا يمكن التراجع إلا بقيد تصحيح.',
+                                                    { title: 'اعتماد الجرد', confirmLabel: 'اعتماد وترحيل', tone: 'danger' },
+                                                );
+                                                if (accepted) {
+                                                    approveMutation.mutate({ audit: selectedAudit, signature: value });
+                                                }
+                                            })();
                                         }}
                                         disabled={!canReview}
                                     >
@@ -1271,10 +1377,16 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                                             المستند
                                         </th>
                                         <th scope="col" className="px-sm py-xs text-start font-medium">
+                                            التاريخ
+                                        </th>
+                                        <th scope="col" className="px-sm py-xs text-start font-medium">
                                             من ← إلى
                                         </th>
                                         <th scope="col" className="px-sm py-xs text-end font-medium">
                                             الأصناف
+                                        </th>
+                                        <th scope="col" className="px-sm py-xs text-start font-medium">
+                                            محتوى المستند
                                         </th>
                                         <th scope="col" className="px-sm py-xs text-start font-medium">
                                             الحالة
@@ -1282,20 +1394,34 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {documents.map((document) => (
-                                        <tr key={String(document.id)} className="border-b border-hairline">
-                                            <td className="px-sm py-xxs text-ink" dir="ltr">
-                                                {String(document.id)}
-                                            </td>
-                                            <td className="px-sm py-xxs text-body-sm text-muted">
-                                                {`${String(document.source_name ?? '—')} ← ${String(document.destination_name ?? '—')}`}
-                                            </td>
-                                            <td className="erp-numeric px-sm py-xxs text-end text-body-sm" dir="ltr">
-                                                {formatKitchenQty((document.items ?? []).length)}
-                                            </td>
-                                            <td className="px-sm py-xxs text-body-sm text-muted">{String(document.status ?? '—')}</td>
-                                        </tr>
-                                    ))}
+                                    {documents.map((document) => {
+                                        const items = Array.isArray(document.items) ? document.items : [];
+                                        const itemsText = items
+                                            .map((item) =>
+                                                `${String(item.item_name ?? '—')} (${formatKitchenQty(Number(item.requested_qty ?? 0))} ${String(item.unit ?? '')})`.trim(),
+                                            )
+                                            .join(' · ');
+                                        return (
+                                            <tr key={String(document.id)} className="border-b border-hairline align-top">
+                                                <td className="px-sm py-xxs text-ink" dir="ltr">
+                                                    {String(document.id)}
+                                                </td>
+                                                <td className="px-sm py-xxs text-body-sm text-muted" dir="ltr">
+                                                    {String(document.created_at ?? '').slice(0, 10) || '—'}
+                                                </td>
+                                                <td className="px-sm py-xxs text-body-sm text-muted">
+                                                    {`${String(document.source_name ?? '—')} ← ${String(document.destination_name ?? '—')}`}
+                                                </td>
+                                                <td className="erp-numeric px-sm py-xxs text-end text-body-sm" dir="ltr">
+                                                    {formatKitchenQty(items.length)}
+                                                </td>
+                                                <td className="max-w-72 px-sm py-xxs text-body-sm text-ink">
+                                                    <span className="block break-words">{itemsText || '—'}</span>
+                                                </td>
+                                                <td className="px-sm py-xxs text-body-sm text-muted">{String(document.status ?? '—')}</td>
+                                            </tr>
+                                        );
+                                    })}
                                 </tbody>
                             </table>
                         </TableScroll>

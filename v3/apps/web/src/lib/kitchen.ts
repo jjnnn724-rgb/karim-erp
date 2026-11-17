@@ -48,8 +48,14 @@ const exceptionSchema = z
 
 const policySchema = z
     .object({
+        id: z.union([z.string(), z.number()]).nullable().optional(),
         department_id: z.union([z.string(), z.number()]).nullable().optional(),
         operation_mode: text,
+        department_name: text,
+        kitchen_location_name: text,
+        allow_fallback: z.union([z.boolean(), z.string(), z.number()]).nullable().optional(),
+        require_reason: z.union([z.boolean(), z.string(), z.number()]).nullable().optional(),
+        updated_at: text,
     })
     .passthrough();
 

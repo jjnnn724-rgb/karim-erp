@@ -60,7 +60,7 @@
  *   own scope so a subset never reads as the whole period.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.384';
+import { apiFetch } from '../../core/api.js?v=4.9.385';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^(\d{1,2}):(\d{2})$/;

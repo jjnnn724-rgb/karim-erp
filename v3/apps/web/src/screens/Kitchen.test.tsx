@@ -2,6 +2,7 @@ import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ToastProvider } from '../ui/Toast';
+import { ConfirmProvider } from '../components/ConfirmProvider';
 import { Kitchen } from './Kitchen';
 
 function json(body: unknown, status = 200): Response {
@@ -15,9 +16,11 @@ function renderScreen() {
     const client = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     return render(
         <QueryClientProvider client={client}>
-            <ToastProvider>
-                <Kitchen />
-            </ToastProvider>
+            <ConfirmProvider>
+                <ToastProvider>
+                    <Kitchen />
+                </ToastProvider>
+            </ConfirmProvider>
         </QueryClientProvider>,
     );
 }
