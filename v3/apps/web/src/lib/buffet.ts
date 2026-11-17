@@ -62,6 +62,7 @@ export type BuffetNutrition = z.infer<typeof buffetNutritionSchema>;
 export const buffetDishSchema = z.object({
     id: z.union([z.string(), z.number()]),
     name: z.string(),
+    name_en: z.string().nullable().optional(),
     category: z.string(),
     freq: z.number(),
     yields: z.string(),
@@ -159,6 +160,7 @@ export async function fetchBuffetOverview(signal?: AbortSignal): Promise<BuffetO
 
 export const dishPayloadSchema = z.object({
     name: z.string().trim().min(1, 'اكتب اسم الصنف'),
+    name_en: z.string().trim().default(''),
     category: z.string().trim().min(1, 'اختر الفئة'),
     freq: z.coerce.number().int().min(0).default(1),
     yields: z.string().trim().default('سفنديش 5 سم — تكفي 35–40 شخص'),

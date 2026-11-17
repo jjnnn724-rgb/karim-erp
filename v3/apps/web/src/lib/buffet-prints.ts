@@ -8,6 +8,7 @@ import { printSmart } from './print-viewer';
 import type { BuffetDish, BuffetNutrition } from './buffet';
 import { CARD_FONT_CSS } from './card-fonts';
 import { COMPANY_LOGO as LOGO } from './company-logo';
+import { ingredientEn, allergenEn } from './buffet-en';
 
 
 export interface PrintOptions {
@@ -77,6 +78,7 @@ body { margin: 0; direction: rtl; font-family: 'Tajawal', 'Segoe UI', Tahoma, sa
 .card__eyebrow { font-size: 6.8px; letter-spacing: 4px; color: #8a6d2f; font-weight: 800; direction: ltr; display: flex; align-items: center; gap: 8px; }
 .card__eyebrow::after { content: ''; flex: 1; height: 1px; background: linear-gradient(90deg, #c8a24a, transparent); }
 .card__title { font-family: 'Tajawal', 'Segoe UI', Tahoma, sans-serif; font-size: 24px; line-height: 1.35; color: #0d0f0b; font-weight: 800; margin: 0; letter-spacing: 0; }
+.card__title-en { font-family: 'Tajawal', 'Segoe UI', Tahoma, sans-serif; font-size: 10px; line-height: 1.2; font-weight: 800; letter-spacing: 0.26em; text-transform: uppercase; color: #8a6d2f; margin: -3px 0 0; }
 .card__desc { font-size: 8.4px; color: #4e5a53; line-height: 1.95; margin: 0; }
 .card__desc--empty { color: #b9b3a0; font-style: italic; }
 .card__rule { display: flex; align-items: center; gap: 10px; margin: 1px 0; }
@@ -84,9 +86,10 @@ body { margin: 0; direction: rtl; font-family: 'Tajawal', 'Segoe UI', Tahoma, sa
 .card__rule span { flex: 1; height: 1px; background: linear-gradient(90deg, transparent, #c8a24a 18%, #c8a24a 82%, transparent); }
 .card__h { font-family: 'Tajawal', 'Segoe UI', Tahoma, sans-serif; font-size: 7.8px; letter-spacing: 2.4px; color: #8a6d2f; font-weight: 700; display: flex; align-items: center; gap: 6px; }
 .card__h span[dir="ltr"] { color: #141a14; font-size: 6.2px; letter-spacing: 1.5px; }
-.card__ings { list-style: none; padding: 0; margin: 0; columns: 2; column-gap: 12px; }
-.card__ings li { font-size: 8px; font-weight: 500; line-height: 1.8; break-inside: avoid; display: flex; gap: 4px; align-items: baseline; }
-.card__ings li b { font-variant-numeric: tabular-nums; direction: ltr; color: #141a14; font-weight: 800; }
+.card__ings { list-style: none; padding: 0; margin: 0; display: flex; flex-direction: column; gap: 2px; }
+.card__ings li { font-size: 7.6px; font-weight: 500; line-height: 1.55; break-inside: avoid; display: flex; gap: 10px; align-items: baseline; justify-content: space-between; padding: 2px 5px; border-radius: 4px; }
+.card__ings li:nth-child(even) { background: #faf8ee; }
+.card__ing-en { font-size: 6.4px; font-style: italic; color: #6b6556; text-align: end; direction: ltr; }
 .card__nutri { display: grid; grid-template-columns: repeat(6, 1fr); gap: 3px; background: #0d0f0b; border-radius: 8px; padding: 6px 5px; box-shadow: inset 0 0 0 1px rgba(200,162,74,.4); }
 .card__nutri-cell { text-align: center; }
 .card__nutri-num { display: block; font-size: 11px; font-weight: 800; color: #f4ecc9; direction: ltr; font-variant-numeric: tabular-nums; line-height: 1.15; }
@@ -103,15 +106,26 @@ body { margin: 0; direction: rtl; font-family: 'Tajawal', 'Segoe UI', Tahoma, sa
 
 function cardHtml(dish: BuffetDish): string {
     const pp = nutritionPerServing(dish);
+    const englishName = (dish.name_en ?? '').trim();
     const ings = dish.lines
-        .map((l) => `<li><span>${esc(l.name)}</span></li>`)
+        .map((l) => {
+            const en = ingredientEn(l.name);
+            return `<li><span>${esc(l.name)}</span>${en ? `<span class="card__ing-en" lang="en" dir="ltr">${esc(en)}</span>` : ''}</li>`;
+        })
         .join('');
     const description = (dish.description ?? '').trim();
     const englishDesc = (dish.description_en ?? '').trim();
     const allergens = pp?.allergens ?? [];
     const allergyHtml = allergens.length
-        ? allergens.map((a) => `<span>${esc(a)}</span>`).join(' · ')
-        : '<span>لا توجد مسببات حساسية معروفة (حسب المكوّنات المسجّلة)</span>';
+        ? allergens
+              .map((a) => {
+                  const en = allergenEn(a);
+                  return en
+                      ? `<span>${esc(a)} · <span lang="en" dir="ltr">${esc(en)}</span></span>`
+                      : `<span>${esc(a)}</span>`;
+              })
+              .join(' · ')
+        : '<span>لا توجد مسببات حساسية معروفة (حسب المكوّنات المسجّلة) · <span lang="en" dir="ltr">No known allergens (as per recorded ingredients)</span></span>';
     const unmatchedNote = pp && pp.unmatched > 0
         ? `<p class="card__unmatched">مكوّنات خارج جدول USDA: ${pp.unmatched} — تُراجع لاحقًا، ولا تُقدَّر بأرقام وهمية.</p>`
         : '';
@@ -122,6 +136,7 @@ function cardHtml(dish: BuffetDish): string {
         </div>
         <span class="card__eyebrow">BUFFET SELECTION</span>
         <h2 class="card__title">${esc(dish.name)}</h2>
+        ${englishName ? `<p class="card__title-en" lang="en" dir="ltr">${esc(englishName)}</p>` : ''}
         <p class="card__desc${description ? '' : ' card__desc--empty'}">${description ? esc(description) : 'نبذة الصنف قيد الإعداد — يراجعها الشيف'}</p>
         ${englishDesc ? `<p class="card__desc-en" lang="en" dir="ltr">${esc(englishDesc)}</p>` : ''}
         <div class="card__rule" aria-hidden="true"><span></span><i>✦</i><span></span></div>
@@ -136,7 +151,7 @@ function cardHtml(dish: BuffetDish): string {
             <div class="card__nutri-cell"><span class="card__nutri-num">${num(pp?.fiber)}</span><span class="card__nutri-label">ألياف G</span></div>
             <div class="card__nutri-cell"><span class="card__nutri-num">${numInt(pp?.sodium)}</span><span class="card__nutri-label">صوديوم MG</span></div>
         </div>
-        <div class="card__allerg"><b>⚠ مسببات الحساسية:</b> ${allergyHtml}</div>
+        <div class="card__allerg"><b>⚠ مسببات الحساسية · <span lang="en" dir="ltr">ALLERGENS</span>:</b> ${allergyHtml}</div>
         ${unmatchedNote}
     </article>`;
 }
@@ -272,6 +287,8 @@ body { margin: 0; direction: rtl; font-family: 'Segoe UI', Tahoma, 'Noto Kufi Ar
 .recipe__ref { margin-inline-start: auto; text-align: end; font-size: 8px; color: #8a6d2f; line-height: 1.8; font-weight: 700; direction: ltr; }
 .recipe__ref b { font-size: 10px; letter-spacing: 1.5px; color: #141a14; direction: ltr; display: block; }
 .recipe__desc { background: #f7f3e6; border: 1px solid #e5d9b8; border-radius: 8px; padding: 8px 12px; font-size: 9.5px; line-height: 2; color: #3d4a40; margin: 10px 0; }
+.recipe__name-en { font-size: 9px; font-weight: 800; letter-spacing: 0.24em; text-transform: uppercase; color: #8a6d2f; margin: 3px 0 0; }
+.r-name-en { display: block; font-size: 6.2px; font-style: italic; color: #6b6556; direction: ltr; text-align: start; }
 .recipe__desc-en { background: #f7f3e6; border: 1px solid #e5d9b8; border-radius: 8px; padding: 6px 12px; font-size: 8.5px; line-height: 1.7; color: #6b6556; font-style: italic; margin: -4px 0 10px; }
 .recipe__desc b { color: #8a6d2f; }
 .recipe__h { font-size: 8px; letter-spacing: 2.5px; font-weight: 800; color: #8a6d2f; margin: 12px 0 6px; display: flex; align-items: center; gap: 8px; }
@@ -304,17 +321,21 @@ function recipeBody(dish: BuffetDish, opts: PrintOptions = {}): string {
     const ref = `BUFFET-RECIPE-${String(dish.id).padStart(3, '0')}`;
     const description = (dish.description ?? '').trim();
     const englishDesc = (dish.description_en ?? '').trim();
+    const englishName = (dish.name_en ?? '').trim();
     const method = (dish.notes ?? '').trim();
     const nutritionNote = pp?.unmatched && pp.unmatched > 0
         ? `مكوّنات خارج جدول USDA: ${pp.unmatched} — تُراجع لاحقًا.`
         : '';
-    const ingredientsRows = dish.lines.map((line, i) => `
+    const ingredientsRows = dish.lines.map((line, i) => {
+        const en = ingredientEn(line.name);
+        return `
         <tr>
             <td class="r-num">${i + 1}</td>
-            <td class="r-name">${esc(line.name)}</td>
+            <td class="r-name">${esc(line.name)}${en ? `<span class="r-name-en" lang="en" dir="ltr">${esc(en)}</span>` : ''}</td>
             <td class="r-qty">${esc(line.qty)}</td>
             <td class="r-unit">${esc(line.unit)}</td>
-        </tr>`).join('');
+        </tr>`;
+    }).join('');
     const sources = opts.pro ? `<p class="recipe__sources"><b>المصادر:</b> USDA FoodData Central — SR Legacy · EU FIC 1169/2011 (القائمة الـ14 لمسببات الحساسية) · HACCP / ISO 22000 · القيم تقديرية وقد تختلف حسب مصدر الخامات.</p>` : '';
     return `<section class="recipe">
     <div class="recipe__top">
@@ -322,6 +343,7 @@ function recipeBody(dish: BuffetDish, opts: PrintOptions = {}): string {
         <div>
             <div class="recipe__kicker">AL SHURFA AL ALAMI · BUFFET RECIPE</div>
             <h1>${esc(dish.name)}<small>${esc(dish.category)} · ${esc(dish.yields)} · يتكرر ×${esc(String(dish.freq))}</small></h1>
+            ${englishName ? `<p class="recipe__name-en" lang="en" dir="ltr">${esc(englishName)}</p>` : ''}
         </div>
         <div class="recipe__ref"><b>${ref}</b>INTERNAL · ${esc(new Date().toLocaleDateString('ar-SA'))}</div>
     </div>

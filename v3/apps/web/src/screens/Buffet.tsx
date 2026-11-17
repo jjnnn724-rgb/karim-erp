@@ -78,6 +78,7 @@ const STATUS_PILL: Record<'priced' | 'partial' | 'unpriced', string> = {
 type FormIngredient = { name: string; qty: number; unit: string };
 const emptyForm = () => ({
     name: '',
+    name_en: '',
     category: '',
     freq: 1,
     yields: 'سفنديش 5 سم — تكفي 35–40 شخص',
@@ -261,6 +262,7 @@ export function Buffet() {
         setEditingDish(dish);
         setForm({
             name: dish.name,
+            name_en: dish.name_en ?? '',
             category: dish.category,
             freq: dish.freq,
             yields: dish.yields,
@@ -307,6 +309,7 @@ export function Buffet() {
         if (!form.category.trim()) {toast({ title: 'اختر الفئة', variant: 'error' }); return;}
         const payload = {
             name: form.name.trim(),
+            name_en: form.name_en.trim(),
             category: form.category.trim(),
             freq: Number(form.freq) || 1,
             yields: form.yields.trim(),
@@ -673,6 +676,7 @@ export function Buffet() {
                                 </div>
                                 <div className="bf-card-tile__body">
                                     <h3 className="bf-card-tile__name">{d.name}</h3>
+                                    {d.name_en ? <p className="bf-card-tile__name-en" lang="en" dir="ltr">{d.name_en}</p> : null}
                                     {d.description ? <p className="bf-card-tile__desc">{d.description}</p> : null}
                                     {d.description_en ? <p className="bf-card-tile__desc-en" lang="en" dir="ltr">{d.description_en}</p> : null}
                                 </div>
@@ -709,6 +713,7 @@ export function Buffet() {
                         <div className="bf-drawer__head">
                             <div>
                                 <h3 className="bf-drawer__title">{openDish.name}</h3>
+                                {openDish.name_en ? <p className="bf-drawer__name-en" lang="en" dir="ltr">{openDish.name_en}</p> : null}
                                 <p className="bf-drawer__meta">{openDish.category} · {openDish.yields} · يتكرر في الأسبوع ×{openDish.freq}</p>
                             </div>
                             <button type="button" className="bf-drawer__close" aria-label="إغلاق" onClick={() => setOpenDishId(null)}>✕</button>
@@ -927,6 +932,9 @@ export function Buffet() {
                 <div className="bf-form">
                     <div className="bf-form__row">
                         <Input label="اسم الصنف *" placeholder="مثال: ملوخية باللحم" value={form.name} onChange={(e) => setForm((p) => ({ ...p, name: e.target.value }))} />
+                        <Input id="bf-name-en" dir="ltr" label="English name — for the global card" placeholder="e.g. Molokhia with Lamb" value={form.name_en} onChange={(e) => setForm((p) => ({ ...p, name_en: e.target.value }))} />
+                    </div>
+                    <div className="bf-form__row">
                         <div className="bf-field">
                             <label htmlFor="bf-cat-input" className="bf-label">الفئة *</label>
                             <Input id="bf-cat-input" list="bf-categories" placeholder="اختر أو اكتب فئة جديدة" value={form.category} onChange={(e) => setForm((p) => ({ ...p, category: e.target.value }))} />
