@@ -451,6 +451,13 @@ export const reportsRoute = createRoute({
 });
 reportsRoute.lazy(() => import('../screens/Reports.lazy').then((module) => module.Route));
 
+/** البيع الخارجي — مبيعات موثقة + مسحوبات أذون الصرف بفترة يختارها المستخدم. */
+export const externalSalesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/ext-sales',
+});
+externalSalesRoute.lazy(() => import('../screens/ExternalSales.lazy').then((module) => module.Route));
+
 /** الإقرار الضريبي — مسودة مراجعة ضريبة القيمة المضافة من القيود المرحّلة. */
 export const vatReturnRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -620,6 +627,7 @@ export const routeTree = rootRoute.addChildren([
     cfoRoute,
     monthlyComparisonRoute,
     reportsRoute,
+    externalSalesRoute,
     vatReturnRoute,
     cashierSalesRoute,
     cashierMonitorRoute,

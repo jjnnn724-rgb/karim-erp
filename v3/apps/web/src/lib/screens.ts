@@ -81,6 +81,7 @@ export const V3_SCREENS = [
     'compliance-center',
     'balance-sheet',
     'cash-flow',
+    'ext-sales',
 ] as const;
 export type V3Screen = (typeof V3_SCREENS)[number];
 

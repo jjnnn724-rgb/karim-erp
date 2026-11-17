@@ -123,6 +123,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             'sales-inquiry',
             'received-analyzer',
             'dept-cost',
+            'ext-sales',
         ],
     },
     {
@@ -203,6 +204,7 @@ export const NAV_TITLES: Readonly<Record<string, string>> = {
     '/ai-assistant': 'المساعد الذكي',
     '/monthly-comparison': 'المقارنة الشهرية',
     '/reports': 'تقارير المبيعات',
+    '/ext-sales': 'البيع الخارجي — المبيعات والمسحوبات',
     '/vat-return': 'مسودة مراجعة ضريبة القيمة المضافة',
     '/cashier-sales': 'مبيعات الكاشير',
     '/cashier-monitor': 'متابعة الكاشير',

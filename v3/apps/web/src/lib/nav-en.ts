@@ -68,6 +68,7 @@ export const NAV_LABELS_EN: Readonly<Record<string, string>> = {
     pnl: 'P&L',
     'monthly-comparison': 'Monthly Comparison',
     reports: 'Sales Reports',
+    'ext-sales': 'External Sales vs Issued Cost',
     'vat-return': 'VAT Return Draft Review',
     'cashier-sales': 'Cashier Sales',
     'cashier-monitor': 'Cashier Monitor',

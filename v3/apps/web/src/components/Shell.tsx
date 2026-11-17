@@ -102,6 +102,7 @@ export const NAV_ITEMS = [
     { to: '/pnl', label: 'الأرباح والخسائر', hint: 'P&L' },
     { to: '/monthly-comparison', label: 'المقارنة الشهرية', hint: 'Monthly' },
     { to: '/reports', label: 'تقارير المبيعات', hint: 'Reports' },
+    { to: '/ext-sales', label: 'البيع الخارجي — المبيعات والمسحوبات', hint: 'External Sales' },
     {
         to: '/vat-return',
         label: 'مسودة مراجعة ضريبة القيمة المضافة',
