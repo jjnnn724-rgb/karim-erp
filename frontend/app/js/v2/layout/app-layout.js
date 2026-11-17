@@ -21,10 +21,10 @@
  *   slot to the host; see `mountBoundary()`.
  */
 
-import { mountThemeControl } from '../theme.js?v=4.9.380';
-import { mountDensityControl } from '../density.js?v=4.9.380';
-import { buildNavTree, currentRole, readRoles } from './nav-model.js?v=4.9.380';
-import { prefetch } from '../screens/registry.js?v=4.9.380';
+import { mountThemeControl } from '../theme.js?v=4.9.381';
+import { mountDensityControl } from '../density.js?v=4.9.381';
+import { buildNavTree, currentRole, readRoles } from './nav-model.js?v=4.9.381';
+import { prefetch } from '../screens/registry.js?v=4.9.381';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

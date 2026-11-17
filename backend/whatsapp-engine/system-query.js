@@ -17,6 +17,7 @@ const { pool } = require('../shared-pool');
 const { logger } = require('../logger');
 const { normalizeText } = require('./rules');
 const { withTimeout } = require('./erp');
+const { calculateDelayParts } = require('../shift-day');
 
 const ERP_TIMEZONE = 'Asia/Riyadh';
 
@@ -321,30 +322,25 @@ const QUERY_EXECUTORS = {
         const q = parsed.dates.length ? parsed.dates[0] : today;
         try {
             const r = await withTimeout(pool.query(`
-                SELECT COUNT(*) FILTER (WHERE e.id IS NOT NULL) as total,
-                    COUNT(*) FILTER (WHERE a."checkIn" IS NOT NULL) as present_count,
-                    COALESCE(SUM(
-                        CASE WHEN a."checkIn" IS NOT NULL THEN
-                            GREATEST(0, EXTRACT(EPOCH FROM ((a."checkIn")::time - e."shift_start"::time)) / 60)::integer
-                        ELSE 0 END
-                    ), 0)::bigint as total_delay_minutes,
-                    COALESCE(ROUND(AVG(
-                        CASE WHEN a."checkIn" IS NOT NULL THEN
-                            GREATEST(0, EXTRACT(EPOCH FROM ((a."checkIn")::time - e."shift_start"::time)) / 60)::numeric
-                        ELSE NULL END
-                    )), 0) as avg_delay_minutes
-                FROM employees e
-                LEFT JOIN attendance a ON a."employeeId" = e.id AND a.date = $1
-                WHERE e.status = 'active'
-            `, [q]), 5000, 'ATTENDANCE');
-            const row = r.rows[0];
-            const delayH = Math.floor(row.total_delay_minutes / 60);
-            const delayM = row.total_delay_minutes % 60;
+                SELECT a."employeeId", a."checkIn", a."checkOut", a.late, a."workMinutes", e.shift_start, e.shift_karim
+                FROM attendance a JOIN employees e ON e.id = a."employeeId"
+                WHERE e.status = 'active' AND a.date = $1
+            `, [q]), 10000, 'ATTENDANCE');
+            let total = 0, present = 0, totalDelay = 0, delayCount = 0;
+            for (const row of r.rows) {
+                total++;
+                if (row.checkIn == null) {continue;}
+                present++;
+                const d = calculateDelayParts(row, { shift_start: row.shift_start, shift_karim: row.shift_karim });
+                if ((d.lateMinutes || 0) > 0) { totalDelay += d.lateMinutes; delayCount++; }
+            }
+            const delayH = Math.floor(totalDelay / 60);
+            const delayM = totalDelay % 60;
             return makeCard(`📊 تقرير الحضور — ${q}`, [
-                { label: 'الموظفين النشطين', value: fmt(row.total) },
-                { label: 'حاضرين اليوم', value: fmt(row.present_count) },
-                { label: 'إجمالي التأخير', value: `${delayH}h ${delayM}m` },
-                { label: 'معدل التأخير', value: `${Math.round(row.avg_delay_minutes)} دقيقة` }
+                { label: 'الموظفين النشطين', value: fmt(total) },
+                { label: 'حاضرين اليوم', value: fmt(present) },
+                { label: 'إجمالي التأخير (بمحرك التأخير المعتمد)', value: `${delayH}h ${delayM}m (${delayCount} موظف)` },
+                { label: 'متوسط التأخير للمتأخرين', value: delayCount ? `${Math.round(totalDelay / delayCount)} دقيقة` : '—' }
             ], `للاستعلام عن موظف معين: اكتب "حضور <الاسم>"`);
         } catch (e) {
             logger.error({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[QUERY] attendance:');

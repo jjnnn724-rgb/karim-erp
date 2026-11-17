@@ -284,22 +284,23 @@ async function buildDailyBriefing(dayStr) {
     L.push(`👥 الحضور: حاضر ${a.present || 0} • نسي خروج ${a.miss_out || 0} • نسي دخول ${a.miss_in || 0} • متأخر ${a.late_n || 0}`);
   } catch (_) { L.push('👥 الحضور: تعذر الجلب'); }
 
-  // 2) أكثر المتأخرين هذا الشهر
+  // 2) أكثر المتأخرين هذا الشهر — بمحرك التأخير الرسمي (shortfall-based)، لا بالنص الخام
   try {
     const m = day.slice(0, 7);
-    const t = (await withTimeout(pool.query(
-      `SELECT e.name, COALESCE(SUM(CASE WHEN a."checkIn" IS NOT NULL THEN
-         GREATEST(0, (SPLIT_PART(a."checkIn", ':', 1)::int * 60 + SPLIT_PART(a."checkIn", ':', 2)::int)
-         - (SPLIT_PART(COALESCE(e.shift_start,'09:00'), ':', 1)::int * 60 + SPLIT_PART(COALESCE(e.shift_start,'09:00'), ':', 2)::int)) ELSE 0 END),0)::int AS mins
-       FROM attendance a JOIN employees e ON e.id = a."employeeId"
-       WHERE e.status = 'active' AND a.date LIKE $1 || '-%' AND NOT COALESCE(a.on_leave, false)
-       GROUP BY e.name HAVING COALESCE(SUM(CASE WHEN a."checkIn" IS NOT NULL THEN
-         GREATEST(0, (SPLIT_PART(a."checkIn", ':', 1)::int * 60 + SPLIT_PART(a."checkIn", ':', 2)::int)
-         - (SPLIT_PART(COALESCE(e.shift_start,'09:00'), ':', 1)::int * 60 + SPLIT_PART(COALESCE(e.shift_start,'09:00'), ':', 2)::int)) ELSE 0 END),0) > 0
-       ORDER BY 2 DESC LIMIT 5`, [m]), DB_TIMEOUT, 'GENIUS')).rows;
-    if (t.length) {
-      L.push('⏰ الأعلى تأخيرًا هذا الشهر:');
-      t.forEach((r, i) => L.push(`${i + 1}. ${r.name}: ${fmtNum(r.mins)} د`));
+    const rows = (await withTimeout(pool.query(
+      `SELECT e.name, e.shift_start, e.shift_karim, a.date, a."checkIn", a."checkOut", a.late, a."workMinutes"
+         FROM attendance a JOIN employees e ON e.id = a."employeeId"
+        WHERE e.status = 'active' AND a.date LIKE $1 || '-%' AND NOT COALESCE(a.on_leave, false)
+          AND a."checkIn" IS NOT NULL`, [m]), DB_TIMEOUT, 'GENIUS')).rows;
+    const byEmp = new Map();
+    for (const r of rows) {
+      const d = calculateDelayParts(r, { shift_start: r.shift_start, shift_karim: r.shift_karim });
+      if ((d.lateMinutes || 0) > 0) {byEmp.set(r.name, (byEmp.get(r.name) || 0) + d.lateMinutes);}
+    }
+    const top = [...byEmp.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
+    if (top.length) {
+      L.push('⏰ الأعلى تأخيرًا هذا الشهر (بمحرك التأخير المعتمد):');
+      top.forEach(([name, mins], i) => L.push(`${i + 1}. ${name}: ${fmtNum(Math.floor(mins / 60))} س ${fmtNum(mins % 60)} د`));
     }
   } catch (_) {}
 
@@ -587,19 +588,20 @@ async function buildMonthlyBriefing(dayStr) {
     L.push(`👥 الحضور: موظفين ${a.emp || 0} • أيام حضور ${a.present || 0} • نسي خروج ${a.miss_out || 0} • نسي دخول ${a.miss_in || 0} • متأخر ${a.late_n || 0}`);
   } catch (_) { L.push('👥 الحضور: تعذر الجلب'); }
   try {
-    const t = (await withTimeout(pool.query(
-      `SELECT e.name, COALESCE(SUM(CASE WHEN a."checkIn" IS NOT NULL THEN
-         GREATEST(0, (SPLIT_PART(a."checkIn", ':', 1)::int * 60 + SPLIT_PART(a."checkIn", ':', 2)::int)
-         - (SPLIT_PART(COALESCE(e.shift_start,'09:00'), ':', 1)::int * 60 + SPLIT_PART(COALESCE(e.shift_start,'09:00'), ':', 2)::int)) ELSE 0 END),0)::int AS mins
-       FROM attendance a JOIN employees e ON e.id = a."employeeId"
-       WHERE e.status = 'active' AND a.date LIKE $1 || '-%' AND NOT COALESCE(a.on_leave, false)
-       GROUP BY e.name HAVING COALESCE(SUM(CASE WHEN a."checkIn" IS NOT NULL THEN
-         GREATEST(0, (SPLIT_PART(a."checkIn", ':', 1)::int * 60 + SPLIT_PART(a."checkIn", ':', 2)::int)
-         - (SPLIT_PART(COALESCE(e.shift_start,'09:00'), ':', 1)::int * 60 + SPLIT_PART(COALESCE(e.shift_start,'09:00'), ':', 2)::int)) ELSE 0 END),0) > 0
-       ORDER BY 2 DESC LIMIT 10`, [m]), DB_TIMEOUT, 'GENIUS')).rows;
-    if (t.length) {
-      L.push('⏰ الأعلى تأخيرًا هذا الشهر:');
-      t.forEach((r, i) => L.push(`${i + 1}. ${r.name}: ${fmtNum(r.mins)} د`));
+    const rows = (await withTimeout(pool.query(
+      `SELECT e.name, e.shift_start, e.shift_karim, a.date, a."checkIn", a."checkOut", a.late, a."workMinutes"
+         FROM attendance a JOIN employees e ON e.id = a."employeeId"
+        WHERE e.status = 'active' AND a.date LIKE $1 || '-%' AND NOT COALESCE(a.on_leave, false)
+          AND a."checkIn" IS NOT NULL`, [m]), DB_TIMEOUT, 'GENIUS')).rows;
+    const byEmp = new Map();
+    for (const r of rows) {
+      const d = calculateDelayParts(r, { shift_start: r.shift_start, shift_karim: r.shift_karim });
+      if ((d.lateMinutes || 0) > 0) {byEmp.set(r.name, (byEmp.get(r.name) || 0) + d.lateMinutes);}
+    }
+    const top = [...byEmp.entries()].sort((a, b) => b[1] - a[1]).slice(0, 10);
+    if (top.length) {
+      L.push('⏰ الأعلى تأخيرًا هذا الشهر (بمحرك التأخير المعتمد):');
+      top.forEach(([name, mins], i) => L.push(`${i + 1}. ${name}: ${fmtNum(Math.floor(mins / 60))} س ${fmtNum(mins % 60)} د`));
     }
   } catch (_) {}
   try {
