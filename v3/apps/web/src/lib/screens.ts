@@ -82,6 +82,7 @@ export const V3_SCREENS = [
     'balance-sheet',
     'cash-flow',
     'ext-sales',
+    'punch-control',
 ] as const;
 export type V3Screen = (typeof V3_SCREENS)[number];
 

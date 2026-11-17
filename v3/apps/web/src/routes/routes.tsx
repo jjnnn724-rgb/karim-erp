@@ -359,6 +359,13 @@ export const zktecoRoute = createRoute({
 });
 zktecoRoute.lazy(() => import('../screens/Zkteco.lazy').then((module) => module.Route));
 
+/** مركز التحكم بالبصمة — جهاز البصمة وكاميرا الموبايل معًا + استثناءات النظام بالكامل. */
+export const punchControlRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/punch-control',
+});
+punchControlRoute.lazy(() => import('../screens/PunchControl.lazy').then((module) => module.Route));
+
 /** المطبخ — نظرة عامة على الإنتاج والمخزون. */
 export const kitchenRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -614,6 +621,7 @@ export const routeTree = rootRoute.addChildren([
     deptEmployeesRoute,
     employeePortalRoute,
     zktecoRoute,
+    punchControlRoute,
     kitchenRoute,
     menuBoardRoute,
     warehouseDashboardRoute,

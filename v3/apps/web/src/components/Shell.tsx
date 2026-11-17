@@ -87,6 +87,7 @@ export const NAV_ITEMS = [
     { to: '/dept-employees', label: 'موظفو القسم', hint: 'Dept Employees' },
     { to: '/employee-portal', label: 'بوابة الموظف', hint: 'Employee Portal' },
     { to: '/zkteco', label: 'أجهزة البصمة', hint: 'ZKTeco' },
+    { to: '/punch-control', label: 'مركز التحكم بالبصمة', hint: 'Fingerprint Control' },
     { to: '/kitchen', label: 'المطبخ', hint: 'Kitchen' },
     { to: '/menu-board', label: 'شاشة القائمة', hint: 'Menu Board' },
     { to: '/warehouse-dashboard', label: 'لوحة المخزن', hint: 'WH Dashboard' },

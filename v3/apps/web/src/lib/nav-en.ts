@@ -53,6 +53,7 @@ export const NAV_LABELS_EN: Readonly<Record<string, string>> = {
     'dept-employees': 'Dept Employees',
     'employee-portal': 'Employee Portal',
     zkteco: 'ZKTeco Devices',
+    'punch-control': 'Fingerprint & Attendance Control',
     kitchen: 'Kitchen',
     'menu-board': 'Menu Board',
     'warehouse-dashboard': 'Warehouse Dashboard',

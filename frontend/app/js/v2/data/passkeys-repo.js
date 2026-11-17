@@ -20,7 +20,7 @@
  *   Nothing here logs, caches, or echoes it.
  */
 
-import { API_BASE, apiFetch, SERVER_CODE_AR } from '../../core/api.js?v=4.9.393';
+import { API_BASE, apiFetch, SERVER_CODE_AR } from '../../core/api.js?v=4.9.394';
 import {
     isWebAuthnSupported,
     passkeyUnavailableReason,
@@ -28,7 +28,7 @@ import {
     toCreationOptions,
     serializeRegistration,
     describeWebAuthnError,
-} from './webauthn-client.js?v=4.9.393';
+} from './webauthn-client.js?v=4.9.394';
 
 const REQUEST_TIMEOUT_MS = 30000;
 

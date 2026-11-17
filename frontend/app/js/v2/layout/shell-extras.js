@@ -14,14 +14,14 @@
 import {
     fetchNotifications, markNotificationsRead,
     markAllNotificationsRead, clearNotifications, fetchHealth, fetchServerInfo, changePassword,
-} from '../data/shell-repo.js?v=4.9.393';
-import { fetchServerControl, serverControlAction } from '../data/settings-repo.js?v=4.9.393';
-import { ensureRealtimeSocket } from '../realtime.js?v=4.9.393';
+} from '../data/shell-repo.js?v=4.9.394';
+import { fetchServerControl, serverControlAction } from '../data/settings-repo.js?v=4.9.394';
+import { ensureRealtimeSocket } from '../realtime.js?v=4.9.394';
 import {
     announce, pickVoice, pushVoiceLog, readVoiceLog, readVoicePref, writeVoicePref, isPriorityCategory,
     readQuietPref, writeQuietPref, QUIET_HOURS, nativeTts,
-} from '../callout.js?v=4.9.393';
-import { installSoundUnlock, playCue, cueForType, readSoundPref, writeSoundPref } from '../sounds.js?v=4.9.393';
+} from '../callout.js?v=4.9.394';
+import { installSoundUnlock, playCue, cueForType, readSoundPref, writeSoundPref } from '../sounds.js?v=4.9.394';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
