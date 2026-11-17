@@ -34,6 +34,7 @@ import {
     type ChefApproveBody,
     type CreateDispatchPayload,
     canCreateDispatch,
+    RECEIVE_ROLES,
     chefActionsVisible,
     chefApproveDispatch,
     chefRejectDispatch,
@@ -1062,6 +1063,7 @@ export function Dispatches() {
     const [page, setPage] = useState(1);
     const [active, setActive] = useState<ActiveDialog | null>(null);
     const [pageError, setPageError] = useState('');
+    const [mineOnly, setMineOnly] = useState(false);
 
     const auth = useAuthState();
     const role = auth.user?.role ?? '';
@@ -1070,6 +1072,7 @@ export function Dispatches() {
         id: auth.user?.id ?? null,
         deptCode: (auth.user as (typeof auth.user & { deptCode?: string | null }) | null)?.deptCode ?? null,
     };
+    const canReceiveAny = (RECEIVE_ROLES as readonly string[]).includes(role) || role === 'dept_head';
     const canCreate = canCreateDispatch(role);
     const confirm = useConfirm();
     const { toast } = useToast();
@@ -1192,9 +1195,26 @@ export function Dispatches() {
             if (status !== 'ALL' && row.status !== status) {
                 return false;
             }
+            if (mineOnly) {
+                const raw = rawById.get(String(row.id));
+                const gate = raw ? dispatchGate(raw) : null;
+                if (!gate || !((row.status === 'approved' || row.status === 'partially_received') && receiveVisible(role, gate, gateUser))) {
+                    return false;
+                }
+            }
             return matchDispatchProduct(row, search);
         });
-    }, [allRows, from, to, search, status, rangeInvalid]);
+    }, [allRows, from, to, search, status, rangeInvalid, mineOnly, role, gateUser, rawById]);
+
+    const awaitingMine = useMemo(
+        () => allRows.filter((row) => {
+            const raw = rawById.get(String(row.id));
+            if (!raw) {return false;}
+            if (!(row.status === 'approved' || row.status === 'partially_received')) {return false;}
+            return receiveVisible(role, dispatchGate(raw), gateUser);
+        }).length,
+        [allRows, role, gateUser, rawById],
+    );
 
     const counts = useMemo(() => summarizeDispatches(rows), [rows]);
     const withdrawal = useMemo(() => summarizeProductWithdrawal(rows, search), [rows, search]);
@@ -1535,6 +1555,18 @@ export function Dispatches() {
                     >
                         مسح المرشّحات
                     </button>
+                    {canReceiveAny ? (
+                        <button
+                            type="button"
+                            className={`erp-awaiting-btn${mineOnly ? ' is-active' : ''}`}
+                            aria-pressed={mineOnly}
+                            onClick={() => { setMineOnly((value) => !value); setPage(1); }}
+                            title="أذون معتمدة بانتظار توقيع استلامك — مطابقة للدور كما في V2"
+                        >
+                            📥 بانتظار استلامي
+                            <span className="erp-awaiting-count">{formatInt(awaitingMine)}</span>
+                        </button>
+                    ) : null}
                     <span className="text-body-sm text-muted">{formatInt(rows.length)} إذنًا</span>
                 </div>
                 {rangeInvalid ? (
