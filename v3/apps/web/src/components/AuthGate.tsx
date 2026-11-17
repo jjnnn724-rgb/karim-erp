@@ -16,6 +16,7 @@ import {
     useAuthState,
     verifyMfa,
 } from '../lib/auth';
+import { COMPANY_LOGO } from '../lib/company-logo';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import './auth-premium.css';
@@ -477,7 +478,21 @@ function LoginScreen({ kiosk = false }: { kiosk?: boolean }) {
                     </div>
                     <div className="erp-luxe-outer" aria-hidden="true" />
                     <section className="erp-luxe-hero">
-                        <img className="erp-luxe-logo" src="/app/assets/karim-logo.png" alt="مطاعم الشرفة العالمي — AL SHURFA AL ALAMI RESTAURANTS" loading="eager" decoding="sync" width={280} height={280} />
+                        <img
+                            className="erp-luxe-logo"
+                            src="/app/assets/karim-logo.png"
+                            alt="مطاعم الشرفة العالمي — AL SHURFA AL ALAMI RESTAURANTS"
+                            loading="eager"
+                            decoding="sync"
+                            width={280}
+                            height={280}
+                            onError={(event) => {
+                                const img = event.currentTarget;
+                                if (img.src !== COMPANY_LOGO) {
+                                    img.src = COMPANY_LOGO;
+                                }
+                            }}
+                        />
                         <p className="erp-luxe-brand-cloud" lang="en" dir="ltr">AL SHURFA AL ALAMI · RESTAURANTS GROUP</p>
                         <span className="erp-luxe-rule" aria-hidden="true" />
                         <p className="erp-luxe-h1">تفاصيل <em>أكثر وضوحًا.</em><br />قرارات <em>أكثر ثقة.</em></p>

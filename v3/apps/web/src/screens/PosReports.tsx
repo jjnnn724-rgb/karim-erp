@@ -25,6 +25,7 @@ import { Badge, Button, Input } from '../ui';
 import '../styles/pos-reports.css';
 import { errorMessage } from '../lib/reporting';
 import { printSmart } from '../lib/print-viewer';
+import { COMPANY_LOGO } from '../lib/company-logo';
 
 type ReportTab = 'overview' | 'department' | 'product' | 'inventory';
 
@@ -271,7 +272,7 @@ export function PosReports() {
   .sign div{border-top:1px solid #000;padding-top:4px;min-width:140px;text-align:center}
 </style></head><body>
   <div class="head">
-    <img src="/app/assets/karim-logo.png" alt="شعار المطعم">
+    <img src="${COMPANY_LOGO}" alt="شعار المطعم">
     <div><h1>${escape(title)} <span style="font-size:.55em;letter-spacing:.05em;color:#6b5d2f" lang="en" dir="ltr">${escape(titleEn)}</span></h1><p>مطاعم الشرفة العالمي — تقرير رسمي معتمد</p></div>
   </div>
   <div class="meta"><span><strong>الفترة:</strong> ${escape(from)} → ${escape(to)}</span><span><strong>الإصدار:</strong> ${escape(todayIso())}</span><span><strong>النظام:</strong> KARIM ERP</span></div>

@@ -68,11 +68,11 @@
  *   outside the allowlist stay out of every path.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.386';
-import { openInAppReport } from '../report-viewer.js?v=4.9.386';
-import { resolveStatus, statusBadge } from '../status.js?v=4.9.386';
-import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.386';
-import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.386';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.387';
+import { openInAppReport } from '../report-viewer.js?v=4.9.387';
+import { resolveStatus, statusBadge } from '../status.js?v=4.9.387';
+import { bulkImportWriteEnabled } from '../write-flags.js?v=4.9.387';
+import { mountBulkImportWizard } from '../bulk-import-wizard.js?v=4.9.387';
 import {
     employeeToRow, fetchEmployees, fetchDepartments, departmentMap, employeeMap,
     buildEmployeeKpis, deptCounts, applyEmployeeFilters, searchEmployees, formatInt,
@@ -81,21 +81,21 @@ import {
     createEmployee, updateEmployee, deleteEmployee,
     fetchEmployeeCard, regenerateEmployeeQr,
     EMP_SHEET_COLS, sheetTemplateRows, buildSheetImport, sheetRowToPayload, exportSheetRows,
-} from '../data/employees-repo.js?v=4.9.386';
-import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.386';
+} from '../data/employees-repo.js?v=4.9.387';
+import { fetchCurrency, formatMoney } from '../data/reports-repo.js?v=4.9.387';
 import {
     fetchAttendanceReport, fetchAttendanceRange, attendanceMinutes, todayIso, minutesToHM,
     weekdayAr,
-} from '../data/attendance-repo.js?v=4.9.386';
-import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.386';
+} from '../data/attendance-repo.js?v=4.9.387';
+import { fetchLeaveWorkflow, fetchLeaveTypes, leaveTypeMap, leaveToRow, leaveStateOf } from '../data/leaves-repo.js?v=4.9.387';
 import {
     fetchEmployeeSchedule, scheduleNotice, cardKpis, cardPayroll,
     systemQrText, humanQrText,
     fetchLuxCardHtml, rangeReportRows,
-} from '../data/employee-card-repo.js?v=4.9.386';
-import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.386';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.386';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.386';
+} from '../data/employee-card-repo.js?v=4.9.387';
+import { ensureXlsx, ensureQrCode } from '../vendor.js?v=4.9.387';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.387';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.387';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

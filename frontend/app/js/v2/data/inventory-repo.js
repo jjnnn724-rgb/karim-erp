@@ -37,9 +37,9 @@
  * (features/warehouse.js:2384). Nothing else may POST/PUT/DELETE.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.386';
-import { formatMoney } from './reports-repo.js?v=4.9.386';
-import { normalizeExpiryDate } from './expiry-policy.js?v=4.9.386';
+import { apiFetch } from '../../core/api.js?v=4.9.387';
+import { formatMoney } from './reports-repo.js?v=4.9.387';
+import { normalizeExpiryDate } from './expiry-policy.js?v=4.9.387';
 
 /** The server's own stock enum (warehouse-routes.js:1727) — nothing else is sent. */
 export const STOCK_FILTERS = ['all', 'low', 'out', 'ok'];

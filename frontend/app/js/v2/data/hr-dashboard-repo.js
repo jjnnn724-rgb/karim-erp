@@ -20,10 +20,10 @@
  * THIS FILE NEVER WRITES. No POST/PUT/DELETE here by construction.
  */
 
-import { fetchEmployees, fetchDepartments } from './employees-repo.js?v=4.9.386';
-import { fetchAttendanceRange } from './attendance-repo.js?v=4.9.386';
-import { fetchLeaveWorkflow } from './leaves-repo.js?v=4.9.386';
-import { fetchCurrency, formatMoney, formatInt } from './reports-repo.js?v=4.9.386';
+import { fetchEmployees, fetchDepartments } from './employees-repo.js?v=4.9.387';
+import { fetchAttendanceRange } from './attendance-repo.js?v=4.9.387';
+import { fetchLeaveWorkflow } from './leaves-repo.js?v=4.9.387';
+import { fetchCurrency, formatMoney, formatInt } from './reports-repo.js?v=4.9.387';
 
 export { formatMoney, formatInt };
 

@@ -17,6 +17,7 @@
 import { z } from 'zod';
 import { fetchJson } from './api';
 import { getAccessToken } from './auth';
+import { COMPANY_LOGO } from './company-logo';
 
 const escape = (value: unknown): string =>
     String(value ?? '')
@@ -409,7 +410,7 @@ table.sheet-items {
 </style></head><body>
 <article class="sheet">
     <header class="sheet-head">
-        <img class="sheet-logo" src="/app/assets/karim-logo.png" alt="شعار الشركة" />
+        <img class="sheet-logo" src="${COMPANY_LOGO}" alt="شعار الشركة" />
         <div class="sheet-brand">
             <div class="sheet-company-ar">${COMPANY_AR}</div>
             <div class="sheet-company-en" lang="en" dir="ltr">${COMPANY_EN}</div>

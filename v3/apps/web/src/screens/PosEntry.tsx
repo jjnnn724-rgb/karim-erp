@@ -7,6 +7,7 @@ import { useConfirm } from '../components/ConfirmProvider';
 import { StateError, StateLoading } from '../components/TableState';
 import { ApiError } from '../lib/api';
 import { useAuthState } from '../lib/auth';
+import { COMPANY_LOGO } from '../lib/company-logo';
 import {
     addBuffetTier,
     type BuffetTier,
@@ -1446,7 +1447,18 @@ export function PosEntry() {
                 <section className="pos-topbar" aria-label="شريط الكاشير">
                     <div className="pos-topbar__brand" title="مطاعم الشرف العالمي — AL SHARFA INTERNATIONAL">
                         <span className="pos-topbar__crest" aria-hidden="true">
-                            <img src="/app/assets/karim-logo.png" alt="" width="40" height="40" />
+                            <img
+                                src="/app/assets/karim-logo.png"
+                                alt=""
+                                width="40"
+                                height="40"
+                                onError={(event) => {
+                                    const img = event.currentTarget;
+                                    if (img.src !== COMPANY_LOGO) {
+                                        img.src = COMPANY_LOGO;
+                                    }
+                                }}
+                            />
                         </span>
                         <span className="pos-topbar__brand-copy">
                             <strong>مطاعم الشرف العالمي</strong>

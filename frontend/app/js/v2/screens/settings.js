@@ -12,15 +12,15 @@
  * dialogs become inline panels · no inline handlers (CSP contract).
  */
 
-import { canWrite } from '../session.js?v=4.9.386';
-import { formatInt } from '../data/reports-repo.js?v=4.9.386';
-import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.386';
-import { setV2PrintLogo } from '../print-branding.js?v=4.9.386';
-import { readMenuLabels } from '../layout/nav-model.js?v=4.9.386';
-import { captureFace } from '../portal-face.js?v=4.9.386';
-import { enrollFaceV1, enrollFaceV2 } from '../data/portal-repo.js?v=4.9.386';
-import { bindAdjacentLabels } from '../form-errors.js?v=4.9.386';
-import { fetchEmployees } from '../data/employees-repo.js?v=4.9.386';
+import { canWrite } from '../session.js?v=4.9.387';
+import { formatInt } from '../data/reports-repo.js?v=4.9.387';
+import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.387';
+import { setV2PrintLogo } from '../print-branding.js?v=4.9.387';
+import { readMenuLabels } from '../layout/nav-model.js?v=4.9.387';
+import { captureFace } from '../portal-face.js?v=4.9.387';
+import { enrollFaceV1, enrollFaceV2 } from '../data/portal-repo.js?v=4.9.387';
+import { bindAdjacentLabels } from '../form-errors.js?v=4.9.387';
+import { fetchEmployees } from '../data/employees-repo.js?v=4.9.387';
 import {
     ZATCA_WRITE_ROLES, KOT_WRITE_ROLES,
     fetchMainSettingsFull, updateMainSettings,
@@ -32,11 +32,11 @@ import {
     fetchBackups, doBackup, uploadBackup, restoreBackup,
     resetAllData, operationalReset,
     fetchServerControl, serverControlAction,
-} from '../data/settings-repo.js?v=4.9.386';
+} from '../data/settings-repo.js?v=4.9.387';
 // safeImgSrc: حارس <img src> ضد javascript: المخزَّن — الشاشة وحدة نظيفة
 // (no-undef: error) فلا تصلها globals، فتُستورد من المصدر الوحيد.
-import { safeImgSrc } from '../../core/utils.js?v=4.9.386';
-import { mountComplianceSection } from './compliance.js?v=4.9.386';
+import { safeImgSrc } from '../../core/utils.js?v=4.9.387';
+import { mountComplianceSection } from './compliance.js?v=4.9.387';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

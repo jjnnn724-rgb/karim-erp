@@ -5,6 +5,7 @@
  * من `print-viewer.ts` ويربط بأحدث سند: حذف أي تأشير inline (CSP-safe).
  */
 import { printSmart } from './print-viewer';
+import { COMPANY_LOGO } from './company-logo';
 /**
  * لغة واحدة مع إذن الصرف: شريط كربوني/ذهبي بشارة الشعار، عناوين قابلة
  * للقراءة باللغة العربية والإنجليزية، شبكة KPI عصرية، وجداول بحد أحمر أو
@@ -256,7 +257,7 @@ ${hasTotals && section.totalsRow ? `                <tr class="totals-row">${sec
 </style></head><body>
 <article class="sheet">
   <header class="sheet-head">
-    <img class="sheet-logo" src="/app/assets/karim-logo.png" alt="شعار الشركة" />
+    <img class="sheet-logo" src="${COMPANY_LOGO}" alt="شعار الشركة" />
     <div class="sheet-brand">
       <div class="sheet-company-ar">${COMPANY_AR}</div>
       <div class="sheet-company-en" lang="en" dir="ltr">${COMPANY_EN}</div>
