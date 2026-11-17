@@ -171,7 +171,10 @@
     border-radius: 999px;
     pointer-events: none;
 }
-.erp-shell__sidebar, .erp-shell__topbar { position: relative; }
+/* القائمة الجانبية تلتصق بـ position:sticky من shell-premium.css على 100dvh —
+   إجبارها position:relative كان يكسر الالتصاق فتقف القائمة قبل نهاية الصفحة الطويلة.
+   التوبار فقط يُثبَّت relative كي يبقى ::after متموضعًا داخله. */
+.erp-shell__topbar { position: relative; }
 
 /* ــ─ وسام رقم ميزة الكوين صغيرة للسيرفر ─────────────────────────── */
 .erp-shell__pos-link {

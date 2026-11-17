@@ -418,8 +418,8 @@
     color: var(--erp-warning-text, #8f4308);
 }
 .erp-badge[data-tone="info"] {
-    background: color-mix(in srgb, #1a3fbf 12%, transparent);
-    color: #1a3fbf;
+    background: color-mix(in srgb, var(--erp-info-text) 12%, transparent);
+    color: var(--erp-info-text);
 }
 .erp-badge[data-tone="neutral"] {
     background: color-mix(in srgb, var(--erp-muted) 14%, transparent);

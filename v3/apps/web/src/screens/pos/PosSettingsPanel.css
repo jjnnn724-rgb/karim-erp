@@ -81,7 +81,7 @@
     cursor: pointer;
 }
 .pos-settings__close:hover { background: #F1F4F6; color: #202A35; }
-.pos-settings__close:focus-visible { outline: 2px solid #2563EB; outline-offset: 1px; }
+.pos-settings__close:focus-visible { outline: 2px solid #0F766E; outline-offset: 1px; }
 
 /* ─── إشعار الصلاحيات ─── */
 .pos-settings__notice {
@@ -116,7 +116,7 @@
 }
 .pos-settings__tab:hover { color: #202A35; }
 .pos-settings__tab.is-active { border-block-end-color: #168653; color: #117247; }
-.pos-settings__tab:focus-visible { outline: 2px solid #2563EB; outline-offset: -2px; }
+.pos-settings__tab:focus-visible { outline: 2px solid #0F766E; outline-offset: -2px; }
 
 /* ─── الجسم ─── */
 .pos-settings__body {
@@ -147,7 +147,7 @@
     color: #202A35;
     font-size: 0.88rem;
 }
-.pos-settings__toolbar input[type="search"]:focus-visible { outline: 2px solid #2563EB; border-color: #2563EB; }
+.pos-settings__toolbar input[type="search"]:focus-visible { outline: 2px solid #0F766E; border-color: #0F766E; }
 .pos-settings__toolbar button { flex: 0 0 auto; block-size: 2.5rem; }
 
 .pos-settings__state { margin: 0.6rem 0.2rem; color: #687586; font-size: 0.82rem; }
@@ -191,7 +191,7 @@
 }
 .pos-settings__grid select.erp-control { padding-inline: 0.45rem; }
 .pos-settings__grid .erp-control:focus-visible,
-.pos-settings__grid input:focus-visible { outline: 2px solid #2563EB; border-color: #2563EB; }
+.pos-settings__grid input:focus-visible { outline: 2px solid #0F766E; border-color: #0F766E; }
 .pos-settings__check { flex-direction: row !important; align-items: center; gap: 0.4rem !important; align-self: end; padding-block-end: 0.35rem; }
 .pos-settings__check input { inline-size: 1.1rem; block-size: 1.1rem; }
 
@@ -249,7 +249,7 @@
     color: #202A35;
     font-size: 0.85rem;
 }
-.pos-settings__price-edit input:focus-visible { outline: 2px solid #2563EB; border-color: #2563EB; }
+.pos-settings__price-edit input:focus-visible { outline: 2px solid #0F766E; border-color: #0F766E; }
 
 .pos-settings__action {
     block-size: 2rem;
@@ -295,7 +295,7 @@
 }
 .pos-settings__chip:hover { border-color: #CBE0D5; color: #117247; }
 .pos-settings__chip.is-active { background: #168653; border-color: #168653; color: #FFFFFF; }
-.pos-settings__chip:focus-visible { outline: 2px solid #2563EB; outline-offset: 1px; }
+.pos-settings__chip:focus-visible { outline: 2px solid #0F766E; outline-offset: 1px; }
 
 .pos-settings__hint {
     margin: 0;

@@ -150,6 +150,8 @@ function ShellLayout() {
     const [prefs, setPrefs] = useState<NavPrefs>(() => readNavPrefs());
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [paletteOpen, setPaletteOpen] = useState(false);
+    const paletteOpenRef = useRef(paletteOpen);
+    paletteOpenRef.current = paletteOpen;
     const mainRef = useRef<HTMLElement>(null);
     const drawerRef = useRef<HTMLDivElement>(null);
     const drawerCloseRef = useRef<HTMLButtonElement>(null);
@@ -217,6 +219,13 @@ function ShellLayout() {
     useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
             if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+                // داخل حقول الكتابة لا نختطف Ctrl+K — يتصرف المتصفح طبيعيًا (بحث شريط العنوان)
+                // والباليتة لا تقفز على الشاشة أثناء إدخال الطلبات.
+                const target = event.target as HTMLElement | null;
+                const editable = !!target?.closest('input, textarea, select, [contenteditable="true"]');
+                if (editable && !paletteOpenRef.current) {
+                    return;
+                }
                 event.preventDefault();
                 if (drawerOpen) {
                     setDrawerOpen(false);

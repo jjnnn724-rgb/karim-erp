@@ -18,7 +18,7 @@
  * ولا يجمع ولا يقسّم ولا يُقارن.
  */
 
-import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.388';
+import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.389';
 
 const num = (v) => {
     const n = Number(v);

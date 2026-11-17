@@ -1,4 +1,4 @@
-﻿.erp-premium-screen {
+.erp-premium-screen {
     --screen-accent: var(--accent, #0f766e);
     min-width: 0;
     gap: 1.25rem !important;
@@ -304,7 +304,7 @@
     border: 1px solid transparent;
 }
 .live-pay--cash { background: #eef6ef; color: #166b3c; border-color: #b9dcc8; }
-.live-pay--net { background: #eef2fb; color: #1d4ed8; border-color: #c3d0f0; }
+.live-pay--net { background: #f7f3e6; color: #8a6d2f; border-color: #e0d2a8; }
 .live-pay--mobile { background: #fdf3e3; color: #8a5a00; border-color: #efdca8; }
 .live-pay--credit { background: #f6eefb; color: #6d28d9; border-color: #dcc7f0; }
 .live-pay--mix { background: #f2f2ee; color: #4b4433; border-color: #ddd9cb; }

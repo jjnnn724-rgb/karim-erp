@@ -57,19 +57,19 @@
     --erp-c-brand-text: oklch(0.47687 0.08024 187.92); /* #0B6B65 */
     /*
      * `brass`/`copper` أسماء تاريخية محفوظة للتوافق مع الشاشات القائمة:
-     * تشير الآن إلى الإجراء الأساسي (#0F766E) والمعلومات (#1D4ED8)، فلا كود
+     * تشير الآن إلى الإجراء الأساسي (#0F766E) والمعلومات (#243B53)، فلا كود
      * جديد يستخدمها — `bg-primary`/`text-brand-text`/`bg-info` هي الأسماء
      * الدلالية (COMPONENTS.md).
      */
     --erp-c-brass: oklch(0.51094 0.08606 186.39); /* #0F766E */
     --erp-c-brass-text: oklch(0.47687 0.08024 187.92); /* #0B6B65 */
     --erp-c-brass-bright: oklch(0.72927 0.11693 184.99); /* #33BFB1 */
-    --erp-c-copper: oklch(0.4882 0.21717 264.38); /* #1D4ED8 */
+    --erp-c-copper: oklch(0.51094 0.08606 186.39); /* #0F766E — مطابق للنحاسي (brass) لا أزرق */
     /* سلّم الرسوم: تركواز ← كحلي ← أخضر ← أزرق ← عنبري ← رمادي. */
     --erp-c-chart-1: oklch(0.51094 0.08606 186.39); /* #0F766E */
     --erp-c-chart-2: oklch(0.28012 0.03945 244); /* #172B3B */
     --erp-c-chart-3: oklch(0.5383 0.1284 153.99); /* #16834A */
-    --erp-c-chart-4: oklch(0.4882 0.21717 264.38); /* #1D4ED8 */
+    --erp-c-chart-4: oklch(0.72979 0.11508 85.76); /* #C8A24A — الذهب الرسمي للعلامة */
     --erp-c-chart-5: oklch(0.5553 0.1455 49); /* #B45309 */
     --erp-c-chart-6: oklch(0.554 0.032 263.3); /* #697386 */
     --erp-c-overlay: rgb(18 20 24 / 55%);
@@ -79,8 +79,8 @@
     --erp-c-warning-text: oklch(0.473 0.1204 50.27); /* #8F4308 */
     --erp-c-danger: oklch(0.5013 0.1783 28.7); /* #B3261E */
     --erp-c-danger-text: oklch(0.4254 0.148 29.38); /* #8E1F16 */
-    --erp-c-info: oklch(0.4882 0.2172 264.38); /* #1D4ED8 */
-    --erp-c-info-text: oklch(0.4367 0.2035 265.38); /* #1A3FBF */
+    --erp-c-info: oklch(0.34489 0.05132 250.50); /* #243B53 — slate مطابق للهوية (كان أزرق) */
+    --erp-c-info-text: oklch(0.28012 0.03945 244.00); /* #172B3B — نفس slate-2 (chart-2) */
     --erp-c-neutral: oklch(0.5006 0.025 259.18); /* #5B6472 */
     --erp-c-neutral-text: oklch(0.3958 0.0244 260.11); /* #3F4754 */
     --erp-c-sidebar: oklch(0.27848 0.05638 249.75); /* #102A43 */
@@ -177,11 +177,11 @@
     --erp-c-brass: oklch(0.79238 0.11403 185.16); /* #53D3C5 */
     --erp-c-brass-text: oklch(0.84093 0.10385 186.15); /* #72E1D5 */
     --erp-c-brass-bright: oklch(0.88154 0.10123 186.13); /* #83EEE2 */
-    --erp-c-copper: oklch(0.73539 0.13684 260.38); /* #76A9FF */
+    --erp-c-copper: oklch(0.79238 0.11403 185.16); /* #53D3C5 — مطابق brass الداكن لا أزرق فاتح */
     --erp-c-chart-1: oklch(0.79238 0.11403 185.16); /* #53D3C5 */
     --erp-c-chart-2: oklch(0.87453 0.02321 241.92); /* #C9D8E4 */
     --erp-c-chart-3: oklch(0.7359 0.1642 155.38); /* #34C77B */
-    --erp-c-chart-4: oklch(0.73539 0.13684 260.38); /* #76A9FF */
+    --erp-c-chart-4: oklch(0.82839 0.11044 92.42); /* #E0C56F — الذهب الداكن للعلامة */
     --erp-c-chart-5: oklch(0.7734 0.1373 66.02); /* #F0A24B */
     --erp-c-chart-6: oklch(0.716 0.0228 259.19); /* #9BA4B2 */
     --erp-c-overlay: rgb(0 0 0 / 62%);
@@ -191,8 +191,8 @@
     --erp-c-warning-text: oklch(0.8396 0.1025 68.03); /* #F7BE80 */
     --erp-c-danger: oklch(0.7318 0.165 28.31); /* #FF7A6B */
     --erp-c-danger-text: oklch(0.8119 0.1066 28.79); /* #FFA79A */
-    --erp-c-info: oklch(0.7237 0.1425 265.75); /* #7BA2FF */
-    --erp-c-info-text: oklch(0.8375 0.0803 263.66); /* #AFCAFF */
+    --erp-c-info: oklch(0.41411 0.04269 260.21); /* #3E4C63 — steel مطابق للهوية (كان أزرق فاتح) */
+    --erp-c-info-text: oklch(0.86984 0.02180 245.88); /* #C9D6E2 — فاتح على info-soft الداكن */
     --erp-c-neutral: oklch(0.6609 0.0246 260.7); /* #8A93A2 */
     --erp-c-neutral-text: oklch(0.7996 0.0217 261.76); /* #B6BECC */
     --erp-c-sidebar: oklch(0.19861 0.03355 246.44); /* #081724 */

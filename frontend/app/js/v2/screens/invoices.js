@@ -25,20 +25,20 @@
  * behind the independent v2invoicecreate flag — no door here.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.388';
-import { statusBadge } from '../status.js?v=4.9.388';
-import { canWrite } from '../session.js?v=4.9.388';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.389';
+import { statusBadge } from '../status.js?v=4.9.389';
+import { canWrite } from '../session.js?v=4.9.389';
 import {
     fetchPurchaseInvoices, invoiceToRow, invoiceRemaining, supplierIdMap,
-} from '../data/purchase-invoices-repo.js?v=4.9.388';
+} from '../data/purchase-invoices-repo.js?v=4.9.389';
 import {
     fetchSuppliers, fetchCurrency, formatMoney, formatInt, PAYMENT_WRITE_ROLES,
     payInvoiceFull, payInvoicePartial,
-} from '../data/procurement-repo.js?v=4.9.388';
+} from '../data/procurement-repo.js?v=4.9.389';
 import {
     voidPurchaseInvoice, clearAllPurchaseInvoices, INVOICE_VOID_ROLES,
-} from '../data/purchase-invoices-write-repo.js?v=4.9.388';
-import { invoiceVoidWriteEnabled } from '../write-flags.js?v=4.9.388';
+} from '../data/purchase-invoices-write-repo.js?v=4.9.389';
+import { invoiceVoidWriteEnabled } from '../write-flags.js?v=4.9.389';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

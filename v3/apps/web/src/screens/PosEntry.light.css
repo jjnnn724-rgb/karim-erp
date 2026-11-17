@@ -661,7 +661,7 @@
     color: #FFFFFF;
 }
 .pos-cashier-pick__chip:disabled { opacity: 0.5; cursor: not-allowed; }
-.pos-cashier-pick__chip:focus-visible { outline: 2px solid #2563EB; outline-offset: 1px; }
+.pos-cashier-pick__chip:focus-visible { outline: 2px solid #0F766E; outline-offset: 1px; }
 .pos-cashier-pick__no { white-space: nowrap; }
 .pos-cashier-pick__tag {
     padding: 0.02rem 0.35rem;
@@ -1191,7 +1191,7 @@
 
 .pos-entry--light {
     --pos-radius: 14px;
-    --pos-focus: #2563EB;
+    --pos-focus: #0F766E;
     --pos-hairline: #E5E9EE;
 }
 
@@ -1242,8 +1242,8 @@
     color: #8B95A3;
 }
 .pos-entry--light .pos-topbar__search .pos-search__input:focus-visible {
-    outline: 2px solid #2563EB;
-    border-color: #2563EB;
+    outline: 2px solid #0F766E;
+    border-color: #0F766E;
     box-shadow: 0 0 0 3px rgb(37 99 235 / 12%);
     background: #FFFFFF;
 }
@@ -1296,8 +1296,8 @@
     background: #FDFDFD;
 }
 .pos-entry--light .pos-search__input:focus-visible {
-    outline: 2px solid #2563EB;
-    border-color: #2563EB;
+    outline: 2px solid #0F766E;
+    border-color: #0F766E;
     box-shadow: 0 0 0 4px rgb(37 99 235 / 12%);
     background: #FFFFFF;
 }
@@ -1321,4 +1321,4 @@
 .pos-entry--light .pos-cart__line-total { font-variant-numeric: tabular-nums; }
 
 /* focus مرئي مستقل عن اللون */
-.pos-entry--light :where(button, input, select, [tabindex]):focus-visible { outline: 2px solid #2563EB; outline-offset: 1px; }
+.pos-entry--light :where(button, input, select, [tabindex]):focus-visible { outline: 2px solid #0F766E; outline-offset: 1px; }

@@ -1,4 +1,4 @@
-import { apiFetch } from '../../core/api.js?v=4.9.388';
+import { apiFetch } from '../../core/api.js?v=4.9.389';
 
 /** بوابات الامتثال — مسارات إضافية تحت /api/integration. */
 
