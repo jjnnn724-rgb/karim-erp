@@ -14,8 +14,8 @@
     'use strict';
 
     const VENDOR = {
-        jspdf: '/app/js/vendor/jspdf.umd.min.js?v=4.9.382',
-        h2c: '/app/js/vendor/html2canvas-pro.min.js?v=4.9.382',
+        jspdf: '/app/js/vendor/jspdf.umd.min.js?v=4.9.383',
+        h2c: '/app/js/vendor/html2canvas-pro.min.js?v=4.9.383',
     };
 
     function loadScript(src) {

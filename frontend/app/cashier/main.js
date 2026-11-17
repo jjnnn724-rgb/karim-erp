@@ -1,6 +1,6 @@
-import { mountLoginScreen } from '/app/js/v2/screens/login.js?v=4.9.382';
-import { mountPosEntryScreen } from '/app/js/v2/screens/pos-entry.js?v=4.9.382';
-import { installApiFetchBridge } from '/app/js/v2/session.js?v=4.9.382';
+import { mountLoginScreen } from '/app/js/v2/screens/login.js?v=4.9.383';
+import { mountPosEntryScreen } from '/app/js/v2/screens/pos-entry.js?v=4.9.383';
+import { installApiFetchBridge } from '/app/js/v2/session.js?v=4.9.383';
 
 const ALLOWED_ROLES = ['admin', 'manager', 'accountant', 'cashier'];
 const app = document.getElementById('cashier-app');

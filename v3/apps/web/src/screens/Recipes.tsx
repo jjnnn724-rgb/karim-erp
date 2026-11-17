@@ -26,8 +26,20 @@ import {
     recipeDeleteConfirm,
     recipeDeleteVisible,
     recipeWriteVisible,
+    recipeBomVisible,
+    syncRecipeToCashier,
+    fetchProductIngredients,
+    fetchBomInventory,
+    fetchRecipeUnits,
+    saveProductIngredients,
+    uploadProductImage,
+    removeProductImage,
+    ingredientLine,
+    newBomLine,
     updateRecipe,
+    type BomLineDraft,
 } from '../lib/recipes-write';
+import { useToast } from '../ui/Toast';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
@@ -300,12 +312,333 @@ function RecipeActionDialog({ open, title, message, onConfirm, onClose, pending,
     );
 }
 
+/* ── محرر المكوّنات (BOM) + الصورة ───────────────────────────────────────── */
+
+interface RecipeBomDialogProps {
+    open: boolean;
+    row: RecipeRow | null;
+    locked: boolean; // true حتى اكتمال المزامنة الأولية
+    canBom: boolean;
+    onClose: () => void;
+    onCloseUpdate: () => void; // عند نجاح الحفظ — يغلق ويعيد تحميل القائمة
+}
+
+function RecipeBomDialog({ open, row, locked, canBom, onClose, onCloseUpdate }: RecipeBomDialogProps) {
+    const { toast } = useToast();
+
+    const [syncState, setSyncState] = useState<'loading' | 'ready' | 'error'>('loading');
+    const [syncError, setSyncError] = useState('');
+    const [productId, setProductId] = useState<number | null>(null);
+    const [imageUrl, setImageUrl] = useState('');
+    const [imageUploading, setImageUploading] = useState(false);
+    const [saving, setSaving] = useState(false);
+    const [lines, setLines] = useState<BomLineDraft[]>([]);
+    const [inventory, setInventory] = useState<Array<{ id: number; name: string; unit: string | null }>>([]);
+    const [units, setUnits] = useState<Array<{ value: string; label: string; family: string }>>([]);
+    const [invSearch, setInvSearch] = useState('');
+    const [serverMsg, setServerMsg] = useState('');
+
+    const recipeId = row?.id ?? null;
+    const recipeName = row?.name ?? '';
+
+    useEffect(() => {
+        if (!open) {
+            return;
+        }
+        if (!recipeId) {
+            setSyncState('error');
+            setSyncError('لا يوجد معرّف للوصفة');
+            return;
+        }
+        let cancelled = false;
+        setSyncState('loading');
+        setSyncError('');
+        setServerMsg('');
+        setLines([]);
+        setInventory([]);
+        setUnits([]);
+        setInvSearch('');
+        setImageUrl(row?.imageUrl ?? '');
+        (async () => {
+            try {
+                const synced = await syncRecipeToCashier(recipeId);
+                if (cancelled || !synced.product) { return; }
+                setProductId(Number(synced.product.id));
+                setImageUrl(synced.product.image_url ?? '');
+                const [ingredients, inv, unitList] = await Promise.all([
+                    fetchProductIngredients(synced.product.id),
+                    fetchBomInventory(),
+                    fetchRecipeUnits(),
+                ]);
+                if (cancelled) { return; }
+                setLines(ingredients.map(ingredientLine));
+                setInventory(inv.map((i) => ({ id: i.id, name: i.name, unit: i.unit })));
+                setUnits(unitList as unknown as Array<{ value: string; label: string; family: string }>);
+                setSyncState('ready');
+            } catch (cause) {
+                if (cancelled) { return; }
+                setSyncState('error');
+                setSyncError(writeErrorMessage(cause, 'تعذر تجهيز محرّر المكوّنات'));
+            }
+        })();
+        return () => { cancelled = true; };
+        // الشاشة لا تعيد المزامنة عند كل تغيير لـrow — تعتمد على open فقط
+        // eslint-disable-next-line react-hooks/exhaustive-deps
+    }, [open, recipeId]);
+
+    const filteredInventory = useMemo(() => {
+        const q = invSearch.trim().toLowerCase();
+        if (!q) { return inventory.slice(0, 50); }
+        return inventory.filter((i) => i.name.toLowerCase().includes(q)).slice(0, 50);
+    }, [inventory, invSearch]);
+
+    async function handleSave(): Promise<void> {
+        if (saving || !productId) { return; }
+        const bad = lines.some((l) => {
+            const q = Number(l.quantity_per_unit);
+            return !Number.isFinite(q) || q <= 0;
+        });
+        if (bad) { setServerMsg('كل كميات المكوّنات يجب أن تكون أكبر من صفر'); return; }
+        setSaving(true);
+        setServerMsg('');
+        try {
+            const result = await saveProductIngredients(
+                productId,
+                lines.map((line) => ({
+                    inventory_id: line.inventory_id,
+                    quantity_per_unit: Number(line.quantity_per_unit) || 0,
+                    unit: line.unit,
+                    waste_percent: Number(line.waste_percent) || 0,
+                })),
+            );
+            const msg = result.total_cost != null && !Number.isNaN(result.total_cost as number)
+                ? `تم الحفظ — التكلفة الإجمالية ${Number(result.total_cost).toFixed(2)}`
+                : 'تم حفظ المكوّنات';
+            setServerMsg(msg);
+            onCloseUpdate();
+        } catch (cause) {
+            setServerMsg(writeErrorMessage(cause, 'تعذر حفظ المكوّنات'));
+        } finally { setSaving(false); }
+    }
+
+    async function handlePickImage(event: React.ChangeEvent<HTMLInputElement>): Promise<void> {
+        const file = event.target.files?.[0];
+        if (!file || !productId) { return; }
+        setImageUploading(true);
+        setServerMsg('');
+        try {
+            const uploaded = await uploadProductImage(productId, file);
+            setImageUrl(uploaded.image_url ?? '');
+            toast({ title: 'تم حفظ صورة الصنف', variant: 'success' });
+        } catch (cause) {
+            toast({ title: writeErrorMessage(cause, 'تعذر رفع الصورة'), variant: 'error' });
+        } finally { setImageUploading(false); event.target.value = ''; }
+    }
+
+    async function handleDeleteImage(): Promise<void> {
+        if (imageUploading || !productId) { return; }
+        if (!window.confirm('حذف صورة الصنف؟')) { return; }
+        setImageUploading(true);
+        try {
+            await removeProductImage(productId);
+            setImageUrl('');
+            toast({ title: 'تم حذف صورة الصنف', variant: 'success' });
+        } catch (cause) {
+            toast({ title: writeErrorMessage(cause, 'تعذر حذف الصورة'), variant: 'error' });
+        } finally { setImageUploading(false); }
+    }
+
+    function addLine(inv: { id: number; name: string; unit: string | null }): void {
+        const exists = lines.some((l) => l.inventory_id === inv.id);
+        if (exists) { setServerMsg('هذا المكون موجود بالفعل'); return; }
+        setLines((prev) => [...prev, newBomLine(inv as Pick<typeof inventory[number], 'id' | 'name' | 'unit'>, units as unknown as Parameters<typeof newBomLine>[1])]);
+        setInvSearch('');
+    }
+
+    function removeLine(id: number): void {
+        setLines((prev) => prev.filter((l) => l.inventory_id !== id));
+    }
+
+    function updateField<K extends keyof BomLineDraft>(id: number, key: K, value: BomLineDraft[K]): void {
+        setLines((prev) => prev.map((l) => (l.inventory_id === id ? { ...l, [key]: value } : l)));
+    }
+
+    const lockedView = locked || syncState !== 'ready';
+
+    return (
+        <Dialog
+            open={open}
+            onOpenChange={(next) => { if (!next) onClose(); }}
+            title={`مكوّنات ووصفة — ${recipeName}`}
+            size="lg"
+            footer={
+                <>
+                    <Button type="button" variant="secondary" size="sm" onClick={onClose}>
+                        إغلاق
+                    </Button>
+                    <Button type="button" size="sm" loading={saving} disabled={lockedView || !productId} onClick={() => void handleSave()}>
+                        حفظ التكلفة
+                    </Button>
+                </>
+            }
+        >
+            <div className="flex flex-col gap-md">
+                {/* ربط الكاشير والصورة */}
+                <div className="flex flex-wrap items-center justify-between gap-md border-b border-hairline pb-md">
+                    <div>
+                        <p className="text-label-md text-muted">ربط صنف الكاشير</p>
+                        <p className="mt-xxs text-body-md font-bold text-ink">
+                            {syncState === 'ready' ? (productId ? `مرتبط — POS #${productId}` : 'مرتبط') : syncState === 'error' ? 'تعذر الربط' : 'جارٍ الربط…'}
+                        </p>
+                        {syncState === 'error' ? (
+                            <p className="mt-xxs text-body-sm text-danger-text">{syncError}</p>
+                        ) : null}
+                    </div>
+                    <div className="flex items-center gap-md">
+                        <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-md border border-hairline bg-surface-sunken">
+                            {imageUrl ? (
+                                <img src={imageUrl} alt={recipeName} className="h-full w-full object-contain" />
+                            ) : (
+                                <span className="text-center text-caption leading-relaxed text-faint">بدون صورة</span>
+                            )}
+                        </div>
+                        {canBom && productId ? (
+                            <div className="flex flex-col gap-xs">
+                                <label className="erp-upload-btn inline-flex cursor-pointer items-center gap-xs rounded-md border border-hairline-strong px-md py-xs text-button-md text-ink hover:bg-surface-hover">
+                                    <input type="file" accept="image/*" className="sr-only" onChange={(event) => void handlePickImage(event)} />
+                                    {imageUrl ? 'تغيير الصورة' : 'رفع صورة'}
+                                </label>
+                                {imageUrl ? (
+                                    <button type="button" className="rounded-md border border-danger-text bg-danger-soft px-md py-xxs text-caption text-danger-text" onClick={() => void handleDeleteImage()} disabled={imageUploading}>
+                                        حذف الصورة
+                                    </button>
+                                ) : null}
+                            </div>
+                        ) : null}
+                    </div>
+                </div>
+
+                {/* المكونات */}
+                <div>
+                    <div className="mb-sm flex flex-wrap items-center justify-between gap-sm">
+                        <p className="text-label-md font-bold text-ink">المكوّنات ({lines.length})</p>
+                        {serverMsg ? <p className="text-caption text-success-text">{serverMsg}</p> : null}
+                    </div>
+                    {syncState === 'loading' ? (
+                        <p className="text-body-sm text-muted">جارٍ مزامنة الصنف وتحميل المكوّنات…</p>
+                    ) : syncState === 'error' ? null : (
+                        <>
+                            <div className="overflow-auto rounded-md border border-hairline">
+                                <table className="w-full text-body-sm">
+                                    <thead className="bg-surface-sunken text-caption text-muted">
+                                        <tr>
+                                            <th className="px-sm py-xs text-start">المكوّن</th>
+                                            <th className="px-sm py-xs text-end w-24">الكمية</th>
+                                            <th className="px-sm py-xs text-start w-28">الوحدة</th>
+                                            <th className="px-sm py-xs text-end w-28">التكلفة</th>
+                                            <th className="px-sm py-xs text-center w-16"></th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {lines.length === 0 ? (
+                                            <tr>
+                                                <td colSpan={5} className="px-sm py-md text-center text-body-sm text-muted">
+                                                    لا توجد مكوّنات — أضف من المخزن بالأسفل.
+                                                </td>
+                                            </tr>
+                                        ) : null}
+                                        {lines.map((line) => (
+                                            <tr key={line.inventory_id} className="border-t border-hairline">
+                                                <td className="px-sm py-xxs align-middle">
+                                                    <div className="font-semibold text-ink">{line.inventory_name}</div>
+                                                    <div className="text-caption text-muted">مخزن: {line.inventory_unit}</div>
+                                                </td>
+                                                <td className="px-sm py-xxs text-end align-middle">
+                                                    <input
+                                                        type="number" min={0} step="any" inputMode="decimal"
+                                                        className="w-20 rounded border border-hairline-strong bg-surface px-xs py-xxs text-body-sm text-end tabular-nums"
+                                                        value={line.quantity_per_unit}
+                                                        onChange={(event) => updateField(line.inventory_id, 'quantity_per_unit', event.target.value)}
+                                                        aria-label={`كمية ${line.inventory_name}`}
+                                                    />
+                                                </td>
+                                                <td className="px-sm py-xxs align-middle">
+                                                    <select
+                                                        className="w-full rounded border border-hairline-strong bg-surface px-xs py-xxs text-body-sm"
+                                                        value={line.unit}
+                                                        onChange={(event) => updateField(line.inventory_id, 'unit', event.target.value)}
+                                                        aria-label={`وحدة ${line.inventory_name}`}
+                                                    >
+                                                        {units.length === 0 ? <option value={line.unit}>{line.unit}</option> : null}
+                                                        {units.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+                                                    </select>
+                                                </td>
+                                                <td className="erp-numeric px-sm py-xxs text-end align-middle text-ink" dir="ltr">
+                                                    {line.extended_cost == null ? '—' : Number(line.extended_cost).toFixed(2)}
+                                                </td>
+                                                <td className="px-sm py-xxs text-center align-middle">
+                                                    <button
+                                                        type="button"
+                                                        className="rounded border border-hairline-strong p-xs text-body-sm text-muted hover:bg-danger-soft hover:text-danger-text"
+                                                        onClick={() => removeLine(line.inventory_id)}
+                                                        aria-label={`إزالة ${line.inventory_name}`}
+                                                    >
+                                                        ✕
+                                                    </button>
+                                                </td>
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </div>
+                            {/* إضافة مكون */}
+                            <div className="mt-sm border-t border-hairline pt-sm">
+                                <label className="text-label-md text-muted" htmlFor="erp-bom-add">إضافة مكوّن من المخزن</label>
+                                <input
+                                    id="erp-bom-add"
+                                    type="search"
+                                    className="mt-xs w-full rounded border border-hairline-strong bg-surface px-sm py-xs text-body-sm"
+                                    placeholder="ابحث باسم الصنف…"
+                                    value={invSearch}
+                                    onChange={(event) => setInvSearch(event.target.value)}
+                                />
+                                <div className="mt-xs max-h-48 overflow-auto rounded-md border border-hairline" role="listbox" aria-label="أصناف المخزن">
+                                    {filteredInventory.length === 0 ? (
+                                        <p className="px-sm py-xs text-body-sm text-muted">لا أصناف مطابقة</p>
+                                    ) : null}
+                                    {filteredInventory.map((item) => (
+                                        <button
+                                            key={item.id}
+                                            type="button"
+                                            role="option"
+                                            className="flex w-full items-center justify-between gap-sm border-b border-hairline px-sm py-xs text-right hover:bg-surface-hover"
+                                            onClick={() => addLine(item)}
+                                        >
+                                            <span className="text-body-sm text-ink">{item.name}</span>
+                                            <span className="text-caption text-muted">{item.unit ?? ''}</span>
+                                        </button>
+                                    ))}
+                                </div>
+                            </div>
+                        </>
+                    )}
+                </div>
+            </div>
+        </Dialog>
+    );
+}
+
 /* ── الشاشة ───────────────────────────────────────────────────────────── */
 
 export function Recipes() {
     const auth = useAuthState();
     const canWrite = recipeWriteVisible(auth.user?.role);
     const canDelete = recipeDeleteVisible(auth.user?.role);
+    const canBom = recipeBomVisible(auth.user?.role);
+    const { toast } = useToast();
+
+    const [bomOpen, setBomOpen] = useState(false);
+    const [bomRow, setBomRow] = useState<RecipeRow | null>(null);
 
     const [formOpen, setFormOpen] = useState(false);
     const [editing, setEditing] = useState<RecipeRow | null>(null);
@@ -670,9 +1003,20 @@ export function Recipes() {
                                                     {row.productLinked ? 'مرتبط' : 'بدون'}
                                                 </span>
                                             </td>
-                                            {(canWrite || canDelete) && (
+                                            {(canWrite || canDelete || canBom) && (
                                                 <td className="px-sm py-xxs" data-erp-print-hide>
                                                     <div className="flex flex-wrap items-center gap-xs">
+                                                        {canBom ? (
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                variant="secondary"
+                                                                title="مكوّنات الوصفة والصورة (BOM)"
+                                                                onClick={() => { setBomRow(row); setBomOpen(true); }}
+                                                            >
+                                                                المكوّنات
+                                                            </Button>
+                                                        ) : null}
                                                         {canWrite ? (
                                                             <Button
                                                                 type="button"
@@ -761,6 +1105,20 @@ export function Recipes() {
                 }}
                 pending={deleteRecipeMutation.isPending}
                 confirmLabel="حذف"
+            />
+            <RecipeBomDialog
+                open={bomOpen}
+                row={bomRow}
+                locked={false}
+                canBom={canBom}
+                onClose={() => { setBomOpen(false); setBomRow(null); }}
+                onCloseUpdate={() => {
+                    void recipesQuery.refetch();
+                    void catalogQuery.refetch();
+                    setBomOpen(false);
+                    setBomRow(null);
+                    toast({ title: 'تم تحديث تكلفت الوصفة', variant: 'success' });
+                }}
             />
         </div>
     );

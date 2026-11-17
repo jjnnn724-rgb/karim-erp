@@ -44,7 +44,7 @@
  *   remains the authority on every gate — this file only names the paths.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.382';
+import { apiFetch } from '../../core/api.js?v=4.9.383';
 
 /** قراءة أذون الصرف. scope='month' (الافتراضي) = الشهر الحالي بفلتر الخادم
  *  (server.js:1680 يطبّق dateRange عند v2_period=month وحده)؛ scope='all' =
