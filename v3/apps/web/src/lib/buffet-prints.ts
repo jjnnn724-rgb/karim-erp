@@ -91,32 +91,30 @@ body { margin: 0; direction: rtl; font-family: 'Tajawal', 'Segoe UI', Tahoma, sa
 .card__nutri-cell { text-align: center; }
 .card__nutri-num { display: block; font-size: 11px; font-weight: 800; color: #f4ecc9; direction: ltr; font-variant-numeric: tabular-nums; line-height: 1.15; }
 .card__nutri-label { display: block; font-size: 5.2px; letter-spacing: 0.6px; color: #a89a68; font-weight: 700; margin-top: 1px; }
+.card__desc-en {
+    font-size: 7.6px; color: #6b6556; line-height: 1.6; margin: 0;
+    font-style: italic; padding-inline-start: 8px; border-inline-start: 2px solid #e5d9b8;
+}
 .card__allerg { font-size: 7.2px; color: #5a4623; background: #f7f3e6; border: 1px solid #e5d9b8; border-radius: 6px; padding: 5px 8px; line-height: 1.9; }
 .card__allerg b { color: #8a6d2f; font-weight: 800; }
-.card__foot { display: flex; justify-content: space-between; align-items: baseline; margin-top: auto; border-top: 2px solid #c8a24a; padding-top: 5px; font-size: 5.8px; color: #87928b; letter-spacing: 1.2px; }
-.card__foot b { color: #8a6d2f; font-weight: 800; }
-.card__foot code { direction: ltr; font-size: 5.8px; color: #a89a68; letter-spacing: 1px; }
-.card__sources { font-size: 5.2px; color: #8a867a; line-height: 1.9; border-top: 1px dashed #d8d2bd; padding-top: 4px; margin: 4px 0 0; }
 .card__unmatched { font-size: 5px; color: #b45309; line-height: 1.7; }
 @media print { body { background: #fff; } }
 `;
 
-function cardHtml(dish: BuffetDish, opts: PrintOptions): string {
+function cardHtml(dish: BuffetDish): string {
     const pp = nutritionPerServing(dish);
     const ings = dish.lines
         .map((l) => `<li><span>${esc(l.name)}</span></li>`)
         .join('');
     const description = (dish.description ?? '').trim();
+    const englishDesc = (dish.description_en ?? '').trim();
     const allergens = pp?.allergens ?? [];
     const allergyHtml = allergens.length
         ? allergens.map((a) => `<span>${esc(a)}</span>`).join(' · ')
         : '<span>لا توجد مسببات حساسية معروفة (حسب المكوّنات المسجّلة)</span>';
-    const ref = `BUFFET-CARD-${String(dish.id).padStart(3, '0')}`;
     const unmatchedNote = pp && pp.unmatched > 0
         ? `<p class="card__unmatched">مكوّنات خارج جدول USDA: ${pp.unmatched} — تُراجع لاحقًا، ولا تُقدَّر بأرقام وهمية.</p>`
         : '';
-    const sources = opts.pro ? `
-        <p class="card__sources">المصادر: USDA FoodData Central — SR Legacy · EU FIC 1169/2011 (القائمة الـ14 لمسببات الحساسية) · HACCP / ISO 22000 · القيم للحصة تقديرية من الوصفة وقد تختلف حسب مصدر الخامات.</p>` : '';
     return `<article class="card">
         <div class="card__ribbon">
             <img src="${LOGO}" alt="شعار مطاعم الشرفة العالمي" width="42" height="42">
@@ -125,6 +123,7 @@ function cardHtml(dish: BuffetDish, opts: PrintOptions): string {
         <span class="card__eyebrow">BUFFET SELECTION</span>
         <h2 class="card__title">${esc(dish.name)}</h2>
         <p class="card__desc${description ? '' : ' card__desc--empty'}">${description ? esc(description) : 'نبذة الصنف قيد الإعداد — يراجعها الشيف'}</p>
+        ${englishDesc ? `<p class="card__desc-en" lang="en" dir="ltr">${esc(englishDesc)}</p>` : ''}
         <div class="card__rule" aria-hidden="true"><span></span><i>✦</i><span></span></div>
         <div class="card__h">المكونات · <span dir="ltr">INGREDIENTS</span></div>
         <ul class="card__ings">${ings || '<li><span>سجلّ المكوّنات قيد الإعداد</span></li>'}</ul>
@@ -139,12 +138,10 @@ function cardHtml(dish: BuffetDish, opts: PrintOptions): string {
         </div>
         <div class="card__allerg"><b>⚠ مسببات الحساسية:</b> ${allergyHtml}</div>
         ${unmatchedNote}
-        <div class="card__foot"><span>بوفيه الشرفة العالمي · <b>AL SHURFA AL ALAMI</b></span><code>${ref} · 35–40 PER TRAY</code></div>
-        ${sources}
     </article>`;
 }
 
-export function buildDishCardHtml(dish: BuffetDish, opts: PrintOptions = {}): string {
+export function buildDishCardHtml(dish: BuffetDish, _opts: PrintOptions = {}): string {
     return `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -153,14 +150,14 @@ export function buildDishCardHtml(dish: BuffetDish, opts: PrintOptions = {}): st
 <style>${CARD_CSS}</style>
 </head>
 <body>
-<div class="grid grid--single">${cardHtml(dish, opts)}</div>
+<div class="grid grid--single">${cardHtml(dish)}</div>
 </body>
 </html>`;
 }
 
 /** كل الكروت — كل ٤ كروت في صفحة A4 (٢×٢) */
-export function buildAllCardsHtml(dishes: BuffetDish[], opts: PrintOptions = {}): string {
-    const cards = dishes.map((d) => cardHtml(d, opts));
+export function buildAllCardsHtml(dishes: BuffetDish[], _opts: PrintOptions = {}): string {
+    const cards = dishes.map((d) => cardHtml(d));
     const pages: string[] = [];
     for (let i = 0; i < cards.length; i += 4) {
         pages.push(`<div class="grid">${cards.slice(i, i + 4).join('')}</div>`);
@@ -275,6 +272,7 @@ body { margin: 0; direction: rtl; font-family: 'Segoe UI', Tahoma, 'Noto Kufi Ar
 .recipe__ref { margin-inline-start: auto; text-align: end; font-size: 8px; color: #8a6d2f; line-height: 1.8; font-weight: 700; direction: ltr; }
 .recipe__ref b { font-size: 10px; letter-spacing: 1.5px; color: #141a14; direction: ltr; display: block; }
 .recipe__desc { background: #f7f3e6; border: 1px solid #e5d9b8; border-radius: 8px; padding: 8px 12px; font-size: 9.5px; line-height: 2; color: #3d4a40; margin: 10px 0; }
+.recipe__desc-en { background: #f7f3e6; border: 1px solid #e5d9b8; border-radius: 8px; padding: 6px 12px; font-size: 8.5px; line-height: 1.7; color: #6b6556; font-style: italic; margin: -4px 0 10px; }
 .recipe__desc b { color: #8a6d2f; }
 .recipe__h { font-size: 8px; letter-spacing: 2.5px; font-weight: 800; color: #8a6d2f; margin: 12px 0 6px; display: flex; align-items: center; gap: 8px; }
 .recipe__h span[dir="ltr"] { color: #141a14; letter-spacing: 0; font-size: 7px; }
@@ -305,6 +303,7 @@ function recipeBody(dish: BuffetDish, opts: PrintOptions = {}): string {
     const pp = nutritionPerServing(dish);
     const ref = `BUFFET-RECIPE-${String(dish.id).padStart(3, '0')}`;
     const description = (dish.description ?? '').trim();
+    const englishDesc = (dish.description_en ?? '').trim();
     const method = (dish.notes ?? '').trim();
     const nutritionNote = pp?.unmatched && pp.unmatched > 0
         ? `مكوّنات خارج جدول USDA: ${pp.unmatched} — تُراجع لاحقًا.`
@@ -328,6 +327,7 @@ function recipeBody(dish: BuffetDish, opts: PrintOptions = {}): string {
     </div>
 
     ${description ? `<p class="recipe__desc"><b>نبذة:</b> ${esc(description)}</p>` : ''}
+    ${englishDesc ? `<p class="recipe__desc-en" lang="en" dir="ltr">${esc(englishDesc)}</p>` : ''}
 
     <h2 class="recipe__h">المكوّنات والمقادير · <span dir="ltr">INGREDIENTS</span></h2>
     <table>

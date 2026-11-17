@@ -83,6 +83,7 @@ const emptyForm = () => ({
     yields: 'سفنديش 5 سم — تكفي 35–40 شخص',
     notes: '',
     description: '',
+    description_en: '',
     ingredients: [{ name: '', qty: 1, unit: 'كيلو' }] as FormIngredient[],
 });
 
@@ -265,6 +266,7 @@ export function Buffet() {
             yields: dish.yields,
             notes: dish.notes,
             description: dish.description ?? '',
+            description_en: dish.description_en ?? '',
             ingredients: dish.lines.map((l) => ({ name: l.name, qty: l.qty, unit: l.unit })),
         });
         setDraftNutrition(dish.nutrition ?? null);
@@ -310,6 +312,7 @@ export function Buffet() {
             yields: form.yields.trim(),
             notes: form.notes.trim(),
             description: form.description.trim(),
+            description_en: form.description_en.trim(),
             ingredients,
         };
         if (editingDish) {
@@ -671,6 +674,7 @@ export function Buffet() {
                                 <div className="bf-card-tile__body">
                                     <h3 className="bf-card-tile__name">{d.name}</h3>
                                     {d.description ? <p className="bf-card-tile__desc">{d.description}</p> : null}
+                                    {d.description_en ? <p className="bf-card-tile__desc-en" lang="en" dir="ltr">{d.description_en}</p> : null}
                                 </div>
                                 <div className="bf-card-tile__meta">
                                     <span className="bf-cat">{d.category}</span>
@@ -681,7 +685,6 @@ export function Buffet() {
                                     ) : null}
                                 </div>
                                 <div className="bf-card-tile__foot">
-                                    <span className="bf-card-tile__ref" dir="ltr">{`BUFFET-CARD-${String(d.id).padStart(3, '0')}`}</span>
                                     <button type="button" className="bf-mini-btn bf-mini-btn--gold" onClick={() => printDishCard(d, { pro: proPrints })}>
                                         طباعة الكرت
                                     </button>
@@ -713,6 +716,7 @@ export function Buffet() {
                         <div className="bf-drawer__ref"><span>BUFFET / {String(openDish.id)}</span><span>KOST · حي من المخزن</span></div>
                         <div className="bf-drawer__body">
                             {openDish.description ? <p className="bf-drawer__desc">{openDish.description}</p> : null}
+                            {openDish.description_en ? <p className="bf-drawer__desc-en" lang="en" dir="ltr">{openDish.description_en}</p> : null}
 
                             <div className="bf-costbar">
                                 <div className="bf-costbar__cell">
@@ -938,6 +942,10 @@ export function Buffet() {
                     <div className="bf-field">
                         <label htmlFor="bf-desc" className="bf-label">نبذة الصنف — يظهر على الكرت والسبورة</label>
                         <textarea id="bf-desc" className="erp-control bf-textarea" rows={2} maxLength={600} placeholder="وصف احترافي من ٢-٣ أسطر…" value={form.description} onChange={(e) => setForm((p) => ({ ...p, description: e.target.value }))} />
+                    </div>
+                    <div className="bf-field">
+                        <label htmlFor="bf-desc-en" className="bf-label">English description — for the global card and guests</label>
+                        <textarea id="bf-desc-en" className="erp-control bf-textarea bf-textarea--en" rows={2} maxLength={600} dir="ltr" placeholder="Professional English description — 1–2 lines…" value={form.description_en} onChange={(e) => setForm((p) => ({ ...p, description_en: e.target.value }))} />
                     </div>
                     <div className="bf-field">
                         <div className="bf-form__label-row">

@@ -67,6 +67,7 @@ export const buffetDishSchema = z.object({
     yields: z.string(),
     notes: z.string(),
     description: z.string().nullable().optional(),
+    description_en: z.string().nullable().optional(),
     nutrition: buffetNutritionSchema.nullable().optional(),
     batchCost: moneyValue,
     pricedLines: z.number(),
@@ -163,6 +164,7 @@ export const dishPayloadSchema = z.object({
     yields: z.string().trim().default('سفنديش 5 سم — تكفي 35–40 شخص'),
     notes: z.string().trim().default(''),
     description: z.string().trim().default(''),
+    description_en: z.string().trim().default(''),
     ingredients: z.array(z.object({ name: z.string().trim().min(1), qty: z.coerce.number().min(0), unit: z.string().trim().min(1) }).passthrough()).default([]),
 });
 export type DishPayload = z.infer<typeof dishPayloadSchema>;

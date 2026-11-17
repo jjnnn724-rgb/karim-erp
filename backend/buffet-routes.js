@@ -86,7 +86,7 @@ function packPreview(item) {
 router.get('/overview', jwtAuth, readGate, async (req, res, next) => {
     try {
         const [dishRows, ingredientRows, weekRows] = await Promise.all([
-            pool.query('SELECT id, name, category, freq, yields, notes, description FROM buffet_dishes ORDER BY category, id'),
+            pool.query('SELECT id, name, category, freq, yields, notes, description, description_en FROM buffet_dishes ORDER BY category, id'),
             pool.query('SELECT id, dish_id, position, name, qty, unit, inventory_id, pack_kg FROM buffet_ingredients ORDER BY dish_id, position'),
             pool.query(`SELECT w.day, w.meal, w.position, w.dish_id, d.name AS dish_name
                           FROM buffet_week w JOIN buffet_dishes d ON d.id = w.dish_id
@@ -123,6 +123,7 @@ router.get('/overview', jwtAuth, readGate, async (req, res, next) => {
                 yields: d.yields,
                 notes: d.notes,
                 description: d.description ?? '',
+                description_en: d.description_en ?? '',
                 nutrition,
                 ...cost,
             };
@@ -326,15 +327,16 @@ const dishPayloadSchema = z.object({
     yields: z.string().trim().max(200).default(''),
     notes: z.string().trim().max(4000).default(''),
     description: z.string().trim().max(600).default(''),
+    description_en: z.string().trim().max(600).default(''),
     ingredients: z.array(ingredientSchema).max(200).default([]),
 });
 
 async function saveDishWithIngredients(client, payload, dishId) {
     await client.query(
         `UPDATE buffet_dishes
-            SET name = $2, category = $3, freq = $4, yields = $5, notes = $6, description = $7, updated_at = now()
+            SET name = $2, category = $3, freq = $4, yields = $5, notes = $6, description = $7, description_en = $8, updated_at = now()
           WHERE id = $1`,
-        [dishId, payload.name, payload.category, payload.freq, payload.yields, payload.notes, payload.description],
+        [dishId, payload.name, payload.category, payload.freq, payload.yields, payload.notes, payload.description, payload.description_en],
     );
     await client.query('DELETE FROM buffet_ingredients WHERE dish_id = $1', [dishId]);
     let pos = 0;
@@ -365,9 +367,9 @@ router.post('/dishes', jwtAuth, dishWriteGate, async (req, res, next) => {
                 return res.status(409).json({ ok: false, error: 'DUPLICATE', message: 'الصنف موجود مسبقًا في البوفيه' });
             }
             const d = await client.query(
-                `INSERT INTO buffet_dishes (name, category, freq, yields, notes, description)
-                 VALUES ($1,$2,$3,$4,$5,$6) RETURNING id`,
-                [payload.name, payload.category, payload.freq, payload.yields, payload.notes, payload.description],
+                `INSERT INTO buffet_dishes (name, category, freq, yields, notes, description, description_en)
+                 VALUES ($1,$2,$3,$4,$5,$6,$7) RETURNING id`,
+                [payload.name, payload.category, payload.freq, payload.yields, payload.notes, payload.description, payload.description_en],
             );
             let pos = 0;
             for (const ing of payload.ingredients) {

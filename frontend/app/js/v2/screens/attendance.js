@@ -52,10 +52,10 @@
  *     in-flight response never touches a destroyed screen.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.387';
-import { statusBadge } from '../status.js?v=4.9.387';
-import { ensureXlsx } from '../vendor.js?v=4.9.387';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.387';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.388';
+import { statusBadge } from '../status.js?v=4.9.388';
+import { ensureXlsx } from '../vendor.js?v=4.9.388';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.388';
 import {
     attendanceToRow, ATTENDANCE_STATE_AR, PERIODS,
     fetchAttendanceRange, buildAttendanceKpis, buildAttendanceLegend,
@@ -72,10 +72,10 @@ import {
     fetchStrictAudit, summarizeAudit,
     fetchAttendanceAudit, auditEditRows,
     fetchMonthlyAttendance, buildMonthlySheet, minutesToHM,
-} from '../data/attendance-repo.js?v=4.9.387';
-import { fetchEmployees, employeeMap, fetchDepartments, departmentMap } from '../data/employees-repo.js?v=4.9.387';
-import { fetchLeaveWorkflow } from '../data/leaves-repo.js?v=4.9.387';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.387';
+} from '../data/attendance-repo.js?v=4.9.388';
+import { fetchEmployees, employeeMap, fetchDepartments, departmentMap } from '../data/employees-repo.js?v=4.9.388';
+import { fetchLeaveWorkflow } from '../data/leaves-repo.js?v=4.9.388';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.388';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

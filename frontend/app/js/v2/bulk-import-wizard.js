@@ -11,17 +11,17 @@
  * `v2bulkimport` (OFF). الخادم يعيد فحص كل صف على أي حال.
  */
 
-import { CONFIG, ROLES } from '../core/config.js?v=4.9.387';
-import { ensureXlsx } from './vendor.js?v=4.9.387';
-import { openInAppReport } from './report-viewer.js?v=4.9.387';
-import { loadBulkImportContext, createBulkAccount } from './data/bulk-import-repo.js?v=4.9.387';
+import { CONFIG, ROLES } from '../core/config.js?v=4.9.388';
+import { ensureXlsx } from './vendor.js?v=4.9.388';
+import { openInAppReport } from './report-viewer.js?v=4.9.388';
+import { loadBulkImportContext, createBulkAccount } from './data/bulk-import-repo.js?v=4.9.388';
 import {
     BULK_DEFAULT_ROLE, BULK_PASSWORD_LENGTH,
     buildBulkRows, bulkPreviewStats, bulkToCopyText, bulkToCsv, bulkToJson,
     bulkToExcelAoa, bulkPrintTableHtml, bulkPrintSlipsHtml,
     fingerprintForms, generateBulkPassword, parseBulkFileText, parseBulkNames,
     usedFingerprintSet,
-} from './bulk-import.js?v=4.9.387';
+} from './bulk-import.js?v=4.9.388';
 
 const ROLE_NAMES = Object.keys(ROLES).reduce((map, key) => {
     map[key] = ROLES[key].name;
