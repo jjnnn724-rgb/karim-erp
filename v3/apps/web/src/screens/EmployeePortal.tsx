@@ -483,60 +483,81 @@ export function EmployeePortal() {
             {snapshot ? (
                 <>
                     {canPunch ? (
-                        <SectionCard
-                            title="البصمة الذاتية"
-                            english="Self punch"
-                            actions={
-                                <div className="flex items-center gap-sm">
-                                    {canSwitch ? <span className="text-body-xs text-muted">تُسجَّل لصاحب الحساب الحالي</span> : null}
-                                    <Badge variant={chip.tone}>{chip.label}</Badge>
-                                </div>
-                            }
-                        >
-                            <div className="flex flex-col gap-sm p-sm">
-                                {!status ? (
-                                    <p className="text-body-sm text-danger-text">تعذر قراءة حالة البوابة — أعد التحديث.</p>
-                                ) : !isOn(status.enabled) ? (
-                                    <p className="text-body-sm text-muted">البصمة الذاتية غير مفعّلة من الإدارة بعد.</p>
-                                ) : status.hasEmployeeProfile === false ? (
-                                    <p className="text-body-sm text-muted">لم يتم ربط حسابك بملف موظف — تواصل مع الموارد البشرية.</p>
-                                ) : isOn(status.faceEnabled) && status.faceEnrolled === false ? (
-                                    <p className="text-body-sm text-warning-text">لم يتم تسجيل وجهك بعد — راجع الموارد البشرية لتسجيله.</p>
-                                ) : (
-                                    <div className="flex flex-wrap items-center gap-sm">
-                                        <Button
-                                            variant="primary"
-                                            loading={punch.isPending}
-                                            onClick={() => {
-                                                void doPunch();
-                                            }}
-                                            data-testid="punch-button"
-                                        >
-                                            {punch.isPending ? 'جارٍ تسجيل البصمة…' : 'تسجيل البصمة الآن'}
-                                        </Button>
-                                        <span className="text-body-sm text-muted">
-                                            {isOn(status.faceEnabled)
-                                                ? 'سيُطلب تأكيد الوجه ثم الموقع — الوقت من ساعة الخادم.'
-                                                : 'سيُقرأ موقعك لحظة البصمة فقط — الوقت من ساعة الخادم.'}
-                                        </span>
-                                    </div>
-                                )}
-                                {punchStage ? (
-                                    <p className="text-body-sm text-muted" role="status" aria-live="polite">
-                                        {punchStage}
+                        <div className="portal-punch" aria-label="بوابة البصمة الذاتية">
+                            <div className="portal-punch__inner">
+                                <div>
+                                    <span className="portal-punch__eyebrow" dir="ltr">
+                                        AL SHURFA AL ALAMI · SELF PUNCH
+                                    </span>
+                                    <h2 className="portal-punch__title">
+                                        بوابة <em>البصمة الذاتية</em>
+                                    </h2>
+                                    <p className="portal-punch__desc">
+                                        بصمتك دليل حضورك — الموقع من هاتفك لحظة البصمة فقط، والوقت من ساعة الخادم. لا شيء يُسجَّل بدون وجهك وموقعك الحالي.
                                     </p>
-                                ) : null}
-                                <p
-                                    className={`text-body-sm ${resultClass(punchResult?.kind ?? null)}`}
-                                    role="status"
-                                    aria-live="polite"
-                                    data-testid="punch-result"
-                                >
-                                    {punchResult?.text ?? ''}
-                                </p>
+                                    <div className="portal-punch__orb">
+                                        <div className="portal-punch__orb-mark" aria-hidden="true">ب</div>
+                                        <div className="portal-punch__orb-copy">
+                                            <span className="portal-punch__orb-title">كاميرا التطبيق — بوابة السيرفر</span>
+                                            <span className="portal-punch__orb-sub" dir="ltr">SOURCE: APP · TIME: SERVER</span>
+                                        </div>
+                                    </div>
+                                    <ol className="portal-punch__steps" aria-label="خطوات البصمة">
+                                        <li className="portal-punch__step"><b>١</b>قارب الوجه للشاشة</li>
+                                        <li className="portal-punch__step"><b>٢</b>تسمح بتأكيد الوجه</li>
+                                        <li className="portal-punch__step"><b>٣</b>نقرأ موقعك لحظة البصمة</li>
+                                        <li className="portal-punch__step"><b>٤</b>الوقت من ساعة الخادم</li>
+                                    </ol>
+                                </div>
+                                <div className="portal-punch__cta">
+                                    {!status ? (
+                                        <>
+                                            <span className="portal-punch__status" data-tone="neutral">تعذر القراءة</span>
+                                            <p className="portal-punch__result" data-kind="error" role="alert">تعذر قراءة حالة البوابة — أعد التحديث.</p>
+                                        </>
+                                    ) : !isOn(status.enabled) ? (
+                                        <>
+                                            <span className="portal-punch__status" data-tone="neutral">مغلق</span>
+                                            <p className="portal-punch__result" data-kind="neutral">البصمة الذاتية غير مفعّلة من الإدارة بعد.</p>
+                                        </>
+                                    ) : status.hasEmployeeProfile === false ? (
+                                        <>
+                                            <span className="portal-punch__status" data-tone="warning">غير مكتمل</span>
+                                            <p className="portal-punch__result" data-kind="error">لم يتم ربط حسابك بملف موظف — تواصل مع الموارد البشرية.</p>
+                                        </>
+                                    ) : isOn(status.faceEnabled) && status.faceEnrolled === false ? (
+                                        <>
+                                            <span className="portal-punch__status" data-tone="warning">بانتظار الوجه</span>
+                                            <p className="portal-punch__result" data-kind="error">لم يتم تسجيل وجهك بعد — راجع الموارد البشرية لتسجيله.</p>
+                                        </>
+                                    ) : (
+                                        <>
+                                            <span className="portal-punch__status" data-tone="success">{chip.label}</span>
+                                            <button
+                                                type="button"
+                                                className="portal-punch__button"
+                                                disabled={punch.isPending}
+                                                onClick={() => { void doPunch(); }}
+                                                data-testid="punch-button"
+                                            >
+                                                {punch.isPending ? 'جارٍ تسجيل البصمة…' : 'تسجيل البصمة الآن'}
+                                            </button>
+                                            <p className="portal-punch__cta-note">
+                                                {isOn(status.faceEnabled) ? 'سيُطلب تأكيد الوجه ثم الموقع' : 'سيُقرأ موقعك لحظة البصمة فقط'}
+                                            </p>
+                                        </>
+                                    )}
+                                    {punchStage ? (
+                                        <p className="portal-punch__cta-note" role="status" aria-live="polite">{punchStage}</p>
+                                    ) : null}
+                                    <p className="portal-punch__result" data-kind={punchResult?.kind ?? 'neutral'} role="status" aria-live="polite" data-testid="punch-result">
+                                        {punchResult?.text ?? 'جاهز — استعد لتسجيل بصمتك'}
+                                    </p>
+                                </div>
                             </div>
-                        </SectionCard>
+                        </div>
                     ) : null}
+
 
                     <SectionCard
                         title="ملف الموظف"
