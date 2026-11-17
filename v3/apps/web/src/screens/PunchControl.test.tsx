@@ -50,8 +50,14 @@ describe('مركز التحكم بالبصمة والحضور', () => {
                 if (url.includes('/api/attendance/portal/punch-devices')) {
                     return json([]);
                 }
-                if (url.includes('/api/attendance/portal/face/list')) {
+                if (url.includes('/api/attendance/portal/face/list') || url.includes('/face/list')) {
                     return json([]);
+                }
+                if (url.includes('/api/employees')) {
+                    return json({ data: [{ id: 7, name: 'موظف تجريبي', status: 'active' }], total: 1, from: '', to: '' });
+                }
+                if (url.includes('/api/attendance/range')) {
+                    return json({ data: [], total: 0, from: '2026-11-17', to: '2026-11-17' });
                 }
                 if (url.includes('/api/zkteco/status') || url.includes('/api/zkteco/overview') || url.includes('/zkteco')) {
                     return json({
@@ -70,5 +76,6 @@ describe('مركز التحكم بالبصمة والحضور', () => {
 
         expect(await screen.findByText('مركز التحكم بالبصمة والحضور')).toBeTruthy();
         expect(await screen.findByText(/أجهزة متصلة/)).toBeTruthy();
+        expect(await screen.findByText(/تصحيح أي بصمة — أي موظف، أي يوم/)).toBeTruthy();
     });
 });

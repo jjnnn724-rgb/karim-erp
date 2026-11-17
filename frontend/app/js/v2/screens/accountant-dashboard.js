@@ -11,9 +11,9 @@
  * Quick links navigate to the migrated finance screens only.
  */
 
-import { lineChart, barChart } from '../charts.js?v=4.9.394';
-import { fetchAccountantSnapshot, buildAccountantView } from '../data/dashboard-repo.js?v=4.9.394';
-import { money, moneyText, int, kpiStrip, miniList, failureBox } from '../role-dash-parts.js?v=4.9.394';
+import { lineChart, barChart } from '../charts.js?v=4.9.395';
+import { fetchAccountantSnapshot, buildAccountantView } from '../data/dashboard-repo.js?v=4.9.395';
+import { money, moneyText, int, kpiStrip, miniList, failureBox } from '../role-dash-parts.js?v=4.9.395';
 
 const pct = (v) => (v == null ? '—' : `${v.toFixed(1)}%`);
 

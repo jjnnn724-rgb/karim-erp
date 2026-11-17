@@ -4,6 +4,7 @@ import './Zkteco.premium.css';
 import { PrintActions } from '../components/PrintActions';
 import { ReportHeader, SectionCard } from '../components/Reports';
 import { StateError, StateLoading } from '../components/TableState';
+import { AttendanceFixPanel } from '../components/AttendanceFixPanel';
 import { ZktecoAdmin } from '../components/ZktecoAdmin';
 import { ZktecoControl } from '../components/ZktecoControl';
 import { ZktecoWorkbench } from '../components/ZktecoWorkbench';
@@ -112,6 +113,10 @@ export function PunchControl() {
                     </SectionCard>
                 </div>
             ) : null}
+
+            <SectionCard title="تصحيح أي بصمة — أي موظف، أي يوم" english="Fix any punch — any employee, any day">
+                <AttendanceFixPanel />
+            </SectionCard>
         </div>
     );
 }

@@ -37,7 +37,9 @@ describe('zkteco-write', () => {
     });
 
     it('يفصل أدوار الكتابة عن أدوار التحكم', () => {
-        expect(canWriteZk('hr')).toBe(true);
+        expect(canWriteZk('admin')).toBe(true);
+        expect(canWriteZk('owner')).toBe(true);
+        expect(canWriteZk('hr')).toBe(false);
         expect(canWriteZk('manager')).toBe(false);
         expect(canControlZk('owner')).toBe(true);
         expect(canControlZk('hr')).toBe(false);

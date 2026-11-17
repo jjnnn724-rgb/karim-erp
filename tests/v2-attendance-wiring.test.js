@@ -57,11 +57,11 @@ function repoHarness() {
 describe('أ. دالة العقد: attWriteVisible', () => {
     test('الأدوار الثلاثة التي يقبلها الخادم كتابةً فقط', () => {
         const r = repoHarness();
-        expect(r.ATT_WRITE_ROLES).toEqual(['admin', 'manager', 'hr']);
-        for (const role of ['admin', 'manager', 'hr']) {
+        expect(r.ATT_WRITE_ROLES).toEqual(['admin', 'owner']);
+        for (const role of ['admin', 'owner']) {
             expect(r.attWriteVisible(role)).toBe(true);
         }
-        for (const role of ['dept_head', 'accountant', 'cashier', 'employee', '', null, undefined]) {
+        for (const role of ['dept_head', 'accountant', 'cashier', 'employee', 'hr', 'manager', '', null, undefined]) {
             expect(r.attWriteVisible(role)).toBe(false);
         }
     });

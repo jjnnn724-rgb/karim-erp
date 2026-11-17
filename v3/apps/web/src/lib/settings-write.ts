@@ -41,7 +41,7 @@ export const ZATCA_READ_ROLES = ['admin', 'manager', 'accountant', 'auditor'] as
 export const ZATCA_WRITE_ROLES = ['admin', 'manager'] as const;
 export const KOT_READ_ROLES = ['admin', 'manager', 'accountant', 'auditor'] as const;
 export const KOT_WRITE_ROLES = ['admin', 'manager'] as const;
-export const PUNCH_ROLES = ['admin', 'hr'] as const;
+export const PUNCH_ROLES = ['admin', 'owner'] as const;
 export const BACKUP_ROLES = ['admin'] as const;
 
 export function roleIn(role: string | null | undefined, allowed: readonly string[]): boolean {

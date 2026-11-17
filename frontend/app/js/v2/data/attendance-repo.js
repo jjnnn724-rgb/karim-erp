@@ -60,7 +60,7 @@
  *   own scope so a subset never reads as the whole period.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.394';
+import { apiFetch } from '../../core/api.js?v=4.9.395';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
 const TIME_RE = /^(\d{1,2}):(\d{2})$/;
@@ -378,10 +378,10 @@ export async function fetchAttendanceReport({ employeeId, from = '', to = '' } =
 /** server.js:1778 — الحضور يُكتب لهذه الأدوار الثلاثة فقط. بقية الأدوار
  *  يمرّون من enforceAttendanceSelfService (server.js:1182) على سجلّهم هم،
  *  وهو مسار البوابة الذاتية (W2-4) لا هذه الشاشة. */
-export const ATT_WRITE_ROLES = ['admin', 'manager', 'hr'];
+export const ATT_WRITE_ROLES = ['admin', 'owner'];
 
 /** ADMIN_ROLES في hr-routes.js:15 — أبواب الورديات والتدقيق والكشف الشهري. */
-export const ATT_ADMIN_ROLES = ['admin', 'hr', 'manager'];
+export const ATT_ADMIN_ROLES = ['admin', 'owner'];
 
 /** صلاحية عرض في الواجهة فقط — الخادم يعيد فحص كل طلب. */
 export function attWriteVisible(role) {

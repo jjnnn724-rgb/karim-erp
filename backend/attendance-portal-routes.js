@@ -783,7 +783,7 @@ function validatePunchSettingValue(key, value) {
 }
 
 // حالة الإعدادات الكاملة (admin/hr)
-router.get('/settings-admin', jwtAuth, requireRole('admin', 'hr'), async (req, res, next) => {
+router.get('/settings-admin', jwtAuth, requireRole('admin', 'owner'), async (req, res, next) => {
     try {
         const { rows } = await pool.query('SELECT key, value, updated_at, updated_by FROM punch_settings ORDER BY key');
         res.json({ ok: true, settings: rows });
@@ -791,7 +791,7 @@ router.get('/settings-admin', jwtAuth, requireRole('admin', 'hr'), async (req, r
 });
 
 // تحديث الإعدادات — ينعكس فورًا (كل طلب بصمة يقرأها حيًا) بلا إعادة تشغيل
-router.put('/settings-admin', jwtAuth, requireRole('admin', 'hr'), async (req, res, next) => {
+router.put('/settings-admin', jwtAuth, requireRole('admin', 'owner'), async (req, res, next) => {
     try {
         const body = req.body || {};
         const updates = Object.entries(body).filter(([k]) => k in PUNCH_SETTING_KEYS);
@@ -824,7 +824,7 @@ router.put('/settings-admin', jwtAuth, requireRole('admin', 'hr'), async (req, r
 // فعلية — هذه هي الأداة: قائمة الأجهزة + فك ربط بنقرة (البصمة التالية تربط تلقائيًا).
 
 // قائمة الأجهزة المربوطة النشطة
-router.get('/punch-devices', jwtAuth, requireRole('admin', 'hr'), async (req, res, next) => {
+router.get('/punch-devices', jwtAuth, requireRole('admin', 'owner'), async (req, res, next) => {
     try {
         const { rows } = await pool.query(
             `SELECT d.user_id, u.username, u.name, d.device_id, d.bound_ip, d.bound_at, d.last_seen_at
@@ -837,7 +837,7 @@ router.get('/punch-devices', jwtAuth, requireRole('admin', 'hr'), async (req, re
 });
 
 // فك ربط أجهزة مستخدم — البصمة التالية من أي جهاز تربطه من جديد تلقائيًا
-router.delete('/punch-devices/:userId', jwtAuth, requireRole('admin', 'hr'), async (req, res, next) => {
+router.delete('/punch-devices/:userId', jwtAuth, requireRole('admin', 'owner'), async (req, res, next) => {
     try {
         const userId = Number(req.params.userId);
         if (!Number.isInteger(userId) || userId <= 0) {
@@ -857,7 +857,7 @@ router.delete('/punch-devices/:userId', jwtAuth, requireRole('admin', 'hr'), asy
 });
 
 // سجل المحاولات — فلاتر: decision / reject / username، حد أقصى 200 صف
-router.get('/attempts', jwtAuth, requireRole('admin', 'hr'), async (req, res, next) => {
+router.get('/attempts', jwtAuth, requireRole('admin', 'owner'), async (req, res, next) => {
     try {
         const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 50));
         const conds = [];
@@ -901,7 +901,7 @@ router.get('/attempts', jwtAuth, requireRole('admin', 'hr'), async (req, res, ne
 // UPGRADE 2026-10-01: يقبل descriptors (حتى 8 عينات متنوعة) — المطابقة لاحقًا
 // بأقل مسافة بين العينات تحل شكوى «سجّل الوجه ولا يقبل» الناتجة عن عينة واحدة
 // حساسة للإضاءة/الكاميرا. يقبل descriptor المفرد للتوافق مع العملاء القديمة.
-router.post('/face/enroll', jwtAuth, requireRole('admin', 'hr'), async (req, res, next) => {
+router.post('/face/enroll', jwtAuth, requireRole('admin', 'owner'), async (req, res, next) => {
     try {
         const { targetUserId, descriptor, descriptors } = req.body || {};
         if (!targetUserId) {return res.status(422).json({ ok: false, error: 'TARGET_REQUIRED', message: 'حدد الموظف المستهدف' });}
@@ -922,7 +922,7 @@ router.post('/face/enroll', jwtAuth, requireRole('admin', 'hr'), async (req, res
 });
 
 // إزالة قالب وجه موظف (المحركان معًا — إصلاح 2026-10-01: القديم كان يبقي قالب v2)
-router.delete('/face/enroll/:userId', jwtAuth, requireRole('admin', 'hr'), async (req, res, next) => {
+router.delete('/face/enroll/:userId', jwtAuth, requireRole('admin', 'owner'), async (req, res, next) => {
     try {
         const r = await pool.query(
             'UPDATE punch_face_templates SET active = FALSE WHERE user_id = $1 AND active = TRUE RETURNING id',
@@ -943,7 +943,7 @@ router.delete('/face/enroll/:userId', jwtAuth, requireRole('admin', 'hr'), async
 // ─── تسجيل وجه v2 (ArcFace 512-d على السيرفر) — admin/hr فقط ────────────────
 // العميل يرسل 1-8 لقطات وجه مقصوصة (base64) — السيرفر ينتج المتجهات ويخزنها.
 // لا صور تُخزَّن (الخصوصية §5.5): تُستهلك لحظيًا في الانتاج وتُهمل.
-router.post('/face/enroll-v2', jwtAuth, requireRole('admin', 'hr'), async (req, res, next) => {
+router.post('/face/enroll-v2', jwtAuth, requireRole('admin', 'owner'), async (req, res, next) => {
     try {
         const faceV2 = require('./face-engine-v2');
         if (!faceV2.modelAvailable()) {
@@ -979,7 +979,7 @@ router.post('/face/enroll-v2', jwtAuth, requireRole('admin', 'hr'), async (req, 
 });
 
 // قائمة الوجوه المسجلة (admin/hr) — للوحة الإدارة (v1 + v2 مع وسم المحرك)
-router.get('/face/list', jwtAuth, requireRole('admin', 'hr'), async (req, res, next) => {
+router.get('/face/list', jwtAuth, requireRole('admin', 'owner'), async (req, res, next) => {
     try {
         const { rows } = await pool.query(
             `SELECT t.user_id, u.username, u.name, t.enrolled_at, t.enrolled_by, t.active, 'v1' AS engine

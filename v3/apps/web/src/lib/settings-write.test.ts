@@ -91,7 +91,9 @@ describe('عقد كتابة الإعدادات', () => {
         expect(settingsWriteVisible('manager')).toBe(false);
         expect(zatcaWriteVisible('manager')).toBe(true);
         expect(zatcaWriteVisible('accountant')).toBe(false);
-        expect(punchVisible('hr')).toBe(true);
+        expect(punchVisible('admin')).toBe(true);
+        expect(punchVisible('owner')).toBe(true);
+        expect(punchVisible('hr')).toBe(false);
         expect(punchVisible('manager')).toBe(false);
         expect(backupVisible('admin')).toBe(true);
         expect(backupVisible('hr')).toBe(false);

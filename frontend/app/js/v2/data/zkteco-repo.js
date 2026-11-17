@@ -39,7 +39,7 @@
  *   network — and returns a Blob; the screen only saves it.
  */
 
-import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.394';
+import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.395';
 
 /** @returns {Promise<{running:boolean,devices:any[],totals:object}>} */
 export async function fetchZkStatus() {
@@ -112,7 +112,7 @@ const num = (v) => {
 
 /** Device-operation write gates mirror the server (routes.js:30-31):
  *  reads admin|hr|manager|accountant, every write admin|hr. */
-export const ZK_WRITE_ROLES = ['admin', 'hr'];
+export const ZK_WRITE_ROLES = ['admin', 'owner'];
 
 /** مركز التحكم mirror لثابت الخادم CONTROL_ROLES: الأدمن والـowner فوقه. */
 export const ZK_CONTROL_ROLES = ['admin', 'owner'];

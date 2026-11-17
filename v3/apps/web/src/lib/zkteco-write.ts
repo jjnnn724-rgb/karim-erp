@@ -16,7 +16,7 @@ import { isWriteRole, writeAck, writeJson } from './write';
  * لأن الخادم يسجّله في سجل التحكم.
  */
 
-export const ZK_WRITE_ROLES = ['admin', 'hr'] as const;
+export const ZK_WRITE_ROLES = ['admin', 'owner'] as const;
 export const ZK_CONTROL_ROLES = ['admin', 'owner'] as const;
 export const ZK_ENGINE_ACTIONS = ['start', 'stop', 'restart'] as const;
 export type ZkEngineAction = (typeof ZK_ENGINE_ACTIONS)[number];

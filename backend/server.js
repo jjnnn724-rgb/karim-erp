@@ -1406,7 +1406,7 @@ async function validateDeptHeadUserUpdate(filtered, userId) {
  */
 async function enforceAttendanceSelfService(entity, req, filtered, existingId = null) {
     if (entity !== 'attendance') {return filtered;}
-    if (['admin', 'manager', 'hr'].includes(req.user?.role)) {return filtered;}
+    if (['admin', 'owner'].includes(req.user?.role)) {return filtered;}
     const own = await pool.query('SELECT id FROM employees WHERE "userId"=$1 LIMIT 1', [req.user.id]);
     if (!own.rows.length) {
         const error = new Error('تسجيل الحضور يتطلب ربط حسابك بملف موظف');
@@ -1810,7 +1810,7 @@ async function updateAttendanceWithAudit({ id, setClause, keys, values, actor, b
 /* ── حوكمة الحضور: سجلّ التدقيق (2026-11-02) ────────────────────────────
    مسارٌ مستقلٌّ عن CRUD العام، لأنّ /api/attendance/:id كان يبتلع
    /api/attendance/audit. المسجَّل: من غيّر ماذا ومتى ولماذا. */
-app.get('/api/attendance/audit', jwtAuth, requireRole('admin', 'hr', 'manager'), asyncHandler(async (req, res) => {
+app.get('/api/attendance/audit', jwtAuth, requireRole('admin', 'owner'), asyncHandler(async (req, res) => {
     try {
         const { listAttendanceEdits } = require('./attendance-governance');
         const result = await listAttendanceEdits({
@@ -2208,7 +2208,7 @@ entities.forEach(entity => {
         // SPEC-employee-pwa-attendance-geofence-v1: الكتابة العامة على الحضور
         // للإدارة فقط — البصمة الذاتية للموظفين تمر حصريًا عبر مسار البوابة
         // الآمن (Geofence + ساعة السيرفر + تدقيق كامل).
-        const openWriteRoles = entity === 'attendance' ? ['admin', 'manager', 'hr'] : getEntityWriteRoles(entity);
+        const openWriteRoles = entity === 'attendance' ? ['admin', 'owner'] : getEntityWriteRoles(entity);
         const writeGuard = openWriteRoles ? [requireRoleOrPerm(openWriteRoles, permForEntity(entity, 'write'))] : [];
         app.post(`/api/${entity}`, jwtAuth, ...writeGuard, crudLimiter, guardCreate(entity), asyncHandler(async (req, res) => {
             // ─── SECURITY: Filter body against whitelist ──
@@ -2592,7 +2592,7 @@ entities.forEach(entity => {
         // SPEC-employee-pwa-attendance-geofence-v1: الكتابة العامة على الحضور
         // للإدارة فقط — البصمة الذاتية للموظفين تمر حصريًا عبر مسار البوابة
         // الآمن (Geofence + ساعة السيرفر + تدقيق كامل).
-        const openWriteRoles = entity === 'attendance' ? ['admin', 'manager', 'hr'] : getEntityWriteRoles(entity);
+        const openWriteRoles = entity === 'attendance' ? ['admin', 'owner'] : getEntityWriteRoles(entity);
         const writeGuard = openWriteRoles ? [requireRoleOrPerm(openWriteRoles, permForEntity(entity, 'write'))] : [];
         app.put(`/api/${entity}/:id`, jwtAuth, ...writeGuard, crudLimiter, asyncHandler(async (req, res) => {
             const { id } = req.params;
@@ -2932,7 +2932,7 @@ entities.forEach(entity => {
         // SPEC-employee-pwa-attendance-geofence-v1: الكتابة العامة على الحضور
         // للإدارة فقط — البصمة الذاتية للموظفين تمر حصريًا عبر مسار البوابة
         // الآمن (Geofence + ساعة السيرفر + تدقيق كامل).
-        const openWriteRoles = entity === 'attendance' ? ['admin', 'manager', 'hr'] : getEntityWriteRoles(entity);
+        const openWriteRoles = entity === 'attendance' ? ['admin', 'owner'] : getEntityWriteRoles(entity);
         const writeGuard = openWriteRoles ? [requireRoleOrPerm(openWriteRoles, permForEntity(entity, 'write'))] : [];
         app.delete(`/api/${entity}/:id`, jwtAuth, ...writeGuard, crudLimiter, asyncHandler(async (req, res) => {
             const { id } = req.params;

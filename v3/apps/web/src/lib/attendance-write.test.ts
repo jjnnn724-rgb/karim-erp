@@ -17,10 +17,11 @@ import {
 } from './attendance-write';
 
 describe('attendance-write', () => {
-    it('يقصر الكتابة على أدوار الخادم admin/hr/manager', () => {
+    it('يقصر الكتابة على admin/owner (قرار المالك 2026-11-17)', () => {
         expect(canWriteAttendance('admin')).toBe(true);
-        expect(canWriteAttendance('hr')).toBe(true);
-        expect(canWriteAttendance('manager')).toBe(true);
+        expect(canWriteAttendance('owner')).toBe(true);
+        expect(canWriteAttendance('hr')).toBe(false);
+        expect(canWriteAttendance('manager')).toBe(false);
         expect(canWriteAttendance('dept_head')).toBe(false);
         expect(canWriteAttendance(null)).toBe(false);
     });

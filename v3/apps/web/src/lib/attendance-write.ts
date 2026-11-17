@@ -26,7 +26,7 @@ import { isWriteRole, writeAck } from './write';
  */
 
 /** أدوار الكتابة — بوابة الخادم `admin|hr|manager` (server.js:1778). */
-export const ATT_WRITE_ROLES = ['admin', 'hr', 'manager'] as const;
+export const ATT_WRITE_ROLES = ['admin', 'owner'] as const;
 
 export function canWriteAttendance(role: string | null | undefined): boolean {
     return isWriteRole(role, ATT_WRITE_ROLES);

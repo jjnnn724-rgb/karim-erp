@@ -79,12 +79,15 @@ const EXPORTS = [
 describe('v2 شاشة 11 — أجهزة البصمة: مرآة الخادم', () => {
     const serverSrc = read(SERVER);
 
-    test('بوابة كتابة الأجهزة مرآة لثابت الخادم WRITE_ROLES', async () => {
+    test('بوابة الأجهزة — الأدمن والمالك فقط كتابةً وقراءةً (قرار المالك 2026-11-17)', async () => {
         const write = rolesOf(serverSrc, 'WRITE_ROLES');
         const readRoles = rolesOf(serverSrc, 'READ_ROLES');
+        const control = rolesOf(serverSrc, 'CONTROL_ROLES');
         const ctx = loadEsm(REPO, {}, ['ZK_WRITE_ROLES']);
         expect(ctx.ZK_WRITE_ROLES).toEqual(write);
-        expect(write).not.toEqual(readRoles); // القراءة أوسع — والتوثيق يقول ذلك
+        expect(write).toEqual(['admin', 'owner']);
+        expect(readRoles).toEqual(['admin', 'owner']);
+        expect(control).toEqual(['admin', 'owner']);
     });
 
     test('كل أبواب القديم تطابق الراوتر مسارًا وطريقة', async () => {
