@@ -196,7 +196,7 @@ export const ROLES = {
         'warehouse',
         'item-prices',
     ],
-    dept_head: ['dashboard', 'leaves', 'employee-portal', 'dept-employees', 'dispatch', 'dept-transfers', 'roster'],
+    dept_head: ['dashboard', 'leaves', 'employee-portal', 'dept-employees', 'dispatch', 'dept-transfers', 'roster', 'dept-head-dashboard'],
     hr: [
         'dashboard',
         'hr-dashboard',

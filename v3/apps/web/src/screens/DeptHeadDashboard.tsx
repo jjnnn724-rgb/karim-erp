@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { PrintActions } from '../components/PrintActions';
 import { ReportHeader, SectionCard } from '../components/Reports';
-import { StateEmpty, StateError, StateLoading } from '../components/TableState';
+import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { fetchDeptHeadSnapshot } from '../lib/dashboards';
 import { intOf, moneyOf, presetRange, rangeProblem } from '../lib/reporting';
 import { FilterBar, StatCard } from '../ui';
@@ -45,6 +45,21 @@ export function DeptHeadDashboard() {
             return textOk;
         });
     }, [data, q]);
+
+    // صفوف مصروفات أذون الصرف — يرشحها البحث النصي نفسه (البيان/الملاحظة/رقم الإذن)
+    const filteredDispatchExpenses = useMemo(() => {
+        const needle = q.trim().toLowerCase();
+        return (data?.dispatchExpenses ?? []).filter((row) => {
+            if (!needle) {return true;}
+            const haystack = `${row.desc} ${row.notes} ${row.dispatchId ?? ''} ${row.adjustmentType}`.toLowerCase();
+            return haystack.includes(needle);
+        });
+    }, [data, q]);
+
+    const visibleDispatchExpensesTotal = useMemo(
+        () => Math.round(filteredDispatchExpenses.reduce((sum, row) => sum + row.amount, 0) * 100) / 100,
+        [filteredDispatchExpenses],
+    );
 
     function apply() {
         const message = rangeProblem(draft.from, draft.to, 366);
@@ -164,6 +179,71 @@ export function DeptHeadDashboard() {
                             )}
                         </SectionCard>
                     </div>
+
+                    <SectionCard title="مصروفات أذون الصرف — التفصيل" english="Dispatch expenses detail">
+                        {filteredDispatchExpenses.length === 0 ? (
+                            <StateEmpty
+                                title={q ? 'لا توجد نتائج مطابقة للبحث' : 'لا مصروفات أذون صرف مسجلة'}
+                                hint={q ? 'عدّل البحث أو امسحه لعرض كل الحركات.' : 'لم تُترحّل حركات صرف مخزني لهذا القسم بعد.'}
+                            />
+                        ) : (
+                            <>
+                                <TableScroll label="جدول مصروفات أذون الصرف">
+                                    <table className="w-full border-collapse text-body-md">
+                                        <thead>
+                                            <tr className="bg-surface-sunken text-label-md text-ink-secondary">
+                                                <th scope="col" className="px-sm py-xs text-start font-medium">التاريخ</th>
+                                                <th scope="col" className="px-sm py-xs text-start font-medium">البيان</th>
+                                                <th scope="col" className="px-sm py-xs text-end font-medium">المبلغ</th>
+                                                <th scope="col" className="px-sm py-xs text-center font-medium">النوع</th>
+                                                <th scope="col" className="px-sm py-xs text-start font-medium">إذن الصرف</th>
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {filteredDispatchExpenses.map((row) => (
+                                                <tr key={row.id} className="border-b border-hairline hover:bg-surface-hover">
+                                                    <td className="erp-numeric px-sm py-xxs whitespace-nowrap text-body-sm text-muted" dir="ltr">
+                                                        {row.date || '—'}
+                                                    </td>
+                                                    <td className="px-sm py-xxs text-ink">
+                                                        {row.desc}
+                                                        {row.notes ? <span className="block text-caption text-faint">{row.notes}</span> : null}
+                                                    </td>
+                                                    <td className="erp-numeric px-sm py-xxs text-end text-ink" dir="ltr">
+                                                        {moneyOf(row.amount)}
+                                                    </td>
+                                                    <td className="px-sm py-xxs text-center text-body-sm">
+                                                        {row.adjustmentType === 'dispatch_return' ? (
+                                                            <span className="text-success-text">مرتجع (عكس)</span>
+                                                        ) : (
+                                                            <span className="text-muted">صرف مخزون</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="erp-numeric px-sm py-xxs text-body-sm text-muted" dir="ltr">
+                                                        {row.dispatchId ? `#${row.dispatchId}` : '—'}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                        <tfoot>
+                                            <tr className="border-t border-hairline-strong bg-surface-sunken">
+                                                <td colSpan={2} className="px-sm py-xs text-label-md text-ink-secondary">
+                                                    الإجمالي المعروض ({intOf(filteredDispatchExpenses.length)} حركة)
+                                                </td>
+                                                <td className="erp-numeric px-sm py-xs text-end text-heading-sm text-ink" dir="ltr">
+                                                    {moneyOf(visibleDispatchExpensesTotal)}
+                                                </td>
+                                                <td colSpan={2} />
+                                            </tr>
+                                        </tfoot>
+                                    </table>
+                                </TableScroll>
+                                <p className="px-sm pb-xs pt-xxs text-caption text-faint">
+                                    أحدث 200 حركة من مصروفات أذونات الصرف المعتمدة للقسم — القيمة دفترية (متوسط التكلفة وقت الاعتماد) وتُقيَّد بسالب عند الإرجاع.
+                                </p>
+                            </>
+                        )}
+                    </SectionCard>
 
                     {data.failures.length > 0 ? (
                         <p className="rounded-md border border-warning bg-surface p-sm text-body-sm text-warning-text" role="alert">

@@ -224,8 +224,31 @@ const panelSchema = z
             })
             .passthrough()
             .optional(),
+        dispatchExpenses: z
+            .array(
+                z.object({
+                    id: text,
+                    date: text.nullable().optional(),
+                    desc: text.optional(),
+                    amount: numLike.optional(),
+                    adjustmentType: text.optional(),
+                    dispatchId: text.nullable().optional(),
+                    notes: text.optional(),
+                }).passthrough(),
+            )
+            .optional(),
     })
     .passthrough();
+
+export interface DeptDispatchExpense {
+    id: string;
+    date: string;
+    desc: string;
+    amount: number;
+    adjustmentType: string;
+    dispatchId: string | null;
+    notes: string;
+}
 
 export interface DeptHeadView {
     deptCode: string;
@@ -236,6 +259,7 @@ export interface DeptHeadView {
     subDepartments: string[];
     dispatchTotal: number;
     dispatchStatuses: { key: string; count: number }[];
+    dispatchExpenses: DeptDispatchExpense[];
     failures: string[];
 }
 
@@ -278,6 +302,15 @@ export async function fetchDeptHeadSnapshot(signal?: AbortSignal): Promise<DeptH
         subDepartments: (panel?.subDepartments ?? []).map((row) => String(row.name ?? row.code ?? '')).filter(Boolean),
         dispatchTotal: numOf(panel?.dispatches?.total) || mine.length,
         dispatchStatuses: [...statusCounts.entries()].map(([key, count]) => ({ key, count })),
+        dispatchExpenses: (panel?.dispatchExpenses ?? []).map((row) => ({
+            id: String(row.id ?? ''),
+            date: String(row.date ?? ''),
+            desc: String(row.desc ?? ''),
+            amount: numOf(row.amount),
+            adjustmentType: String(row.adjustmentType ?? 'dispatch'),
+            dispatchId: row.dispatchId ? String(row.dispatchId) : null,
+            notes: String(row.notes ?? ''),
+        })),
         failures: [
             failureName(settled[0] ?? { status: 'rejected', reason: 'لم يستجب' }, 'لوحة القسم'),
             failureName(settled[1] ?? { status: 'rejected', reason: 'لم يستجب' }, 'أذونات الصرف'),
