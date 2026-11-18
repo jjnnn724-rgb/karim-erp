@@ -53,6 +53,7 @@ export const NAV_ITEMS = [
     { to: '/wh-moves', label: 'حركات المخزون', hint: 'WhMoves' },
     { to: '/dispatch', label: 'أذون الصرف', hint: 'Dispatch' },
     { to: '/warehouse', label: 'المخزون', hint: 'Inventory' },
+    { to: '/item-prices', label: 'أسعار الأصناف', hint: 'Item Prices' },
     { to: '/warehouse-gov', label: 'حوكمة المخزن', hint: 'Governance' },
     { to: '/goods-scan', label: 'مسح البضاعة', hint: 'Barcode' },
     { to: '/shelves', label: 'الرفوف', hint: 'Shelves' },

@@ -149,6 +149,13 @@ export const dispatchesRoute = createRoute({
 });
 dispatchesRoute.lazy(() => import('../screens/Dispatches.lazy').then((module) => module.Route));
 
+/** صفحة أسعار الأصناف — متوسط تكلفة الشراء يتحدث من حركات المشتريات. */
+export const itemPricesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/item-prices',
+});
+itemPricesRoute.lazy(() => import('../screens/ItemPrices.lazy').then((module) => module.Route));
+
 /** المخزون — للقراءة فقط. */
 export const warehouseRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -592,6 +599,7 @@ export const routeTree = rootRoute.addChildren([
     inventoryMovementsRoute,
     dispatchesRoute,
     warehouseRoute,
+    itemPricesRoute,
     warehouseGovRoute,
     goodsScanRoute,
     shelvesRoute,

@@ -75,6 +75,7 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         shortLabel: 'مخزون',
         keys: [
             'warehouse',
+            'item-prices',
             'warehouse-dashboard',
             'wh-moves',
             'dispatch',
@@ -158,6 +159,7 @@ export const NAV_TITLES: Readonly<Record<string, string>> = {
     '/wh-moves': 'حركات المخزون',
     '/dispatch': 'أذون الصرف',
     '/warehouse': 'المخزون',
+    '/item-prices': 'أسعار الأصناف',
     '/warehouse-gov': 'حوكمة المخزن',
     '/shelves': 'الرفوف',
     '/wh-returns': 'مرتجعات المطبخ',

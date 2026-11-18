@@ -83,6 +83,7 @@ export const V3_SCREENS = [
     'cash-flow',
     'ext-sales',
     'punch-control',
+    'item-prices',
 ] as const;
 export type V3Screen = (typeof V3_SCREENS)[number];
 
