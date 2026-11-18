@@ -172,13 +172,15 @@ async function inboxList({ status, q, page = 1, limit = 20 }) {
     if (q) { params.push(`%${q}%`); conds.push(`(i.remote_jid ILIKE $${params.length} OR i.body ILIKE $${params.length} OR i.msg_id ILIKE $${params.length})`); }
     const where = conds.length ? `WHERE ${conds.join(' AND ')}` : '';
     const total = (await pool.query(`SELECT COUNT(*)::int AS c FROM wa_inbox ${where}`, params)).rows[0].c;
+    // body ممكن يكون null في DB للوسائط بلا نص — نطبّعه هنا علشان أي مستهلك للداتة ما يستلمش null
     const rows = (await pool.query(
         `SELECT i.*, m.assigned_to, m.status AS chat_status, m.priority AS chat_priority,
                 m.tags AS chat_tags, m.internal_note
            FROM wa_inbox i
            LEFT JOIN wa_chat_meta m ON m.remote_jid = i.remote_jid
            ${where} ORDER BY i.created_at DESC LIMIT ${Math.min(100, Math.max(5, limit))} OFFSET ${(Math.max(1, page) - 1) * limit}`,
-        params)).rows;
+        params
+    )).rows.map((row) => (row.body == null ? { ...row, body: '' } : row));
     return { total, rows };
 }
 

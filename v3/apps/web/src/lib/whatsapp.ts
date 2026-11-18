@@ -60,7 +60,9 @@ export const whatsappMessageSchema = z.looseObject({
     to: z.string().nullable().optional(),
     from: z.string().nullable().optional(),
     remote_jid: z.string().nullable().optional(),
-    body: z.string().optional().default(''),
+    body: z
+        .union([z.string(), z.null(), z.undefined()])
+        .transform((value) => value ?? ''),
     timestamp: z.string().nullable().optional(),
     created_at: z.string().nullable().optional(),
     status: z.string().optional().default('received'),
