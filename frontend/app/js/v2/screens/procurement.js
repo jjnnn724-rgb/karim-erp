@@ -13,17 +13,17 @@
  * convenience only, and the server re-checks each call.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.397';
-import { statusBadge } from '../status.js?v=4.9.397';
-import { canWrite } from '../session.js?v=4.9.397';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.397';
-import { paintFormErrors } from '../form-errors.js?v=4.9.397';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.398';
+import { statusBadge } from '../status.js?v=4.9.398';
+import { canWrite } from '../session.js?v=4.9.398';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.398';
+import { paintFormErrors } from '../form-errors.js?v=4.9.398';
 import {
     fetchProcurementSummary, fetchSuppliers, searchSuppliers, supplierToRow,
     fetchCurrency, formatMoney, formatInt, SUPPLIER_WRITE_ROLES,
     validateSupplierForm, createSupplier, updateSupplier, toggleSupplier,
     deleteSupplier, fetchSupplierStatement,
-} from '../data/procurement-repo.js?v=4.9.397';
+} from '../data/procurement-repo.js?v=4.9.398';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

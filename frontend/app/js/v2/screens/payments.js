@@ -18,14 +18,14 @@
  * undo). Recording a NEW payment is not this screen's door.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.397';
-import { canWrite } from '../session.js?v=4.9.397';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.398';
+import { canWrite } from '../session.js?v=4.9.398';
 import {
     fetchSupplierPayments, fetchSuppliers, paymentToRow,
     fetchCurrency, formatMoney, formatInt, PAYMENT_DELETE_ROLES,
     deletePayment,
-} from '../data/procurement-repo.js?v=4.9.397';
-import { fetchPurchaseInvoices } from '../data/purchase-invoices-repo.js?v=4.9.397';
+} from '../data/procurement-repo.js?v=4.9.398';
+import { fetchPurchaseInvoices } from '../data/purchase-invoices-repo.js?v=4.9.398';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

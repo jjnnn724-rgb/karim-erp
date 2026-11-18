@@ -448,6 +448,24 @@ router.post('/:id/price', jwtAuth, requireRole('warehouse', 'admin', 'owner', 'm
     } catch (e) { next(e); }
 });
 
+// ─── حذف طلبية بالكامل (admin فقط — بأمر صريح) ───────────────────────────────
+// طلب المالك: «حذف للادمن لأي طلبية» — الإدمن يمسح أي طلب من أي حالة ولا يبقى أثر.
+router.delete('/:id', jwtAuth, requireRole('admin'), async (req, res, next) => {
+    try {
+        await ensureSchema();
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(422).json({ ok: false, error: 'ID_INVALID', message: 'معرّف طلب غير سليم' });
+        }
+        const { rowCount } = await pool.query('DELETE FROM veg_requests WHERE id = $1', [id]);
+        if (!rowCount) {
+            return res.status(404).json({ ok: false, error: 'NOT_FOUND', message: 'الطلب غير موجود' });
+        }
+        logger.info('[veg-requests] حذف طلبية (admin)', { id, by: req.user.username });
+        return res.json({ ok: true, deleted: rowCount });
+    } catch (e) { next(e); }
+});
+
 // ─── تعديل الكميات قبل الاعتماد النهائي (طلب المالك 2026-10-09) ───
 // رئيس القسم أو المشتريات (warehouse) يعدّل كميات الأصناف الموجودة
 // طالما الطلب معلق (قبل الاستلام/التسعير). إضافة أصناف جديدة مرفوضة —
@@ -463,7 +481,11 @@ router.put('/:id/items', jwtAuth, requireRole(...EDIT_ROLES), async (req, res, n
         const row = (await pool.query('SELECT * FROM veg_requests WHERE id = $1', [id])).rows[0];
         if (!row) {return res.status(404).json({ ok: false, error: 'NOT_FOUND', message: 'الطلب غير موجود' });}
         if (row.status !== 'pending') {
-            return res.status(409).json({ ok: false, error: 'NOT_EDITABLE', message: 'التعديل قبل الاعتماد النهائي فقط — الطلب حالته ' + row.status });
+            // الإدمن والمالك يقدرون يعدّلوا أي حالة (طلب المالك 2026-11-18)
+            const isAdminSide = ['admin', 'owner'].includes(req.user.role);
+            if (!isAdminSide) {
+                return res.status(409).json({ ok: false, error: 'NOT_EDITABLE', message: 'التعديل قبل الاعتماد النهائي فقط — الطلب حالته ' + row.status });
+            }
         }
         const isBoss = ['admin', 'owner', 'manager'].includes(req.user.role);
         const isDeptHead = req.user.role === 'dept_head';

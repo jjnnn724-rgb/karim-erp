@@ -5,7 +5,7 @@ import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton 
 import { useAuthState } from '../lib/auth';
 import { fetchMyPermissions } from '../lib/my-menus';
 import { fetchCurrency } from '../lib/finance';
-import { formatMoney } from '../lib/format';
+import { formatMoney, parseArabicDecimal } from '../lib/format';
 import { printSmart } from '../lib/print-viewer';
 import { vegRequestPrintHtml } from '../lib/veg-print';
 import {
@@ -22,6 +22,7 @@ import {
 import {
     cancelVegRequest,
     createVegRequest,
+    deleteVegRequest,
     editVegItems,
     fetchVegCatalog,
     fetchVegContacts,
@@ -196,7 +197,7 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
 
     function addLine() {
         setError('');
-        const q = Number(qty);
+        const q = parseArabicDecimal(qty);
         if (!selected) {
             setError('اختر الصنف من الكتالوج');
             return;
@@ -218,7 +219,7 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
         const filled: VegItemInput[] = [];
         for (const row of manualRows) {
             const name = row.name.trim();
-            const qtyNum = Number(row.qty);
+            const qtyNum = parseArabicDecimal(row.qty);
             const note = row.note.trim();
             if (!name && !row.qty.trim() && !row.unit.trim() && !note) { continue; }
             if (!name) { return { ok: false, error: 'صنف يدوي ناقص الاسم' }; }
@@ -456,7 +457,7 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
         let asked = 0, got = 0, spoiled = 0, rejectedCount = 0;
         for (const item of items) {
             const q = Number(item.qty) || 0;
-            const g = Number(received[item.name]);
+            const g = parseArabicDecimal(received[item.name]);
             asked += q;
             if (Number.isFinite(g) && g >= 0) { got += g; }
             spoiled += Math.max(0, q - (Number.isFinite(g) && g >= 0 ? g : 0));
@@ -466,8 +467,7 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
     }, [items, received, rejected]);
 
     function tabularNumber(v: string | undefined): number {
-        const n = Number(v);
-        return Number.isFinite(n) ? n : NaN;
+        return parseArabicDecimal(v);
     }
 
     async function doSubmit(): Promise<void> {
@@ -541,7 +541,7 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
                                 <tbody>
                                     {items.map((item, idx) => {
                                         const asked = Number(item.qty) || 0;
-                                        const got = Number(received[item.name]);
+                                        const got = parseArabicDecimal(received[item.name]);
                                         const gotSafe = Number.isFinite(got) && got >= 0 ? got : 0;
                                         const spoiled = Math.max(0, Math.round((asked - gotSafe) * 1000) / 1000);
                                         const isRejected = rejected.has(item.name);
@@ -655,7 +655,7 @@ function EditItemsDialog({ open, row, items, pending, onClose, onSubmit }: EditI
         setError('');
         const payload: VegItemInput[] = [];
         for (const item of items) {
-            const q = Number(qtys[item.name]);
+            const q = parseArabicDecimal(qtys[item.name]);
             if (!Number.isFinite(q) || q <= 0) {
                 setError(`كمية غير صالحة للصنف ${item.name}`);
                 return;
@@ -1039,6 +1039,7 @@ export function VegRequests() {
     const canReceive = vegReceiveVisible(auth.user?.role, auth.user?.dept_code, vegGrants);
     const canPrice = vegPriceVisible(auth.user?.role);
     const isContactsAdmin = auth.user?.role === 'admin' || auth.user?.role === 'owner';
+    const isAdmin = auth.user?.role === 'admin';
 
     const [query, setQuery] = useState('');
     const [status, setStatus] = useState<VegStatusFilter>('all');
@@ -1061,6 +1062,7 @@ export function VegRequests() {
     const [receiveOpen, setReceiveOpen] = useState(false);
     const [receiveRow, setReceiveRow] = useState<VegRequestRow | null>(null);
     const [receiveItems, setReceiveItems] = useState<ReadonlyArray<{ name: string; qty: number; unit?: string | undefined }>>([]);
+    const [deleteRow, setDeleteRow] = useState<VegRequestRow | null>(null);
 
     const vegQuery = useQuery({
         queryKey: ['veg-requests', status],
@@ -1166,6 +1168,17 @@ export function VegRequests() {
         onSuccess: () => {
             setActionOpen(false);
             setActionRow(null);
+        },
+    });
+
+    const deleteMutation = useWriteMutation<string, void>({
+        mutationFn: (id) => deleteVegRequest(id).then(() => undefined),
+        successTitle: () => '✓ تم حذف الطلبية نهائيًا',
+        errorTitle: 'تعذر حذف الطلبية',
+        invalidate: [['veg-requests']],
+        silentError: true,
+        onSuccess: () => {
+            setDeleteRow(null);
         },
     });
 
@@ -1446,6 +1459,28 @@ export function VegRequests() {
                                                     >
                                                         طباعة
                                                     </Button>
+                                                    {isAdmin ? (
+                                                        <>
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                variant="secondary"
+                                                                title="تعديل الطلبية كاملة (الأدمن)"
+                                                                onClick={() => void openEdit(row)}
+                                                            >
+                                                                ✎ تعديل
+                                                            </Button>
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                variant="secondary"
+                                                                title="حذف الطلبية نهائيًا (الأدمن)"
+                                                                onClick={() => setDeleteRow(row)}
+                                                            >
+                                                                🗑 حذف
+                                                            </Button>
+                                                        </>
+                                                    ) : null}
                                                     {row.status !== 'cancelled' ? (
                                                         <>
                                                             <Button
@@ -1470,7 +1505,7 @@ export function VegRequests() {
                                                     ) : null}
                                                     {row.status === 'pending' && (
                                                         <>
-                                                            {canCreate ? (
+                                                            {!isAdmin && canCreate ? (
                                                                 <Button
                                                                     type="button"
                                                                     size="sm"
@@ -1617,6 +1652,21 @@ export function VegRequests() {
                     setActionOpen(false);
                     setActionRow(null);
                 }}
+            />
+            <ConfirmDialog
+                open={deleteRow !== null}
+                title={deleteRow ? `حذف الطلبية ${deleteRow.number}` : 'حذف الطلبية'}
+                message={deleteRow ? `هل تقصد تحذف الطلبية «${deleteRow.number}» نهائيًا؟ لا يهمني العمليات التي وُثّقت عليها. يصير حذفًا دائمًا من السجل.` : ''}
+                pending={deleteMutation.isPending}
+                onConfirm={async () => {
+                    if (!deleteRow) return;
+                    try {
+                        await deleteMutation.mutateAsync(deleteRow.id);
+                    } finally {
+                        setDeleteRow(null);
+                    }
+                }}
+                onClose={() => setDeleteRow(null)}
             />
             <VegContactsDialog
                 open={contactsOpen}
