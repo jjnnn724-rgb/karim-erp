@@ -13,6 +13,7 @@ const { logger } = require('../logger');
 const store = require('./store');
 const { isManagerChat, managerJids, withTimeout } = require('./erp');
 const { calculateDelayParts } = require('../shift-day');
+const { normalizeSaudiMobile, isLatenessWithinShift, formatLateNotice } = require('./late-notice-logic');
 
 const DB_TIMEOUT = 15000;
 const MAX_MSG = 3400;
@@ -284,25 +285,10 @@ async function buildDailyBriefing(dayStr) {
     L.push(`👥 الحضور: حاضر ${a.present || 0} • نسي خروج ${a.miss_out || 0} • نسي دخول ${a.miss_in || 0} • متأخر ${a.late_n || 0}`);
   } catch (_) { L.push('👥 الحضور: تعذر الجلب'); }
 
-  // 2) أكثر المتأخرين هذا الشهر — بمحرك التأخير الرسمي (shortfall-based)، لا بالنص الخام
-  try {
-    const m = day.slice(0, 7);
-    const rows = (await withTimeout(pool.query(
-      `SELECT e.name, e.shift_start, e.shift_karim, a.date, a."checkIn", a."checkOut", a.late, a."workMinutes"
-         FROM attendance a JOIN employees e ON e.id = a."employeeId"
-        WHERE e.status = 'active' AND a.date LIKE $1 || '-%' AND NOT COALESCE(a.on_leave, false)
-          AND a."checkIn" IS NOT NULL`, [m]), DB_TIMEOUT, 'GENIUS')).rows;
-    const byEmp = new Map();
-    for (const r of rows) {
-      const d = calculateDelayParts(r, { shift_start: r.shift_start, shift_karim: r.shift_karim });
-      if ((d.lateMinutes || 0) > 0) {byEmp.set(r.name, (byEmp.get(r.name) || 0) + d.lateMinutes);}
-    }
-    const top = [...byEmp.entries()].sort((a, b) => b[1] - a[1]).slice(0, 5);
-    if (top.length) {
-      L.push('⏰ الأعلى تأخيرًا هذا الشهر (بمحرك التأخير المعتمد):');
-      top.forEach(([name, mins], i) => L.push(`${i + 1}. ${name}: ${fmtNum(Math.floor(mins / 60))} س ${fmtNum(mins % 60)} د`));
-    }
-  } catch (_) {}
+  // 2) أُلغيت قائمة «الأعلى تأخيرًا هذا الشهر» — قرار المالك 2026-11-18:
+  //    لا أسماء متأخرين في تقرير الإدارة؛ كل متأخر يوصله إشعار شخصي على واتساب،
+  //    والتأخير يُحتسب فقط حين يكون العجز أقل من وردية كاملة (shift_karim ساعات).
+  //    انظر: sendPersonalLateNotices + startLateNotice أدناه.
 
   // 3) المخزون الحرج
   try {
@@ -704,9 +690,100 @@ function stopMonthlyBriefing() {
   if (_monthlyTimer) { clearInterval(_monthlyTimer); _monthlyTimer = null; }
 }
 
+/* ─── إشعارات التأخير الشخصية (قرار المالك 2026-11-18) ─────────────────────
+ *  كل موظف متأخر يوصله واتساب شخصي «أنت تأخرت اليوم X دقيقة» —
+ *  بلا أسماء زملائه ولا قائمة عامة في تقرير الإدارة.
+ *  «تأخير» يُحتسب فقط حين يكون العجز أقل من وردية كاملة للموظف (shift_karim):
+ *  12 ساعة للموظف اللي بيعمل 12 ساعة، و10 ساعات للموظف اللي بيعمل 10 ساعات… إلخ.
+ *  العجز ≥ وردية كاملة = غياب، لا إشعار عنه.
+ *  يُرسل مرة واحدة يوميًا في WHATSAPP_LATE_NOTICE_TIME (افتراضي 23:00 لتغطية كل الورديات)،
+ *  وبحماية `wa_late_notice_last` (مرة واحدة يوميًا) و`clientKey` لكل موظف.
+ */
+let _lateTimer = null;
+let _lateRunning = false;
+
+function lateNoticeTime() {
+  const s = String(process.env.WHATSAPP_LATE_NOTICE_TIME || '23:00').trim();
+  const m = s.match(/^(\d{1,2}):(\d{2})$/);
+  if (!m) { return { h: 23, min: 0 }; }
+  return { h: Math.min(23, Math.max(0, Number(m[1]))), min: Math.min(59, Math.max(0, Number(m[2]))) };
+}
+
+async function sendPersonalLateNotices(engine, day) {
+  const d = day || riyadhToday();
+  const rows = (await withTimeout(pool.query(
+    `SELECT e.id, e.name, e."employeeId", e.shift_start, e.shift_karim, e.phone,
+            a."checkIn", a."checkOut", a.late, a."workMinutes"
+       FROM attendance a JOIN employees e ON e.id = a."employeeId"
+      WHERE e.status = 'active' AND a.date = $1 AND a."checkIn" IS NOT NULL
+        AND COALESCE(a.on_leave, false) = false`, [d]), DB_TIMEOUT, 'LATE_NOTICE')).rows;
+  const result = { day: d, sent: 0, noPhone: 0, absent: 0, onTime: 0, total: rows.length };
+  for (const r of rows) {
+    const karim = Number(r.shift_karim) > 0 ? Number(r.shift_karim) : 10;
+    const parts = calculateDelayParts(
+      { checkIn: r.checkIn, checkOut: r.checkOut, late: r.late, workMinutes: r.workMinutes },
+      { shift_start: r.shift_start, shift_karim: r.shift_karim },
+    );
+    const shortfall = Number(parts.lateMinutes) || 0;
+    if (shortfall <= 0) { result.onTime += 1; continue; }
+    if (!isLatenessWithinShift(shortfall, karim)) { result.absent += 1; continue; } // ≥ وردية كاملة = غياب لا تأخير
+    const jid = normalizeSaudiMobile(r.phone);
+    if (!jid) { result.noPhone += 1; continue; }
+    const text = formatLateNotice({ shiftStart: r.shift_start, lateMinutes: shortfall });
+    try {
+      await engine.sender.enqueue(jid, text, { clientKey: `late-notice:${d}:${r.id}` });
+      result.sent += 1;
+    } catch (e) {
+      logger.warn('[GENIUS] late notice send failed: ' + String(e.message).slice(0, 120));
+    }
+  }
+  try {
+    await store.logEvent('late_notices_sent', d,
+      `sent=${result.sent} noPhone=${result.noPhone} absent=${result.absent} onTime=${result.onTime}`);
+  } catch (_) {}
+  try { engine.sender?.kick?.(); } catch (_) {}
+  logger.info(`[GENIUS] late notices for ${d}: sent=${result.sent} noPhone=${result.noPhone} absent=${result.absent} onTime=${result.onTime}`);
+  return result;
+}
+
+function startLateNotice(engine) {
+  if (_lateTimer) { return; }
+  if (String(process.env.WHATSAPP_LATE_NOTICE || 'on').trim().toLowerCase() === 'off') {
+    logger.info('[GENIUS] personal late notices OFF (WHATSAPP_LATE_NOTICE=off)');
+    return;
+  }
+  const { h, min } = lateNoticeTime();
+  logger.info(`[GENIUS] late notices scheduled at ${String(h).padStart(2, '0')}:${String(min).padStart(2, '0')} Riyadh (WHATSAPP_LATE_NOTICE_TIME)`);
+  _lateTimer = setInterval(async () => {
+    if (_lateRunning) { return; }
+    try {
+      if (!engine?.connection?.isConnected?.()) { return; }
+      const now = riyadhHM();
+      if ((now.h * 60 + now.min) < (h * 60 + min)) { return; }
+      const day = riyadhToday();
+      let last = null;
+      try { last = await store.getSetting('wa_late_notice_last'); } catch (_) {}
+      if (last === day) { return; }
+      _lateRunning = true;
+      try {
+        const r = await sendPersonalLateNotices(engine, day);
+        if (r && (r.sent >= 0)) {
+          try { await store.setSetting('wa_late_notice_last', day); } catch (_) {}
+        }
+      } finally { _lateRunning = false; }
+    } catch (e) { logger.warn('[GENIUS] late notice tick: ' + String(e.message).slice(0, 120)); }
+  }, 60000);
+  if (_lateTimer.unref) { _lateTimer.unref(); }
+}
+
+function stopLateNotice() {
+  if (_lateTimer) { clearInterval(_lateTimer); _lateTimer = null; }
+}
+
 module.exports = {
   handleText, attendanceDetail, inventoryAnswer, buildDailyBriefing, buildMonthlyBriefing,
   sendDailyBriefing, sendMonthlyBriefing, startDailyBriefing, startMonthlyBriefing,
   stopDailyBriefing, stopMonthlyBriefing, findEmployees, norm,
   queryEmployees, lateEmployees, absentToday, departmentSummary, listShifts, listDepartments,
+  sendPersonalLateNotices, startLateNotice, stopLateNotice,
 };

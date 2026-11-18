@@ -180,6 +180,10 @@ class WhatsappEngine {
         try { require('./genius').startDailyBriefing(this); } catch (e) {
             logger.warn('[GENIUS] briefing scheduler failed: ' + String(e.message).slice(0, 150));
         }
+        // Genius personal late notices — إشعار شخصي لكل متأخر على واتساب (قرار المالك 2026-11-18)
+        try { require('./genius').startLateNotice(this); } catch (e) {
+            logger.warn('[GENIUS] late notice scheduler failed: ' + String(e.message).slice(0, 150));
+        }
         // Genius monthly briefing on 1st of month
         try { require('./genius').startMonthlyBriefing(this); } catch (e) {
             logger.warn('[GENIUS] monthly scheduler failed: ' + String(e.message).slice(0, 150));
