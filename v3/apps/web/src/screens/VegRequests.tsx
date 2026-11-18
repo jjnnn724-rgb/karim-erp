@@ -454,16 +454,17 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
     }, [open, items]);
 
     const stats = useMemo(() => {
-        let asked = 0, got = 0, spoiled = 0, rejectedCount = 0;
+        let asked = 0, got = 0, spoiled = 0, rejectedCount = 0, over = 0;
         for (const item of items) {
             const q = Number(item.qty) || 0;
             const g = parseArabicDecimal(received[item.name]);
             asked += q;
             if (Number.isFinite(g) && g >= 0) { got += g; }
             spoiled += Math.max(0, q - (Number.isFinite(g) && g >= 0 ? g : 0));
+            if (Number.isFinite(g) && g > q) { over += g - q; }
             if (rejected.has(item.name)) { rejectedCount += 1; }
         }
-        return { asked: Math.round(asked * 1000) / 1000, got: Math.round(got * 1000) / 1000, spoiled: Math.round(spoiled * 1000) / 1000, rejectedCount };
+        return { asked: Math.round(asked * 1000) / 1000, got: Math.round(got * 1000) / 1000, spoiled: Math.round(spoiled * 1000) / 1000, rejectedCount, over: Math.round(over * 1000) / 1000 };
     }, [items, received, rejected]);
 
     function tabularNumber(v: string | undefined): number {
@@ -522,7 +523,7 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
                         <div className="rounded-md border border-hairline bg-surface-sunken p-sm">
                             <p className="text-label-md font-bold text-ink">السو شيف — تسجيل ما وصل بالفعل</p>
                             <p className="text-body-xs leading-relaxed text-muted">
-                                اكتب الكمية المستلمة فعليًا لكل صنف. التسعير والترحيل للمطبخ هيبقوا على الكمية المستلمة فقط — والصنف المرفوض يستبعد بالكامل.
+                                اكتب الكمية المستلمة فعليًا لكل صنف — زيادة عن المطلوب مقبولة بالكامل وستُحمَّل على الاستلام والتسعير — والصنف المرفوض يستبعد بالكامل.
                             </p>
                         </div>
 
@@ -534,7 +535,7 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
                                         <th scope="col" className="px-sm py-xs text-start">الصنف</th>
                                         <th scope="col" className="px-sm py-xs text-end">المطلوب</th>
                                         <th scope="col" className="px-sm py-xs text-end">المستلم</th>
-                                        <th scope="col" className="px-sm py-xs text-end">التالف</th>
+                                        <th scope="col" className="px-sm py-xs text-end">التالف / زيادة</th>
                                         <th scope="col" className="px-sm py-xs text-center">مرفوض</th>
                                     </tr>
                                 </thead>
@@ -544,6 +545,7 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
                                         const got = parseArabicDecimal(received[item.name]);
                                         const gotSafe = Number.isFinite(got) && got >= 0 ? got : 0;
                                         const spoiled = Math.max(0, Math.round((asked - gotSafe) * 1000) / 1000);
+                                        const over = gotSafe > asked ? Math.round((gotSafe - asked) * 1000) / 1000 : 0;
                                         const isRejected = rejected.has(item.name);
                                         return (
                                             <tr key={item.name} className={`border-t border-hairline ${isRejected ? 'bg-red-50/40 opacity-70' : ''}`}>
@@ -565,7 +567,7 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
                                                         dir="ltr"
                                                     />
                                                 </td>
-                                                <td className="erp-numeric px-sm py-xs text-end font-bold text-danger-text" dir="ltr">{spoiled > 0 ? spoiled.toLocaleString('en-US', { maximumFractionDigits: 3 }) : '—'}</td>
+                                                <td className="erp-numeric px-sm py-xs text-end font-bold" dir="ltr">{spoiled > 0 ? <span className="text-danger-text">-{spoiled.toLocaleString('en-US', { maximumFractionDigits: 3 })}</span> : over > 0 ? <span className="text-success-text">+{over.toLocaleString('en-US', { maximumFractionDigits: 3 })}</span> : '—'}</td>
                                                 <td className="px-sm py-xs text-center">
                                                     <label className="inline-flex cursor-pointer items-center gap-xxs text-caption text-danger-text">
                                                         <input
@@ -592,7 +594,7 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
                                         <td colSpan={2} className="px-sm py-xs text-body-sm font-bold text-ink">الإجمالي</td>
                                         <td className="erp-numeric px-sm py-xs text-end text-body-sm text-ink" dir="ltr">{stats.asked.toLocaleString('en-US', { maximumFractionDigits: 3 })}</td>
                                         <td className="erp-numeric px-sm py-xs text-end font-extrabold text-success-text" dir="ltr">{stats.got.toLocaleString('en-US', { maximumFractionDigits: 3 })}</td>
-                                        <td className="erp-numeric px-sm py-xs text-end font-bold text-danger-text" dir="ltr">{stats.spoiled.toLocaleString('en-US', { maximumFractionDigits: 3 })}</td>
+                                        <td className="erp-numeric px-sm py-xs text-end font-bold text-ink" dir="ltr">{stats.spoiled > 0 ? `-${stats.spoiled.toLocaleString('en-US', { maximumFractionDigits: 3 })}` : stats.over > 0 ? <span className="text-success-text">+{stats.over.toLocaleString('en-US', { maximumFractionDigits: 3 })}</span> : '—'}</td>
                                         <td />
                                     </tr>
                                 </tfoot>
@@ -610,6 +612,7 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
                                 <li>أصناف سيتم استلامها: <b className="text-ink">{items.length - stats.rejectedCount} صنف</b></li>
                                 <li>الكمية المستلمة الكلية: <b className="text-ink" dir="ltr">{stats.got.toLocaleString('en-US', { maximumFractionDigits: 3 })}</b></li>
                                 <li>التالف والموثق: <b className="text-ink" dir="ltr">{stats.spoiled.toLocaleString('en-US', { maximumFractionDigits: 3 })}</b></li>
+                                <li>زيادة عن المطلوب (مقبولة بالكامل): <b className="text-ink" dir="ltr">{stats.over > 0 ? `+${stats.over.toLocaleString('en-US', { maximumFractionDigits: 3 })}` : '—'}</b></li>
                                 <li>أصناف مرفوضة كاملة: <b className="text-ink">{stats.rejectedCount}</b></li>
                             </ul>
                             <p className="mt-xs text-body-xs text-faint">مرفوض = ممنوع تمامًا من التسعير والترحيل — يُعتبر غير موجود نهائيًا.</p>

@@ -279,6 +279,11 @@ router.post('/:id/receive', ...receiveGate, async (req, res, next) => {
                 if (qtyMap.has(key)) {
                     const got = Math.round(qtyMap.get(key) * 1000) / 1000;
                     const asked = Number(it.qty) || 0;
+                    if (got > asked) {
+                        // تسليم أكبر من المطلوب — تُعتمد كل الكمية في الاستلام والفاتورة
+                        // (طلب المالك 2026-11-18)
+                        return { ...it, qty: got, spoiledQty: 0, originalQty: asked, extraQty: Math.round((got - asked) * 1000) / 1000 };
+                    }
                     if (got < asked) {
                         const spoiled = Math.round((asked - got) * 1000) / 1000;
                         spoiledNotes.push(`${it.name}: المطلوب ${asked} — السليم ${got} — التالف ${spoiled}`);
