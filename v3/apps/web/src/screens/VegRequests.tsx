@@ -22,7 +22,6 @@ import {
 import {
     cancelVegRequest,
     createVegRequest,
-    deleteVegRequest,
     editVegItems,
     fetchVegCatalog,
     fetchVegContacts,
@@ -1065,7 +1064,7 @@ export function VegRequests() {
     const [receiveOpen, setReceiveOpen] = useState(false);
     const [receiveRow, setReceiveRow] = useState<VegRequestRow | null>(null);
     const [receiveItems, setReceiveItems] = useState<ReadonlyArray<{ name: string; qty: number; unit?: string | undefined }>>([]);
-    const [deleteRow, setDeleteRow] = useState<VegRequestRow | null>(null);
+
 
     const vegQuery = useQuery({
         queryKey: ['veg-requests', status],
@@ -1174,17 +1173,6 @@ export function VegRequests() {
         },
     });
 
-    const deleteMutation = useWriteMutation<string, void>({
-        mutationFn: (id) => deleteVegRequest(id).then(() => undefined),
-        successTitle: () => '✓ تم حذف الطلبية نهائيًا',
-        errorTitle: 'تعذر حذف الطلبية',
-        invalidate: [['veg-requests']],
-        silentError: true,
-        onSuccess: () => {
-            setDeleteRow(null);
-        },
-    });
-
     const notifyMutation = useWriteMutation<{ id: string; target: 'supplier' | 'warehouse' }, void>({
         mutationFn: ({ id, target }) => notifyVegRequest(id, target).then(() => undefined),
         successTitle: ({ target }) => (target === 'supplier' ? '📤 اتبعتت للمورد على واتساب' : '🏬 اتبعتت للمخزن على واتساب'),
@@ -1258,7 +1246,12 @@ export function VegRequests() {
 
     async function confirmAction() {
         if (!actionRow) return;
-        await cancelMutation.mutateAsync(actionRow.id);
+        try {
+            await cancelMutation.mutateAsync(actionRow.id);
+        } catch (error) {
+            const message = error instanceof Error ? error.message : 'تعذر إلغاء الطلب';
+            toast({ variant: 'error', title: 'تعذر إلغاء الطلب', description: message });
+        }
     }
 
     function printRequest(row: VegRequestRow) {
@@ -1477,10 +1470,10 @@ export function VegRequests() {
                                                                 type="button"
                                                                 size="sm"
                                                                 variant="secondary"
-                                                                title="حذف الطلبية نهائيًا (الأدمن)"
-                                                                onClick={() => setDeleteRow(row)}
+                                                                title="إلغاء الطلبية (الأدمن) — الطلبية تبقى في السجل"
+                                                                onClick={() => openAction(row, 'cancel')}
                                                             >
-                                                                🗑 حذف
+                                                                ✕ إلغاء
                                                             </Button>
                                                         </>
                                                     ) : null}
@@ -1530,15 +1523,17 @@ export function VegRequests() {
                                                                     استلام
                                                                 </Button>
                                                             ) : null}
-                                                            <Button
-                                                                type="button"
-                                                                size="sm"
-                                                                variant="secondary"
-                                                                title="إلغاء الطلب"
-                                                                onClick={() => openAction(row, 'cancel')}
-                                                            >
-                                                                إلغاء
-                                                            </Button>
+                                                            {!isAdmin ? (
+                                                                <Button
+                                                                    type="button"
+                                                                    size="sm"
+                                                                    variant="secondary"
+                                                                    title="إلغاء الطلب"
+                                                                    onClick={() => openAction(row, 'cancel')}
+                                                                >
+                                                                    إلغاء
+                                                                </Button>
+                                                            ) : null}
                                                         </>
                                                     )}
                                                     {row.status === 'received' && canPrice ? (
@@ -1655,21 +1650,6 @@ export function VegRequests() {
                     setActionOpen(false);
                     setActionRow(null);
                 }}
-            />
-            <ConfirmDialog
-                open={deleteRow !== null}
-                title={deleteRow ? `حذف الطلبية ${deleteRow.number}` : 'حذف الطلبية'}
-                message={deleteRow ? `هل تقصد تحذف الطلبية «${deleteRow.number}» نهائيًا؟ لا يهمني العمليات التي وُثّقت عليها. يصير حذفًا دائمًا من السجل.` : ''}
-                pending={deleteMutation.isPending}
-                onConfirm={async () => {
-                    if (!deleteRow) return;
-                    try {
-                        await deleteMutation.mutateAsync(deleteRow.id);
-                    } finally {
-                        setDeleteRow(null);
-                    }
-                }}
-                onClose={() => setDeleteRow(null)}
             />
             <VegContactsDialog
                 open={contactsOpen}

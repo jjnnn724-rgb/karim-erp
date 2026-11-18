@@ -32,7 +32,7 @@
  *   asks first and the server still re-checks every guard.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.399';
+import { apiFetch } from '../../core/api.js?v=4.9.400';
 
 /** Mirrors the requireRole() lists on the six doors above. */
 export const FISCAL_READ_ROLES = ['admin', 'manager', 'accountant'];

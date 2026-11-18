@@ -24,11 +24,11 @@
  *     يقرأ data.error لا data.code.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.399';
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.399';
-import { formatInt } from '../data/employees-repo.js?v=4.9.399';
-import { openInAppReport } from '../report-viewer.js?v=4.9.399';
-import { formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.399';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.400';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.400';
+import { formatInt } from '../data/employees-repo.js?v=4.9.400';
+import { openInAppReport } from '../report-viewer.js?v=4.9.400';
+import { formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.400';
 import {
     fetchDispatches, dispatchToRow, summarizeDispatches,
     matchDispatchProduct, summarizeProductWithdrawal,
@@ -39,11 +39,11 @@ import {
     fetchDepartmentOptions, deptNameByCode, fetchDispatchSettings, fetchDispatchFull,
     createDispatch, editDispatch, deleteDispatch,
     chefApproveDispatch, chefRejectDispatch, approveDispatch, rejectDispatch, receiveDispatch,
-} from '../data/dispatch-repo.js?v=4.9.399';
+} from '../data/dispatch-repo.js?v=4.9.400';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.399';
+} from '../signature.js?v=4.9.400';
 
 const SIGN_KINDS = new Set(['chef-approve', 'chef-reject', 'approve', 'reject', 'receive']);
 const SIG_IDS = {

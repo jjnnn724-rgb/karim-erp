@@ -453,24 +453,6 @@ router.post('/:id/price', jwtAuth, requireRole('warehouse', 'admin', 'owner', 'm
     } catch (e) { next(e); }
 });
 
-// ─── حذف طلبية بالكامل (admin فقط — بأمر صريح) ───────────────────────────────
-// طلب المالك: «حذف للادمن لأي طلبية» — الإدمن يمسح أي طلب من أي حالة ولا يبقى أثر.
-router.delete('/:id', jwtAuth, requireRole('admin'), async (req, res, next) => {
-    try {
-        await ensureSchema();
-        const id = Number(req.params.id);
-        if (!Number.isInteger(id) || id <= 0) {
-            return res.status(422).json({ ok: false, error: 'ID_INVALID', message: 'معرّف طلب غير سليم' });
-        }
-        const { rowCount } = await pool.query('DELETE FROM veg_requests WHERE id = $1', [id]);
-        if (!rowCount) {
-            return res.status(404).json({ ok: false, error: 'NOT_FOUND', message: 'الطلب غير موجود' });
-        }
-        logger.info('[veg-requests] حذف طلبية (admin)', { id, by: req.user.username });
-        return res.json({ ok: true, deleted: rowCount });
-    } catch (e) { next(e); }
-});
-
 // ─── تعديل الكميات قبل الاعتماد النهائي (طلب المالك 2026-10-09) ───
 // رئيس القسم أو المشتريات (warehouse) يعدّل كميات الأصناف الموجودة
 // طالما الطلب معلق (قبل الاستلام/التسعير). إضافة أصناف جديدة مرفوضة —
@@ -485,6 +467,16 @@ router.put('/:id/items', jwtAuth, requireRole(...EDIT_ROLES), async (req, res, n
         }
         const row = (await pool.query('SELECT * FROM veg_requests WHERE id = $1', [id])).rows[0];
         if (!row) {return res.status(404).json({ ok: false, error: 'NOT_FOUND', message: 'الطلب غير موجود' });}
+        if (row.invoice_id && ['admin', 'owner'].includes(req.user.role)) {
+            // الطلب مترحل على فاتورة مورد — تعديل الأصناف هنا بيخلق تعارضًا
+            // مع الدفتر (الفاتورة بتحمّل الكميات القديمة). لازم تصحيح الفاتورة
+            // من الحسابات أولًا.
+            return res.status(409).json({
+                ok: false,
+                error: 'HAS_INVOICE',
+                message: `هذا الطلب له فاتورة مورد مسجلة (رقم ${row.invoice_id}) — تعديل الأصناف بيتعارض مع الدفتر. صحح الفاتورة من الحسابات أولًا.`,
+            });
+        }
         if (row.status !== 'pending') {
             // الإدمن والمالك يقدرون يعدّلوا أي حالة (طلب المالك 2026-11-18)
             const isAdminSide = ['admin', 'owner'].includes(req.user.role);
@@ -542,10 +534,21 @@ router.post('/:id/cancel', jwtAuth, requireRole(...READ_ROLES), async (req, res,
         }
         const row = (await pool.query('SELECT * FROM veg_requests WHERE id = $1', [id])).rows[0];
         if (!row) {return res.status(404).json({ ok: false, error: 'NOT_FOUND', message: 'الطلب غير موجود' });}
-        if (row.status !== 'pending') {
-            return res.status(409).json({ ok: false, error: 'NOT_PENDING', message: 'لا يمكن إلغاء طلب تم استلامه أو إلغاؤه' });
-        }
+        // الإدمن/المالك يقدرون يلغوا أي حالة (طلب المالك 2026-11-18)؛
+        // بقية الأدوار يقدروا يلغوا طلبهم المعلقات فقط.
         const isBoss = ['admin', 'owner'].includes(req.user.role);
+        if (row.invoice_id && isBoss) {
+            // الطلب له فاتورة مورد مسجلة ومرحلة في الدفتر — الإلغاء هنا هيخلّي
+            // الفاتورة بلا طلب، عشان كده لازم إبطال الفاتورة من الحسابات أولًا.
+            return res.status(409).json({
+                ok: false,
+                error: 'HAS_INVOICE',
+                message: `هذا الطلب له فاتورة مورد مسجلة (رقم ${row.invoice_id}) ومترحلة في الدفتر — لازم تُبطل الفاتورة من الحسابات أولًا ثم أعد المحاولة.`,
+            });
+        }
+        if (row.status !== 'pending' && !isBoss) {
+            return res.status(409).json({ ok: false, error: 'NOT_PENDING', message: 'الاناء متاح للطلبيات المعلقة فقط' });
+        }
         if (!isBoss && row.created_by !== req.user.id) {
             return res.status(403).json({ ok: false, error: 'FORBIDDEN', message: 'إلغاء الطلب متاح لصاحبه أو للإدارة فقط' });
         }

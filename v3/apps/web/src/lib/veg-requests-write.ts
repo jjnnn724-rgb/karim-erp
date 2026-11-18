@@ -102,14 +102,6 @@ export async function createVegRequest(input: VegCreateInput): Promise<VegResult
     });
 }
 
-/** حذف طلبية بالكامل — admin فقط (طلب المالك) */
-export async function deleteVegRequest(id: string | number): Promise<{ ok?: boolean | undefined }> {
-    return writeJson(z.object({
-        ok: z.boolean().optional(),
-        deleted: z.number().optional(),
-    }).passthrough(), `/api/veg-requests/${encodeURIComponent(String(id))}`, 'DELETE');
-}
-
 export async function receiveVegRequest(
     id: string | number,
     payload?: { quantities?: Array<{ name: string; receivedQty: number }>; rejections?: string[] },
