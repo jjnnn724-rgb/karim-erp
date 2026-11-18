@@ -119,3 +119,143 @@ export function sumQty<T extends { qty: number }>(rows: readonly T[]): number {
 export function share(part: number, total: number): number {
     return total > 0 ? (part / total) * 100 : 0;
 }
+
+/* ─── مطابقة الأصناف: مباع مقابل مسحوب (تشخيص الخسارة) ─────────────────── */
+
+export type CoverageStatus = 'unissued' | 'no-sales' | 'partial' | 'covered';
+
+export interface CoverageRow {
+    /** اسم الصنف كما في مرآة Oracle/المخزن. */
+    item: string;
+    soldQty: number;
+    issuedQty: number;
+    issuedValue: number;
+    /** مباع ÷ مسحوب — null عند بلا مسحوبات. */
+    coverage: number | null;
+    status: CoverageStatus;
+}
+
+export const COVERAGE_STATUS_LABEL: Record<CoverageStatus, string> = {
+    'no-sales': 'بلا مبيعات',
+    partial: 'تغطية جزئية',
+    covered: 'مغطاة',
+    unissued: 'مبيعات بدون صرف',
+};
+
+export function buildCoverageRows(summary: ExternalSalesSummary): CoverageRow[] {
+    const sold = new Map<string, number>(summary.sold.byItem.map((row) => [String(row.item), Number(row.qty) || 0]));
+    const issued = new Map<string, (typeof summary.issued.byItem)[number]>(
+        summary.issued.byItem.map((row) => [String(row.item), row]),
+    );
+    const names = new Set<string>([...sold.keys(), ...issued.keys()]);
+    const rows: CoverageRow[] = [];
+    for (const item of names) {
+        const soldQty = sold.get(item) ?? 0;
+        const issue = issued.get(item);
+        const issuedQty = Number(issue?.qty ?? 0) || 0;
+        const issuedValue = Number(issue?.value ?? 0) || 0;
+        let status: CoverageStatus;
+        if (issuedQty === 0) {
+            status = 'unissued';
+        } else if (soldQty === 0) {
+            status = 'no-sales';
+        } else if (soldQty >= issuedQty) {
+            status = 'covered';
+        } else {
+            status = 'partial';
+        }
+        rows.push({
+            item,
+            soldQty,
+            issuedQty,
+            issuedValue,
+            coverage: issuedQty > 0 ? soldQty / issuedQty : null,
+            status,
+        });
+    }
+    rows.sort((a, b) => b.issuedValue - a.issuedValue || b.soldQty - a.soldQty || a.item.localeCompare(b.item, 'ar'));
+    return rows;
+}
+
+export interface CoverageSummary {
+    noSalesCount: number;
+    noSalesValue: number;
+    partialCount: number;
+    coveredCount: number;
+    unissuedCount: number;
+}
+
+export function coverageSummary(rows: readonly CoverageRow[]): CoverageSummary {
+    let noSalesCount = 0;
+    let noSalesValue = 0;
+    let partialCount = 0;
+    let coveredCount = 0;
+    let unissuedCount = 0;
+    for (const row of rows) {
+        if (row.status === 'no-sales') {
+            noSalesCount += 1;
+            noSalesValue += row.issuedValue;
+        } else if (row.status === 'partial') {
+            partialCount += 1;
+        } else if (row.status === 'covered') {
+            coveredCount += 1;
+        } else {
+            unissuedCount += 1;
+        }
+    }
+    return {
+        noSalesCount,
+        noSalesValue: Math.round(noSalesValue * 100) / 100,
+        partialCount,
+        coveredCount,
+        unissuedCount,
+    };
+}
+
+/* ─── الفترة السابقة (نفس طول الفترة الحالية) ───────────────────────────── */
+
+function isoOf(date: Date): string {
+    return date.toISOString().slice(0, 10);
+}
+
+export function previousPeriod(from: string, to: string): { prevFrom: string; prevTo: string } {
+    const start = Date.parse(`${from}T00:00:00Z`);
+    const end = Date.parse(`${to}T00:00:00Z`);
+    if (!Number.isFinite(start) || !Number.isFinite(end) || end < start) {
+        return { prevFrom: from, prevTo: from };
+    }
+    const days = Math.max(1, Math.round((end - start) / 86400000) + 1);
+    const prevTo = new Date(start - 86400000);
+    const prevFrom = new Date(start - days * 86400000);
+    return { prevFrom: isoOf(prevFrom), prevTo: isoOf(prevTo) };
+}
+
+/** نسبة التغيّر % — null عند فترة سابقة صفرية (لا ندّعي نسبة بلا أساس). */
+export function deltaPct(current: number, previous: number): number | null {
+    if (!Number.isFinite(previous) || previous === 0) {
+        return null;
+    }
+    return ((current - previous) / Math.abs(previous)) * 100;
+}
+
+/* ─── تصدير CSV (BOM للعربية، فاصلة منقوطة لـ Excel) ────────────────────── */
+
+const CSV_BOM = '﻿';
+
+export function toCsv(headers: readonly string[], rows: readonly (readonly (string | number)[])[]): string {
+    const esc = (value: string | number): string => {
+        const s = String(value ?? '');
+        if (/^[=+\-@]/.test(s.trim()) && Number.isNaN(Number(s))) {
+            return `'${s}`; // حقن الصيغ في جداول البيانات
+        }
+        if (/[";\r\n]/.test(s)) {
+            return `"${s.replace(/"/g, '""')}"`;
+        }
+        return s;
+    };
+    const lines = [headers.map(esc).join(';')];
+    for (const row of rows) {
+        lines.push(row.map(esc).join(';'));
+    }
+    return `${CSV_BOM}${lines.join('\r\n')}`;
+}
