@@ -6,7 +6,7 @@
  * screens own fetching and behaviour, exactly like every other V2 screen.
  */
 
-import { formatMoney, formatInt } from './data/reports-repo.js?v=4.9.400';
+import { formatMoney, formatInt } from './data/reports-repo.js?v=4.9.401';
 
 export const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

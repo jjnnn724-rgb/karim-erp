@@ -12,6 +12,7 @@ import { isWriteRole, writeJson } from './write';
  *  • تعديل     PUT  /api/veg-requests/:id/items    (sous_chef|admin|owner)
  *  • إلغاء     POST /api/veg-requests/:id/cancel   (READ_ROLES — gate server-side)
  *  • طباعة     POST /api/veg-requests/:id/printed  (READ_ROLES — عدّاد فقط)
+ *  • حذف نهائي DELETE /api/veg-requests/:id          (admin|owner — يشيل الطلب + المصروف التلقائي المرتبط؛ 409 عند وجود فاتورة أو قيد محاسبي)
  *
  * حتى تُفعَّل هذه المسارات في الباك إند، تُعدّ الدوال جاهزة بنفس العقود.
  */
@@ -53,15 +54,18 @@ export const VEG_TEXT = {
     priceFailed: 'فشل تسعير الطلب',
     editFailed: 'فشل تعديل الكميات',
     cancelFailed: 'فشل إلغاء الطلب',
+    deleteFailed: 'فشل حذف الطلب',
     createSuccess: 'تم إنشاء طلب الخضار بنجاح',
     receiveSuccess: 'تم استلام الطلب',
     priceSuccess: 'تم تسعير الطلب',
     editSuccess: 'تم تعديل الكميات',
     cancelSuccess: 'تم إلغاء الطلب',
+    deleteSuccess: 'تم حذف الطلب نهائيًا',
     cancel: 'إلغاء',
     confirmCancel: 'إلغاء طلب الخضار «%s»؟',
     confirmReceive: 'استلام طلب الخضار «%s»؟',
     confirmPrice: 'تسعير طلب الخضار «%s»؟ سيُحمَّل المصروف على قسم المطبخ.',
+    confirmDelete: 'حذف الطلب «%s» نهائيًا؟ لا يمكن التراجع — سيُحذف معه المصروف التلقائي المرتبط به إن وُجد، ويرفض النظام لو له فاتورة مورد أو قيد محاسبي.',
 } as const;
 
 /* ── مخططات التحقق ────────────────────────────────────────────────────── */
@@ -126,6 +130,16 @@ export async function cancelVegRequest(id: string | number, reason?: string): Pr
     return writeJson(vegResultSchema, `/api/veg-requests/${encodeURIComponent(String(id))}/cancel`, 'POST', {
         reason: reason?.trim() || null,
     });
+}
+
+/** حذف نهائي — DELETE /:id (admin|owner). 409 لو للطلب فاتورة أو قيد محاسبي؛ المصروف التلقائي المرتبط يُحذف في نفس الـ transaction. */
+const vegDeleteSchema = z
+    .object({ ok: z.boolean().optional(), id: z.union([z.string(), z.number()]).optional(), expenseDeleted: z.boolean().optional() })
+    .passthrough();
+export type VegDeleteResult = z.infer<typeof vegDeleteSchema>;
+
+export async function deleteVegRequest(id: string | number): Promise<VegDeleteResult> {
+    return writeJson(vegDeleteSchema, `/api/veg-requests/${encodeURIComponent(String(id))}`, 'DELETE');
 }
 
 /** عدّاد الطباعة — POST /:id/printed (:463) لكل أدوار القراءة؛ V2 يطلقه ولا ينتظره. */
@@ -240,6 +254,10 @@ export function vegReceiveConfirm(ref: string): string {
 
 export function vegPriceConfirm(ref: string): string {
     return VEG_TEXT.confirmPrice.replace('%s', String(ref ?? ''));
+}
+
+export function vegDeleteConfirm(ref: string): string {
+    return VEG_TEXT.confirmDelete.replace('%s', String(ref ?? ''));
 }
 
 /* ── نصوص نجاح ───────────────────────────────────────────────────────── */

@@ -22,6 +22,7 @@ import {
 import {
     cancelVegRequest,
     createVegRequest,
+    deleteVegRequest,
     editVegItems,
     fetchVegCatalog,
     fetchVegContacts,
@@ -36,6 +37,7 @@ import {
     type VegItemInput,
     vegCancelConfirm,
     vegCreateVisible,
+    vegDeleteConfirm,
     vegPriceVisible,
     vegReceiveVisible,
 } from '../lib/veg-requests-write';
@@ -52,7 +54,8 @@ import { useToast } from '../ui/Toast';
  *  • استلام (POST /api/veg-requests/:id/receive — sous_chef|admin|owner)
  *  • تسعير (POST /api/veg-requests/:id/price — warehouse|admin|owner|manager)
  *  • تعديل الكميات (PUT /api/veg-requests/:id/items — sous_chef|admin|owner)
- *  • إلغاء (POST /api/veg-requests/:id/cancel — صاحب الطلب أو الإدارة)
+ *  • إلغاء (POST /api/veg-requests/:id/cancel — admin/owner لأي حالة، وبقية الأدوار للمعلق فقط)
+ *  • حذف نهائي (DELETE /api/veg-requests/:id — admin/owner فقط؛ يرفض لو الطلبية له فاتورة مورد أو قيد محاسبي)
  *  • طباعة الطلب (ورقة A4 من صفّه + POST /api/veg-requests/:id/printed) وطباعة الشاشة (PrintActions)
  *
  * القراءة من `/api/veg-requests`، والكتابة محجوزة للأدوار أعلاه والخادم يحسم.
@@ -1059,6 +1062,7 @@ export function VegRequests() {
     const [priceItems, setPriceItems] = useState<ReadonlyArray<{ name: string; qty: number; unit?: string | undefined; rejected?: boolean | undefined }>>([]);
     const [actionOpen, setActionOpen] = useState(false);
     const [actionRow, setActionRow] = useState<VegRequestRow | null>(null);
+    const [actionKind, setActionKind] = useState<'cancel' | 'delete'>('cancel');
     const [actionTitle, setActionTitle] = useState('');
     const [actionMessage, setActionMessage] = useState('');
     const [receiveOpen, setReceiveOpen] = useState(false);
@@ -1173,6 +1177,17 @@ export function VegRequests() {
         },
     });
 
+    const deleteMutation = useWriteMutation<string, void>({
+        mutationFn: (id) => deleteVegRequest(id).then(() => undefined),
+        successTitle: () => VEG_TEXT.deleteSuccess,
+        invalidate: [['veg-requests']],
+        silentError: true,
+        onSuccess: () => {
+            setActionOpen(false);
+            setActionRow(null);
+        },
+    });
+
     const notifyMutation = useWriteMutation<{ id: string; target: 'supplier' | 'warehouse' }, void>({
         mutationFn: ({ id, target }) => notifyVegRequest(id, target).then(() => undefined),
         successTitle: ({ target }) => (target === 'supplier' ? '📤 اتبعتت للمورد على واتساب' : '🏬 اتبعتت للمخزن على واتساب'),
@@ -1220,7 +1235,7 @@ export function VegRequests() {
         setReceiveOpen(true);
     }
 
-    function openAction(row: VegRequestRow, kind: 'price' | 'cancel') {
+    function openAction(row: VegRequestRow, kind: 'price' | 'cancel' | 'delete') {
         if (kind === 'price') {
             const raw = vegQuery.data?.requests.find((request) => request.id === row.id);
             const items = Array.isArray(raw?.items)
@@ -1238,8 +1253,15 @@ export function VegRequests() {
             setPriceOpen(true);
             return;
         }
-        setActionTitle('إلغاء الطلب');
-        setActionMessage(vegCancelConfirm(row.number));
+        if (kind === 'delete') {
+            setActionKind('delete');
+            setActionTitle('حذف الطلب');
+            setActionMessage(vegDeleteConfirm(row.number));
+        } else {
+            setActionKind('cancel');
+            setActionTitle('إلغاء الطلب');
+            setActionMessage(vegCancelConfirm(row.number));
+        }
         setActionRow(row);
         setActionOpen(true);
     }
@@ -1247,10 +1269,15 @@ export function VegRequests() {
     async function confirmAction() {
         if (!actionRow) return;
         try {
-            await cancelMutation.mutateAsync(actionRow.id);
+            if (actionKind === 'delete') {
+                await deleteMutation.mutateAsync(actionRow.id);
+            } else {
+                await cancelMutation.mutateAsync(actionRow.id);
+            }
         } catch (error) {
-            const message = error instanceof Error ? error.message : 'تعذر إلغاء الطلب';
-            toast({ variant: 'error', title: 'تعذر إلغاء الطلب', description: message });
+            const fallback = actionKind === 'delete' ? 'تعذر حذف الطلب' : 'تعذر إلغاء الطلب';
+            const message = error instanceof Error ? error.message : fallback;
+            toast({ variant: 'error', title: fallback, description: message });
         }
     }
 
@@ -1475,6 +1502,15 @@ export function VegRequests() {
                                                             >
                                                                 ✕ إلغاء
                                                             </Button>
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                variant="danger"
+                                                                title="حذف الطلبية نهائيًا (الأدمن) — تُمحى من السجل مع المصروف التلقائي المرتبط بها؛ يرفض لو لها فاتورة مورد أو قيد محاسبي"
+                                                                onClick={() => openAction(row, 'delete')}
+                                                            >
+                                                                🗑 حذف
+                                                            </Button>
                                                         </>
                                                     ) : null}
                                                     {row.status !== 'cancelled' ? (
@@ -1644,7 +1680,7 @@ export function VegRequests() {
                 open={actionOpen}
                 title={actionTitle}
                 message={actionMessage}
-                pending={priceMutation.isPending || cancelMutation.isPending}
+                pending={priceMutation.isPending || cancelMutation.isPending || deleteMutation.isPending}
                 onConfirm={confirmAction}
                 onClose={() => {
                     setActionOpen(false);
