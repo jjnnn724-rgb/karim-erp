@@ -79,14 +79,14 @@ const EXPORTS = [
 describe('v2 شاشة 11 — أجهزة البصمة: مرآة الخادم', () => {
     const serverSrc = read(SERVER);
 
-    test('بوابة الأجهزة — الأدمن والمالك فقط كتابةً وقراءةً (قرار المالك 2026-11-17)', async () => {
+    test('بوابة الأجهزة — الكتابة/التحكم للأدمن والمالك، والقراءة للإدمن والمالك والموارد البشرية والسو شيف (قرار المالك 2026-11-18)', async () => {
         const write = rolesOf(serverSrc, 'WRITE_ROLES');
         const readRoles = rolesOf(serverSrc, 'READ_ROLES');
         const control = rolesOf(serverSrc, 'CONTROL_ROLES');
         const ctx = loadEsm(REPO, {}, ['ZK_WRITE_ROLES']);
         expect(ctx.ZK_WRITE_ROLES).toEqual(write);
         expect(write).toEqual(['admin', 'owner']);
-        expect(readRoles).toEqual(['admin', 'owner']);
+        expect(readRoles).toEqual(['admin', 'owner', 'hr', 'sous_chef']);
         expect(control).toEqual(['admin', 'owner']);
     });
 

@@ -28,7 +28,7 @@ const { ZKError } = require('./client');
 const { instantToWall } = require('../attendance-engine');
 
 const router = express.Router();
-const READ_ROLES = ['admin', 'owner'];
+const READ_ROLES = ['admin', 'owner', 'hr', 'sous_chef'];
 const WRITE_ROLES = ['admin', 'owner'];
 /** مركز التحكم: الأدمن، والـowner أعلى سلطةٍ منه — لا سلطةَ أعلى تُقصيه. */
 const CONTROL_ROLES = ['admin', 'owner'];

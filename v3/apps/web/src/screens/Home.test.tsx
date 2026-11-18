@@ -241,12 +241,11 @@ describe('الصفحة الرئيسية', () => {
         // كاشير: قوائمه الفعلية لا تشمل المالية/التقارير — لا إجراء يقود إلى رفض.
         const cashier = quickActionsForRole('cashier', new Set(V3_SCREENS), [
             'dashboard',
-            'attendance',
             'leaves',
             'employee-portal',
             'pos-entry',
         ]);
-        expect(cashier.map((action) => action.to)).toEqual(['/pos-entry', '/attendance', '/leaves', '/employee-portal']);
+        expect(cashier.map((action) => action.to)).toEqual(['/pos-entry', '/leaves', '/employee-portal']);
         // منحة إضافية تفتح إجراءً، والسحب يمنعه.
         expect(quickActionsForRole('accountant', new Set(V3_SCREENS), ['cfo', 'pnl', 'revenues']).map((a) => a.to)).toEqual([
             '/cfo',

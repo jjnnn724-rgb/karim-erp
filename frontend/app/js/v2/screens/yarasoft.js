@@ -37,8 +37,8 @@ import {
     searchYarasoftProducts,
     startYarasoftOracleCatchUp,
     testYarasoftOracle,
-} from '../data/yarasoft-repo.js?v=4.9.396';
-import { fetchCurrency, formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.396';
+} from '../data/yarasoft-repo.js?v=4.9.397';
+import { fetchCurrency, formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.397';
 
 const esc = (value) => String(value ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

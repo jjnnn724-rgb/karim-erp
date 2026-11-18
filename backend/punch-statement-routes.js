@@ -17,7 +17,7 @@ const { buildPunchStatement } = require('./punch-statement');
 const { wallDate } = require('./business-time');
 
 const router = express.Router();
-const ADMIN_ROLES = ['admin', 'hr', 'manager'];
+const ADMIN_ROLES = ['admin', 'owner', 'hr', 'sous_chef'];
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 function defaultRange() {

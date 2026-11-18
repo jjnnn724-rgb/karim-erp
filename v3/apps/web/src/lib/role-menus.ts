@@ -124,7 +124,6 @@ export const ROLES = {
         'employees',
         'mudad',
         'leaves',
-        'attendance',
         'whatsapp',
         'employee-portal',
         'warehouse',
@@ -169,7 +168,7 @@ export const ROLES = {
         'goods-scan',
         'warehouse-dashboard',
     ],
-    kitchen: ['kitchen', 'dispatch', 'wh-prs', 'dept-transfers', 'recipes', 'buffet', 'attendance', 'leaves', 'employee-portal', 'roster'],
+    kitchen: ['kitchen', 'dispatch', 'wh-prs', 'dept-transfers', 'recipes', 'buffet', 'leaves', 'employee-portal', 'roster'],
     sous_chef: [
         'kitchen',
         'dispatch',
@@ -192,7 +191,7 @@ export const ROLES = {
         'inventory-inquiry',
         'inventory-inquiry-pro',
     ],
-    dept_head: ['dashboard', 'attendance', 'leaves', 'employee-portal', 'dept-employees', 'dispatch', 'dept-transfers', 'roster'],
+    dept_head: ['dashboard', 'leaves', 'employee-portal', 'dept-employees', 'dispatch', 'dept-transfers', 'roster'],
     hr: [
         'dashboard',
         'hr-dashboard',
@@ -243,9 +242,9 @@ export const ROLES = {
         'command-center',
         'bank-rec',
     ],
-    employee: ['dashboard', 'attendance', 'leaves', 'employee-portal'],
+    employee: ['dashboard', 'leaves', 'employee-portal'],
     owner: ['cashier-monitor', 'dashboard', 'zkteco', 'punch-control', 'sales-inquiry'],
-    cashier: ['dashboard', 'attendance', 'leaves', 'employee-portal', 'pos-entry'],
+    cashier: ['dashboard', 'leaves', 'employee-portal', 'pos-entry'],
 } as const;
 
 export type RoleKey = keyof typeof ROLES;

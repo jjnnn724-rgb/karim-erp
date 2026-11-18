@@ -857,7 +857,7 @@ router.delete('/punch-devices/:userId', jwtAuth, requireRole('admin', 'owner'), 
 });
 
 // سجل المحاولات — فلاتر: decision / reject / username، حد أقصى 200 صف
-router.get('/attempts', jwtAuth, requireRole('admin', 'owner'), async (req, res, next) => {
+router.get('/attempts', jwtAuth, requireRole('admin', 'owner', 'hr', 'sous_chef'), async (req, res, next) => {
     try {
         const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 50));
         const conds = [];

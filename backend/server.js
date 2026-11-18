@@ -1487,6 +1487,9 @@ const ENTITY_READ_ROLES = {
     employee_contracts: [...SENSITIVE_READ_ROLES, 'hr'],
     employee_evaluations: [...SENSITIVE_READ_ROLES, 'hr'],
     payroll_runs: [...SENSITIVE_READ_ROLES, 'hr'],
+    // قرار المالك 2026-11-18: رؤية أي بصمة حصرية للإدمن والـ owner والموارد البشرية والسو شيف —
+    // كل دور آخر ممنوع من قراءات سجلات الحضور الفردية (بما فيها المدير ومدير القسم).
+    attendance: ['admin', 'owner', 'hr', 'sous_chef'],
 };
 function readRolesFor(entity) {
     return ENTITY_READ_ROLES[entity] || SENSITIVE_READ_ROLES;
@@ -1512,7 +1515,7 @@ async function ensureEmployeeUserLinkSchema() {
 // ─── Dedicated attendance range endpoint (avoids 142-page pagination bottleneck) ───
 // dept_head: يرى سجل حضور/انصراف موظفي قسمه حصرًا — نطاق rosterScope نفسه
 // (dept_code يقبل قائمة أقسام مفصولة بفواصل، والمقارنة غير حساسة لحالة الأحرف)
-app.get('/api/attendance/range', jwtAuth, requireRoleOrPerm([...SENSITIVE_READ_ROLES, 'hr', 'dept_head'], 'hr.view'), asyncHandler(async (req, res) => {
+app.get('/api/attendance/range', jwtAuth, requireRole('admin', 'owner', 'hr', 'sous_chef'), asyncHandler(async (req, res) => {
     const from = String(req.query.from || '').slice(0, 10);
     const to = String(req.query.to || '').slice(0, 10);
     if (!from || !to) {return res.status(400).json({ error: 'MISSING_DATES', message: 'from and to params required (YYYY-MM-DD)' });}
@@ -1810,7 +1813,7 @@ async function updateAttendanceWithAudit({ id, setClause, keys, values, actor, b
 /* ── حوكمة الحضور: سجلّ التدقيق (2026-11-02) ────────────────────────────
    مسارٌ مستقلٌّ عن CRUD العام، لأنّ /api/attendance/:id كان يبتلع
    /api/attendance/audit. المسجَّل: من غيّر ماذا ومتى ولماذا. */
-app.get('/api/attendance/audit', jwtAuth, requireRole('admin', 'owner'), asyncHandler(async (req, res) => {
+app.get('/api/attendance/audit', jwtAuth, requireRole('admin', 'owner', 'hr', 'sous_chef'), asyncHandler(async (req, res) => {
     try {
         const { listAttendanceEdits } = require('./attendance-governance');
         const result = await listAttendanceEdits({

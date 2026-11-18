@@ -581,9 +581,9 @@ const ROLE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
     warehouse: ['warehouse', 'warehouse-dashboard', 'dispatch', 'wh-prs', 'inventory-inquiry', 'wh-moves'],
     kitchen: ['kitchen', 'recipes', 'menu-board', 'dispatch', 'wh-returns', 'weight'],
     // قوائم الكاشير في V2 لا تشمل المالية ولا التقارير — الإجراءات من قوائمه الفعلية فقط.
-    cashier: ['pos-entry', 'attendance', 'leaves', 'employee-portal'],
+    cashier: ['pos-entry', 'leaves', 'employee-portal'],
     // الموظف لا يرى payroll/roster في V2؛ نبقي ما يُسمح به فعلًا.
-    employee: ['employee-portal', 'attendance', 'leaves'],
+    employee: ['employee-portal', 'leaves'],
     default: ['executive', 'reports', 'warehouse', 'employees', 'settings', 'briefing'],
 };
 

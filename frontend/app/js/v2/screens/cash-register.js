@@ -15,15 +15,15 @@
  * · كل رقمٍ ومنةٍ ونسبةٍ من الخادم · RTL عربي · الترقيم صادق (العدد القادم
  * من الخادم هو عدد المطابق كلّه، لا المعروض).
  */
-import { createDataTable } from '../data-display/data-table.js?v=4.9.396';
-import { statusBadge } from '../status.js?v=4.9.396';
-import { barChart, donutChart } from '../charts.js?v=4.9.396';
-import { openInAppReport } from '../report-viewer.js?v=4.9.396';
-import { trapFocus } from '../focus-trap.js?v=4.9.396';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.397';
+import { statusBadge } from '../status.js?v=4.9.397';
+import { barChart, donutChart } from '../charts.js?v=4.9.397';
+import { openInAppReport } from '../report-viewer.js?v=4.9.397';
+import { trapFocus } from '../focus-trap.js?v=4.9.397';
 import {
     fetchExpenseRegister, fetchVoucher, fetchVoucherHtml, fetchRegisterHtml,
     typeLabel, money, count, splitDesc, voucherRef, periodPresets, isoDay,
-} from '../data/expense-register-repo.js?v=4.9.396';
+} from '../data/expense-register-repo.js?v=4.9.397';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
