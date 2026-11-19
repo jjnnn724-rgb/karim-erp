@@ -68,7 +68,30 @@ jobs:
 
       - name: Install Playwright Chromium
         working-directory: v3/apps/web
-        run: npx playwright install chromium --with-deps
+        run: |
+          # تنزيل المتصفح عرضة لفشل شبكة عابر على العدّاد: 3 محاولات ثم تراجع
+          # بلا --with-deps (ubuntu-latest يحوي أغلب المكتبات)، مع سجل مرفوع.
+          set +e
+          for i in 1 2 3; do
+            pnpm exec playwright install --with-deps chromium > pw-install.log 2>&1
+            if [ $? -eq 0 ]; then echo "playwright installed (attempt $i)"; exit 0; fi
+            echo "::warning::playwright install attempt $i failed"
+            tail -15 pw-install.log
+            sleep 15
+          done
+          pnpm exec playwright install chromium > pw-install.log 2>&1
+          CODE=$?
+          tail -15 pw-install.log
+          exit $CODE
+
+      - name: Upload Playwright install log (on failure)
+        if: failure()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: pw-install-log
+          path: v3/apps/web/pw-install.log
+          retention-days: 7
 
       - name: E2E public (desktop + mobile — بلا API ولا جلسة)
         working-directory: v3/apps/web
