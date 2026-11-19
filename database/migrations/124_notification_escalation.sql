@@ -32,6 +32,10 @@ BEGIN;
 
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS escalation_level SMALLINT NOT NULL DEFAULT 0;
 ALTER TABLE notifications ADD COLUMN IF NOT EXISTS escalated_at TIMESTAMPTZ;
+-- إصلاح 2026-11: الفهرس الجزئي أدناه يشترط category، وكان العمود يُضاف
+-- runtime فقط (notification-service.js:38) فيفشل الترحيل على قاعدة نظيفة
+-- (CI نفسها). التعريف مطابق حرفيًا للـruntime — idempotent في الاتجاهين.
+ALTER TABLE notifications ADD COLUMN IF NOT EXISTS category VARCHAR(40);
 
 COMMENT ON COLUMN notifications.escalation_level IS
     '«المنادي» التصعيد: 0 = أصلي، 1 = صُعِّد للنائب (15د)، 2 = صُعِّد للمدير (45د) أو نهاية السلّم — لا يُصعَّد بعده.';
