@@ -56,4 +56,4 @@
 
 | Date | Backup file | Test DB | Result | By |
 |---|---|---|---|---|
-| _pending first drill_ | | karim_restore_test | | |
+| 2026-11-19 | database/backups/dr-drill-2026-11-19T02-52-43.sql.kbak (AES-256-GCM، حُذف النص الصريح بعد التشفير، بصمة SHA-256) | karim_restore_test | **PASS** — استعادة كاملة من المشفّر: 181/181 جدولًا، تطابق صفوف (users 28، chart_of_accounts 124، journal_entries 12، journal_lines 24)؛ حُذفت قاعدة التمرين بعدها. ملاحظة تشغيلية: الاستعادة الأولى تتطلب إنشاء القاعدة الهدف فارغة أولًا (نسخة pre-restore تحتاج وجودها) | Hermes audit (خادم تحقق معزول على karim_erp_test، منفذ 5299) |
