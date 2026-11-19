@@ -202,8 +202,8 @@ describe('3) قفل الحساب الذي عليه قيود مرحّلة', () =>
         // العقد ذاتي الاكتفاء: نزرع قيدًا مرحّلاً متوازنًا على 1000 داخل المعاملة
         // (قاعدة الاختبار قد لا تحمل قيودًا على 1000 — الحارس يفحص القيود فعلًا).
         const je = await client.query(
-            `INSERT INTO journal_entries (id, entry_no, date, status)
-             VALUES (999900001, 'ZZ-GUARD-LOCK-1', CURRENT_DATE, 'posted')
+            `INSERT INTO journal_entries (id, entry_no, date, status, source_type, source_id)
+             VALUES (999900001, 'ZZ-GUARD-LOCK-1', CURRENT_DATE, 'posted', 'zz_guard', 'zz-guard-lock-1000')
              RETURNING id`);
         const eid = je.rows[0].id;
         await client.query(
@@ -248,6 +248,16 @@ describe('3) قفل الحساب الذي عليه قيود مرحّلة', () =>
     });
 
     test('حذف ربط حساب مرحّل (cogs 5000) يُرفض بلا موافقة', async () => {
+        // عقد ذاتي الاكتفاء: نزرع قيدًا مرحّلاً متوازنًا على 5000 داخل المعاملة
+        // (لا نفترض وجود قيود على 5000 في القاعدة — حالة البذر تتغير).
+        await client.query(
+            `INSERT INTO journal_entries (id, entry_no, date, status, source_type, source_id)
+             VALUES (999900010, 'ZZ-GUARD-LOCK-5000', CURRENT_DATE, 'posted', 'zz_guard', 'zz-guard-lock-5000')
+             ON CONFLICT (id) DO NOTHING`);
+        await client.query(
+            `INSERT INTO journal_lines (id, entry_id, account_code, debit, credit)
+             VALUES (999900011, 999900010, '5000', 50, 0), (999900012, 999900010, '1000', 0, 50)
+             ON CONFLICT (id) DO NOTHING`);
         await expectFailure(
             () => client.query(
                 `DELETE FROM account_mapping

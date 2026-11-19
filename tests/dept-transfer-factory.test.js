@@ -56,7 +56,6 @@ const { router } = require('../backend/dept-transfer-routes');
 const FACTZZ = 'FACTZZ';
 const EXTERNAL = 'external_sales';
 const DEPT_ID = 990501;
-const USER_IDS = [990021];
 
 const ORANGE = 990601;   // مربوط: عصير برتقال ZZ @ 13.04
 const COCKTAIL = 990602; // مربوط: كوكتيل ZZ @ 15
@@ -122,7 +121,8 @@ async function wipe() {
     }
     await pool.query('DELETE FROM inventory WHERE id = ANY($1::bigint[])', [[ORANGE, COCKTAIL, APPLE, LEMON]]);
     await pool.query('DELETE FROM departments WHERE code = $1', [FACTZZ]);
-    await pool.query('DELETE FROM users WHERE id = ANY($1::bigint[])', [USER_IDS]);
+    // عقيدة append-only (003 §5.4): لا حذف لمستخدمي التجهيزات — سجلات pos_audit_logs
+    // ترتبط بهم ولا تُحذف؛ يُعاد استخدام المستخدم (upsert أدناه).
 }
 
 beforeAll(async () => {
@@ -134,7 +134,8 @@ beforeAll(async () => {
     month = (await sql("SELECT to_char(CURRENT_DATE, 'YYYY-MM') AS m"))[0].m;
 
     await pool.query('INSERT INTO departments (id, code, name, is_factory) VALUES ($1,$2,$3,true)', [DEPT_ID, FACTZZ, 'مصنع عصير ZZ']);
-    await pool.query('INSERT INTO users (id, username, password, role, name) VALUES ($1,$2,$3,$4,$5)',
+    await pool.query(`INSERT INTO users (id, username, password, role, name) VALUES ($1,$2,$3,$4,$5)
+        ON CONFLICT (id) DO NOTHING`,
         [990021, 'zz-factory-admin', 'zz-no-credential', 'admin', 'مدير مصنع ZZ']);
 
     const loc = await sql('SELECT id FROM inventory_locations WHERE code = \'KITCHEN-MAIN\' AND active = true');
