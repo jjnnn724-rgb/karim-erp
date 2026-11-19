@@ -57,6 +57,7 @@ const DENIED_TABLES = new Set([
     'integration_credentials', 'attendance_device_tokens', 'push_tokens',
 ]);
 
+/** @param {any[]} rows */
 function scrubDeniedColumns(rows) {
     return rows.map((row) => {
         if (!row || typeof row !== 'object') {return row;}
@@ -66,7 +67,8 @@ function scrubDeniedColumns(rows) {
     });
 }
 
-/** قراءة صفوف من جدول (قراءة فقط + سقف صفوف + أعمدة صريحة). */
+/** قراءة صفوف من جدول (قراءة فقط + سقف صفوف + أعمدة صريحة).
+ * @param {string} table @param {{limit?:number, order?:string}} [opts] */
 async function readTable(table, { limit = 20, order = 'id DESC' } = {}) {
     const name = String(table || '').replace(/[^a-z0-9_]/gi, '');
     if (!name) {throw new Error('BAD_TABLE');}
@@ -92,7 +94,8 @@ async function readTable(table, { limit = 20, order = 'id DESC' } = {}) {
     };
 }
 
-/** بحث نصّي في أعمدة نصية لجدول (قراءة فقط). */
+/** بحث نصّي في أعمدة نصية لجدول (قراءة فقط).
+ * @param {string} table @param {string} term @param {{limit?:number}} [opts] */
 async function searchTable(table, term, { limit = 20 } = {}) {
     const name = String(table || '').replace(/[^a-z0-9_]/gi, '');
     if (!name) {throw new Error('BAD_TABLE');}
@@ -108,12 +111,15 @@ async function searchTable(table, term, { limit = 20 } = {}) {
     return { table: name, rows: scrubDeniedColumns(r.rows) };
 }
 
-/** بحث في كود المشروع (قراءة ملفات فقط). */
+/** بحث في كود المشروع (قراءة ملفات فقط).
+ * @param {string} pattern @param {{limit?:number}} [opts] */
 function searchCode(pattern, { limit = 20 } = {}) {
     const needle = String(pattern || '').trim();
     if (!needle) {return { hits: [] };}
+    /** @type {any[]} */
     const hits = [];
     const skip = new Set(['node_modules', '.git', 'coverage', 'logs', 'database\\backups', 'var', 'runtime']);
+    /** @param {string} dir @param {number} depth */
     const walk = (dir, depth) => {
         if (depth > 6 || hits.length >= limit) {return;}
         for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -178,12 +184,12 @@ async function applyDraft(id, ctx) {
     d.status = res.ok ? 'applied' : 'failed';
     d.appliedAt = new Date().toISOString();
     d.result = res;
-    if (res.ok) {logger.info(`[ai-assistant] مسوّدة ${id} (${d.kind}) طُبّقت بواسطة ${(ctx.user && ctx.user.username) || '؟'}`);}
+    if (res.ok) {logger.info(`[ai-assistant] مسوّدة ${id} (${d.kind}) طُبّقت بواسطة ${(ctx.user && /** @type {{username?:string}} */ (ctx.user).username) || '؟'}`);}
     else {logger.warn(`[ai-assistant] مسوّدة ${id} (${d.kind}) فشلت: ${res.message}`);}
     return d;
 }
 
-/** رفض مسوّدة. */
+/** رفض مسوّدة. @param {string} id */
 function rejectDraft(id) {
     const d = drafts.get(id);
     if (!d) {throw new Error('DRAFT_NOT_FOUND');}
@@ -192,7 +198,8 @@ function rejectDraft(id) {
     return d;
 }
 
-/** نداء داخلي لنفس الخادم — بنفس قواعده (تحقّق + تدقيق + صلاحيات). */
+/** نداء داخلي لنفس الخادم — بنفس قواعده (تحقّق + تدقيق + صلاحيات).
+ * @param {string} path @param {object} payload @param {{token?:string,user?:object}} ctx */
 async function callSelf(path, payload, ctx) {
     const base = process.env.SELF_BASE_URL || `https://127.0.0.1:${process.env.PORT || 5000}`;
     const https = require('https');
@@ -219,7 +226,7 @@ async function callSelf(path, payload, ctx) {
                 let parsed = null;
                 try { parsed = JSON.parse(raw); } catch (_e) { /* غير JSON */ }
                 resolve({
-                    ok: res.statusCode >= 200 && res.statusCode < 300,
+                    ok: (res.statusCode || 0) >= 200 && (res.statusCode || 0) < 300,
                     status: res.statusCode,
                     message: (parsed && (parsed.message || parsed.error)) || String(raw).slice(0, 160),
                     body: parsed,
@@ -341,8 +348,7 @@ const TOOL_DEFS = [
 /**
  * ينفّذ أداة واحدة (بصلاحيات المالك) ويعيد نتيجتها كنصّ.
  * @param {string} name
- * @param {object} args
- * @param {{token:string, user?:object}} ctx
+ * @param {{table?:string,term?:string,pattern?:string,limit?:number,id?:string,kind?:string,payload?:object}} args
  */
 async function runTool(name, args) {
     const a = args || {};
@@ -352,15 +358,15 @@ async function runTool(name, args) {
             return { ok: true, text: `جداول النظام (${tables.length}): ` + tables.join('، ') };
         }
         case 'read_table': {
-            const r = await readTable(a.table, { limit: a.limit });
+            const r = await readTable(a.table || '', { limit: a.limit });
             return { ok: true, text: JSON.stringify(r).slice(0, 6000), data: r };
         }
         case 'search_table': {
-            const r = await searchTable(a.table, a.term, { limit: a.limit });
+            const r = await searchTable(a.table || '', a.term || '', { limit: a.limit });
             return { ok: true, text: JSON.stringify(r).slice(0, 6000), data: r };
         }
         case 'search_code': {
-            const r = searchCode(a.pattern, { limit: a.limit });
+            const r = searchCode(a.pattern || '', { limit: a.limit });
             return { ok: true, text: JSON.stringify(r).slice(0, 6000), data: r };
         }
         case 'list_drafts': {

@@ -120,6 +120,8 @@ module.exports = [
       // تصفير التحذيرات (policy: no new warnings).
       'tools/',
       'database/scripts/',
+      // أرشيف سكربتات لمرة واحدة بلا مرجع (قرار المالك 2026-11-19): محفوظ للتاريخ لا للفحص.
+      'scripts/archive/',
       'scripts/*.mjs',
       'scripts/test-*.mjs',
       'scripts/mobile-layout-check.mjs',

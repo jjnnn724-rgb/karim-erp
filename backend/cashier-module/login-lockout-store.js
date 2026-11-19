@@ -17,13 +17,15 @@ const { logger } = require('../logger');
 const LOGIN_LOCKOUT = { MAX_FAILS: 5, WINDOW_MS: 15 * 60 * 1000, LOCK_MS: 15 * 60 * 1000 };
 const RECHECK_MS = 5 * 60 * 1000;
 
-let tableReady = null; // null = غير مفحوص، true/false
+/** @type {boolean|null} null = غير مفحوص، true/false */
+let tableReady = null;
 let lastCheck = 0;
 let warnedFallback = false;
 let failCounter = 0;
 
 // تراجع الذاكرة — نفس دلالات R18 حرفيًا.
 const _mem = new Map();
+/** @param {string} k */
 function memState(k) {
     const e = _mem.get(k);
     if (!e) {return { locked: false };}
@@ -33,6 +35,7 @@ function memState(k) {
     if (e.firstAt && Date.now() - e.firstAt > LOGIN_LOCKOUT.WINDOW_MS) {_mem.delete(k);}
     return { locked: false };
 }
+/** @param {string} k */
 function memFail(k) {
     const now = Date.now();
     const e = _mem.get(k) || { count: 0, firstAt: now, lockUntil: 0 };
@@ -64,7 +67,7 @@ async function dbReady() {
     return tableReady;
 }
 
-/** حالة القفل المفتاح. لا يرمي أبدًا. */
+/** حالة القفل المفتاح. لا يرمي أبدًا. @param {string} k */
 async function state(k) {
     try {
         if (!(await dbReady())) {return memState(k);}
@@ -80,12 +83,12 @@ async function state(k) {
         }
         return { locked: false };
     } catch (e) {
-        logger.warn({ err: e.message }, '[auth] lockout state degraded to memory');
+        logger.warn({ err: /** @type {Error} */ (e).message }, '[auth] lockout state degraded to memory');
         return memState(k);
     }
 }
 
-/** تسجيل فشلة (نافذة 15د، قفل عند الخامسة). لا يرمي أبدًا. */
+/** تسجيل فشلة (نافذة 15د، قفل عند الخامسة). لا يرمي أبدًا. @param {string} k */
 async function fail(k) {
     try {
         if (!(await dbReady())) {memFail(k); return;}
@@ -125,12 +128,12 @@ async function fail(k) {
                     AND (lock_until IS NULL OR lock_until < now())`).catch(() => {});
         }
     } catch (e) {
-        logger.warn({ err: e.message }, '[auth] lockout fail degraded to memory');
+        logger.warn({ err: /** @type {Error} */ (e).message }, '[auth] lockout fail degraded to memory');
         memFail(k);
     }
 }
 
-/** نجاح الدخول = تصفير العداد. لا يرمي أبدًا. */
+/** نجاح الدخول = تصفير العداد. لا يرمي أبدًا. @param {string} k */
 async function clear(k) {
     _mem.delete(k);
     try {
