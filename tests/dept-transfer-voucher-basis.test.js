@@ -55,7 +55,6 @@ const MEAT = 990201;
 const KUNAFA = 990202;
 const SALT = 990203;
 const DISPATCH_IDS = [990301, 990302, 990303, 990304];
-const USER_IDS = [990011, 990012];
 // تكلفة الإذن (180) مختلفة عمدًا عن متوسط المخزون (200) — الفصل بينهما هو العقد.
 const MEAT_VOUCHER_COST = 180;
 const MEAT_AVG_COST = 200;

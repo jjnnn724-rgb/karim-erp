@@ -249,7 +249,6 @@ const ROTATION_ALLOWED_PATHS = new Set(['/api/auth/change-password', '/api/auth/
 // النجاح يصفّر العداد. كان في الذاكرة (يتصفّر بإعادة التشغيل) — الآن يُحفَظ
 // في login_lockouts (ترحيل 153) مع تراجع تلقائي للذاكرة إن لم يُطبق الترحيل.
 const lockoutStore = require('./login-lockout-store');
-const LOGIN_LOCKOUT = lockoutStore.LOGIN_LOCKOUT;
 function loginLockKey(req, username) {
     return `${req.ip || 'ip'}:${String(username || '').toLowerCase().slice(0, 64)}`;
 }
