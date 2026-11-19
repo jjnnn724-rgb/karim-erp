@@ -20,6 +20,7 @@ const path = require('path');
 const { pool } = require('./shared-pool');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { logger } = require('./logger');
+const { makeEmitScoped } = require('./realtime/guard');
 const { riyadhToday } = require('./riyadh-date');
 // Phase 3 (2026-11-06): قراءة حسابات النقدية/البنك من account_mapping؛
 // الافتراضي الممرَّر هو الثابت القديم نفسه (1000/1010) قبل ضبط الجدول.
@@ -127,7 +128,7 @@ router.post('/periods/:period/close', jwtAuth, requireRole(...WRITE_ROLES), asyn
             [period, req.user?.id || null, String(req.body?.note || '').slice(0, 255) || null]
         );
         logger.info(`[PERIOD] أُقفلت ${period} بواسطة ${req.user?.name || req.user?.id}`);
-        if (req.io) {req.io.emit('entity_changed', { entity: 'accounting_period', action: 'close', data: { period } });}
+        if (req.io) {makeEmitScoped(req.io)('entity_changed', { entity: 'accounting_period', action: 'close', data: { period } });}
         res.json({ ok: true, period, closed: true });
     } catch (e) { next(e); }
 });
@@ -196,7 +197,7 @@ router.post('/journal/:id/approve', jwtAuth, requireRole(...WRITE_ROLES), async 
             return res.status(423).json({ error: 'PERIOD_LOCKED', message: 'الفترة المحاسبية مقفلة — لا يمكن اعتماد قيودها' });
         }
         logger.info(`[LEDGER] اعتُمد القيد ${rows[0].entry_no} بواسطة ${req.user?.name || req.user?.username || req.user?.id}`);
-        if (req.io) {req.io.emit('entity_changed', { entity: 'journal', action: 'approve', data: rows[0] });}
+        if (req.io) {makeEmitScoped(req.io)('entity_changed', { entity: 'journal', action: 'approve', data: rows[0] });}
         res.json({ ok: true, entry: rows[0] });
     } catch (e) {
         logger.error('[LEDGER_APPROVE]', e.message);

@@ -17,6 +17,7 @@ const path = require('path');
 const { pool } = require('./shared-pool');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { logger } = require('./logger');
+const { makeEmitScoped } = require('./realtime/guard');
 const { riyadhToday, riyadhMonth } = require('./riyadh-date');
 // Phase 3 (2026-11-06): الحساب البنكي الافتراضي من account_mapping؛
 // الافتراضي الممرَّر هو الثابت القديم (1010) قبل ضبط الجدول.
@@ -272,7 +273,7 @@ router.post('/cash-custody', jwtAuth, requireRole('admin', 'manager', 'cashier')
             [req.user.id, to, r2(amount),
              Number(req.body?.session_id) || null, String(req.body?.note || '').slice(0, 255) || null]
         );
-        if (req.io) {req.io.emit('entity_changed', { entity: 'cash_custody', action: 'hand', data: rows[0] });}
+        if (req.io) {makeEmitScoped(req.io)('entity_changed', { entity: 'cash_custody', action: 'hand', data: rows[0] });}
         res.status(201).json({ ok: true, custody: rows[0] });
     } catch (e) { next(e); }
 });

@@ -40,8 +40,22 @@ async function listTables() {
     return r.rows.map((x) => x.table_name);
 }
 
-/** أعمدة لا تخرج للنموذج إطلاقًا — `SELECT *` كان يرسل حشوات كلمات المرور. */
-const DENIED_COLUMNS = new Set(['password', 'password_vault']);
+/** أعمدة لا تخرج للنموذج إطلاقًا — `SELECT *` كان يرسل حشوات كلمات المرور.
+ * تأمين 2026-11 (L1): وسّعت القائمة لتشمل التوكنات والحشوات والأسرار. */
+const DENIED_COLUMNS = new Set([
+    'password', 'password_vault', 'password_hash',
+    'token', 'token_hash', 'refresh_token', 'access_token',
+    'secret', 'mfa_secret', 'totp_secret', 'recovery_codes',
+    'reset_code', 'code_hash', 'api_key', 'private_key',
+    'credential', 'credentials', 'encrypted_payload',
+]);
+
+/** جداول حساسة لا تُقرأ بالأداة إطلاقًا (توكنات/اعتمادات/تحديات مصادقة). */
+const DENIED_TABLES = new Set([
+    'pos_refresh_tokens', 'pos_password_reset_codes', 'user_mfa',
+    'user_webauthn_credentials', 'webauthn_challenges',
+    'integration_credentials', 'attendance_device_tokens', 'push_tokens',
+]);
 
 function scrubDeniedColumns(rows) {
     return rows.map((row) => {
@@ -56,13 +70,21 @@ function scrubDeniedColumns(rows) {
 async function readTable(table, { limit = 20, order = 'id DESC' } = {}) {
     const name = String(table || '').replace(/[^a-z0-9_]/gi, '');
     if (!name) {throw new Error('BAD_TABLE');}
+    if (DENIED_TABLES.has(name.toLowerCase())) {throw new Error('TABLE_DENIED: ' + name);}
     const exists = await pool.query(
         `SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name = $1`, [name]);
     if (!exists.rows.length) {throw new Error('TABLE_NOT_FOUND: ' + name);}
     const cols = await pool.query(
         `SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name = $1 ORDER BY ordinal_position`, [name]);
-    const orderCol = cols.rows.some((c) => c.column_name === order.split(' ')[0]) ? order : '1';
-    const r = await pool.query(`SELECT * FROM public."${name}" ORDER BY ${orderCol} LIMIT ${Math.min(Number(limit) || 20, 200)}`);
+    // تأمين 2026-11 (L1): كان الجزء الأول فقط يُتحقق ثم يُحقن النص كاملًا
+    // ('id DESC, (SELECT …)' كان يمر). الآن عمود مثبّت + اتجاه من قائمة مغلقة.
+    const orderParts = String(order || '').trim().split(/\s+/);
+    const colOk = cols.rows.some((c) => c.column_name === orderParts[0]);
+    const dirOk = orderParts.length === 1 || (orderParts.length === 2 && /^(asc|desc)$/i.test(orderParts[1]));
+    const orderSql = colOk && dirOk
+        ? `"${orderParts[0]}" ${(orderParts[1] || 'ASC').toUpperCase()}`
+        : '1';
+    const r = await pool.query(`SELECT * FROM public."${name}" ORDER BY ${orderSql} LIMIT ${Math.min(Number(limit) || 20, 200)}`);
     return {
         table: name,
         columns: cols.rows.map((c) => c.column_name).filter((c) => !DENIED_COLUMNS.has(c)),

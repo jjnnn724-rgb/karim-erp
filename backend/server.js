@@ -43,7 +43,7 @@ const { classifyStoredDay } = require('./shift-day-builder');
 const { listColumnsExcluding } = require('./heavy-columns');
 
 // ─── JWT Authentication Middleware ────────────────────
-const { jwtAuth, requireRole, verifyAccessToken, isStrongPassword } = require('./cashier-module/jwt-middleware');
+const { jwtAuth, requireRole, verifyAccessToken, isUserActive, isStrongPassword } = require('./cashier-module/jwt-middleware');
 const { requireRoleOrPerm, permForEntity, userHasPerm } = require('./permissions');
 const userAuthority = require('./user-authority');
 const { forcesPasswordRotation } = require('./user-password-policy');
@@ -176,6 +176,8 @@ if (ALLOWED_ORIGINS === '*') {
 const _staticOrigins = ALLOWED_ORIGINS === '*'
     ? null
     : ALLOWED_ORIGINS.split(',').map(o => o.trim()).filter(Boolean);
+// تأمين 2026-11: ثقة wildcard بنطاقات zrok العامة أصبحت opt-in (قابلة للتسجيل من مهاجم).
+const ALLOW_ZROK_WILDCARD = String(process.env.ALLOW_ZROK_WILDCARD || '').trim().toLowerCase() === 'true';
 const corsOriginValue = ALLOWED_ORIGINS === '*'
     ? '*'
     : ((origin, callback) => {
@@ -184,8 +186,11 @@ const corsOriginValue = ALLOWED_ORIGINS === '*'
         if (/^https:\/\/[a-z0-9-]+(\.[a-z0-9-]+)*\.ts\.net(:\d+)?$/i.test(origin)) {
             return callback(null, true);
         }
-        // zrok reserved public share (trusted HTTPS, checked-in tunnel).
-        if (/^https:\/\/[a-z0-9-]+\.shares\.zrok\.io(:\d+)?$/i.test(origin)) {
+        // zrok reserved public share — opt-in only (تأمين 2026-11):
+        // النطاقات الفرعية عامة قابلة للتسجيل من أي شخص، فالثقة المعممة بها
+        // سطح مهاجم. للتفعيل الصريح: ALLOW_ZROK_WILDCARD=true، أو ثبّت أصل
+        // المشاركة المحدد في ALLOWED_ORIGINS (الأسلم).
+        if (ALLOW_ZROK_WILDCARD && /^https:\/\/[a-z0-9-]+\.shares\.zrok\.io(:\d+)?$/i.test(origin)) {
             return callback(null, true);
         }
         return callback(null, false);
@@ -674,6 +679,10 @@ app.use('/api/finance', (req, res, next) => { req.io = io; next(); }, financeRou
 // Accounting dept: chart of accounts + double-entry journal + CFO summary.
 const { router: accountingRouter } = require('./accounting-routes');
 app.use('/api/accounting', (req, res, next) => { req.io = io; next(); }, accountingRouter);
+// v3 financial-compliance API — uses the existing JWT, API-key, PostgreSQL,
+// and global error-handling infrastructure.
+const { createComplianceRouter } = require('./v3/compliance-routes');
+app.use('/api/v3', (req, res, next) => { req.io = io; next(); }, createComplianceRouter({ pool }));
 // Accounting controls (isolated): period lock + draft/approve + balance-sheet + cash-flow.
 // Guarded load — any failure here never takes the core ledger down.
 try {
@@ -2960,22 +2969,27 @@ ensureMediaDirs();
 // could browse uploaded files. Now: image extensions (.png/.jpg/etc) stay
 // public (menu images, low sensitivity), but ALL other file types require
 // authentication. Signed-URLs remain a future option.
-app.use('/uploads', (req, res, next) => {
+app.use('/uploads', async (req, res, next) => {
     const ext = path.extname(req.path).toLowerCase();
     const PUBLIC_IMAGE_EXTS = ['.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico'];
     if (PUBLIC_IMAGE_EXTS.includes(ext)) {return next();}
-    // Non-image files require auth
+    // Non-image files require auth — تأمين 2026-11 (M2): نفس مسار التحقق الموحد
+    // (verifyAccessToken: تثبيت HS256 + رفض تذاكر MFA غير غرضها access + فحص
+    // الحساب النشط + إلزام تدوير كلمة المرور) بدل jwt.verify الخام الموازي.
     try {
         const auth = String(req.headers.authorization || '');
-        if (auth.startsWith('Bearer ')) {
-            const jwt = require('jsonwebtoken');
-            jwt.verify(auth.slice(7), process.env.JWT_ACCESS_SECRET, (err) => {
-                if (err) {return res.status(401).json({ error: 'UNAUTHORIZED' });}
-                next();
-            });
-            return;
+        if (!auth.startsWith('Bearer ')) {
+            return res.status(401).json({ error: 'UNAUTHORIZED', message: 'يجب تسجيل الدخول للوصول لهذا الملف' });
         }
-        return res.status(401).json({ error: 'UNAUTHORIZED', message: 'يجب تسجيل الدخول للوصول لهذا الملف' });
+        let payload;
+        try { payload = verifyAccessToken(auth.slice(7)); }
+        catch (_) { return res.status(401).json({ error: 'UNAUTHORIZED' }); }
+        if (payload.purpose && payload.purpose !== 'access') {return res.status(401).json({ error: 'UNAUTHORIZED' });}
+        const uid = parseInt(payload.sub, 10);
+        if (!Number.isInteger(uid) || uid <= 0) {return res.status(401).json({ error: 'UNAUTHORIZED' });}
+        if (payload.pwd_change) {return res.status(401).json({ error: 'PASSWORD_CHANGE_REQUIRED' });}
+        if (!await isUserActive(uid)) {return res.status(401).json({ error: 'UNAUTHORIZED' });}
+        return next();
     } catch (_) { return res.status(401).json({ error: 'UNAUTHORIZED' }); }
 });
 app.use('/uploads', express.static(MEDIA_ROOT, {
@@ -3089,6 +3103,8 @@ app.use('/app/menu.html', (req, res) => {
 app.get(['/login', '/login.html', '/index.html'], (req, res) => {
     res.redirect(302, '/');
 });
+
+app.use('/v3', require('./v3/static-routes').createV3StaticRouter());
 
 // ─── اعتماد V2 كواجهة رسمية (2026-10-23) ─────────────────────────────────
 // قرار المالك بعد مقارنة القديم/الجديد: كل قوائم القديم (43) لها مسار في V2

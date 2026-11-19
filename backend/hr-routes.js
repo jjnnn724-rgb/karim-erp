@@ -559,7 +559,10 @@ router.get('/card/v/:code', cardVerifyLimiter, async (req, res) => {
         const [cardId, shortSig] = parts;
         const expect = crypto.createHmac('sha256', QR_SECRET)
             .update(String(cardId), 'utf8').digest('hex').slice(0, 16);
-        if (!crypto.timingSafeEqual(Buffer.from(shortSig.toLowerCase()), Buffer.from(expect))) {
+        // تأمين 2026-11 (L4): فحص الطول قبل timingSafeEqual — طول مختلف يرمي
+        // RangeError (500) بدل رفض نظيف (403).
+        if (shortSig.length !== expect.length
+            || !crypto.timingSafeEqual(Buffer.from(shortSig.toLowerCase()), Buffer.from(expect))) {
             return res.status(403).send('توقيع غير صالح — بطاقة مزورة محتملة');
         }
         const emp = (await pool.query(

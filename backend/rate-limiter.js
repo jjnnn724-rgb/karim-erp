@@ -201,9 +201,10 @@ function createRateLimiter(options = {}) {
     const store = redisClient ? new RedisStore(redisClient) : memoryStore;
 
     return async function rateLimiterMiddleware(req, res, next) {
+        let key = 'unknown';
         try {
             // Generate unique key for this request
-            const key = keyGenerator(req);
+            key = keyGenerator(req);
             
             // Increment counter
             const result = await store.increment(key, windowMs);
@@ -242,8 +243,27 @@ function createRateLimiter(options = {}) {
             next();
         } catch (err) {
             logger.error('[rate-limiter] Error:', err.message);
-            // On error, allow request through (fail-open)
-            next();
+            // تأمين 2026-11 (M3): لا fail-open. عند خطأ المخزن نتدهور إلى ميزانية
+            // محلية صارمة (نصف السقف) عبر مخزن الذاكرة داخل العملية؛ ولو فشل ذلك
+            // أيضًا نرفض بـ503 (fail-closed) بدل ترك الباب مفتوحًا للمهاجم.
+            try {
+                const fallbackMax = Math.max(1, Math.floor(maxRequests / 2));
+                const degraded = memoryStore.increment(`degraded:${key}`, windowMs);
+                if (degraded.count > fallbackMax) {
+                    const retryAfter = Math.ceil(windowMs / 1000);
+                    res.set('Retry-After', retryAfter);
+                    return res.status(429).json({
+                        error: 'RATE_LIMIT_EXCEEDED', message, retryAfter,
+                        limit: fallbackMax, windowMs,
+                    });
+                }
+                return next();
+            } catch (_) {
+                return res.status(503).json({
+                    error: 'RATE_LIMIT_UNAVAILABLE',
+                    message: 'خدمة تحديد المعدل غير متاحة مؤقتًا — حاول مجددًا بعد لحظات.',
+                });
+            }
         }
     };
 }

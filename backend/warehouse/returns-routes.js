@@ -436,7 +436,7 @@ const { arFuzzyPattern } = require('../ar-search');
 
 // q → name (partial, trgm) OR barcode OR category · category exact · stock
 // filter (all|low|out|ok) server-side · always paginated · parameterized.
-router.get('/inventory/search', jwtAuth, requireRole('admin', 'manager', 'warehouse', 'accountant'), async (req, res) => {
+router.get('/inventory/search', jwtAuth, requireRole('admin', 'manager', 'warehouse', 'accountant', 'sous_chef'), async (req, res) => {
     try {
         const q = String(req.query.q ?? '').trim().slice(0, 100);
         const category = String(req.query.category ?? 'all').trim().slice(0, 100);

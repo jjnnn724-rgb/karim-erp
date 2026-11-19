@@ -16,6 +16,7 @@ const { pool } = require('./shared-pool');
 const { riyadhToday } = require('./riyadh-date'); // M20
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { logger } = require('./logger');
+const { makeEmitScoped } = require('./realtime/guard');
 const { validateVatNumber, TAX_STATUSES } = require('./tax-rule-service');
 const { emitDomainEvent } = require('./realtime/producers');
 const { arFuzzyPattern } = require('./ar-search');
@@ -245,7 +246,7 @@ function fail(res, status, error, message, extra = {}) {
 }
 function emit(req, entity, action, data, entityName) {
     if (!req.io) {return;}
-    req.io.emit('entity_changed', {
+    makeEmitScoped(req.io)('entity_changed', {
         entity,
         entityName: entityName || 'المشتريات والموردين',
         action,
@@ -316,11 +317,13 @@ async function ensureProcurementSchema() {
         CREATE TABLE IF NOT EXISTS tax_config (
             id INT PRIMARY KEY CHECK (id = 1),
             standard_vat_rate NUMERIC(5,2) NOT NULL DEFAULT 15.00,
+            filing_frequency VARCHAR(10) NOT NULL DEFAULT 'quarterly' CHECK (filing_frequency IN ('monthly', 'quarterly')),
             country_code CHAR(2) NOT NULL DEFAULT 'SA',
             currency CHAR(3) NOT NULL DEFAULT 'SAR',
             vat_law_ref TEXT NOT NULL DEFAULT 'KSA VAT Law — standard rate 15% since 1 July 2020 (ZATCA)',
             updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
         );
+        ALTER TABLE tax_config ADD COLUMN IF NOT EXISTS filing_frequency VARCHAR(10) NOT NULL DEFAULT 'quarterly';
         INSERT INTO tax_config (id, standard_vat_rate, country_code, currency)
         VALUES (1, 15.00, 'SA', 'SAR') ON CONFLICT (id) DO NOTHING;
         CREATE TABLE IF NOT EXISTS supplier_tax_audit (

@@ -16,6 +16,7 @@ const { pool, withTransaction } = require('./db-pool');
 const { jwtAuth, requireRole } = require('./jwt-middleware');
 const { writeAuditLog } = require('./audit-middleware');
 const { logger } = require('../logger');
+const { makeEmitScoped } = require('../realtime/guard');
 
 const router = express.Router();
 
@@ -326,7 +327,7 @@ router.post('/day-close', jwtAuth, requireRole('manager', 'admin'), async (req, 
                 actor: { userId: req.user.id, userName: req.user.name, role: req.user.role, ip: req.ip, requestId: req.id },
             });
         } catch (e) { logger.error('[day-close] audit failed (non-fatal):', e.message); }
-        if (req.io) {req.io.emit('entity_changed', { entity: 'pos_day_close', action: 'close', data: result.z });}
+        if (req.io) {makeEmitScoped(req.io)('entity_changed', { entity: 'pos_day_close', action: 'close', data: result.z });}
         res.status(201).json({ ok: true, ...result });
     } catch (err) {
         const map = { 404: 'NOT_FOUND', 409: 'DAYCLOSE_EXISTS', 422: 'DAYCLOSE_INVALID', 423: 'PERIOD_LOCKED', 428: 'NEEDS_MANAGER', 23505: 'DAYCLOSE_EXISTS' };

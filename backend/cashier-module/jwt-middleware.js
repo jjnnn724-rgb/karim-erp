@@ -136,9 +136,11 @@ function signAccessToken(user) {
  * تذكرة قصيرة العمر بين كلمة المرور والرمز الثاني.
  * `mfa`: تحقق من رمز TOTP ومدته 5 دقائق.
  * `mfa_enroll`: تسجيل أول مرة (QR + تأكيد) ومدته 15 دقيقة.
+ * `restore_stepup`: تحقق خطوة إضافية قبل استعادة نسخة احتياطية (كلمة مرور
+ * + TOTP/استرداد) — تُستهلك مرة واحدة في مسار الاستعادة (تأمين 2026-11).
  * التذكرة لا تفتح أي مسار آخر: jwtAuth يرفض أي توكن غرضه ليس access.
  */
-const MFA_TICKET_TTL = { mfa: '5m', mfa_enroll: '15m' };
+const MFA_TICKET_TTL = { mfa: '5m', mfa_enroll: '15m', restore_stepup: '5m' };
 function signMfaTicket(user, purpose) {
     const ttl = MFA_TICKET_TTL[purpose];
     if (!ttl) {throw new Error('INVALID_MFA_PURPOSE');}
@@ -374,7 +376,7 @@ async function loginHandler(req, res) {
             ok = await bcrypt.compare(password, user.password);
         } catch (bcryptErr) {
             logger.error('[auth] bcrypt.compare failed:', bcryptErr);
-            return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'bcrypt comparison failed', detail: bcryptErr?.message || String(bcryptErr) });
+            return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر تسجيل الدخول — حاول مرة أخرى' });
         }
         if (!ok) {
             recordLoginFail(req, username);
@@ -435,7 +437,7 @@ async function loginHandler(req, res) {
         });
 } catch (err) {
         logger.error('[auth] login handler error:', err);
-        if (!res.headersSent) {res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر تسجيل الدخول — حاول مرة أخرى', detail: err?.message || String(err) });}
+        if (!res.headersSent) {res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر تسجيل الدخول — حاول مرة أخرى' });}
     } finally {
         client.release();
     }

@@ -17,7 +17,14 @@ const crypto = require('crypto');
 const multer = require('multer');
 const { spawn } = require('child_process');
 const { logger } = require('./logger');
-const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
+const { encryptBackupFile, decryptBackupFile } = require('../scripts/backup-mirror');
+const { makeEmitScoped } = require('./realtime/guard');
+const { jwtAuth, requireRole, signMfaTicket, verifyMfaTicket } = require('./cashier-module/jwt-middleware');
+const { authLimiter } = require('./rate-limiter');
+const mfaStore = require('./cashier-module/mfa-store');
+const totp = require('./totp');
+const bcrypt = require('bcryptjs');
+const { writeAuditLog } = require('./cashier-module/audit-middleware');
 const { getActiveBrotliStatic } = require('./middleware/brotli-static');
 const { pool } = require('./shared-pool');
 const { runSystemAudit, buildContext } = require('./audit-engine');
@@ -169,6 +176,62 @@ function listBackups({ verify = false } = {}) {
 }
 
 let lastBackupAt = 0;
+// تأمين 2026-11 (M1): تذاكر التحقق الإضافي للاستعادة تُستهلك مرة واحدة (jti).
+// عملية واحدة في الذاكرة (الخادم أحادي العملية) — تنتهي صلاحيتها بموت التذكرة.
+const consumedStepUpTickets = new Map(); // jti -> expiresAtMs
+// ─── تحقق خطوة إضافية قبل الاستعادة (تأمين 2026-11, M1) ─────────────────
+// كلمة مرور + TOTP (أو رمز استرداد) ← تذكرة restore_stepup عمرها 5 دقائق
+// تُستهلك مرة واحدة في POST /restore. نفس نمط تعطيل MFA في mfa-routes:
+// bcrypt ثم totp.verify بحماية إعادة الاستخدام (minStep + consumeStep).
+router.post('/backup/step-up', jwtAuth, requireRole('admin'), authLimiter, async (req, res) => {
+    try {
+        const password = String(req.body?.password || '');
+        const code = String(req.body?.code || '').trim();
+        const recovery = String(req.body?.recovery_code || '').trim();
+        if (!password || (!code && !recovery)) {
+            return res.status(400).json({ error: 'MISSING_CREDENTIALS', message: 'أدخل كلمة المرور ورمز المصادقة (أو رمز استرداد).' });
+        }
+        const u = await pool.query('SELECT id, username, name, role, active, password FROM users WHERE id = $1 LIMIT 1', [req.user.id]);
+        const live = u.rows[0];
+        if (!live || !live.active) {return res.status(401).json({ error: 'ACCOUNT_DISABLED', message: 'الحساب غير نشط.' });}
+        if (!await bcrypt.compare(password, live.password)) {
+            logger.warn({ userId: live.id }, '[system/step-up] wrong password');
+            return res.status(401).json({ error: 'INVALID_CREDENTIALS', message: 'كلمة المرور غير صحيحة.' });
+        }
+        if (recovery) {
+            if (!await mfaStore.consumeRecovery(live.id, recovery)) {
+                return res.status(401).json({ error: 'INVALID_RECOVERY_CODE', message: 'رمز الاسترداد غير صحيح أو مستعمل من قبل.' });
+            }
+            logger.warn({ userId: live.id }, '[system/step-up] via recovery code');
+        } else {
+            const state = await mfaStore.loadState(live.id);
+            if (!state || !state.confirmedAt || !state.secret) {
+                return res.status(409).json({ error: 'MFA_NOT_ENROLLED', message: 'لا يوجد تسجيل مصادقة ثنائية مكتمل لهذا الحساب — سجّل MFA أولًا.' });
+            }
+            const v = totp.verify(state.secret, code, { minStep: state.lastUsedStep });
+            if (!v.ok) {
+                return res.status(v.reason === 'REPLAY' ? 409 : 401).json({
+                    error: v.reason === 'REPLAY' ? 'CODE_REUSED' : 'INVALID_CODE',
+                    message: v.reason === 'REPLAY' ? 'الرمز مستعمل من قبل — انتظر الرمز التالي.' : 'رمز المصادقة غير صحيح.',
+                });
+            }
+            if (!await mfaStore.consumeStep(live.id, v.step)) {
+                return res.status(409).json({ error: 'CODE_REUSED', message: 'الرمز مستعمل من قبل.' });
+            }
+        }
+        const ticket = signMfaTicket({ id: live.id, role: live.role, name: live.name }, 'restore_stepup');
+        await writeAuditLog({
+            action: 'RESTORE_STEPUP_ISSUED', tableName: 'system_backups', rowPk: null,
+            reason: 'تحقق خطوة إضافية قبل استعادة نسخة احتياطية',
+            metadata: {}, actor: { userId: live.id, userName: live.username, role: live.role, ip: req.ip, requestId: req.id },
+        }).catch((e) => logger.error('[system/step-up] audit failed:', e.message));
+        return res.json({ ok: true, stepUpToken: ticket, expiresIn: 300, message: 'تحقق ناجح — أكمل الاستعادة خلال 5 دقائق.' });
+    } catch (e) {
+        logger.error('[system/step-up]', e.message);
+        return res.status(500).json({ error: 'STEP_UP_FAILED', message: 'تعذر التحقق الإضافي — حاول مجددًا.' });
+    }
+});
+
 router.get('/backups', jwtAuth, requireRole('admin'), async (req, res) => {
     try { res.json({ ok: true, ...listBackups({ verify: req.query.verify === '1' }) }); }
     catch (e) { logger.error('[system/backups]', e.message); res.status(500).json({ error: 'SYS_BACKUP_LIST_FAILED', message: 'تعذر جلب قائمة النسخ' }); }
@@ -182,16 +245,37 @@ router.post('/backup', jwtAuth, requireRole('admin'), async (req, res) => {
         lastBackupAt = Date.now();
         const r = await runNode(path.join(rootDir(), 'database', 'scripts', 'backup.js'), [], 300000);
         if (!r.ok) {return res.status(500).json({ error: 'BACKUP_FAILED', message: 'فشل النسخ الاحتياطي', log: (r.err || r.out || '').slice(-500) });}
-        // حزمة الاستعادة الكاملة: نسخة .env + بيان بجانب ملف القاعدة
+        // حزمة الاستعادة الكاملة: لقطة .env مشفّرة بجانب ملف القاعدة + بيان.
+        // تأمين 2026-11: لا نص صريح على القرص — اللقطة تُشفّر بنفس مسار النسخة
+        // (kbak/gPG)، ويُحذف الصريح بعد نجاح التشفير فقط. تعذّر التشفير ⇒ تُحذف
+        // اللقطة الصريحة وتُهمل كليًا (الأصل .env حي في مكانه — لا فقدان).
         try {
             const { files } = listBackups();
             const newest = files[0] ? path.join(backupsDir(), files[0].file) : null;
             if (newest) {
-                fs.copyFileSync(path.join(rootDir(), '.env'), `${newest}.env`);
+                const envSrc = path.join(rootDir(), '.env');
+                const sidecar = `${newest}.env`;
+                let envArtifact = null;
+                if (fs.existsSync(envSrc)) {
+                    try {
+                        fs.copyFileSync(envSrc, sidecar);
+                        const encrypted = encryptBackupFile(sidecar);
+                        if (encrypted && fs.existsSync(encrypted) && fs.statSync(encrypted).size > 0) {
+                            fs.unlinkSync(sidecar);
+                            envArtifact = path.basename(encrypted);
+                        } else if (fs.existsSync(sidecar)) {
+                            fs.unlinkSync(sidecar);
+                        }
+                    } catch (encErr) {
+                        try { if (fs.existsSync(sidecar)) {fs.unlinkSync(sidecar);} } catch (_) { /* best-effort */ }
+                        logger.warn('[system/backup] env snapshot omitted (encryption unavailable): ' + encErr.message);
+                    }
+                }
                 fs.writeFileSync(`${newest}.json`, JSON.stringify({
                     createdAt: new Date().toISOString(), by: req.user?.name || 'admin',
                     byId: req.user?.id || null, db: process.env.DB_NAME || 'karim_erp',
-                    includes: ['database.sql', '.env'], app: 'karim-erp',
+                    includes: ['database.sql', ...(envArtifact ? [envArtifact] : [])],
+                    envEncrypted: Boolean(envArtifact), app: 'karim-erp',
                 }, null, 1));
             }
         } catch (e) { logger.warn('[system/backup] env snapshot skipped: ' + e.message); }
@@ -261,6 +345,24 @@ router.post('/restore', jwtAuth, requireRole('admin'), async (req, res) => {
         if (req.body?.confirm !== 'RESTORE') {
             return res.status(422).json({ error: 'CONFIRM_REQUIRED', message: 'أكّد بكلمة RESTORE — الاستعادة تمسح الوضع الحالي' });
         }
+        // تأمين 2026-11 (M1): خطوة إضافية إلزامية — تذكرة restore_stepup (5 دقائق،
+        // مرة واحدة) صادرة بعد كلمة مرور + TOTP/استرداد من نفس الحساب. توكن
+        // admin مسروق (15 دقيقة) لم يعد كافيًا لاستبدال القاعدة كلها.
+        let stepUp;
+        try {
+            stepUp = verifyMfaTicket(String(req.body?.stepUpToken || ''), ['restore_stepup']);
+        } catch (_) {
+            return res.status(428).json({ error: 'STEP_UP_REQUIRED', message: 'الاستعادة تتطلب تحققًا إضافيًا: كلمة المرور + رمز المصادقة أولًا.' });
+        }
+        if (String(stepUp.sub) !== String(req.user.id)) {
+            return res.status(403).json({ error: 'STEP_UP_SUBJECT_MISMATCH', message: 'تذكرة التحقق تخص حسابًا آخر.' });
+        }
+        const stepNow = Date.now();
+        for (const [jti, exp] of consumedStepUpTickets) {if (exp <= stepNow) {consumedStepUpTickets.delete(jti);}}
+        if (!stepUp.jti || consumedStepUpTickets.has(stepUp.jti)) {
+            return res.status(409).json({ error: 'STEP_UP_CONSUMED', message: 'تذكرة التحقق مستعملة — اطلب تحققًا جديدًا.' });
+        }
+        consumedStepUpTickets.set(stepUp.jti, stepNow + 5 * 60 * 1000);
         const full = path.resolve(backupsDir(), path.basename(file));
         if (!file.endsWith('.sql') || !fs.existsSync(full)) {
             return res.status(404).json({ error: 'BACKUP_NOT_FOUND', message: 'ملف النسخة غير موجود' });
@@ -281,16 +383,43 @@ router.post('/restore', jwtAuth, requireRole('admin'), async (req, res) => {
         // pg_terminate_backend killed all connections but the Pool object
         // still held dead sockets. reinitPool() creates fresh connections.
         try { await require('./shared-pool').reinitPool(); } catch (e) { logger.warn('[system/restore] pool reinit failed:', e.message); }
-        // استعادة .env إن طُلبت (تتطلب إعادة تشغيل السيرفر لتُطبق)
+        // استعادة .env إن طُلبت (تتطلب إعادة تشغيل السيرفر لتُطبق).
+        // تأمين 2026-11: اللقطة المشفرة (.env.kbak/.env.gpg) تُفك عبر decryptBackupFile
+        // (يتحقق من البصمة قبل الفك — أرشيف عبث به لا يُفك)، والملف المؤقت يُحذف فورًا.
+        // اللقطات الصريحة القديمة تبقى مدعومة للتوافق العكسي.
         let envRestored = false;
-        if (req.body?.restoreEnv === true && fs.existsSync(`${full}.env`)) {
+        if (req.body?.restoreEnv === true) {
+            const legacyEnv = `${full}.env`;
+            const encryptedEnv = [`${full}.env.kbak`, `${full}.env.gpg`].find((p) => fs.existsSync(p));
+            let tempDec = null;
             try {
-                fs.copyFileSync(path.join(rootDir(), '.env'), path.join(backupsDir(), `.env.before-restore-${Date.now()}`));
-                fs.copyFileSync(`${full}.env`, path.join(rootDir(), '.env'));
-                envRestored = true;
+                let envSource = null;
+                if (encryptedEnv) {
+                    tempDec = path.join(backupsDir(), `.env.decrypted-${Date.now()}`);
+                    decryptBackupFile(encryptedEnv, tempDec);
+                    envSource = tempDec;
+                } else if (fs.existsSync(legacyEnv)) {
+                    envSource = legacyEnv;
+                }
+                if (envSource) {
+                    const liveEnv = path.join(rootDir(), '.env');
+                    if (fs.existsSync(liveEnv)) {
+                        fs.copyFileSync(liveEnv, path.join(backupsDir(), `.env.before-restore-${Date.now()}`));
+                    }
+                    fs.copyFileSync(envSource, liveEnv);
+                    envRestored = true;
+                }
             } catch (e) { logger.warn('[system/restore] env restore skipped: ' + e.message); }
+            finally { try { if (tempDec && fs.existsSync(tempDec)) {fs.unlinkSync(tempDec);} } catch (_) { /* best-effort */ } }
         }
-        try { if (req.io) {req.io.emit('system:restored', { file, at: new Date().toISOString(), ms: Date.now() - t0 });} } catch (e) { logger.debug('[system/restore] تعذر البث:', e.message); }
+        try { if (req.io) {makeEmitScoped(req.io)('system:restored', { file, at: new Date().toISOString(), ms: Date.now() - t0 });} } catch (e) { logger.debug('[system/restore] تعذر البث:', e.message); }
+        // تدقيق دائم للاستعادة (تأمين 2026-11): من، ماذا، ومتى — ليس logger.info فقط.
+        await writeAuditLog({
+            action: 'SYSTEM_RESTORE', tableName: 'system_backups', rowPk: path.basename(full),
+            reason: 'استعادة نسخة احتياطية عبر واجهة النظام',
+            metadata: { file: path.basename(full), envRestored, ms: Date.now() - t0 },
+            actor: { userId: req.user.id, userName: req.user.name, role: req.user.role, ip: req.ip, requestId: req.id },
+        }).catch((e) => logger.error('[system/restore] audit failed:', e.message));
         res.json({ ok: true, file, ms: Date.now() - t0, envRestored, restartNeeded: true, message: 'تمت الاستعادة — أعد تشغيل خدمة السيرفر' });
     } catch (e) { logger.error('[system/restore]', e.message); res.status(500).json({ error: 'RESTORE_FAILED', message: 'فشلت الاستعادة' }); }
 });

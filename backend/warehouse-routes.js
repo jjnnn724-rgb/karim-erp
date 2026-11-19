@@ -4,6 +4,7 @@ const { pool } = require('./shared-pool');
 const { riyadhToday } = require('./riyadh-date'); // M20
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { logger } = require('./logger');
+const { makeEmitScoped } = require('./realtime/guard');
 const { postInventoryLedgerEntry } = require('./inventory-ledger');
 const { computeInvoicePaymentStatus } = require('./procurement-routes');
 const { computeInvoiceVat, loadStandardRate } = require('./tax-rule-service');
@@ -323,7 +324,7 @@ function json(value) {
 }
 function emit(req, entity, action, data) {
     if (!req.io) {return;}
-    req.io.emit('entity_changed', {
+    makeEmitScoped(req.io)('entity_changed', {
         entity,
         entityName: entity,
         action,
