@@ -7,15 +7,13 @@
 (function () {
     'use strict';
 
-    var meta = document.querySelector('meta[name="v3-rollout"]');
+    const meta = document.querySelector('meta[name="v3-rollout"]');
     if (!meta || meta.getAttribute('content') !== 'preview') {
         return;
     }
 
-    var pill = null;
-
     function build() {
-        var link = document.createElement('a');
+        const link = document.createElement('a');
         link.className = 'erp-v3-flag erp-no-print';
         link.href = '/v3-preview';
         link.target = '_blank';
@@ -34,14 +32,13 @@
         if (actions.querySelector('.erp-v3-flag')) {
             return true;
         }
-        var anchor = actions.querySelector('[data-erp-more-toggle]');
-        var node = build();
+        const anchor = actions.querySelector('[data-erp-more-toggle]');
+        const node = build();
         if (anchor) {
             actions.insertBefore(node, anchor);
         } else {
             actions.appendChild(node);
         }
-        pill = node;
         return true;
     }
 
@@ -58,7 +55,7 @@
     }
 
     // القشرة تُركَّب بعد الدخول، فلا يوجد عنصر جاهز الآن — ننتظره لا نستقصيه.
-    var observer = new MutationObserver(function () {
+    const observer = new MutationObserver(function () {
         if (tryPlace()) {
             observer.disconnect();
         }

@@ -6,23 +6,23 @@
 (function () {
     'use strict';
 
-    var cells = {
+    const cells = {
         days: document.querySelector('[data-countdown="days"]'),
         hours: document.querySelector('[data-countdown="hours"]'),
         minutes: document.querySelector('[data-countdown="minutes"]'),
         seconds: document.querySelector('[data-countdown="seconds"]'),
     };
-    var note = document.querySelector('[data-countdown-note]');
-    var box = document.querySelector('.countdown');
-    var timer = null;
+    const note = document.querySelector('[data-countdown-note]');
+    const box = document.querySelector('.countdown');
+    let timer = null;
 
     function pad(value) {
         return String(value).padStart(2, '0');
     }
 
     function render(leftMs) {
-        var total = Math.max(0, Math.floor(leftMs / 1000));
-        var days = Math.floor(total / 86400);
+        const total = Math.max(0, Math.floor(leftMs / 1000));
+        const days = Math.floor(total / 86400);
         cells.days.textContent = String(days);
         cells.hours.textContent = pad(Math.floor((total % 86400) / 3600));
         cells.minutes.textContent = pad(Math.floor((total % 3600) / 60));
@@ -47,7 +47,7 @@
             return response.ok ? response.json() : null;
         })
         .then(function (config) {
-            var at = config && typeof config.switchAt === 'string' ? Date.parse(config.switchAt) : NaN;
+            const at = config && typeof config.switchAt === 'string' ? Date.parse(config.switchAt) : NaN;
             if (!Number.isFinite(at)) {
                 // بلا موعد صالح لا نعرض عدّادًا كاذبًا.
                 if (note) {
@@ -58,8 +58,8 @@
                 });
                 return;
             }
-            var tick = function () {
-                var left = at - Date.now();
+            const tick = function () {
+                const left = at - Date.now();
                 if (left <= 0) {
                     render(0);
                     done();

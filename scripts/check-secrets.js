@@ -145,6 +145,10 @@ function scan() {
                 // القيمة المقتبسة في m[2] والغير مقتبسة (KEY=value) في m[3]
                 const value = m[2] ?? m[3];
                 if (value == null) {continue;}
+                // إصلاح 2026-11: قيمة غير مقتبسة تبدأ بـ '=' أو تحوي '===' / '!=='
+                // هي عامل مقارنة في كود مصغّر (frontend/v3/assets) وليست حرفية سر
+                // (base64 لا يحوي === أبدًا — الحشو '=' أو '==' فقط). المقتبسة تبقى تُفحص.
+                if (m[2] == null && (String(value).startsWith('=') || String(value).includes('===') || String(value).includes('!=='))) {continue;}
                 if (isSafe(value)) {continue;}
                 if (isAllowed(rel, 'assignment', name)) {continue;}
                 findings.push({ file: rel, line: idx + 1, rule: 'assignment', name, preview: redact(value) });
