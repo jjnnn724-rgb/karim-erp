@@ -1,6 +1,6 @@
 import './Mudad.premium.css';
 import { useQuery } from '@tanstack/react-query';
-import { type CSSProperties, type FormEvent, type ReactNode, useMemo, useState } from 'react';
+import { type CSSProperties, type FormEvent, type ReactNode, useCallback, useMemo, useState } from 'react';
 import { MudadCredentials } from '../components/MudadCredentials';
 import { MudadDelivery } from '../components/MudadDelivery';
 import { PrintActions } from '../components/PrintActions';
@@ -20,6 +20,7 @@ import {
     fetchQiwaReadiness,
     fetchWpsReadiness,
     fetchWpsRequirements,
+    type GosiPreviewLine,
     gosiBasisLabel,
     gosiReasonLabel,
     issueLabel,
@@ -41,6 +42,7 @@ import {
 import { mudadReviewCsv, mudadReviewFilename, mudadReviewPrintHtml } from '../lib/mudad-print';
 import { openBlankTab, writeHtmlDocument } from '../lib/print-document';
 import { isWriteRole, useWriteMutation, writeErrorMessage } from '../lib/write';
+import { DataTable, type DataTableColumn } from '../ui';
 
 /**
  * مدد (WPS) والتأمينات وقوى — سطح V3 لعقد GATE 06.
@@ -205,6 +207,86 @@ function hostOf(url: string): string {
     return url.replace(/^https?:\/\//, '').replace(/\/$/, '');
 }
 
+/**
+ * أعمدة معاينة التأمينات — القيم كما كانت حرفيًا (المبالغ لاتينية معزولة
+ * الاتجاه، والتصنيف بترجمته العربية، وشارة «أقل من الحد الأدنى»). صفوف
+ * المعاينة لكل الموظفين بلا سقف، ففوق 200 صف يتكفّل DataTable بالتمرير
+ * الافتراضي (PLAN §3.4). لا تصدير CSV هنا — تصدير الشاشة الكامل يبقى في
+ * قسم «كشف المراجعة» أدناه بعقده (BOM وحماية الصيغ واسم الملف).
+ */
+const GOSI_COLUMNS: DataTableColumn<GosiPreviewLine>[] = [
+    {
+        key: 'employee',
+        header: 'الموظف',
+        cell: (line) => (
+            <>
+                <span className="mudad-person__name">{line.name ?? '—'}</span>
+                <span className="mudad-person__id" dir="ltr">
+                    #{line.employee_id}
+                </span>
+            </>
+        ),
+        sortValue: (line) => line.name ?? null,
+    },
+    {
+        key: 'category',
+        header: 'التصنيف',
+        cell: (line) => (
+            <>
+                {
+                    NATIONALITY_CATEGORY_LABELS[
+                        line.category === 'saudi' ? 'saudi' : line.category === 'expat' ? 'expat' : 'unknown'
+                    ]
+                }
+                {line.below_minimum ? (
+                    <span className="mt-xxs block">
+                        <Badge tone="warning">أقل من الحد الأدنى</Badge>
+                    </span>
+                ) : null}
+            </>
+        ),
+        sortValue: (line) =>
+            NATIONALITY_CATEGORY_LABELS[
+                line.category === 'saudi' ? 'saudi' : line.category === 'expat' ? 'expat' : 'unknown'
+            ],
+    },
+    {
+        key: 'wage',
+        header: 'الأجر',
+        className: 'erp-numeric',
+        cell: (line) => <span dir="ltr">{moneyText(line.wage)}</span>,
+        sortValue: (line) => line.wage,
+    },
+    {
+        key: 'basis',
+        header: 'الأساس',
+        className: 'text-muted',
+        cell: (line) => gosiBasisLabel(line.basis),
+        sortValue: (line) => gosiBasisLabel(line.basis),
+    },
+    {
+        key: 'employeeShare',
+        header: 'الموظف',
+        className: 'erp-numeric',
+        cell: (line) => <span dir="ltr">{moneyText(line.employee)}</span>,
+        sortValue: (line) => line.employee,
+    },
+    {
+        key: 'employerShare',
+        header: 'صاحب العمل',
+        className: 'erp-numeric',
+        cell: (line) => <span dir="ltr">{moneyText(line.employer)}</span>,
+        sortValue: (line) => line.employer,
+    },
+    {
+        key: 'total',
+        header: 'الإجمالي',
+        className: 'erp-numeric font-semibold',
+        cell: (line) => <span dir="ltr">{moneyText(line.total)}</span>,
+        sortValue: (line) => line.total,
+    },
+];
+
 export function Mudad() {
     const auth = useAuthState();
     const role = auth.user?.role ?? '';
@@ -364,7 +446,7 @@ export function Mudad() {
         setNotice('');
     }
 
-    function startEditing(employee: WpsReadinessEmployee) {
+    const startEditing = useCallback((employee: WpsReadinessEmployee) => {
         setNotice('');
         setFormError('');
         setForm({
@@ -374,7 +456,104 @@ export function Mudad() {
             nationality: employee.nationality ?? '',
             gosiNumber: '',
         });
-    }
+    }, []);
+
+    /**
+     * أعمدة جاهزية الموظفين — الخلايا تحفظ دلالات العرض القديمة حرفيًا:
+     * الصورة الرمزية والاسم والرقم، والهوية وIBAN المقنّع لاتينية معزولة
+     * الاتجاه، والنواقص شارات تحذير، والجاهزية شارة نجاح/خطر. زر الاستكمال
+     * للأدمن فقط (`canWrite`) كما كان. البحث يبقى مسؤولية الشاشة
+     * (`manualFiltering`)، والفرز محلي آمن لأن كل الموظفين محمّلون، وفوق
+     * 200 صف يتكفّل DataTable بالتمرير الافتراضي (PLAN §3.4). لا تصدير CSV
+     * للجدول نفسه — تصدير الشاشة الكامل يبقى في قسم «كشف المراجعة» بعقده.
+     */
+    const employeeColumns = useMemo<DataTableColumn<WpsReadinessEmployee>[]>(() => {
+        const base: DataTableColumn<WpsReadinessEmployee>[] = [
+            {
+                key: 'employee',
+                header: 'الموظف',
+                cell: (employee) => (
+                    <span className="mudad-person">
+                        <span className="mudad-avatar" aria-hidden="true">
+                            {initialsOf(employee.name)}
+                        </span>
+                        <span className="mudad-person__text">
+                            <span className="mudad-person__name">{employee.name ?? '—'}</span>
+                            <span className="mudad-person__id" dir="ltr">
+                                #{employee.employee_id}
+                            </span>
+                        </span>
+                    </span>
+                ),
+                sortValue: (employee) => employee.name ?? null,
+            },
+            {
+                key: 'idNumber',
+                header: 'الهوية/الإقامة',
+                className: 'mudad-mono',
+                cell: (employee) => <span dir="ltr">{employee.id_number ?? '—'}</span>,
+                sortValue: (employee) => employee.id_number ?? null,
+            },
+            {
+                key: 'iban',
+                header: 'IBAN',
+                className: 'mudad-mono',
+                cell: (employee) => <span dir="ltr">{employee.iban_masked ?? '—'}</span>,
+                sortValue: (employee) => employee.iban_masked ?? null,
+            },
+            {
+                key: 'nationality',
+                header: 'الجنسية',
+                className: 'text-muted',
+                cell: (employee) => NATIONALITY_CATEGORY_LABELS[nationalityCategory(employee.nationality)],
+                sortValue: (employee) => NATIONALITY_CATEGORY_LABELS[nationalityCategory(employee.nationality)],
+            },
+            {
+                key: 'salary',
+                header: 'الراتب',
+                className: 'erp-numeric',
+                cell: (employee) => <span dir="ltr">{moneyText(employee.salary)}</span>,
+                sortValue: (employee) => employee.salary,
+            },
+            {
+                key: 'issues',
+                header: 'النواقص',
+                cell: (employee) =>
+                    employee.issues.length ? (
+                        <ul className="mudad-issues">
+                            {employee.issues.map((code) => (
+                                <li key={code}>
+                                    <Badge tone="warning">{issueLabel(code)}</Badge>
+                                </li>
+                            ))}
+                        </ul>
+                    ) : (
+                        <span className="text-caption text-muted">—</span>
+                    ),
+                sortValue: (employee) => employee.issues.length,
+            },
+            {
+                key: 'ready',
+                header: 'الجاهزية',
+                cell: (employee) => (
+                    <Badge tone={employee.ready ? 'success' : 'danger'}>{employee.ready ? 'جاهز' : 'غير جاهز'}</Badge>
+                ),
+                sortValue: (employee) => (employee.ready ? 1 : 0),
+            },
+        ];
+        if (canWrite) {
+            base.push({
+                key: 'action',
+                header: 'إجراء',
+                cell: (employee) => (
+                    <button type="button" onClick={() => startEditing(employee)} className="mudad-btn mudad-btn--small">
+                        تعديل بيانات الصرف
+                    </button>
+                ),
+            });
+        }
+        return base;
+    }, [canWrite, startEditing]);
 
     function saveBank(event: FormEvent<HTMLFormElement>) {
         event.preventDefault();
@@ -878,102 +1057,42 @@ export function Mudad() {
                         </form>
                     ) : null}
 
-                    {readinessQuery.isPending ? (
-                        <TableSkeleton rows={5} columns={7} />
-                    ) : rows.length ? (
-                        <div className="mudad-table">
-                            <TableScroll label="جاهزية بيانات الصرف لكل موظف">
-                                <table className="w-full border-collapse">
-                                    <caption className="sr-only">
-                                        الموظفون النشطون وحالة هويتهم وIBAN وجنسيتهم ورقم تأميناتهم
-                                    </caption>
-                                    <thead>
-                                        <tr>
-                                            <th scope="col">الموظف</th>
-                                            <th scope="col">الهوية/الإقامة</th>
-                                            <th scope="col">IBAN</th>
-                                            <th scope="col">الجنسية</th>
-                                            <th scope="col">الراتب</th>
-                                            <th scope="col">النواقص</th>
-                                            <th scope="col">الجاهزية</th>
-                                            {canWrite ? <th scope="col">إجراء</th> : null}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {rows.map((employee) => (
-                                            <tr key={employee.employee_id}>
-                                                <th scope="row">
-                                                    <span className="mudad-person">
-                                                        <span className="mudad-avatar" aria-hidden="true">
-                                                            {initialsOf(employee.name)}
-                                                        </span>
-                                                        <span className="mudad-person__text">
-                                                            <span className="mudad-person__name">
-                                                                {employee.name ?? '—'}
-                                                            </span>
-                                                            <span className="mudad-person__id" dir="ltr">
-                                                                #{employee.employee_id}
-                                                            </span>
-                                                        </span>
-                                                    </span>
-                                                </th>
-                                                <td className="mudad-mono" dir="ltr">
-                                                    {employee.id_number ?? '—'}
-                                                </td>
-                                                <td className="mudad-mono" dir="ltr">
-                                                    {employee.iban_masked ?? '—'}
-                                                </td>
-                                                <td className="text-muted">
-                                                    {
-                                                        NATIONALITY_CATEGORY_LABELS[
-                                                            nationalityCategory(employee.nationality)
-                                                        ]
-                                                    }
-                                                </td>
-                                                <td className="erp-numeric" dir="ltr">
-                                                    {moneyText(employee.salary)}
-                                                </td>
-                                                <td>
-                                                    {employee.issues.length ? (
-                                                        <ul className="mudad-issues">
-                                                            {employee.issues.map((code) => (
-                                                                <li key={code}>
-                                                                    <Badge tone="warning">{issueLabel(code)}</Badge>
-                                                                </li>
-                                                            ))}
-                                                        </ul>
-                                                    ) : (
-                                                        <span className="text-caption text-muted">—</span>
-                                                    )}
-                                                </td>
-                                                <td>
-                                                    <Badge tone={employee.ready ? 'success' : 'danger'}>
-                                                        {employee.ready ? 'جاهز' : 'غير جاهز'}
-                                                    </Badge>
-                                                </td>
-                                                {canWrite ? (
-                                                    <td>
-                                                        <button
-                                                            type="button"
-                                                            onClick={() => startEditing(employee)}
-                                                            className="mudad-btn mudad-btn--small"
-                                                        >
-                                                            تعديل بيانات الصرف
-                                                        </button>
-                                                    </td>
-                                                ) : null}
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </TableScroll>
-                        </div>
-                    ) : (
-                        <StateEmpty
-                            title={search ? 'لا موظفون مطابقون' : 'لا موظفون نشطون'}
-                            hint={search ? 'امسح البحث أو غيّر كلماته.' : 'يظهر الموظفون النشطون فقط في هذا الملف.'}
+                    <div className="mudad-table">
+                        <DataTable<WpsReadinessEmployee>
+                            caption="جاهزية بيانات الصرف لكل موظف"
+                            columns={employeeColumns}
+                            rows={rows}
+                            rowKey={(employee) => employee.employee_id}
+                            state={
+                                readinessQuery.isPending
+                                    ? 'loading'
+                                    : readinessQuery.isError
+                                      ? 'error'
+                                      : rows.length === 0
+                                        ? 'empty'
+                                        : 'data'
+                            }
+                            emptyTitle={search ? 'لا موظفون مطابقون' : 'لا موظفون نشطون'}
+                            emptyDescription={
+                                search ? 'امسح البحث أو غيّر كلماته.' : 'يظهر الموظفون النشطون فقط في هذا الملف.'
+                            }
+                            errorMessage={
+                                readinessQuery.error instanceof Error
+                                    ? readinessQuery.error.message
+                                    : 'تعذّر تحميل جاهزية ملف الأجور'
+                            }
+                            onRetry={() => {
+                                void readinessQuery.refetch();
+                            }}
+                            manualFiltering
+                            // خلية الموظف سطران (اسم + رقم) والنواقص قد تلتف — ارتفاع يحجز مكانه.
+                            rowHeight={60}
+                            // الموظفون النشطون بلا سقف — عتبة 50 لمنطقة تمرير ثابتة
+                            // الارتفاع، وهيكل التحميل يحجز ارتفاع البيانات تقريبًا.
+                            virtualizeThreshold={50}
+                            loadingRows={9}
                         />
-                    )}
+                    </div>
                 </div>
             </Card>
 
@@ -1157,7 +1276,6 @@ export function Mudad() {
                             hint="لا افتراض تلقائي للنسب — اختر مجموعة صراحةً لعرض الحساب التقديري."
                         />
                     ) : null}
-                    {previewQuery.isPending && rateSet ? <TableSkeleton rows={4} columns={6} /> : null}
                     {previewQuery.isError ? (
                         <StateError
                             message={
@@ -1170,110 +1288,68 @@ export function Mudad() {
                             }}
                         />
                     ) : null}
-                    {preview ? (
+                    {preview || (previewQuery.isPending && rateSet) ? (
                         <>
-                            <div className="mudad-inline-status">
-                                <span>
-                                    الأساس: <strong>{gosiBasisLabel(preview.basis)}</strong>
-                                </span>
-                                <Badge tone={preview.estimate ? 'warning' : 'success'}>
-                                    {preview.estimate ? 'تقديري — المسير غير مُقفل' : 'من وعاء المسير'}
-                                </Badge>
-                                <Badge tone={preview.rate_set.verified ? 'success' : 'warning'}>
-                                    {preview.rate_set.verified ? 'نسب موثّقة' : 'نسب غير موثّقة'}
-                                </Badge>
-                                <span className="text-muted">{preview.rate_set.label_ar}</span>
-                            </div>
-                            <ul className="mudad-metrics" aria-label="إجماليات معاينة التأمينات">
-                                <Metric
-                                    label="حصة الموظف"
-                                    english="Employee"
-                                    value={moneyText(preview.totals.employee)}
-                                    hint="عرض فقط — لا خصم ولا قيد"
-                                />
-                                <Metric
-                                    label="حصة صاحب العمل"
-                                    english="Employer"
-                                    value={moneyText(preview.totals.employer)}
-                                    hint="عرض فقط — لا قيد"
-                                />
-                                <Metric
-                                    label="الإجمالي"
-                                    english="Total"
-                                    value={moneyText(preview.totals.total)}
-                                    hint={`${formatInt(preview.lines.length)} صفًا محسوبًا`}
-                                    tone="warning"
-                                />
-                            </ul>
-                            {preview.lines.length ? (
-                                <div className="mudad-table">
-                                    <TableScroll label="معاينة اشتراكات التأمينات">
-                                        <table className="w-full border-collapse">
-                                            <caption className="sr-only">حساب عرض لاشتراكات التأمينات لكل موظف</caption>
-                                            <thead>
-                                                <tr>
-                                                    <th scope="col">الموظف</th>
-                                                    <th scope="col">التصنيف</th>
-                                                    <th scope="col">الأجر</th>
-                                                    <th scope="col">الأساس</th>
-                                                    <th scope="col">الموظف</th>
-                                                    <th scope="col">صاحب العمل</th>
-                                                    <th scope="col">الإجمالي</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {preview.lines.map((line) => (
-                                                    <tr key={line.employee_id}>
-                                                        <th scope="row">
-                                                            <span className="mudad-person__name">
-                                                                {line.name ?? '—'}
-                                                            </span>
-                                                            <span className="mudad-person__id" dir="ltr">
-                                                                #{line.employee_id}
-                                                            </span>
-                                                        </th>
-                                                        <td>
-                                                            {
-                                                                NATIONALITY_CATEGORY_LABELS[
-                                                                    line.category === 'saudi'
-                                                                        ? 'saudi'
-                                                                        : line.category === 'expat'
-                                                                          ? 'expat'
-                                                                          : 'unknown'
-                                                                ]
-                                                            }
-                                                            {line.below_minimum ? (
-                                                                <span className="mt-xxs block">
-                                                                    <Badge tone="warning">أقل من الحد الأدنى</Badge>
-                                                                </span>
-                                                            ) : null}
-                                                        </td>
-                                                        <td className="erp-numeric" dir="ltr">
-                                                            {moneyText(line.wage)}
-                                                        </td>
-                                                        <td className="text-muted">{gosiBasisLabel(line.basis)}</td>
-                                                        <td className="erp-numeric" dir="ltr">
-                                                            {moneyText(line.employee)}
-                                                        </td>
-                                                        <td className="erp-numeric" dir="ltr">
-                                                            {moneyText(line.employer)}
-                                                        </td>
-                                                        <td className="erp-numeric font-semibold" dir="ltr">
-                                                            {moneyText(line.total)}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </TableScroll>
+                            {preview ? (
+                                <div className="mudad-inline-status">
+                                    <span>
+                                        الأساس: <strong>{gosiBasisLabel(preview.basis)}</strong>
+                                    </span>
+                                    <Badge tone={preview.estimate ? 'warning' : 'success'}>
+                                        {preview.estimate ? 'تقديري — المسير غير مُقفل' : 'من وعاء المسير'}
+                                    </Badge>
+                                    <Badge tone={preview.rate_set.verified ? 'success' : 'warning'}>
+                                        {preview.rate_set.verified ? 'نسب موثّقة' : 'نسب غير موثّقة'}
+                                    </Badge>
+                                    <span className="text-muted">{preview.rate_set.label_ar}</span>
                                 </div>
-                            ) : (
-                                <StateEmpty
-                                    title="لا صفوف محسوبة"
-                                    hint="راجع الجنسية والأجر الأساسي لكل موظف ثم أعد المحاولة."
+                            ) : null}
+                            {preview ? (
+                                <ul className="mudad-metrics" aria-label="إجماليات معاينة التأمينات">
+                                    <Metric
+                                        label="حصة الموظف"
+                                        english="Employee"
+                                        value={moneyText(preview.totals.employee)}
+                                        hint="عرض فقط — لا خصم ولا قيد"
+                                    />
+                                    <Metric
+                                        label="حصة صاحب العمل"
+                                        english="Employer"
+                                        value={moneyText(preview.totals.employer)}
+                                        hint="عرض فقط — لا قيد"
+                                    />
+                                    <Metric
+                                        label="الإجمالي"
+                                        english="Total"
+                                        value={moneyText(preview.totals.total)}
+                                        hint={`${formatInt(preview.lines.length)} صفًا محسوبًا`}
+                                        tone="warning"
+                                    />
+                                </ul>
+                            ) : null}
+                            <div className="mudad-table">
+                                <DataTable<GosiPreviewLine>
+                                    caption="معاينة اشتراكات التأمينات"
+                                    columns={GOSI_COLUMNS}
+                                    rows={preview?.lines ?? []}
+                                    rowKey={(line) => line.employee_id}
+                                    state={
+                                        previewQuery.isPending && !preview
+                                            ? 'loading'
+                                            : (preview?.lines.length ?? 0) === 0
+                                              ? 'empty'
+                                              : 'data'
+                                    }
+                                    emptyTitle="لا صفوف محسوبة"
+                                    emptyDescription="راجع الجنسية والأجر الأساسي لكل موظف ثم أعد المحاولة."
+                                    // خلية الموظف سطران (اسم + رقم) — ارتفاع صف يحجز مكانه.
+                                    rowHeight={56}
+                                    // صفوف المعاينة لكل الموظفين بلا سقف — عتبة 50.
+                                    virtualizeThreshold={50}
+                                    loadingRows={9}
                                 />
-                            )}
-                            {preview.unclassified.length ? (
+                            </div>
+                            {preview?.unclassified.length ? (
                                 <div className="mudad-callout" data-tone="warning">
                                     <h3 className="mudad-callout__title">لم يُصنَّف تأمينيًا</h3>
                                     <ul className="mudad-callout__list">
@@ -1289,19 +1365,21 @@ export function Mudad() {
                                     </ul>
                                 </div>
                             ) : null}
-                            {preview.warnings.length ? (
+                            {preview?.warnings.length ? (
                                 <ul className="mudad-notes">
                                     {preview.warnings.map((warning) => (
                                         <li key={warning}>{warning}</li>
                                     ))}
                                 </ul>
                             ) : null}
-                            <p className="mudad-footnote">
-                                آخر تحديث:{' '}
-                                <span className="erp-numeric" dir="ltr">
-                                    {generatedAtText(preview.generated_at)}
-                                </span>
-                            </p>
+                            {preview ? (
+                                <p className="mudad-footnote">
+                                    آخر تحديث:{' '}
+                                    <span className="erp-numeric" dir="ltr">
+                                        {generatedAtText(preview.generated_at)}
+                                    </span>
+                                </p>
+                            ) : null}
                         </>
                     ) : null}
                 </div>

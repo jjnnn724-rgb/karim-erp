@@ -13,9 +13,10 @@ import {
     type JournalEntry,
     marginText,
     reconciliationTone,
+    type TrialBalance,
 } from '../lib/cfo';
 import { errorMessage, intOf, moneyOf, num, presetRange, rangeProblem, textOf } from '../lib/reporting';
-import { FilterBar, StatCard } from '../ui';
+import { DataTable, type DataTableColumn, FilterBar, StatCard } from '../ui';
 
 /**
  * المدير المالي — قراءة فقط. كل رقم يصل جاهزًا من الخادم؛ لا جمع ولا حساب
@@ -43,6 +44,55 @@ const TONE_CLASS = {
     warning: 'text-warning-text',
     danger: 'text-danger-text',
 } as const;
+
+type TrialAccount = NonNullable<TrialBalance['accounts']>[number];
+
+/**
+ * أعمدة ميزان المراجعة — القيم كما كانت حرفيًا (الكود والمبالغ لاتينية معزولة
+ * الاتجاه، والنوع بترجمته العربية). الحسابات كلها محمّلة من الخادم بلا سقف،
+ * فالفرز المحلي آمن، وفوق 200 صف يتكفّل DataTable بالتمرير الافتراضي
+ * (PLAN §3.4). البحث باسم الحساب يبقى مسؤولية الشاشة (`manualFiltering`).
+ * لا تصدير CSV هنا — لم يكن في الشاشة القديمة ولا يُضاف الآن.
+ */
+const TB_COLUMNS: DataTableColumn<TrialAccount>[] = [
+    {
+        key: 'code',
+        header: 'الكود',
+        className: 'erp-numeric text-ink',
+        cell: (account) => <span dir="ltr">{textOf(account.code) || '—'}</span>,
+        sortValue: (account) => textOf(account.code) || null,
+    },
+    {
+        key: 'name',
+        header: 'الحساب',
+        className: 'text-ink',
+        cell: (account) => textOf(account.name_ar) || textOf(account.name_en) || '—',
+        sortValue: (account) => textOf(account.name_ar) || textOf(account.name_en) || null,
+    },
+    {
+        key: 'type',
+        header: 'النوع',
+        className: 'text-muted',
+        cell: (account) => TYPE_LABEL[textOf(account.type)] ?? (textOf(account.type) || '—'),
+        sortValue: (account) => TYPE_LABEL[textOf(account.type)] ?? (textOf(account.type) || null),
+    },
+    {
+        key: 'debit',
+        header: 'مدين',
+        numeric: true,
+        className: 'text-ink',
+        cell: (account) => <span dir="ltr">{moneyOf(account.debit)}</span>,
+        sortValue: (account) => num(account.debit),
+    },
+    {
+        key: 'credit',
+        header: 'دائن',
+        numeric: true,
+        className: 'text-ink',
+        cell: (account) => <span dir="ltr">{moneyOf(account.credit)}</span>,
+        sortValue: (account) => num(account.credit),
+    },
+];
 
 export function Cfo() {
     const initial = presetRange('month');
@@ -276,83 +326,50 @@ export function Cfo() {
                     ) : null}
 
                     <SectionCard title="ميزان المراجعة" english="Trial balance">
-                        {trialBalance ? (
+                        {trialBalance || (query.isPending && problem === '') ? (
                             <>
-                                <p
-                                    className="border-b border-hairline px-sm py-xs text-body-sm text-muted"
-                                    role="status"
-                                >
-                                    {`مجموع مدين ${moneyOf(trialBalance.total_debit)} · مجموع دائن ${moneyOf(trialBalance.total_credit)} · `}
-                                    <span className={trialBalance.balanced ? 'text-success-text' : 'text-danger-text'}>
-                                        {trialBalance.balanced ? 'متوازن' : 'غير متوازن'}
-                                    </span>
-                                    <span className="me-xs text-caption text-faint" dir="ltr">
-                                        {balanceLine(trialBalance)}
-                                    </span>
-                                </p>
-                                {accounts.length === 0 ? (
-                                    <StateEmpty
-                                        title="لا حركات في الفترة"
-                                        hint="رحّل المبيعات من الكاشير أو أدخل قيدًا في v2."
-                                    />
-                                ) : filteredAccounts.length === 0 ? (
-                                    <StateEmpty title="لا نتائج للبحث" hint="جرّب اسم حساب آخر أو امسح البحث." />
-                                ) : (
-                                    <TableScroll label="جدول ميزان المراجعة">
-                                        <table className="w-full border-collapse text-body-md">
-                                            <thead>
-                                                <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                                    <th scope="col" className="px-sm py-xs text-start font-medium">
-                                                        الكود
-                                                    </th>
-                                                    <th scope="col" className="px-sm py-xs text-start font-medium">
-                                                        الحساب
-                                                    </th>
-                                                    <th scope="col" className="px-sm py-xs text-start font-medium">
-                                                        النوع
-                                                    </th>
-                                                    <th scope="col" className="px-sm py-xs text-end font-medium">
-                                                        مدين
-                                                    </th>
-                                                    <th scope="col" className="px-sm py-xs text-end font-medium">
-                                                        دائن
-                                                    </th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {filteredAccounts.map((account) => (
-                                                    <tr
-                                                        key={textOf(account.code)}
-                                                        className="border-b border-hairline hover:bg-surface-hover"
-                                                    >
-                                                        <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">
-                                                            {textOf(account.code) || '—'}
-                                                        </td>
-                                                        <td className="px-sm py-xxs text-ink">
-                                                            {textOf(account.name_ar) || textOf(account.name_en) || '—'}
-                                                        </td>
-                                                        <td className="px-sm py-xxs text-muted">
-                                                            {TYPE_LABEL[textOf(account.type)] ??
-                                                                (textOf(account.type) || '—')}
-                                                        </td>
-                                                        <td
-                                                            className="erp-numeric px-sm py-xxs text-end text-ink"
-                                                            dir="ltr"
-                                                        >
-                                                            {moneyOf(account.debit)}
-                                                        </td>
-                                                        <td
-                                                            className="erp-numeric px-sm py-xxs text-end text-ink"
-                                                            dir="ltr"
-                                                        >
-                                                            {moneyOf(account.credit)}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </TableScroll>
-                                )}
+                                {trialBalance ? (
+                                    <p
+                                        className="border-b border-hairline px-sm py-xs text-body-sm text-muted"
+                                        role="status"
+                                    >
+                                        {`مجموع مدين ${moneyOf(trialBalance.total_debit)} · مجموع دائن ${moneyOf(trialBalance.total_credit)} · `}
+                                        <span
+                                            className={trialBalance.balanced ? 'text-success-text' : 'text-danger-text'}
+                                        >
+                                            {trialBalance.balanced ? 'متوازن' : 'غير متوازن'}
+                                        </span>
+                                        <span className="me-xs text-caption text-faint" dir="ltr">
+                                            {balanceLine(trialBalance)}
+                                        </span>
+                                    </p>
+                                ) : null}
+                                <DataTable<TrialAccount>
+                                    caption="جدول ميزان المراجعة"
+                                    columns={TB_COLUMNS}
+                                    rows={filteredAccounts}
+                                    rowKey={(account) => textOf(account.code)}
+                                    state={
+                                        query.isPending && !trialBalance
+                                            ? 'loading'
+                                            : filteredAccounts.length === 0
+                                              ? 'empty'
+                                              : 'data'
+                                    }
+                                    emptyTitle={accounts.length === 0 ? 'لا حركات في الفترة' : 'لا نتائج للبحث'}
+                                    emptyDescription={
+                                        accounts.length === 0
+                                            ? 'رحّل المبيعات من الكاشير أو أدخل قيدًا في v2.'
+                                            : 'جرّب اسم حساب آخر أو امسح البحث.'
+                                    }
+                                    manualFiltering
+                                    // ميزان المراجعة بلا سقف خادم، ومقياس البيانات الغنية
+                                    // ~124 حسابًا — عتبة 50 تُبقي منطقة التمرير ثابتة
+                                    // الارتفاع (نفس عقد محرك الاستعلامات)، وهيكل التحميل
+                                    // يحجز ارتفاع البيانات نفسه تقريبًا (CLS ≈ 0).
+                                    virtualizeThreshold={50}
+                                    loadingRows={15}
+                                />
                             </>
                         ) : (
                             <StateEmpty
