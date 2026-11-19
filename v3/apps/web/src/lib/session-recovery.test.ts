@@ -195,8 +195,12 @@ describe('استجابة 401', () => {
 
         await observer.mutate().catch(() => {});
 
+        // الاسترجاع غير متزامن بعد رفض الطفرة: ننتظر اكتمال التطبيق فعليًا
+        // (النداء وحده لا يعني applySession — سباق توقيت ظهر على عدّاد CI).
         await vi.waitFor(() => expect(fetchMock).toHaveBeenCalledTimes(1));
-        expect(getAuthState().status).toBe('authenticated');
-        expect(getAuthState().token).toBe('access-2');
+        await vi.waitFor(() => {
+            expect(getAuthState().status).toBe('authenticated');
+            expect(getAuthState().token).toBe('access-2');
+        });
     });
 });

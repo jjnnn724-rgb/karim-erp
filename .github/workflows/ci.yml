@@ -39,7 +39,30 @@ jobs:
           cache: 'npm'
 
       - name: Install dependencies (ci)
-        run: npm ci --ignore-scripts
+        run: |
+          # تشخيص ذاتي: سجل كامل يُرفع عند الفشل + إعادة محاولة بعد تنظيف الكاش
+          # (فشل تثبيت سابق على العدّاد بلا رسالة مرئية — كاش تالف احتمال وارد).
+          set +e
+          npm ci --ignore-scripts --no-audit --no-fund --fetch-retries=5 > npm-ci.log 2>&1
+          CODE=$?
+          if [ $CODE -ne 0 ]; then
+            echo "::warning::npm ci فشل (رمز $CODE) — إعادة محاولة بعد تنظيف الكاش"
+            tail -40 npm-ci.log
+            npm cache clean --force
+            npm ci --ignore-scripts --no-audit --no-fund --fetch-retries=5 > npm-ci.log 2>&1
+            CODE=$?
+          fi
+          tail -5 npm-ci.log
+          exit $CODE
+
+      - name: Upload npm ci log (on failure)
+        if: failure()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: npm-ci-log
+          path: npm-ci.log
+          retention-days: ${{ env.RETENTION_DAYS }}
 
       - name: Run npm audit (production dependencies only)
         id: audit
