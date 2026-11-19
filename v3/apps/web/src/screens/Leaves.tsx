@@ -1,11 +1,11 @@
 import './Leaves.premium.css';
 import { useQuery } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
+import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { fetchEmployees } from '../lib/employees';
 import { formatInt } from '../lib/inventory-register';
-import { useEffect } from 'react';
 import {
     buildLeavesKpis,
     doorScopeNote,
@@ -26,14 +26,8 @@ import {
     topRequesters,
     typeToRow,
 } from '../lib/leaves';
+import { createLeaveRequest, decideLeaveRequest, LEAVE_TEXT, type LeaveActionKind } from '../lib/leaves-write';
 import { roleLabel } from '../lib/users';
-import { PrintActions } from '../components/PrintActions';
-import {
-    createLeaveRequest,
-    decideLeaveRequest,
-    LEAVE_TEXT,
-    type LeaveActionKind,
-} from '../lib/leaves-write';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
@@ -375,7 +369,11 @@ export function Leaves() {
         setActionRow(row);
         setActionKind(kind);
         setActionTitle(
-            kind === 'approve' ? `اعتماد طلب ${row.employee}` : kind === 'reject' ? `رفض طلب ${row.employee}` : `إعادة الطلب ${row.employee} للموظف`,
+            kind === 'approve'
+                ? `اعتماد طلب ${row.employee}`
+                : kind === 'reject'
+                  ? `رفض طلب ${row.employee}`
+                  : `إعادة الطلب ${row.employee} للموظف`,
         );
         setActionMessage(
             kind === 'approve'
@@ -413,7 +411,8 @@ export function Leaves() {
                             void workflowQuery.refetch();
                             void typesQuery.refetch();
                         }}
-                        data-erp-print-hide className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                        data-erp-print-hide
+                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
                     >
                         تحديث
                     </button>
@@ -610,7 +609,11 @@ export function Leaves() {
                                             sort={requestSort}
                                             onToggle={toggleRequestSort}
                                         />
-                                        <th scope="col" className="px-sm py-xs text-start font-medium" data-erp-print-hide>
+                                        <th
+                                            scope="col"
+                                            className="px-sm py-xs text-start font-medium"
+                                            data-erp-print-hide
+                                        >
                                             إجراءات
                                         </th>
                                     </tr>
@@ -777,10 +780,7 @@ export function Leaves() {
                 ) : null}
 
                 {workflowQuery.isSuccess && events.length === 0 ? (
-                    <StateEmpty
-                        title="لا أحداث بعد"
-                        hint="لا أحداث اعتماد بعد."
-                    />
+                    <StateEmpty title="لا أحداث بعد" hint="لا أحداث اعتماد بعد." />
                 ) : null}
 
                 {workflowQuery.isSuccess && events.length > 0 ? (

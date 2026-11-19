@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import './MenuBoard.premium.css';
-import { ReportHeader, SectionCard } from '../components/Reports';
 import { PrintActions } from '../components/PrintActions';
+import { ReportHeader, SectionCard } from '../components/Reports';
 
 /**
  * شاشات المنيو — مضيفةٌ لإدارة المنيو القديمة داخل إطار، كما في V2 حرفيًا

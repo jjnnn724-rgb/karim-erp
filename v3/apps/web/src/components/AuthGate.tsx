@@ -474,7 +474,9 @@ function LoginScreen({ kiosk = false }: { kiosk?: boolean }) {
                                         autoComplete="one-time-code"
                                         maxLength={6}
                                         value={mfaCode}
-                                        onChange={(event) => setMfaCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                                        onChange={(event) =>
+                                            setMfaCode(event.target.value.replace(/\D/g, '').slice(0, 6))
+                                        }
                                         size="lg"
                                         disabled={busy}
                                         hint="6 أرقام من تطبيق المصادقة — تتغيّر كل 30 ثانية."
@@ -543,7 +545,12 @@ function LoginScreen({ kiosk = false }: { kiosk?: boolean }) {
                             <div className="mt-lg flex flex-col gap-md">
                                 <div className="grid place-items-center rounded-md border border-hairline-strong bg-surface p-md">
                                     {enrollment?.qrDataUrl ? (
-                                        <img src={enrollment.qrDataUrl} alt="رمز QR لتسجيل المصادقة الثنائية" width={200} height={200} />
+                                        <img
+                                            src={enrollment.qrDataUrl}
+                                            alt="رمز QR لتسجيل المصادقة الثنائية"
+                                            width={200}
+                                            height={200}
+                                        />
                                     ) : (
                                         <p role="status" className="text-body-sm text-muted">
                                             {busy ? 'جارٍ تجهيز رمز QR…' : 'تعذّر تجهيز رمز QR — استخدم المفتاح اليدوي.'}
@@ -569,7 +576,9 @@ function LoginScreen({ kiosk = false }: { kiosk?: boolean }) {
                                     autoComplete="one-time-code"
                                     maxLength={6}
                                     value={enrollCode}
-                                    onChange={(event) => setEnrollCode(event.target.value.replace(/\D/g, '').slice(0, 6))}
+                                    onChange={(event) =>
+                                        setEnrollCode(event.target.value.replace(/\D/g, '').slice(0, 6))
+                                    }
                                     size="lg"
                                     disabled={busy || !enrollment}
                                 />
@@ -612,7 +621,13 @@ function LoginScreen({ kiosk = false }: { kiosk?: boolean }) {
                             </ol>
                             <PaneAlerts error={error} notice={notice} />
                             <div className="mt-lg flex flex-col gap-sm">
-                                <Button type="button" variant="secondary" size="md" fullWidth onClick={() => void copyCodes()}>
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    size="md"
+                                    fullWidth
+                                    onClick={() => void copyCodes()}
+                                >
                                     نسخ الرموز
                                 </Button>
                                 <Button type="button" size="lg" fullWidth onClick={enterAfterCodes}>
@@ -808,13 +823,21 @@ function PaneAlerts({ error, notice }: { error: string; notice: string }) {
     return (
         <>
             {error ? (
-                <p role="alert" className="mt-md rounded-md border border-danger/30 bg-danger-soft p-sm text-body-sm text-danger-text">
+                <p
+                    role="alert"
+                    className="mt-md rounded-md border border-danger/30 bg-danger-soft p-sm text-body-sm text-danger-text"
+                >
                     {error}
-                    <span className="mt-xs block text-caption">تأكد من بياناتك، أو تواصل مع مسؤول النظام إذا تكرّر الخطأ.</span>
+                    <span className="mt-xs block text-caption">
+                        تأكد من بياناتك، أو تواصل مع مسؤول النظام إذا تكرّر الخطأ.
+                    </span>
                 </p>
             ) : null}
             {!error && notice ? (
-                <p role="status" className="mt-md rounded-md border border-hairline-strong bg-surface p-sm text-body-sm text-ink-secondary">
+                <p
+                    role="status"
+                    className="mt-md rounded-md border border-hairline-strong bg-surface p-sm text-body-sm text-ink-secondary"
+                >
                     {notice}
                 </p>
             ) : null}

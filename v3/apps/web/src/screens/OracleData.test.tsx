@@ -197,7 +197,9 @@ describe('بيانات Oracle', () => {
         fireEvent.click(screen.getByRole('button', { name: 'التالي' }));
 
         await waitFor(() => {
-            const hit = calledUrls(mock).find((url) => url.includes('/api/oracle-data/items') && url.includes('page=2'));
+            const hit = calledUrls(mock).find(
+                (url) => url.includes('/api/oracle-data/items') && url.includes('page=2'),
+            );
             expect(hit).toBeTruthy();
         });
         await waitFor(() => {

@@ -4,19 +4,57 @@ import { useState } from 'react';
 import { PrintActions } from '../components/PrintActions';
 import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
-import { fetchMonitorOrders, fetchMonitorSummary, monitorCashierLabel, orderTimeText } from '../lib/cashier-monitor';
+import {
+    fetchMonitorInvoiceHtml,
+    fetchMonitorOrders,
+    fetchMonitorSummary,
+    monitorCashierLabel,
+    orderTimeText,
+} from '../lib/cashier-monitor';
+import { openBlankTab, printHtmlDocument } from '../lib/print-document';
 import { errorMessage, intOf, moneyOf, pctOf, shareOf, textOf, todayIso } from '../lib/reporting';
+import { useToast } from '../ui/Toast';
 
 /** تحديث تلقائي كل ٣٠ ثانية — المرآة تُحدَّث نفسها على الخادم بـ live=1. */
 const LIVE_MS = 30000;
 
 /**
  * متابعة الكاشير — أوردرات اليوم الحيّة لكل كاشير، والصندوق المفتوح وآخر حركة.
- * القراءة فقط: لا إغلاق جلسة ولا تعديل فاتورة من هنا.
+ * لا إغلاق جلسة ولا تعديل فاتورة من هنا؛ إعادة الطباعة بمستند الخادم (80مم).
  */
 export function CashierMonitor() {
     const [date, setDate] = useState(() => todayIso());
     const [cashier, setCashier] = useState('');
+    const [printingDoc, setPrintingDoc] = useState('');
+    const { toast } = useToast();
+
+    async function printInvoice(docNo: string) {
+        if (printingDoc) {
+            return;
+        }
+        const win = openBlankTab(`فاتورة ${docNo}`);
+        if (!win) {
+            toast({
+                variant: 'error',
+                title: 'تعذّرت الطباعة',
+                description: 'منع المتصفح فتح نافذة الطباعة — اسمح بالنوافذ المنبثقة ثم أعد المحاولة.',
+            });
+            return;
+        }
+        setPrintingDoc(docNo);
+        try {
+            printHtmlDocument(win, await fetchMonitorInvoiceHtml(docNo));
+        } catch (error) {
+            win.close();
+            toast({
+                variant: 'error',
+                title: 'تعذّرت طباعة الفاتورة',
+                description: errorMessage(error),
+            });
+        } finally {
+            setPrintingDoc('');
+        }
+    }
 
     const summaryQuery = useQuery({
         queryKey: ['cashier-monitor', 'summary', date],
@@ -257,6 +295,9 @@ export function CashierMonitor() {
                                             <th scope="col" className="px-sm py-xs text-start font-medium">
                                                 الحصة
                                             </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الطباعة
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -289,6 +330,19 @@ export function CashierMonitor() {
                                                     </td>
                                                     <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">
                                                         {pctOf(shareOf(Number(order.net ?? 0), totalCollected))}
+                                                    </td>
+                                                    <td className="px-sm py-xxs">
+                                                        <button
+                                                            type="button"
+                                                            onClick={() => {
+                                                                void printInvoice(order.doc_no);
+                                                            }}
+                                                            disabled={printingDoc !== ''}
+                                                            aria-label={`طباعة فاتورة ${order.doc_no}`}
+                                                            className="rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-button-sm text-ink hover:bg-surface-hover disabled:opacity-50"
+                                                        >
+                                                            {printingDoc === order.doc_no ? 'جارٍ…' : 'طباعة'}
+                                                        </button>
                                                     </td>
                                                 </tr>
                                             );

@@ -1,11 +1,11 @@
 import './SalesAnalyzer.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { PrintActions } from '../components/PrintActions';
 import { BarList, KpiCard, RangeControls, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
-import { fetchItemSales, groupItemSales, YARA_MAX_DAYS } from '../lib/yara-reports';
 import { errorMessage, intOf, moneyOf, presetRange, qtyOf, rangeProblem, shareOf } from '../lib/reporting';
-import { PrintActions } from '../components/PrintActions';
+import { fetchItemSales, groupItemSales, YARA_MAX_DAYS } from '../lib/yara-reports';
 
 /**
  * تحليل مبيعات الأصناف — صفوف `item-sales` مجمّعة برمز الصنف على النافذة.
@@ -82,7 +82,10 @@ export function SalesAnalyzer() {
 
             {data ? (
                 <>
-                    <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4" aria-label="مؤشرات مبيعات الأصناف">
+                    <ul
+                        className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4"
+                        aria-label="مؤشرات مبيعات الأصناف"
+                    >
                         <KpiCard
                             label="صافي المبيعات"
                             english="Net"
@@ -174,4 +177,3 @@ export function SalesAnalyzer() {
         </div>
     );
 }
-

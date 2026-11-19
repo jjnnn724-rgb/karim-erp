@@ -1,23 +1,23 @@
 {
-  "meta": {
-    "status": 200,
-    "url": "/api/accounting/vat-return?from=2026-10-01&to=2026-10-31",
-    "captured_at": "2026-11-09T20:01:46.169Z",
-    "server": "karim-erp 4.9.2 @ 127.0.0.1:5100 (dev copy)"
-  },
-  "body": {
-    "from": "2026-10-01",
-    "to": "2026-10-31",
-    "output_vat": 0,
-    "input_vat": 81517.48,
-    "net_payable": 0,
-    "carry_forward_credit": 81517.48,
-    "payable_balance": 0,
-    "recoverable_balance": 81517.48,
-    "purchases_crosscheck": {
-      "count": 259,
-      "net": 583445.61,
-      "vat": 81517.48
+    "meta": {
+        "status": 200,
+        "url": "/api/accounting/vat-return?from=2026-10-01&to=2026-10-31",
+        "captured_at": "2026-11-09T20:01:46.169Z",
+        "server": "karim-erp 4.9.2 @ 127.0.0.1:5100 (dev copy)"
+    },
+    "body": {
+        "from": "2026-10-01",
+        "to": "2026-10-31",
+        "output_vat": 0,
+        "input_vat": 81517.48,
+        "net_payable": 0,
+        "carry_forward_credit": 81517.48,
+        "payable_balance": 0,
+        "recoverable_balance": 81517.48,
+        "purchases_crosscheck": {
+            "count": 259,
+            "net": 583445.61,
+            "vat": 81517.48
+        }
     }
-  }
 }

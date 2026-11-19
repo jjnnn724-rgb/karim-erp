@@ -223,13 +223,9 @@ const panelSchema = z
             .object({
                 total: numLike,
                 count: numLike,
-                bySource: z
-                    .record(
-                        z.string(),
-                        z.object({ total: numLike, count: numLike }).passthrough(),
-                    )
-                    .optional(),
+                bySource: z.record(z.string(), z.object({ total: numLike, count: numLike }).passthrough()).optional(),
                 labels: z.record(z.string(), z.string()).optional(),
+                monthly: z.record(z.string(), numLike).optional(),
             })
             .passthrough()
             .optional(),
@@ -248,6 +244,9 @@ export interface DeptHeadView {
     deptName: string;
     expensesTotal: number;
     expensesCount: number;
+    monthly: Record<string, number>;
+    monthlyExpenses: Record<string, number>;
+    monthlySeries: { month: string; total: number }[];
     sources: { key: string; label: string; total: number; count: number }[];
     subDepartments: string[];
     dispatchTotal: number;
@@ -273,6 +272,7 @@ export async function fetchDeptHeadSnapshot(signal?: AbortSignal): Promise<DeptH
         : dispatches.filter((row) => String(row.deptName ?? '') === String(panel?.department?.name ?? '\u0000'));
     const labels = panel?.expenses?.labels ?? {};
     const bySource = panel?.expenses?.bySource ?? {};
+    const monthly = (panel?.expenses?.monthly ?? {}) as Record<string, unknown>;
     const statusCounts = new Map<string, number>();
     for (const row of mine) {
         const key = String(row.status ?? '') || 'unknown';
@@ -283,6 +283,11 @@ export async function fetchDeptHeadSnapshot(signal?: AbortSignal): Promise<DeptH
         deptName: String(panel?.department?.name ?? ''),
         expensesTotal: numOf(panel?.expenses?.total),
         expensesCount: numOf(panel?.expenses?.count),
+        monthly: Object.fromEntries(Object.entries(monthly).map(([key, value]) => [key, numOf(value)])),
+        monthlyExpenses: Object.fromEntries(Object.entries(monthly).map(([key, value]) => [key, numOf(value)])),
+        monthlySeries: Object.entries(monthly)
+            .map(([month, value]) => ({ month, total: numOf(value) }))
+            .sort((a, b) => a.month.localeCompare(b.month)),
         sources: Object.entries(bySource)
             .map(([key, value]) => ({
                 key,

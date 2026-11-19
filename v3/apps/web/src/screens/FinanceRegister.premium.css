@@ -1,21 +1,84 @@
-.finance-register-premium { gap: 1.25rem; min-width: 0; }
-.finance-register-premium > header { padding-block: .25rem .35rem; }
-.finance-register-premium > header h1 { font-size: clamp(1.5rem, 2.5vw, 1.875rem); line-height: 1.35; letter-spacing: -.025em; }
-.finance-register-premium > header p { margin-top: .4rem; max-width: 64ch; }
-.finance-register-premium > header button { min-height: 2.5rem; transition: background-color .16s, border-color .16s; }
-.finance-register-premium > :nth-child(2) > div { gap: .9rem 1rem; }
-.finance-register-premium input, .finance-register-premium select { min-height: 2.5rem; transition: border-color .16s, box-shadow .16s; }
-.finance-register-premium > :nth-child(3) { align-items: center; padding: 1rem 1.25rem; border-inline-start: 3px solid var(--accent); }
-.finance-register-premium table thead { position: sticky; inset-block-start: 0; z-index: 1; }
-.finance-register-premium table th { padding-block: .75rem; }
-.finance-register-premium table td { padding-block: .7rem; }
-.finance-register-premium table tbody tr { transition: background-color .14s ease; }
-.finance-register-premium button:focus-visible, .finance-register-premium input:focus-visible, .finance-register-premium select:focus-visible { outline: 2px solid var(--accent); outline-offset: 2px; }
-@media (max-width: 640px) {
-  .finance-register-premium { gap: 1rem; }
-  .finance-register-premium > header { align-items: stretch; }
-  .finance-register-premium > header button { width: 100%; }
-  .finance-register-premium > :nth-child(2) label, .finance-register-premium > :nth-child(2) input, .finance-register-premium > :nth-child(2) select { width: 100%; }
-  .finance-register-premium > :nth-child(3) { gap: .35rem; align-items: flex-start; }
+.finance-register-premium {
+    gap: 1.25rem;
+    min-width: 0;
 }
-@media (prefers-reduced-motion: reduce) { .finance-register-premium *, .finance-register-premium *::before, .finance-register-premium *::after { transition-duration: .01ms !important; } }
+.finance-register-premium > header {
+    padding-block: 0.25rem 0.35rem;
+}
+.finance-register-premium > header h1 {
+    font-size: clamp(1.5rem, 2.5vw, 1.875rem);
+    line-height: 1.35;
+    letter-spacing: -0.025em;
+}
+.finance-register-premium > header p {
+    margin-top: 0.4rem;
+    max-width: 64ch;
+}
+.finance-register-premium > header button {
+    min-height: 2.5rem;
+    transition:
+        background-color 0.16s,
+        border-color 0.16s;
+}
+.finance-register-premium > :nth-child(2) > div {
+    gap: 0.9rem 1rem;
+}
+.finance-register-premium input,
+.finance-register-premium select {
+    min-height: 2.5rem;
+    transition:
+        border-color 0.16s,
+        box-shadow 0.16s;
+}
+.finance-register-premium > :nth-child(3) {
+    align-items: center;
+    padding: 1rem 1.25rem;
+    border-inline-start: 3px solid var(--accent);
+}
+.finance-register-premium table thead {
+    position: sticky;
+    inset-block-start: 0;
+    z-index: 1;
+}
+.finance-register-premium table th {
+    padding-block: 0.75rem;
+}
+.finance-register-premium table td {
+    padding-block: 0.7rem;
+}
+.finance-register-premium table tbody tr {
+    transition: background-color 0.14s ease;
+}
+.finance-register-premium button:focus-visible,
+.finance-register-premium input:focus-visible,
+.finance-register-premium select:focus-visible {
+    outline: 2px solid var(--accent);
+    outline-offset: 2px;
+}
+@media (max-width: 640px) {
+    .finance-register-premium {
+        gap: 1rem;
+    }
+    .finance-register-premium > header {
+        align-items: stretch;
+    }
+    .finance-register-premium > header button {
+        width: 100%;
+    }
+    .finance-register-premium > :nth-child(2) label,
+    .finance-register-premium > :nth-child(2) input,
+    .finance-register-premium > :nth-child(2) select {
+        width: 100%;
+    }
+    .finance-register-premium > :nth-child(3) {
+        gap: 0.35rem;
+        align-items: flex-start;
+    }
+}
+@media (prefers-reduced-motion: reduce) {
+    .finance-register-premium *,
+    .finance-register-premium *::before,
+    .finance-register-premium *::after {
+        transition-duration: 0.01ms !important;
+    }
+}

@@ -14,8 +14,8 @@ import {
     zatcaSettingsSchema,
 } from '../../lib/settings';
 import {
-    saveZatcaSettings,
     SETTINGS_TEXT,
+    saveZatcaSettings,
     zatcaApplyVat,
     zatcaGenerateCsr,
     zatcaManualCsid,
@@ -34,7 +34,16 @@ import { Input } from '../../ui/Input';
 import { Select } from '../../ui/Select';
 import { Textarea } from '../../ui/Textarea';
 import { useToast } from '../../ui/Toast';
-import { FieldGrid, formatNumber, formatStamp, QueryBoundary, ReadOnlyBadge, SaveBar, SectionCard, useDraftForm } from './shared';
+import {
+    FieldGrid,
+    formatNumber,
+    formatStamp,
+    QueryBoundary,
+    ReadOnlyBadge,
+    SaveBar,
+    SectionCard,
+    useDraftForm,
+} from './shared';
 
 interface ZatcaForm {
     seller_name: string;
@@ -67,6 +76,37 @@ const STATUS_TONE: Record<string, 'success' | 'danger' | 'warning' | 'neutral'> 
     processing: 'warning',
 };
 
+/** دورة المراقبة الحيّة للطابور — مطابقة لدورة الاستطلاع في الخادم. */
+const QUEUE_POLL_MS = 15_000;
+
+const QUEUE_STATUS_OPTIONS = [
+    { value: 'all', label: 'كل الحالات' },
+    { value: 'queued', label: 'بالانتظار' },
+    { value: 'processing', label: 'قيد الإرسال' },
+    { value: 'reported', label: 'مُبلّغة' },
+    { value: 'failed', label: 'فاشلة' },
+    { value: 'dead_letter', label: 'فشل نهائي' },
+    { value: 'skipped_cancelled', label: 'متجاوزة (ملغاة)' },
+    { value: 'skipped_disabled', label: 'متجاوزة (موقوفة)' },
+] as const;
+
+function clockText(timestamp: number): string {
+    if (!timestamp) {
+        return '—';
+    }
+    return new Date(timestamp).toLocaleTimeString('en-GB', { hour12: false });
+}
+
+/** خطوات الربط الأربع — تُظهر موضع الربط بالضبط بدل تعليمات مطوّلة. */
+function setupSteps(config: ZatcaConfig): { key: string; label: string; done: boolean }[] {
+    return [
+        { key: 'saved', label: 'بيانات المكلف', done: Boolean(config.vat_number && config.crn && config.seller_name) },
+        { key: 'csr', label: 'شهادة الطلب CSR', done: config.has_csr },
+        { key: 'csid', label: 'شهادة الامتثال CSID', done: config.has_csid },
+        { key: 'enabled', label: 'الربط مفعّل', done: config.enabled },
+    ];
+}
+
 function toForm(config: ZatcaConfig): ZatcaForm {
     return {
         seller_name: config.seller_name,
@@ -86,9 +126,17 @@ function toForm(config: ZatcaConfig): ZatcaForm {
 function statsChips(stats: ZatcaQueueStats) {
     return [
         { key: 'queued', label: 'بالانتظار', value: stats.queued, tone: 'neutral' as const },
-        { key: 'reported', label: 'مُبلّغة', value: stats.reported, tone: 'success' as const },
-        { key: 'failed', label: 'فاشلة', value: stats.failed + stats.dead_letter, tone: 'danger' as const },
         { key: 'processing', label: 'قيد الإرسال', value: stats.processing, tone: 'warning' as const },
+        { key: 'reported', label: 'مُبلّغة', value: stats.reported, tone: 'success' as const },
+        { key: 'failed', label: 'فاشلة', value: stats.failed, tone: 'danger' as const },
+        { key: 'dead_letter', label: 'فشل نهائي', value: stats.dead_letter, tone: 'danger' as const },
+        {
+            key: 'skipped_cancelled',
+            label: 'متجاوزة (ملغاة)',
+            value: stats.skipped_cancelled,
+            tone: 'neutral' as const,
+        },
+        { key: 'skipped_disabled', label: 'متجاوزة (موقوفة)', value: stats.skipped_disabled, tone: 'neutral' as const },
     ];
 }
 
@@ -102,6 +150,7 @@ export function ZatcaSection() {
     const [testResult, setTestResult] = useState<ZatcaTestResult | null>(null);
     const [testError, setTestError] = useState('');
     const [testing, setTesting] = useState(false);
+    const [queueStatus, setQueueStatus] = useState('all');
 
     const [csrOpen, setCsrOpen] = useState(false);
     const [csrText, setCsrText] = useState('');
@@ -118,10 +167,16 @@ export function ZatcaSection() {
         refetchOnWindowFocus: false,
     });
     const queueQuery = useQuery({
-        queryKey: ['settings', 'zatca-queue'],
-        queryFn: ({ signal }) =>
-            fetchJson(zatcaQueueSchema, '/api/zatca/queue?limit=20', getAccessToken(), { signal }),
+        queryKey: ['settings', 'zatca-queue', queueStatus],
+        queryFn: ({ signal }) => {
+            const params = new URLSearchParams({ limit: '50' });
+            if (queueStatus !== 'all') {
+                params.set('status', queueStatus);
+            }
+            return fetchJson(zatcaQueueSchema, `/api/zatca/queue?${params.toString()}`, getAccessToken(), { signal });
+        },
         refetchOnWindowFocus: false,
+        refetchInterval: QUEUE_POLL_MS,
     });
 
     const data: ZatcaSettingsResponse | null = query.data ?? null;
@@ -129,7 +184,10 @@ export function ZatcaSection() {
     const draft = useDraftForm<ZatcaForm>(data ? toForm(data.config) : null, signature);
     const config = data?.config ?? null;
 
-    const invalidate = [['settings', 'zatca'], ['settings', 'zatca-queue']] as const;
+    const invalidate = [
+        ['settings', 'zatca'],
+        ['settings', 'zatca-queue'],
+    ] as const;
 
     const save = useWriteMutation<ZatcaForm, void>({
         mutationFn: (form) =>
@@ -328,8 +386,12 @@ export function ZatcaSection() {
                     <Badge variant={config.has_csid ? 'success' : 'warning'}>
                         {config.has_csid ? 'CSID جاهزة' : 'بلا CSID'}
                     </Badge>
+                    <Badge variant={data.engine.poller_in_server ? 'success' : 'warning'}>
+                        {data.engine.poller_in_server ? 'الاستطلاع داخل الخادم' : 'الاستطلاع خارج الخادم'}
+                    </Badge>
+                    <Badge variant="neutral">المحرّك: {data.engine.mode}</Badge>
                     <Badge variant="neutral">
-                        {config.poll_in_server ? 'مزامنة من الخادم' : 'مزامنة من العميل'}
+                        دورة الاستطلاع كل {String(Math.max(1, Math.round(data.engine.poll_interval_ms / 1000)))} ثانية
                     </Badge>
                     {config.enabled ? (
                         <Button
@@ -338,7 +400,9 @@ export function ZatcaSection() {
                             loading={toggle.isPending}
                             disabled={!canWrite || toggle.isPending}
                             onClick={async () => {
-                                const ok = await confirm('إيقاف الربط يجمّد الإبلاغ الضريبي مؤقتًا — الفواتير تبقى محفوظة وتُرسل عند إعادة التفعيل.');
+                                const ok = await confirm(
+                                    'إيقاف الربط يجمّد الإبلاغ الضريبي مؤقتًا — الفواتير تبقى محفوظة وتُرسل عند إعادة التفعيل.',
+                                );
                                 if (ok) {
                                     toggle.mutate(false);
                                 }
@@ -359,7 +423,13 @@ export function ZatcaSection() {
                             تفعيل الربط
                         </Button>
                     )}
-                    <Button variant="secondary" size="sm" loading={testing} disabled={testing} onClick={() => void runTest()}>
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        loading={testing}
+                        disabled={testing}
+                        onClick={() => void runTest()}
+                    >
                         اختبار الاتصال
                     </Button>
                 </div>
@@ -383,6 +453,20 @@ export function ZatcaSection() {
                         </div>
                     ))}
                 </FieldGrid>
+                <ol className="flex flex-wrap items-center gap-md border-t border-hairline p-sm text-body-sm">
+                    {setupSteps(config).map((step, index) => (
+                        <li key={step.key} className="flex items-center gap-xs">
+                            <span
+                                aria-hidden="true"
+                                className={step.done ? 'text-success-text' : 'text-caption text-faint'}
+                            >
+                                {step.done ? '✔' : String(index + 1)}
+                            </span>
+                            <span className={step.done ? 'text-ink' : 'text-muted'}>{step.label}</span>
+                            <span className="sr-only">{step.done ? ' — مكتمل' : ' — متبقٍ'}</span>
+                        </li>
+                    ))}
+                </ol>
             </SectionCard>
 
             <SectionCard title="بيانات المكلف" english="Taxpayer" badge={<ReadOnlyBadge visible={canWrite} />}>
@@ -499,7 +583,13 @@ export function ZatcaSection() {
 
             <SectionCard title="الشهادة والإعدادات" english="Credentials" badge={<ReadOnlyBadge visible={canWrite} />}>
                 <div className="flex flex-wrap items-center gap-xs">
-                    <Button variant="secondary" size="sm" loading={csr.isPending} disabled={!canWrite || csr.isPending} onClick={() => csr.mutate()}>
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        loading={csr.isPending}
+                        disabled={!canWrite || csr.isPending}
+                        onClick={() => csr.mutate()}
+                    >
                         {config.has_csr ? 'إعادة توليد CSR' : 'توليد CSR'}
                     </Button>
                     <Button
@@ -531,7 +621,9 @@ export function ZatcaSection() {
                             loading={clearCsid.isPending}
                             disabled={!canWrite}
                             onClick={async () => {
-                                const ok = await confirm('حذف شهادة CSID المحفوظة؟ سيتوقف الإبلاغ للهيئة حتى تُدخل شهادة جديدة.');
+                                const ok = await confirm(
+                                    'حذف شهادة CSID المحفوظة؟ سيتوقف الإبلاغ للهيئة حتى تُدخل شهادة جديدة.',
+                                );
                                 if (ok) {
                                     clearCsid.mutate();
                                 }
@@ -551,7 +643,9 @@ export function ZatcaSection() {
                                 toast({ title: 'احفظ رقمًا ضريبيًا من 15 رقمًا أولًا', variant: 'error' });
                                 return;
                             }
-                            const ok = await confirm(`سيتم تطبيق الرقم الضريبي ${vat} على جميع الأقسام/الفروع. متابعة؟`);
+                            const ok = await confirm(
+                                `سيتم تطبيق الرقم الضريبي ${vat} على جميع الأقسام/الفروع. متابعة؟`,
+                            );
                             if (ok) {
                                 applyVat.mutate();
                             }
@@ -587,7 +681,15 @@ export function ZatcaSection() {
                 badge={<Badge variant="neutral">{formatNumber(queueRows.length)} صف</Badge>}
                 actions={
                     <>
-                        <Button variant="ghost" size="sm" loading={queueQuery.isFetching} onClick={() => void queueQuery.refetch()}>
+                        <Badge variant={queueQuery.isFetching ? 'warning' : 'success'} dot>
+                            {queueQuery.isFetching ? 'جارٍ التحديث' : `متابعة كل ${String(QUEUE_POLL_MS / 1000)} ث`}
+                        </Badge>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            loading={queueQuery.isFetching}
+                            onClick={() => void queueQuery.refetch()}
+                        >
                             تحديث
                         </Button>
                         <Button
@@ -621,6 +723,43 @@ export function ZatcaSection() {
                     </>
                 }
             >
+                <div className="flex flex-wrap items-end justify-between gap-sm px-sm pt-sm">
+                    <p className="text-caption text-muted">آخر تحديث {clockText(queueQuery.dataUpdatedAt)}</p>
+                    <Select
+                        label="الحالة"
+                        options={QUEUE_STATUS_OPTIONS}
+                        value={queueStatus}
+                        onValueChange={(next) => {
+                            setQueueStatus(next);
+                        }}
+                        containerClassName="w-56"
+                    />
+                </div>
+                {stats.dead_letter > 0 ? (
+                    <div
+                        role="alert"
+                        className="mx-sm mt-sm rounded-lg border border-danger bg-surface p-sm text-body-sm text-danger-text"
+                    >
+                        <strong>{formatNumber(stats.dead_letter)} فاتورة فشلت نهائيًا</strong> — لن يعيد النظام إرسالها
+                        تلقائيًا؛ عالج السبب ثم أعد جدولتها.
+                        <div className="mt-xs">
+                            <Button
+                                variant="secondary"
+                                size="sm"
+                                loading={retry.isPending}
+                                disabled={!canWrite || retry.isPending}
+                                onClick={async () => {
+                                    const ok = await confirm('إعادة جدولة الفواتير الفاشلة والنهائية للإرسال من جديد؟');
+                                    if (ok) {
+                                        retry.mutate('all');
+                                    }
+                                }}
+                            >
+                                إعادة جدولة الفاشلة
+                            </Button>
+                        </div>
+                    </div>
+                ) : null}
                 {queueQuery.isPending ? (
                     <p className="text-body-sm text-muted">جارٍ تحميل الطابور…</p>
                 ) : queueQuery.error ? (

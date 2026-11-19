@@ -335,7 +335,9 @@ describe('العامل الثاني', () => {
             configurable: true,
         });
         const fetchMock = vi.fn(async (url: string) =>
-            String(url).endsWith('/options') ? jsonResponse({ options: { challenge: 'AQID', rpId: 'localhost' } }) : jsonResponse(SESSION),
+            String(url).endsWith('/options')
+                ? jsonResponse({ options: { challenge: 'AQID', rpId: 'localhost' } })
+                : jsonResponse(SESSION),
         );
         vi.stubGlobal('fetch', fetchMock);
 

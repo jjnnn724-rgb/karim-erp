@@ -1,6 +1,8 @@
 import './Roster.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
+import { PrintActions } from '../components/PrintActions';
+import { RosterWorkbench } from '../components/RosterWorkbench';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { formatInt } from '../lib/inventory-register';
 import {
@@ -21,7 +23,6 @@ import {
     searchRosterLogs,
     weekOf,
 } from '../lib/roster';
-import { PrintActions } from '../components/PrintActions';
 
 /**
  * الدوام — شبكة الدوام الأسبوعية، قراءة فقط من `/api/hr/dept-roster-week`.
@@ -213,9 +214,7 @@ export function Roster() {
                             Dept Roster
                         </span>
                     </h1>
-                    <p className="text-body-sm text-muted">
-                        شبكة دوام الأسبوع.
-                    </p>
+                    <p className="text-body-sm text-muted">شبكة دوام الأسبوع.</p>
                 </div>
                 <PrintActions title="الدوام" />
                 <button
@@ -223,11 +222,24 @@ export function Roster() {
                     onClick={() => {
                         void weekQuery.refetch();
                     }}
-                    data-erp-print-hide className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                    data-erp-print-hide
+                    className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
                 >
                     تحديث
                 </button>
             </header>
+
+            {data ? (
+                <RosterWorkbench
+                    weekStart={data.weekStart}
+                    today={data.today}
+                    days={days}
+                    rows={rows}
+                    dept={dept}
+                    approvalKey={approvalKey}
+                    approval={approval}
+                />
+            ) : null}
 
             <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
                 <Kpi

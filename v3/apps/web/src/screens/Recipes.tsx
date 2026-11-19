@@ -1,12 +1,12 @@
 import './Recipes.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { PrintActions } from '../components/PrintActions';
+import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
+import { useAuthState } from '../lib/auth';
 import { fetchCurrency, fetchDepartments } from '../lib/finance';
 import { formatMoney } from '../lib/format';
 import { formatInt } from '../lib/inventory-register';
-import { useAuthState } from '../lib/auth';
 import {
     costRatioText,
     fetchRecipes,
@@ -20,13 +20,13 @@ import {
 import {
     createRecipe,
     deleteRecipe,
-    updateRecipe,
-    recipeDeleteConfirm,
     RECIPE_TEXT,
     type RecipeCreateInput,
     type RecipeUpdateInput,
-    recipeWriteVisible,
+    recipeDeleteConfirm,
     recipeDeleteVisible,
+    recipeWriteVisible,
+    updateRecipe,
 } from '../lib/recipes-write';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
@@ -35,9 +35,9 @@ import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 
 /**
- * الوصفات — CRUD كامل مثل V2:
+ * الوصفات — CRUD كامل على جدول `recipes`:
  *  • إنشاء وصفة (POST /api/recipes — admin|manager)
- *  • تعديل وصفة (PATCH /api/recipes/:id — admin|manager)
+ *  • تعديل وصفة (PUT /api/recipes/:id — admin|manager)
  *  • حذف وصفة (DELETE /api/recipes/:id — أدمن فقط)
  *  • طباعة القائمة (PrintActions)
  *
@@ -183,9 +183,9 @@ function RecipeFormDialog({ open, onClose, pending, editing, departments, onSave
 
         const input: RecipeCreateInput | RecipeUpdateInput = {
             name: form.name.trim(),
-            selling_price: sellingPrice,
-            total_cost: totalCost,
-            department_code: form.departmentCode.trim() || null,
+            sellingPrice,
+            totalCost,
+            deptId: form.departmentCode.trim() || null,
         };
 
         try {
@@ -420,7 +420,10 @@ export function Recipes() {
         },
     });
 
-    const updateRecipeMutation = useWriteMutation<{ id: string | number; input: RecipeUpdateInput }, { id: string | number }>({
+    const updateRecipeMutation = useWriteMutation<
+        { id: string | number; input: RecipeUpdateInput },
+        { id: string | number }
+    >({
         mutationFn: ({ id, input }) => updateRecipe(id, input).then((r) => ({ id: r.id })),
         successTitle: () => RECIPE_TEXT.updateSuccess,
         invalidate: [['recipes']],
@@ -459,8 +462,7 @@ export function Recipes() {
     }
 
     const deptOptions = useMemo(
-        () =>
-            departmentsQuery.data?.map((d) => ({ code: String(d.code), name: String(d.name) })) ?? [],
+        () => departmentsQuery.data?.map((d) => ({ code: String(d.code), name: String(d.name) })) ?? [],
         [departmentsQuery.data],
     );
 
@@ -600,7 +602,11 @@ export function Recipes() {
                     >
                         مسح المرشّحات
                     </button>
-                    <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted" role="status" aria-live="polite">
+                    <span
+                        className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted"
+                        role="status"
+                        aria-live="polite"
+                    >
                         {filtered
                             ? `${formatInt(sorted.length)} وصفة مطابقة من ${formatInt(totals.total)}`
                             : `${formatInt(totals.total)} وصفة${currency ? ` · العرض: ${currency}` : ''}`}
@@ -634,11 +640,7 @@ export function Recipes() {
                 {recipesQuery.isSuccess && sorted.length === 0 ? (
                     <StateEmpty
                         title={filtered ? 'لا وصفات تطابق المرشّحات' : 'لا وصفات مسجّلة'}
-                        hint={
-                            filtered
-                                ? 'لا نتائج مطابقة؛ عدّل المرشّحات أو امسحها.'
-                                : 'أضف أول وصفة.'
-                        }
+                        hint={filtered ? 'لا نتائج مطابقة؛ عدّل المرشّحات أو امسحها.' : 'أضف أول وصفة.'}
                     />
                 ) : null}
 
@@ -683,7 +685,11 @@ export function Recipes() {
                                             ربط POS
                                         </th>
                                         {(canWrite || canDelete) && (
-                                            <th scope="col" className="px-sm py-xs text-start font-medium" data-erp-print-hide>
+                                            <th
+                                                scope="col"
+                                                className="px-sm py-xs text-start font-medium"
+                                                data-erp-print-hide
+                                            >
                                                 إجراءات
                                             </th>
                                         )}

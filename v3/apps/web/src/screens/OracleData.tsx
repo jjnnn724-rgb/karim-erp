@@ -1,25 +1,25 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { PrintActions } from '../components/PrintActions';
 import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { formatInt } from '../lib/format';
 import {
-    ORACLE_PAGE_SIZE,
     cellText,
     fetchOracleTable,
     fetchOracleTables,
     knownRowsTotal,
     liveCountOf,
+    ORACLE_PAGE_SIZE,
+    type OracleRefreshResponse,
+    type OracleTable,
     refreshOracleTables,
     shortTableName,
     unknownCountTables,
-    type OracleRefreshResponse,
-    type OracleTable,
 } from '../lib/oracle-data';
 import { errorMessage } from '../lib/reporting';
 import { useWriteMutation } from '../lib/write';
 import { useToast } from '../ui/Toast';
-import { PrintActions } from '../components/PrintActions';
 
 /**
  * بيانات Oracle المنسوخة.
@@ -73,13 +73,7 @@ export function OracleData() {
     });
 
     const detailQuery = useQuery({
-        queryKey: [
-            'oracle-data',
-            'table',
-            detail?.name ?? '',
-            detail?.page ?? 1,
-            detail?.search ?? '',
-        ],
+        queryKey: ['oracle-data', 'table', detail?.name ?? '', detail?.page ?? 1, detail?.search ?? ''],
         queryFn: ({ signal }) =>
             fetchOracleTable(
                 detail?.name ?? '',
@@ -279,7 +273,10 @@ export function OracleData() {
                                                                 —
                                                             </span>
                                                         ) : (
-                                                            <span className="erp-numeric text-body-sm text-ink" dir="ltr">
+                                                            <span
+                                                                className="erp-numeric text-body-sm text-ink"
+                                                                dir="ltr"
+                                                            >
                                                                 {formatInt(count)}
                                                             </span>
                                                         )}
@@ -313,15 +310,13 @@ export function OracleData() {
                     english="Table"
                     actions={
                         <div className="flex flex-wrap gap-xs">
-                            {content ? (
-                                <PrintActions title="بيانات Oracle المنسوخة" />
-                            ) : null}
+                            {content ? <PrintActions title="بيانات Oracle المنسوخة" /> : null}
                             <button
                                 type="button"
                                 onClick={closeDetail}
-                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                        >
-                            إغلاق الجدول
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                            >
+                                إغلاق الجدول
                             </button>
                         </div>
                     }
@@ -429,9 +424,7 @@ export function OracleData() {
                                                                 dir="auto"
                                                                 title={value || undefined}
                                                             >
-                                                                <span className="block truncate">
-                                                                    {value || '—'}
-                                                                </span>
+                                                                <span className="block truncate">{value || '—'}</span>
                                                             </td>
                                                         );
                                                     })}

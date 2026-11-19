@@ -1,8 +1,8 @@
 import { toCents } from '@karim/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { PrintActions } from '../components/PrintActions';
+import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import {
     fetchDeptTransfers,
@@ -26,18 +26,18 @@ import {
     cancelTransfer,
     createDeptTransfer,
     createExternalSaleTransfer,
+    type DeptStock,
+    type DeptStockItem,
     EXTERNAL_DESTINATIONS,
     EXTERNAL_SALE_DEPT,
     fetchDeptStock,
     mySourceDeptCode,
     rejectTransfer,
     TRANSFER_TEXT,
+    type TransferItemInput,
     transferApproveVisible,
     transferCreateVisible,
     transferExternalVisible,
-    type DeptStock,
-    type DeptStockItem,
-    type TransferItemInput,
 } from '../lib/dept-transfers-write';
 import { fetchDepartments, firstOfMonth, riyadhToday } from '../lib/finance';
 import { formatMoney } from '../lib/format';
@@ -270,7 +270,10 @@ export function DeptTransfers() {
     const mayApprove = transferApproveVisible(role);
     const mayExternal = transferExternalVisible(role);
     const mayChooseSource = canChooseSourceDept(role);
-    const mySrc = mySourceDeptCode({ role, deptCode: (auth.user as { dept_code?: string | null | undefined } | null)?.dept_code ?? null });
+    const mySrc = mySourceDeptCode({
+        role,
+        deptCode: (auth.user as { dept_code?: string | null | undefined } | null)?.dept_code ?? null,
+    });
 
     const [status, setStatus] = useState('all');
     const [search, setSearch] = useState('');
@@ -284,7 +287,10 @@ export function DeptTransfers() {
     const [actionMessage, setActionMessage] = useState('');
     const [pageError, setPageError] = useState('');
 
-    const invalidateTransfers: readonly (readonly string[])[] = [['dept-transfers'], ['dept-transfers', 'summary', range.from, range.to]];
+    const invalidateTransfers: readonly (readonly string[])[] = [
+        ['dept-transfers'],
+        ['dept-transfers', 'summary', range.from, range.to],
+    ];
 
     const createMutation = useWriteMutation<
         { sourceDeptCode: string; destDeptCode: string; items: TransferItemInput[]; notes: string },
@@ -485,9 +491,7 @@ export function DeptTransfers() {
                 <div className="flex flex-wrap items-baseline justify-between gap-xs border-b border-hairline px-sm py-xs">
                     <div>
                         <h2 className="text-heading-sm text-ink">لوحة التحويلات</h2>
-                        <p className="text-caption text-muted">
-                            {`${range.from} → ${range.to} · تحويلات منفَّذة فقط (بلا تحقق حي)`}
-                        </p>
+                        <p className="text-caption text-muted">{`${range.from} → ${range.to} · تحويلات منفَّذة فقط (بلا تحقق حي)`}</p>
                     </div>
                     <button
                         type="button"
@@ -701,7 +705,11 @@ export function DeptTransfers() {
                                             onToggle={toggleSort}
                                             align="center"
                                         />
-                                        <th scope="col" className="px-sm py-xs text-start font-medium" data-erp-print-hide>
+                                        <th
+                                            scope="col"
+                                            className="px-sm py-xs text-start font-medium"
+                                            data-erp-print-hide
+                                        >
                                             إجراءات
                                         </th>
                                     </tr>
@@ -775,8 +783,11 @@ export function DeptTransfers() {
                                             <td className="px-sm py-xxs" data-erp-print-hide>
                                                 {(() => {
                                                     const mine = String(row.requestedBy) === String(userId);
-                                                    const showApprove = mayApprove && row.status === 'requested' && !mine;
-                                                    const showCancel = row.status === 'requested' && (mine || roleText === 'admin' || roleText === 'manager');
+                                                    const showApprove =
+                                                        mayApprove && row.status === 'requested' && !mine;
+                                                    const showCancel =
+                                                        row.status === 'requested' &&
+                                                        (mine || roleText === 'admin' || roleText === 'manager');
                                                     if (!showApprove && !showCancel) {
                                                         return <span className="text-muted">—</span>;
                                                     }
@@ -912,15 +923,7 @@ interface CreateDialogProps {
 
 const CREATE_FORM_ID = 'erp-transfer-create-form';
 
-function CreateTransferDialog({
-    open,
-    mode,
-    departments,
-    fixedSource,
-    pending,
-    onClose,
-    onSubmit,
-}: CreateDialogProps) {
+function CreateTransferDialog({ open, mode, departments, fixedSource, pending, onClose, onSubmit }: CreateDialogProps) {
     const [from, setFrom] = useState('');
     const [to, setTo] = useState('');
     const [notes, setNotes] = useState('');
@@ -1092,7 +1095,8 @@ function CreateTransferDialog({
                         <div className="flex flex-col gap-xxs">
                             <span className="text-label-md text-ink-secondary">من قسم</span>
                             <span className="text-body-md text-ink">
-                                {departments.find((d) => d.code.toLowerCase() === fixedSource.toLowerCase())?.name ?? fixedSource}
+                                {departments.find((d) => d.code.toLowerCase() === fixedSource.toLowerCase())?.name ??
+                                    fixedSource}
                             </span>
                         </div>
                     ) : (
@@ -1161,7 +1165,9 @@ function CreateTransferDialog({
                                 <button
                                     type="button"
                                     onClick={() =>
-                                        setLines((previous) => previous.filter((l) => l.inventory_id !== line.inventory_id))
+                                        setLines((previous) =>
+                                            previous.filter((l) => l.inventory_id !== line.inventory_id),
+                                        )
                                     }
                                     className="text-danger-text"
                                 >
@@ -1180,7 +1186,12 @@ function CreateTransferDialog({
                 {lines.length ? (
                     <p className="text-body-sm text-muted">القيمة التقديرية: {formatMoney(String(total))}</p>
                 ) : null}
-                <Input label="ملاحظات (اختياري)" name="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
+                <Input
+                    label="ملاحظات (اختياري)"
+                    name="notes"
+                    value={notes}
+                    onChange={(e) => setNotes(e.target.value)}
+                />
                 {error ? (
                     <p role="alert" className="text-body-sm text-danger-text">
                         {error}

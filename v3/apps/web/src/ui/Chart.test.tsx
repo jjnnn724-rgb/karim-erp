@@ -73,9 +73,7 @@ describe('Chart', () => {
     });
 
     it('بلا مخالفات axe', async () => {
-        const { container } = render(
-            <Chart kind="line" title="الإيراد" data={data} xKey="month" series={series} />,
-        );
+        const { container } = render(<Chart kind="line" title="الإيراد" data={data} xKey="month" series={series} />);
         await expectNoAxeViolations(container);
     });
 });

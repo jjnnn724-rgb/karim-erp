@@ -179,12 +179,12 @@ export function Briefing() {
                                     </p>
                                 ) : (
                                     <ul className="flex flex-col gap-xs list-none">
-                                        {briefing.payments.map((pm, idx) => {
+                                        {briefing.payments.map((pm) => {
                                             const method = String(pm.method || pm.payment_method || 'نقدي');
                                             const amount = parseNumericVal(pm.total || pm.amount || 0);
                                             return (
                                                 <li
-                                                    key={idx}
+                                                    key={method}
                                                     className="flex items-center justify-between rounded-md bg-surface-sunken p-xs text-body-md"
                                                 >
                                                     <span className="text-ink font-medium">{method}</span>

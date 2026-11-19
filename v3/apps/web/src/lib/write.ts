@@ -27,10 +27,17 @@ export type WriteAck = z.infer<typeof writeAckSchema>;
 export type WriteMethod = 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 /** كتابة JSON واحدة — نفس `fetchJson` لكن بلا تكرار التوكن والمفتاح. */
-export async function writeJson<T>(schema: z.ZodType<T>, url: string, method: WriteMethod, body?: unknown): Promise<T> {
+export async function writeJson<T>(
+    schema: z.ZodType<T>,
+    url: string,
+    method: WriteMethod,
+    body?: unknown,
+    headers?: Record<string, string>,
+): Promise<T> {
     return fetchJson(schema, url, getAccessToken(), {
         method,
         ...(body === undefined ? {} : { body }),
+        ...(headers ? { headers } : {}),
     });
 }
 

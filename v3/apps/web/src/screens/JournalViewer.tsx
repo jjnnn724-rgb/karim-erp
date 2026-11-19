@@ -2,8 +2,8 @@ import './JournalViewer.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { Fragment, useState } from 'react';
 import { ChevronIcon } from '../components/icons';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { PrintActions } from '../components/PrintActions';
+import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { formatMoney, statusLabel, totalCredit, totalDebit } from '../lib/format';
 import { fetchJournal } from '../lib/queries';
 import { queryKeys } from '../lib/queryKeys';
@@ -39,27 +39,27 @@ export function JournalViewer() {
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>
                     <PrintActions title="القيود اليومية" />
-                <label
-                    className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                    htmlFor="erp-v3-journal-limit"
-                >
-                    عدد القيود
-                    <select
-                        id="erp-v3-journal-limit"
-                        value={limit}
-                        onChange={(event) => {
-                            setLimit(Number(event.target.value));
-                            setOpenEntry(null);
-                        }}
-                        className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
+                    <label
+                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
+                        htmlFor="erp-v3-journal-limit"
                     >
-                        {LIMITS.map((option) => (
-                            <option key={option} value={option}>
-                                {option}
-                            </option>
-                        ))}
-                    </select>
-                </label>
+                        عدد القيود
+                        <select
+                            id="erp-v3-journal-limit"
+                            value={limit}
+                            onChange={(event) => {
+                                setLimit(Number(event.target.value));
+                                setOpenEntry(null);
+                            }}
+                            className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
+                        >
+                            {LIMITS.map((option) => (
+                                <option key={option} value={option}>
+                                    {option}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
                 </div>
             </header>
 

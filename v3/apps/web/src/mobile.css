@@ -1,0 +1,289 @@
+/*
+ * طبقة الهاتف — تُستورد بعد `styles.css` عمدًا.
+ *
+ * Tailwind هنا داخل `@layer utilities`، وقواعد هذا الملف غير مُدرجة في طبقة،
+ * فتسبق أي أداة مساعدة بنفس البطاقة عند نفس العرض. القاعدة: لا نغيّر شيئًا
+ * فوق 767px، وكل ما نغيّره يخصّ الهندسة (ارتفاع/عرض/تمرير/لمس) لا الهوية.
+ *
+ * الأهداف:
+ *  1. الحوارات كلها تصبح «ورقة سفلية» بعرض الشاشة — لا نافذة مزدحمة وسط
+ *     شاشة 360px، والذراع (رأس/ذيل) ثابت والجسم يمرّر.
+ *  2. منع تكبير iOS التلقائي عند التركيز (خط الحقل ≥ 16px).
+ *  3. مناطق آمنة (notch / شريط الإيماء) في رأس الحوار وذيله والقشرة.
+ *  4. لا تمرير أفقي للصفحة: الجداول وحدها تمرّر داخل بطاقاتها.
+ */
+
+@media (max-width: 767px) {
+    html {
+        -webkit-text-size-adjust: 100%;
+        text-size-adjust: 100%;
+    }
+
+    body {
+        overscroll-behavior-y: none;
+    }
+
+    /* ── الحوار = ورقة سفلية ─────────────────────────────────────── */
+
+    .erp-dialog,
+    .erp-dialog--sm,
+    .erp-dialog--md,
+    .erp-dialog--lg {
+        inset-block-start: auto;
+        inset-block-end: 0;
+        inset-inline: 0;
+        inline-size: 100%;
+        max-inline-size: 100%;
+        translate: none;
+        transform: none;
+        max-block-size: 94dvh;
+        margin: 0;
+        padding-block-end: env(safe-area-inset-bottom);
+        border-start-start-radius: 20px;
+        border-start-end-radius: 20px;
+        border-end-start-radius: 0;
+        border-end-end-radius: 0;
+        box-shadow: 0 -18px 48px rgb(0 0 0 / 0.28);
+        animation: erp-sheet-in 220ms var(--erp-ease-out, cubic-bezier(0, 0, 0.2, 1));
+    }
+
+    .erp-dialog__head {
+        padding-block-start: calc(14px + env(safe-area-inset-top));
+        padding-inline: 16px;
+    }
+
+    .erp-dialog__head::before {
+        content: "";
+        position: absolute;
+        inset-block-start: 6px;
+        inset-inline: 0;
+        inline-size: 44px;
+        block-size: 4px;
+        margin-inline: auto;
+        border-radius: 999px;
+        background: color-mix(in srgb, var(--erp-muted) 38%, transparent);
+    }
+
+    .erp-dialog__head,
+    .erp-dialog__foot {
+        position: relative;
+    }
+
+    .erp-dialog__body {
+        padding-inline: 16px;
+        overscroll-behavior: contain;
+        scrollbar-gutter: auto;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .erp-dialog__foot {
+        gap: 8px;
+        padding-block: 10px calc(14px + env(safe-area-inset-bottom));
+        padding-inline: 16px;
+    }
+
+    /* زر أساسي واحد واضح: الرفض/الإلغاء يبقى ثانويًا تحته بعرض كامل. */
+    .erp-dialog__foot > * {
+        flex: 1 1 100%;
+        min-block-size: 2.875rem;
+    }
+
+    /* ── درج الفلاتر: ملء الشاشة برأس وذيل ثابتين ───────────────── */
+
+    .erp-drawer {
+        inline-size: 100vw;
+        max-inline-size: 100vw;
+        gap: 0;
+        padding: 0;
+        overflow: hidden;
+        border-inline: 0;
+    }
+
+    .erp-drawer > [data-erp-drawer-head] {
+        flex-shrink: 0;
+        padding-block: calc(14px + env(safe-area-inset-top)) 12px;
+        padding-inline: 16px;
+        border-block-end: 1px solid var(--erp-hairline);
+    }
+
+    .erp-drawer > [data-erp-drawer-body] {
+        flex: 1 1 auto;
+        min-block-size: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        padding: 14px 16px;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    .erp-drawer > [data-erp-drawer-foot] {
+        flex-shrink: 0;
+        margin: 0;
+        padding: 12px 16px calc(14px + env(safe-area-inset-bottom));
+        border-block-start: 1px solid var(--erp-hairline);
+        background: var(--erp-surface-raised);
+    }
+
+    .erp-drawer > [data-erp-drawer-foot] > * {
+        flex: 1 1 auto;
+    }
+
+    /* ── النوافذ المخصّصة (بحث شامل/إذن صرف/تأكيد باركود) = أوراق سفلية ──
+       هذه نوافذ مكتوبة يدويًا خارج `.erp-dialog`، وكانت تظهر وسط شاشة
+       الهاتف بعرض ضيق وتمرير داخلي غير مريح. نوحّدها مع بقية الحوارات. */
+
+    [data-erp-modal-overlay] {
+        align-items: end;
+        justify-items: stretch;
+        justify-content: stretch;
+        padding: 0;
+        overflow: hidden;
+    }
+
+    [data-erp-modal-panel] {
+        inline-size: 100%;
+        max-inline-size: 100%;
+        max-block-size: 92dvh;
+        margin: 0;
+        border-start-start-radius: 20px;
+        border-start-end-radius: 20px;
+        border-end-start-radius: 0;
+        border-end-end-radius: 0;
+        overflow-y: auto;
+        overscroll-behavior: contain;
+        -webkit-overflow-scrolling: touch;
+        padding-block-end: calc(16px + env(safe-area-inset-bottom));
+        box-shadow: 0 -18px 48px rgb(0 0 0 / 0.28);
+        animation: erp-sheet-in 220ms var(--erp-ease-out, cubic-bezier(0, 0, 0.2, 1));
+    }
+
+    [data-erp-modal-head] {
+        position: sticky;
+        inset-block-start: 0;
+        z-index: 1;
+        background: var(--erp-surface-raised);
+        padding-block-start: 8px;
+    }
+
+    [data-erp-modal-overlay] :is(input, select, textarea) {
+        font-size: 16px;
+        max-inline-size: 100%;
+    }
+
+    [data-erp-modal-panel] :is(button, a[role="button"]) {
+        min-block-size: 2.75rem;
+    }
+
+    /* ── الحقول: لا تكبير تلقائي في iOS ───────────────────────────── */
+
+    .erp-shell__main :is(input, select, textarea),
+    .erp-dialog :is(input, select, textarea),
+    .erp-login :is(input, select, textarea) {
+        font-size: 16px;
+        max-inline-size: 100%;
+    }
+
+    /* ── الصفحة: لا تمرير أفقي ────────────────────────────────────── */
+
+    .erp-shell__main {
+        overflow-x: clip;
+        padding-inline: 0.875rem;
+    }
+
+    .erp-shell__main :is(h1, h2, h3, p, li, dd, dt, td, th, figcaption) {
+        overflow-wrap: break-word;
+    }
+
+    .erp-shell__main :is(table, pre, code) {
+        max-inline-size: 100%;
+    }
+
+    /* منطقة تمرير الجدول: زخم لمسي طبيعي في iOS. */
+    .erp-table__scroll {
+        -webkit-overflow-scrolling: touch;
+        overscroll-behavior-x: contain;
+    }
+
+    /* ── الحوارات/القوائم الطافية: لا تخرج عن الشاشة ─────────────── */
+
+    [data-radix-popper-content-wrapper] {
+        max-inline-size: calc(100vw - 16px);
+    }
+
+    /* ── أهداف اللمس: 44px لحقول الاختيار في الهاتف ──────────────── */
+
+    .erp-shell__main input[type="checkbox"],
+    .erp-shell__main input[type="radio"],
+    .erp-dialog input[type="checkbox"],
+    .erp-dialog input[type="radio"] {
+        inline-size: 1.25rem;
+        block-size: 1.25rem;
+    }
+
+    /* ── الجداول: خلية أولى مقروءة والصور لا تتجاوز ──────────────── */
+
+    .erp-shell__main img,
+    .erp-shell__main svg,
+    .erp-shell__main canvas,
+    .erp-shell__main video {
+        max-inline-size: 100%;
+    }
+}
+
+/* شاشة الدخول على الهواتف الصغيرة: بلا حشو جانبي زائد. */
+@media (max-width: 420px) {
+    .erp-login__form-area {
+        padding: 24px 16px calc(24px + env(safe-area-inset-bottom));
+    }
+
+    .erp-login__story {
+        padding-block: 20px 8px;
+    }
+
+    .erp-login__brand {
+        font-size: 16px;
+    }
+
+    .erp-login__form h1 {
+        font-size: 24px;
+    }
+}
+
+/* الهاتف أفقيًا (ارتفاع قصير): الورقة تأخذ الشاشة كاملة بدل نصفها. */
+@media (max-width: 900px) and (max-height: 520px) and (orientation: landscape) {
+    .erp-dialog,
+    .erp-dialog--sm,
+    .erp-dialog--md,
+    .erp-dialog--lg,
+    [data-erp-modal-panel] {
+        max-block-size: 100dvh;
+        border-radius: 0;
+    }
+
+    .erp-dialog__head {
+        padding-block: 8px;
+    }
+
+    .erp-dialog__head::before {
+        display: none;
+    }
+}
+
+@keyframes erp-sheet-in {
+    from {
+        opacity: 0.65;
+        transform: translateY(16px);
+    }
+    to {
+        opacity: 1;
+        transform: translateY(0);
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .erp-dialog,
+    .erp-dialog--sm,
+    .erp-dialog--md,
+    .erp-dialog--lg {
+        animation: none;
+    }
+}

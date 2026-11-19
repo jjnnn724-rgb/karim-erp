@@ -1,8 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
-import { type RefObject, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useConfirm } from '../components/ConfirmProvider';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { PrintActions } from '../components/PrintActions';
+import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { fetchDepartments } from '../lib/finance';
 import {
@@ -34,7 +34,6 @@ import {
     gmApprovePR,
     gmRejectPR,
     isChefCreator,
-    normalizeSignatureData,
     PR_WRITE_TEXT,
     type PRCreatePayload,
     type PRDecisionKind,
@@ -51,9 +50,12 @@ import {
     prNotesPayload,
     prReasonError,
     prRejectPayload,
+    revertToChefApprovedPR,
+    revertVisible,
 } from '../lib/purchase-requests-write';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Dialog } from '../ui/Dialog';
+import { SignaturePad } from '../ui/SignaturePad';
 import { useToast } from '../ui/Toast';
 
 /**
@@ -92,100 +94,12 @@ const PRIMARY_BUTTON_CLASS =
 const DANGER_BUTTON_CLASS =
     'rounded-md border border-danger/50 bg-surface px-sm py-xxs text-body-sm text-danger-text hover:bg-danger-soft disabled:opacity-50';
 
-const SIGNATURE_WIDTH = 900;
-const SIGNATURE_HEIGHT = 220;
-
 function formatInt(value: number): string {
     return value.toLocaleString('en-US');
 }
 
 function formatQty(value: number): string {
     return value.toLocaleString('en-US', { maximumFractionDigits: 3 });
-}
-
-/** يرسم التوقيع المكتوب بالاسم على اللوحة — نمط `signature.js` في V2. */
-function paintSignature(canvas: HTMLCanvasElement, name: string): void {
-    let context: CanvasRenderingContext2D | null = null;
-    try {
-        context = canvas.getContext('2d');
-    } catch {
-        context = null;
-    }
-    if (!context) {
-        return;
-    }
-    try {
-        context.clearRect(0, 0, canvas.width, canvas.height);
-        if (!name) {
-            return;
-        }
-        context.textAlign = 'center';
-        context.textBaseline = 'middle';
-        context.direction = 'rtl';
-        context.font = '700 64px "IBM Plex Sans Arabic", Tahoma, sans-serif';
-        context.fillStyle = '#1f2430';
-        context.fillText(name, canvas.width / 2, canvas.height * 0.42);
-        context.strokeStyle = '#0f5b46';
-        context.lineWidth = 2.5;
-        context.lineCap = 'round';
-        context.beginPath();
-        context.moveTo(canvas.width * 0.22, canvas.height * 0.72);
-        context.lineTo(canvas.width * 0.78, canvas.height * 0.72);
-        context.stroke();
-    } catch {
-        // لوحة غير متاحة (بيئة اختبار) — القراءة عند الإرسال ترفض بوضوح.
-    }
-}
-
-/** قراءة التوقيع بنفس تحقق الخادم؛ null يعني توقيعًا ناقصًا. */
-function readSignatureData(canvas: HTMLCanvasElement | null): string | null {
-    if (!canvas) {
-        return null;
-    }
-    try {
-        return normalizeSignatureData(canvas.toDataURL('image/png'));
-    } catch {
-        return null;
-    }
-}
-
-function SignaturePad({
-    label,
-    name,
-    canvasRef,
-}: {
-    label: string;
-    name: string;
-    canvasRef: RefObject<HTMLCanvasElement | null>;
-}) {
-    useEffect(() => {
-        const canvas = canvasRef.current;
-        if (canvas) {
-            paintSignature(canvas, name);
-        }
-    }, [canvasRef, name]);
-
-    return (
-        <div className="flex flex-col gap-xs" data-erp-print-hide>
-            <span className="text-label-md text-ink-secondary">{label}</span>
-            <input
-                type="text"
-                readOnly
-                value={name}
-                aria-label={`${label} — توقيع ${name}`}
-                className={`${INPUT_CLASS} bg-surface-sunken`}
-            />
-            <canvas
-                ref={canvasRef}
-                width={SIGNATURE_WIDTH}
-                height={SIGNATURE_HEIGHT}
-                role="img"
-                aria-label={label}
-                className="h-auto w-full rounded-md border border-hairline bg-surface"
-            />
-            <p className="text-caption text-muted">{`${PR_WRITE_TEXT.signatureLockedHint} (${name})`}</p>
-        </div>
-    );
 }
 
 function Kpi({ label, english, value, hint }: { label: string; english: string; value: string; hint: string }) {
@@ -325,7 +239,17 @@ function RowActions({
             },
         });
     }
-
+    if (revertVisible(role, status)) {
+        buttons.push({
+            key: 'revert-to-chef-approved',
+            label: 'إعادة للتصحيح',
+            ariaLabel: `إعادة طلب ${number} إلى chef_approved`,
+            className: PRIMARY_BUTTON_CLASS,
+            run: () => {
+                onDecision('revert-to-chef-approved', request);
+            },
+        });
+    }
     if (buttons.length === 0) {
         return null;
     }
@@ -393,7 +317,7 @@ function CreateRequestDialog({
     const [deptCode, setDeptCode] = useState('');
     const [notes, setNotes] = useState('');
     const [localError, setLocalError] = useState('');
-    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const signatureRef = useRef<string | null>(null);
     const manualSeq = useRef(0);
 
     useEffect(() => {
@@ -468,7 +392,7 @@ function CreateRequestDialog({
         }
         let signatureData: string | null = null;
         if (chef) {
-            signatureData = readSignatureData(canvasRef.current);
+            signatureData = signatureRef.current;
             if (!signatureData) {
                 setLocalError(PR_WRITE_TEXT.signatureFailed);
                 return;
@@ -694,7 +618,15 @@ function CreateRequestDialog({
                     />
                 </label>
 
-                {chef ? <SignaturePad label="توقيع الشيف على الطلب" name={signerName} canvasRef={canvasRef} /> : null}
+                {chef ? (
+                    <SignaturePad
+                        label="توقيع الشيف على الطلب"
+                        name={signerName}
+                        onChange={(value) => {
+                            signatureRef.current = value;
+                        }}
+                    />
+                ) : null}
             </form>
         </Dialog>
     );
@@ -726,7 +658,7 @@ function DecisionDialog({
     const [notes, setNotes] = useState('');
     const [reason, setReason] = useState('');
     const [localError, setLocalError] = useState('');
-    const canvasRef = useRef<HTMLCanvasElement | null>(null);
+    const signatureRef = useRef<string | null>(null);
 
     useEffect(() => {
         if (!open) {
@@ -744,6 +676,7 @@ function DecisionDialog({
     const number = raw.request_number ? String(raw.request_number) : `#${raw.id}`;
     const isReject = kind === 'chef-reject' || kind === 'gm-reject';
     const isChefDecision = kind === 'chef-approve' || kind === 'chef-reject';
+    const isRevert = kind === 'revert-to-chef-approved';
     const items = Array.isArray(raw.items) ? raw.items : [];
 
     function submit(event: React.FormEvent<HTMLFormElement>): void {
@@ -758,7 +691,7 @@ function DecisionDialog({
                 return;
             }
         }
-        const signatureData = readSignatureData(canvasRef.current);
+        const signatureData = signatureRef.current;
         if (!signatureData) {
             setLocalError(PR_WRITE_TEXT.signatureFailed);
             return;
@@ -772,7 +705,9 @@ function DecisionDialog({
             ? 'توقيعك يحيل الطلب إلى المدير العام للاعتماد النهائي — لا يحرك أي مخزون.'
             : kind === 'gm-approve'
               ? `وقّع الشيف ${raw.chef_approved_name ? String(raw.chef_approved_name) : '—'} — اعتمادك نهائي ويُغلق الطلب (طلب فقط بلا حركة مخزون).`
-              : '';
+              : kind === 'revert-to-chef-approved'
+                ? 'سيتم إعادة الطلب إلى chef_approved للتعديل، يمكنك تعديله ثم تعزيزه مجدداً'
+                : '';
 
     return (
         <Dialog
@@ -850,11 +785,13 @@ function DecisionDialog({
                     </label>
                 ) : (
                     <label className="flex flex-col gap-xxs text-label-md text-ink-secondary">
-                        {isChefDecision ? PR_WRITE_TEXT.chefNotesLabel : PR_WRITE_TEXT.gmNotesLabel}
+                        {isChefDecision || isRevert ? PR_WRITE_TEXT.chefNotesLabel : PR_WRITE_TEXT.gmNotesLabel}
                         <textarea
                             rows={2}
                             value={notes}
-                            aria-label={isChefDecision ? PR_WRITE_TEXT.chefNotesLabel : PR_WRITE_TEXT.gmNotesLabel}
+                            aria-label={
+                                isChefDecision || isRevert ? PR_WRITE_TEXT.chefNotesLabel : PR_WRITE_TEXT.gmNotesLabel
+                            }
                             onChange={(event) => {
                                 setNotes(event.target.value);
                             }}
@@ -862,6 +799,20 @@ function DecisionDialog({
                         />
                     </label>
                 )}
+                {isRevert ? (
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary">
+                        {PR_WRITE_TEXT.reasonLabel}
+                        <textarea
+                            rows={3}
+                            value={reason}
+                            aria-label={PR_WRITE_TEXT.reasonLabel}
+                            onChange={(event) => {
+                                setReason(event.target.value);
+                            }}
+                            className={`${INPUT_CLASS} min-h-16 py-xs leading-normal`}
+                        />
+                    </label>
+                ) : null}
                 <SignaturePad
                     label={
                         kind === 'chef-approve'
@@ -870,10 +821,14 @@ function DecisionDialog({
                               ? 'توقيع الشيف على الرفض'
                               : kind === 'gm-approve'
                                 ? 'توقيع المدير العام'
-                                : 'توقيع المدير العام على الرفض'
+                                : kind === 'revert-to-chef-approved'
+                                  ? 'توقيع لإعادة التصحيح'
+                                  : 'توقيع المدير العام على الرفض'
                     }
                     name={signerName}
-                    canvasRef={canvasRef}
+                    onChange={(value) => {
+                        signatureRef.current = value;
+                    }}
                 />
             </form>
         </Dialog>
@@ -973,7 +928,17 @@ export function PurchaseRequests() {
         | ({ kind: 'chef-approve'; id: string } & PRNotesPayload)
         | ({ kind: 'chef-reject'; id: string } & PRRejectPayload)
         | ({ kind: 'gm-approve'; id: string } & PRNotesPayload)
-        | ({ kind: 'gm-reject'; id: string } & PRRejectPayload);
+        | ({ kind: 'gm-reject'; id: string } & PRRejectPayload)
+        | ({
+              kind: 'revert-to-chef-approved';
+              id: string;
+              notes?: string;
+              signatureData?: string;
+              signerName?: string;
+          } & {
+              kind: 'revert-to-chef-approved';
+              id: string;
+          });
 
     const decisionMutation = useWriteMutation<DecisionVars, void>({
         mutationFn: (vars) => {
@@ -998,11 +963,14 @@ export function PurchaseRequests() {
                     signerName: vars.signerName,
                 });
             }
-            return gmRejectPR(vars.id, {
-                reason: vars.reason,
-                signatureData: vars.signatureData,
-                signerName: vars.signerName,
-            });
+            if (vars.kind === 'gm-reject') {
+                return gmRejectPR(vars.id, {
+                    reason: vars.reason,
+                    signatureData: vars.signatureData,
+                    signerName: vars.signerName,
+                });
+            }
+            return revertToChefApprovedPR(vars.id);
         },
         invalidate: [['purchase-requests']],
         silentError: true,
@@ -1105,6 +1073,10 @@ export function PurchaseRequests() {
         if (kind === 'chef-approve' || kind === 'gm-approve') {
             const payload = prNotesPayload(fields.notes, fields.signatureData, signerName);
             decisionMutation.mutate({ kind, id: raw.id, ...payload });
+            return;
+        }
+        if (kind === 'revert-to-chef-approved') {
+            decisionMutation.mutate({ kind, id: raw.id });
             return;
         }
         const payload = prRejectPayload(fields.reason, fields.signatureData, signerName);

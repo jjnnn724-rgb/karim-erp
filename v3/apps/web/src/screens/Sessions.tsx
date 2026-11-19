@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { PrintActions } from '../components/PrintActions';
+import { Card, StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { fetchJson } from '../lib/api';
 import { getAccessToken } from '../lib/auth';
 import { formatInt } from '../lib/format';
@@ -13,17 +13,7 @@ import {
     sessionsResponseSchema,
 } from '../lib/sessions';
 
-function Kpi({
-    label,
-    english,
-    value,
-    hint,
-}: {
-    label: string;
-    english: string;
-    value: string;
-    hint: string;
-}) {
+function Kpi({ label, english, value, hint }: { label: string; english: string; value: string; hint: string }) {
     return (
         <li className="rounded-lg border border-hairline bg-surface p-md shadow-card">
             <p className="text-label-md text-muted">
@@ -187,11 +177,17 @@ export function Sessions() {
                     <div>
                         <h2 className="text-heading-md text-ink">
                             سجل الجلسات والأجهزة{' '}
-                            <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted" dir="ltr" lang="en">
+                            <span
+                                className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted"
+                                dir="ltr"
+                                lang="en"
+                            >
                                 Devices list
                             </span>
                         </h2>
-                        <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">قائمة مفصلة بكل جلسة مع توقيت بدء الاتصال وآخر ظهور.</p>
+                        <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
+                            قائمة مفصلة بكل جلسة مع توقيت بدء الاتصال وآخر ظهور.
+                        </p>
                     </div>
                     <label className="flex w-full flex-col items-stretch gap-xs text-label-md text-ink-secondary sm:w-auto sm:flex-row sm:items-center">
                         البحث
@@ -244,7 +240,10 @@ export function Sessions() {
                                 {filteredSessions.map((session) => {
                                     const isCurrent = session.current || session.id === data.current_session_id;
                                     return (
-                                        <tr key={session.id} className="border-b border-hairline hover:bg-surface-hover">
+                                        <tr
+                                            key={session.id}
+                                            className="border-b border-hairline hover:bg-surface-hover"
+                                        >
                                             <td className="px-sm py-xs text-ink font-medium">
                                                 <div className="flex items-center gap-xs">
                                                     <span>{session.device}</span>

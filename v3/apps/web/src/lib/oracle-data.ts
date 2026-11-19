@@ -118,12 +118,7 @@ export async function refreshOracleTables(): Promise<OracleRefreshResponse> {
 }
 
 export async function fetchOracleTables(signal?: AbortSignal): Promise<OracleTablesResponse> {
-    return fetchJson(
-        oracleTablesResponseSchema,
-        '/api/oracle-data/tables',
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    return fetchJson(oracleTablesResponseSchema, '/api/oracle-data/tables', getAccessToken(), signal ? { signal } : {});
 }
 
 export interface OracleTableQuery {

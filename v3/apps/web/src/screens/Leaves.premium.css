@@ -1,64 +1,89 @@
 .leaves-premium {
-  --screen-accent: var(--erp-primary, var(--accent));
-  gap: clamp(1rem, 2vw, 1.5rem);
-  min-width: 0;
+    --screen-accent: var(--erp-primary, var(--accent));
+    gap: clamp(1rem, 2vw, 1.5rem);
+    min-width: 0;
 }
 
 .leaves-premium > header {
-  align-items: center;
-  padding-block-end: 1rem;
-  border-block-end: 1px solid var(--erp-hairline, var(--hairline));
+    align-items: center;
+    padding-block-end: 1rem;
+    border-block-end: 1px solid var(--erp-hairline, var(--hairline));
 }
 
 .leaves-premium > header h1 {
-  max-width: 100%;
-  line-height: 1.45;
-  letter-spacing: -0.025em;
-  text-wrap: balance;
+    max-width: 100%;
+    line-height: 1.45;
+    letter-spacing: -0.025em;
+    text-wrap: balance;
 }
 
 .leaves-premium > header h1 > span {
-  display: inline-block;
-  margin-inline-start: 0.35rem;
-  letter-spacing: 0;
+    display: inline-block;
+    margin-inline-start: 0.35rem;
+    letter-spacing: 0;
 }
 
 .leaves-premium > header p {
-  max-width: 72ch;
-  margin-block-start: 0.35rem;
-  line-height: 1.8;
+    max-width: 72ch;
+    margin-block-start: 0.35rem;
+    line-height: 1.8;
 }
 
 .leaves-premium :is(input, select, button, a):focus-visible {
-  outline: 3px solid color-mix(in srgb, var(--screen-accent) 48%, transparent);
-  outline-offset: 2px;
+    outline: 3px solid color-mix(in srgb, var(--screen-accent) 48%, transparent);
+    outline-offset: 2px;
 }
 
 .leaves-premium :is(input, select) {
-  max-width: 100%;
-  min-width: 0;
-  transition: border-color 160ms ease, box-shadow 160ms ease;
+    max-width: 100%;
+    min-width: 0;
+    transition:
+        border-color 160ms ease,
+        box-shadow 160ms ease;
 }
 
 .leaves-premium :is(input, select):focus {
-  border-color: var(--screen-accent);
+    border-color: var(--screen-accent);
 }
 
-.leaves-premium :is(table th, table td) { vertical-align: middle; }
-.leaves-premium table thead th {
-  position: sticky; top: 0; z-index: 1;
-  box-shadow: inset 0 -1px 0 var(--erp-hairline, var(--hairline));
+.leaves-premium :is(table th, table td) {
+    vertical-align: middle;
 }
-.leaves-premium table tbody tr { transition: background-color 140ms ease; }
+.leaves-premium table thead th {
+    position: sticky;
+    top: 0;
+    z-index: 1;
+    box-shadow: inset 0 -1px 0 var(--erp-hairline, var(--hairline));
+}
+.leaves-premium table tbody tr {
+    transition: background-color 140ms ease;
+}
 
 @media (max-width: 640px) {
-  .leaves-premium { gap: 1rem; }
-  .leaves-premium > header { align-items: stretch; gap: 0.75rem; padding-block-end: 0.75rem; }
-  .leaves-premium > header h1 { font-size: clamp(1.45rem, 7vw, 1.8rem); }
-  .leaves-premium :is(input, select) { width: 100%; }
-  .leaves-premium table th, .leaves-premium table td { padding-inline: 0.65rem; }
+    .leaves-premium {
+        gap: 1rem;
+    }
+    .leaves-premium > header {
+        align-items: stretch;
+        gap: 0.75rem;
+        padding-block-end: 0.75rem;
+    }
+    .leaves-premium > header h1 {
+        font-size: clamp(1.45rem, 7vw, 1.8rem);
+    }
+    .leaves-premium :is(input, select) {
+        width: 100%;
+    }
+    .leaves-premium table th,
+    .leaves-premium table td {
+        padding-inline: 0.65rem;
+    }
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .leaves-premium *, .leaves-premium *::before, .leaves-premium *::after { transition-duration: 0.01ms !important; }
+    .leaves-premium *,
+    .leaves-premium *::before,
+    .leaves-premium *::after {
+        transition-duration: 0.01ms !important;
+    }
 }

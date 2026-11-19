@@ -41,7 +41,9 @@ function pickMainRow(body: unknown): Record<string, unknown> {
     if (body && typeof body === 'object' && 'data' in body) {
         const data = (body as { data: unknown }).data;
         if (Array.isArray(data)) {
-            const main = data.find((row) => String((row as Record<string, unknown> | null)?.id ?? '') === MAIN_SETTINGS_ID);
+            const main = data.find(
+                (row) => String((row as Record<string, unknown> | null)?.id ?? '') === MAIN_SETTINGS_ID,
+            );
             return (main ?? data[0] ?? {}) as Record<string, unknown>;
         }
         if (data && typeof data === 'object') {
@@ -218,8 +220,14 @@ export interface ZatcaQueueRow {
 export const zatcaQueueSchema = z.unknown().transform((body) => {
     const root = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
     const rows = Array.isArray(root.data) ? root.data : [];
+    const engine = (root.engine && typeof root.engine === 'object' ? root.engine : {}) as Record<string, unknown>;
     return {
         stats: queueStats(root.stats),
+        engine: {
+            mode: text(engine.mode) || 'sql_poller',
+            poller_in_server: engine.poller_in_server === true,
+            poll_interval_ms: int(engine.poll_interval_ms, 0),
+        },
         rows: rows.map((entry): ZatcaQueueRow => {
             const row = (entry && typeof entry === 'object' ? entry : {}) as Record<string, unknown>;
             return {
@@ -510,9 +518,10 @@ export const backupListSchema = z.unknown().transform((body): BackupList => {
         files: rows
             .map((entry): BackupFile => {
                 const row = (entry && typeof entry === 'object' ? entry : {}) as Record<string, unknown>;
-                const manifestRow = (row.manifest && typeof row.manifest === 'object' ? row.manifest : null) as
-                    | Record<string, unknown>
-                    | null;
+                const manifestRow = (row.manifest && typeof row.manifest === 'object' ? row.manifest : null) as Record<
+                    string,
+                    unknown
+                > | null;
                 return {
                     file: text(row.file),
                     bytes: int(row.bytes, 0),

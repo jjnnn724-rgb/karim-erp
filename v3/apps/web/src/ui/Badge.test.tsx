@@ -57,7 +57,11 @@ describe('Badge', () => {
     });
 
     it('النسخة الصلبة solid تُRender بدون خلفية ناعمة', () => {
-        render(<Badge variant="danger" soft={false}>خطير</Badge>);
+        render(
+            <Badge variant="danger" soft={false}>
+                خطير
+            </Badge>,
+        );
         expect(screen.getByText('خطير').className).toContain('bg-danger');
     });
 

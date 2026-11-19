@@ -1,8 +1,8 @@
 import './GoodsScan.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { PrintActions } from '../components/PrintActions';
+import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { ApiError } from '../lib/api';
 import { useAuthState } from '../lib/auth';
 import { arSearchKey } from '../lib/employees';
@@ -134,12 +134,13 @@ function ConfirmDialog({
     onConfirm: () => void;
 }) {
     return (
-        <div className="fixed inset-0 z-[100] grid place-items-center bg-overlay p-md">
+        <div className="fixed inset-0 z-[100] grid place-items-center bg-overlay p-md" data-erp-modal-overlay>
             <section
                 role="alertdialog"
                 aria-modal="true"
                 aria-labelledby="scan-confirm-title"
                 className="w-full max-w-lg rounded-lg border border-hairline bg-surface-raised p-lg shadow-[0_24px_64px_rgb(0_0_0/0.30)]"
+                data-erp-modal-panel
             >
                 <h2 id="scan-confirm-title" className="text-heading-md text-ink">
                     تأكيد ربط الباركود
@@ -1009,9 +1010,7 @@ export function GoodsScan() {
 
                 {mode === 'out' ? (
                     <div className="flex flex-col gap-sm">
-                        <p className="text-body-sm text-muted">
-                            الصرف ينشئ أذونًا معلّقة تدخل سلسلة الاعتماد.
-                        </p>
+                        <p className="text-body-sm text-muted">الصرف ينشئ أذونًا معلّقة تدخل سلسلة الاعتماد.</p>
                         {!canCreateDispatch ? (
                             <p className="text-body-sm text-danger-text">
                                 حسابك لا يُنشئ أذون صرف — الأدوار المسموحة: الشيف والمدير والمخازن ورئيس القسم.

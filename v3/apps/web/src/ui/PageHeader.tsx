@@ -4,9 +4,4 @@
  * الشاشات من مسار واحد، ولا تتكرر النسخة.
  */
 
-export {
-    AppPageHeader,
-    type AppPageHeaderProps,
-    PageHeader,
-    type PageHeaderProps,
-} from '../components/PageHeader';
+export { PageHeader, type PageHeaderProps } from '../components/PageHeader';

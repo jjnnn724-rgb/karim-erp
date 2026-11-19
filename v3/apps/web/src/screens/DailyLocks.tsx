@@ -1,17 +1,11 @@
 import './DailyLocks.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { PrintActions } from '../components/PrintActions';
+import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { ApiError } from '../lib/api';
-import {
-    dailyLockRows,
-    displayTotals,
-    fetchDailyLocks,
-    isLocked,
-    type DailyLocksResponse,
-} from '../lib/daily-locks';
+import { type DailyLocksResponse, dailyLockRows, displayTotals, fetchDailyLocks, isLocked } from '../lib/daily-locks';
 import { formatInt } from '../lib/format';
 import { errorMessage, qtyOf, todayIso } from '../lib/reporting';
 
@@ -111,12 +105,7 @@ export function DailyLocks() {
             {data ? (
                 <>
                     <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-5" aria-label="مؤشرات التقفيل">
-                        <KpiCard
-                            label="اليوم"
-                            english="Date"
-                            value={day || '—'}
-                            hint="اليوم المعروض كما أكّده الخادم"
-                        />
+                        <KpiCard label="اليوم" english="Date" value={day || '—'} hint="اليوم المعروض كما أكّده الخادم" />
                         <KpiCard
                             label="مقفّل"
                             english="Locked"
@@ -189,9 +178,7 @@ export function DailyLocks() {
                                             return (
                                                 <tr
                                                     key={`${String(row.dept_code ?? '')}-${String(index)}`}
-                                                    className={`border-b border-hairline ${
-                                                        rowLocked ? '' : 'bg-surface-hover'
-                                                    }`}
+                                                    className={`border-b border-hairline ${rowLocked ? '' : 'bg-surface-hover'}`}
                                                 >
                                                     <td className="px-sm py-xxs text-ink">
                                                         <b>{String(row.dept_name ?? '—')}</b>{' '}
@@ -217,7 +204,10 @@ export function DailyLocks() {
                                                     <td className="erp-numeric px-sm py-xxs text-end" dir="ltr">
                                                         {qtyOf(row.refund)}
                                                     </td>
-                                                    <td className="erp-numeric px-sm py-xxs text-end text-ink" dir="ltr">
+                                                    <td
+                                                        className="erp-numeric px-sm py-xxs text-end text-ink"
+                                                        dir="ltr"
+                                                    >
                                                         <b>{qtyOf(row.net)}</b>
                                                     </td>
                                                     <td className="erp-numeric px-sm py-xxs text-end" dir="ltr">

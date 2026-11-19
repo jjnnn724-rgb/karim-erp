@@ -2,16 +2,8 @@ import { useQuery } from '@tanstack/react-query';
 import { type ChangeEvent, useRef, useState } from 'react';
 import { fetchJson } from '../../lib/api';
 import { getAccessToken, useAuthState } from '../../lib/auth';
-import {
-    type MainSettings,
-    mainSettingsSchema,
-    type PosLegacyMode,
-} from '../../lib/settings';
-import {
-    saveMainSettings,
-    SETTINGS_TEXT,
-    settingsWriteVisible,
-} from '../../lib/settings-write';
+import { type MainSettings, mainSettingsSchema, type PosLegacyMode } from '../../lib/settings';
+import { SETTINGS_TEXT, saveMainSettings, settingsWriteVisible } from '../../lib/settings-write';
 import { useWriteMutation, writeErrorMessage } from '../../lib/write';
 import { Button } from '../../ui/Button';
 import { Checkbox } from '../../ui/Checkbox';
@@ -192,7 +184,11 @@ export function GeneralSection() {
 
                 <div className="flex flex-wrap items-center gap-md rounded-lg border border-hairline bg-surface-sunken p-sm">
                     {logo ? (
-                        <img src={logo} alt="شعار المنشأة" className="size-20 rounded-lg border border-hairline object-cover" />
+                        <img
+                            src={logo}
+                            alt="شعار المنشأة"
+                            className="size-20 rounded-lg border border-hairline object-cover"
+                        />
                     ) : (
                         <span className="flex size-20 items-center justify-center rounded-lg border border-dashed border-hairline-strong text-caption text-faint">
                             بلا شعار

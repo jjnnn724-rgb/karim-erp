@@ -1,7 +1,7 @@
 import { useState } from 'react';
-import { Button, Input, Select } from '../../ui';
 import type { PosDepartment } from '../../lib/pos';
 import { parsePosMoney } from '../../lib/pos-pricing';
+import { Button, Input, Select } from '../../ui';
 import { moneyText } from './pos-ui';
 
 export interface PosOpenShiftProps {
@@ -18,7 +18,8 @@ export function PosOpenShift({ departments, canSell, busy, error, loading, onOpe
     const [departmentId, setDepartmentId] = useState('');
     const [opening, setOpening] = useState('0');
     const parsed = parsePosMoney(opening);
-    const valid = Number.isInteger(Number(departmentId)) && Number(departmentId) > 0 && Number.isFinite(parsed) && parsed >= 0;
+    const valid =
+        Number.isInteger(Number(departmentId)) && Number(departmentId) > 0 && Number.isFinite(parsed) && parsed >= 0;
 
     return (
         <section className="erp-card pos-open" aria-labelledby="pos-open-title">

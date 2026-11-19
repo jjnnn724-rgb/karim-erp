@@ -13,8 +13,8 @@ import { num } from './reporting';
  *   /api/pos/shifts/open                  ورديات الكاشير المفتوحة
  *   /api/pos/day-close/status             جاهزية إقفال اليوم Z
  *
- * أبواب الكتابة الثمانية عشر في v2 (قيد/اعتماد/إلغاء/قفل فترة/رواتب/بنك/
- * أصول/عهد/موازنات/إقفال Z) خارج نطاق v3 بقرار القراءة فقط — تُنفَّذ في v2.
+ * كتابات القيود والفترات (قيد/اعتماد/إلغاء/إقفال/إعادة فتح) في `cfo-write.ts`
+ * وباقي أبواب v2 (بنك/أصول/عهد/موازنات/إقفال Z) ما زالت في v2.
  *
  * كل مصدر فاشل يُسمّى في `failures` وتُعرض البقية؛ لا صفر يبدو بيانات.
  */
@@ -35,10 +35,7 @@ export const cfoSummarySchema = z
         payroll_open: numLike,
         pos: z.object({ invoices: numLike, total: numLike }).passthrough().optional(),
         cash_position: numLike,
-        cash_ledger: z
-            .object({ petty_cash: numLike, bank: numLike })
-            .passthrough()
-            .optional(),
+        cash_ledger: z.object({ petty_cash: numLike, bank: numLike }).passthrough().optional(),
         journal_entries: numLike,
         journal_entries_all_time: numLike,
         gross_profit: money.optional(),
@@ -55,14 +52,10 @@ export const cfoSummarySchema = z
             .optional(),
         revenue_by_dept: z
             .array(
-                z
-                    .object({ code: text, name: text, total: numLike, net: numLike, margin_pct: numLike })
-                    .passthrough(),
+                z.object({ code: text, name: text, total: numLike, net: numLike, margin_pct: numLike }).passthrough(),
             )
             .optional(),
-        top_expense_categories: z
-            .array(z.object({ category: text, total: numLike }).passthrough())
-            .optional(),
+        top_expense_categories: z.array(z.object({ category: text, total: numLike }).passthrough()).optional(),
     })
     .passthrough();
 
@@ -89,19 +82,12 @@ export const trialBalanceSchema = z
         total_debit: numLike,
         total_credit: numLike,
         balanced: flag,
-        integrity: z
-            .object({
-                unbalanced_posted_entries: numLike,
-            })
-            .optional(),
     })
     .passthrough();
 
 export type TrialBalance = z.infer<typeof trialBalanceSchema>;
 
-const journalLineSchema = z
-    .object({ account_code: text, debit: numLike, credit: numLike, memo: text })
-    .passthrough();
+const journalLineSchema = z.object({ account_code: text, debit: numLike, credit: numLike, memo: text }).passthrough();
 
 export const journalEntrySchema = z
     .object({
@@ -196,11 +182,7 @@ function failureName(result: PromiseSettledResult<unknown>, name: string): strin
     return `${name}: ${reason}`;
 }
 
-export async function fetchCfoSnapshot(
-    from: string,
-    to: string,
-    signal?: AbortSignal,
-): Promise<CfoSnapshot> {
+export async function fetchCfoSnapshot(from: string, to: string, signal?: AbortSignal): Promise<CfoSnapshot> {
     const token = getAccessToken();
     const options = signal ? { signal } : {};
     const settled = await Promise.allSettled([
@@ -222,7 +204,7 @@ export async function fetchCfoSnapshot(
         fetchJson(dayCloseSchema, '/api/pos/day-close/status', token, options),
     ]);
 
-    const at = <T,>(index: number): T | null => {
+    const at = <T>(index: number): T | null => {
         const result = settled[index];
         return result && result.status === 'fulfilled' ? (result.value as T) : null;
     };

@@ -1,12 +1,12 @@
 {
-  "meta": {
-    "status": 401,
-    "url": "/api/accounting/chart",
-    "captured_at": "2026-11-09T20:01:46.169Z",
-    "server": "karim-erp 4.9.2 @ 127.0.0.1:5100 (dev copy)"
-  },
-  "body": {
-    "error": "UNAUTHORIZED",
-    "message": "Missing Bearer token."
-  }
+    "meta": {
+        "status": 401,
+        "url": "/api/accounting/chart",
+        "captured_at": "2026-11-09T20:01:46.169Z",
+        "server": "karim-erp 4.9.2 @ 127.0.0.1:5100 (dev copy)"
+    },
+    "body": {
+        "error": "UNAUTHORIZED",
+        "message": "Missing Bearer token."
+    }
 }

@@ -3,7 +3,7 @@ import { fromCents, toCents } from '@karim/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { PrintActions } from '../components/PrintActions';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
+import { Card } from '../components/TableState';
 import { fetchCurrency, firstOfMonth, riyadhToday } from '../lib/finance';
 import { formatMoney } from '../lib/format';
 import {
@@ -16,6 +16,7 @@ import {
     sumValuesOfType,
     typeTone,
 } from '../lib/inventory';
+import { DataTable, type DataTableColumn } from '../ui';
 
 /**
  * حركات المخزون — قراءة فقط من `/api/inventoryTx` لشهر الرياض الحالي،
@@ -54,6 +55,78 @@ function typeClass(row: MovementRow): string {
     }
     return 'text-muted';
 }
+
+/**
+ * أعمدة الحركات — القيم كما كانت حرفيًا (تواريخ وكميات لاتينية معزولة
+ * الاتجاه، والنوع المجهول بشارته الخام). التصدير المعلن للصفحة المحمّلة
+ * فقط (`exportValue` لكل عمود)؛ لا فرز هنا لأن التقطيع محلي على صفحة من
+ * نتائج مرشّحة أكبر — فرز الصفحة وحدها يوحي بترتيب كامل وهو ليس كذلك.
+ */
+const MOVEMENT_COLUMNS: DataTableColumn<MovementRow>[] = [
+    {
+        key: 'date',
+        header: 'التاريخ',
+        align: 'center',
+        className: 'erp-numeric text-body-sm text-muted',
+        cell: (row) => <span dir="ltr">{row.date}</span>,
+        exportValue: (row) => row.date,
+    },
+    {
+        key: 'itemName',
+        header: 'الصنف',
+        className: 'text-ink',
+        cell: (row) => row.itemName,
+        exportValue: (row) => row.itemName,
+    },
+    {
+        key: 'type',
+        header: 'النوع',
+        className: 'text-body-sm',
+        cell: (row) => (
+            <span className={typeClass(row)}>
+                {row.typeLabel}
+                {row.type && !row.typeKnown ? (
+                    <span className="text-caption text-faint" dir="ltr">
+                        {' '}
+                        ({row.type})
+                    </span>
+                ) : null}
+            </span>
+        ),
+        exportValue: (row) => (row.typeKnown ? row.typeLabel : `${row.typeLabel} (${row.type})`),
+    },
+    {
+        key: 'qty',
+        header: 'الكمية',
+        align: 'end',
+        className: 'erp-numeric text-ink',
+        cell: (row) => <span dir="ltr">{formatQty(row.qty)}</span>,
+        exportValue: (row) => Number(row.qty),
+    },
+    {
+        key: 'cost',
+        header: 'السعر',
+        align: 'end',
+        className: 'erp-numeric text-ink',
+        cell: (row) => formatMoney(row.cost),
+        exportValue: (row) => Number(row.cost),
+    },
+    {
+        key: 'totalValue',
+        header: 'القيمة',
+        align: 'end',
+        className: 'erp-numeric text-ink',
+        cell: (row) => formatMoney(row.totalValue),
+        exportValue: (row) => Number(row.totalValue),
+    },
+    {
+        key: 'ref',
+        header: 'المرجع',
+        className: 'text-body-sm text-muted',
+        cell: (row) => <span dir="ltr">{row.ref || '—'}</span>,
+        exportValue: (row) => row.ref,
+    },
+];
 
 export function InventoryMovements() {
     const [from, setFrom] = useState(firstOfMonth());
@@ -119,9 +192,7 @@ export function InventoryMovements() {
                             Stock Movements
                         </span>
                     </h1>
-                    <p className="text-body-sm text-muted">
-                        سجل الوارد والصادر والتسويات لشهر الرياض الحالي.
-                    </p>
+                    <p className="text-body-sm text-muted">سجل الوارد والصادر والتسويات لشهر الرياض الحالي.</p>
                 </div>
 
                 <div className="flex items-center gap-xs">
@@ -247,131 +318,47 @@ export function InventoryMovements() {
                 ) : null}
             </Card>
 
-            <Card>
-                {movementsQuery.isPending ? (
-                    <div aria-busy="true">
-                        <StateLoading label="جارٍ تحميل حركات المخزون" />
-                        <TableSkeleton rows={8} columns={7} />
-                    </div>
-                ) : null}
-
-                {movementsQuery.isError ? (
-                    <StateError
-                        message={movementsQuery.error instanceof Error ? movementsQuery.error.message : 'خطأ غير معروف'}
-                        onRetry={() => {
-                            void movementsQuery.refetch();
-                        }}
-                    />
-                ) : null}
-
-                {!movementsQuery.isPending && !movementsQuery.isError && rows.length === 0 ? (
-                    <StateEmpty
-                        title="لا حركات"
-                        hint={
-                            rangeInvalid
-                                ? 'صحّح التاريخين أولًا.'
-                                : 'لا حركة في هذه الفترة أو البحث.'
-                        }
-                    />
-                ) : null}
-
-                {!movementsQuery.isPending && !movementsQuery.isError && rows.length > 0 ? (
-                    <>
-                        <TableScroll label="جدول حركات المخزون">
-                            <table className="w-full border-collapse text-body-md">
-                                <thead>
-                                    <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                        <th scope="col" className="px-sm py-xs text-center font-medium">
-                                            التاريخ
-                                        </th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">
-                                            الصنف
-                                        </th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">
-                                            النوع
-                                        </th>
-                                        <th scope="col" className="px-sm py-xs text-end font-medium">
-                                            الكمية
-                                        </th>
-                                        <th scope="col" className="px-sm py-xs text-end font-medium">
-                                            السعر
-                                        </th>
-                                        <th scope="col" className="px-sm py-xs text-end font-medium">
-                                            القيمة
-                                        </th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">
-                                            المرجع
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {pageRows.map((row) => (
-                                        <tr key={row.id} className="border-b border-hairline hover:bg-surface-hover">
-                                            <td
-                                                className="erp-numeric px-sm py-xxs text-center text-body-sm text-muted"
-                                                dir="ltr"
-                                            >
-                                                {row.date}
-                                            </td>
-                                            <td className="px-sm py-xxs text-ink">{row.itemName}</td>
-                                            <td className={`px-sm py-xxs text-body-sm ${typeClass(row)}`}>
-                                                {row.typeLabel}
-                                                {row.type && !row.typeKnown ? (
-                                                    <span className="text-caption text-faint" dir="ltr">
-                                                        {' '}
-                                                        ({row.type})
-                                                    </span>
-                                                ) : null}
-                                            </td>
-                                            <td className="erp-numeric px-sm py-xxs text-end text-ink" dir="ltr">
-                                                {formatQty(row.qty)}
-                                            </td>
-                                            <td className="erp-numeric px-sm py-xxs text-end text-ink">
-                                                {formatMoney(row.cost)}
-                                            </td>
-                                            <td className="erp-numeric px-sm py-xxs text-end text-ink">
-                                                {formatMoney(row.totalValue)}
-                                            </td>
-                                            <td className="px-sm py-xxs text-body-sm text-muted" dir="ltr">
-                                                {row.ref || '—'}
-                                            </td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </TableScroll>
-
-                        <div className="flex items-center justify-between gap-sm border-t border-hairline px-sm py-xs">
-                            <span className="text-body-sm text-muted">
-                                صفحة {formatInt(safePage)} من {formatInt(pageCount)}
-                                {capped ? ` · الخادم أعاد أول ${formatInt(1000 * MAX_PAGES)} حركة فقط` : ''}
-                            </span>
-                            <div className="flex gap-xs">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setPage(safePage - 1);
-                                    }}
-                                    disabled={safePage <= 1}
-                                    className="rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover disabled:opacity-50"
-                                >
-                                    السابق
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setPage(safePage + 1);
-                                    }}
-                                    disabled={safePage >= pageCount}
-                                    className="rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover disabled:opacity-50"
-                                >
-                                    التالي
-                                </button>
-                            </div>
-                        </div>
-                    </>
-                ) : null}
-            </Card>
+            <DataTable<MovementRow>
+                caption="جدول حركات المخزون"
+                columns={MOVEMENT_COLUMNS}
+                rows={pageRows}
+                rowKey={(row) => row.id}
+                state={
+                    movementsQuery.isPending
+                        ? 'loading'
+                        : movementsQuery.isError
+                          ? 'error'
+                          : rows.length === 0
+                            ? 'empty'
+                            : 'data'
+                }
+                loadingRows={8}
+                emptyTitle="لا حركات"
+                emptyDescription={rangeInvalid ? 'صحّح التاريخين أولًا.' : 'لا حركة في هذه الفترة أو البحث.'}
+                errorMessage={movementsQuery.error instanceof Error ? movementsQuery.error.message : 'خطأ غير معروف'}
+                onRetry={() => {
+                    void movementsQuery.refetch();
+                }}
+                manualFiltering
+                manualPagination
+                {...(rows.length > 0
+                    ? {
+                          pagination: {
+                              page: safePage,
+                              pageSize: PAGE_SIZE,
+                              total: rows.length,
+                              onPageChange: setPage,
+                              labels: {
+                                  summary: (from: number, to: number, total: number) =>
+                                      `${formatInt(from)}–${formatInt(to)} من ${formatInt(total)} حركة${
+                                          capped ? ` · الخادم أعاد أول ${formatInt(1000 * MAX_PAGES)} حركة فقط` : ''
+                                      }`,
+                              },
+                          },
+                      }
+                    : {})}
+                exportFilename="حركات-المخزون"
+            />
         </div>
     );
 }

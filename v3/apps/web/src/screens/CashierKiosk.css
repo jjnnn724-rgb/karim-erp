@@ -1,3 +1,5 @@
+/* وضع الكاشير — مساحة كاملة بلا قائمة إدارة أو شريط تنقّل نظام. */
+
 .pos-kiosk {
     display: flex;
     flex-direction: column;
@@ -5,94 +7,126 @@
     background: var(--erp-canvas);
 }
 
+/* على سطح المكتب: لوحة عمل واحدة بارتفاع الشاشة وتمرير داخلي للسلة. */
+@media (min-width: 1101px) {
+    .pos-kiosk {
+        block-size: 100dvh;
+        overflow: hidden;
+    }
+
+    .pos-kiosk__main {
+        overflow: hidden;
+    }
+
+    .pos-kiosk__main > .pos-entry {
+        block-size: 100%;
+    }
+}
+
 .pos-kiosk__bar {
     display: flex;
-    flex: none;
+    flex-shrink: 0;
     align-items: center;
     justify-content: space-between;
-    gap: 0.75rem;
-    min-block-size: 3.25rem;
-    padding: 0.35rem clamp(0.6rem, 1.6vw, 1rem);
+    gap: 1rem;
+    min-block-size: 3.75rem;
+    padding: 0.55rem clamp(0.75rem, 2vw, 1.25rem);
     border-block-end: 1px solid var(--erp-hairline);
     background: var(--erp-surface);
 }
 
-.pos-kiosk__brand,
-.pos-kiosk__session {
+.pos-kiosk__brand {
     display: flex;
     align-items: center;
     gap: 0.65rem;
     min-inline-size: 0;
-}
-
-.pos-kiosk__brand {
     color: var(--erp-ink);
 }
 
 .pos-kiosk__mark {
     display: grid;
+    flex-shrink: 0;
+    place-items: center;
     inline-size: 2.25rem;
     block-size: 2.25rem;
-    place-items: center;
     border-radius: 0.7rem;
     background: var(--erp-primary);
     color: var(--erp-on-primary);
     font-family: var(--font-mono);
     font-size: 1.1rem;
-    font-weight: 800;
+    font-weight: 700;
 }
 
-.pos-kiosk__brand strong,
+.pos-kiosk__brand strong {
+    display: block;
+    font-size: 0.95rem;
+    line-height: 1.25;
+    white-space: nowrap;
+}
+
 .pos-kiosk__brand small {
     display: block;
+    color: var(--erp-muted);
+    font-size: 0.68rem;
 }
 
-.pos-kiosk__brand small {
-    color: var(--erp-muted);
-    font-size: 0.7rem;
+.pos-kiosk__session {
+    display: flex;
+    align-items: center;
+    gap: 0.6rem;
+    min-inline-size: 0;
 }
 
 .pos-kiosk__user {
     overflow: hidden;
     max-inline-size: 14rem;
     color: var(--erp-ink);
-    font-size: 0.85rem;
-    font-weight: 700;
+    font-size: 0.82rem;
+    font-weight: 600;
     text-overflow: ellipsis;
     white-space: nowrap;
 }
 
-.pos-kiosk__control,
-.pos-kiosk__logout {
-    min-block-size: 2.75rem;
-    padding: 0.35rem 0.8rem;
-    border: 1px solid var(--erp-hairline-strong);
-    border-radius: 0.65rem;
-    background: var(--erp-surface);
-    color: var(--erp-ink);
-    font: inherit;
-    font-size: 0.82rem;
-    font-weight: 650;
-    cursor: pointer;
-    touch-action: manipulation;
+.pos-kiosk__username {
+    padding: 0.1rem 0.4rem;
+    border: 1px solid var(--erp-hairline);
+    border-radius: 999px;
+    color: var(--erp-muted);
+    font-family: var(--font-mono);
+    font-size: 0.68rem;
 }
 
-.pos-kiosk__control:hover {
-    border-color: var(--erp-primary);
+.pos-kiosk__install {
+    min-block-size: 2.5rem;
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--erp-primary);
+    border-radius: 0.6rem;
+    background: var(--erp-surface);
     color: var(--erp-primary);
+    font-size: 0.78rem;
+    font-weight: 600;
+    cursor: pointer;
+}
+
+.pos-kiosk__install:hover {
+    background: var(--erp-primary);
+    color: var(--erp-on-primary);
+}
+
+.pos-kiosk__logout {
+    min-block-size: 2.5rem;
+    padding: 0.3rem 0.7rem;
+    border: 1px solid var(--erp-hairline);
+    border-radius: 0.6rem;
+    background: var(--erp-surface);
+    color: var(--erp-ink);
+    font-size: 0.78rem;
+    cursor: pointer;
 }
 
 .pos-kiosk__logout:hover {
     border-color: var(--erp-danger);
     color: var(--erp-danger-text);
-}
-
-.pos-kiosk__error {
-    margin: 0;
-    padding: 0.4rem 1rem;
-    background: var(--erp-danger-soft);
-    color: var(--erp-danger-text);
-    font-size: 0.8rem;
 }
 
 .pos-kiosk__main {
@@ -103,34 +137,69 @@
     padding: clamp(0.5rem, 1.4vw, 1rem);
 }
 
-.pos-kiosk__main > * {
+.pos-kiosk__main > .pos-entry {
     flex: 1;
     min-block-size: 0;
 }
 
-@media (min-width: 1101px) {
-    .pos-kiosk {
-        block-size: 100dvh;
-        overflow: hidden;
+.pos-kiosk__denied {
+    max-inline-size: 34rem;
+    margin: auto;
+    padding: 2rem;
+    border: 1px solid var(--erp-hairline);
+    border-radius: 1rem;
+    background: var(--erp-surface);
+    text-align: center;
+}
+
+.pos-kiosk__denied h1 {
+    margin: 0 0 0.6rem;
+    color: var(--erp-ink);
+    font-size: 1.25rem;
+}
+
+.pos-kiosk__denied p {
+    margin: 0;
+    color: var(--erp-muted);
+    font-size: 0.88rem;
+    line-height: 1.8;
+}
+
+.pos-kiosk .pos-entry--workspace {
+    block-size: auto;
+    flex: 1;
+    min-block-size: 0;
+}
+
+@media (max-width: 1100px) {
+    .pos-kiosk .pos-pane-switch {
+        inset-block-start: 0.5rem;
     }
 
-    .pos-kiosk__main {
-        overflow: hidden;
+    .pos-kiosk .pos-entry--workspace {
+        padding-block-end: calc(7rem + env(safe-area-inset-bottom));
+    }
+
+    .pos-kiosk .pos-entry--workspace .pos-cart__foot,
+    .pos-kiosk .pos-entry--pane-catalog .pos-pane-dock {
+        inset-block-end: calc(0.5rem + env(safe-area-inset-bottom));
+        inset-inline-start: 0.5rem;
     }
 }
 
 @media (max-width: 640px) {
     .pos-kiosk__bar {
-        min-block-size: 3.25rem;
-        padding-inline: 0.6rem;
+        min-block-size: 3.35rem;
+        padding: 0.45rem 0.65rem;
     }
 
-    .pos-kiosk__brand small {
+    .pos-kiosk__brand small,
+    .pos-kiosk__username {
         display: none;
     }
 
     .pos-kiosk__session {
-        gap: 0.35rem;
+        gap: 0.4rem;
     }
 
     .pos-kiosk__user {
@@ -138,28 +207,16 @@
         font-size: 0.75rem;
     }
 
-    .pos-kiosk__control,
+    .pos-kiosk__session:has(.pos-kiosk__install) .pos-kiosk__user {
+        display: none;
+    }
+
+    .pos-kiosk__install,
     .pos-kiosk__logout {
-        min-block-size: 2.8rem;
-        padding-inline: 0.55rem;
-        font-size: 0.72rem;
+        min-block-size: 2.75rem;
     }
 
     .pos-kiosk__main {
-        padding: 0.4rem;
-    }
-}
-
-@media print {
-    .pos-kiosk__bar {
-        display: none !important;
-    }
-
-    .pos-kiosk,
-    .pos-kiosk__main {
-        display: block !important;
-        block-size: auto !important;
-        overflow: visible !important;
-        padding: 0 !important;
+        padding: 0.5rem;
     }
 }

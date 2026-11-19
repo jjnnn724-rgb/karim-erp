@@ -48,9 +48,18 @@ export async function createLeaveRequest(input: LeaveCreateInput): Promise<Leave
     });
 }
 
-export async function decideLeaveRequest(workflowId: string | number, action: LeaveActionKind, note?: string): Promise<LeaveResult> {
-    return writeJson(leaveResultSchema, `/api/hr/leave-workflow/${encodeURIComponent(String(workflowId))}/action`, 'POST', {
-        action,
-        note: note?.trim() || null,
-    });
+export async function decideLeaveRequest(
+    workflowId: string | number,
+    action: LeaveActionKind,
+    note?: string,
+): Promise<LeaveResult> {
+    return writeJson(
+        leaveResultSchema,
+        `/api/hr/leave-workflow/${encodeURIComponent(String(workflowId))}/action`,
+        'POST',
+        {
+            action,
+            note: note?.trim() || null,
+        },
+    );
 }

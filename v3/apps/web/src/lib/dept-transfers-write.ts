@@ -114,7 +114,10 @@ const stockItemSchema = z
 export const deptStockSchema = z
     .object({
         location: z
-            .object({ id: z.union([z.string(), z.number()]).nullable().optional(), code: z.string().nullable().optional() })
+            .object({
+                id: z.union([z.string(), z.number()]).nullable().optional(),
+                code: z.string().nullable().optional(),
+            })
             .passthrough()
             .nullable()
             .optional(),
@@ -137,7 +140,12 @@ export async function fetchDeptStock(deptCode: string, scope = 'month', signal?:
     if (scope) {
         params.set('scope', scope);
     }
-    return fetchJson(deptStockSchema, `/api/warehouse/dept-transfers/stock?${params.toString()}`, getAccessToken(), signal ? { signal } : {});
+    return fetchJson(
+        deptStockSchema,
+        `/api/warehouse/dept-transfers/stock?${params.toString()}`,
+        getAccessToken(),
+        signal ? { signal } : {},
+    );
 }
 
 export type TransferItemInput = { inventory_id: string | number; qty: number };
@@ -171,13 +179,23 @@ export async function createExternalSaleTransfer(input: TransferCreateInput): Pr
 }
 
 export async function approveTransfer(id: string | number): Promise<TransferResult> {
-    return writeJson(transferResultSchema, `/api/warehouse/dept-transfers/${encodeURIComponent(String(id))}/approve`, 'POST', {});
+    return writeJson(
+        transferResultSchema,
+        `/api/warehouse/dept-transfers/${encodeURIComponent(String(id))}/approve`,
+        'POST',
+        {},
+    );
 }
 
 export async function rejectTransfer(id: string | number, reason: string): Promise<TransferResult> {
-    return writeJson(transferResultSchema, `/api/warehouse/dept-transfers/${encodeURIComponent(String(id))}/reject`, 'POST', {
-        reason: reason.trim(),
-    });
+    return writeJson(
+        transferResultSchema,
+        `/api/warehouse/dept-transfers/${encodeURIComponent(String(id))}/reject`,
+        'POST',
+        {
+            reason: reason.trim(),
+        },
+    );
 }
 
 export async function cancelTransfer(id: string | number): Promise<void> {
@@ -195,6 +213,8 @@ export const EXTERNAL_DESTINATIONS = [
 ] as const;
 
 export function isExternalDestination(code: string | null | undefined): boolean {
-    const want = String(code ?? '').trim().toLowerCase();
+    const want = String(code ?? '')
+        .trim()
+        .toLowerCase();
     return EXTERNAL_DESTINATIONS.some((d) => d.code.toLowerCase() === want);
 }

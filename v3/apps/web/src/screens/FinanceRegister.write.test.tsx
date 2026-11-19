@@ -3,10 +3,7 @@ import { fireEvent, render, screen, waitFor } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
 import { ConfirmProvider } from '../components/ConfirmProvider';
 import { ToastProvider } from '../ui/Toast';
-import { installDomPolyfills } from '../ui/test-utils';
 import { EXPENSES_CONFIG, FinanceRegister, REVENUES_CONFIG } from './FinanceRegister';
-
-installDomPolyfills();
 
 const mocks = vi.hoisted(() => ({
     role: 'accountant',
@@ -87,21 +84,6 @@ function submitEdit(): void {
     fireEvent.submit(form);
 }
 
-/**
- * إجراءات الصف صارت قائمة «⋮» واحدة: نفتحها بالضغط على مفتاح الصف، ثم نختار
- * العنصر من القائمة. هذا هو المسار الحقيقي للمستخدم، لا أزرارًا مكشوفة.
- */
-async function openRowMenu(recordName: string): Promise<void> {
-    const trigger = await screen.findByRole('button', { name: `إجراءات ${recordName}` });
-    fireEvent.pointerDown(trigger, { button: 0, ctrlKey: false });
-    fireEvent.pointerUp(trigger, { button: 0, ctrlKey: false });
-}
-
-async function chooseRowAction(recordName: string, action: string): Promise<void> {
-    await openRowMenu(recordName);
-    fireEvent.click(await screen.findByRole('menuitem', { name: action }));
-}
-
 function stubWriteFetch(): ReturnType<typeof vi.fn> {
     const fetchMock = vi.fn(
         async () =>
@@ -127,10 +109,8 @@ describe('سجل الإيرادات/المصروفات — تكافؤ الكتا
         renderScreen();
         expect(await screen.findByText('مبيعات')).toBeTruthy();
         expect(screen.getByText('إجراءات')).toBeTruthy();
-        expect(screen.getByRole('button', { name: 'إجراءات مبيعات' })).toBeTruthy();
-        await openRowMenu('مبيعات');
-        expect(await screen.findByRole('menuitem', { name: 'تعديل' })).toBeTruthy();
-        expect(screen.getByRole('menuitem', { name: 'حذف' })).toBeTruthy();
+        expect(screen.getByRole('button', { name: 'تعديل مبيعات' })).toBeTruthy();
+        expect(screen.getByRole('button', { name: 'حذف مبيعات' })).toBeTruthy();
     });
 
     it('يخفي الكتابة عن دور غير مخوّل (مشاهد)', async () => {
@@ -138,13 +118,13 @@ describe('سجل الإيرادات/المصروفات — تكافؤ الكتا
         renderScreen();
         expect(await screen.findByText('مبيعات')).toBeTruthy();
         expect(screen.queryByText('إجراءات')).toBeNull();
-        expect(screen.queryByRole('button', { name: 'إجراءات مبيعات' })).toBeNull();
+        expect(screen.queryByRole('button', { name: 'تعديل مبيعات' })).toBeNull();
     });
 
     it('التعديل يفتح النموذج بالقيم نفسها ويحفظ بنص V2', async () => {
         const fetchMock = stubWriteFetch();
         renderScreen();
-        await chooseRowAction('مبيعات', 'تعديل');
+        fireEvent.click(await screen.findByRole('button', { name: 'تعديل مبيعات' }));
         expect(await screen.findByText('تعديل إيراد')).toBeTruthy();
         const amount = document.querySelector('[name="amount"]') as HTMLInputElement;
         const source = document.querySelector('[name="source"]') as HTMLInputElement;
@@ -171,7 +151,7 @@ describe('سجل الإيرادات/المصروفات — تكافؤ الكتا
     it('المبلغ صفر يُرفض بنص V2 قبل الخادم', async () => {
         const fetchMock = stubWriteFetch();
         renderScreen();
-        await chooseRowAction('مبيعات', 'تعديل');
+        fireEvent.click(await screen.findByRole('button', { name: 'تعديل مبيعات' }));
         const amount = await screen.findByDisplayValue('100.00');
         fireEvent.input(amount, { target: { value: '0' } });
         submitEdit();
@@ -182,7 +162,7 @@ describe('سجل الإيرادات/المصروفات — تكافؤ الكتا
     it('الحذف يطلب تأكيد V2 ثم يحذف ويظهر التوست', async () => {
         const fetchMock = stubWriteFetch();
         renderScreen();
-        await chooseRowAction('مبيعات', 'حذف');
+        fireEvent.click(await screen.findByRole('button', { name: 'حذف مبيعات' }));
         expect(await screen.findByText('حذف إيراد «مبيعات»؟ لا رجعة بعد الحذف.')).toBeTruthy();
         fireEvent.click(screen.getByRole('button', { name: 'تأكيد' }));
         await waitFor(() => {
@@ -197,7 +177,7 @@ describe('سجل الإيرادات/المصروفات — تكافؤ الكتا
     it('إلغاء التأكيد لا يحذف', async () => {
         const fetchMock = stubWriteFetch();
         renderScreen();
-        await chooseRowAction('مبيعات', 'حذف');
+        fireEvent.click(await screen.findByRole('button', { name: 'حذف مبيعات' }));
         fireEvent.click(await screen.findByRole('button', { name: 'إلغاء' }));
         expect(fetchMock).not.toHaveBeenCalled();
     });
@@ -208,9 +188,10 @@ describe('سجل الإيرادات/المصروفات — تكافؤ الكتا
         renderScreen('expenses');
         expect(await screen.findByText('كهرباء')).toBeTruthy();
         expect(screen.getByText('صرف مخزني')).toBeTruthy();
-        expect(screen.getByRole('button', { name: 'إجراءات كهرباء' })).toBeTruthy();
-        expect(screen.queryByRole('button', { name: 'إجراءات صرف مخزني' })).toBeNull();
-        await chooseRowAction('كهرباء', 'تعديل');
+        expect(screen.getByRole('button', { name: 'تعديل كهرباء' })).toBeTruthy();
+        expect(screen.queryByRole('button', { name: 'تعديل صرف مخزني' })).toBeNull();
+        expect(screen.queryByRole('button', { name: 'حذف صرف مخزني' })).toBeNull();
+        fireEvent.click(screen.getByRole('button', { name: 'تعديل كهرباء' }));
         expect(await screen.findByText('تعديل مصروف')).toBeTruthy();
         submitEdit();
         await waitFor(() => {

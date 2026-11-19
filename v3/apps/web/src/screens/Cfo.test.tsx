@@ -1,6 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
+import { ConfirmProvider } from '../components/ConfirmProvider';
 import { ToastProvider } from '../ui/Toast';
 import { Cfo } from './Cfo';
 
@@ -16,7 +17,9 @@ function renderScreen() {
     return render(
         <QueryClientProvider client={client}>
             <ToastProvider>
-                <Cfo />
+                <ConfirmProvider>
+                    <Cfo />
+                </ConfirmProvider>
             </ToastProvider>
         </QueryClientProvider>,
     );
@@ -173,7 +176,15 @@ describe('لوحة المدير المالي', () => {
                         count: 1,
                         total: 500,
                         aging: [
-                            { supplier: 'مورد الخضار', total: 500, current: 100, d30: 200, d60: 100, d90: 50, over90: 50 },
+                            {
+                                supplier: 'مورد الخضار',
+                                total: 500,
+                                current: 100,
+                                d30: 200,
+                                d60: 100,
+                                d90: 50,
+                                over90: 50,
+                            },
                         ],
                     });
                 }

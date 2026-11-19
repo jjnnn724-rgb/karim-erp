@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ApiError, fetchJson } from './api';
 import { getAccessToken, getAppKey } from './auth';
-import { dayCloseSchema, type DayClose } from './cfo';
+import { type DayClose, dayCloseSchema } from './cfo';
 import type { PosSaleItem } from './pos-pricing';
 
 /**
@@ -119,9 +119,26 @@ export interface ActiveShift {
     deptCode: string;
     openingBalance: number;
     openedAt: string;
+    /** يوم فتح الوردية بتوقيت الرياض (`YYYY-MM-DD`)، أو '' إن كان التاريخ غير صالح. */
+    openedOn: string;
+    /** وردية يوم سابق: الخادم يرفض البيع عليها بـ409 SHIFT_STALE حتى تُغلق. */
+    isStale: boolean;
+}
+
+/** يوم تقويمي بتوقيت الرياض — نافذة البيع اليومية يحكمها الخادم بهذا التوقيت. */
+export function posDayKey(value: string | null | undefined): string {
+    if (!value) {
+        return '';
+    }
+    const parsed = new Date(value);
+    if (Number.isNaN(parsed.getTime())) {
+        return '';
+    }
+    return parsed.toLocaleDateString('en-CA', { timeZone: 'Asia/Riyadh' });
 }
 
 export function activeShiftOf(row: ActiveShiftRow): ActiveShift {
+    const openedOn = posDayKey(row.opened_at);
     return {
         sessionId: String(row.session_id ?? row.id),
         departmentId: String(row.department_id),
@@ -129,6 +146,8 @@ export function activeShiftOf(row: ActiveShiftRow): ActiveShift {
         deptCode: String(row.dept_code ?? ''),
         openingBalance: row.opening_balance,
         openedAt: String(row.opened_at ?? ''),
+        openedOn,
+        isStale: Boolean(openedOn) && openedOn !== riyadhToday(),
     };
 }
 
@@ -401,8 +420,16 @@ export interface CompleteSaleInput {
 
 const BUFFET_CODES = ['erp_open_buffet', 'open_buffet'];
 
-export function isBuffetDepartment(department: { code?: string | null; deptCode?: string | null; deptName?: string | null; name_ar?: string | null; name_en?: string | null }): boolean {
-    const code = String(department.code ?? department.deptCode ?? '').trim().toLowerCase();
+export function isBuffetDepartment(department: {
+    code?: string | null;
+    deptCode?: string | null;
+    deptName?: string | null;
+    name_ar?: string | null;
+    name_en?: string | null;
+}): boolean {
+    const code = String(department.code ?? department.deptCode ?? '')
+        .trim()
+        .toLowerCase();
     if (BUFFET_CODES.includes(code)) {
         return true;
     }
@@ -440,11 +467,7 @@ export const buffetLiveSchema = z
                 covers_total: numOrNull,
                 revenue: numOrNull,
                 invoices_count: numOrNull,
-                voided: z
-                    .object({ count: numOrNull, amount: numOrNull })
-                    .passthrough()
-                    .nullable()
-                    .optional(),
+                voided: z.object({ count: numOrNull, amount: numOrNull }).passthrough().nullable().optional(),
             })
             .passthrough(),
         shift: z
@@ -548,10 +571,7 @@ export const buffetInvoiceRowSchema = z
             .object({
                 covers_total: numOrNull,
                 tiers: z
-                    .record(
-                        z.string(),
-                        z.object({ name: text, covers: numOrNull, amount: numOrNull }).passthrough(),
-                    )
+                    .record(z.string(), z.object({ name: text, covers: numOrNull, amount: numOrNull }).passthrough())
                     .optional(),
             })
             .passthrough()
@@ -666,6 +686,8 @@ export async function openPosShift(departmentId: string, openingBalance: number)
         deptCode: '',
         openingBalance: row.opening_balance,
         openedAt: '',
+        openedOn: riyadhToday(),
+        isStale: false,
     };
 }
 
@@ -740,10 +762,15 @@ export async function deleteHeldOrder(orderId: string, sessionId: string): Promi
     if (!id || !Number.isInteger(shift) || shift <= 0) {
         throw new Error('الطلب أو الوردية غير صالح');
     }
-    await fetchJson(z.object({}).passthrough(), `/api/pos/held-orders/${encodeURIComponent(id)}?session_id=${String(shift)}`, token(), {
-        method: 'DELETE',
-        headers: deviceHeaders(),
-    });
+    await fetchJson(
+        z.object({}).passthrough(),
+        `/api/pos/held-orders/${encodeURIComponent(id)}?session_id=${String(shift)}`,
+        token(),
+        {
+            method: 'DELETE',
+            headers: deviceHeaders(),
+        },
+    );
 }
 
 export interface PosOrderFilters {
@@ -777,7 +804,9 @@ export async function fetchPosOrders(filters: PosOrderFilters, signal?: AbortSig
     if (filters.status) {
         query.set('status', filters.status);
     }
-    const term = String(filters.search ?? '').trim().slice(0, 100);
+    const term = String(filters.search ?? '')
+        .trim()
+        .slice(0, 100);
     if (term) {
         query.set('search', term);
     }
@@ -848,6 +877,49 @@ export async function openPosDrawer(sessionId: string): Promise<DrawerAck> {
     return { printerId: String(row.printer_id), at: String(row.at ?? '') };
 }
 
+/**
+ * معاينة الفاتورة من الخادم — نفس محرّك `/api/sales/complete` ونفس حرّاسه
+ * (السعر، الخصم، التوازن) لكن بلا أي كتابة. الشاشة تعرض التقدير المحلي فورًا
+ * ثم تُطابقه بهذا الرد فلا يرى الكاشير رقمًا ثم يُسجَّل رقم آخر.
+ */
+export const posQuoteSchema = z.object({
+    quote: z.literal(true),
+    subtotal: z.number(),
+    discount_total: z.number(),
+    tax_total: z.number(),
+    total_amount: z.number(),
+    line_items: z.array(
+        z.object({
+            product_id: numberish,
+            quantity: z.number(),
+            unit_price: z.number(),
+            discount: z.number(),
+            vat_rate: z.number(),
+            line_total: z.number(),
+            vat_amount: z.number(),
+            line_total_incl: z.number(),
+        }),
+    ),
+});
+
+export type PosQuote = z.infer<typeof posQuoteSchema>;
+
+export async function fetchPosQuote(
+    departmentId: string | number,
+    items: PosSaleItem[],
+    signal?: AbortSignal,
+): Promise<PosQuote> {
+    const dept = Number(departmentId);
+    return fetchJson(posQuoteSchema, '/api/sales/quote', token(), {
+        method: 'POST',
+        body: {
+            ...(Number.isInteger(dept) && dept > 0 ? { department_id: dept } : {}),
+            items,
+        },
+        ...(signal ? { signal } : {}),
+    });
+}
+
 export async function completePosSale(input: CompleteSaleInput): Promise<PosSaleResult> {
     const dept = Number(input.departmentId);
     const shift = Number(input.sessionId);
@@ -883,7 +955,10 @@ export interface PosOrderExportFilters {
     search?: string;
 }
 
-export async function fetchPosOrdersExport(filters: PosOrderExportFilters, signal?: AbortSignal): Promise<{ data: PosOrderRow[] }> {
+export async function fetchPosOrdersExport(
+    filters: PosOrderExportFilters,
+    signal?: AbortSignal,
+): Promise<{ data: PosOrderRow[] }> {
     const query = new URLSearchParams();
     if (filters.dateFrom) {
         query.set('date_from', filters.dateFrom);
@@ -894,7 +969,9 @@ export async function fetchPosOrdersExport(filters: PosOrderExportFilters, signa
     if (filters.status) {
         query.set('status', filters.status);
     }
-    const term = String(filters.search ?? '').trim().slice(0, 100);
+    const term = String(filters.search ?? '')
+        .trim()
+        .slice(0, 100);
     if (term) {
         query.set('search', term);
     }
@@ -955,6 +1032,16 @@ export async function execDayClose(date: string): Promise<DayCloseResult> {
     });
 }
 
+export async function removePosProductImage(productId: string): Promise<{ id: string; image_url: null }> {
+    const id = Number(productId);
+    if (!Number.isInteger(id) || id <= 0) {
+        throw new Error('معرّف الصنف غير صالح');
+    }
+    return fetchJson(z.object({ id: idText, image_url: z.null() }), `/api/pos/products/${String(id)}/image`, token(), {
+        method: 'DELETE',
+    });
+}
+
 export async function uploadPosProductImage(productId: string, file: File): Promise<{ id: string; image_url: string }> {
     const id = Number(productId);
     if (!Number.isInteger(id) || id <= 0) {
@@ -997,7 +1084,10 @@ export async function uploadPosProductImage(productId: string, file: File): Prom
         }
         throw new Error(message);
     }
-    const parsed = z.object({ id: idText, image_url: z.string() }).passthrough().safeParse(await response.json());
+    const parsed = z
+        .object({ id: idText, image_url: z.string() })
+        .passthrough()
+        .safeParse(await response.json());
     if (!parsed.success) {
         throw new Error('لم يرجع الخادم رابط الصورة بعد الحفظ');
     }
@@ -1058,7 +1148,11 @@ export async function disableBuffetTier(tierId: string): Promise<BuffetConfig> {
     });
 }
 
-export async function fetchBuffetLive(date: string, sessionId: string | null, signal?: AbortSignal): Promise<BuffetLive> {
+export async function fetchBuffetLive(
+    date: string,
+    sessionId: string | null,
+    signal?: AbortSignal,
+): Promise<BuffetLive> {
     const query = new URLSearchParams();
     if (date) {
         query.set('date', date);
@@ -1076,10 +1170,156 @@ export async function fetchBuffetInvoices(date: string, limit = 200, signal?: Ab
 }
 
 export async function fetchBuffetReport(date: string, signal?: AbortSignal): Promise<BuffetReport> {
-    return fetchJson(buffetReportSchema, `/api/pos/buffet/report?date=${encodeURIComponent(date)}`, token(), opts(signal));
+    return fetchJson(
+        buffetReportSchema,
+        `/api/pos/buffet/report?date=${encodeURIComponent(date)}`,
+        token(),
+        opts(signal),
+    );
 }
 
 /** أرقام الشاشة: لاتينية دائمًا، بلا وحدة عملة إن لم يرسلها الخادم. */
 export function riyadhToday(): string {
     return new Date().toLocaleDateString('en-CA', { timeZone: 'Asia/Riyadh' });
 }
+
+export const posPrinterSchema = z
+    .object({
+        id: idText,
+        name: text,
+        kind: text,
+        department_id: idText.nullable().optional(),
+        connection_type: z.string(),
+        address: text,
+        paper_width_mm: numOrNull,
+        charset: text,
+        is_online: flag,
+        last_seen_at: text,
+    })
+    .passthrough();
+
+export type PosPrinter = z.infer<typeof posPrinterSchema>;
+
+const printerListSchema = z.object({ printers: z.array(posPrinterSchema) }).passthrough();
+
+const localQueueSchema = z
+    .object({
+        name: z.string(),
+        driver: text,
+        port: text,
+        shared: flag,
+        share_name: text,
+        status: text,
+        is_default: flag,
+        thermal: flag,
+    })
+    .passthrough();
+
+export type PosLocalPrintQueue = z.infer<typeof localQueueSchema>;
+
+const networkCandidateSchema = z
+    .object({
+        ip: idText.optional(),
+        port: numOrNull,
+        latency_ms: numOrNull,
+        address: text,
+        connection_type: text,
+    })
+    .passthrough();
+
+export type PosNetworkPrinter = z.infer<typeof networkCandidateSchema>;
+
+const printerDiscoverySchema = z
+    .object({
+        platform: text,
+        local_queue_supported: flag,
+        local_error: text,
+        local: z.array(localQueueSchema).optional().default([]),
+        network: z.array(networkCandidateSchema).optional().default([]),
+        subnet: text,
+        registered: z.array(posPrinterSchema).optional().default([]),
+        scanned_at: text,
+    })
+    .passthrough();
+
+export type PosPrinterDiscovery = z.infer<typeof printerDiscoverySchema>;
+
+const printerProbeSchema = z
+    .object({
+        printer_id: text,
+        reachable: z.boolean(),
+        latency_ms: numOrNull,
+        error: text,
+        host: text,
+        port: numOrNull,
+        connection_type: text,
+    })
+    .passthrough();
+
+export type PosPrinterProbe = z.infer<typeof printerProbeSchema>;
+
+const printerAutoSchema = z
+    .object({
+        printer: posPrinterSchema,
+        probe: printerProbeSchema.partial().passthrough().optional(),
+        source: text,
+        note: text,
+    })
+    .passthrough();
+
+export type PosPrinterAutoResult = z.infer<typeof printerAutoSchema>;
+
+/** الطابعات المسجلة — كل الأدوار الداخلية تقرأ، والتعديل للمدير/المسؤول. */
+export async function fetchPosPrinters(signal?: AbortSignal): Promise<PosPrinter[]> {
+    const row = await fetchJson(printerListSchema, '/api/pos/printers', token(), opts(signal));
+    return row.printers;
+}
+
+/** الاكتشاف التلقائي: طوابير ويندوز المثبتة + طابعات الشبكة على 9100. */
+export async function discoverPosPrinters(scan = true, signal?: AbortSignal): Promise<PosPrinterDiscovery> {
+    return fetchJson(
+        printerDiscoverySchema,
+        `/api/pos/printers/discover${scan ? '' : '?scan=0'}`,
+        token(),
+        opts(signal),
+    );
+}
+
+export async function probePosPrinter(printerId: string): Promise<PosPrinterProbe> {
+    const id = String(printerId).trim();
+    if (!/^[a-z0-9][a-z0-9-]{0,39}$/.test(id)) {
+        throw new Error('معرّف الطابعة غير صالح');
+    }
+    return fetchJson(printerProbeSchema, '/api/pos/printers/probe', token(), {
+        method: 'POST',
+        body: { id },
+    });
+}
+
+export interface AutoLinkPrinterInput {
+    departmentId?: string | null;
+    kind?: 'receipt' | 'kot';
+    address?: string;
+    connectionType?: 'network' | 'windows_share' | 'windows_local';
+    name?: string;
+}
+
+/** ربط الطابعة بضغطة واحدة — بلا عنوان يختار الخادم أفضل طابعة متاحة. */
+export async function autoLinkPosPrinter(input: AutoLinkPrinterInput = {}): Promise<PosPrinterAutoResult> {
+    const dept = input.departmentId ? Number(input.departmentId) : null;
+    if (dept !== null && (!Number.isInteger(dept) || dept <= 0)) {
+        throw new Error('رقم القسم غير صالح');
+    }
+    return fetchJson(printerAutoSchema, '/api/pos/printers/auto', token(), {
+        method: 'POST',
+        body: {
+            kind: input.kind ?? 'receipt',
+            ...(dept !== null ? { department_id: dept } : {}),
+            ...(input.address ? { address: input.address } : {}),
+            ...(input.connectionType ? { connection_type: input.connectionType } : {}),
+            ...(input.name ? { name: input.name } : {}),
+        },
+    });
+}
+
+/* ─── البوفيه: قراءة وكتابة ────────────────────────────────────────────── */

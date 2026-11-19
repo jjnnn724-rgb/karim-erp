@@ -1,5 +1,10 @@
-import { TooltipContent as ShadcnContent, Tooltip as ShadcnRoot, TooltipProvider as ShadcnProvider, TooltipTrigger as ShadcnTrigger } from '@/components/ui/tooltip';
 import type { ReactElement, ReactNode } from 'react';
+import {
+    TooltipContent as ShadcnContent,
+    TooltipProvider as ShadcnProvider,
+    Tooltip as ShadcnRoot,
+    TooltipTrigger as ShadcnTrigger,
+} from '@/components/ui/tooltip';
 import { cn } from './cn';
 
 /**

@@ -1,6 +1,5 @@
 import { useEffect, useState } from 'react';
-import { PRINT_COMPANY_EN, printDate, printRunnerTitle, printStamp, usePrintBrand } from '../lib/print';
-import { useAuthState } from '../lib/auth';
+import { PRINT_COMPANY_EN, printRunnerTitle, printStamp, usePrintBrand } from '../lib/print';
 
 /**
  * ترويسة الطباعة الموحّدة — شعار + اسم الشركة + سطره الإنجليزي.
@@ -11,19 +10,14 @@ import { useAuthState } from '../lib/auth';
  * (أول عنصر داخل ورقة المستند). لا تُكرَّر في الشاشات: شاشة تحمل شعارها الخاص
  * ستُظهر شعارين لو أضفناها هنا مرة أخرى.
  */
-export function PrintBrand({ title }: { title?: string | null }) {
-    const { name, logoSrc, branchName } = usePrintBrand();
+export function PrintBrand() {
+    const { name, logoSrc } = usePrintBrand();
     return (
         <header className="erp-print-brand" data-erp-print-brand>
             <img className="erp-print-brand__logo" src={logoSrc} alt="" width={60} height={60} />
             <div className="erp-print-brand__text">
                 <strong className="erp-print-brand__name">{name}</strong>
                 <span className="erp-print-brand__en">{PRINT_COMPANY_EN}</span>
-                <span className="erp-print-brand__meta">
-                    <span>التقرير: {printRunnerTitle(title) || '—'}</span>
-                    <span>التاريخ: {printDate()}</span>
-                    <span>الفرع: {branchName}</span>
-                </span>
             </div>
         </header>
     );
@@ -50,13 +44,11 @@ function usePrintStamp(): string {
  */
 export function PrintRunner({ title }: { title?: string | null }) {
     const { name } = usePrintBrand();
-    const auth = useAuthState();
     const stamp = usePrintStamp();
     return (
         <div className="erp-print-runner" data-erp-print-runner>
             <span>{name}</span>
             <span>{printRunnerTitle(title)}</span>
-            <span>المستخدم: {auth.user?.name || '—'}</span>
             <span>{stamp}</span>
         </div>
     );

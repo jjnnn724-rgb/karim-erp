@@ -31,16 +31,18 @@ describe('Dialog', () => {
         expect(onOpenChange).toHaveBeenCalledWith(false);
     });
 
+    it('النقر خارج النافذة لا يغلقها ويحمي النموذج غير المحفوظ', () => {
+        const onOpenChange = vi.fn();
+        render(<Dialog open onOpenChange={onOpenChange} title="حوار" />);
+
+        fireEvent.pointerDown(document.body);
+
+        expect(onOpenChange).not.toHaveBeenCalled();
+    });
+
     it('trigger يفتح النافذة عبر onOpenChange', () => {
         const onOpenChange = vi.fn();
-        render(
-            <Dialog
-                open={false}
-                onOpenChange={onOpenChange}
-                title="حوار"
-                trigger={<Button>فتح</Button>}
-            />,
-        );
+        render(<Dialog open={false} onOpenChange={onOpenChange} title="حوار" trigger={<Button>فتح</Button>} />);
 
         fireEvent.click(screen.getByRole('button', { name: 'فتح' }));
         expect(onOpenChange).toHaveBeenCalledWith(true);

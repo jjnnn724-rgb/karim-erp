@@ -1,19 +1,18 @@
+import type { ReactNode } from 'react';
 import {
-    Dialog as ShadcnRoot,
     DialogContent as ShadcnContent,
     DialogDescription as ShadcnDescription,
+    Dialog as ShadcnRoot,
     DialogTitle as ShadcnTitle,
     DialogTrigger as ShadcnTrigger,
 } from '@/components/ui/dialog';
-import type { ReactNode } from 'react';
 import { cn } from './cn';
 import { XIcon } from './icons';
 
 /**
  * نافذة حوار — فوق **shadcn/ui** (`@/components/ui/dialog`): حبس التركيز، Esc،
- * إعادة التركيز، `role="dialog"` + `aria-labelledby` من Title. لا تُغلق بالنقر
- * خارجها هنا (افتراضي Radix) حتى لا تفقد نموذجًا غير محفوظ؛ `onOpenChange`
- * يبقى بيد المستدعي.
+ * إعادة التركيز، `role="dialog"` + `aria-labelledby` من Title. يمنع الإغلاق
+ * بالنقر خارجها لحماية النماذج غير المحفوظة؛ يظل Escape وزر الإغلاق متاحين.
  *
  * البنية: `flex` عمودي مقيّد بـ`max-block-size` — الرأس والذيل ثابتان والجسم
  * وحده يمرّر، فيبقى زر الاعتماد/الإضافة في متناول اليد مهما طال المحتوى.
@@ -53,8 +52,9 @@ export function Dialog({
             {trigger ? <ShadcnTrigger asChild>{trigger}</ShadcnTrigger> : null}
             <ShadcnContent
                 showCloseButton={false}
+                onInteractOutside={(event) => event.preventDefault()}
                 className={cn(
-                    'erp-dialog z-[var(--erp-z-modal)] rounded-xl border border-hairline bg-surface-raised text-ink shadow-[0_24px_64px_rgb(0_0_0/0.30)]',
+                    'erp-dialog z-[var(--erp-z-modal)] rounded-xl border border-hairline bg-surface-raised text-ink shadow-drawer',
                     `erp-dialog--${size}`,
                     className,
                 )}

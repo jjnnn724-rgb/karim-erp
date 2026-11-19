@@ -25,6 +25,11 @@ import { defineConfig, type Plugin } from 'vitest/config';
 
 const VERSION_FILE = fileURLToPath(new URL('../../../scripts/frontend-version.json', import.meta.url));
 
+// `__dirname` غير معرّف في وحدات ESM، وتحديدًا مع `--configLoader runner`
+// (تقييم الوحدة بلا غلاف CommonJS) — نشتقّه من عنوان الوحدة نفسه فيعمل
+// وضعَا التحميل: bundle وrunner.
+const __dirnameCompat = path.dirname(fileURLToPath(import.meta.url));
+
 function readAssetVersion(): string {
     try {
         const parsed: unknown = JSON.parse(readFileSync(VERSION_FILE, 'utf8'));
@@ -49,13 +54,36 @@ export default defineConfig({
     plugins: [assetVersionPlugin(readAssetVersion()), react(), tailwindcss()],
     resolve: {
         alias: {
-            '@': path.resolve(__dirname, './src'),
+            '@': path.resolve(__dirnameCompat, './src'),
         },
     },
     build: {
         outDir: 'dist',
         sourcemap: false,
         target: 'es2022',
+        rollupOptions: {
+            output: {
+                /*
+                 * تقسيم مورّدات المتصفح إلى حزم مستقلة (سلوك الشركات الكبرى):
+                 * كود المورّدات (React/HeroUI/Radix/TanStack) يتغيّر نادرًا، ف；当
+                 * تُبنى نسخة جديدة من التطبيق لا يعيد المتصفح تنزيله — الترقيم
+                 * (hashing) يُبقي رابط الحزمة ثابتًا بين الإصدارات. كما يخرج
+                 * ثقل المورّدات من حزمة الدخول فيصير أول رسم أسرع، والتنزيل
+                 * متوازٍ بدل ملفٍ واحد كبير.
+                 *
+                 * حزمة الرسوم (recharts) تُركت تلقائيًا_chunk مستقل لأن شاشاتها
+                 * محمّلة بـ lazy أصلًا — لا تُجبرها هنا على الدخول.
+                 */
+                /*
+                 * لا تقسيم يدوي للموردين: كل محاولةٍ لفرض حزم vendor منفصلة
+                 * أنشأت دورةً بين الحزم كسرت إقلاع الإنتاج بالكامل
+                 * (`Cannot access 'st' before initialization`) — فالصفحة تبقى
+                 * فارغة ولا تظهر بوابة الدخول. Rollup يوزّع الموردين تلقائيًا
+                 * حول وحدات الدخول، والتقسيم الحقيقي قائمٌ على الشاشات الكسولة
+                 * (كل شاشة وحدةٌ تُحمَّل عند الطلب) فلا تتضخم حزمة البداية.
+                 */
+            },
+        },
     },
     server: {
         // التطوير: الواجهة على Vite، والـAPI من السيرفر القديم.

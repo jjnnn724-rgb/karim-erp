@@ -17,12 +17,14 @@ import { getAppKey } from './auth';
 export class ApiError extends Error {
     readonly status: number;
     readonly code: string;
+    readonly payload: unknown;
 
-    constructor(status: number, code: string, message: string) {
+    constructor(status: number, code: string, message: string, payload: unknown = null) {
         super(message);
         this.name = 'ApiError';
         this.status = status;
         this.code = code;
+        this.payload = payload;
     }
 
     /** 401/403 = المستخدم يحتاج صلاحية أو جلسة؛ غيرهما خطأ خادم. */
@@ -59,17 +61,29 @@ function buildHeaders(token: string | null, withBody: boolean, extra?: Record<st
 async function parseError(response: Response): Promise<ApiError> {
     let code = `HTTP_${response.status}`;
     let message = `تعذّر الاتصال بالخادم (${response.status})`;
+    let payload: unknown = null;
     try {
-        const body: unknown = await response.json();
-        const parsed = v3ErrorSchema.safeParse(body);
+        payload = await response.json();
+        const parsed = v3ErrorSchema.safeParse(payload);
         if (parsed.success) {
             code = parsed.data.error;
             message = parsed.data.message;
+        } else if (typeof payload === 'object' && payload !== null && 'error' in payload) {
+            const nested = (payload as { error?: unknown }).error;
+            if (typeof nested === 'object' && nested !== null) {
+                const nestedError = nested as { code?: unknown; message?: unknown };
+                if (typeof nestedError.code === 'string') {
+                    code = nestedError.code;
+                }
+                if (typeof nestedError.message === 'string') {
+                    message = nestedError.message;
+                }
+            }
         }
     } catch {
         // جسم غير JSON — تبقى الرسالة الافتراضية.
     }
-    return new ApiError(response.status, code, message);
+    return new ApiError(response.status, code, message, payload);
 }
 
 /**

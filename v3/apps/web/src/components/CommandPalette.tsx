@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useRef, useState, type KeyboardEvent } from 'react';
+import { type KeyboardEvent, useEffect, useMemo, useRef, useState } from 'react';
 import { logout } from '../lib/auth';
 import { LEGACY_APP_URL } from '../lib/screens';
 
@@ -207,10 +207,6 @@ export function CommandPalette({
         };
     }, [open]);
 
-    useEffect(() => {
-        setActive(0);
-    }, [query]);
-
     const options = useMemo<PaletteOption[]>(() => {
         const trimmed = query.trim();
         // بلا بحث: آخر العناصر (المستخدمة فعلًا) في الأعلى، ثم بقية القائمة، ثم الإجراءات.
@@ -317,26 +313,31 @@ export function CommandPalette({
     return (
         <div
             className="fixed inset-0 z-[60] flex items-start justify-center bg-sidebar/50 p-md pt-[12vh]"
-            role="presentation"
-            onMouseDown={onClose}
+            data-erp-modal-overlay
         >
+            <button
+                type="button"
+                aria-label="إغلاق البحث"
+                tabIndex={-1}
+                className="absolute inset-0 h-full w-full cursor-default border-0 bg-transparent p-0"
+                onClick={onClose}
+            />
             <div
                 role="dialog"
                 aria-modal="true"
                 aria-label="البحث الشامل في شاشات النظام"
-                className="w-full max-w-xl overflow-hidden rounded-lg border border-hairline bg-surface shadow-drawer"
+                className="relative z-10 w-full max-w-xl overflow-hidden rounded-lg border border-hairline bg-surface shadow-drawer"
+                data-erp-modal-panel
                 onKeyDown={onDialogKeyDown}
-                onMouseDown={(event) => {
-                    event.stopPropagation();
-                }}
             >
-                <div className="flex items-center gap-xs border-b border-hairline pe-xs">
+                <div className="flex items-center gap-xs border-b border-hairline pe-xs" data-erp-modal-head>
                     <input
                         ref={inputRef}
                         type="search"
                         value={query}
                         onChange={(event) => {
                             setQuery(event.target.value);
+                            setActive(0);
                         }}
                         onKeyDown={(event) => {
                             if (event.key === 'ArrowDown') {
@@ -379,20 +380,21 @@ export function CommandPalette({
                         إغلاق
                     </button>
                 </div>
-                <ul
+                <div
                     id="erp-command-results"
                     role="listbox"
                     aria-label="نتائج البحث"
                     className="max-h-80 overflow-auto p-xs"
                 >
                     {options.length === 0 ? (
-                        <li className="px-sm py-xs text-body-sm text-muted">لا شاشة أو إجراء يطابق هذا البحث.</li>
+                        <div className="px-sm py-xs text-body-sm text-muted">لا شاشة أو إجراء يطابق هذا البحث.</div>
                     ) : (
                         options.map((option, index) => (
-                            <li
+                            <div
                                 key={option.id}
                                 id={`erp-command-${String(index)}`}
                                 role="option"
+                                tabIndex={-1}
                                 aria-selected={index === active}
                                 className={`flex cursor-pointer items-center justify-between gap-sm rounded-md px-sm py-xs text-body-md ${
                                     index === active ? 'bg-surface-hover text-ink' : 'text-ink-secondary'
@@ -419,10 +421,10 @@ export function CommandPalette({
                                 <span className="text-caption text-faint" dir="ltr">
                                     {option.hint}
                                 </span>
-                            </li>
+                            </div>
                         ))
                     )}
-                </ul>
+                </div>
                 <p className="border-t border-hairline px-sm py-xxs text-caption text-faint">
                     ↑ ↓ للتنقّل · Enter للفتح · Esc للإغلاق
                 </p>

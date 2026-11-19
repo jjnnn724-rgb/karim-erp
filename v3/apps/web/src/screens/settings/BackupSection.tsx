@@ -1,16 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
 import { useRef, useState } from 'react';
 import { TableScroll } from '../../components/TableState';
-import { type BackupFile, type RestoreResult, formatBytes } from '../../lib/settings';
-import {
-    backupVisible,
-    createBackup,
-    fetchBackups,
-    restoreBackup,
-    uploadBackup,
-} from '../../lib/settings-write';
-import { useWriteMutation, writeErrorMessage } from '../../lib/write';
 import { useAuthState } from '../../lib/auth';
+import { type BackupFile, formatBytes, type RestoreResult } from '../../lib/settings';
+import { backupVisible, createBackup, fetchBackups, restoreBackup, uploadBackup } from '../../lib/settings-write';
+import { useWriteMutation, writeErrorMessage } from '../../lib/write';
 import { Badge } from '../../ui/Badge';
 import { Button } from '../../ui/Button';
 import { Checkbox } from '../../ui/Checkbox';
@@ -18,7 +12,7 @@ import { Dialog } from '../../ui/Dialog';
 import { Input } from '../../ui/Input';
 import { Switch } from '../../ui/Switch';
 import { useToast } from '../../ui/Toast';
-import { QueryBoundary, SectionCard, formatStamp } from './shared';
+import { formatStamp, QueryBoundary, SectionCard } from './shared';
 
 /**
  * النسخ الاحتياطية — نظير لوحة V2 كاملة: قائمة الملفات مع فحص SHA، إنشاء نسخة،
@@ -212,7 +206,11 @@ export function BackupSection() {
                                 <tbody>
                                     {files.map((file) => (
                                         <tr key={file.file}>
-                                            <td className="max-w-72 truncate font-mono text-body-sm" dir="ltr" title={file.file}>
+                                            <td
+                                                className="max-w-72 truncate font-mono text-body-sm"
+                                                dir="ltr"
+                                                title={file.file}
+                                            >
                                                 {file.file}
                                             </td>
                                             <td dir="ltr">{formatBytes(file.bytes)}</td>

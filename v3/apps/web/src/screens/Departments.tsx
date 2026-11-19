@@ -1,8 +1,9 @@
 import './Departments.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { PrintActions } from '../components/PrintActions';
+import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
+import { useAuthState } from '../lib/auth';
 import {
     buildDepartmentRows,
     compareDepartmentRows,
@@ -10,20 +11,19 @@ import {
     isMirrorDepartment,
     monthTotals,
 } from '../lib/departments';
-import { fetchCurrency, fetchDepartments, fetchRegister } from '../lib/finance';
-import { formatMoney } from '../lib/format';
-import { useAuthState } from '../lib/auth';
 import {
     createDepartment,
-    deleteDepartment,
-    updateDepartment,
-    departmentDeleteConfirm,
     DEPARTMENT_TEXT,
     type DepartmentCreateInput,
     type DepartmentUpdateInput,
-    departmentWriteVisible,
+    deleteDepartment,
+    departmentDeleteConfirm,
     departmentDeleteVisible,
+    departmentWriteVisible,
+    updateDepartment,
 } from '../lib/departments-write';
+import { fetchCurrency, fetchDepartments, fetchRegister } from '../lib/finance';
+import { formatMoney } from '../lib/format';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
@@ -129,7 +129,9 @@ function DepartmentFormDialog({ open, onClose, pending, editing, onSave }: Depar
             await onSave(input, Boolean(editing));
             onClose();
         } catch (cause) {
-            setFormError(writeErrorMessage(cause, editing ? DEPARTMENT_TEXT.updateFailed : DEPARTMENT_TEXT.createFailed));
+            setFormError(
+                writeErrorMessage(cause, editing ? DEPARTMENT_TEXT.updateFailed : DEPARTMENT_TEXT.createFailed),
+            );
         }
     }
 
@@ -333,7 +335,11 @@ export function Departments() {
     const createDepartmentMutation = useWriteMutation<DepartmentCreateInput, { id: string | number }>({
         mutationFn: (input) => createDepartment(input).then((r) => ({ id: r.id })),
         successTitle: () => DEPARTMENT_TEXT.createSuccess,
-        invalidate: [['departments', 'all'], ['finance', 'revenues', 'month'], ['finance', 'expenses', 'month']],
+        invalidate: [
+            ['departments', 'all'],
+            ['finance', 'revenues', 'month'],
+            ['finance', 'expenses', 'month'],
+        ],
         silentError: true,
         onSuccess: () => {
             setFormOpen(false);
@@ -341,10 +347,17 @@ export function Departments() {
         },
     });
 
-    const updateDepartmentMutation = useWriteMutation<{ id: string | number; input: DepartmentUpdateInput }, { id: string | number }>({
+    const updateDepartmentMutation = useWriteMutation<
+        { id: string | number; input: DepartmentUpdateInput },
+        { id: string | number }
+    >({
         mutationFn: ({ id, input }) => updateDepartment(id, input).then((r) => ({ id: r.id })),
         successTitle: () => DEPARTMENT_TEXT.updateSuccess,
-        invalidate: [['departments', 'all'], ['finance', 'revenues', 'month'], ['finance', 'expenses', 'month']],
+        invalidate: [
+            ['departments', 'all'],
+            ['finance', 'revenues', 'month'],
+            ['finance', 'expenses', 'month'],
+        ],
         silentError: true,
         onSuccess: () => {
             setFormOpen(false);
@@ -355,7 +368,11 @@ export function Departments() {
     const deleteDepartmentMutation = useWriteMutation<string | number, void>({
         mutationFn: (id) => deleteDepartment(id),
         successTitle: () => DEPARTMENT_TEXT.deleteSuccess,
-        invalidate: [['departments', 'all'], ['finance', 'revenues', 'month'], ['finance', 'expenses', 'month']],
+        invalidate: [
+            ['departments', 'all'],
+            ['finance', 'revenues', 'month'],
+            ['finance', 'expenses', 'month'],
+        ],
         silentError: true,
         onSuccess: () => {
             setActionOpen(false);
@@ -390,8 +407,8 @@ export function Departments() {
                         </span>
                     </h1>
                     <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        سجل الأقسام وإيراد ومصروف {monthLabel()} — إضافة وتعديل وحذف.
-                        القراءة من `/api/departments`، والكتابة لـ admin|manager والحذف للأدمن فقط.
+                        سجل الأقسام وإيراد ومصروف {monthLabel()} — إضافة وتعديل وحذف. القراءة من `/api/departments`،
+                        والكتابة لـ admin|manager والحذف للأدمن فقط.
                     </p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>
@@ -561,7 +578,11 @@ export function Departments() {
                                             نسبة التكلفة
                                         </th>
                                         {(canWrite || canDelete) && (
-                                            <th scope="col" className="px-sm py-xs text-start font-medium" data-erp-print-hide>
+                                            <th
+                                                scope="col"
+                                                className="px-sm py-xs text-start font-medium"
+                                                data-erp-print-hide
+                                            >
                                                 إجراءات
                                             </th>
                                         )}
@@ -623,7 +644,9 @@ export function Departments() {
                                                                 size="sm"
                                                                 variant="danger"
                                                                 title="حذف القسم"
-                                                                onClick={() => handleDelete({ code: row.code, name: row.name })}
+                                                                onClick={() =>
+                                                                    handleDelete({ code: row.code, name: row.name })
+                                                                }
                                                             >
                                                                 حذف
                                                             </Button>
@@ -676,7 +699,10 @@ export function Departments() {
                 editing={editing}
                 onSave={async (input, isEditing) => {
                     if (isEditing && editing) {
-                        await updateDepartmentMutation.mutateAsync({ id: editing.code, input: input as DepartmentUpdateInput });
+                        await updateDepartmentMutation.mutateAsync({
+                            id: editing.code,
+                            input: input as DepartmentUpdateInput,
+                        });
                     } else {
                         await createDepartmentMutation.mutateAsync(input as DepartmentCreateInput);
                     }

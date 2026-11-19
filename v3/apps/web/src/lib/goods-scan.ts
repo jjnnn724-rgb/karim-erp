@@ -398,7 +398,10 @@ export async function receiveInventoryItem(itemId: string | number, payload: Ret
         unknownResponse,
         `/api/warehouse/inventory/${encodeURIComponent(String(itemId))}/receipt`,
         getAccessToken(),
-        { method: 'POST', body: payload },
+        {
+            method: 'POST',
+            body: payload,
+        },
     );
 }
 

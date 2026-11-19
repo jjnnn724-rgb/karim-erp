@@ -11,7 +11,8 @@
         "e2e": "playwright test -c e2e/playwright.config.ts",
         "e2e:public": "playwright test -c e2e/playwright.config.ts --project=public-desktop --project=public-mobile",
         "e2e:live": "playwright test -c e2e/playwright.config.ts --project=live-desktop --project=live-mobile",
-        "e2e:budget": "node e2e/scripts/bundle-budget.mjs"
+        "e2e:budget": "node e2e/scripts/bundle-budget.mjs",
+        "perf:lighthouse": "node e2e/scripts/lighthouse.mjs"
     },
     "dependencies": {
         "@heroui/react": "3.2.7",
@@ -35,6 +36,7 @@
         "@radix-ui/react-tooltip": "^1.4.1",
         "@tanstack/react-query": "^5.106.1",
         "@tanstack/react-router": "^1.170.46",
+        "@tanstack/react-table": "^8.21.3",
         "@tanstack/react-virtual": "^3.14.26",
         "class-variance-authority": "^0.7.1",
         "clsx": "^2.1.1",
@@ -55,7 +57,7 @@
     "devDependencies": {
         "@axe-core/playwright": "^4.14.0",
         "@karim/testing": "workspace:*",
-        "@playwright/test": "1.64.0",
+        "@playwright/test": "1.65.0",
         "@tailwindcss/vite": "^4.1.0",
         "@testing-library/jest-dom": "^6.6.0",
         "@testing-library/react": "^16.2.0",

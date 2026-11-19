@@ -1,0 +1,21 @@
+{
+    "_generated": "2026-11-19T01:28:46.850Z",
+    "files": {
+        "components/auth-premium.css": 1,
+        "mobile.css": 2,
+        "print.css": 32,
+        "screens/AccountantDashboard.premium.css": 1,
+        "screens/Briefing.premium.css": 1,
+        "screens/CashierMonitor.premium.css": 1,
+        "screens/CashierSales.premium.css": 1,
+        "screens/Departments.premium.css": 3,
+        "screens/Dispatches.premium.css": 3,
+        "screens/Employees.premium.css": 12,
+        "screens/Executive.premium.css": 1,
+        "screens/Mudad.premium.css": 36,
+        "screens/Payments.premium.css": 3,
+        "screens/PosEntry.premium.css": 1,
+        "screens/Procurement.premium.css": 3,
+        "screens/PurchaseInvoices.premium.css": 3
+    }
+}

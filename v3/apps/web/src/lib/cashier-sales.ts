@@ -111,11 +111,7 @@ export const cashierSalesSummarySchema = z
 
 export type CashierSalesSummary = z.infer<typeof cashierSalesSummarySchema>;
 
-export async function fetchCashierSales(
-    from: string,
-    to: string,
-    signal?: AbortSignal,
-): Promise<CashierSalesSummary> {
+export async function fetchCashierSales(from: string, to: string, signal?: AbortSignal): Promise<CashierSalesSummary> {
     const params = new URLSearchParams({ from, to });
     return fetchJson(
         cashierSalesSummarySchema,

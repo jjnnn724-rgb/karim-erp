@@ -60,34 +60,50 @@ export function validateBranchForm(form: Partial<BranchForm>, editing = false): 
     }
     if (!clean(form.name_ar)) errors.push({ field: 'name_ar', message: 'اسم الفرع بالعربية مطلوب' });
     const currency = (clean(form.currency) || 'SAR').toUpperCase();
-    if (!currencyPattern.test(currency)) errors.push({ field: 'currency', message: 'العملة رمز ISO من 3 حروف (SAR / EGP / AED)' });
+    if (!currencyPattern.test(currency))
+        errors.push({ field: 'currency', message: 'العملة رمز ISO من 3 حروف (SAR / EGP / AED)' });
     return errors;
 }
 
 export function normalizeBranchPayload(form: Partial<BranchForm>): Record<string, unknown> {
     return {
-        code: clean(form.code), name_ar: clean(form.name_ar), name_en: nullableText(form.name_en),
-        currency: (clean(form.currency) || 'SAR').toUpperCase(), timezone: clean(form.timezone) || 'Asia/Riyadh',
-        phone: nullableText(form.phone), address: nullableText(form.address),
+        code: clean(form.code),
+        name_ar: clean(form.name_ar),
+        name_en: nullableText(form.name_en),
+        currency: (clean(form.currency) || 'SAR').toUpperCase(),
+        timezone: clean(form.timezone) || 'Asia/Riyadh',
+        phone: nullableText(form.phone),
+        address: nullableText(form.address),
     };
 }
 
 export async function createBranch(form: Partial<BranchForm>): Promise<void> {
-    await fetchJson(branchWriteResponse, '/api/branches', getAccessToken(), { method: 'POST', body: normalizeBranchPayload(form) });
+    await fetchJson(branchWriteResponse, '/api/branches', getAccessToken(), {
+        method: 'POST',
+        body: normalizeBranchPayload(form),
+    });
 }
 
 export async function updateBranch(id: string, form: Partial<BranchForm>): Promise<void> {
     const payload = normalizeBranchPayload(form);
     delete payload.code;
-    await fetchJson(branchWriteResponse, `/api/branches/${encodeURIComponent(id)}`, getAccessToken(), { method: 'PATCH' as 'PUT', body: payload });
+    await fetchJson(branchWriteResponse, `/api/branches/${encodeURIComponent(id)}`, getAccessToken(), {
+        method: 'PATCH' as 'PUT',
+        body: payload,
+    });
 }
 
 export async function deactivateBranch(id: string): Promise<void> {
-    await fetchJson(branchWriteResponse, `/api/branches/${encodeURIComponent(id)}`, getAccessToken(), { method: 'DELETE' });
+    await fetchJson(branchWriteResponse, `/api/branches/${encodeURIComponent(id)}`, getAccessToken(), {
+        method: 'DELETE',
+    });
 }
 
 export async function reactivateBranch(id: string): Promise<void> {
-    await fetchJson(branchWriteResponse, `/api/branches/${encodeURIComponent(id)}`, getAccessToken(), { method: 'PATCH' as 'PUT', body: { is_active: true } });
+    await fetchJson(branchWriteResponse, `/api/branches/${encodeURIComponent(id)}`, getAccessToken(), {
+        method: 'PATCH' as 'PUT',
+        body: { is_active: true },
+    });
 }
 
 /* ─── الصفّ ─────────────────────────────────────────────────────────────── */

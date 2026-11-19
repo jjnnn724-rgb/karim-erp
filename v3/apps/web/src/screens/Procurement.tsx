@@ -2,11 +2,11 @@ import './Procurement.premium.css';
 import { toCents } from '@karim/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { PrintActions } from '../components/PrintActions';
+import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
+import { useAuthState } from '../lib/auth';
 import { fetchCurrency } from '../lib/finance';
 import { formatMoney } from '../lib/format';
-import { useAuthState } from '../lib/auth';
 import {
     fetchProcurementSummary,
     fetchSuppliers,
@@ -19,16 +19,16 @@ import {
 import {
     createSupplier,
     deleteSupplier,
-    setSupplierActive,
-    updateSupplier,
-    supplierActivateConfirm,
-    supplierDeactivateConfirm,
-    supplierDeleteConfirm,
     SUPPLIER_TEXT,
     type SupplierCreateInput,
     type SupplierUpdateInput,
-    supplierWriteVisible,
+    setSupplierActive,
+    supplierActivateConfirm,
+    supplierDeactivateConfirm,
+    supplierDeleteConfirm,
     supplierDeleteVisible,
+    supplierWriteVisible,
+    updateSupplier,
 } from '../lib/suppliers-write';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
@@ -397,7 +397,10 @@ export function Procurement() {
     const createSupplierMutation = useWriteMutation<SupplierCreateInput, { id: string | number }>({
         mutationFn: (input) => createSupplier(input).then((r) => ({ id: r.id })),
         successTitle: () => SUPPLIER_TEXT.createSuccess,
-        invalidate: [['procurement', 'suppliers'], ['procurement', 'summary']],
+        invalidate: [
+            ['procurement', 'suppliers'],
+            ['procurement', 'summary'],
+        ],
         silentError: true,
         onSuccess: () => {
             setFormOpen(false);
@@ -405,10 +408,16 @@ export function Procurement() {
         },
     });
 
-    const updateSupplierMutation = useWriteMutation<{ id: string | number; input: SupplierUpdateInput }, { id: string | number }>({
+    const updateSupplierMutation = useWriteMutation<
+        { id: string | number; input: SupplierUpdateInput },
+        { id: string | number }
+    >({
         mutationFn: ({ id, input }) => updateSupplier(id, input).then((r) => ({ id: r.id })),
         successTitle: () => SUPPLIER_TEXT.updateSuccess,
-        invalidate: [['procurement', 'suppliers'], ['procurement', 'summary']],
+        invalidate: [
+            ['procurement', 'suppliers'],
+            ['procurement', 'summary'],
+        ],
         silentError: true,
         onSuccess: () => {
             setFormOpen(false);
@@ -416,10 +425,16 @@ export function Procurement() {
         },
     });
 
-    const setSupplierActiveMutation = useWriteMutation<{ id: string | number; active: boolean }, { id: string | number; active: boolean }>({
+    const setSupplierActiveMutation = useWriteMutation<
+        { id: string | number; active: boolean },
+        { id: string | number; active: boolean }
+    >({
         mutationFn: ({ id, active }) => setSupplierActive(id, active).then((r) => ({ id: r.id, active })),
         successTitle: ({ active }) => (active ? SUPPLIER_TEXT.activateSuccess : SUPPLIER_TEXT.deactivateSuccess),
-        invalidate: [['procurement', 'suppliers'], ['procurement', 'summary']],
+        invalidate: [
+            ['procurement', 'suppliers'],
+            ['procurement', 'summary'],
+        ],
         silentError: true,
         onSuccess: () => {
             setActionOpen(false);
@@ -430,7 +445,10 @@ export function Procurement() {
     const deleteSupplierMutation = useWriteMutation<string | number, void>({
         mutationFn: (id) => deleteSupplier(id),
         successTitle: () => SUPPLIER_TEXT.deleteSuccess,
-        invalidate: [['procurement', 'suppliers'], ['procurement', 'summary']],
+        invalidate: [
+            ['procurement', 'suppliers'],
+            ['procurement', 'summary'],
+        ],
         silentError: true,
         onSuccess: () => {
             setActionOpen(false);
@@ -481,8 +499,8 @@ export function Procurement() {
                         </span>
                     </h1>
                     <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        دليل الموردين وملخص المشتريات — إضافة وتعديل وإيقاف وتفعيل وحذف.
-                        القراءة من `/api/procurement/suppliers`، والكتابة لـ admin|manager|accountant والحذف للأدمن فقط.
+                        دليل الموردين وملخص المشتريات — إضافة وتعديل وإيقاف وتفعيل وحذف. القراءة من
+                        `/api/procurement/suppliers`، والكتابة لـ admin|manager|accountant والحذف للأدمن فقط.
                     </p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>
@@ -716,7 +734,11 @@ export function Procurement() {
                                             الحالة
                                         </th>
                                         {(canWrite || canDelete) && (
-                                            <th scope="col" className="px-sm py-xs text-start font-medium" data-erp-print-hide>
+                                            <th
+                                                scope="col"
+                                                className="px-sm py-xs text-start font-medium"
+                                                data-erp-print-hide
+                                            >
                                                 إجراءات
                                             </th>
                                         )}
@@ -785,7 +807,9 @@ export function Procurement() {
                                                                         size="sm"
                                                                         variant="secondary"
                                                                         title="إيقاف المورد"
-                                                                        onClick={() => handleChangeStatus(supplier, false)}
+                                                                        onClick={() =>
+                                                                            handleChangeStatus(supplier, false)
+                                                                        }
                                                                     >
                                                                         إيقاف
                                                                     </Button>
@@ -795,7 +819,9 @@ export function Procurement() {
                                                                         size="sm"
                                                                         variant="secondary"
                                                                         title="تفعيل المورد"
-                                                                        onClick={() => handleChangeStatus(supplier, true)}
+                                                                        onClick={() =>
+                                                                            handleChangeStatus(supplier, true)
+                                                                        }
                                                                     >
                                                                         تفعيل
                                                                     </Button>
@@ -861,7 +887,10 @@ export function Procurement() {
                 editing={editing}
                 onSave={async (input, isEditing) => {
                     if (isEditing && editing) {
-                        await updateSupplierMutation.mutateAsync({ id: editing.id, input: input as SupplierUpdateInput });
+                        await updateSupplierMutation.mutateAsync({
+                            id: editing.id,
+                            input: input as SupplierUpdateInput,
+                        });
                     } else {
                         await createSupplierMutation.mutateAsync(input as SupplierCreateInput);
                     }
@@ -877,13 +906,7 @@ export function Procurement() {
                     setActionRow(null);
                 }}
                 pending={setSupplierActiveMutation.isPending || deleteSupplierMutation.isPending}
-                confirmLabel={
-                    actionType === 'activate'
-                        ? 'تفعيل'
-                        : actionType === 'deactivate'
-                          ? 'إيقاف'
-                          : 'حذف'
-                }
+                confirmLabel={actionType === 'activate' ? 'تفعيل' : actionType === 'deactivate' ? 'إيقاف' : 'حذف'}
                 variant={actionType === 'delete' ? 'danger' : 'secondary'}
             />
         </div>

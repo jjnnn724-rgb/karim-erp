@@ -3,17 +3,21 @@ import { toCents } from '@karim/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { PrintActions } from '../components/PrintActions';
-import {
-    Card,
-    StateEmpty,
-    StateError,
-    StateLoading,
-    TableScroll,
-    TableSkeleton,
-} from '../components/TableState';
+import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
+import { useAuthState } from '../lib/auth';
 import { fetchCurrency, riyadhToday } from '../lib/finance';
 import { formatMoney } from '../lib/format';
-import { useAuthState } from '../lib/auth';
+import {
+    createPayment,
+    deletePayment,
+    PAYMENT_TEXT,
+    type PaymentCreateInput,
+    type PaymentUpdateInput,
+    paymentDeleteConfirm,
+    paymentDeleteVisible,
+    paymentWriteVisible,
+    updatePayment,
+} from '../lib/payments-write';
 import {
     fetchSupplierPayments,
     fetchSuppliers,
@@ -24,17 +28,6 @@ import {
     riyadhDaysAgo,
     sumMoney,
 } from '../lib/procurement';
-import {
-    createPayment,
-    deletePayment,
-    updatePayment,
-    paymentDeleteConfirm,
-    PAYMENT_TEXT,
-    type PaymentCreateInput,
-    type PaymentUpdateInput,
-    paymentWriteVisible,
-    paymentDeleteVisible,
-} from '../lib/payments-write';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
@@ -386,7 +379,10 @@ export function Payments() {
         },
     });
 
-    const updatePaymentMutation = useWriteMutation<{ id: string | number; input: PaymentUpdateInput }, { id: string | number }>({
+    const updatePaymentMutation = useWriteMutation<
+        { id: string | number; input: PaymentUpdateInput },
+        { id: string | number }
+    >({
         mutationFn: ({ id, input }) => updatePayment(id, input).then((r) => ({ id: r.id })),
         successTitle: () => PAYMENT_TEXT.updateSuccess,
         invalidate: [['procurement', 'payments']],
@@ -436,8 +432,8 @@ export function Payments() {
                         </span>
                     </h1>
                     <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        دفعات الموردين في الفترة المختارة — تسجيل وتعديل وحذف.
-                        القراءة من `/api/procurement/payments`، والكتابة لـ admin|manager|accountant والحذف للأدمن فقط.
+                        دفعات الموردين في الفترة المختارة — تسجيل وتعديل وحذف. القراءة من `/api/procurement/payments`،
+                        والكتابة لـ admin|manager|accountant والحذف للأدمن فقط.
                     </p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>
@@ -639,7 +635,11 @@ export function Payments() {
                                             الملاحظات
                                         </th>
                                         {(canWrite || canDelete) && (
-                                            <th scope="col" className="px-sm py-xs text-start font-medium" data-erp-print-hide>
+                                            <th
+                                                scope="col"
+                                                className="px-sm py-xs text-start font-medium"
+                                                data-erp-print-hide
+                                            >
                                                 إجراءات
                                             </th>
                                         )}
@@ -647,13 +647,14 @@ export function Payments() {
                                 </thead>
                                 <tbody>
                                     {pageRows.map((payment) => (
-                                        <tr key={payment.id} className="border-b border-hairline hover:bg-surface-hover">
+                                        <tr
+                                            key={payment.id}
+                                            className="border-b border-hairline hover:bg-surface-hover"
+                                        >
                                             <td className="px-sm py-xxs text-body-sm text-muted" dir="ltr">
                                                 {payment.date}
                                             </td>
-                                            <td className="px-sm py-xxs text-body-sm">
-                                                {supplierOf(payment)}
-                                            </td>
+                                            <td className="px-sm py-xxs text-body-sm">{supplierOf(payment)}</td>
                                             <td className="erp-numeric px-sm py-xxs text-end text-ink" dir="ltr">
                                                 {formatMoney(moneyOf(payment.amount))}
                                             </td>

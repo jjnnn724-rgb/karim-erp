@@ -26,12 +26,12 @@ describe('StatCard', () => {
     });
 
     it('يرسم النغمة واللون', () => {
-        render(<StatCard {...defaultProps} tone='danger' />);
+        render(<StatCard {...defaultProps} tone="danger" />);
         expect(screen.getByText('120,000.00').className).toContain('text-danger-text');
     });
 
     it('يرسم الاتجاه وال delta', () => {
-        render(<StatCard {...defaultProps} trend='up' delta='+12.5%' />);
+        render(<StatCard {...defaultProps} trend="up" delta="+12.5%" />);
         expect(screen.getByText(/↑/)).toBeTruthy();
         expect(screen.getByText('+12.5%')).toBeTruthy();
     });
@@ -48,14 +48,14 @@ describe('StatCard', () => {
 
     it('الحالة error تُshow رسالة وفرع إعادة المحاولة', () => {
         const onRetry = vi.fn();
-        render(<StatCard {...defaultProps} error errorMessage='فشل التحميل' onRetry={onRetry} />);
+        render(<StatCard {...defaultProps} error errorMessage="فشل التحميل" onRetry={onRetry} />);
         expect(screen.getByText('فشل التحميل')).toBeTruthy();
         fireEvent.click(screen.getByRole('button', { name: /إعادة المحاولة/i }));
         expect(onRetry).toHaveBeenCalledTimes(1);
     });
 
     it('يطبق className مخصص', () => {
-        render(<StatCard {...defaultProps} className='border-2' />);
+        render(<StatCard {...defaultProps} className="border-2" />);
         expect(screen.getByText('إيراد الشهر').closest('li')?.className).toContain('border-2');
     });
 

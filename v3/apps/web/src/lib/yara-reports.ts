@@ -51,10 +51,7 @@ const itemSalesRowSchema = z
 export const itemSalesSchema = z
     .object({
         rows: z.array(itemSalesRowSchema).optional(),
-        totals: z
-            .object({ invoices: numLike, qty: numLike, net: numLike, vat: numLike })
-            .passthrough()
-            .optional(),
+        totals: z.object({ invoices: numLike, qty: numLike, net: numLike, vat: numLike }).passthrough().optional(),
     })
     .passthrough();
 
@@ -71,7 +68,9 @@ export async function fetchItemSales(from: string, to: string, signal?: AbortSig
 }
 
 /** تجميع الأصناف عبر الكاشير والأيام — كمية وصافي على الصفوف الواصلة. */
-export function groupItemSales(rows: ItemSalesRow[]): { label: string; code: string; qty: number; invoices: number; net: number }[] {
+export function groupItemSales(
+    rows: ItemSalesRow[],
+): { label: string; code: string; qty: number; invoices: number; net: number }[] {
     const map = new Map<string, { label: string; code: string; qty: number; invoices: number; net: number }>();
     for (const row of rows) {
         const code = String(row.item_code ?? '') || String(row.item_name ?? '');
@@ -148,7 +147,12 @@ export async function fetchOrders(query: OrdersQuery, signal?: AbortSignal): Pro
     }
     params.set('limit', String(query.limit ?? 50));
     params.set('offset', String(query.offset ?? 0));
-    return fetchJson(ordersSchema, `/api/yara-reports/orders?${params.toString()}`, getAccessToken(), signal ? { signal } : {});
+    return fetchJson(
+        ordersSchema,
+        `/api/yara-reports/orders?${params.toString()}`,
+        getAccessToken(),
+        signal ? { signal } : {},
+    );
 }
 
 /* ── المستلَم ───────────────────────────────────────────────────────────── */

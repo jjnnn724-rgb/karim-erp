@@ -1,10 +1,20 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import './Weight.premium.css';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { PrintActions } from '../components/PrintActions';
-import { formatInt, formatQty } from '../lib/inventory-register';
+import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
+import { formatInt, formatQty } from '../lib/inventory-register';
+import {
+    fetchWeightReadings,
+    localToday,
+    readingsSummary,
+    readingToRow,
+    searchWeightReadings,
+    WEIGHT_UNIT_LABELS,
+    WEIGHT_UNITS,
+    type WeightReadingRow,
+} from '../lib/weight';
 import {
     createWeightReading,
     deleteWeightReading,
@@ -18,16 +28,6 @@ import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
-import {
-    fetchWeightReadings,
-    localToday,
-    readingsSummary,
-    readingToRow,
-    searchWeightReadings,
-    WEIGHT_UNIT_LABELS,
-    WEIGHT_UNITS,
-    type WeightReadingRow,
-} from '../lib/weight';
 
 /**
  * الميزان — سجل قراءات الوزن، قراءة فقط من `/api/weightReadings`.
@@ -217,8 +217,8 @@ export function Weight() {
                         </span>
                     </h1>
                     <p className="text-body-sm text-muted">
-                        سجل قراءات الوزن بوحداتها وبالكيلوجرام — تسجيل وتعديل وحذف.
-                        المجاميع تُحوَّل للكيلوجرام أولًا، والقراءة بوحدة غير معروفة تُستبعد وتُعدّ ولا تُخمَّن.
+                        سجل قراءات الوزن بوحداتها وبالكيلوجرام — تسجيل وتعديل وحذف. المجاميع تُحوَّل للكيلوجرام أولًا،
+                        والقراءة بوحدة غير معروفة تُستبعد وتُعدّ ولا تُخمَّن.
                     </p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>
@@ -349,11 +349,7 @@ export function Weight() {
                 {readingsQuery.isSuccess && sorted.length === 0 ? (
                     <StateEmpty
                         title={filtered ? 'لا قراءات تطابق المرشّحات' : 'لا قراءات مسجّلة'}
-                        hint={
-                            filtered
-                                ? 'لا نتائج مطابقة؛ عدّل المرشّحات أو امسحها.'
-                                : 'لم تُسجَّل قراءات بعد.'
-                        }
+                        hint={filtered ? 'لا نتائج مطابقة؛ عدّل المرشّحات أو امسحها.' : 'لم تُسجَّل قراءات بعد.'}
                     />
                 ) : null}
 
@@ -377,7 +373,11 @@ export function Weight() {
                                             ملاحظات
                                         </th>
                                         {canWrite ? (
-                                            <th scope="col" className="px-sm py-xs text-start font-medium" data-erp-print-hide>
+                                            <th
+                                                scope="col"
+                                                className="px-sm py-xs text-start font-medium"
+                                                data-erp-print-hide
+                                            >
                                                 إجراءات
                                             </th>
                                         ) : null}
@@ -549,7 +549,14 @@ function WeightFormDialog({ open, editing, pending, onClose, onSubmit }: WeightF
             return;
         }
         try {
-            await onSubmit({ weight: w, unit, date, time: time || null, itemName: itemName || null, notes: notes || null });
+            await onSubmit({
+                weight: w,
+                unit,
+                date,
+                time: time || null,
+                itemName: itemName || null,
+                notes: notes || null,
+            });
             onClose();
         } catch (cause) {
             setError(writeErrorMessage(cause, WEIGHT_TEXT.createFailed));
@@ -614,7 +621,12 @@ function WeightFormDialog({ open, editing, pending, onClose, onSubmit }: WeightF
                         dir="ltr"
                     />
                 </div>
-                <Input label="اسم الصنف" name="itemName" value={itemName} onChange={(e) => setItemName(e.target.value)} />
+                <Input
+                    label="اسم الصنف"
+                    name="itemName"
+                    value={itemName}
+                    onChange={(e) => setItemName(e.target.value)}
+                />
                 <Input label="ملاحظات" name="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
                 {error ? (
                     <p role="alert" className="text-body-sm text-danger-text">

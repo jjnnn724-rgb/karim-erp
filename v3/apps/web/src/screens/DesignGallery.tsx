@@ -1,5 +1,6 @@
 import { type ReactNode, useState } from 'react';
 import {
+    Alert,
     Badge,
     Button,
     Card,
@@ -17,6 +18,7 @@ import {
     Drawer,
     EmptyState,
     ErrorState,
+    FilterBar,
     IconButton,
     Input,
     KpiTile,
@@ -309,14 +311,38 @@ const INVOICES_500: GalleryInvoice[] = Array.from({ length: 500 }, (_, index) =>
 }));
 
 const invoiceColumns: DataTableColumn<GalleryInvoice>[] = [
-    { key: 'id', header: 'الفاتورة', cell: (row) => row.id, numeric: true },
-    { key: 'customer', header: 'العميل', cell: (row) => row.customer },
+    {
+        key: 'id',
+        header: 'الفاتورة',
+        cell: (row) => row.id,
+        sortValue: (row) => row.id,
+        exportValue: (row) => row.id,
+        numeric: true,
+    },
+    {
+        key: 'customer',
+        header: 'العميل',
+        cell: (row) => row.customer,
+        sortValue: (row) => row.customer,
+        exportValue: (row) => row.customer,
+        hideable: true,
+    },
     {
         key: 'status',
         header: 'الحالة',
         cell: (row) => <Badge variant={row.status === 'مرحّل' ? 'success' : 'neutral'}>{row.status}</Badge>,
+        exportValue: (row) => row.status,
+        hideable: true,
     },
-    { key: 'total', header: 'الإجمالي', cell: (row) => row.total, numeric: true },
+    {
+        key: 'total',
+        header: 'الإجمالي',
+        cell: (row) => row.total,
+        sortValue: (row) => Number(row.total),
+        exportValue: (row) => Number(row.total),
+        hideable: true,
+        numeric: true,
+    },
 ];
 
 const CHART_DATA = [
@@ -337,17 +363,65 @@ const SECTIONS = [
     { id: 'tokens', title: 'الرموز' },
     { id: 'buttons', title: 'الأزرار' },
     { id: 'fields', title: 'الحقول' },
+    { id: 'filters', title: 'المرشّحات' },
     { id: 'choices', title: 'الاختيارات' },
     { id: 'badges', title: 'الشارات' },
+    { id: 'alerts', title: 'التنبيهات السطرية' },
     { id: 'cards', title: 'البطاقات والمؤشرات' },
     { id: 'navigation', title: 'التبويبات والترقيم' },
     { id: 'feedback', title: 'الحالات والهياكل' },
     { id: 'datatable', title: 'الجداول' },
     { id: 'datatable-virtual-demo', title: 'جدول 500 صف' },
     { id: 'overlays', title: 'النوافذ والدرج' },
-    { id: 'toast', title: 'التنبيهات' },
+    { id: 'toast', title: 'الإشعارات العابرة' },
     { id: 'charts', title: 'الرسوم' },
 ];
+
+function FilterBarDemo() {
+    const initialRange = { from: '2026-11-01', to: '2026-11-30' };
+    const [draft, setDraft] = useState(initialRange);
+    const [query, setQuery] = useState('');
+    const [status, setStatus] = useState('all');
+    const [summary, setSummary] = useState('لا توجد مرشّحات مطبّقة.');
+
+    function reset() {
+        setDraft(initialRange);
+        setQuery('');
+        setStatus('all');
+        setSummary('أُعيدت المرشّحات إلى القيم الافتراضية.');
+    }
+
+    return (
+        <div className="flex flex-col gap-sm">
+            <FilterBar
+                from={draft.from}
+                to={draft.to}
+                onFrom={(from) => setDraft((current) => ({ ...current, from }))}
+                onTo={(to) => setDraft((current) => ({ ...current, to }))}
+                onApply={() => setSummary(`الفترة ${draft.from} — ${draft.to} · الحالة ${status}`)}
+                searchValue={query}
+                onSearchChange={setQuery}
+                searchPlaceholder="بحث في عيّنة المعرض…"
+                advancedFilters={
+                    <Select
+                        label="الحالة"
+                        value={status}
+                        onValueChange={setStatus}
+                        options={[
+                            { value: 'all', label: 'الكل' },
+                            { value: 'posted', label: 'مرحّل' },
+                            { value: 'draft', label: 'مسوّدة' },
+                        ]}
+                    />
+                }
+                onReset={reset}
+            />
+            <p role="status" className="text-body-sm text-muted">
+                {summary}
+            </p>
+        </div>
+    );
+}
 
 function GalleryContent() {
     return (
@@ -356,9 +430,9 @@ function GalleryContent() {
                 <div className="flex flex-col gap-xxs">
                     <h1 className="text-display-lg text-ink">معرض نظام التصميم</h1>
                     <p className="max-w-2xl text-body-md text-muted">
-                        ليل الياقوت — مكوّنات ERP في الوضعين الفاتح والداكن. دمج HeroUI تدريجيًا في الأزرار والحقول
-                        والبطاقات والشارات، مع الحفاظ على المكونات المتخصصة. كل بيانات هذه الصفحة أمثلة توضيحية وليست
-                        بيانات المنشأة.
+                        KARIM — مكوّنات ERP في الوضعين الفاتح والداكن. دمج HeroUI تدريجيًا في الأزرار والحقول والبطاقات
+                        والشارات، مع الحفاظ على المكونات المتخصصة. كل بيانات هذه الصفحة أمثلة توضيحية وليست بيانات
+                        المنشأة.
                     </p>
                 </div>
                 <ThemeToggle />
@@ -385,8 +459,8 @@ function GalleryContent() {
                         <Swatch label="sunken" className="bg-surface-sunken" />
                         <Swatch label="primary" className="bg-primary" />
                         <Swatch label="brand-text" className="bg-brand-text" />
-                        <Swatch label="brass" className="bg-brass" />
-                        <Swatch label="copper" className="bg-copper" />
+                        <Swatch label="on-primary" className="bg-on-primary" />
+                        <Swatch label="info" className="bg-info" />
                         <Swatch label="success" className="bg-success" />
                         <Swatch label="warning" className="bg-warning" />
                         <Swatch label="danger" className="bg-danger" />
@@ -415,25 +489,25 @@ function GalleryContent() {
                         <span className="text-caption text-faint">caption 12/400 هامش</span>
                         <span className="erp-numeric text-ink">123,456.78 SAR — أرقام لاتينية</span>
                         <div className="flex flex-wrap items-center gap-xs">
-                            <span className="grid size-8 place-items-center rounded-sm border border-hairline bg-surface text-caption">
+                            <span className="grid size-8 place-items-center rounded-sm border border-hairline bg-surface text-caption text-ink">
                                 6
                             </span>
-                            <span className="grid size-8 place-items-center rounded-md border border-hairline bg-surface text-caption">
+                            <span className="grid size-8 place-items-center rounded-md border border-hairline bg-surface text-caption text-ink">
                                 10
                             </span>
-                            <span className="grid size-8 place-items-center rounded-lg border border-hairline bg-surface text-caption">
+                            <span className="grid size-8 place-items-center rounded-lg border border-hairline bg-surface text-caption text-ink">
                                 16
                             </span>
-                            <span className="grid size-8 place-items-center rounded-xl border border-hairline bg-surface text-caption">
+                            <span className="grid size-8 place-items-center rounded-xl border border-hairline bg-surface text-caption text-ink">
                                 20
                             </span>
-                            <span className="grid size-8 place-items-center rounded-full border border-hairline bg-surface text-caption">
+                            <span className="grid size-8 place-items-center rounded-full border border-hairline bg-surface text-caption text-ink">
                                 ∞
                             </span>
-                            <span className="rounded-md border border-hairline bg-surface px-sm py-xs text-caption shadow-card">
+                            <span className="rounded-md border border-hairline bg-surface px-sm py-xs text-caption text-ink shadow-card">
                                 shadow-card
                             </span>
-                            <span className="rounded-md border border-hairline bg-surface px-sm py-xs text-caption shadow-pop">
+                            <span className="rounded-md border border-hairline bg-surface px-sm py-xs text-caption text-ink shadow-pop">
                                 shadow-pop
                             </span>
                         </div>
@@ -475,7 +549,7 @@ function GalleryContent() {
             <Section
                 id="fields"
                 title="الحقول"
-                description="تسمية مرتبطة · تركيز شامبانيا · خطأ aria-invalid · disabled."
+                description="تسمية مرتبطة · حلقة تركيز بالتركواز · خطأ aria-invalid · disabled."
             >
                 <Modes>
                     <div className="grid gap-sm">
@@ -489,6 +563,14 @@ function GalleryContent() {
                         <ComboboxDemo />
                     </div>
                 </Modes>
+            </Section>
+
+            <Section
+                id="filters"
+                title="المرشّحات"
+                description="FilterBar: نطاق تاريخ وبحث، مع مساحة مرشّحات إضافية وزر مسح اختياري."
+            >
+                <FilterBarDemo />
             </Section>
 
             <Section
@@ -523,6 +605,37 @@ function GalleryContent() {
                         <Badge variant="danger" soft={false}>
                             صلب
                         </Badge>
+                    </div>
+                </Modes>
+            </Section>
+
+            <Section
+                id="alerts"
+                title="التنبيهات السطرية"
+                description="Alert: نبرة + عنوان + جسم + إجراء. يبقى في مكانه، لا يختفي كالإشعار العابر."
+            >
+                <Modes>
+                    <div className="flex flex-col gap-sm">
+                        <Alert variant="info" title="معلومة">
+                            الضريبة محتسبة من السعر شاملًا — لا تُضفها مرة ثانية.
+                        </Alert>
+                        <Alert variant="success" title="تمّت المزامنة">
+                            آخر نسخة احتياطية: اليوم 14:05.
+                        </Alert>
+                        <Alert variant="warning" title="إعداد ناقص">
+                            لم يُضبط الرقم الضريبي بعد، والفواتير ستُرفض من ZATCA.
+                        </Alert>
+                        <Alert
+                            variant="danger"
+                            title="تعذّر الحفظ"
+                            action={
+                                <Button size="sm" variant="secondary">
+                                    إعادة المحاولة
+                                </Button>
+                            }
+                        >
+                            لم يصل الخادم. تحقّق من الاتصال ثم أعد المحاولة.
+                        </Alert>
                     </div>
                 </Modes>
             </Section>
@@ -622,6 +735,7 @@ function GalleryContent() {
                     rows={INVOICES_500.slice(0, 4)}
                     rowKey={(row) => row.id}
                     pagination={{ page: 1, pageSize: 4, total: 57, onPageChange: () => undefined }}
+                    columnPreferenceKey="design-gallery-invoices"
                 />
                 <div className="grid gap-md lg:grid-cols-2">
                     <DataTable<GalleryInvoice>
@@ -662,6 +776,7 @@ function GalleryContent() {
                     columns={invoiceColumns}
                     rows={INVOICES_500}
                     rowKey={(row) => row.id}
+                    columnPreferenceKey="design-gallery-invoices"
                 />
             </Section>
 

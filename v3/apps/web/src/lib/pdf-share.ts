@@ -43,6 +43,7 @@ interface Html2CanvasOptions {
     logging?: boolean;
     windowWidth?: number;
     windowHeight?: number;
+    ignoreElements?: (element: Element) => boolean;
 }
 
 interface JsPdfGlobal {
@@ -160,6 +161,7 @@ export async function buildPdfFromElement(
             logging: false,
             windowWidth: document.documentElement.scrollWidth,
             windowHeight: document.documentElement.scrollHeight,
+            ignoreElements: (candidate) => candidate.hasAttribute('data-erp-print-hide'),
         });
         if (!canvas || !canvas.width || !canvas.height) {
             return { ok: false, error: 'تعذر رسم المستند للتصدير' };

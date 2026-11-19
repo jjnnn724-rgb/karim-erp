@@ -12,15 +12,17 @@ export function SourceBadge({ kind, syncedAt }: { kind: SourceKind; syncedAt?: s
     return (
         <span
             className={`inline-flex items-center gap-xxs rounded-md border px-xs py-xxs text-caption ${
-                mirror
-                    ? 'border-warning bg-surface text-warning-text'
-                    : 'border-hairline bg-surface-sunken text-muted'
+                mirror ? 'border-warning bg-surface text-warning-text' : 'border-hairline bg-surface-sunken text-muted'
             }`}
             title={syncedAt ? `آخر مزامنة: ${syncedAt}` : undefined}
         >
             <span aria-hidden="true">{mirror ? '⚠' : '•'}</span>
             <span>{mirror ? `${label.ar} — انتقال` : label.ar}</span>
-            {syncedAt ? <span className="opacity-80" dir="ltr">{syncedAt}</span> : null}
+            {syncedAt ? (
+                <span className="opacity-80" dir="ltr">
+                    {syncedAt}
+                </span>
+            ) : null}
         </span>
     );
 }

@@ -97,7 +97,9 @@ export function deviceToRow(device: ZkDevice): ZkDeviceRow {
         port: device.port === null || device.port === undefined ? '' : String(device.port),
         status: names[status] ?? (status || '—'),
         enabled: isEnabled(device.enabled),
-        lastSyncAt: String(device.lastSyncAt ?? '').slice(0, 19).replace('T', ' '),
+        lastSyncAt: String(device.lastSyncAt ?? '')
+            .slice(0, 19)
+            .replace('T', ' '),
         lastError: String(device.lastError ?? live.lastError ?? ''),
         totalSynced: Math.round(Number(device.totalSynced ?? 0)),
         syncing: live.syncing === true,

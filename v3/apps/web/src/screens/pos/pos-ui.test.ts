@@ -1,14 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import { posProductSchema } from '../../lib/pos';
-import {
-    bestSellers,
-    type CatalogItem,
-    catalogFromProducts,
-    groupCatalog,
-    orderCatalog,
-    searchScore,
-    soldQty,
-} from './pos-ui';
+import { bestSellers, type CatalogItem, groupCatalog, orderCatalog, searchScore, soldQty } from './pos-ui';
 
 function item(overrides: Partial<CatalogItem> & Pick<CatalogItem, 'id' | 'name'>): CatalogItem {
     return {
@@ -18,6 +9,7 @@ function item(overrides: Partial<CatalogItem> & Pick<CatalogItem, 'id' | 'name'>
         barcode: '',
         stock: null,
         imageUrl: '',
+        hasImage: false,
         category: '',
         tier: '',
         isBuffet: false,
@@ -40,86 +32,10 @@ describe('ترتيب كتالوج الكاشير الذكي', () => {
         expect(ordered.map((row) => row.id)).toEqual(['4', '2', '3', '1']);
     });
 
-    describe('ربط صورة منتج POS', () => {
-        it('يربط صورة كل صف بمعرّف المنتج نفسه ولا يطابق بالاسم', () => {
-            const products = [
-                posProductSchema.parse({
-                    id: '42',
-                    name_ar: 'صنف متشابه',
-                    price: 12,
-                    vat_rate: 15,
-                    image_url: '/uploads/menu/42.webp',
-                    is_active: true,
-                }),
-                posProductSchema.parse({
-                    id: '43',
-                    name_ar: 'صنف متشابه',
-                    price: 12,
-                    vat_rate: 15,
-                    image_url: '/uploads/menu/43.webp',
-                    is_active: true,
-                }),
-            ];
-
-            expect(catalogFromProducts(products).map(({ id, imageUrl }) => [id, imageUrl])).toEqual([
-                ['42', '/uploads/menu/42.webp'],
-                ['43', '/uploads/menu/43.webp'],
-            ]);
-        });
-
-        it('يرفض صورة رُفعت لصنف آخر حتى لو كان مسارها داخليًا', () => {
-            const products = [
-                posProductSchema.parse({
-                    id: '45',
-                    name_ar: 'فراولة',
-                    price: 12,
-                    vat_rate: 15,
-                    image_url: '/uploads/menu/product-99-1700000000000-abcdefabcdefabcd.webp',
-                    is_active: true,
-                }),
-            ];
-
-            expect(catalogFromProducts(products)[0]?.imageUrl).toBe('');
-        });
-
-        it('يقبل اسم ملف الرفع الرسمي عندما يطابق معرّف الصنف', () => {
-            const products = [
-                posProductSchema.parse({
-                    id: '45',
-                    name_ar: 'فراولة',
-                    price: 12,
-                    vat_rate: 15,
-                    image_url: '/uploads/menu/product-45-1700000000000-abcdefabcdefabcd.webp',
-                    is_active: true,
-                }),
-            ];
-
-            expect(catalogFromProducts(products)[0]?.imageUrl).toBe(
-                '/uploads/menu/product-45-1700000000000-abcdefabcdefabcd.webp',
-            );
-        });
-
-        it('يعيد صورة فارغة بدل استخدام مسار غير معروف', () => {
-            const products = [
-                posProductSchema.parse({
-                    id: '44',
-                    name_ar: 'صنف متشابه',
-                    price: 12,
-                    vat_rate: 15,
-                    image_url: '/img/random-menu.webp',
-                    is_active: true,
-                }),
-            ];
-
-            expect(catalogFromProducts(products)[0]?.imageUrl).toBe('');
-        });
-    });
-
     it('غياب المبيعات يعيد الترتيب الأبجدي بلا كسر', () => {
         const items = [item({ id: '1', name: 'ب' }), item({ id: '2', name: 'أ' })];
         expect(orderCatalog(items, { favorites: [] }).map((row) => row.id)).toEqual(['2', '1']);
-        const first = items[0];
-        expect(first ? soldQty(first, undefined) : -1).toBe(0);
+        expect(soldQty(items[0]!, undefined)).toBe(0);
     });
 
     it('البحث يقدّم الباركود المطابق ثم بادئة الاسم', () => {

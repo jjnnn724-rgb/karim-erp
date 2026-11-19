@@ -1,8 +1,8 @@
 import { useState } from 'react';
-import { Badge, Button, Input, Pagination, Select } from '../../ui';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../../components/TableState';
 import type { PosOrderDetail, PosOrderPage } from '../../lib/pos';
 import { intOf } from '../../lib/reporting';
+import { Badge, Button, Input, Pagination, Select } from '../../ui';
 import { moneyText, orderStatusLabel, orderStatusTone, paymentMethodLabel } from './pos-ui';
 
 export interface PosHistoryFiltersState {
@@ -139,14 +139,30 @@ export function PosHistory({
                                 <table className="w-full border-collapse text-body-md">
                                     <thead>
                                         <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">رقم الفاتورة</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">القسم</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">التاريخ</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">الكاشير</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">الأصناف</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">الإجمالي</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">الحالة</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">التفاصيل</th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                رقم الفاتورة
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                القسم
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                التاريخ
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الكاشير
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الأصناف
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الإجمالي
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الحالة
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                التفاصيل
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -155,7 +171,9 @@ export function PosHistory({
                                                 <td className="erp-numeric px-sm py-xxs" dir="ltr">
                                                     #{String(order.invoice_counter ?? order.id)}
                                                 </td>
-                                                <td className="px-sm py-xxs text-ink">{order.department_name || '—'}</td>
+                                                <td className="px-sm py-xxs text-ink">
+                                                    {order.department_name || '—'}
+                                                </td>
                                                 <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">
                                                     {order.created_at || '—'}
                                                 </td>
@@ -263,7 +281,9 @@ export function PosOrderDetailPanel({
                             </li>
                             <li>
                                 <span>الحالة</span>
-                                <Badge variant={orderStatusTone(detail.status)}>{orderStatusLabel(detail.status)}</Badge>
+                                <Badge variant={orderStatusTone(detail.status)}>
+                                    {orderStatusLabel(detail.status)}
+                                </Badge>
                             </li>
                         </ul>
 
@@ -272,11 +292,21 @@ export function PosOrderDetailPanel({
                                 <table className="w-full border-collapse text-body-md">
                                     <thead>
                                         <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">الصنف</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">الكمية</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">سعر الوحدة</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">الخصم</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">الإجمالي</th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الصنف
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الكمية
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                سعر الوحدة
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الخصم
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الإجمالي
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody>
@@ -372,15 +402,26 @@ export function PosOrderDetailPanel({
                                 <table className="w-full border-collapse text-body-md">
                                     <thead>
                                         <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">الوسيلة</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">المبلغ</th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">المرجع</th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الوسيلة
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                المبلغ
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                المرجع
+                                            </th>
                                         </tr>
                                     </thead>
                                     <tbody>
                                         {detail.payments.map((payment, index) => (
-                                            <tr key={`${String(payment.method)}-${String(index)}`} className="border-b border-hairline">
-                                                <td className="px-sm py-xxs text-ink">{paymentMethodLabel(payment.method)}</td>
+                                            <tr
+                                                key={`${String(payment.method)}-${String(index)}`}
+                                                className="border-b border-hairline"
+                                            >
+                                                <td className="px-sm py-xxs text-ink">
+                                                    {paymentMethodLabel(payment.method)}
+                                                </td>
                                                 <td className="erp-numeric px-sm py-xxs" dir="ltr">
                                                     {moneyText(payment.amount)}
                                                 </td>

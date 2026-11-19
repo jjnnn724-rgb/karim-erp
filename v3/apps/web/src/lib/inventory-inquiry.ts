@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { ApiError, fetchFile, fetchJson, type FileResponse } from './api';
+import { ApiError, type FileResponse, fetchFile, fetchJson } from './api';
 import { getAccessToken } from './auth';
 
 /**
@@ -15,17 +15,7 @@ import { getAccessToken } from './auth';
  */
 
 export const INQ_FILTERS = ['all', 'moved', 'active', 'low', 'expired'] as const;
-export const INQ_SORTS = [
-    'movements',
-    'onHand',
-    'value',
-    'qtyIn',
-    'qtyOut',
-    'sold',
-    'cost',
-    'name',
-    'expiry',
-] as const;
+export const INQ_SORTS = ['movements', 'onHand', 'value', 'qtyIn', 'qtyOut', 'sold', 'cost', 'name', 'expiry'] as const;
 
 const numLike = z.union([z.string(), z.number()]).nullable().optional();
 const text = z.string().nullable().optional();
@@ -80,10 +70,7 @@ export const inquiryItemsSchema = z
             .optional(),
         meta: z
             .object({
-                yara: z
-                    .object({ unmatchedItems: numLike, qtyTotal: numLike })
-                    .passthrough()
-                    .optional(),
+                yara: z.object({ unmatchedItems: numLike, qtyTotal: numLike }).passthrough().optional(),
                 soldRule: text,
             })
             .passthrough()
@@ -246,10 +233,7 @@ export const departmentCostSchema = z
             })
             .passthrough()
             .optional(),
-        unattributed: z
-            .object({ issuedCost: numLike, expenseOperating: numLike })
-            .passthrough()
-            .optional(),
+        unattributed: z.object({ issuedCost: numLike, expenseOperating: numLike }).passthrough().optional(),
         meta: z.object({ basis: text }).passthrough().optional(),
     })
     .passthrough();
@@ -312,11 +296,7 @@ export async function fetchInquiryItem(
     );
 }
 
-export async function fetchInquiryDepartments(
-    from: string,
-    to: string,
-    signal?: AbortSignal,
-): Promise<DepartmentCost> {
+export async function fetchInquiryDepartments(from: string, to: string, signal?: AbortSignal): Promise<DepartmentCost> {
     return fetchJson(
         departmentCostSchema,
         `/api/inventory-inquiry/departments${queryString({ from, to })}`,
@@ -344,10 +324,7 @@ export function inquiryExportUrl(query: InquiryQuery): string {
 }
 
 /** ملف Excel من الخادم — الأرقام تأتي من نفس استعلام الجدول، لا تُحسب هنا. */
-export async function fetchInquiryExport(
-    query: InquiryQuery,
-    signal?: AbortSignal,
-): Promise<FileResponse> {
+export async function fetchInquiryExport(query: InquiryQuery, signal?: AbortSignal): Promise<FileResponse> {
     const file = await fetchFile(
         inquiryExportUrl(query),
         getAccessToken(),

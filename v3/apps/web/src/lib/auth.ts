@@ -1,7 +1,13 @@
 import { NUMERIC_ID_PATTERN } from '@karim/shared';
 import { useSyncExternalStore } from 'react';
 import { z } from 'zod';
-import { type AssertionJSON, describeWebAuthnError, isWebAuthnSupported, serializeAssertion, toRequestOptions } from './webauthn';
+import {
+    type AssertionJSON,
+    describeWebAuthnError,
+    isWebAuthnSupported,
+    serializeAssertion,
+    toRequestOptions,
+} from './webauthn';
 
 /**
  * الجلسة — توكن الوصول مع رمز التحديث، بنفس اسمٍ ومفتاحٍ في القديم.
@@ -184,6 +190,15 @@ export function getAccessToken(): string | null {
 }
 
 /**
+ * هل يوجد رمز تحديث للمحاولة؟ قناة التمهيد (`karim_access_v1`) توكنٌ بلا
+ * رمز تحديث، فلا مسار تجديد لها — الاستجابة التفاعلية لـ401 تتخطّاها وتترك
+ * الخطأ لطبقة العرض (سلوك ما قبلها محفوظ)، بدل إخراج جلسة لا تستطيع تجديدها.
+ */
+export function hasRefreshToken(): boolean {
+    return readStorage(RT_KEY) !== '';
+}
+
+/**
  * مفتاح التطبيق — في الذاكرة فقط، يُسلَّم مع كل جلسة.
  *
  * `null` يعني «السيرفر بلا مفتاح» (ترويسة `x-api-key` تُحذف عندها) لا
@@ -203,7 +218,11 @@ export function useAuthState(): AuthState {
     return useSyncExternalStore(subscribeAuth, getAuthState, getAuthState);
 }
 
-async function requestJson(path: string, body: unknown, ticket?: string | null): Promise<{ ok: boolean; status: number; data: unknown }> {
+async function requestJson(
+    path: string,
+    body: unknown,
+    ticket?: string | null,
+): Promise<{ ok: boolean; status: number; data: unknown }> {
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         Accept: 'application/json',
@@ -272,7 +291,9 @@ export async function refreshSession(): Promise<boolean> {
             setSession(null, null);
             return false;
         }
-        console.warn(`[auth] Session refresh failed with HTTP ${response.status}; keeping the current session for retry.`);
+        console.warn(
+            `[auth] Session refresh failed with HTTP ${response.status}; keeping the current session for retry.`,
+        );
         return false;
     }
 
@@ -280,7 +301,10 @@ export async function refreshSession(): Promise<boolean> {
         applySession(parseSession(await response.json()));
         return true;
     } catch (error) {
-        console.error('[auth] Session refresh returned an invalid response; keeping the current session for retry.', error);
+        console.error(
+            '[auth] Session refresh returned an invalid response; keeping the current session for retry.',
+            error,
+        );
         return false;
     }
 }
@@ -383,7 +407,10 @@ export async function setupMfa(ticket: string): Promise<MfaSetup> {
  * تأكيد التسجيل — الجلسة صادرة بالفعل، لكن لا نُدخلها قبل حفظ رموز
  * الاسترداد. تُعاد للمستدعي كي يعرضها ثم يستدعي `applySession`.
  */
-export async function confirmMfa(ticket: string, code: string): Promise<{ session: AuthSession; recoveryCodes: string[] }> {
+export async function confirmMfa(
+    ticket: string,
+    code: string,
+): Promise<{ session: AuthSession; recoveryCodes: string[] }> {
     const { ok, data } = await requestJson('/api/auth/mfa/confirm', { code }, ticket);
     if (!ok) {
         throw await errorFrom(data, 'تعذّر تأكيد رمز المصادقة');
@@ -433,7 +460,11 @@ export async function loginWithPasskey(ticket: string): Promise<void> {
  * تغيير كلمة المرور. تذكرة `PASSWORD_CHANGE_REQUIRED` جلسةٌ مقيدة: بعد
  * التغيير قد يعيد الخادم بوابة عامل ثانٍ (MFA) بدل جلسة كاملة.
  */
-export async function changePassword(ticket: string, currentPassword: string, newPassword: string): Promise<AuthOutcome> {
+export async function changePassword(
+    ticket: string,
+    currentPassword: string,
+    newPassword: string,
+): Promise<AuthOutcome> {
     const { ok, data } = await requestJson(
         '/api/auth/change-password',
         { current_password: currentPassword, new_password: newPassword },

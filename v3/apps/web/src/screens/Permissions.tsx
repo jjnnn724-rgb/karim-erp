@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { PrintActions } from '../components/PrintActions';
+import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import {
     activeUserOptions,
@@ -17,11 +17,7 @@ import {
     permMode,
     searchPermissions,
 } from '../lib/permissions';
-import {
-    PERMISSIONS_TEXT,
-    permissionsWriteVisible,
-    saveUserPermissions,
-} from '../lib/permissions-write';
+import { PERMISSIONS_TEXT, permissionsWriteVisible, saveUserPermissions } from '../lib/permissions-write';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
@@ -102,7 +98,10 @@ export function Permissions() {
 
     const effectiveGrants = editingGrants ?? grants;
     const effectiveDenies = editingDenies ?? denies;
-    const modes = useMemo(() => modeCounts(catalog, effectiveGrants, effectiveDenies), [catalog, effectiveGrants, effectiveDenies]);
+    const modes = useMemo(
+        () => modeCounts(catalog, effectiveGrants, effectiveDenies),
+        [catalog, effectiveGrants, effectiveDenies],
+    );
     const dirty = editingGrants !== null || editingDenies !== null;
 
     const saveMutation = useWriteMutation<{ grants: string[]; denies: string[]; reason: string }, void>({
@@ -185,8 +184,8 @@ export function Permissions() {
                         </span>
                     </h1>
                     <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        منح فردية فوق الدور مع كتابة كاملة (admin فقط). السحب يغلب المنح، والمنح يغلب وراثة الدور،
-                        ودور admin يملك كل الصلاحيات ضمنيًا.
+                        منح فردية فوق الدور مع كتابة كاملة (admin فقط). السحب يغلب المنح، والمنح يغلب وراثة الدور، ودور
+                        admin يملك كل الصلاحيات ضمنيًا.
                     </p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>
@@ -316,8 +315,12 @@ export function Permissions() {
                             <span className="erp-grow" />
                             <span className="text-body-sm text-success-text">{formatInt(modes.grant)} منح</span>
                             <span className="text-body-sm text-danger-text">{formatInt(modes.deny)} سحب</span>
-                            <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">{formatInt(modes.inherit)} وراثة</span>
-                            <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">{formatInt(audit.length)} سطر تدقيق</span>
+                            <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
+                                {formatInt(modes.inherit)} وراثة
+                            </span>
+                            <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
+                                {formatInt(audit.length)} سطر تدقيق
+                            </span>
                             {canWrite && !targetIsAdmin ? (
                                 dirty ? (
                                     <>
@@ -328,7 +331,12 @@ export function Permissions() {
                                             onChange={(e) => setReason(e.target.value)}
                                             placeholder="يُوثَّق في سجل التدقيق"
                                         />
-                                        <Button type="button" size="sm" onClick={() => void save()} loading={saveMutation.isPending}>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            onClick={() => void save()}
+                                            loading={saveMutation.isPending}
+                                        >
                                             حفظ الصلاحيات
                                         </Button>
                                         <Button type="button" size="sm" variant="secondary" onClick={cancelEditing}>
@@ -387,7 +395,9 @@ export function Permissions() {
                             <Card key={group.name}>
                                 <h2 className="border-b border-hairline px-sm py-xs text-heading-sm text-ink">
                                     {group.name}{' '}
-                                    <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">({formatInt(group.items.length)})</span>
+                                    <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
+                                        ({formatInt(group.items.length)})
+                                    </span>
                                 </h2>
                                 <div className="grid gap-sm p-sm sm:grid-cols-2 xl:grid-cols-3">
                                     {group.items.map((item) => {
@@ -420,7 +430,11 @@ export function Permissions() {
                                                             title="تبديل الوضع: منح ثم سحب ثم وراثة"
                                                             onClick={() => cycleMode(item.key)}
                                                         >
-                                                            {mode === 'grant' ? 'منح ✓ (اضغط لسحب)' : mode === 'deny' ? 'سحب ✓ (اضغط لوراثة)' : 'وراثة (اضغط لمنح)'}
+                                                            {mode === 'grant'
+                                                                ? 'منح ✓ (اضغط لسحب)'
+                                                                : mode === 'deny'
+                                                                  ? 'سحب ✓ (اضغط لوراثة)'
+                                                                  : 'وراثة (اضغط لمنح)'}
                                                         </Button>
                                                     </div>
                                                 ) : null}
@@ -435,7 +449,9 @@ export function Permissions() {
                     <Card>
                         <h2 className="border-b border-hairline px-sm py-xs text-heading-sm text-ink">
                             سجل التدقيق{' '}
-                            <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">(آخر {formatInt(audit.length)} سطر)</span>
+                            <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
+                                (آخر {formatInt(audit.length)} سطر)
+                            </span>
                         </h2>
                         {audit.length === 0 ? (
                             <p className="px-sm py-sm text-body-sm text-muted">لا سجل تدقيق لهذا المستخدم.</p>

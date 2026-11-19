@@ -1,7 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { PrintActions } from '../components/PrintActions';
+import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { fetchEmployees } from '../lib/employees';
 import {
@@ -18,17 +18,20 @@ import {
 import {
     createUser,
     deleteUser,
-    setUserActive,
-    updateUser,
     isStrongPassword,
-    userActivateConfirm,
-    userDeactivateConfirm,
-    userDeleteConfirm,
+    issueResetCode,
+    type ResetCode,
+    setUserActive,
     USER_TEXT,
     type UserCreateInput,
     type UserUpdateInput,
-    userWriteVisible,
+    updateUser,
+    userActivateConfirm,
+    userDeactivateConfirm,
+    userDeleteConfirm,
     userDeleteVisible,
+    userResetVisible,
+    userWriteVisible,
 } from '../lib/users-write';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
@@ -298,6 +301,7 @@ function EditDialog({ open, row, onClose, pending, onSave }: EditDialogProps) {
     const [role, setRole] = useState('');
     const [deptCode, setDeptCode] = useState('');
     const [active, setActive] = useState(true);
+    const [password, setPassword] = useState('');
     const [error, setError] = useState('');
 
     useEffect(() => {
@@ -306,6 +310,7 @@ function EditDialog({ open, row, onClose, pending, onSave }: EditDialogProps) {
             setRole(row.role);
             setDeptCode(row.deptCode);
             setActive(row.active);
+            setPassword('');
             setError('');
         }
     }, [open, row]);
@@ -322,11 +327,17 @@ function EditDialog({ open, row, onClose, pending, onSave }: EditDialogProps) {
             return;
         }
 
+        if (password && !isStrongPassword(password)) {
+            setError(USER_TEXT.passwordWeak);
+            return;
+        }
+
         const payload: UserUpdateInput = {
             name: name.trim(),
             role,
             dept_code: deptCode.trim() || null,
             active,
+            ...(password ? { password } : {}),
         };
 
         try {
@@ -381,6 +392,15 @@ function EditDialog({ open, row, onClose, pending, onSave }: EditDialogProps) {
                     value={deptCode}
                     onChange={(e) => setDeptCode(e.target.value)}
                     placeholder="ACC, HR, WH…"
+                />
+                <Input
+                    label="كلمة المرور الجديدة (اختياري)"
+                    name="password"
+                    type="password"
+                    value={password}
+                    onChange={(e) => setPassword(e.target.value)}
+                    hint="اترك الحقل فارغًا دون تغيير. 12 حرفًا على الأقل مع حرف ورقم."
+                    autoComplete="new-password"
                 />
                 <div className="flex items-end gap-sm">
                     <input
@@ -458,11 +478,16 @@ export function Users() {
     const [actionType, setActionType] = useState<'activate' | 'deactivate' | 'delete'>('deactivate');
     const [actionTitle, setActionTitle] = useState('');
     const [actionMessage, setActionMessage] = useState('');
+    const [resetOpen, setResetOpen] = useState(false);
+    const [resetTarget, setResetTarget] = useState<UserRow | null>(null);
+    const [resetResult, setResetResult] = useState<ResetCode | null>(null);
+    const [resetError, setResetError] = useState('');
 
     const auth = useAuthState();
     const role = auth.user?.role;
     const canWrite = userWriteVisible(role);
     const canDelete = userDeleteVisible(role);
+    const canReset = userResetVisible(role);
 
     const usersQuery = useQuery({
         queryKey: ['users'],
@@ -551,7 +576,10 @@ export function Users() {
         },
     });
 
-    const activeMutation = useWriteMutation<{ id: string | number; active: boolean }, { id: string | number; active: boolean }>({
+    const activeMutation = useWriteMutation<
+        { id: string | number; active: boolean },
+        { id: string | number; active: boolean }
+    >({
         mutationFn: ({ id, active }) => setUserActive(id, active).then((r) => ({ id: r.id, active })),
         successTitle: ({ active }) => (active ? USER_TEXT.activateSuccess : USER_TEXT.deactivateSuccess),
         invalidate: [['users']],
@@ -572,6 +600,26 @@ export function Users() {
             setActionRow(null);
         },
     });
+
+    const resetMutation = useWriteMutation<string, ResetCode>({
+        mutationFn: (username) => issueResetCode(username),
+        invalidate: [['users']],
+        silentError: true,
+        onSuccess: (result) => {
+            setResetError('');
+            setResetResult(result);
+        },
+        onError: (cause) => {
+            setResetError(writeErrorMessage(cause, 'تعذّر إصدار رمز الاستعادة'));
+        },
+    });
+
+    function openReset(row: UserRow): void {
+        setResetTarget(row);
+        setResetResult(null);
+        setResetError('');
+        setResetOpen(true);
+    }
 
     async function openEdit(row: UserRow) {
         setEditRow(row);
@@ -616,9 +664,9 @@ export function Users() {
                         </span>
                     </h1>
                     <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        من يدخل النظام وبأي دور، ومن هو موظفه المرتبط. إنشاء الحسابات وتعديل بياناتهم وإيقاف/
-                        تفعيل الحساب وحذفه. كلمة المرور لا تُعرض في أي صفّ.
-                        القراءة محجوزة في الخادم للأدوار الإدارية، والكتابة لـ admin|manager|hr والحذف للأدمن فقط.
+                        من يدخل النظام وبأي دور، ومن هو موظفه المرتبط. إنشاء الحسابات وتعديل بياناتهم وإيقاف/ تفعيل
+                        الحساب وحذفه. كلمة المرور لا تُعرض في أي صفّ. القراءة محجوزة في الخادم للأدوار الإدارية، والكتابة
+                        لـ admin|manager|hr والحذف للأدمن فقط.
                     </p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>
@@ -788,7 +836,10 @@ export function Users() {
                                     <span className="erp-numeric w-16 shrink-0 text-end text-ink" dir="ltr">
                                         {formatInt(entry.count)}
                                     </span>
-                                    <span className="erp-numeric w-14 shrink-0 text-end text-caption text-muted" dir="ltr">
+                                    <span
+                                        className="erp-numeric w-14 shrink-0 text-end text-caption text-muted"
+                                        dir="ltr"
+                                    >
                                         {share.toFixed(1)}%
                                     </span>
                                 </li>
@@ -818,11 +869,7 @@ export function Users() {
                 {usersQuery.isSuccess && sorted.length === 0 ? (
                     <StateEmpty
                         title={filtered ? 'لا حسابات تطابق المرشّحات' : 'دليل الحسابات فارغ'}
-                        hint={
-                            filtered
-                                ? 'لا نتائج مطابقة؛ عدّل المرشّحات أو امسحها.'
-                                : 'أضف أول مستخدم.'
-                        }
+                        hint={filtered ? 'لا نتائج مطابقة؛ عدّل المرشّحات أو امسحها.' : 'أضف أول مستخدم.'}
                     />
                 ) : null}
 
@@ -859,7 +906,11 @@ export function Users() {
                                             onToggle={toggleSort}
                                         />
                                         {(canWrite || canDelete) && (
-                                            <th scope="col" className="px-sm py-xs text-start font-medium" data-erp-print-hide>
+                                            <th
+                                                scope="col"
+                                                className="px-sm py-xs text-start font-medium"
+                                                data-erp-print-hide
+                                            >
                                                 إجراءات
                                             </th>
                                         )}
@@ -926,13 +977,29 @@ export function Users() {
                                                                 >
                                                                     تعديل
                                                                 </Button>
+                                                                {canReset &&
+                                                                row.active &&
+                                                                row.username &&
+                                                                String(row.id) !== String(auth.user?.id ?? '') ? (
+                                                                    <Button
+                                                                        type="button"
+                                                                        size="sm"
+                                                                        variant="secondary"
+                                                                        title="إصدار رمز استعادة (10 دقائق، استخدام واحد)"
+                                                                        onClick={() => openReset(row)}
+                                                                    >
+                                                                        رمز استعادة
+                                                                    </Button>
+                                                                ) : null}
                                                                 {row.active ? (
                                                                     <Button
                                                                         type="button"
                                                                         size="sm"
                                                                         variant="secondary"
                                                                         title="إيقاف الحساب"
-                                                                        onClick={() => void handleChangeStatus(row, false)}
+                                                                        onClick={() =>
+                                                                            void handleChangeStatus(row, false)
+                                                                        }
                                                                     >
                                                                         إيقاف
                                                                     </Button>
@@ -942,7 +1009,9 @@ export function Users() {
                                                                         size="sm"
                                                                         variant="secondary"
                                                                         title="تفعيل الحساب"
-                                                                        onClick={() => void handleChangeStatus(row, true)}
+                                                                        onClick={() =>
+                                                                            void handleChangeStatus(row, true)
+                                                                        }
                                                                     >
                                                                         تفعيل
                                                                     </Button>
@@ -1034,6 +1103,82 @@ export function Users() {
                 confirmLabel={actionType === 'activate' ? 'تفعيل' : actionType === 'deactivate' ? 'إيقاف' : 'حذف'}
                 variant={actionType === 'delete' ? 'danger' : 'secondary'}
             />
+            <Dialog
+                open={resetOpen}
+                onOpenChange={(open) => {
+                    setResetOpen(open);
+                    if (!open) {
+                        setResetTarget(null);
+                        setResetResult(null);
+                        setResetError('');
+                    }
+                }}
+                title="رمز استعادة كلمة المرور"
+                {...(resetTarget ? { description: `الحساب: @${resetTarget.username} — ${resetTarget.name}` } : {})}
+                footer={
+                    <>
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            onClick={() => {
+                                setResetOpen(false);
+                                setResetTarget(null);
+                                setResetResult(null);
+                                setResetError('');
+                            }}
+                        >
+                            إغلاق
+                        </Button>
+                        <Button
+                            type="button"
+                            loading={resetMutation.isPending}
+                            disabled={!resetTarget?.username || resetMutation.isPending}
+                            onClick={() => {
+                                if (resetTarget?.username) {
+                                    resetMutation.mutate(resetTarget.username);
+                                }
+                            }}
+                        >
+                            {resetResult ? 'إصدار رمز جديد' : 'إصدار الرمز'}
+                        </Button>
+                    </>
+                }
+            >
+                <div className="flex flex-col gap-sm">
+                    <p className="text-body-sm text-muted">
+                        صالح 10 دقائق · استخدام واحد · إصدار رمز جديد يُبطل السابق. أعطِه للموظف وحده.
+                    </p>
+                    {resetError ? (
+                        <p
+                            className="rounded-md border border-danger/40 bg-danger-soft px-sm py-xs text-body-sm text-danger-text"
+                            role="alert"
+                        >
+                            {resetError}
+                        </p>
+                    ) : null}
+                    {resetResult ? (
+                        <>
+                            <p
+                                className="rounded-md border border-hairline bg-surface-sunken px-md py-sm text-center text-display-lg font-bold tracking-[0.3em] text-ink"
+                                dir="ltr"
+                            >
+                                {resetResult.code}
+                            </p>
+                            <Button
+                                type="button"
+                                variant="secondary"
+                                onClick={() => {
+                                    if (navigator.clipboard?.writeText) {
+                                        void navigator.clipboard.writeText(resetResult.code);
+                                    }
+                                }}
+                            >
+                                نسخ الرمز
+                            </Button>
+                        </>
+                    ) : null}
+                </div>
+            </Dialog>
         </div>
     );
 }

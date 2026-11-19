@@ -1,20 +1,27 @@
 import './Payroll.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
+import { PayrollSuite } from '../components/PayrollSuite';
+import { PayrollWorkbench } from '../components/PayrollWorkbench';
 import { PrintActions } from '../components/PrintActions';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
+import { Card } from '../components/TableState';
 import { fetchHrDepartments } from '../lib/employees';
 import { formatInt } from '../lib/inventory-register';
 import {
     currentMonth,
     fetchPayrollRuns,
     fetchPayrollSheet,
+    type PayrollRunRow,
+    type PayrollSheetRow,
     payrollRunToRow,
     runsSummary,
     searchSheetRows,
     sheetRow,
     sheetSummary,
 } from '../lib/payroll';
+import { payrollSheetCsv } from '../lib/payroll-suite';
+import { downloadBlob } from '../lib/pdf-share';
+import { DataTable, type DataTableColumn } from '../ui';
 
 type PayrollView = 'all' | 'approved' | 'other';
 
@@ -49,6 +56,120 @@ function Kpi({ label, english, value, hint }: { label: string; english: string; 
         </li>
     );
 }
+
+/**
+ * أعمدة المسيرات — الخلايا تحفظ دلالات العرض القديمة حرفيًا (أرقام لاتينية
+ * معزولة الاتجاه، والصافي بخط عريض). الفرز محلي على كل المسيرات المحمّلة
+ * (لا ترقيم هنا)، والمبالغ النصية تُفرز بقيمتها الرقمية لا بنصّها.
+ */
+const RUN_COLUMNS: DataTableColumn<PayrollRunRow>[] = [
+    {
+        key: 'month',
+        header: 'الشهر',
+        className: 'erp-numeric text-ink',
+        cell: (run) => <span dir="ltr">{run.month}</span>,
+        sortValue: (run) => run.month,
+    },
+    {
+        key: 'count',
+        header: 'الموظفون',
+        className: 'erp-numeric text-ink',
+        cell: (run) => <span dir="ltr">{formatInt(run.count)}</span>,
+        sortValue: (run) => run.count,
+    },
+    {
+        key: 'basic',
+        header: 'الأساسي',
+        className: 'text-ink',
+        cell: (run) => <Money value={run.basic} />,
+        sortValue: (run) => Number(run.basic),
+    },
+    {
+        key: 'overtime',
+        header: 'أوفرتايم',
+        className: 'text-ink',
+        cell: (run) => <Money value={run.overtime} />,
+        sortValue: (run) => Number(run.overtime),
+    },
+    {
+        key: 'bonuses',
+        header: 'علاوات',
+        className: 'text-ink',
+        cell: (run) => <Money value={run.bonuses} />,
+        sortValue: (run) => Number(run.bonuses),
+    },
+    {
+        key: 'penalties',
+        header: 'جزاءات',
+        className: 'text-ink',
+        cell: (run) => <Money value={run.penalties} />,
+        sortValue: (run) => Number(run.penalties),
+    },
+    {
+        key: 'advances',
+        header: 'سلف',
+        className: 'text-ink',
+        cell: (run) => <Money value={run.advances} />,
+        sortValue: (run) => Number(run.advances),
+    },
+    {
+        key: 'net',
+        header: 'الصافي',
+        className: 'font-semibold text-ink',
+        cell: (run) => <Money value={run.net} />,
+        sortValue: (run) => Number(run.net),
+    },
+    {
+        key: 'status',
+        header: 'الحالة',
+        className: 'text-muted',
+        cell: (run) => run.status || '—',
+        sortValue: (run) => run.status || null,
+    },
+];
+
+/**
+ * أعمدة الكشف — الراتب المخفي بقرار الخادم يبقى شرطة ولا يُخمَّن، ويُفرز
+ * كقيمة فارغة (في النهاية) لا كصفر. الكشف بلا ترقيم: كل النتائج محمّلة،
+ * فالفرز المحلي آمن وفوق 200 صف يتكفّل DataTable بالتمرير الافتراضي.
+ */
+const SHEET_COLUMNS: DataTableColumn<PayrollSheetRow>[] = [
+    {
+        key: 'name',
+        header: 'الموظف',
+        className: 'text-ink',
+        cell: (row) => row.name,
+        sortValue: (row) => row.name,
+    },
+    {
+        key: 'dept',
+        header: 'القسم',
+        className: 'text-muted',
+        cell: (row) => row.dept,
+        sortValue: (row) => row.dept,
+    },
+    {
+        key: 'position',
+        header: 'المنصب',
+        className: 'text-muted',
+        cell: (row) => row.position,
+        sortValue: (row) => row.position,
+    },
+    {
+        key: 'salary',
+        header: 'الراتب الأساسي',
+        className: 'text-ink',
+        cell: (row) => (row.salary === null ? '—' : <Money value={row.salary} />),
+        sortValue: (row) => (row.salary === null ? null : Number(row.salary)),
+    },
+    {
+        key: 'days',
+        header: 'أيام الحضور',
+        className: 'erp-numeric text-ink',
+        cell: (row) => <span dir="ltr">{formatInt(row.days)}</span>,
+        sortValue: (row) => row.days,
+    },
+];
 
 export function Payroll() {
     const [month, setMonth] = useState(() => currentMonth());
@@ -101,11 +222,10 @@ export function Payroll() {
                             Payroll
                         </span>
                     </h1>
-                    <p className="text-body-sm text-muted">
-                        سجل المسيرات وكشف الموظفين.
-                    </p>
+                    <p className="text-body-sm text-muted">سجل المسيرات وكشف الموظفين.</p>
                 </div>
                 <div className="flex items-center gap-xs">
+                    <PayrollWorkbench month={month} />
                     <PrintActions title="الرواتب" />
                     <button
                         type="button"
@@ -174,97 +294,30 @@ export function Payroll() {
                         </select>
                     </label>
                 </div>
-                {runsQuery.isPending ? (
-                    <div aria-busy="true">
-                        <StateLoading label="جارٍ تحميل مسيرات الرواتب" />
-                        <TableSkeleton rows={4} columns={8} />
-                    </div>
-                ) : null}
-                {runsQuery.isError ? (
-                    <StateError
-                        message={runsQuery.error instanceof Error ? runsQuery.error.message : 'تعذّر تحميل المسيرات'}
-                        onRetry={() => {
-                            void runsQuery.refetch();
-                        }}
-                    />
-                ) : null}
-                {runsQuery.data ? (
-                    filteredRuns.length ? (
-                        <TableScroll label="سجل مسيرات الرواتب">
-                            <table className="w-full border-collapse text-body-md">
-                                <caption className="sr-only">مسيرات الرواتب</caption>
-                                <thead>
-                                    <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                        <th scope="col" className="px-sm py-xs text-start">
-                                            الشهر
-                                        </th>
-                                        <th scope="col" className="px-sm py-xs text-start">
-                                            الموظفون
-                                        </th>
-                                        <th scope="col" className="px-sm py-xs text-start">
-                                            الأساسي
-                                        </th>
-                                        <th scope="col" className="px-sm py-xs text-start">
-                                            أوفرتايم
-                                        </th>
-                                        <th scope="col" className="px-sm py-xs text-start">
-                                            علاوات
-                                        </th>
-                                        <th scope="col" className="px-sm py-xs text-start">
-                                            جزاءات
-                                        </th>
-                                        <th scope="col" className="px-sm py-xs text-start">
-                                            سلف
-                                        </th>
-                                        <th scope="col" className="px-sm py-xs text-start">
-                                            الصافي
-                                        </th>
-                                        <th scope="col" className="px-sm py-xs text-start">
-                                            الحالة
-                                        </th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filteredRuns.map((run) => (
-                                        <tr key={run.id} className="border-b border-hairline hover:bg-surface-hover">
-                                            <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">
-                                                {run.month}
-                                            </td>
-                                            <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">
-                                                {formatInt(run.count)}
-                                            </td>
-                                            <td className="px-sm py-xxs text-ink">
-                                                <Money value={run.basic} />
-                                            </td>
-                                            <td className="px-sm py-xxs text-ink">
-                                                <Money value={run.overtime} />
-                                            </td>
-                                            <td className="px-sm py-xxs text-ink">
-                                                <Money value={run.bonuses} />
-                                            </td>
-                                            <td className="px-sm py-xxs text-ink">
-                                                <Money value={run.penalties} />
-                                            </td>
-                                            <td className="px-sm py-xxs text-ink">
-                                                <Money value={run.advances} />
-                                            </td>
-                                            <td className="px-sm py-xxs font-semibold text-ink">
-                                                <Money value={run.net} />
-                                            </td>
-                                            <td className="px-sm py-xxs text-muted">{run.status || '—'}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </TableScroll>
-                    ) : (
-                        <StateEmpty
-                            title="لا مسيرات في هذا العرض"
-                            hint="غيّر مرشّح الحالة أو أعد المحاولة لاحقًا."
-                        />
-                    )
-                ) : null}
             </Card>
+            <DataTable<PayrollRunRow>
+                caption="سجل مسيرات الرواتب"
+                columns={RUN_COLUMNS}
+                rows={filteredRuns}
+                rowKey={(run) => run.id}
+                state={
+                    runsQuery.isPending
+                        ? 'loading'
+                        : runsQuery.isError
+                          ? 'error'
+                          : filteredRuns.length === 0
+                            ? 'empty'
+                            : 'data'
+                }
+                loadingRows={4}
+                emptyTitle="لا مسيرات في هذا العرض"
+                emptyDescription="غيّر مرشّح الحالة أو أعد المحاولة لاحقًا."
+                errorMessage={runsQuery.error instanceof Error ? runsQuery.error.message : 'تعذّر تحميل المسيرات'}
+                onRetry={() => {
+                    void runsQuery.refetch();
+                }}
+                manualFiltering
+            />
 
             <Card>
                 <div className="flex flex-wrap items-end justify-between gap-sm px-sm py-xs">
@@ -288,6 +341,21 @@ export function Payroll() {
                             className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
                         />
                     </label>
+                    <button
+                        type="button"
+                        data-erp-print-hide
+                        disabled={search.rows.length === 0}
+                        onClick={() => {
+                            const csv = payrollSheetCsv(search.rows);
+                            downloadBlob(
+                                new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }),
+                                `payroll_${month}.csv`,
+                            );
+                        }}
+                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                    >
+                        تصدير CSV
+                    </button>
                 </div>
                 <div className="flex flex-wrap items-end gap-sm px-sm pb-sm">
                     <label className="flex flex-col gap-xxs text-label-md text-ink-secondary">
@@ -322,83 +390,42 @@ export function Payroll() {
                         </button>
                     </p>
                 ) : null}
-                {sheetQuery.isPending ? (
-                    <div aria-busy="true">
-                        <StateLoading label="جارٍ تحميل كشف الرواتب" />
-                        <TableSkeleton rows={5} columns={5} />
-                    </div>
-                ) : null}
-                {sheetQuery.isError ? (
-                    <StateError
-                        message={
-                            sheetQuery.error instanceof Error ? sheetQuery.error.message : 'تعذّر تحميل كشف الرواتب'
-                        }
-                        onRetry={() => {
-                            void sheetQuery.refetch();
-                        }}
-                    />
-                ) : null}
                 {sheetQuery.data ? (
-                    <>
-                        <p className="px-sm pb-sm text-body-sm text-muted">
-                            الإجمالي الظاهر: <Money value={visibleSheetSummary.total} />
-                            {' · '}
-                            {formatInt(visibleSheetSummary.shown)} راتبًا مرئيًا
-                            {visibleSheetSummary.hidden
-                                ? ` · ${formatInt(visibleSheetSummary.hidden)} مخفي بقرار الخادم`
-                                : ''}
-                        </p>
-                        {search.rows.length ? (
-                            <TableScroll label="كشف رواتب الموظفين">
-                                <table className="w-full border-collapse text-body-md">
-                                    <caption className="sr-only">
-                                        رواتب الموظفين النشطين وأيام الحضور
-                                    </caption>
-                                    <thead>
-                                        <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                            <th scope="col" className="px-sm py-xs text-start">
-                                                الموظف
-                                            </th>
-                                            <th scope="col" className="px-sm py-xs text-start">
-                                                القسم
-                                            </th>
-                                            <th scope="col" className="px-sm py-xs text-start">
-                                                المنصب
-                                            </th>
-                                            <th scope="col" className="px-sm py-xs text-start">
-                                                الراتب الأساسي
-                                            </th>
-                                            <th scope="col" className="px-sm py-xs text-start">
-                                                أيام الحضور
-                                            </th>
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {search.rows.map((row) => (
-                                            <tr
-                                                key={row.id}
-                                                className="border-b border-hairline hover:bg-surface-hover"
-                                            >
-                                                <td className="px-sm py-xxs text-ink">{row.name}</td>
-                                                <td className="px-sm py-xxs text-muted">{row.dept}</td>
-                                                <td className="px-sm py-xxs text-muted">{row.position}</td>
-                                                <td className="px-sm py-xxs text-ink">
-                                                    {row.salary === null ? '—' : <Money value={row.salary} />}
-                                                </td>
-                                                <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">
-                                                    {formatInt(row.days)}
-                                                </td>
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </TableScroll>
-                        ) : (
-                            <StateEmpty title="لا موظفون مطابقون" hint="عدّل البحث لعرض نتائج أخرى." />
-                        )}
-                    </>
+                    <p className="px-sm pb-sm text-body-sm text-muted">
+                        الإجمالي الظاهر: <Money value={visibleSheetSummary.total} />
+                        {' · '}
+                        {formatInt(visibleSheetSummary.shown)} راتبًا مرئيًا
+                        {visibleSheetSummary.hidden
+                            ? ` · ${formatInt(visibleSheetSummary.hidden)} مخفي بقرار الخادم`
+                            : ''}
+                    </p>
                 ) : null}
             </Card>
+            <DataTable<PayrollSheetRow>
+                caption="كشف رواتب الموظفين"
+                columns={SHEET_COLUMNS}
+                rows={search.rows}
+                rowKey={(row) => row.id}
+                state={
+                    sheetQuery.isPending
+                        ? 'loading'
+                        : sheetQuery.isError
+                          ? 'error'
+                          : search.rows.length === 0
+                            ? 'empty'
+                            : 'data'
+                }
+                loadingRows={5}
+                emptyTitle="لا موظفون مطابقون"
+                emptyDescription="عدّل البحث لعرض نتائج أخرى."
+                errorMessage={sheetQuery.error instanceof Error ? sheetQuery.error.message : 'تعذّر تحميل كشف الرواتب'}
+                onRetry={() => {
+                    void sheetQuery.refetch();
+                }}
+                manualFiltering
+            />
+
+            <PayrollSuite month={month} />
         </div>
     );
 }

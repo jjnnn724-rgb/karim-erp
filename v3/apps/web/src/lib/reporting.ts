@@ -15,7 +15,7 @@ import { formatCurrency, formatInt } from './format';
 
 export const MAX_SPAN_DAYS = 93;
 
-export type Preset = 'today' | 'week' | 'month' | 'year';
+export type Preset = 'today' | 'week' | 'month' | 'quarter' | 'year';
 
 export type DisplayTone = 'neutral' | 'success' | 'warning' | 'danger';
 
@@ -53,6 +53,16 @@ export function presetRange(preset: Preset, now: Date = new Date()): { from: str
     }
     if (preset === 'month') {
         return { from: `${today.slice(0, 8)}01`, to: today, label: 'هذا الشهر' };
+    }
+    if (preset === 'quarter') {
+        const quarterStartMonth = Math.floor(now.getMonth() / 3) * 3;
+        const previousQuarterStart = new Date(now.getFullYear(), quarterStartMonth - 3, 1);
+        const previousQuarterEnd = new Date(now.getFullYear(), quarterStartMonth, 0);
+        return {
+            from: todayIso(previousQuarterStart),
+            to: todayIso(previousQuarterEnd),
+            label: 'آخر ربع مكتمل',
+        };
     }
     return { from: `${today.slice(0, 4)}-01-01`, to: today, label: 'هذا العام' };
 }
@@ -168,6 +178,7 @@ export const PRESETS: { key: Preset; label: string }[] = [
     { key: 'today', label: 'اليوم' },
     { key: 'week', label: '٧ أيام' },
     { key: 'month', label: 'هذا الشهر' },
+    { key: 'quarter', label: 'آخر ربع مكتمل' },
     { key: 'year', label: 'هذا العام' },
 ];
 

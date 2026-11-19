@@ -1,11 +1,11 @@
 import './SalesInquiry.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { PrintActions } from '../components/PrintActions';
 import { KpiCard, RangeControls, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
-import { fetchOrders, YARA_MAX_DAYS } from '../lib/yara-reports';
 import { errorMessage, intOf, moneyOf, presetRange, rangeProblem, textOf } from '../lib/reporting';
-import { PrintActions } from '../components/PrintActions';
+import { fetchOrders, YARA_MAX_DAYS } from '../lib/yara-reports';
 
 const PAGE = 50;
 
@@ -23,7 +23,12 @@ export function SalesInquiry() {
     const ordersQuery = useQuery({
         queryKey: ['yara', 'orders', range.from, range.to, cashier, offset],
         queryFn: ({ signal }) =>
-            fetchOrders(cashier ? { from: range.from, to: range.to, cashier, limit: PAGE, offset } : { from: range.from, to: range.to, limit: PAGE, offset }, signal),
+            fetchOrders(
+                cashier
+                    ? { from: range.from, to: range.to, cashier, limit: PAGE, offset }
+                    : { from: range.from, to: range.to, limit: PAGE, offset },
+                signal,
+            ),
     });
 
     const page = ordersQuery.data;
@@ -102,9 +107,17 @@ export function SalesInquiry() {
 
             {page ? (
                 <>
-                    <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4" aria-label="مؤشرات استعلام المبيعات">
+                    <ul
+                        className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4"
+                        aria-label="مؤشرات استعلام المبيعات"
+                    >
                         <KpiCard label="أوامر مطابقة" english="Matched" value={intOf(total)} hint="كل الصفحات" />
-                        <KpiCard label="في الصفحة" english="Page" value={intOf(orders.length)} hint={`${String(PAGE)} لكل صفحة`} />
+                        <KpiCard
+                            label="في الصفحة"
+                            english="Page"
+                            value={intOf(orders.length)}
+                            hint={`${String(PAGE)} لكل صفحة`}
+                        />
                         <KpiCard
                             label="الصفحة"
                             english="Page index"
@@ -166,7 +179,10 @@ export function SalesInquiry() {
                                     </thead>
                                     <tbody>
                                         {orders.map((order) => (
-                                            <tr key={order.doc_no} className="border-b border-hairline hover:bg-surface-hover">
+                                            <tr
+                                                key={order.doc_no}
+                                                className="border-b border-hairline hover:bg-surface-hover"
+                                            >
                                                 <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">
                                                     {order.doc_no}
                                                 </td>
@@ -230,4 +246,3 @@ export function SalesInquiry() {
         </div>
     );
 }
-

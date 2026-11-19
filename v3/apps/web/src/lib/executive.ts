@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { fetchJson } from './api';
 import { getAccessToken } from './auth';
-import { moneyOf, num, pctOf, textOf, type DisplayTone } from './reporting';
+import { type DisplayTone, moneyOf, num, pctOf, textOf } from './reporting';
 
 /**
  * الموجز التنفيذي — باب واحد إلى `GET /api/executive/summary?days=` كما في

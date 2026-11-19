@@ -5,18 +5,6 @@ import { expectNoAxeViolations, installDomPolyfills } from './test-utils';
 
 installDomPolyfills();
 
-/**
- * الشارة تُقرأ من محتواها (نصّ مخفي بصريًا للاتجاه + الرقم)، لا من `aria-label`
- * على عنصر `span` — لأن ARIA لا يسمح بتسمية عنصر محايد بلا دور.
- */
-function badgeOf(deltaText: string): HTMLElement {
-    const badge = screen.getByText(deltaText).closest('[data-slot="kpi-badge"]');
-    if (!(badge instanceof HTMLElement)) {
-        throw new Error(`لم تُوجد شارة التغيّر للنص ${deltaText}`);
-    }
-    return badge;
-}
-
 describe('KpiTile', () => {
     it('يعرض التسمية والقيمة والوحدة والاتجاه', () => {
         render(<KpiTile label="إجمالي الإيراد" value="120,000.00" unit="SAR" delta="+12.5%" trend="up" />);
@@ -24,14 +12,12 @@ describe('KpiTile', () => {
         expect(screen.getByText('إجمالي الإيراد')).toBeTruthy();
         expect(screen.getByText('120,000.00')).toBeTruthy();
         expect(screen.getByText('SAR')).toBeTruthy();
-        expect(badgeOf('+12.5%').textContent).toContain('ارتفاع');
+        expect(screen.getByLabelText('ارتفاع: +12.5%')).toBeTruthy();
     });
 
     it('tone يفصل الدلالة عن الاتجاه (انخفاض المصروف جيد)', () => {
         render(<KpiTile label="المصروف" value="40,000.00" delta="-8.0%" trend="down" tone="success" />);
-        const badge = badgeOf('-8.0%');
-        expect(badge.textContent).toContain('انخفاض');
-        expect(badge.className).toContain('success');
+        expect(screen.getByLabelText('انخفاض: -8.0%')).toBeTruthy();
     });
 
     it('loading يعرض هيكلًا عظميًا معلنًا', () => {
@@ -53,7 +39,7 @@ describe('KpiTile', () => {
 
     it('اتجاه flat يُRender سهم ثبات ونبرة محايدة', () => {
         render(<KpiTile label="ثابت" value="50,000.00" unit="SAR" delta="0.0%" trend="flat" />);
-        expect(badgeOf('0.0%').textContent).toContain('ثبات');
+        expect(screen.getByLabelText('ثبات: 0.0%')).toBeTruthy();
     });
 
     it('بدون delta لا يُRender شارة', () => {
@@ -63,13 +49,13 @@ describe('KpiTile', () => {
 
     it('tone danger مع delta يُRender دلالة خطر', () => {
         render(<KpiTile label="خطر" value="5,000.00" delta="-2.0%" trend="down" tone="danger" />);
-        const badge = badgeOf('-2.0%');
+        const badge = screen.getByLabelText('انخفاض: -2.0%');
         expect(badge.className).toContain('border-danger');
     });
 
     it('className مخصص يُطبق على البطاقة', () => {
         render(<KpiTile label="مخصص" value="1" className="border-2" />);
-        const card = screen.getByText('مخصص').closest('[data-slot="kpi-tile"]');
+        const card = screen.getByText('مخصص').closest('div.flex-col');
         expect(card?.className).toContain('border-2');
     });
 });

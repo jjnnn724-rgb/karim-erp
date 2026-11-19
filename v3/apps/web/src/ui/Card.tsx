@@ -4,7 +4,7 @@ import { cn } from './cn';
 /**
  * بطاقة — فوق **shadcn/ui**: نفس توكنز shadcn (`bg-card`/`text-card-foreground`/
  * `border-border`) مُعرَّفة في `styles.css` على بدائيات ERP، وهوية DESIGN.md:
- * أوفى بياضًا من الكانفس، حدّ شعرة، ظل دافئ منخفض.
+ * سطح أبيض على الكانفس، بحدّ رفيع وظل محايد منخفض الارتفاع.
  * مكوّنات مركّبة (`CardHeader`/`CardTitle`/`CardBody`/`CardFooter`) لأن
  * البطاقات في الشاشات تتفاوت: بعضها برأس وإجراءات، وبعضها جسم فقط.
  *
@@ -21,7 +21,8 @@ export function Card({ children, className, as: Component = 'section' }: CardPro
     return (
         <Component
             className={cn(
-                'erp-card flex flex-col gap-0 overflow-hidden rounded-xl border border-hairline bg-surface text-ink shadow-card',
+                'erp-card flex flex-col gap-0 overflow-hidden rounded-xl border border-border bg-card text-card-foreground shadow-sm',
+                'rounded-lg border-hairline bg-surface shadow-card',
                 className,
             )}
         >

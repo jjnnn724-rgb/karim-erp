@@ -28,11 +28,13 @@ import {
     editSuccessText,
     editVisible,
     isFinalDelete,
-    receivedItemsPayload,
-    receiveDraftError,
     receiveDispatch,
+    receiveDraftError,
+    receivedItemsPayload,
     receiveVisible,
     rejectDispatch,
+    reopenDispatch,
+    reopenVisible,
     rowDeptMatches,
     warehouseActionsVisible,
 } from '../lib/dispatches-write';
@@ -140,6 +142,26 @@ describe('أذون الصرف — بوابات الأدوار (مرآة V2)', ()
         expect(rowDeptMatches({ deptCode: 'K03' }, pending)).toBe(false);
     });
 
+    it('إرجاع الإذن المعتمد للتعديل للمدير/الأدمن قبل أي استلام فقط', () => {
+        const approved = dispatchGate({ id: 12, status: 'approved' });
+        expect(reopenVisible('admin', approved)).toBe(true);
+        expect(reopenVisible('manager', approved)).toBe(true);
+        expect(reopenVisible('warehouse', approved)).toBe(false);
+        expect(reopenVisible('manager', { ...approved, hasReceipt: true })).toBe(false);
+        expect(reopenVisible('manager', { ...approved, status: 'partially_received' })).toBe(false);
+        expect(reopenVisible('manager', { ...approved, status: 'pending' })).toBe(false);
+        expect(
+            reopenVisible(
+                'manager',
+                dispatchGate({
+                    id: 13,
+                    status: 'approved',
+                    receivedItems: [{ itemName: 'أرز', receivedQty: 1 }],
+                }),
+            ),
+        ).toBe(false);
+    });
+
     it('الاستلام: approved وبقائمة canReceive أو رئيس قسم قسمه', () => {
         const approved = dispatchGate({ id: 4, status: 'approved', deptCode: 'K01' });
         expect(receiveVisible('kitchen', approved, { id: '7' })).toBe(true);
@@ -157,6 +179,7 @@ describe('أذون الصرف — بوابات الأدوار (مرآة V2)', ()
             needsChefApproval: false,
             deptCode: '',
             creatorUserId: '',
+            hasReceipt: false,
         });
         expect(dispatchGate({ id: 101, status: 'pending', needsChefApproval: true, creatorUserId: 7 })).toMatchObject({
             id: '101',
@@ -164,6 +187,16 @@ describe('أذون الصرف — بوابات الأدوار (مرآة V2)', ()
             creatorUserId: '7',
         });
     });
+});
+
+it('إرجاع الإذن POST …/reopen بسبب إلزامي', async () => {
+    const calls = stubFetch({ ok: true });
+    await reopenDispatch(104, 'تصحيح الكمية');
+    expect(calls[0]?.url).toBe('/api/warehouse/dispatches/104/reopen');
+    expect(calls[0]?.method).toBe('POST');
+    expect(calls[0]?.body).toEqual({ reason: 'تصحيح الكمية' });
+    await expect(reopenDispatch(104, '  ')).rejects.toThrow('أدخل سبب إرجاع الإذن للمخازن');
+    expect(calls).toHaveLength(1);
 });
 
 describe('أذون الصرف — تحقق النماذج بنصوص V2', () => {
@@ -187,16 +220,12 @@ describe('أذون الصرف — تحقق النماذج بنصوص V2', () => 
     it('التعديل: لا بوابة رصيد، وصنف صالح واحد يكفي', () => {
         expect(editItemsError([{ name: 'الدجاج', qty: '3' }])).toBe('');
         expect(editItemsError([{ name: '', qty: '3' }])).toBe('اكتب صنفًا واحدًا على الأقل باسم وكمية صحيحة');
-        expect(editItemsError([{ name: 'الدجاج', qty: '0' }])).toBe(
-            'اكتب صنفًا واحدًا على الأقل باسم وكمية صحيحة',
-        );
+        expect(editItemsError([{ name: 'الدجاج', qty: '0' }])).toBe('اكتب صنفًا واحدًا على الأقل باسم وكمية صحيحة');
     });
 
     it('اعتماد المخازن: كميات موجبة، ووزن متغير بوزن وكراتين', () => {
         expect(
-            approveDraftError([
-                { name: 'أرز', unit: 'كجم', requestedQty: 2, approvedQty: '2', catchWeight: false },
-            ]),
+            approveDraftError([{ name: 'أرز', unit: 'كجم', requestedQty: 2, approvedQty: '2', catchWeight: false }]),
         ).toBe('');
         expect(
             approveDraftError([{ name: 'أرز', unit: 'كجم', requestedQty: 2, approvedQty: '0', catchWeight: false }]),
@@ -311,9 +340,7 @@ describe('أذون الصرف — حمولات V2 حرفيًّا', () => {
 
     it('اعتماد المخازن: كمية عادية أو وزن فعلي + كراتين للوزن المتغير', () => {
         expect(
-            approveItemsPayload([
-                { name: 'أرز', unit: 'كجم', requestedQty: 3, approvedQty: '2', catchWeight: false },
-            ]),
+            approveItemsPayload([{ name: 'أرز', unit: 'كجم', requestedQty: 3, approvedQty: '2', catchWeight: false }]),
         ).toEqual([
             {
                 name: 'أرز',
@@ -408,9 +435,7 @@ describe('أذون الصرف — رسائل النجاح/التأكيد/الخ�
     });
 
     it('خطأ الإنشاء المكرر يُترجم إلى نص V2', () => {
-        expect(createErrorText({ code: 'DUPLICATE_DISPATCH', message: 'مكرر' })).toBe(
-            'الطلب مسجل بالفعل — لم يتكرر',
-        );
+        expect(createErrorText({ code: 'DUPLICATE_DISPATCH', message: 'مكرر' })).toBe('الطلب مسجل بالفعل — لم يتكرر');
         expect(createErrorText(new Error(''))).toBe('تعذر إرسال طلب الصرف — راجع أرصدة المخزن');
         expect(createErrorText(new Error('الرصيد غير كافٍ'))).toBe('الرصيد غير كافٍ');
     });
@@ -531,8 +556,8 @@ describe('أذون الصرف — بوابات HTTP الثماني', () => {
             { error: 'SIGNATURE_REQUIRED', message: 'التوقيع الإلكتروني مطلوب قبل اعتماد أو استلام أو رفض المستند' },
             422,
         );
-        await expect(
-            chefApproveDispatch(101, { notes: '', signatureData: '', signerName: '' }),
-        ).rejects.toThrow('التوقيع الإلكتروني مطلوب قبل اعتماد أو استلام أو رفض المستند');
+        await expect(chefApproveDispatch(101, { notes: '', signatureData: '', signerName: '' })).rejects.toThrow(
+            'التوقيع الإلكتروني مطلوب قبل اعتماد أو استلام أو رفض المستند',
+        );
     });
 });

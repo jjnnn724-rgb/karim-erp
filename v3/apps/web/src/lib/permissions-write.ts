@@ -30,14 +30,9 @@ export async function saveUserPermissions(
     userId: string | number,
     input: { grants: string[]; denies: string[]; reason?: string },
 ): Promise<void> {
-    await writeJson(
-        permissionsResultSchema,
-        `/api/permissions/users/${encodeURIComponent(String(userId))}`,
-        'PUT',
-        {
-            grants: input.grants,
-            denies: input.denies,
-            reason: input.reason?.trim() || null,
-        },
-    );
+    await writeJson(permissionsResultSchema, `/api/permissions/users/${encodeURIComponent(String(userId))}`, 'PUT', {
+        grants: input.grants,
+        denies: input.denies,
+        reason: input.reason?.trim() || null,
+    });
 }

@@ -1,5 +1,5 @@
-import { Badge as ShadcnBadge } from '@/components/ui/badge';
 import type { ReactNode } from 'react';
+import { Badge as ShadcnBadge } from '@/components/ui/badge';
 import { cn } from './cn';
 
 /**

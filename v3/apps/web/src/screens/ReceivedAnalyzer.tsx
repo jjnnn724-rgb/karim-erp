@@ -1,8 +1,10 @@
 import './ReceivedAnalyzer.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { PrintActions } from '../components/PrintActions';
 import { KpiCard, RangeControls, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
+import { errorMessage, intOf, presetRange, qtyOf, rangeProblem, textOf } from '../lib/reporting';
 import {
     DISPATCH_STATUS_AR,
     fetchReceivedDispatches,
@@ -10,8 +12,6 @@ import {
     receivedLabel,
     YARA_MAX_DAYS,
 } from '../lib/yara-reports';
-import { errorMessage, intOf, presetRange, qtyOf, rangeProblem, textOf } from '../lib/reporting';
-import { PrintActions } from '../components/PrintActions';
 
 const numOf = (value: unknown): number => {
     const parsed = Number(value ?? 0);
@@ -107,7 +107,12 @@ export function ReceivedAnalyzer() {
                             value={intOf(items.length)}
                             hint={`${intOf(itemsQuery.data.count ?? dispatches.length)} إذنًا`}
                         />
-                        <KpiCard label="الكمية المرسلة" english="Sent qty" value={qtyOf(qty)} hint="مجموع صفوف النافذة" />
+                        <KpiCard
+                            label="الكمية المرسلة"
+                            english="Sent qty"
+                            value={qtyOf(qty)}
+                            hint="مجموع صفوف النافذة"
+                        />
                         <KpiCard
                             label="الكمية المستلمة"
                             english="Approved qty"
@@ -151,7 +156,10 @@ export function ReceivedAnalyzer() {
                                         </thead>
                                         <tbody>
                                             {items.map((row, index) => (
-                                                <tr key={`${receivedLabel(row)}-${String(index)}`} className="border-b border-hairline">
+                                                <tr
+                                                    key={`${receivedLabel(row)}-${String(index)}`}
+                                                    className="border-b border-hairline"
+                                                >
                                                     <td className="px-sm py-xxs text-ink">{receivedLabel(row)}</td>
                                                     <td className="px-sm py-xxs text-body-sm text-muted">
                                                         {textOf(row.depts) || textOf(row.dept_name) || '—'}
@@ -164,7 +172,9 @@ export function ReceivedAnalyzer() {
                                                     </td>
                                                     <td
                                                         className={`erp-numeric px-sm py-xxs ${
-                                                            numOf(row.variance_qty) !== 0 ? 'text-warning-text' : 'text-muted'
+                                                            numOf(row.variance_qty) !== 0
+                                                                ? 'text-warning-text'
+                                                                : 'text-muted'
                                                         }`}
                                                         dir="ltr"
                                                     >
@@ -223,7 +233,9 @@ export function ReceivedAnalyzer() {
                                                         {textOf(row.date) || '—'}
                                                     </td>
                                                     <td className="px-sm py-xxs text-body-sm">
-                                                        {DISPATCH_STATUS_AR[textOf(row.status)] ?? textOf(row.status) ?? '—'}
+                                                        {DISPATCH_STATUS_AR[textOf(row.status)] ??
+                                                            textOf(row.status) ??
+                                                            '—'}
                                                     </td>
                                                     <td className="erp-numeric px-sm py-xxs text-body-sm" dir="ltr">
                                                         {`${intOf(row.items_count)} / ${qtyOf(row.total_qty)}`}
@@ -241,4 +253,3 @@ export function ReceivedAnalyzer() {
         </div>
     );
 }
-

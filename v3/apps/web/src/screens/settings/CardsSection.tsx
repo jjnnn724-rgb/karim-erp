@@ -6,8 +6,7 @@ import { type HrCardSettings, hrCardSettingsSchema } from '../../lib/settings';
 import { saveHrCardSettings, settingsWriteVisible } from '../../lib/settings-write';
 import { useWriteMutation, writeErrorMessage } from '../../lib/write';
 import { Input } from '../../ui/Input';
-import { QueryBoundary, ReadOnlyBadge, SaveBar, SectionCard, useDraftForm } from './shared';
-import { FieldGrid } from './shared';
+import { FieldGrid, QueryBoundary, ReadOnlyBadge, SaveBar, SectionCard, useDraftForm } from './shared';
 
 export function CardsSection() {
     const auth = useAuthState();
@@ -16,8 +15,7 @@ export function CardsSection() {
 
     const query = useQuery({
         queryKey: ['settings', 'hr-card'],
-        queryFn: ({ signal }) =>
-            fetchJson(hrCardSettingsSchema, '/api/hr/card-settings', getAccessToken(), { signal }),
+        queryFn: ({ signal }) => fetchJson(hrCardSettingsSchema, '/api/hr/card-settings', getAccessToken(), { signal }),
         refetchOnWindowFocus: false,
     });
 

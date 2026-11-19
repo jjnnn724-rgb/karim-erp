@@ -10,8 +10,8 @@ import {
     LineChart,
     Pie,
     PieChart,
-    ResponsiveContainer,
     Tooltip as RechartsTooltip,
+    ResponsiveContainer,
     XAxis,
     YAxis,
 } from 'recharts';
@@ -66,7 +66,14 @@ export default function ChartImpl({ kind, data, xKey, series, height = 240 }: Ch
         <>
             <CartesianGrid strokeDasharray="3 3" vertical={false} className="erp-chart-grid" />
             <XAxis dataKey={xKey} tickLine={false} axisLine={false} className="erp-chart-axis" />
-            <YAxis width={52} tickLine={false} axisLine={false} className="erp-chart-axis" />
+            <YAxis
+                width={80}
+                tickMargin={8}
+                tick={{ style: { direction: 'ltr' } }}
+                tickLine={false}
+                axisLine={false}
+                className="erp-chart-axis"
+            />
             <RechartsTooltip />
         </>
     );
@@ -79,13 +86,13 @@ export default function ChartImpl({ kind, data, xKey, series, height = 240 }: Ch
                     تعطيل طبقة a11y في Recharts يمنع عناصر قابلة للتركيز داخل aria-hidden (axe aria-hidden-focus). */}
                 <PieChart margin={MARGIN} accessibilityLayer={false}>
                     <Pie
-                    data={chartData}
-                    dataKey={valueKey}
-                    nameKey={xKey}
-                    outerRadius="72%"
-                    strokeWidth={2}
-                    rootTabIndex={-1}
-                >
+                        data={chartData}
+                        dataKey={valueKey}
+                        nameKey={xKey}
+                        outerRadius="72%"
+                        strokeWidth={2}
+                        rootTabIndex={-1}
+                    >
                         {chartData.map((_, index) => (
                             <Cell key={`cell-${String(index)}`} className={fillClass(index)} />
                         ))}

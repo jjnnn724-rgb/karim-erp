@@ -2,56 +2,51 @@ import './Employees.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { PrintActions } from '../components/PrintActions';
-import {
-    Card,
-    StateEmpty,
-    StateError,
-    StateLoading,
-    TableScroll,
-    TableSkeleton,
-} from '../components/TableState';
+import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
+import { attendanceMinutes, fetchAttendanceRange, todayIso, weekdayAr } from '../lib/attendance';
 import { useAuthState } from '../lib/auth';
-import { fetchEmployees } from '../lib/employees';
-import {
-    employeeToRow,
-    fetchHrDepartments,
-    cardExtrasMap,
-    initialsOf,
-    validPhotoSrc,
-    shiftSummary,
-    type EmployeeExtras,
-    type EmployeeRow,
-    searchEmployees,
-    employeeTotals,
-    statusCounts,
-    deptCounts,
-    departmentCodeMap,
-    MAX_PAGES,
-    PAGE_SIZE as SERVER_PAGE_SIZE,
-    type HrDepartment,
-} from '../lib/employees';
-import { fetchAttendanceRange, todayIso, attendanceMinutes, weekdayAr } from '../lib/attendance';
 import {
     ATT_STATE,
+    employeeAttendancePrintHtml,
     fetchAttendanceReport,
     minutesCell,
-    rangeReportRows,
     type RangeModel,
+    rangeReportRows,
 } from '../lib/employee-card';
+import {
+    cardExtrasMap,
+    departmentCodeMap,
+    deptCounts,
+    type EmployeeExtras,
+    type EmployeeRow,
+    employeeToRow,
+    employeeTotals,
+    fetchEmployees,
+    fetchHrDepartments,
+    type HrDepartment,
+    initialsOf,
+    MAX_PAGES,
+    PAGE_SIZE as SERVER_PAGE_SIZE,
+    searchEmployees,
+    shiftSummary,
+    statusCounts,
+    validPhotoSrc,
+} from '../lib/employees';
 import {
     createEmployee,
     deleteEmployee,
-    setEmployeeActive,
-    updateEmployee,
-    employeeActivateConfirm,
-    employeeDeactivateConfirm,
-    employeeDeleteConfirm,
     EMPLOYEE_TEXT,
     type EmployeeCreateInput,
     type EmployeeUpdateInput,
-    employeeWriteVisible,
+    employeeActivateConfirm,
+    employeeDeactivateConfirm,
+    employeeDeleteConfirm,
     employeeDeleteVisible,
+    employeeWriteVisible,
+    setEmployeeActive,
+    updateEmployee,
 } from '../lib/employees-write';
+import { openBlankTab, writeHtmlDocument } from '../lib/print-document';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
@@ -103,7 +98,9 @@ function Kpi({ label, english, value, hint }: { label: string; english: string; 
         <div className="rounded-lg border border-hairline bg-surface p-md shadow-card">
             <p className="text-label-md text-muted">
                 {label}{' '}
-                <span className="text-caption text-faint" dir="ltr" lang="en">{english}</span>
+                <span className="text-caption text-faint" dir="ltr" lang="en">
+                    {english}
+                </span>
             </p>
             <p className="erp-numeric mt-xs text-heading-lg text-ink" dir="ltr">
                 {value}
@@ -443,15 +440,38 @@ function EmployeeCard({
     const fp = extras?.deviceUserId
         ? { dot: 'erp-dot erp-dot--success', label: `بصمة ${extras.deviceUserId}` }
         : { dot: 'erp-dot erp-dot--warning', label: 'بلا بصمة' };
-    const today = todayBitsLine(attendanceToday, row, extras ?? {
-        salary: null, photo: '', deviceUserId: '', shift_start: '', shift_karim: 0,
-        auto_checkout: false, auto_lock: false, day_off: null,
-        email: '', joinDate: '', iqamaExpiry: '', healthCertExpiry: '', healthEduExpiry: '', cardId: '',
-    });
+    const today = todayBitsLine(
+        attendanceToday,
+        row,
+        extras ?? {
+            salary: null,
+            photo: '',
+            deviceUserId: '',
+            shift_start: '',
+            shift_karim: 0,
+            auto_checkout: false,
+            auto_lock: false,
+            day_off: null,
+            email: '',
+            joinDate: '',
+            iqamaExpiry: '',
+            healthCertExpiry: '',
+            healthEduExpiry: '',
+            cardId: '',
+        },
+    );
     const att = attendanceToday.get(String(row.id));
     const mins = att ? attendanceMinutes({ checkIn: att.checkIn, checkOut: att.checkOut, workMinutes: null }) : null;
     const hasTimes = Boolean(att?.checkIn || att?.checkOut);
-    const attTone = att?.onLeave ? 'neutral' : today === 'انصرف' ? 'success' : today === 'داخل الآن' ? 'info' : today === 'بلا حضور' ? 'warning' : 'none';
+    const attTone = att?.onLeave
+        ? 'neutral'
+        : today === 'انصرف'
+          ? 'success'
+          : today === 'داخل الآن'
+            ? 'info'
+            : today === 'بلا حضور'
+              ? 'warning'
+              : 'none';
 
     const expiryChip = (label: string, value: string): { label: string; tone: 'danger' | 'warning' | null } | null => {
         if (!value) {
@@ -462,7 +482,9 @@ function EmployeeCard({
             return { label: `${label}: ${day}`, tone: null };
         }
         const now = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh' }).format(new Date());
-        const diffDays = Math.round((new Date(`${day}T00:00:00Z`).getTime() - new Date(`${now}T00:00:00Z`).getTime()) / 86400000);
+        const diffDays = Math.round(
+            (new Date(`${day}T00:00:00Z`).getTime() - new Date(`${now}T00:00:00Z`).getTime()) / 86400000,
+        );
         if (diffDays < 0) {
             return { label: `${label} منتهي (${day})`, tone: 'danger' };
         }
@@ -559,7 +581,7 @@ function EmployeeCard({
                 ) : null}
             </div>
             {expiryChips.length ? (
-                <div className="erp-person__meta" aria-label="تواريخ الانتهاء">
+                <section className="erp-person__meta" aria-label="تواريخ الانتهاء">
                     {expiryChips.map((chip) => (
                         <span
                             key={chip.label}
@@ -568,7 +590,7 @@ function EmployeeCard({
                             {chip.label}
                         </span>
                     ))}
-                </div>
+                </section>
             ) : null}
             {sh ? (
                 <div className="erp-person__meta">
@@ -626,9 +648,17 @@ function EmployeeCard({
 
 function AttendanceRangeSection({
     employeeId,
+    employeeName,
+    employeeCode,
+    department,
+    position,
     dayOff,
 }: {
     employeeId: string;
+    employeeName: string;
+    employeeCode: string;
+    department: string;
+    position: string;
     dayOff: number | null;
 }) {
     const today = todayIso();
@@ -639,10 +669,7 @@ function AttendanceRangeSection({
     const [model, setModel] = useState<RangeModel | null>(null);
     const [note, setNote] = useState('');
 
-    const loaded = useMemo(
-        () => Boolean(model),
-        [model],
-    );
+    const loaded = useMemo(() => Boolean(model), [model]);
 
     async function load(kind: 'day' | 'range') {
         setNote('');
@@ -661,6 +688,7 @@ function AttendanceRangeSection({
                 return;
             }
         }
+
         setFrom(nextFrom);
         setTo(nextTo);
         setLoading(true);
@@ -675,9 +703,34 @@ function AttendanceRangeSection({
         }
     }
 
+    function printAttendance() {
+        if (!model) {
+            setNote('حمّل كشف اليوم أو الفترة قبل الطباعة');
+            return;
+        }
+        const title = `كشف حضور وانصراف — ${employeeName}`;
+        const win = openBlankTab(title);
+        if (!win) {
+            setNote('تعذّر فتح نافذة الطباعة؛ اسمح بالنوافذ المنبثقة ثم أعد المحاولة');
+            return;
+        }
+        writeHtmlDocument(
+            win,
+            employeeAttendancePrintHtml({
+                employeeName,
+                employeeCode,
+                department,
+                position,
+                report: model,
+            }),
+        );
+        win.document.querySelector<HTMLButtonElement>('[data-print]')?.addEventListener('click', () => win.print());
+        win.print();
+    }
+
+    // biome-ignore lint/correctness/useExhaustiveDependencies: auto-reload only when the employee changes; load uses the latest range values.
     useEffect(() => {
         void load('range');
-        // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [employeeId]);
 
     const s = model?.summary;
@@ -759,8 +812,23 @@ function AttendanceRangeSection({
                 <Button type="button" size="sm" variant="secondary" loading={loading} onClick={() => void load('day')}>
                     كشف اليوم
                 </Button>
-                <Button type="button" size="sm" variant="secondary" loading={loading} onClick={() => void load('range')}>
+                <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    loading={loading}
+                    onClick={() => void load('range')}
+                >
                     كشف الفترة
+                </Button>
+                <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    disabled={loading || !model}
+                    onClick={printAttendance}
+                >
+                    طباعة الكشف
                 </Button>
             </div>
             {note ? (
@@ -773,8 +841,14 @@ function AttendanceRangeSection({
             {model && s ? (
                 <>
                     <h5 className="text-heading-sm text-ink">
-                        كشف <span className="erp-numeric" dir="ltr">{s.from}</span> —{' '}
-                        <span className="erp-numeric" dir="ltr">{s.to}</span>
+                        كشف{' '}
+                        <span className="erp-numeric" dir="ltr">
+                            {s.from}
+                        </span>{' '}
+                        —{' '}
+                        <span className="erp-numeric" dir="ltr">
+                            {s.to}
+                        </span>
                     </h5>
                     <div className="erp-emp-stats">
                         {stat('أيام حضور', formatInt(s.daysPresent))}
@@ -788,6 +862,7 @@ function AttendanceRangeSection({
                     {model.truncated ? (
                         <p className="text-body-sm text-muted">الكشف مقترب على 62 يومًا كحدّ أعلى.</p>
                     ) : null}
+                    {/* biome-ignore lint/a11y/noNoninteractiveTabindex: the attendance table scroll region must remain keyboard reachable. */}
                     <div className="erp-table__scroll erp-emp-att__scroll" tabIndex={0}>
                         <table className="erp-table__grid">
                             <thead>
@@ -964,20 +1039,40 @@ function EmployeeProfileDialog({
                             </div>
                         ) : null}
                     </dl>
-                    <AttendanceRangeSection employeeId={row.id} dayOff={extras?.day_off ?? null} />
+                    <AttendanceRangeSection
+                        employeeId={row.id}
+                        employeeName={row.name}
+                        employeeCode={row.code}
+                        department={row.dept}
+                        position={row.position}
+                        dayOff={extras?.day_off ?? null}
+                    />
                     {(canWrite || canDelete) && (
-                        <div className="flex flex-wrap items-center gap-xs border-t border-hairline pt-sm" data-erp-print-hide>
+                        <div
+                            className="flex flex-wrap items-center gap-xs border-t border-hairline pt-sm"
+                            data-erp-print-hide
+                        >
                             {canWrite ? (
                                 <>
                                     <Button type="button" size="sm" variant="secondary" onClick={onEdit}>
                                         تعديل
                                     </Button>
                                     {row.status === 'active' ? (
-                                        <Button type="button" size="sm" variant="secondary" onClick={() => onChangeStatus(false)}>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="secondary"
+                                            onClick={() => onChangeStatus(false)}
+                                        >
                                             إيقاف
                                         </Button>
                                     ) : (
-                                        <Button type="button" size="sm" variant="secondary" onClick={() => onChangeStatus(true)}>
+                                        <Button
+                                            type="button"
+                                            size="sm"
+                                            variant="secondary"
+                                            onClick={() => onChangeStatus(true)}
+                                        >
                                             تفعيل
                                         </Button>
                                     )}
@@ -1141,7 +1236,10 @@ export function Employees() {
         },
     });
 
-    const updateEmployeeMutation = useWriteMutation<{ id: string | number; input: EmployeeUpdateInput }, { id: string | number }>({
+    const updateEmployeeMutation = useWriteMutation<
+        { id: string | number; input: EmployeeUpdateInput },
+        { id: string | number }
+    >({
         mutationFn: ({ id, input }) => updateEmployee(id, input).then((r) => ({ id: r.id })),
         successTitle: () => EMPLOYEE_TEXT.updateSuccess,
         invalidate: [['employees'], ['hr-departments']],
@@ -1152,7 +1250,10 @@ export function Employees() {
         },
     });
 
-    const setEmployeeActiveMutation = useWriteMutation<{ id: string | number; active: boolean }, { id: string | number; active: boolean }>({
+    const setEmployeeActiveMutation = useWriteMutation<
+        { id: string | number; active: boolean },
+        { id: string | number; active: boolean }
+    >({
         mutationFn: ({ id, active }) => setEmployeeActive(id, active).then((r) => ({ id: r.id, active })),
         successTitle: ({ active }) => (active ? EMPLOYEE_TEXT.activateSuccess : EMPLOYEE_TEXT.deactivateSuccess),
         invalidate: [['employees'], ['hr-departments']],
@@ -1207,8 +1308,7 @@ export function Employees() {
     }
 
     const deptOptions = useMemo(
-        () =>
-            departmentsQuery.data?.map((d: HrDepartment) => ({ code: d.code, name: d.name ?? '' })) ?? [],
+        () => departmentsQuery.data?.map((d: HrDepartment) => ({ code: d.code, name: d.name ?? '' })) ?? [],
         [departmentsQuery.data],
     );
 
@@ -1283,7 +1383,7 @@ export function Employees() {
                 <div className="flex flex-wrap items-end gap-sm">
                     <div className="flex flex-col gap-xxs text-label-md text-ink-secondary">
                         <span>طريقة العرض</span>
-                        <div className="flex gap-xxs" role="group" aria-label="طريقة العرض">
+                        <fieldset className="m-0 flex min-w-0 gap-xxs border-0 p-0" aria-label="طريقة العرض">
                             <button
                                 type="button"
                                 aria-pressed={view === 'cards'}
@@ -1304,7 +1404,7 @@ export function Employees() {
                             >
                                 جدول
                             </button>
-                        </div>
+                        </fieldset>
                     </div>
                     <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-employees-q">
                         بحث
@@ -1394,8 +1494,7 @@ export function Employees() {
                                     : entry.value
                                       ? entry.value
                                       : 'غير محدد';
-                        const statusColor =
-                            entry.value === 'active' ? 'bg-success-text' : 'bg-danger-text';
+                        const statusColor = entry.value === 'active' ? 'bg-success-text' : 'bg-danger-text';
                         return (
                             <li key={entry.value} className="flex items-center gap-sm text-body-sm">
                                 <span className="w-40 shrink-0 truncate text-ink">{statusLabel}</span>
@@ -1428,7 +1527,9 @@ export function Employees() {
 
                     {employeesQuery.isError ? (
                         <StateError
-                            message={employeesQuery.error instanceof Error ? employeesQuery.error.message : 'خطأ غير معروف'}
+                            message={
+                                employeesQuery.error instanceof Error ? employeesQuery.error.message : 'خطأ غير معروف'
+                            }
                             onRetry={() => {
                                 void employeesQuery.refetch();
                             }}
@@ -1438,11 +1539,7 @@ export function Employees() {
                     {employeesQuery.isSuccess && sorted.length === 0 ? (
                         <StateEmpty
                             title={filtered ? 'لا موظفين يطابقون المرشّحات' : 'دليل الموظفين فارغ'}
-                            hint={
-                                filtered
-                                    ? 'لا نتائج مطابقة؛ عدّل المرشّحات أو امسحها.'
-                                    : 'أضف أول موظف.'
-                            }
+                            hint={filtered ? 'لا نتائج مطابقة؛ عدّل المرشّحات أو امسحها.' : 'أضف أول موظف.'}
                         />
                     ) : null}
 
@@ -1451,7 +1548,9 @@ export function Employees() {
                             <p className="border-b border-hairline px-sm py-xs text-body-sm text-muted" role="status">
                                 {`${formatInt(sorted.length)} موظفًا`}
                                 {search.exact ? ` · ${formatInt(search.exact)} مطابقة تامة` : ''}
-                                {capped ? ` · الخادم أعاد أول ${formatInt(SERVER_PAGE_SIZE * MAX_PAGES)} موظفًا فقط` : ''}
+                                {capped
+                                    ? ` · الخادم أعاد أول ${formatInt(SERVER_PAGE_SIZE * MAX_PAGES)} موظفًا فقط`
+                                    : ''}
                             </p>
                             <ul className="erp-cards erp-cards--grid p-sm" aria-label="بطاقات الموظفين">
                                 {cardPageRows.map((row, cardIndex) => (
@@ -1493,9 +1592,9 @@ export function Employees() {
                                     >
                                         السابق
                                     </button>
-                                    <span className="text-body-sm text-muted" aria-label="أرقام الصفحات">
+                                    <output className="text-body-sm text-muted" aria-label="أرقام الصفحات">
                                         {formatInt(safeCardPage)} / {formatInt(cardPageCount)}
-                                    </span>
+                                    </output>
                                     <button
                                         type="button"
                                         onClick={() => {
@@ -1522,172 +1621,205 @@ export function Employees() {
                     ) : null}
                 </Card>
             ) : (
-            <Card>
-                {employeesQuery.isPending ? (
-                    <div aria-busy="true">
-                        <StateLoading label="جارٍ تحميل دليل الموظفين" />
-                        <TableSkeleton rows={6} columns={6} />
-                    </div>
-                ) : null}
+                <Card>
+                    {employeesQuery.isPending ? (
+                        <div aria-busy="true">
+                            <StateLoading label="جارٍ تحميل دليل الموظفين" />
+                            <TableSkeleton rows={6} columns={6} />
+                        </div>
+                    ) : null}
 
-                {employeesQuery.isError ? (
-                    <StateError
-                        message={employeesQuery.error instanceof Error ? employeesQuery.error.message : 'خطأ غير معروف'}
-                        onRetry={() => {
-                            void employeesQuery.refetch();
-                        }}
-                    />
-                ) : null}
+                    {employeesQuery.isError ? (
+                        <StateError
+                            message={
+                                employeesQuery.error instanceof Error ? employeesQuery.error.message : 'خطأ غير معروف'
+                            }
+                            onRetry={() => {
+                                void employeesQuery.refetch();
+                            }}
+                        />
+                    ) : null}
 
-                {employeesQuery.isSuccess && sorted.length === 0 ? (
-                    <StateEmpty
-                        title={filtered ? 'لا موظفين يطابقون المرشّحات' : 'دليل الموظفين فارغ'}
-                        hint={
-                            filtered
-                                ? 'لا نتائج مطابقة؛ عدّل المرشّحات أو امسحها.'
-                                : 'أضف أول موظف.'
-                        }
-                    />
-                ) : null}
+                    {employeesQuery.isSuccess && sorted.length === 0 ? (
+                        <StateEmpty
+                            title={filtered ? 'لا موظفين يطابقون المرشّحات' : 'دليل الموظفين فارغ'}
+                            hint={filtered ? 'لا نتائج مطابقة؛ عدّل المرشّحات أو امسحها.' : 'أضف أول موظف.'}
+                        />
+                    ) : null}
 
-                {employeesQuery.isSuccess && sorted.length > 0 ? (
-                    <>
-                        <p className="border-b border-hairline px-sm py-xs text-body-sm text-muted" role="status">
-                            {`${formatInt(sorted.length)} موظفًا`}
-                            {search.exact ? ` · ${formatInt(search.exact)} مطابقة تامة` : ''}
-                            {capped ? ` · الخادم أعاد أول ${formatInt(SERVER_PAGE_SIZE * MAX_PAGES)} موظفًا فقط` : ''}
-                        </p>
-                        <TableScroll label="جدول دليل الموظفين">
-                            <table className="w-full min-w-[760px] border-collapse text-body-md">
-                                <thead>
-                                    <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                        <SortableTh label="الكود" sortKey="code" sort={sort} onToggle={toggleSort} />
-                                        <SortableTh label="الاسم" sortKey="name" sort={sort} onToggle={toggleSort} />
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">
-                                            القسم
-                                        </th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">
-                                            الوظيفة
-                                        </th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">
-                                            الهاتف
-                                        </th>
-                                        <SortableTh label="الحالة" sortKey="status" sort={sort} onToggle={toggleSort} />
-                                        {(canWrite || canDelete) && (
-                                            <th scope="col" className="px-sm py-xs text-start font-medium" data-erp-print-hide>
-                                                إجراءات
+                    {employeesQuery.isSuccess && sorted.length > 0 ? (
+                        <>
+                            <p className="border-b border-hairline px-sm py-xs text-body-sm text-muted" role="status">
+                                {`${formatInt(sorted.length)} موظفًا`}
+                                {search.exact ? ` · ${formatInt(search.exact)} مطابقة تامة` : ''}
+                                {capped
+                                    ? ` · الخادم أعاد أول ${formatInt(SERVER_PAGE_SIZE * MAX_PAGES)} موظفًا فقط`
+                                    : ''}
+                            </p>
+                            <TableScroll label="جدول دليل الموظفين">
+                                <table className="w-full min-w-[760px] border-collapse text-body-md">
+                                    <thead>
+                                        <tr className="bg-surface-sunken text-label-md text-ink-secondary">
+                                            <SortableTh
+                                                label="الكود"
+                                                sortKey="code"
+                                                sort={sort}
+                                                onToggle={toggleSort}
+                                            />
+                                            <SortableTh
+                                                label="الاسم"
+                                                sortKey="name"
+                                                sort={sort}
+                                                onToggle={toggleSort}
+                                            />
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                القسم
                                             </th>
-                                        )}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {pageRows.map((row) => (
-                                        <tr key={row.id} className="border-b border-hairline hover:bg-surface-hover">
-                                            <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">
-                                                {row.code || '—'}
-                                            </td>
-                                            <td className="px-sm py-xxs text-ink">{row.name}</td>
-                                            <td className="px-sm py-xxs text-body-sm text-muted">
-                                                {row.deptCode || '—'}
-                                            </td>
-                                            <td className="px-sm py-xxs text-body-sm text-muted">
-                                                {row.position || '—'}
-                                            </td>
-                                            <td className="erp-numeric px-sm py-xxs text-body-sm text-muted" dir="ltr">
-                                                {row.phone || '—'}
-                                            </td>
-                                            <td className="px-sm py-xxs text-body-sm">
-                                                <span className={row.status === 'active' ? 'text-success-text' : 'text-muted'}>
-                                                    {row.statusLabel}
-                                                </span>
-                                            </td>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الوظيفة
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الهاتف
+                                            </th>
+                                            <SortableTh
+                                                label="الحالة"
+                                                sortKey="status"
+                                                sort={sort}
+                                                onToggle={toggleSort}
+                                            />
                                             {(canWrite || canDelete) && (
-                                                <td className="px-sm py-xxs" data-erp-print-hide>
-                                                    <div className="flex flex-wrap items-center gap-xs">
-                                                        {canWrite ? (
-                                                            <>
+                                                <th
+                                                    scope="col"
+                                                    className="px-sm py-xs text-start font-medium"
+                                                    data-erp-print-hide
+                                                >
+                                                    إجراءات
+                                                </th>
+                                            )}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {pageRows.map((row) => (
+                                            <tr
+                                                key={row.id}
+                                                className="border-b border-hairline hover:bg-surface-hover"
+                                            >
+                                                <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">
+                                                    {row.code || '—'}
+                                                </td>
+                                                <td className="px-sm py-xxs text-ink">{row.name}</td>
+                                                <td className="px-sm py-xxs text-body-sm text-muted">
+                                                    {row.deptCode || '—'}
+                                                </td>
+                                                <td className="px-sm py-xxs text-body-sm text-muted">
+                                                    {row.position || '—'}
+                                                </td>
+                                                <td
+                                                    className="erp-numeric px-sm py-xxs text-body-sm text-muted"
+                                                    dir="ltr"
+                                                >
+                                                    {row.phone || '—'}
+                                                </td>
+                                                <td className="px-sm py-xxs text-body-sm">
+                                                    <span
+                                                        className={
+                                                            row.status === 'active' ? 'text-success-text' : 'text-muted'
+                                                        }
+                                                    >
+                                                        {row.statusLabel}
+                                                    </span>
+                                                </td>
+                                                {(canWrite || canDelete) && (
+                                                    <td className="px-sm py-xxs" data-erp-print-hide>
+                                                        <div className="flex flex-wrap items-center gap-xs">
+                                                            {canWrite ? (
+                                                                <>
+                                                                    <Button
+                                                                        type="button"
+                                                                        size="sm"
+                                                                        variant="secondary"
+                                                                        title="تعديل البيانات"
+                                                                        onClick={() => openForm(row)}
+                                                                    >
+                                                                        تعديل
+                                                                    </Button>
+                                                                    {row.status === 'active' ? (
+                                                                        <Button
+                                                                            type="button"
+                                                                            size="sm"
+                                                                            variant="secondary"
+                                                                            title="إيقاف الموظف"
+                                                                            onClick={() =>
+                                                                                handleChangeStatus(row, false)
+                                                                            }
+                                                                        >
+                                                                            إيقاف
+                                                                        </Button>
+                                                                    ) : (
+                                                                        <Button
+                                                                            type="button"
+                                                                            size="sm"
+                                                                            variant="secondary"
+                                                                            title="تفعيل الموظف"
+                                                                            onClick={() =>
+                                                                                handleChangeStatus(row, true)
+                                                                            }
+                                                                        >
+                                                                            تفعيل
+                                                                        </Button>
+                                                                    )}
+                                                                </>
+                                                            ) : null}
+                                                            {canDelete ? (
                                                                 <Button
                                                                     type="button"
                                                                     size="sm"
-                                                                    variant="secondary"
-                                                                    title="تعديل البيانات"
-                                                                    onClick={() => openForm(row)}
+                                                                    variant="danger"
+                                                                    title="حذف الموظف"
+                                                                    onClick={() => handleDelete(row)}
                                                                 >
-                                                                    تعديل
+                                                                    حذف
                                                                 </Button>
-                                                                {row.status === 'active' ? (
-                                                                    <Button
-                                                                        type="button"
-                                                                        size="sm"
-                                                                        variant="secondary"
-                                                                        title="إيقاف الموظف"
-                                                                        onClick={() => handleChangeStatus(row, false)}
-                                                                    >
-                                                                        إيقاف
-                                                                    </Button>
-                                                                ) : (
-                                                                    <Button
-                                                                        type="button"
-                                                                        size="sm"
-                                                                        variant="secondary"
-                                                                        title="تفعيل الموظف"
-                                                                        onClick={() => handleChangeStatus(row, true)}
-                                                                    >
-                                                                        تفعيل
-                                                                    </Button>
-                                                                )}
-                                                            </>
-                                                        ) : null}
-                                                        {canDelete ? (
-                                                            <Button
-                                                                type="button"
-                                                                size="sm"
-                                                                variant="danger"
-                                                                title="حذف الموظف"
-                                                                onClick={() => handleDelete(row)}
-                                                            >
-                                                                حذف
-                                                            </Button>
-                                                        ) : null}
-                                                    </div>
-                                                </td>
-                                            )}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </TableScroll>
+                                                            ) : null}
+                                                        </div>
+                                                    </td>
+                                                )}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </TableScroll>
 
-                        <div className="flex items-center justify-between gap-sm border-t border-hairline px-sm py-xs">
-                            <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                                صفحة {formatInt(safePage)} من {formatInt(pageCount)}
-                            </span>
-                            <div className="flex gap-xs">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setPage(safePage - 1);
-                                    }}
-                                    disabled={safePage <= 1}
-                                    className="rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover disabled:opacity-50"
-                                >
-                                    السابق
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setPage(safePage + 1);
-                                    }}
-                                    disabled={safePage >= pageCount}
-                                    className="rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover disabled:opacity-50"
-                                >
-                                    التالي
-                                </button>
+                            <div className="flex items-center justify-between gap-sm border-t border-hairline px-sm py-xs">
+                                <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
+                                    صفحة {formatInt(safePage)} من {formatInt(pageCount)}
+                                </span>
+                                <div className="flex gap-xs">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setPage(safePage - 1);
+                                        }}
+                                        disabled={safePage <= 1}
+                                        className="rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover disabled:opacity-50"
+                                    >
+                                        السابق
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setPage(safePage + 1);
+                                        }}
+                                        disabled={safePage >= pageCount}
+                                        className="rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover disabled:opacity-50"
+                                    >
+                                        التالي
+                                    </button>
+                                </div>
                             </div>
-                        </div>
-                    </>
-                ) : null}
-            </Card>
+                        </>
+                    ) : null}
+                </Card>
             )}
 
             {/* Dialogs */}
@@ -1699,7 +1831,10 @@ export function Employees() {
                 departments={deptOptions}
                 onSave={async (input, isEditing) => {
                     if (isEditing && editing) {
-                        await updateEmployeeMutation.mutateAsync({ id: editing.id, input: input as EmployeeUpdateInput });
+                        await updateEmployeeMutation.mutateAsync({
+                            id: editing.id,
+                            input: input as EmployeeUpdateInput,
+                        });
                     } else {
                         await createEmployeeMutation.mutateAsync(input as EmployeeCreateInput);
                     }
@@ -1715,18 +1850,12 @@ export function Employees() {
                     setActionRow(null);
                 }}
                 pending={setEmployeeActiveMutation.isPending || deleteEmployeeMutation.isPending}
-                confirmLabel={
-                    actionType === 'activate'
-                        ? 'تفعيل'
-                        : actionType === 'deactivate'
-                          ? 'إيقاف'
-                          : 'حذف'
-                }
+                confirmLabel={actionType === 'activate' ? 'تفعيل' : actionType === 'deactivate' ? 'إيقاف' : 'حذف'}
                 variant={actionType === 'delete' ? 'danger' : 'secondary'}
             />
             <EmployeeProfileDialog
                 row={profileRow}
-                extras={profileRow ? extrasMap.get(String(profileRow.id)) ?? null : null}
+                extras={profileRow ? (extrasMap.get(String(profileRow.id)) ?? null) : null}
                 showSalary={showSalary}
                 canWrite={canWrite}
                 canDelete={canDelete}

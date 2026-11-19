@@ -1,13 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
 import { SectionCard } from '../components/Reports';
+import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import {
-    StateEmpty,
-    StateError,
-    StateLoading,
-    TableScroll,
-    TableSkeleton,
-} from '../components/TableState';
-import {
+    type FixedAsset,
     fetchAlertsLog,
     fetchApAging,
     fetchBankRec,
@@ -15,7 +10,6 @@ import {
     fetchCustody,
     fetchFixedAssets,
     fetchProfitByCc,
-    type FixedAsset,
 } from '../lib/cfo-growth';
 import { errorMessage, intOf, moneyOf, num, pctOf, textOf } from '../lib/reporting';
 
@@ -37,7 +31,8 @@ export const CFO_GROWTH_TABS: { key: CfoGrowthView; label: string; english: stri
     { key: 'alerts', label: 'سجل التنبيهات', english: 'Alerts' },
 ];
 
-const TH = 'border-b border-hairline bg-surface-sunken px-sm py-xs text-start text-label-md font-medium text-ink-secondary';
+const TH =
+    'border-b border-hairline bg-surface-sunken px-sm py-xs text-start text-label-md font-medium text-ink-secondary';
 const TH_END = `${TH} text-end`;
 const TD = 'border-b border-hairline px-sm py-xxs text-ink';
 const TD_NUM = `${TD} erp-numeric`;
@@ -55,15 +50,7 @@ function Failed({ error, retry }: { error: unknown; retry: () => void }) {
     return <StateError message={errorMessage(error)} onRetry={retry} />;
 }
 
-export function CfoGrowth({
-    view,
-    from,
-    to,
-}: {
-    view: CfoGrowthView;
-    from: string;
-    to: string;
-}) {
+export function CfoGrowth({ view, from, to }: { view: CfoGrowthView; from: string; to: string }) {
     if (view === 'cc') {
         return <CostCenters from={from} to={to} />;
     }
@@ -102,9 +89,7 @@ function CostCenters({ from, to }: { from: string; to: string }) {
             }
         >
             {query.isPending ? <Pending label="جارٍ جلب ربحية المراكز…" /> : null}
-            {query.isError ? (
-                <Failed error={query.error} retry={() => void query.refetch()} />
-            ) : null}
+            {query.isError ? <Failed error={query.error} retry={() => void query.refetch()} /> : null}
             {query.data && centers.length === 0 ? (
                 <StateEmpty
                     title="لا حركة على المراكز"
@@ -116,25 +101,45 @@ function CostCenters({ from, to }: { from: string; to: string }) {
                     <table className="w-full border-collapse text-body-md">
                         <thead>
                             <tr>
-                                <th scope="col" className={TH}>المركز</th>
-                                <th scope="col" className={TH_END}>إيراد</th>
-                                <th scope="col" className={TH_END}>تكلفة</th>
-                                <th scope="col" className={TH_END}>مصروف</th>
-                                <th scope="col" className={TH_END}>الصافي</th>
+                                <th scope="col" className={TH}>
+                                    المركز
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    إيراد
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    تكلفة
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    مصروف
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    الصافي
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
                             {centers.map((center) => (
                                 <tr key={textOf(center.cc)} className="hover:bg-surface-hover">
                                     <td className={TD}>
-                                        <span className="erp-numeric" dir="ltr">{textOf(center.cc) || '—'}</span>
+                                        <span className="erp-numeric" dir="ltr">
+                                            {textOf(center.cc) || '—'}
+                                        </span>
                                         {center.cc_name ? (
-                                            <span className="block text-caption text-muted">{textOf(center.cc_name)}</span>
+                                            <span className="block text-caption text-muted">
+                                                {textOf(center.cc_name)}
+                                            </span>
                                         ) : null}
                                     </td>
-                                    <td className={`${TD_NUM} text-end`} dir="ltr">{moneyOf(center.revenue)}</td>
-                                    <td className={`${TD_NUM} text-end`} dir="ltr">{moneyOf(center.cogs)}</td>
-                                    <td className={`${TD_NUM} text-end`} dir="ltr">{moneyOf(center.expense)}</td>
+                                    <td className={`${TD_NUM} text-end`} dir="ltr">
+                                        {moneyOf(center.revenue)}
+                                    </td>
+                                    <td className={`${TD_NUM} text-end`} dir="ltr">
+                                        {moneyOf(center.cogs)}
+                                    </td>
+                                    <td className={`${TD_NUM} text-end`} dir="ltr">
+                                        {moneyOf(center.expense)}
+                                    </td>
                                     <td
                                         className={`${TD_NUM} text-end ${num(center.net) < 0 ? 'text-danger-text' : 'text-success-text'}`}
                                         dir="ltr"
@@ -168,9 +173,7 @@ function ApAging() {
             }
         >
             {query.isPending ? <Pending label="جارٍ جلب أعمار الذمم…" /> : null}
-            {query.isError ? (
-                <Failed error={query.error} retry={() => void query.refetch()} />
-            ) : null}
+            {query.isError ? <Failed error={query.error} retry={() => void query.refetch()} /> : null}
             {query.data && rows.length === 0 ? (
                 <StateEmpty title="لا ذمم مستحقة" hint="كل فواتير الموردين مسددة حتى تاريخ اليوم." />
             ) : null}
@@ -179,23 +182,45 @@ function ApAging() {
                     <table className="w-full border-collapse text-body-md">
                         <thead>
                             <tr>
-                                <th scope="col" className={TH}>المورد</th>
-                                <th scope="col" className={TH_END}>الإجمالي</th>
-                                <th scope="col" className={TH_END}>غير مؤرخ</th>
-                                <th scope="col" className={TH_END}>0-30</th>
-                                <th scope="col" className={TH_END}>31-60</th>
-                                <th scope="col" className={TH_END}>61-90</th>
-                                <th scope="col" className={TH_END}>+90</th>
+                                <th scope="col" className={TH}>
+                                    المورد
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    الإجمالي
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    غير مؤرخ
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    0-30
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    31-60
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    61-90
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    +90
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
                             {rows.map((row) => (
                                 <tr key={textOf(row.supplier)} className="hover:bg-surface-hover">
                                     <td className={TD}>{textOf(row.supplier) || 'غير محدد'}</td>
-                                    <td className={`${TD_NUM} text-end`} dir="ltr">{moneyOf(row.total)}</td>
-                                    <td className={`${TD_NUM} text-end`} dir="ltr">{moneyOf(row.current)}</td>
-                                    <td className={`${TD_NUM} text-end`} dir="ltr">{moneyOf(row.d30)}</td>
-                                    <td className={`${TD_NUM} text-end`} dir="ltr">{moneyOf(row.d60)}</td>
+                                    <td className={`${TD_NUM} text-end`} dir="ltr">
+                                        {moneyOf(row.total)}
+                                    </td>
+                                    <td className={`${TD_NUM} text-end`} dir="ltr">
+                                        {moneyOf(row.current)}
+                                    </td>
+                                    <td className={`${TD_NUM} text-end`} dir="ltr">
+                                        {moneyOf(row.d30)}
+                                    </td>
+                                    <td className={`${TD_NUM} text-end`} dir="ltr">
+                                        {moneyOf(row.d60)}
+                                    </td>
                                     <td
                                         className={`${TD_NUM} text-end ${num(row.d90) > 0 ? 'text-danger-text' : 'text-ink'}`}
                                         dir="ltr"
@@ -237,18 +262,20 @@ function BankRec({ from, to }: { from: string; to: string }) {
                 }
             >
                 {query.isPending ? <Pending label="جارٍ جلب التسوية البنكية…" /> : null}
-                {query.isError ? (
-                    <Failed error={query.error} retry={() => void query.refetch()} />
-                ) : null}
+                {query.isError ? <Failed error={query.error} retry={() => void query.refetch()} /> : null}
                 {data ? (
                     <dl className="grid gap-sm p-sm text-body-sm sm:grid-cols-3">
                         <div>
                             <dt className="text-muted">رصيد الدفتر</dt>
-                            <dd className="erp-numeric text-ink" dir="ltr">{moneyOf(data.book)}</dd>
+                            <dd className="erp-numeric text-ink" dir="ltr">
+                                {moneyOf(data.book)}
+                            </dd>
                         </div>
                         <div>
                             <dt className="text-muted">رصيد الكشف</dt>
-                            <dd className="erp-numeric text-ink" dir="ltr">{moneyOf(data.statement)}</dd>
+                            <dd className="erp-numeric text-ink" dir="ltr">
+                                {moneyOf(data.statement)}
+                            </dd>
                         </div>
                         <div>
                             <dt className="text-muted">الفرق</dt>
@@ -272,9 +299,15 @@ function BankRec({ from, to }: { from: string; to: string }) {
                             <table className="w-full border-collapse text-body-md">
                                 <thead>
                                     <tr>
-                                        <th scope="col" className={TH}>التاريخ</th>
-                                        <th scope="col" className={TH}>البيان</th>
-                                        <th scope="col" className={TH_END}>المبلغ</th>
+                                        <th scope="col" className={TH}>
+                                            التاريخ
+                                        </th>
+                                        <th scope="col" className={TH}>
+                                            البيان
+                                        </th>
+                                        <th scope="col" className={TH_END}>
+                                            المبلغ
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -325,9 +358,7 @@ function Assets() {
             actions={<span className="text-body-sm text-muted">{createMessage(assets)}</span>}
         >
             {query.isPending ? <Pending label="جارٍ جلب الأصول الثابتة…" /> : null}
-            {query.isError ? (
-                <Failed error={query.error} retry={() => void query.refetch()} />
-            ) : null}
+            {query.isError ? <Failed error={query.error} retry={() => void query.refetch()} /> : null}
             {query.data && active.length === 0 ? (
                 <StateEmpty
                     title="لا أصول نشطة"
@@ -339,12 +370,24 @@ function Assets() {
                     <table className="w-full border-collapse text-body-md">
                         <thead>
                             <tr>
-                                <th scope="col" className={TH}>الأصل</th>
-                                <th scope="col" className={TH_END}>التكلفة</th>
-                                <th scope="col" className={TH_END}>الشهري</th>
-                                <th scope="col" className={TH_END}>المتراكم</th>
-                                <th scope="col" className={TH_END}>المتبقي</th>
-                                <th scope="col" className={TH}>آخر إهلاك</th>
+                                <th scope="col" className={TH}>
+                                    الأصل
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    التكلفة
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    الشهري
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    المتراكم
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    المتبقي
+                                </th>
+                                <th scope="col" className={TH}>
+                                    آخر إهلاك
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
@@ -353,13 +396,23 @@ function Assets() {
                                     <td className={TD}>
                                         {textOf(asset.name) || '—'}
                                         {asset.category ? (
-                                            <span className="block text-caption text-muted">{textOf(asset.category)}</span>
+                                            <span className="block text-caption text-muted">
+                                                {textOf(asset.category)}
+                                            </span>
                                         ) : null}
                                     </td>
-                                    <td className={`${TD_NUM} text-end`} dir="ltr">{moneyOf(asset.cost)}</td>
-                                    <td className={`${TD_NUM} text-end`} dir="ltr">{moneyOf(asset.monthly)}</td>
-                                    <td className={`${TD_NUM} text-end`} dir="ltr">{moneyOf(asset.accumulated)}</td>
-                                    <td className={`${TD_NUM} text-end`} dir="ltr">{moneyOf(asset.remaining)}</td>
+                                    <td className={`${TD_NUM} text-end`} dir="ltr">
+                                        {moneyOf(asset.cost)}
+                                    </td>
+                                    <td className={`${TD_NUM} text-end`} dir="ltr">
+                                        {moneyOf(asset.monthly)}
+                                    </td>
+                                    <td className={`${TD_NUM} text-end`} dir="ltr">
+                                        {moneyOf(asset.accumulated)}
+                                    </td>
+                                    <td className={`${TD_NUM} text-end`} dir="ltr">
+                                        {moneyOf(asset.remaining)}
+                                    </td>
                                     <td className={`${TD_NUM} text-muted`} dir="ltr">
                                         {textOf(asset.last_month) || '—'}
                                     </td>
@@ -391,9 +444,7 @@ function Custody() {
             }
         >
             {query.isPending ? <Pending label="جارٍ جلب العهد…" /> : null}
-            {query.isError ? (
-                <Failed error={query.error} retry={() => void query.refetch()} />
-            ) : null}
+            {query.isError ? <Failed error={query.error} retry={() => void query.refetch()} /> : null}
             {data && rows.length === 0 ? (
                 <StateEmpty title="لا عهد اليوم" hint="تُسجَّل عهد الكاشير من شاشة العهد في v2." />
             ) : null}
@@ -402,11 +453,21 @@ function Custody() {
                     <table className="w-full border-collapse text-body-md">
                         <thead>
                             <tr>
-                                <th scope="col" className={TH}>من</th>
-                                <th scope="col" className={TH}>إلى</th>
-                                <th scope="col" className={TH_END}>المبلغ</th>
-                                <th scope="col" className={TH}>ملاحظة</th>
-                                <th scope="col" className={TH}>الحالة</th>
+                                <th scope="col" className={TH}>
+                                    من
+                                </th>
+                                <th scope="col" className={TH}>
+                                    إلى
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    المبلغ
+                                </th>
+                                <th scope="col" className={TH}>
+                                    ملاحظة
+                                </th>
+                                <th scope="col" className={TH}>
+                                    الحالة
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
@@ -414,7 +475,9 @@ function Custody() {
                                 <tr key={String(row.id)} className="hover:bg-surface-hover">
                                     <td className={TD}>{`@${textOf(row.from_name)}`}</td>
                                     <td className={TD}>{`@${textOf(row.to_name)}`}</td>
-                                    <td className={`${TD_NUM} text-end`} dir="ltr">{moneyOf(row.amount)}</td>
+                                    <td className={`${TD_NUM} text-end`} dir="ltr">
+                                        {moneyOf(row.amount)}
+                                    </td>
                                     <td className={`${TD} text-muted`}>{textOf(row.note) || '—'}</td>
                                     <td className={TD}>
                                         {row.ack_at ? (
@@ -451,9 +514,7 @@ function Budgets({ from, to }: { from: string; to: string }) {
             }
         >
             {query.isPending ? <Pending label="جارٍ جلب الموازنات…" /> : null}
-            {query.isError ? (
-                <Failed error={query.error} retry={() => void query.refetch()} />
-            ) : null}
+            {query.isError ? <Failed error={query.error} retry={() => void query.refetch()} /> : null}
             {query.data && rows.length === 0 ? (
                 <StateEmpty
                     title="لا موازنات لهذا الشهر"
@@ -465,32 +526,53 @@ function Budgets({ from, to }: { from: string; to: string }) {
                     <table className="w-full border-collapse text-body-md">
                         <thead>
                             <tr>
-                                <th scope="col" className={TH}>البند</th>
-                                <th scope="col" className={TH}>الحساب</th>
-                                <th scope="col" className={TH_END}>الموازنة</th>
-                                <th scope="col" className={TH_END}>الفعلي</th>
-                                <th scope="col" className={TH_END}>الانحراف</th>
-                                <th scope="col" className={TH_END}>النسبة</th>
+                                <th scope="col" className={TH}>
+                                    البند
+                                </th>
+                                <th scope="col" className={TH}>
+                                    الحساب
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    الموازنة
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    الفعلي
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    الانحراف
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    النسبة
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
                             {rows.map((row) => (
                                 <tr key={String(row.id)} className="hover:bg-surface-hover">
                                     <td className={TD}>
-                                        {textOf(row.label) || textOf(row.account_name) || textOf(row.account_code) || '—'}
+                                        {textOf(row.label) ||
+                                            textOf(row.account_name) ||
+                                            textOf(row.account_code) ||
+                                            '—'}
                                     </td>
                                     <td className={`${TD} erp-numeric text-muted`} dir="ltr">
                                         {textOf(row.account_code) || '—'}
                                     </td>
-                                    <td className={`${TD_NUM} text-end`} dir="ltr">{moneyOf(row.budget)}</td>
-                                    <td className={`${TD_NUM} text-end`} dir="ltr">{moneyOf(row.actual)}</td>
+                                    <td className={`${TD_NUM} text-end`} dir="ltr">
+                                        {moneyOf(row.budget)}
+                                    </td>
+                                    <td className={`${TD_NUM} text-end`} dir="ltr">
+                                        {moneyOf(row.actual)}
+                                    </td>
                                     <td
                                         className={`${TD_NUM} text-end ${row.alert ? 'text-danger-text' : 'text-success-text'}`}
                                         dir="ltr"
                                     >
                                         {moneyOf(row.variance)}
                                     </td>
-                                    <td className={`${TD_NUM} text-end text-muted`} dir="ltr">{pctOf(row.pct)}</td>
+                                    <td className={`${TD_NUM} text-end text-muted`} dir="ltr">
+                                        {pctOf(row.pct)}
+                                    </td>
                                 </tr>
                             ))}
                         </tbody>
@@ -513,9 +595,7 @@ function Alerts() {
                 الفحص التلقائي كل 30 دقيقة — التنبيه الواحد يُرسل مرة كل 24 ساعة.
             </p>
             {query.isPending ? <Pending label="جارٍ جلب سجل التنبيهات…" /> : null}
-            {query.isError ? (
-                <Failed error={query.error} retry={() => void query.refetch()} />
-            ) : null}
+            {query.isError ? <Failed error={query.error} retry={() => void query.refetch()} /> : null}
             {query.data && rows.length === 0 ? (
                 <StateEmpty title="لا تنبيهات مُرسلة" hint="كل القواعد داخل الحدود — الوضع هادئ." />
             ) : null}
@@ -524,10 +604,18 @@ function Alerts() {
                     <table className="w-full border-collapse text-body-md">
                         <thead>
                             <tr>
-                                <th scope="col" className={TH}>القاعدة</th>
-                                <th scope="col" className={TH}>آخر تنبيه</th>
-                                <th scope="col" className={TH}>الوقت</th>
-                                <th scope="col" className={TH_END}>المرات</th>
+                                <th scope="col" className={TH}>
+                                    القاعدة
+                                </th>
+                                <th scope="col" className={TH}>
+                                    آخر تنبيه
+                                </th>
+                                <th scope="col" className={TH}>
+                                    الوقت
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    المرات
+                                </th>
                             </tr>
                         </thead>
                         <tbody>

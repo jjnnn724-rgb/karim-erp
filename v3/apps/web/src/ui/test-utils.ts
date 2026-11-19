@@ -140,7 +140,9 @@ function createMediaQueryList(query: string, matches: boolean): InternalMediaQue
 export function mockMatchMedia(initialMatches = false): MatchMediaMock {
     installDomPolyfills();
     const mql = createMediaQueryList('(prefers-color-scheme: dark)', initialMatches);
-    window.matchMedia = vi.fn((query: string) => (query.includes('prefers-color-scheme') ? mql : createMediaQueryList(query, false))) as unknown as typeof window.matchMedia;
+    window.matchMedia = vi.fn((query: string) =>
+        query.includes('prefers-color-scheme') ? mql : createMediaQueryList(query, false),
+    ) as unknown as typeof window.matchMedia;
     return {
         setMatches: (matches: boolean) => {
             mql.setMatches(matches);

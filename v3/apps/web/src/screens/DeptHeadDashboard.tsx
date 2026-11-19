@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { ReportHeader, SectionCard } from '../components/Reports';
 import { PrintActions } from '../components/PrintActions';
-import { FilterBar, StatCard } from '../ui';
+import { ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading } from '../components/TableState';
 import { fetchDeptHeadSnapshot } from '../lib/dashboards';
 import { intOf, moneyOf, presetRange, rangeProblem } from '../lib/reporting';
+import { FilterBar, StatCard } from '../ui';
 
 const STATUS_AR: Record<string, string> = {
     pending: 'معلّق',
@@ -41,7 +41,7 @@ export function DeptHeadDashboard() {
 
     const filteredDispatches = useMemo(() => {
         return (data?.dispatchStatuses ?? []).filter((status) => {
-            const textOk = q ? ((STATUS_AR[status.key] ?? status.key) ?? '').includes(q) : true;
+            const textOk = q ? (STATUS_AR[status.key] ?? status.key ?? '').includes(q) : true;
             return textOk;
         });
     }, [data, q]);
@@ -127,6 +127,27 @@ export function DeptHeadDashboard() {
                     </ul>
 
                     <div className="grid gap-md lg:grid-cols-2">
+                        <SectionCard title="المصارف الشهرية" english="Monthly expenses">
+                            {Object.keys(data.monthly ?? {}).length === 0 ? (
+                                <StateEmpty title="لا مصارف شهرية" hint="لا توجد مصروفات مسجلة للقسم." />
+                            ) : (
+                                <ul className="flex list-none flex-col gap-xxs p-sm">
+                                    {Object.entries(data.monthly ?? {})
+                                        .sort(([a], [b]) => a.localeCompare(b))
+                                        .map(([month, total]) => (
+                                            <li
+                                                key={month}
+                                                className="flex items-center justify-between rounded-md bg-surface-sunken p-xs text-body-md"
+                                            >
+                                                <span className="text-ink">{month}</span>
+                                                <span className="erp-numeric text-ink" dir="ltr">
+                                                    {moneyOf(total)}
+                                                </span>
+                                            </li>
+                                        ))}
+                                </ul>
+                            )}
+                        </SectionCard>
                         <SectionCard title="المصروفات بحسب المصدر" english="By source">
                             {filteredSources.length === 0 ? (
                                 <StateEmpty title="لا مصروفات مسجلة" hint="لم تُسجَّل حركة مصروف لهذا القسم." />
@@ -139,9 +160,7 @@ export function DeptHeadDashboard() {
                                         >
                                             <span className="text-ink">
                                                 {source.label}{' '}
-                                                <span className="text-caption text-faint">
-                                                    ({intOf(source.count)})
-                                                </span>
+                                                <span className="text-caption text-faint">({intOf(source.count)})</span>
                                             </span>
                                             <span className="erp-numeric text-ink" dir="ltr">
                                                 {moneyOf(source.total)}
@@ -162,9 +181,7 @@ export function DeptHeadDashboard() {
                                             key={status.key}
                                             className="flex items-center justify-between rounded-md bg-surface-sunken p-xs text-body-md"
                                         >
-                                            <span className="text-ink">
-                                                {STATUS_AR[status.key] ?? status.key}
-                                            </span>
+                                            <span className="text-ink">{STATUS_AR[status.key] ?? status.key}</span>
                                             <span className="erp-numeric text-ink" dir="ltr">
                                                 {intOf(status.count)}
                                             </span>

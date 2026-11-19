@@ -7,12 +7,12 @@ import { getAccessToken, useAuthState } from '../../lib/auth';
 import {
     entityPageSchema,
     type PunchAttempts,
-    punchAttemptsSchema,
     type PunchDevice,
-    punchDevicesSchema,
     type PunchFace,
-    punchFacesSchema,
     type PunchSettings,
+    punchAttemptsSchema,
+    punchDevicesSchema,
+    punchFacesSchema,
     punchSettingsSchema,
 } from '../../lib/settings';
 import {
@@ -20,10 +20,10 @@ import {
     PUNCH_ROLES,
     punchVisible,
     removeFace,
+    roleIn,
     savePunchSettings,
     unbindPunchDevice,
 } from '../../lib/settings-write';
-import { roleIn } from '../../lib/settings-write';
 import { useWriteMutation, writeErrorMessage } from '../../lib/write';
 import { Badge } from '../../ui/Badge';
 import { Button } from '../../ui/Button';
@@ -32,7 +32,16 @@ import { Dialog } from '../../ui/Dialog';
 import { Input } from '../../ui/Input';
 import { Select } from '../../ui/Select';
 import { useToast } from '../../ui/Toast';
-import { FieldGrid, formatNumber, formatStamp, QueryBoundary, ReadOnlyBadge, SaveBar, SectionCard, useDraftForm } from './shared';
+import {
+    FieldGrid,
+    formatNumber,
+    formatStamp,
+    QueryBoundary,
+    ReadOnlyBadge,
+    SaveBar,
+    SectionCard,
+    useDraftForm,
+} from './shared';
 
 type FieldKind = 'bool' | 'int' | 'float' | 'coord';
 
@@ -55,7 +64,15 @@ const FIELDS: readonly PunchField[] = [
     { key: 'punch_face_enabled', label: 'محرك الوجه الأساسي', kind: 'bool', def: 'false' },
     { key: 'punch_face_v2_enabled', label: 'الوجه المتقدم ArcFace', kind: 'bool', def: 'false' },
     { key: 'punch_face_threshold', label: 'عتبة الأساسي', kind: 'float', def: '0.55', min: 0.3, max: 0.9, step: 0.01 },
-    { key: 'punch_face_v2_threshold', label: 'عتبة المتقدم', kind: 'float', def: '0.42', min: 0.2, max: 0.8, step: 0.01 },
+    {
+        key: 'punch_face_v2_threshold',
+        label: 'عتبة المتقدم',
+        kind: 'float',
+        def: '0.42',
+        min: 0.2,
+        max: 0.8,
+        step: 0.01,
+    },
     { key: 'punch_radius_meters', label: 'النطاق (م)', kind: 'int', def: '120', min: 50, max: 500 },
     { key: 'punch_max_accuracy_m', label: 'دقة الموقع (م)', kind: 'int', def: '50', min: 10, max: 200 },
     { key: 'punch_max_fix_age_s', label: 'قدم GPS (ث)', kind: 'int', def: '30', min: 5, max: 120 },
@@ -66,7 +83,15 @@ const FIELDS: readonly PunchField[] = [
     { key: 'punch_max_clock_skew_s', label: 'أقصى انحراف ساعة (ث)', kind: 'int', def: '120', min: 10, max: 600 },
     { key: 'punch_face_strict', label: 'صرامة الوجه: كاميرا متعددة والتحقق من الخادم', kind: 'bool', def: 'false' },
     { key: 'punch_face_min_samples', label: 'أقل عينات الوجه', kind: 'int', def: '2', min: 1, max: 5 },
-    { key: 'punch_face_replay_min_distance', label: 'أدنى مسافة إعادة تشغيل', kind: 'float', def: '0.004', min: 0, max: 0.2, step: 0.001 },
+    {
+        key: 'punch_face_replay_min_distance',
+        label: 'أدنى مسافة إعادة تشغيل',
+        kind: 'float',
+        def: '0.004',
+        min: 0,
+        max: 0.2,
+        step: 0.001,
+    },
     { key: 'punch_restaurant_lat', label: 'خط العرض', kind: 'coord', def: '' },
     { key: 'punch_restaurant_lng', label: 'خط الطول', kind: 'coord', def: '' },
 ];
@@ -239,7 +264,11 @@ export function PunchSection() {
 
     if (!draft || !data) {
         return (
-            <QueryBoundary pending={settingsQuery.isPending} error={settingsQuery.error} onRetry={() => void settingsQuery.refetch()}>
+            <QueryBoundary
+                pending={settingsQuery.isPending}
+                error={settingsQuery.error}
+                onRetry={() => void settingsQuery.refetch()}
+            >
                 <span />
             </QueryBoundary>
         );
@@ -309,9 +338,12 @@ export function PunchSection() {
             >
                 <div className="grid grid-cols-1 gap-sm sm:grid-cols-2 xl:grid-cols-3">
                     {BOOL_FIELDS.filter((field) =>
-                        ['punch_portal_enabled', 'punch_device_binding', 'punch_device_auto_rebind', 'punch_selfie_enabled'].includes(
-                            field.key,
-                        ),
+                        [
+                            'punch_portal_enabled',
+                            'punch_device_binding',
+                            'punch_device_auto_rebind',
+                            'punch_selfie_enabled',
+                        ].includes(field.key),
                     ).map((field) => (
                         <Checkbox
                             key={field.key}
@@ -387,7 +419,13 @@ export function PunchSection() {
                             }}
                         />
                     ))}
-                    <Button variant="secondary" size="sm" loading={locating} disabled={!canWrite || locating} onClick={captureLocation}>
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        loading={locating}
+                        disabled={!canWrite || locating}
+                        onClick={captureLocation}
+                    >
                         التقط الموقع
                     </Button>
                 </div>
@@ -583,7 +621,9 @@ export function PunchSection() {
                                     <tr key={`${face.user_id}-${face.engine}`}>
                                         <td>{face.name || face.username || face.user_id}</td>
                                         <td>
-                                            <Badge variant={face.engine === 'v2' ? 'success' : 'neutral'}>{face.engine}</Badge>
+                                            <Badge variant={face.engine === 'v2' ? 'success' : 'neutral'}>
+                                                {face.engine}
+                                            </Badge>
                                         </td>
                                         <td>{formatStamp(face.enrolled_at)}</td>
                                         <td>{face.enrolled_by || '—'}</td>
@@ -641,8 +681,12 @@ export function PunchSection() {
                     <div className="flex flex-wrap gap-xs">
                         <Badge variant="success">مقبولة 24س: {formatNumber(attempts.summary.accepted_24h)}</Badge>
                         <Badge variant="danger">مرفوضة 24س: {formatNumber(attempts.summary.rejected_24h)}</Badge>
-                        <Badge variant="warning">خارج النطاق 7ي: {formatNumber(attempts.summary.out_of_range_7d)}</Badge>
-                        <Badge variant="warning">جهاز مختلف 7ي: {formatNumber(attempts.summary.device_mismatch_7d)}</Badge>
+                        <Badge variant="warning">
+                            خارج النطاق 7ي: {formatNumber(attempts.summary.out_of_range_7d)}
+                        </Badge>
+                        <Badge variant="warning">
+                            جهاز مختلف 7ي: {formatNumber(attempts.summary.device_mismatch_7d)}
+                        </Badge>
                     </div>
                 ) : null}
                 {attemptsQuery.isPending ? (
@@ -670,7 +714,10 @@ export function PunchSection() {
                             </thead>
                             <tbody>
                                 {attempts.attempts.map((attempt) => {
-                                    const decision = ATTEMPT_DECISION[attempt.decision] ?? { label: attempt.decision, tone: 'neutral' as const };
+                                    const decision = ATTEMPT_DECISION[attempt.decision] ?? {
+                                        label: attempt.decision,
+                                        tone: 'neutral' as const,
+                                    };
                                     return (
                                         <tr key={attempt.id}>
                                             <td>{formatStamp(attempt.attempted_at)}</td>
@@ -681,17 +728,23 @@ export function PunchSection() {
                                             <td className="text-muted">{attempt.reject_code || '—'}</td>
                                             <td>
                                                 <span className="erp-numeric" dir="ltr">
-                                                    {attempt.distance_m === null ? '—' : String(Math.round(attempt.distance_m))}
+                                                    {attempt.distance_m === null
+                                                        ? '—'
+                                                        : String(Math.round(attempt.distance_m))}
                                                 </span>
                                             </td>
                                             <td>
                                                 <span className="erp-numeric" dir="ltr">
-                                                    {attempt.accuracy_m === null ? '—' : String(Math.round(attempt.accuracy_m))}
+                                                    {attempt.accuracy_m === null
+                                                        ? '—'
+                                                        : String(Math.round(attempt.accuracy_m))}
                                                 </span>
                                             </td>
                                             <td>
                                                 <span className="erp-numeric" dir="ltr">
-                                                    {attempt.teleport_kmh === null ? '—' : String(Math.round(attempt.teleport_kmh))}
+                                                    {attempt.teleport_kmh === null
+                                                        ? '—'
+                                                        : String(Math.round(attempt.teleport_kmh))}
                                                 </span>
                                             </td>
                                             <td>

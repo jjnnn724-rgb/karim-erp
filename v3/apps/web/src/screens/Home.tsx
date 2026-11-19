@@ -329,10 +329,7 @@ export function Home() {
                             }}
                         />
                     ) : (
-                        <StateEmpty
-                            title="لا بيانات متاحة لهذا الدور بعد"
-                            hint="لا مؤشرات مسجّلة لهذا الحساب بعد."
-                        />
+                        <StateEmpty title="لا بيانات متاحة لهذا الدور بعد" hint="لا مؤشرات مسجّلة لهذا الحساب بعد." />
                     )}
 
                     {quickActions.length > 0 ? (
@@ -396,10 +393,7 @@ export function Home() {
                             <Card className="home-panel home-activity">
                                 <SectionHeading title="آخر النشاطات" english="Recent activity" />
                                 {data.activity.length === 0 ? (
-                                    <StateEmpty
-                                        title="لا نشاطات حديثة"
-                                        hint="لا نشاطات مسجّلة بعد."
-                                    />
+                                    <StateEmpty title="لا نشاطات حديثة" hint="لا نشاطات مسجّلة بعد." />
                                 ) : (
                                     <ul className="home-activity__list">
                                         {data.activity.map((row) => (

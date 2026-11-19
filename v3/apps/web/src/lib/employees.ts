@@ -182,10 +182,10 @@ export function cardExtrasMap(employees: readonly Employee[]): Map<string, Emplo
                     : '',
             shift_start: e.shift_start ? String(e.shift_start) : '',
             shift_karim: Number(e.shift_karim) > 0 ? Number(e.shift_karim) : 0,
-            auto_checkout: e.auto_checkout === true || String(e.auto_checkout) === 'true' || Number(e.auto_checkout) === 1,
+            auto_checkout:
+                e.auto_checkout === true || String(e.auto_checkout) === 'true' || Number(e.auto_checkout) === 1,
             auto_lock: e.auto_lock === true || String(e.auto_lock) === 'true' || Number(e.auto_lock) === 1,
-            day_off:
-                e.day_off === undefined || e.day_off === null || e.day_off === '' ? null : Number(e.day_off),
+            day_off: e.day_off === undefined || e.day_off === null || e.day_off === '' ? null : Number(e.day_off),
             email: e.email ? String(e.email) : '',
             joinDate: e.joinDate ? String(e.joinDate) : '',
             iqamaExpiry: e.iqamaExpiry ? String(e.iqamaExpiry) : '',

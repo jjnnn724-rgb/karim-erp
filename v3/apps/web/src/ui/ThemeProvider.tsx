@@ -1,20 +1,12 @@
+import { createContext, type ReactNode, useCallback, useContext, useEffect, useMemo, useState } from 'react';
 import {
-    createContext,
-    useCallback,
-    useContext,
-    useEffect,
-    useMemo,
-    useState,
-    type ReactNode,
-} from 'react';
-import {
-    applyTheme,
     applyInitialTheme,
+    applyTheme,
     isTheme,
     persistTheme,
+    type ResolvedTheme,
     readStoredTheme,
     resolveTheme,
-    type ResolvedTheme,
     type Theme,
 } from './theme';
 

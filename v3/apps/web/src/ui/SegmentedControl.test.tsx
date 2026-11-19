@@ -60,7 +60,9 @@ describe('SegmentedControl', () => {
     });
 
     it('className مخصص يُطبق على الحقلبة الخارجية', () => {
-        render(<SegmentedControl label="المدى" options={options} value="day" className="border" onValueChange={vi.fn()} />);
+        render(
+            <SegmentedControl label="المدى" options={options} value="day" className="border" onValueChange={vi.fn()} />,
+        );
         expect(document.querySelector('.border')).toBeTruthy();
     });
 });

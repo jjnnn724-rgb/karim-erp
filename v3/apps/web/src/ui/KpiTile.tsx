@@ -5,8 +5,7 @@ import { Skeleton } from './Skeleton';
 
 /**
  * بطاقة مؤشّر — DESIGN.md: الرقم أكبر عنصر، التسمية فوقه بخط صغير، والمقارنة
- * شارة تحته. الاتجاه لا يُنقل باللون وحده: سهم + نص نسبة + نص مخفي بصريًا
- * يقرأه قارئ الشاشة (لا `aria-label` على عنصر محايد).
+ * شارة تحته. الاتجاه لا يُنقل باللون وحده: سهم + نص نسبة + `aria-label`.
  *
  * `tone` يسمح بفصل الدلالة عن الاتجاه (انخفاض المصروف جيد) — الشارة تحمل
  * نصًّا دائمًا (WCAG 1.4.1).
@@ -71,44 +70,41 @@ export function KpiTile({
 
     return (
         <div
-            data-slot="kpi-tile"
-            className={cn('flex flex-col gap-xs rounded-xl border border-hairline bg-surface p-4 shadow-sm', className)}
+            className={cn(
+                'flex min-w-0 flex-col gap-sm rounded-lg border border-hairline bg-surface p-md shadow-card [container-type:inline-size]',
+                className,
+            )}
         >
             <div className="flex items-start justify-between gap-sm">
-                <div className="flex min-w-0 flex-col gap-0.5">
-                    <p className="truncate text-caption font-medium text-muted">{label}</p>
-                    {loading ? (
-                        <Skeleton variant="rect" className="h-8" label={`جارٍ تحميل ${label}`} />
-                    ) : (
-                        <p className="text-heading-lg font-bold leading-tight text-ink">
-                            <span className="erp-numeric tabular-nums">{value}</span>
-                            {unit ? <span className="ms-1.5 text-body-sm font-medium text-muted">{unit}</span> : null}
-                        </p>
-                    )}
-                </div>
+                <p className="text-label-md text-muted">{label}</p>
                 {icon ? (
                     <span
-                        className="grid size-8 shrink-0 place-items-center rounded-lg bg-brass/15 text-brass-text"
+                        className="grid size-8 shrink-0 place-items-center rounded-md bg-primary/15 text-brand-text"
                         aria-hidden="true"
                     >
                         {icon}
                     </span>
                 ) : null}
             </div>
+            {loading ? (
+                <Skeleton variant="rect" className="h-9" label={`جارٍ تحميل ${label}`} />
+            ) : (
+                <p className="flex min-w-0 flex-wrap items-baseline gap-x-xxs text-[clamp(1.125rem,7cqw,1.875rem)] font-semibold leading-tight tabular-nums text-ink">
+                    <span className="erp-numeric whitespace-nowrap">{value}</span>
+                    {unit ? <span className="text-body-sm font-medium text-muted">{unit}</span> : null}
+                </p>
+            )}
             {delta && badgeTone ? (
-                <span
-                    data-slot="kpi-badge"
+                <output
                     className={cn(
-                        'inline-flex w-fit items-center gap-xxs rounded-full border px-2 py-0.5 text-caption',
+                        'inline-flex w-fit items-center gap-xxs rounded-full border px-2 py-0.5 text-body-sm',
                         TONE_CLASS[badgeTone],
                     )}
+                    aria-label={`${trend ? TREND_LABEL[trend] : 'تغيّر'}: ${delta}`}
                 >
-                    <span className="sr-only">{trend ? TREND_LABEL[trend] : 'تغيّر'}:</span>
                     {trend ? <span aria-hidden="true">{TREND_ICON[trend]}</span> : null}
-                    <span className="erp-numeric tabular-nums" dir="ltr">
-                        {delta}
-                    </span>
-                </span>
+                    <span className="erp-numeric">{delta}</span>
+                </output>
             ) : null}
             {hint ? <p className="text-caption text-faint">{hint}</p> : null}
         </div>

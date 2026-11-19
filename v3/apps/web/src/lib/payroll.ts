@@ -154,9 +154,7 @@ export function payrollEmployeesPath(page: number): string {
 }
 
 export function attendanceRangePath(from: string, to: string): string {
-    return `/api/attendance/range?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&limit=${String(
-        ATTENDANCE_LIMIT,
-    )}`;
+    return `/api/attendance/range?from=${encodeURIComponent(from)}&to=${encodeURIComponent(to)}&limit=${String(ATTENDANCE_LIMIT)}`;
 }
 
 /** `fetchPayrollRuns` — `hr-registers-repo.js:25` مع مشي `walk` نفسه. */

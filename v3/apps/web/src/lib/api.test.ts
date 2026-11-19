@@ -113,7 +113,10 @@ describe('fetchJson', () => {
         vi.stubGlobal(
             'fetch',
             vi.fn(async () =>
-                jsonResponse({ error: 'YARASOFT_REVENUE_UNAVAILABLE', code: 'YARASOFT_REVENUE_UNAVAILABLE', message }, 503),
+                jsonResponse(
+                    { error: 'YARASOFT_REVENUE_UNAVAILABLE', code: 'YARASOFT_REVENUE_UNAVAILABLE', message },
+                    503,
+                ),
             ),
         );
 
@@ -124,5 +127,28 @@ describe('fetchJson', () => {
         expect(failure).toBeInstanceOf(ApiError);
         expect((failure as ApiError).code).toBe('YARASOFT_REVENUE_UNAVAILABLE');
         expect((failure as ApiError).message).toBe(message);
+    });
+
+    it('يدعم أخطاء AppError المتداخلة ويحفظ تفاصيل الاستجابة للواجهات', async () => {
+        const body = {
+            error: {
+                code: 'VALIDATION_ERROR',
+                message: 'يجب إدخال معرّف صحيح.',
+                details: { field: 'transactions' },
+            },
+        };
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async () => jsonResponse(body, 400)),
+        );
+
+        const failure = await fetchJson(v3ChartResponseSchema, '/api/v3/compliance', null).catch(
+            (error: unknown) => error,
+        );
+
+        expect(failure).toBeInstanceOf(ApiError);
+        expect((failure as ApiError).code).toBe('VALIDATION_ERROR');
+        expect((failure as ApiError).message).toBe('يجب إدخال معرّف صحيح.');
+        expect((failure as ApiError).payload).toEqual(body);
     });
 });

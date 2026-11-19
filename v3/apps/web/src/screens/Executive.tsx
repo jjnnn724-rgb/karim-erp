@@ -1,14 +1,9 @@
 import './Executive.premium.css';
 import { useQuery } from '@tanstack/react-query';
-import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { PrintActions } from '../components/PrintActions';
+import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
-import {
-    alertTone,
-    buildExecutiveKpis,
-    fetchExecutiveSummary,
-    severityLabel,
-} from '../lib/executive';
+import { alertTone, buildExecutiveKpis, fetchExecutiveSummary, severityLabel } from '../lib/executive';
 import { errorMessage, intOf, moneyOf, num, qtyOf, textOf } from '../lib/reporting';
 
 /**
@@ -65,7 +60,10 @@ export function Executive() {
 
             {payload ? (
                 <>
-                    <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4" aria-label="مؤشرات الموجز التنفيذي">
+                    <ul
+                        className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4"
+                        aria-label="مؤشرات الموجز التنفيذي"
+                    >
                         {kpis.map((kpi) => (
                             <KpiCard
                                 key={kpi.id}
@@ -179,7 +177,9 @@ export function Executive() {
                                                     key={`${textOf(item.name)}-${String(index)}`}
                                                     className="border-b border-hairline"
                                                 >
-                                                    <td className="px-sm py-xxs text-ink">{textOf(item.name) || '—'}</td>
+                                                    <td className="px-sm py-xxs text-ink">
+                                                        {textOf(item.name) || '—'}
+                                                    </td>
                                                     <td className="erp-numeric px-sm py-xxs" dir="ltr">
                                                         {qtyOf(item.qty)}
                                                     </td>
@@ -241,9 +241,7 @@ export function Executive() {
                                         className="rounded-md border border-hairline bg-surface-sunken p-sm"
                                     >
                                         <p
-                                            className={`text-body-md font-medium ${
-                                                TONE_CLASS[alertTone(textOf(alert.severity))]
-                                            }`}
+                                            className={`text-body-md font-medium ${TONE_CLASS[alertTone(textOf(alert.severity))]}`}
                                         >
                                             {severityLabel(textOf(alert.severity))} · {textOf(alert.title) || 'تنبيه'}
                                         </p>

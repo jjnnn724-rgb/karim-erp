@@ -84,25 +84,15 @@ export async function createDepartment(input: DepartmentCreateInput): Promise<De
 }
 
 export async function updateDepartment(id: string | number, input: DepartmentUpdateInput): Promise<DepartmentResult> {
-    return writeJson(
-        departmentResultSchema,
-        `/api/departments/${encodeURIComponent(String(id))}`,
-        'PUT',
-        {
-            name: input.name.trim(),
-            parent_code: input.parent_code?.trim() || null,
-            ...(input.active !== undefined ? { active: input.active } : {}),
-        },
-    );
+    return writeJson(departmentResultSchema, `/api/departments/${encodeURIComponent(String(id))}`, 'PUT', {
+        name: input.name.trim(),
+        parent_code: input.parent_code?.trim() || null,
+        ...(input.active !== undefined ? { active: input.active } : {}),
+    });
 }
 
 export async function setDepartmentActive(id: string | number, active: boolean): Promise<DepartmentResult> {
-    return writeJson(
-        departmentResultSchema,
-        `/api/departments/${encodeURIComponent(String(id))}`,
-        'PUT',
-        { active },
-    );
+    return writeJson(departmentResultSchema, `/api/departments/${encodeURIComponent(String(id))}`, 'PUT', { active });
 }
 
 export async function deleteDepartment(id: string | number): Promise<void> {

@@ -1,10 +1,13 @@
 import './Warehouse.premium.css';
-import { useQuery } from '@tanstack/react-query';
+import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
+import { BulkReceiptDialog } from '../components/BulkReceiptDialog';
 import { useConfirm } from '../components/ConfirmProvider';
+import { InventoryAuditStudio } from '../components/InventoryAuditStudio';
 import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
+import { canReadAudit } from '../lib/inventory-audits';
 import {
     categoryCounts,
     fetchInventoryRegister,
@@ -529,15 +532,19 @@ export function Warehouse() {
     const [receiptRow, setReceiptRow] = useState<InventoryRow | null>(null);
     const [directRow, setDirectRow] = useState<InventoryRow | null>(null);
     const [mergeOpen, setMergeOpen] = useState(false);
+    const [auditsOpen, setAuditsOpen] = useState(false);
+    const [bulkOpen, setBulkOpen] = useState(false);
 
     const auth = useAuthState();
     const role = auth.user?.role;
+    const canAudit = canReadAudit(role);
     const canWrite = invWriteVisible(role);
     const canDirect = invDirectVisible(role);
     const canMerge = invMergeVisible(role);
     const canForce = invForceVisible(role);
     const confirm = useConfirm();
     const { toast } = useToast();
+    const queryClient = useQueryClient();
 
     // البحث نداء خادم — الانتظار 300ms يجمع ضربات المفتاح بدل طلب لكل حرف.
     useEffect(() => {
@@ -690,11 +697,34 @@ export function Warehouse() {
                         </span>
                     </h1>
                     <p className="text-body-sm text-muted">
-                        سجل الأصناف وأرصدتها — وارد سريع وتعديل مباشر وحذف ودمج للمكرر
-                        وصلاحياتها.
+                        سجل الأصناف وأرصدتها — وارد سريع وتعديل مباشر وحذف ودمج للمكرر وصلاحياتها.
                     </p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>
+                    {canWrite ? (
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => {
+                                setBulkOpen(true);
+                            }}
+                        >
+                            استلام مجمّع
+                        </Button>
+                    ) : null}
+                    {canAudit ? (
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => {
+                                setAuditsOpen(true);
+                            }}
+                        >
+                            الجرد الفعلي
+                        </Button>
+                    ) : null}
                     {canMerge ? (
                         <Button
                             type="button"
@@ -1182,6 +1212,32 @@ export function Warehouse() {
                     await mergeMutation.mutateAsync({ keepId, dupIds });
                 }}
             />
+
+            {canWrite ? (
+                <BulkReceiptDialog
+                    open={bulkOpen}
+                    onOpenChange={(next) => {
+                        setBulkOpen(next);
+                    }}
+                    onImported={(outcome) => {
+                        void queryClient.invalidateQueries({ queryKey: ['inventory'] });
+                        toast({
+                            title: outcome.failures.length ? 'اكتمل الاستيراد جزئيًا' : 'تم الاستلام المجمّع',
+                            description: `${outcome.imported} صنف — ${outcome.batches.length} دفعة`,
+                            variant: outcome.failures.length ? 'info' : 'success',
+                        });
+                    }}
+                />
+            ) : null}
+
+            {canAudit ? (
+                <InventoryAuditStudio
+                    open={auditsOpen}
+                    onOpenChange={(next) => {
+                        setAuditsOpen(next);
+                    }}
+                />
+            ) : null}
         </div>
     );
 }

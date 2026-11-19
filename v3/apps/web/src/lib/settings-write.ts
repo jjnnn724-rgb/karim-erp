@@ -3,8 +3,8 @@ import { ApiError, fetchJson } from './api';
 import { getAccessToken, getAppKey } from './auth';
 import {
     appStateSchema,
-    backupListSchema,
     type BackupList,
+    backupListSchema,
     entityPageSchema,
     type HrCardSettings,
     type PosLegacyMode,
@@ -137,11 +137,7 @@ export async function zatcaRequestCsid(otp: string): Promise<void> {
     await writeAck('/api/zatca/csid', 'POST', { otp });
 }
 
-export async function zatcaManualCsid(input: {
-    csid?: string;
-    vat_number?: string;
-    clear?: boolean;
-}): Promise<void> {
+export async function zatcaManualCsid(input: { csid?: string; vat_number?: string; clear?: boolean }): Promise<void> {
     await writeAck('/api/zatca/csid/manual', 'POST', input);
 }
 

@@ -1,47 +1,43 @@
-import { useRouterState } from '@tanstack/react-router';
-import { type ReactNode, useEffect, useState } from 'react';
-import { PrintBrand, PrintRunner } from '../components/PrintBrand';
+import { Link } from '@tanstack/react-router';
+import { useState } from 'react';
+import './CashierKiosk.css';
 import { ThemeToggle } from '../components/ThemeToggle';
 import { logout, useAuthState } from '../lib/auth';
-import { titleForPath } from '../lib/navigation';
 import { useDocumentMeta } from '../lib/page-meta';
-import './CashierKiosk.css';
+import { useCashierInstallPrompt } from '../lib/pwa';
+import { PosEntry } from './PosEntry';
+import { roleIn, SELL_ROLES } from './pos/pos-ui';
 
-/** Full-screen POS shell — used for every visit to the POS surface (admin or cashier). */
-export function CashierKiosk({ children }: { children: ReactNode }) {
+/**
+ * وضع الكاشير المستقل — بلا قائمة إدارة أو بيانات خارج الوردية.
+ * نقطة البيع نفسها هي المحتوى الوحيد، والهوية الظاهرة هي هوية الكاشير.
+ */
+export function CashierKiosk() {
     const auth = useAuthState();
-    const pathname = useRouterState({ select: (state) => state.location.pathname });
+    const { canInstall, install } = useCashierInstallPrompt();
+    const canSell = roleIn(auth.user?.role, SELL_ROLES);
+    // صفحة الكاشير داخل النظام نفسه: من يملك النظام كاملًا يستطيع الرجوع للقشرة.
+    const canLeaveKiosk = !roleIn(auth.user?.role, ['cashier']);
     const [full, setFull] = useState(false);
-    const [fullscreenError, setFullscreenError] = useState('');
-    useDocumentMeta('نقطة البيع');
-
-    useEffect(() => {
-        const syncFullscreen = (): void => {
-            setFull(Boolean(document.fullscreenElement));
-        };
-        document.addEventListener('fullscreenchange', syncFullscreen);
-        return () => {
-            document.removeEventListener('fullscreenchange', syncFullscreen);
-        };
-    }, []);
+    useDocumentMeta('كاشير');
 
     async function toggleFullscreen() {
         try {
             if (document.fullscreenElement) {
                 await document.exitFullscreen();
+                setFull(false);
             } else {
                 await document.documentElement.requestFullscreen();
+                setFull(true);
             }
-            setFullscreenError('');
-            setFull(Boolean(document.fullscreenElement));
         } catch {
-            setFullscreenError('تعذر تفعيل وضع ملء الشاشة من هذا المتصفح.');
+            setFull(Boolean(document.fullscreenElement));
         }
     }
 
     return (
         <div className="pos-kiosk" dir="rtl">
-            <header className="pos-kiosk__bar" data-erp-print-hide>
+            <header className="pos-kiosk__bar">
                 <div className="pos-kiosk__brand">
                     <span className="pos-kiosk__mark" aria-hidden="true">
                         K
@@ -53,24 +49,39 @@ export function CashierKiosk({ children }: { children: ReactNode }) {
                 </div>
                 <div className="pos-kiosk__session">
                     <span className="pos-kiosk__user">{auth.user?.name ?? 'كاشير'}</span>
-                    <button type="button" className="pos-kiosk__control" onClick={() => void toggleFullscreen()}>
-                        {full ? 'إنهاء ملء الشاشة' : 'ملء الشاشة'}
+                    {auth.user?.username ? (
+                        <span className="pos-kiosk__username" dir="ltr">
+                            {auth.user.username}
+                        </span>
+                    ) : null}
+                    <button type="button" className="pos-kiosk__install" onClick={() => void toggleFullscreen()}>
+                        {full ? 'إنهاء الملء' : 'ملء الشاشة'}
                     </button>
+                    {canInstall ? (
+                        <button type="button" className="pos-kiosk__install" onClick={() => void install()}>
+                            تثبيت
+                        </button>
+                    ) : null}
+                    {canLeaveKiosk ? (
+                        <Link to="/" className="pos-kiosk__install">
+                            رجوع للنظام
+                        </Link>
+                    ) : null}
                     <ThemeToggle iconOnly />
-                    <button type="button" className="pos-kiosk__logout" onClick={() => void logout()}>
+                    <button type="button" className="pos-kiosk__logout" onClick={() => logout()}>
                         خروج
                     </button>
                 </div>
             </header>
-            {fullscreenError ? (
-                <p className="pos-kiosk__error" role="status" data-erp-print-hide>
-                    {fullscreenError}
-                </p>
-            ) : null}
             <main className="pos-kiosk__main">
-                <PrintBrand title={titleForPath(pathname)} />
-                {children}
-                <PrintRunner title={titleForPath(pathname)} />
+                {canSell ? (
+                    <PosEntry />
+                ) : (
+                    <section className="pos-kiosk__denied" role="alert">
+                        <h1>هذا الكشك مخصّص للكاشير</h1>
+                        <p>دور حسابك الحالي للقراءة فقط. سجّل الخروج واستخدم حساب كاشير لبدء الوردية.</p>
+                    </section>
+                )}
             </main>
         </div>
     );

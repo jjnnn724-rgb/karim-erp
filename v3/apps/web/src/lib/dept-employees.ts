@@ -111,7 +111,10 @@ export function validateDeptEmployeeForm(form: Partial<DeptEmployeeForm>): strin
     return errors;
 }
 function normalizeDeptEmployeeForm(form: DeptEmployeeForm) {
-    const cut = (value: unknown, length: number) => String(value || '').trim().slice(0, length);
+    const cut = (value: unknown, length: number) =>
+        String(value || '')
+            .trim()
+            .slice(0, length);
     return {
         name: cut(form.name, 255),
         employeeId: cut(form.employeeId, 50),
@@ -119,7 +122,11 @@ function normalizeDeptEmployeeForm(form: DeptEmployeeForm) {
         phone: cut(form.phone, 50) || null,
     };
 }
-async function writeDeptEmployee(path: string, method: 'POST' | 'PUT' | 'DELETE', form?: DeptEmployeeForm): Promise<unknown> {
+async function writeDeptEmployee(
+    path: string,
+    method: 'POST' | 'PUT' | 'DELETE',
+    form?: DeptEmployeeForm,
+): Promise<unknown> {
     const response = await fetch(`/api${path}`, {
         method,
         headers: {
@@ -132,10 +139,19 @@ async function writeDeptEmployee(path: string, method: 'POST' | 'PUT' | 'DELETE'
     });
     if (!response.ok) {
         let message = `HTTP ${response.status}`;
-        try { const body = await response.json() as { message?: string }; message = body.message || message; } catch { /* non-JSON error */ }
+        try {
+            const body = (await response.json()) as { message?: string };
+            message = body.message || message;
+        } catch {
+            /* non-JSON error */
+        }
         throw new Error(message);
     }
-    try { return await response.json(); } catch { return null; }
+    try {
+        return await response.json();
+    } catch {
+        return null;
+    }
 }
 export function createDeptEmployee(form: DeptEmployeeForm): Promise<unknown> {
     return writeDeptEmployee('/hr/dept-employees', 'POST', form);

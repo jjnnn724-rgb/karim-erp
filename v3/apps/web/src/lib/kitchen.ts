@@ -80,12 +80,7 @@ export type KitchenOverview = z.infer<typeof kitchenOverviewSchema>;
 export const KITCHEN_WINDOW = { batches: 100, exceptions: 100, distributions: 300 } as const;
 
 export async function fetchKitchenOverview(signal?: AbortSignal): Promise<KitchenOverview> {
-    return fetchJson(
-        kitchenOverviewSchema,
-        '/api/kitchen/overview',
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    return fetchJson(kitchenOverviewSchema, '/api/kitchen/overview', getAccessToken(), signal ? { signal } : {});
 }
 
 export const POLICY_MODE_AR: Record<string, string> = {

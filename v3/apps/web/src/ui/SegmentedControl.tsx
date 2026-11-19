@@ -1,4 +1,4 @@
-import { useId, type ReactNode } from 'react';
+import { type ReactNode, useId } from 'react';
 import { cn } from './cn';
 
 /**
@@ -74,7 +74,7 @@ export function SegmentedControl({
                             />
                             <span
                                 className={cn(
-                                    'inline-flex items-center justify-center gap-xxs whitespace-nowrap rounded-sm text-muted transition-colors duration-[var(--erp-motion-fast)] ease-standard hover:text-ink peer-checked:bg-surface peer-checked:font-semibold peer-checked:text-ink peer-checked:shadow-card peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-brass peer-disabled:cursor-not-allowed peer-disabled:opacity-50',
+                                    'inline-flex items-center justify-center gap-xxs whitespace-nowrap rounded-sm text-muted transition-colors duration-[var(--erp-motion-fast)] ease-standard hover:text-ink peer-checked:bg-surface peer-checked:font-semibold peer-checked:text-ink peer-checked:shadow-card peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-primary peer-disabled:cursor-not-allowed peer-disabled:opacity-50',
                                     SIZE_CLASS[size],
                                 )}
                             >

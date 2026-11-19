@@ -1,9 +1,12 @@
 import './CashRegister.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
+import { PrintActions } from '../components/PrintActions';
 import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import {
+    type CashRegisterDept,
+    type CashRegisterRow,
     cashRegisterPresets,
     dispatchStatusLabel,
     dispatchStatusTone,
@@ -12,23 +15,20 @@ import {
     fetchRegisterHtml,
     fetchVoucherHtml,
     intText,
+    MULTI_REPORT_SCAN,
     moneyText,
     multiReportHtml,
-    parseReportTokens,
-    MULTI_REPORT_SCAN,
-    typeLabel,
-    voucherRef,
-    type CashRegisterDept,
-    type CashRegisterRow,
     type PeriodPreset,
+    parseReportTokens,
     type StatusTone,
+    typeLabel,
     type VoucherDispatch,
+    voucherRef,
 } from '../lib/cash-register';
 import { openBlankTab, printHtmlDocument, writeHtmlDocument } from '../lib/print-document';
 import { errorMessage } from '../lib/reporting';
 import { writeErrorMessage } from '../lib/write';
 import { useToast } from '../ui/Toast';
-import { PrintActions } from '../components/PrintActions';
 
 /**
  * سجلّ الصرف — قراءة فقط (ADR-001).
@@ -57,8 +57,12 @@ const STATUS_TONE_CLASS: Record<StatusTone, string> = {
     neutral: 'text-muted',
 };
 
-const MONTH_PRESET: PeriodPreset =
-    PRESETS.find((item) => item.key === 'month') ?? { key: 'month', label: 'هذا الشهر', from: '', to: '' };
+const MONTH_PRESET: PeriodPreset = PRESETS.find((item) => item.key === 'month') ?? {
+    key: 'month',
+    label: 'هذا الشهر',
+    from: '',
+    to: '',
+};
 
 function deltaHint(delta: number | string | null | undefined): string {
     if (delta === null || delta === undefined || delta === '') {
@@ -267,14 +271,21 @@ function VoucherDialog({ id, onClose }: { id: string; onClose: () => void }) {
     }
 
     return (
-        <div className="fixed inset-0 z-[100] grid place-items-start overflow-y-auto bg-overlay p-md">
+        <div
+            className="fixed inset-0 z-[100] grid place-items-start overflow-y-auto bg-overlay p-md"
+            data-erp-modal-overlay
+        >
             <section
                 role="dialog"
                 aria-modal="true"
                 aria-labelledby="cr-voucher-title"
                 className="mx-auto w-full max-w-4xl rounded-lg border border-hairline bg-surface-raised p-md shadow-[0_24px_64px_rgb(0_0_0/0.30)]"
+                data-erp-modal-panel
             >
-                <div className="flex flex-wrap items-center justify-between gap-sm border-b border-hairline pb-sm">
+                <div
+                    className="flex flex-wrap items-center justify-between gap-sm border-b border-hairline pb-sm"
+                    data-erp-modal-head
+                >
                     <h2 id="cr-voucher-title" className="text-heading-md text-ink">
                         إذن صرف{' '}
                         <span className="erp-numeric text-body-sm text-muted" dir="ltr" lang="en">
@@ -338,7 +349,9 @@ function VoucherDialog({ id, onClose }: { id: string; onClose: () => void }) {
                                 <p className="erp-numeric text-heading-lg text-ink" dir="ltr">
                                     {moneyText(voucher.total, currency)}
                                 </p>
-                                <p className="mt-xxs text-body-sm text-ink-secondary">{String(voucher.amountWords ?? '')}</p>
+                                <p className="mt-xxs text-body-sm text-ink-secondary">
+                                    {String(voucher.amountWords ?? '')}
+                                </p>
                             </div>
                             <ul className="grid list-none gap-xs sm:grid-cols-2">
                                 <li className="text-body-sm text-ink-secondary">
@@ -405,7 +418,10 @@ function VoucherDialog({ id, onClose }: { id: string; onClose: () => void }) {
                                         </tr>
                                     ) : (
                                         items.map((item, index) => (
-                                            <tr key={`voucher-item-${String(index)}`} className="border-b border-hairline">
+                                            <tr
+                                                key={`voucher-item-${String(index)}`}
+                                                className="border-b border-hairline"
+                                            >
                                                 <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">
                                                     {index + 1}
                                                 </td>
@@ -476,7 +492,9 @@ function VoucherDialog({ id, onClose }: { id: string; onClose: () => void }) {
                                                     <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">
                                                         {String(entry.date ?? '').slice(0, 10) || '—'}
                                                     </td>
-                                                    <td className="px-sm py-xxs text-ink">{String(entry.desc ?? '—')}</td>
+                                                    <td className="px-sm py-xxs text-ink">
+                                                        {String(entry.desc ?? '—')}
+                                                    </td>
                                                     <td className="px-sm py-xxs text-body-sm text-muted">
                                                         {String(entry.category ?? '—')}
                                                     </td>
@@ -532,7 +550,9 @@ function VoucherDialog({ id, onClose }: { id: string; onClose: () => void }) {
                                     {notes.map((note) => (
                                         <li key={note.label} className="py-xxs">
                                             <b className="text-ink-secondary">{note.label}:</b>{' '}
-                                            <span className={note.label === 'سبب الرفض' ? 'text-danger-text' : 'text-ink'}>
+                                            <span
+                                                className={note.label === 'سبب الرفض' ? 'text-danger-text' : 'text-ink'}
+                                            >
                                                 {String(note.value)}
                                             </span>
                                         </li>
@@ -752,7 +772,10 @@ export function CashRegister() {
                                 {printing === 'register' ? 'جارٍ تجهيز الكشف…' : 'طباعة الكشف'}
                             </button>
                         </div>
-                        <div role="group" aria-label="اختصارات الفترة" className="flex flex-wrap gap-xs">
+                        <fieldset
+                            aria-label="اختصارات الفترة"
+                            className="m-0 flex min-w-0 flex-wrap gap-xs border-0 p-0"
+                        >
                             {PRESETS.map((item) => {
                                 const active = preset === item.key;
                                 return (
@@ -773,11 +796,8 @@ export function CashRegister() {
                                     </button>
                                 );
                             })}
-                        </div>
-                        <label
-                            className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                            htmlFor="cr-from"
-                        >
+                        </fieldset>
+                        <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="cr-from">
                             من
                             <input
                                 id="cr-from"
@@ -937,17 +957,12 @@ export function CashRegister() {
 
             {data ? (
                 <>
-                    <ul
-                        className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-3"
-                        aria-label="مؤشرات الفترة"
-                    >
+                    <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-3" aria-label="مؤشرات الفترة">
                         <KpiCard
                             label="إجمالي الصرف"
                             english="Total"
                             value={moneyText(totals?.total, '')}
-                            hint={`${currency ? `${currency} · ` : ''}على ${intText(totals?.days)} يوم · ${deltaHint(
-                                totals?.delta,
-                            )}`}
+                            hint={`${currency ? `${currency} · ` : ''}على ${intText(totals?.days)} يوم · ${deltaHint(totals?.delta)}`}
                         />
                         <KpiCard
                             label="عدد الحركات"
@@ -981,11 +996,7 @@ export function CashRegister() {
                             label="بلا إذن صرف"
                             english="Unlinked"
                             value={intText(totals?.unlinked)}
-                            hint={
-                                Number(totals?.unlinked ?? 0) > 0
-                                    ? 'حركات غير مربوطة بإذن'
-                                    : 'كل الحركة معلَّمة بإذن'
-                            }
+                            hint={Number(totals?.unlinked ?? 0) > 0 ? 'حركات غير مربوطة بإذن' : 'كل الحركة معلَّمة بإذن'}
                             tone={Number(totals?.unlinked ?? 0) > 0 ? 'danger' : 'success'}
                         />
                     </ul>
@@ -1097,10 +1108,7 @@ export function CashRegister() {
                         }
                     >
                         {rows.length === 0 ? (
-                            <StateEmpty
-                                title="لا حركات في هذه الفترة"
-                                hint="وسّع المدى أو ألغِ المرشّحات."
-                            />
+                            <StateEmpty title="لا حركات في هذه الفترة" hint="وسّع المدى أو ألغِ المرشّحات." />
                         ) : (
                             <>
                                 <TableScroll label="جدول حركات سجل الصرف">
@@ -1167,7 +1175,10 @@ export function CashRegister() {
                                                         key={row.id}
                                                         className="border-b border-hairline hover:bg-surface-hover"
                                                     >
-                                                        <td className="erp-numeric px-sm py-xxs text-body-sm text-muted" dir="ltr">
+                                                        <td
+                                                            className="erp-numeric px-sm py-xxs text-body-sm text-muted"
+                                                            dir="ltr"
+                                                        >
                                                             {row.date}
                                                         </td>
                                                         <td className="erp-numeric px-sm py-xxs" dir="ltr">

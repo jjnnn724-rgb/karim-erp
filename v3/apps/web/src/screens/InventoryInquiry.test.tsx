@@ -114,7 +114,14 @@ describe('محرك استعلامات المخزون', () => {
                         item: { id: 11, name: 'دجاج', qty: 12, minQty: 5, avgCost: 80, stockValue: 960 },
                         cardex: [
                             // referenceId رقمي كما يُعيده بعض محوّلات JSON — العقد يقبله.
-                            { date: '2026-11-05', type: 'purchase', referenceId: 9102, delta: 10, runningQty: 12, location: 'المخزن' },
+                            {
+                                date: '2026-11-05',
+                                type: 'purchase',
+                                referenceId: 9102,
+                                delta: 10,
+                                runningQty: 12,
+                                location: 'المخزن',
+                            },
                         ],
                         departments: [{ deptCode: 'KITCHEN', deptName: 'المطبخ', qty: 4, cost: 320 }],
                         purchases: { qty: 40, cost: 3200, invoices: [{ invoiceNumber: 'INV-9', qty: 10 }] },
@@ -150,7 +157,8 @@ describe('محرك استعلامات المخزون', () => {
                         status: 200,
                         headers: {
                             'Content-Type': 'application/vnd.openxmlformats-officedocument.spreadsheetml.sheet',
-                            'Content-Disposition': 'attachment; filename="inventory-inquiry_2026-10-09_2026-11-07.xlsx"',
+                            'Content-Disposition':
+                                'attachment; filename="inventory-inquiry_2026-10-09_2026-11-07.xlsx"',
                         },
                     });
                 }

@@ -19,6 +19,7 @@ const dispatchItemSchema = z
         name: z.string().nullable().optional(),
         qty: z.union([z.string(), z.number()]).nullable().optional(),
         approvedQty: z.union([z.string(), z.number()]).nullable().optional(),
+        receivedQty: z.union([z.string(), z.number()]).nullable().optional(),
         unit: z.string().nullable().optional(),
     })
     .passthrough();
@@ -32,7 +33,10 @@ export const dispatchSchema = z
         status: z.string().nullable().optional(),
         date: z.string().nullable().optional(),
         createdBy: z.string().nullable().optional(),
+        creatorUserId: z.union([z.string(), z.number()]).nullable().optional(),
         kitchenReceivedBy: z.string().nullable().optional(),
+        kitchenReceivedAt: z.string().nullable().optional(),
+        receivedItems: z.array(dispatchItemSchema).nullable().optional(),
         needsChefApproval: z.boolean().nullable().optional(),
     })
     .passthrough();

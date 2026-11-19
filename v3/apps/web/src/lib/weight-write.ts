@@ -53,7 +53,10 @@ export async function createWeightReading(input: WeightCreateInput): Promise<Wei
     });
 }
 
-export async function updateWeightReading(id: string | number, input: Partial<WeightCreateInput>): Promise<WeightResult> {
+export async function updateWeightReading(
+    id: string | number,
+    input: Partial<WeightCreateInput>,
+): Promise<WeightResult> {
     const payload: Record<string, unknown> = {};
     if (input.weight !== undefined) payload.weight = Number(input.weight);
     if (input.unit !== undefined) payload.unit = String(input.unit).trim();

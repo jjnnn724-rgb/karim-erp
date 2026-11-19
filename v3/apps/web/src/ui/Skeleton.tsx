@@ -41,7 +41,11 @@ export function Skeleton({ variant = 'text', lines = 1, label, className }: Skel
                 {Array.from({ length: count }, (_, index) => (
                     <ShadcnSkeleton
                         key={`skeleton-${String(index)}`}
-                        className={cn('erp-skeleton block animate-pulse bg-accent', SHAPE_CLASS[variant], index > 0 && variant === 'text' && 'w-4/5')}
+                        className={cn(
+                            'erp-skeleton block animate-pulse bg-accent',
+                            SHAPE_CLASS[variant],
+                            index > 0 && variant === 'text' && 'w-4/5',
+                        )}
                     />
                 ))}
             </div>

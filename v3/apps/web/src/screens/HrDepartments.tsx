@@ -1,6 +1,7 @@
 import './HrDepartments.premium.css';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useMemo, useState } from 'react';
+import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import {
@@ -17,7 +18,6 @@ import {
     withEmployeeCounts,
 } from '../lib/hr-departments';
 import { formatInt } from '../lib/inventory-register';
-import { PrintActions } from '../components/PrintActions';
 
 type FormState = { id: string | null; name: string; code: string; manager: string };
 const EMPTY_FORM: FormState = { id: null, name: '', code: '', manager: '' };

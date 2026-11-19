@@ -1,6 +1,6 @@
-import { Button as ShadcnButton } from '@/components/ui/button';
-import type { ComponentPropsWithRef, ReactNode } from 'react';
 import { Loader2 } from 'lucide-react';
+import type { ComponentPropsWithRef, ReactNode } from 'react';
+import { Button as ShadcnButton } from '@/components/ui/button';
 import { cn } from './cn';
 
 /**

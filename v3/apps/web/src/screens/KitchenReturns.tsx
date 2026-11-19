@@ -1,11 +1,19 @@
 import { toCents } from '@karim/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { PrintActions } from '../components/PrintActions';
+import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
+import { useAuthState } from '../lib/auth';
 import { fetchCurrency } from '../lib/finance';
 import { formatMoney } from '../lib/format';
-import { useAuthState } from '../lib/auth';
+import {
+    fetchKitchenReturns,
+    type KitchenReturnRow,
+    kitchenReturnToRow,
+    MAX_PAGES,
+    returnTotals,
+    PAGE_SIZE as SERVER_PAGE_SIZE,
+} from '../lib/kitchen-returns';
 import {
     createKitchenReturn,
     deleteKitchenReturn,
@@ -17,14 +25,6 @@ import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
-import {
-    fetchKitchenReturns,
-    type KitchenReturnRow,
-    kitchenReturnToRow,
-    MAX_PAGES,
-    returnTotals,
-    PAGE_SIZE as SERVER_PAGE_SIZE,
-} from '../lib/kitchen-returns';
 
 /**
  * مرتجعات المطبخ — قراءة فقط من `/api/kitchenReturns` بنفس سؤال القديم
@@ -298,11 +298,7 @@ export function KitchenReturns() {
                 {returnsQuery.isSuccess && rows.length === 0 ? (
                     <StateEmpty
                         title={allRows.length === 0 ? 'لا مرتجعات مسجلة هذا الشهر' : 'لا مرتجع يطابق البحث'}
-                        hint={
-                            allRows.length === 0
-                                ? 'يُعرض الشهر الحالي فقط.'
-                                : 'امسح البحث لعرض كل مرتجعات الشهر.'
-                        }
+                        hint={allRows.length === 0 ? 'يُعرض الشهر الحالي فقط.' : 'امسح البحث لعرض كل مرتجعات الشهر.'}
                     />
                 ) : null}
 
@@ -357,7 +353,11 @@ export function KitchenReturns() {
                                             align="end"
                                         />
                                         {canWrite ? (
-                                            <th scope="col" className="px-sm py-xs text-start font-medium" data-erp-print-hide>
+                                            <th
+                                                scope="col"
+                                                className="px-sm py-xs text-start font-medium"
+                                                data-erp-print-hide
+                                            >
                                                 إجراءات
                                             </th>
                                         ) : null}
@@ -393,7 +393,9 @@ export function KitchenReturns() {
                                             </td>
                                             <td className="erp-numeric px-sm py-xxs text-end text-body-sm text-muted">
                                                 {formatInt(row.itemsCount)}
-                                                {row.itemsCount ? <span className="text-caption text-faint"> صف</span> : null}
+                                                {row.itemsCount ? (
+                                                    <span className="text-caption text-faint"> صف</span>
+                                                ) : null}
                                             </td>
                                             {canWrite ? (
                                                 <td className="px-sm py-xxs" data-erp-print-hide>
@@ -559,12 +561,7 @@ function CreateReturnDialog({ open, pending, onClose, onSubmit }: CreateReturnDi
                         value={qty}
                         onChange={(e) => setQty(e.target.value)}
                     />
-                    <Input
-                        label="الوحدة"
-                        name="unit"
-                        value={unit}
-                        onChange={(e) => setUnit(e.target.value)}
-                    />
+                    <Input label="الوحدة" name="unit" value={unit} onChange={(e) => setUnit(e.target.value)} />
                 </div>
                 <div>
                     <Button type="button" variant="secondary" size="sm" onClick={addLine}>
@@ -584,7 +581,9 @@ function CreateReturnDialog({ open, pending, onClose, onSubmit }: CreateReturnDi
                                 </span>
                                 <button
                                     type="button"
-                                    onClick={() => setLines((previous) => previous.filter((entry) => entry.name !== line.name))}
+                                    onClick={() =>
+                                        setLines((previous) => previous.filter((entry) => entry.name !== line.name))
+                                    }
                                     className="text-danger-text"
                                 >
                                     إزالة

@@ -89,6 +89,11 @@ export function deleteVisible(role: string | null | undefined, status: string | 
     );
 }
 
+/* NEW: إرجاع الطلب إلى chef_approved للتعديل — المدير العام فقط */
+export function revertVisible(role: string | null | undefined, status: string | null | undefined): boolean {
+    return status === 'approved' && isWriteRole(role, PR_GM_ROLES);
+}
+
 /* ── نصوص V2 حرفيًّا ───────────────────────────────────────────────────── */
 
 /** رسائل `notify`/`panelMsg`/`confirmFn` نفسها من wh-prs.js وpr-repo.js. */
@@ -189,8 +194,8 @@ export function prCreateSuccess(requestNumber: string, chefSigned: boolean): str
         : `أُنشئ طلب الشراء ${requestNumber} — بانتظار توقيع الشيف`;
 }
 
-/** أنواع قرارات الطلب الأربعة. */
-export type PRDecisionKind = 'chef-approve' | 'chef-reject' | 'gm-approve' | 'gm-reject';
+/** أنواع قرارات الطلب الخمس. */
+export type PRDecisionKind = 'chef-approve' | 'chef-reject' | 'gm-approve' | 'gm-reject' | 'revert-to-chef-approved';
 
 /* ── تطبيع الاسم والتوقيع — مرآة الخادم (warehouse-routes.js:338-357) ──── */
 
@@ -430,7 +435,12 @@ export async function cancelPR(id: string | number): Promise<void> {
     await writeAck(prUrl(id, 'cancel'), 'POST', {});
 }
 
-/** حذف نهائي — DELETE /:id (pr-routes.js:607، والمعتمد/المستلم محمي). */
+/* NEW: إرجاع الطلب إلى chef_approved -- POST /:id/revert-to-chef-approved */
+export async function revertToChefApprovedPR(id: string | number): Promise<void> {
+    await writeAck(prUrl(id, 'revert-to-chef-approved'), 'POST', {});
+}
+
+/** حذف نهائي -- DELETE /:id (pr-routes.js:607، والمعتمد/المستلم محمي). */
 export async function deletePR(id: string | number): Promise<void> {
     await writeAck(prUrl(id), 'DELETE');
 }

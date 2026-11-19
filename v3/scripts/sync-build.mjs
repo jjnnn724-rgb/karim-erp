@@ -3,18 +3,18 @@
  * مزامنة بُنية V3 — من `v3/apps/web/dist` إلى `frontend/v3` التي يخدمها
  * `backend/v3-static.js`.
  *
- * المزامنة تلمس ملفين فقط: `index.html` و`assets/*` المبصومة. كل ما عداهما
- * (`rollout.json` موعد القلب، `screens.json` الشاشات، `preview/`، `v2-announce.*`)
- * يبقى كما هو — يُتحقق من ذلك بالبصمة بعد النسخ.
+ * المزامنة تنشر `index.html` و`assets/*` المبصومة وملفات `public/` الثابتة
+ * (مثل manifest وأيقونات PWA). كل ما عداهما (`rollout.json`، `screens.json`،
+ * `preview/`، `v2-announce.*`) يبقى كما هو — يُتحقق من ذلك بالبصمة بعد النسخ.
  *
- * الأصول القديمة لا تُحذف تلقائيًا: تُعدّ وتُذكر فقط، لأن الحذف قرار مالكٍ
- * منفصل (تبويبات مفتوحة قد تطلبها، والتاريخ في git يحفظها).
+ * الأصول المبصومة القديمة لا تُحذف تلقائيًا؛ فقد تطلبها تبويبات مفتوحة بعد
+ * النشر. تُنسخ الأصول الجديدة ويُبلّغ عن القديمة فقط.
  *
  * الاستخدام:
  *   node v3/scripts/sync-build.mjs [--dry-run] [--from <dist>] [--to <frontend/v3>]
  */
 import { createHash } from 'node:crypto';
-import { copyFileSync, existsSync, mkdirSync, readFileSync, readdirSync, statSync, unlinkSync } from 'node:fs';
+import { copyFileSync, existsSync, mkdirSync, readdirSync, readFileSync, statSync } from 'node:fs';
 import path from 'node:path';
 import { fileURLToPath } from 'node:url';
 
@@ -77,6 +77,24 @@ function fingerprint(target) {
     return hash.digest('hex').slice(0, 16);
 }
 
+function listPublicFiles(root) {
+    const files = [];
+    const walk = (directory, relative = '') => {
+        for (const name of readdirSync(directory).sort()) {
+            const fullPath = path.join(directory, name);
+            const childPath = relative ? `${relative}/${name}` : name;
+            const stat = statSync(fullPath);
+            if (stat.isDirectory()) {
+                if (childPath !== 'assets') walk(fullPath, childPath);
+            } else if (childPath !== 'index.html') {
+                files.push(childPath);
+            }
+        }
+    };
+    walk(root);
+    return files;
+}
+
 function fail(message) {
     console.error(`✗ ${message}`);
     process.exit(1);
@@ -103,6 +121,31 @@ function main() {
         fail(`index.html يشير إلى أصول غير موجودة: ${missing.join(', ')}`);
     }
 
+    const publicFiles = listPublicFiles(options.from);
+    const preservedConflicts = publicFiles.filter((relative) =>
+        PRESERVED.some((name) => relative === name || relative.startsWith(`${name}/`)),
+    );
+    if (preservedConflicts.length > 0) {
+        fail(`ملفات البناء تتعارض مع ملفات الإصدار المحفوظة: ${preservedConflicts.join(', ')}`);
+    }
+
+    for (const manifestPath of publicFiles.filter((relative) => relative.endsWith('.webmanifest'))) {
+        let manifest;
+        try {
+            manifest = JSON.parse(readFileSync(path.join(options.from, manifestPath), 'utf8'));
+        } catch (error) {
+            fail(`تعذر قراءة ${manifestPath}: ${error.message}`);
+        }
+        const missingIcons = (Array.isArray(manifest.icons) ? manifest.icons : [])
+            .map((icon) => String(icon.src ?? ''))
+            .filter((src) => src.startsWith('/v3/'))
+            .map((src) => src.slice('/v3/'.length))
+            .filter((relative) => !existsSync(path.join(options.from, relative)));
+        if (missingIcons.length > 0) {
+            fail(`${manifestPath} يشير إلى أيقونات غير موجودة: ${missingIcons.join(', ')}`);
+        }
+    }
+
     const preservedBefore = new Map();
     for (const name of PRESERVED) {
         const file = path.join(options.to, name);
@@ -113,7 +156,7 @@ function main() {
     const targetAssets = path.join(options.to, 'assets');
     const previous = existsSync(targetAssets) ? readdirSync(targetAssets) : [];
     const stale = previous.filter((name) => !assetFiles.includes(name));
-    // المبصومة القديمة فقط تُحذف: لا نمسّ أي ملف يدوي غير بصمة بناء (مثل أيقونات ثابتة).
+    // الأصول المبصومة القديمة تُحفظ لتبويبات المستخدمين المفتوحة بعد النشر.
     const staleHashed = stale.filter(
         (name) => HASHED_ASSET.test(`assets/${name}`) && statSync(path.join(targetAssets, name)).isFile(),
     );
@@ -127,8 +170,9 @@ function main() {
             copied: assetFiles.length,
             staleInTarget: stale.length,
             staleSample: stale.slice(0, 8),
-            prunable: staleHashed.length,
+            retainedForOpenClients: staleHashed.length,
         },
+        publicFiles,
     };
 
     if (options.dryRun) {
@@ -142,8 +186,11 @@ function main() {
     for (const name of assetFiles) {
         copyFileSync(path.join(sourceAssets, name), path.join(targetAssets, name));
     }
-    for (const name of staleHashed) {
-        unlinkSync(path.join(targetAssets, name));
+    for (const relative of publicFiles) {
+        const source = path.join(options.from, relative);
+        const target = path.join(options.to, relative);
+        mkdirSync(path.dirname(target), { recursive: true });
+        copyFileSync(source, target);
     }
 
     if (sha256(path.join(options.to, 'index.html')) !== summary.index.sha256) {
@@ -155,6 +202,11 @@ function main() {
         const after = fingerprint(file);
         if (before !== after) {
             fail(`ملف محفوظ تغيّر أثناء المزامنة: ${name} — راجعه فورًا`);
+        }
+    }
+    for (const relative of publicFiles) {
+        if (sha256(path.join(options.to, relative)) !== sha256(path.join(options.from, relative))) {
+            fail(`ملف public لا يطابق المصدر بعد النسخ: ${relative}`);
         }
     }
 

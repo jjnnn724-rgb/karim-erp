@@ -78,7 +78,9 @@ export const costAnalysisSchema = z
         categories: z.array(z.unknown()).optional(),
         attribution: z
             .object({
-                links: z.array(z.object({ cashierNo: text, dept: text, primary: z.unknown() }).passthrough()).optional(),
+                links: z
+                    .array(z.object({ cashierNo: text, dept: text, primary: z.unknown() }).passthrough())
+                    .optional(),
                 channelRevenue: z.array(z.object({ code: text, revenue: numLike }).passthrough()).optional(),
             })
             .passthrough()

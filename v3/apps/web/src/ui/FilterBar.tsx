@@ -1,5 +1,6 @@
-import { Combobox } from './Combobox';
+import type { ReactNode } from 'react';
 import { RangeControls } from '../components/Reports';
+import { SearchInput } from './SearchInput';
 
 /**
  * شريط فلترة موحد — نطاق تاريخ + بحث نصي.
@@ -20,6 +21,10 @@ export interface FilterBarProps {
     onSearchChange: (value: string) => void;
     pending?: boolean;
     error?: string;
+    /** مرشّحات متخصصة إضافية تُعرض مع نطاق التاريخ والبحث. */
+    advancedFilters?: ReactNode;
+    onReset?: () => void;
+    resetDisabled?: boolean;
     id?: string;
     'data-testid'?: string;
 }
@@ -36,6 +41,9 @@ export function FilterBar({
     onSearchChange,
     pending = false,
     error,
+    advancedFilters,
+    onReset,
+    resetDisabled = false,
     id,
     'data-testid': testId,
 }: FilterBarProps) {
@@ -56,16 +64,26 @@ export function FilterBar({
                             {error}
                         </p>
                     ) : null}
-                    <Combobox
+                    <SearchInput
                         id={id ?? 'filter-search'}
-                        data-testid={testId ?? ''}
-                        options={[]}
                         label={searchLabel}
                         placeholder={searchPlaceholder}
                         value={searchValue}
-                        onValueChange={onSearchChange}
+                        onChange={onSearchChange}
+                        {...(testId ? { 'data-testid': testId } : {})}
                     />
+                    {onReset ? (
+                        <button
+                            type="button"
+                            onClick={onReset}
+                            disabled={resetDisabled}
+                            className="rounded-md border border-hairline px-sm py-xs text-label-md text-ink hover:bg-surface-hover disabled:cursor-not-allowed disabled:opacity-50 focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
+                        >
+                            مسح المرشّحات
+                        </button>
+                    ) : null}
                 </div>
+                {advancedFilters ? <div className="flex flex-wrap items-end gap-sm">{advancedFilters}</div> : null}
             </div>
         </section>
     );

@@ -9,11 +9,11 @@ import {
     NAV_PREFS_KEY,
     NAV_TITLES,
     normalizePath,
+    type PrefStorage,
     readNavPrefs,
     screenKeyOf,
     titleForPath,
     writeNavPrefs,
-    type PrefStorage,
 } from '../lib/navigation';
 import { V3_SCREENS } from '../lib/screens';
 import { NAV_ITEMS } from './Shell';
@@ -50,11 +50,18 @@ describe('التنقّل — سبع مجموعات', () => {
     });
 
     it('كتلة NAV_ITEMS تطابق المفاتيح والعناوين', () => {
-        expect(NAV_ITEMS).toHaveLength(V3_SCREENS.length);
+        // مسارات خدمية خارج مصفوفة التكافؤ (كشك الكاشير ومصدر البيانات):
+        // تُعرض في التنقّل لكن لا تقابلها شاشات V2.
+        const utilityPaths = new Set(['/cashier', '/integrations']);
+        const parityItems = NAV_ITEMS.filter((item) => !utilityPaths.has(item.to));
+        expect(parityItems).toHaveLength(V3_SCREENS.length);
         const groupKeys = new Set(NAV_GROUPS.flatMap((group) => group.keys));
-        for (const item of NAV_ITEMS) {
+        for (const item of parityItems) {
             const key = item.to.slice(1);
             expect(groupKeys.has(key)).toBe(true);
+            expect(titleForPath(item.to)).toBe(item.label);
+        }
+        for (const item of NAV_ITEMS.filter((entry) => utilityPaths.has(entry.to))) {
             expect(titleForPath(item.to)).toBe(item.label);
         }
     });

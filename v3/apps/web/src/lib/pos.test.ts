@@ -15,6 +15,7 @@ import {
     isBuffetDepartment,
     orderDetailSchema,
     orderPageSchema,
+    posDayKey,
     posDepartmentSchema,
     posProductSchema,
     saleResultSchema,
@@ -78,13 +79,14 @@ describe('عقود الكاشير', () => {
     });
 
     it('الوردية المفتوحة تُطبَّع مع سقوط `session_id` إلى `id`', () => {
+        const openedAt = new Date().toISOString();
         const row = activeShiftSchema.parse({
             id: '987654321',
             department_id: '12',
             cashier_id: '17908800123',
             status: 'open',
             opening_balance: '500.00',
-            opened_at: '2026-11-10T06:12:00.000Z',
+            opened_at: openedAt,
             dept_name: 'البوفيه المفتوح',
             dept_code: 'erp_open_buffet',
             expected_cash: null,
@@ -96,8 +98,33 @@ describe('عقود الكاشير', () => {
             deptName: 'البوفيه المفتوح',
             deptCode: 'erp_open_buffet',
             openingBalance: 500,
-            openedAt: '2026-11-10T06:12:00.000Z',
+            openedAt,
+            openedOn: posDayKey(openedAt),
+            isStale: false,
         });
+    });
+
+    it('وردية فُتحت في يوم سابق تُوسم `isStale` (الخادم يرفض البيع عليها 409)', () => {
+        const openedAt = new Date(Date.now() - 2 * 86_400_000).toISOString();
+        const row = activeShiftSchema.parse({
+            id: '5',
+            department_id: 2,
+            status: 'open',
+            opening_balance: '0',
+            opened_at: openedAt,
+            dept_name: 'الكاشير',
+            dept_code: 'pos',
+        });
+        const shift = activeShiftOf(row);
+        expect(shift.openedOn).toBe(posDayKey(openedAt));
+        expect(shift.isStale).toBe(true);
+    });
+
+    it('`posDayKey` يحسب اليوم بتوقيت الرياض لا بتوقيت الجهاز', () => {
+        // 2026-11-10T22:30Z = 2026-11-11 01:30 في الرياض
+        expect(posDayKey('2026-11-10T22:30:00.000Z')).toBe('2026-11-11');
+        expect(posDayKey(null)).toBe('');
+        expect(posDayKey('not-a-date')).toBe('');
     });
 
     it('`session_id` الصريح يتقدّم على `id` (جلسة كاشير قديمة)', () => {
@@ -310,8 +337,26 @@ describe('عقود الكاشير', () => {
 
     it('إعدادات البوفيه: كل كتابة تُعيد `tiers` كاملة', () => {
         const tiers = [
-            { id: 1, tier: 'adult', name_ar: 'بالغ', price: 90, vat_rate: 15, unit: 'فرد', is_core: true, is_active: true },
-            { id: 7, tier: 'custom_7', name_ar: 'أطفال 3-6', price: 40, vat_rate: 15, unit: 'فرد', is_core: false, is_active: false },
+            {
+                id: 1,
+                tier: 'adult',
+                name_ar: 'بالغ',
+                price: 90,
+                vat_rate: 15,
+                unit: 'فرد',
+                is_core: true,
+                is_active: true,
+            },
+            {
+                id: 7,
+                tier: 'custom_7',
+                name_ar: 'أطفال 3-6',
+                price: 40,
+                vat_rate: 15,
+                unit: 'فرد',
+                is_core: false,
+                is_active: false,
+            },
         ];
         expect(buffetConfigSchema.safeParse({ department: {}, pos_department: null, tiers }).success).toBe(true);
         expect(buffetConfigSchema.safeParse({ saved: 2, tiers, message: 'تم' }).success).toBe(true);
@@ -349,7 +394,10 @@ describe('عقود الكاشير', () => {
             cashier_name: 'كاشير 1',
             session_id: '77',
             covers: {
-                tiers: { adult: { name: 'بالغ', covers: 2, amount: 180 }, child: { name: 'صغير', covers: 1, amount: 60 } },
+                tiers: {
+                    adult: { name: 'بالغ', covers: 2, amount: 180 },
+                    child: { name: 'صغير', covers: 1, amount: 60 },
+                },
                 covers_total: 3,
             },
         });

@@ -1,6 +1,6 @@
+import { useId } from 'react';
 import { Checkbox as ShadcnCheckbox } from '@/components/ui/checkbox';
 import { Label as ShadcnLabel } from '@/components/ui/label';
-import { useId } from 'react';
 import { cn } from './cn';
 
 /**

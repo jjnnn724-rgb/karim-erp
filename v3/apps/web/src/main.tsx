@@ -3,8 +3,10 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { App } from './App';
+import { registerCashierPwa } from './lib/pwa';
 import { applyInitialTheme } from './ui/theme';
 import './styles.css';
+import './mobile.css';
 // بعد `styles.css` كي تتقدّم قواعد `@media print` على قواعد الشاشة.
 import './print.css';
 
@@ -19,6 +21,7 @@ if (!container) {
  * و`prefers-color-scheme` ويضع الصنف على `<html>` قبل الرسم فلا وميض.
  */
 applyInitialTheme();
+registerCashierPwa();
 
 createRoot(container).render(
     <StrictMode>

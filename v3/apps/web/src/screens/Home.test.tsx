@@ -1,5 +1,11 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider } from '@tanstack/react-router';
+import {
+    createMemoryHistory,
+    createRootRoute,
+    createRoute,
+    createRouter,
+    RouterProvider,
+} from '@tanstack/react-router';
 import { cleanup, render, screen } from '@testing-library/react';
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { login, logout } from '../lib/auth';
@@ -239,11 +245,13 @@ describe('الصفحة الرئيسية', () => {
 
     it('الإجراءات السريعة تحترم القوائم المسموحة (المنح والسحب) فوق شاشات الدور', () => {
         // كاشير: قوائمه الفعلية لا تشمل المالية/التقارير — لا إجراء يقود إلى رفض.
-        const cashier = quickActionsForRole(
-            'cashier',
-            new Set(V3_SCREENS),
-            ['dashboard', 'attendance', 'leaves', 'employee-portal', 'pos-entry'],
-        );
+        const cashier = quickActionsForRole('cashier', new Set(V3_SCREENS), [
+            'dashboard',
+            'attendance',
+            'leaves',
+            'employee-portal',
+            'pos-entry',
+        ]);
         expect(cashier.map((action) => action.to)).toEqual([
             '/pos-entry',
             '/attendance',
@@ -255,9 +263,12 @@ describe('الصفحة الرئيسية', () => {
             quickActionsForRole('accountant', new Set(V3_SCREENS), ['cfo', 'pnl', 'revenues']).map((a) => a.to),
         ).toEqual(['/cfo', '/pnl', '/revenues']);
         expect(
-            quickActionsForRole('accountant', new Set(V3_SCREENS), ['cfo', 'revenues', 'expenses', 'cost-analysis']).map(
-                (a) => a.to,
-            ),
+            quickActionsForRole('accountant', new Set(V3_SCREENS), [
+                'cfo',
+                'revenues',
+                'expenses',
+                'cost-analysis',
+            ]).map((a) => a.to),
         ).toEqual(['/cfo', '/cost-analysis', '/revenues', '/expenses']);
     });
 

@@ -1,4 +1,4 @@
-import { Suspense, lazy, useId } from 'react';
+import { lazy, Suspense, useId } from 'react';
 import { cn } from './cn';
 import { Skeleton } from './Skeleton';
 
@@ -78,7 +78,10 @@ export function Chart({ kind, title, description, data, xKey, series, height = 2
     return (
         <figure
             aria-labelledby={titleId}
-            className={cn('erp-chart flex flex-col gap-sm rounded-lg border border-hairline bg-surface p-md shadow-card', className)}
+            className={cn(
+                'erp-chart flex flex-col gap-sm rounded-lg border border-hairline bg-surface p-md shadow-card',
+                className,
+            )}
         >
             <figcaption id={titleId} className="flex flex-col gap-xxs">
                 <span className="text-heading-sm text-ink">{title}</span>
@@ -86,14 +89,7 @@ export function Chart({ kind, title, description, data, xKey, series, height = 2
             </figcaption>
             <Suspense fallback={<Skeleton variant="rect" label={`جارٍ تحميل رسم ${title}`} />}>
                 <div aria-hidden="true" className="w-full">
-                    <LazyChartImpl
-                        kind={kind}
-                        title={title}
-                        data={data}
-                        xKey={xKey}
-                        series={series}
-                        height={height}
-                    />
+                    <LazyChartImpl kind={kind} title={title} data={data} xKey={xKey} series={series} height={height} />
                 </div>
             </Suspense>
             <ChartDataTable title={title} xKey={xKey} series={series} data={data} />

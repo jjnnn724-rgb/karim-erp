@@ -1,7 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
+import { useState } from 'react';
 import './Kitchen.premium.css';
+import { KitchenStudio } from '../components/KitchenStudio';
+import { PrintActions } from '../components/PrintActions';
 import { BarList, KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
+import { useAuthState } from '../lib/auth';
 import {
     BATCH_STATUS_AR,
     capNote,
@@ -10,14 +14,27 @@ import {
     summarizeKitchen,
     topDistributions,
 } from '../lib/kitchen';
+import { canReviewKitchenExceptions, canWriteKitchenOps, reviewKitchenException } from '../lib/kitchen-ops';
 import { errorMessage, intOf, qtyOf, shareOf, textOf } from '../lib/reporting';
-import { PrintActions } from '../components/PrintActions';
+import { useWriteMutation, writeErrorMessage } from '../lib/write';
+import { Button } from '../ui/Button';
 
-/** المطبخ — نظرة التشغيل على نافذة الخادم المعلنة (100/100/300). */
+/** المطبخ — نظرة التشغيل + استوديو التشغيل الكامل (استلام/إنتاج/جرد/مستندات). */
 export function Kitchen() {
+    const auth = useAuthState();
+    const canWrite = canWriteKitchenOps(auth.user?.role);
+    const canReview = canReviewKitchenExceptions(auth.user?.role);
+    const [studioOpen, setStudioOpen] = useState(false);
+
     const overviewQuery = useQuery({
         queryKey: ['kitchen', 'overview'],
         queryFn: ({ signal }) => fetchKitchenOverview(signal),
+    });
+
+    const reviewMutation = useWriteMutation<{ id: string; status: 'reviewed' | 'dismissed' }, void>({
+        mutationFn: (input) => reviewKitchenException(input.id, input.status),
+        successTitle: (vars) => (vars.status === 'dismissed' ? 'استُبعد الاستثناء' : 'روجِع الاستثناء'),
+        invalidate: [['kitchen', 'overview']],
     });
 
     const overview = overviewQuery.data;
@@ -30,6 +47,7 @@ export function Kitchen() {
     return (
         <div className="erp-premium-screen erp-premium-screen--kitchen flex flex-col gap-md">
             <PrintActions title="المطبخ" />
+
             <ReportHeader
                 title="المطبخ"
                 english="Kitchen Overview"
@@ -39,6 +57,17 @@ export function Kitchen() {
                     void overviewQuery.refetch();
                 }}
             />
+
+            <div className="flex flex-wrap items-center justify-end gap-sm">
+                <span className="me-auto text-caption text-muted">
+                    {canWrite
+                        ? 'الاستلام والإنتاج والجرد تُسجَّل على الخادم وتظهر في الدفتر فورًا.'
+                        : 'عرض فقط لدورك — التشغيل متاح للمخزن والمطبخ والمدير.'}
+                </span>
+                <Button type="button" size="sm" className="w-full sm:w-auto" onClick={() => setStudioOpen(true)}>
+                    تشغيل المطبخ
+                </Button>
+            </div>
 
             {overviewQuery.isPending ? <StateLoading label="جارٍ قراءة نظرة المطبخ…" /> : null}
 
@@ -115,7 +144,10 @@ export function Kitchen() {
                                         </thead>
                                         <tbody>
                                             {batches.map((batch) => (
-                                                <tr key={batch.id} className="border-b border-hairline hover:bg-surface-hover">
+                                                <tr
+                                                    key={batch.id}
+                                                    className="border-b border-hairline hover:bg-surface-hover"
+                                                >
                                                     <td className="px-sm py-xxs text-ink">
                                                         {textOf(batch.product_name) || `#${batch.id}`}{' '}
                                                         <span className="text-caption text-faint" dir="ltr">
@@ -194,6 +226,36 @@ export function Kitchen() {
                                             {textOf(row.reason) || 'بلا سبب مسجل'}
                                             {row.department_name ? ` · ${textOf(row.department_name)}` : ''}
                                         </p>
+                                        {canReview ? (
+                                            <div className="mt-xs flex flex-wrap gap-xs">
+                                                <button
+                                                    type="button"
+                                                    className="rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover disabled:opacity-50"
+                                                    disabled={reviewMutation.isPending}
+                                                    onClick={() =>
+                                                        reviewMutation.mutate({
+                                                            id: String(row.id),
+                                                            status: 'reviewed',
+                                                        })
+                                                    }
+                                                >
+                                                    رواجع
+                                                </button>
+                                                <button
+                                                    type="button"
+                                                    className="rounded-md border border-danger/50 bg-surface px-sm py-xxs text-body-sm text-danger-text hover:bg-danger-soft disabled:opacity-50"
+                                                    disabled={reviewMutation.isPending}
+                                                    onClick={() =>
+                                                        reviewMutation.mutate({
+                                                            id: String(row.id),
+                                                            status: 'dismissed',
+                                                        })
+                                                    }
+                                                >
+                                                    استبعاد
+                                                </button>
+                                            </div>
+                                        ) : null}
                                     </li>
                                 ))}
                             </ul>
@@ -213,6 +275,14 @@ export function Kitchen() {
                     <TableSkeleton rows={5} columns={4} />
                 </SectionCard>
             ) : null}
+
+            {reviewMutation.isError ? (
+                <p role="alert" className="text-body-sm text-danger-text">
+                    {writeErrorMessage(reviewMutation.error, 'تعذّرت مراجعة الاستثناء')}
+                </p>
+            ) : null}
+
+            <KitchenStudio open={studioOpen} onOpenChange={setStudioOpen} />
         </div>
     );
 }

@@ -1,6 +1,6 @@
+import { useId } from 'react';
 import { Label as ShadcnLabel } from '@/components/ui/label';
 import { Switch as ShadcnSwitch } from '@/components/ui/switch';
-import { useId } from 'react';
 import { cn } from './cn';
 
 /**

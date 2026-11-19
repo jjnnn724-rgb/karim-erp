@@ -1,7 +1,7 @@
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
 import { cn } from './cn';
-import { AlertCircleIcon, CheckIcon, ChevronIcon } from './icons';
 import { controlClassName, controlSizeClassName } from './Input';
+import { AlertCircleIcon, CheckIcon, ChevronIcon } from './icons';
 
 /**
  * صندوق اختيار قابل للبحث (Combobox) — بحث داخل القائمة عبر إدخال نصّي.
@@ -81,7 +81,9 @@ export function Combobox({
         if (!needle) {
             return options;
         }
-        return options.filter((option) => normalize(option.label).includes(needle) || normalize(option.value).includes(needle));
+        return options.filter(
+            (option) => normalize(option.label).includes(needle) || normalize(option.value).includes(needle),
+        );
     }, [options, query]);
 
     const activeOption = activeIndex >= 0 ? filtered[activeIndex] : undefined;
@@ -197,26 +199,30 @@ export function Combobox({
                     }}
                     className={cn(controlClassName, controlSizeClassName.md, 'pe-9')}
                 />
-                <span aria-hidden="true" className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-muted">
+                <span
+                    aria-hidden="true"
+                    className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-muted"
+                >
                     <ChevronIcon className="size-4" />
                 </span>
                 {open ? (
-                    <ul
+                    <div
                         id={listboxId}
                         role="listbox"
                         aria-label={label}
-                        className="absolute inset-x-0 top-full z-[var(--erp-z-tooltip)] mt-xxs max-h-64 overflow-auto rounded-md border border-hairline bg-surface-raised p-xxs shadow-[0_24px_64px_rgb(0_0_0/0.30)]"
+                        className="absolute inset-x-0 top-full z-[var(--erp-z-tooltip)] mt-xxs max-h-64 overflow-auto rounded-md border border-hairline bg-surface-raised p-xxs shadow-pop"
                     >
                         {filtered.length === 0 ? (
-                            <li role="presentation" className="px-sm py-xs text-body-sm text-muted">
+                            <div role="presentation" className="px-sm py-xs text-body-sm text-muted">
                                 {emptyMessage}
-                            </li>
+                            </div>
                         ) : (
                             filtered.map((option, index) => (
-                                <li
+                                <div
                                     key={option.value}
                                     id={`${listboxId}-option-${String(index)}`}
                                     role="option"
+                                    tabIndex={-1}
                                     aria-selected={option.value === value}
                                     aria-disabled={option.disabled || undefined}
                                     onMouseDown={(event) => {
@@ -224,6 +230,12 @@ export function Combobox({
                                     }}
                                     onClick={() => {
                                         selectOption(option);
+                                    }}
+                                    onKeyDown={(event) => {
+                                        if (event.key === 'Enter' || event.key === ' ') {
+                                            event.preventDefault();
+                                            selectOption(option);
+                                        }
                                     }}
                                     className={cn(
                                         'flex cursor-pointer items-center justify-between gap-sm rounded-sm px-sm py-xs text-body-md',
@@ -234,17 +246,19 @@ export function Combobox({
                                 >
                                     <span className="flex flex-col">
                                         <span>{option.label}</span>
-                                        {option.hint ? <span className="text-caption text-faint">{option.hint}</span> : null}
+                                        {option.hint ? (
+                                            <span className="text-caption text-faint">{option.hint}</span>
+                                        ) : null}
                                     </span>
                                     {option.value === value ? (
                                         <span aria-hidden="true" className="text-brand-text">
                                             <CheckIcon className="size-4" />
                                         </span>
                                     ) : null}
-                                </li>
+                                </div>
                             ))
                         )}
-                    </ul>
+                    </div>
                 ) : null}
             </div>
             {error ? (

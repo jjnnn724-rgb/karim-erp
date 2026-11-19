@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { ReportHeader, SectionCard } from '../components/Reports';
 import { PrintActions } from '../components/PrintActions';
-import { FilterBar, StatCard } from '../ui';
+import { ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { fetchWarehouseSnapshot } from '../lib/dashboards';
-import { intOf, qtyOf, presetRange, rangeProblem } from '../lib/reporting';
+import { intOf, presetRange, qtyOf, rangeProblem } from '../lib/reporting';
+import { FilterBar, StatCard } from '../ui';
 
 /** لوحة المخزن — الأرصدة الحرجة وطوابير الاعتماد من أبواب المخزن نفسها. */
 export function WarehouseDashboard() {

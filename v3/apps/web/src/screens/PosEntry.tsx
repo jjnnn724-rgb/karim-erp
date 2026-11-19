@@ -1,11 +1,13 @@
 import './PosEntry.premium.css';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useConfirm } from '../components/ConfirmProvider';
 import { StateError, StateLoading } from '../components/TableState';
+import { ApiError } from '../lib/api';
 import { useAuthState } from '../lib/auth';
 import {
     addBuffetTier,
+    type BuffetTier,
     closePosShift,
     completePosSale,
     deleteHeldOrder,
@@ -25,13 +27,19 @@ import {
     fetchPosOrders,
     fetchPosOrdersExport,
     fetchPosProducts,
+    fetchPosQuote,
     fetchSalesQuantities,
     fetchShiftSummary,
+    type HeldOrder,
     holdPosOrder,
     isBuffetDepartment,
     openPosDrawer,
     openPosShift,
+    type PosOrderDetail,
+    type PosPaymentInput,
+    type PosSaleResult,
     recallHeldOrder,
+    removePosProductImage,
     renameBuffetTier,
     reprintPosOrder,
     riyadhToday,
@@ -39,50 +47,49 @@ import {
     setBuffetTierActive,
     uploadPosProductImage,
     voidPosOrder,
-    type BuffetTier,
-    type HeldOrder,
-    type PosOrderDetail,
-    type PosPaymentInput,
-    type PosSaleResult,
 } from '../lib/pos';
 import {
+    applyQuoteToPosTotals,
     buildPosSaleItems,
     calculatePosTotals,
     matchPosBarcode,
-    parsePosMoney,
     type PosCartLine,
     type PosDiscount,
+    type PosSaleItem,
+    type PosTotals,
+    parsePosMoney,
 } from '../lib/pos-pricing';
 import { errorMessage, intOf } from '../lib/reporting';
 import { Badge, Button, Dialog, Input, PageHeader, Textarea, useToast } from '../ui';
 import { PosBuffetPrices, PosBuffetReport } from './pos/PosBuffet';
-import { PosCart, type PaymentReferenceKey } from './pos/PosCart';
+import { type PaymentReferenceKey, PosCart } from './pos/PosCart';
 import { PosCatalog } from './pos/PosCatalog';
-import { PosHistory, PosOrderDetailPanel, type PosHistoryFiltersState } from './pos/PosHistory';
+import { PosHistory, type PosHistoryFiltersState, PosOrderDetailPanel } from './pos/PosHistory';
 import { PosOpenShift } from './pos/PosOpenShift';
+import { PosPrinters } from './pos/PosPrinters';
 import { PosReceipt } from './pos/PosReceipt';
 import {
+    BUFFET_ADMIN_ROLES,
+    CATALOG_IMAGE_ROLES,
+    type CatalogItem,
     catalogFromProducts,
     catalogFromTiers,
+    DAY_CLOSE_ROLES,
+    HISTORY_ROLES,
     moneyText,
     newIdempotencyKey,
     openPrintWindow,
     openServerHtmlWindow,
     ordersPrintHtml,
     PAYMENT_FIELDS,
+    type PaymentKey,
     POS_FAVORITES_LIMIT,
     POS_ROLES,
     readPosFavorites,
     roleIn,
-    writePosFavorites,
     SELL_ROLES,
-    HISTORY_ROLES,
     VOID_ROLES,
-    CATALOG_IMAGE_ROLES,
-    DAY_CLOSE_ROLES,
-    BUFFET_ADMIN_ROLES,
-    type CatalogItem,
-    type PaymentKey,
+    writePosFavorites,
 } from './pos/pos-ui';
 
 type View = 'cashier' | 'history' | 'order-detail' | 'buffet-prices' | 'buffet-report';
@@ -92,6 +99,8 @@ const EMPTY_PAYMENTS: Record<PaymentKey, string> = { cash: '0.00', card: '0', wa
 const EMPTY_REFERENCES: Record<PaymentReferenceKey, string> = { card: '', wallet: '', bank_transfer: '' };
 const EMPTY_FILTERS: PosHistoryFiltersState = { dateFrom: '', dateTo: '', status: '', search: '' };
 const EMPTY_SALES_INDEX: Record<string, number> = {};
+// مصفوفة ثابتة الهوية: تمرير `[]` جديد كل رسم كان يهدم تذكير الكتالوج.
+const EMPTY_HELD_ORDERS: HeldOrder[] = [];
 
 const MAX_TABS = 5;
 let tabSequence = 0;
@@ -148,6 +157,15 @@ function openShiftInfo(existingZ: unknown): string {
 /** نقطة البيع — واجهة V3 الكاملة على نفس أبواب V2 والخادم هو الحاكم. */
 export function PosEntry() {
     const auth = useAuthState();
+    useEffect(() => {
+        const previousOverflow = document.body.style.overflow;
+        document.body.classList.add('pos-cashier-fullscreen');
+        document.body.style.overflow = 'hidden';
+        return () => {
+            document.body.classList.remove('pos-cashier-fullscreen');
+            document.body.style.overflow = previousOverflow;
+        };
+    }, []);
     const role = auth.user?.role ?? '';
     const canAccess = roleIn(role, POS_ROLES);
     const canSell = roleIn(role, SELL_ROLES);
@@ -170,7 +188,20 @@ export function PosEntry() {
     const [activeTabId, setActiveTabId] = useState('');
     const [favorites, setFavorites] = useState<string[]>([]);
     const [imagePending, setImagePending] = useState(false);
+    const [printersOpen, setPrintersOpen] = useState(false);
     const [mobilePane, setMobilePane] = useState<'catalog' | 'cart'>('catalog');
+    const paneSwitchRef = useRef<HTMLDivElement | null>(null);
+
+    // التبديل بين اللوحتين على الشاشات الضيقة يعيد التمرير لرأس اللوحة،
+    // فلا يهبط الكاشير في منتصف قائمة طويلة بعد التبديل.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: a pane transition triggers this scroll; the effect captures no mutable values.
+    useEffect(() => {
+        if (!window.matchMedia('(max-width: 1100px)').matches) return;
+        const node = paneSwitchRef.current;
+        if (!node) return;
+        const top = node.getBoundingClientRect().top + window.scrollY - 84;
+        window.scrollTo({ top: Math.max(0, top), behavior: 'smooth' });
+    }, [mobilePane]);
     const searchInputRef = useRef<HTMLInputElement | null>(null);
 
     const activeTab = tabs.find((tab) => tab.id === activeTabId) ?? tabs[0]!;
@@ -215,17 +246,18 @@ export function PosEntry() {
 
     const shift = shiftQuery.data ?? null;
     const buffet = shift ? isBuffetDepartment({ deptCode: shift.deptCode, deptName: shift.deptName }) : false;
+    const staleShift = Boolean(shift?.isStale);
 
     const productsQuery = useQuery({
         queryKey: ['pos-products', shift?.departmentId ?? ''],
         queryFn: ({ signal }) => fetchPosProducts(shift?.departmentId ?? '', signal),
-        enabled: canAccess && Boolean(shift) && !buffet,
+        enabled: canAccess && Boolean(shift) && !buffet && !staleShift,
     });
     /* مبيعات 14 يومًا تُرتَّب بها البطاقات — فشلها لا يعطّل البيع (ترتيب أبجدي). */
     const salesRankQuery = useQuery({
         queryKey: ['pos-sales-ranking'],
         queryFn: ({ signal }) => fetchSalesQuantities(14, signal),
-        enabled: canAccess && Boolean(shift) && !buffet,
+        enabled: canAccess && Boolean(shift) && !buffet && !staleShift,
         staleTime: 10 * 60 * 1000,
         refetchOnWindowFocus: false,
         retry: false,
@@ -233,18 +265,18 @@ export function PosEntry() {
     const buffetConfigQuery = useQuery({
         queryKey: ['pos-buffet-config'],
         queryFn: ({ signal }) => fetchBuffetConfig(signal),
-        enabled: canAccess && Boolean(shift) && buffet,
+        enabled: canAccess && Boolean(shift) && buffet && !staleShift,
         refetchOnWindowFocus: false,
     });
     const heldQuery = useQuery({
         queryKey: ['pos-held', shift?.sessionId ?? ''],
         queryFn: ({ signal }) => fetchHeldOrders(shift?.sessionId ?? '', signal),
-        enabled: canAccess && Boolean(shift),
+        enabled: canAccess && Boolean(shift) && !staleShift,
     });
     const buffetLiveQuery = useQuery({
         queryKey: ['pos-buffet-live', shift?.sessionId ?? ''],
         queryFn: ({ signal }) => fetchBuffetLive(riyadhToday(), shift?.sessionId ?? null, signal),
-        enabled: canAccess && Boolean(shift) && buffet,
+        enabled: canAccess && Boolean(shift) && buffet && !staleShift,
         refetchInterval: 60_000,
     });
 
@@ -281,7 +313,107 @@ export function PosEntry() {
         return catalogFromProducts(productsQuery.data ?? []);
     }, [buffet, buffetConfigQuery.data, productsQuery.data]);
 
-    const totals = useMemo(() => calculatePosTotals(cart, discount), [cart, discount]);
+    /** صور الأصناف المفهرسة بمعرّفها — مصغّرات السلة بلا طلب إضافي. */
+    const itemImages = useMemo(() => {
+        const map: Record<string, string> = {};
+        for (const item of items) {
+            if (item.imageUrl) map[item.id] = item.imageUrl;
+        }
+        return map;
+    }, [items]);
+
+    // مراجع مستقرة لأحداث الكتالوج: إضافة صنف أو تعديل المفضلة لا يجب أن يعيد
+    // رسم 322 بطاقة صنف — البطاقة تُعاد فقط عندما يتغيّر صنفها فعليًا.
+    const catalogHandlersRef = useRef({
+        addItem,
+        toggleFavorite,
+        uploadImage,
+        removeImage,
+        barcodeEnter,
+        recallOrder,
+        removeHeldOrder,
+    });
+    catalogHandlersRef.current = {
+        addItem,
+        toggleFavorite,
+        uploadImage,
+        removeImage,
+        barcodeEnter,
+        recallOrder,
+        removeHeldOrder,
+    };
+
+    const handleAddItem = useCallback((item: CatalogItem) => {
+        catalogHandlersRef.current.addItem(item);
+    }, []);
+    const handleToggleFavorite = useCallback((item: CatalogItem) => {
+        catalogHandlersRef.current.toggleFavorite(item);
+    }, []);
+    const handleUploadImage = useCallback((item: CatalogItem, file: File) => {
+        void catalogHandlersRef.current.uploadImage(item, file);
+    }, []);
+    const handleRemoveImage = useCallback((item: CatalogItem) => {
+        void catalogHandlersRef.current.removeImage(item);
+    }, []);
+    const handleBarcodeEnter = useCallback(() => {
+        catalogHandlersRef.current.barcodeEnter();
+    }, []);
+    const handleRecallOrder = useCallback((order: HeldOrder) => {
+        void catalogHandlersRef.current.recallOrder(order);
+    }, []);
+    const handleDeleteHeld = useCallback((order: HeldOrder) => {
+        void catalogHandlersRef.current.removeHeldOrder(order);
+    }, []);
+
+    const localTotals = useMemo(() => calculatePosTotals(cart, discount), [cart, discount]);
+
+    /**
+     * مطابقة المعاينة مع الخادم: التقدير يظهر فورًا، وبعد توقّف الكاشير عن
+     * التعديل 350ms نسأل `/api/sales/quote` (نفس محرّك الفاتورة) ونستبدل
+     * الأرقام بها. عند فشل الشبكة يبقى التقدير المحلي ولا يتعطّل البيع.
+     */
+    const quoteSignature = useMemo(
+        () =>
+            cart.length
+                ? `${cart.map((row) => `${row.id}:${row.quantity}:${row.price}`).join('|')}#${discount.type}:${discount.value}`
+                : '',
+        [cart, discount],
+    );
+    const [quoteRequest, setQuoteRequest] = useState<{ key: string; items: PosSaleItem[] } | null>(null);
+
+    useEffect(() => {
+        if (!quoteSignature || !shift || busy || !localTotals.valid) {
+            setQuoteRequest(null);
+            return;
+        }
+        const timer = window.setTimeout(() => {
+            try {
+                setQuoteRequest({ key: quoteSignature, items: buildPosSaleItems(cart, discount) });
+            } catch {
+                setQuoteRequest(null);
+            }
+        }, 350);
+        return () => window.clearTimeout(timer);
+    }, [quoteSignature, shift, busy, localTotals.valid, cart, discount]);
+
+    const quoteQuery = useQuery({
+        queryKey: ['pos-quote', shift?.departmentId ?? '', quoteRequest?.key ?? ''],
+        queryFn: ({ signal }) => fetchPosQuote(shift?.departmentId ?? '', quoteRequest?.items ?? [], signal),
+        enabled: Boolean(shift && quoteRequest),
+        retry: false,
+        refetchOnWindowFocus: false,
+        staleTime: 5 * 60 * 1000,
+    });
+
+    const serverTotals = useMemo<PosTotals | null>(() => {
+        if (!quoteQuery.data || !quoteRequest || quoteRequest.key !== quoteSignature) {
+            return null;
+        }
+        return applyQuoteToPosTotals(quoteQuery.data, cart, discount);
+    }, [quoteQuery.data, quoteRequest, quoteSignature, cart, discount]);
+
+    const totals = serverTotals ?? localTotals;
+    const unbalancedInvoice = quoteQuery.error instanceof ApiError && quoteQuery.error.code === 'INVOICE_UNBALANCED';
 
     useEffect(() => {
         if (activeTab.paymentsTouched) {
@@ -453,6 +585,13 @@ export function PosEntry() {
             toast({ title: 'قيمة الخصم غير صالحة؛ تحقق من نوع الخصم وقيمته.', variant: 'error' });
             return;
         }
+        if (unbalancedInvoice) {
+            toast({
+                title: 'الفاتورة غير متوازنة (الصافي + الضريبة ≠ الإجمالي)؛ لا يمكن إصدارها. راجع المحاسبة.',
+                variant: 'error',
+            });
+            return;
+        }
         const entries = PAYMENT_FIELDS.map((field) => ({
             method: field.key,
             amount: parsePosMoney(payments[field.key]),
@@ -482,9 +621,7 @@ export function PosEntry() {
         const saleKey = activeTab.saleKey || newIdempotencyKey(shift.sessionId);
         const settledTabId = activeTab.id;
         if (!activeTab.saleKey) {
-            setTabs((current) =>
-                current.map((tab) => (tab.id === settledTabId ? { ...tab, saleKey } : tab)),
-            );
+            setTabs((current) => current.map((tab) => (tab.id === settledTabId ? { ...tab, saleKey } : tab)));
         }
         setBusy(true);
         try {
@@ -505,7 +642,15 @@ export function PosEntry() {
                 queryClient.invalidateQueries({ queryKey: ['pos-buffet-live'] }),
             ]);
         } catch (error) {
-            toast({ title: `فشل إتمام البيع ولم تُفرّغ السلة: ${errorMessage(error)}`, variant: 'error' });
+            if (error instanceof ApiError && error.code === 'SHIFT_STALE') {
+                void shiftQuery.refetch();
+                toast({
+                    title: 'وردية الأمس ما زالت مفتوحة؛ أغلقها أولًا ثم افتح وردية اليوم.',
+                    variant: 'error',
+                });
+            } else {
+                toast({ title: `فشل إتمام البيع ولم تُفرّغ السلة: ${errorMessage(error)}`, variant: 'error' });
+            }
         } finally {
             setBusy(false);
         }
@@ -568,7 +713,8 @@ export function PosEntry() {
                 quantity: item.quantity,
             }));
             const recalledDiscount =
-                result.cart_discount && (result.cart_discount.type === 'percent' || result.cart_discount.type === 'fixed')
+                result.cart_discount &&
+                (result.cart_discount.type === 'percent' || result.cart_discount.type === 'fixed')
                     ? { type: result.cart_discount.type, value: String(result.cart_discount.value ?? '0') }
                     : EMPTY_DISCOUNT;
             setTabs((current) =>
@@ -621,6 +767,27 @@ export function PosEntry() {
             await queryClient.invalidateQueries({ queryKey: ['pos-products'] });
         } catch (error) {
             toast({ title: `تعذّر رفع صورة الصنف: ${errorMessage(error)}`, variant: 'error' });
+        } finally {
+            setImagePending(false);
+        }
+    }
+
+    async function removeImage(item: CatalogItem) {
+        if (!canManageCatalog || busy || imagePending || item.isBuffet || !item.hasImage) {
+            return;
+        }
+        setImagePending(true);
+        try {
+            const ok = await confirm(`حذف صورة ${item.name}؟ يبقى الصنف متاحًا للبيع.`, {
+                tone: 'danger',
+                confirmLabel: 'حذف الصورة',
+            });
+            if (!ok) return;
+            await removePosProductImage(item.id);
+            toast({ title: 'تم حذف صورة الصنف.', variant: 'success' });
+            await queryClient.invalidateQueries({ queryKey: ['pos-products'] });
+        } catch (error) {
+            toast({ title: `تعذّر حذف صورة الصنف: ${errorMessage(error)}`, variant: 'error' });
         } finally {
             setImagePending(false);
         }
@@ -890,14 +1057,37 @@ export function PosEntry() {
         toast({ title: 'حُدّثت بيانات الكاشير من الخادم.', variant: 'info' });
     }
 
-    function addTab() {
+    async function confirmActiveOrderSwitch() {
+        if (!activeTab.cart.length) {
+            return true;
+        }
+        return confirm(
+            `الطلب الحالي يحتوي ${String(activeTab.cart.length)} صنفًا ولم يُحفظ كفاتورة. سيظل محفوظًا في تبويبه؛ هل تريد التبديل؟`,
+            { tone: 'warning', confirmLabel: 'التبديل مع الاحتفاظ بالطلب' },
+        );
+    }
+
+    async function addTab() {
         if (tabs.length >= MAX_TABS) {
             toast({ title: `الحد الأقصى ${String(MAX_TABS)} طلبات متوازية.`, variant: 'info' });
+            return;
+        }
+        if (!(await confirmActiveOrderSwitch())) {
             return;
         }
         const tab = newPosTab();
         setTabs((current) => [...current, tab]);
         setActiveTabId(tab.id);
+    }
+
+    async function switchTab(tabId: string) {
+        if (tabId === activeTab.id) {
+            return;
+        }
+        if (!(await confirmActiveOrderSwitch())) {
+            return;
+        }
+        setActiveTabId(tabId);
     }
 
     async function closeTab(id: string) {
@@ -910,10 +1100,13 @@ export function PosEntry() {
             return;
         }
         if (target.cart.length) {
-            const ok = await confirm(`إغلاق طلب ${String(index + 1)} وفيه ${String(target.cart.length)} سطرًا دون بيع؟`, {
-                tone: 'warning',
-                confirmLabel: 'إغلاق الطلب',
-            });
+            const ok = await confirm(
+                `إغلاق طلب ${String(index + 1)} وفيه ${String(target.cart.length)} سطرًا دون بيع؟`,
+                {
+                    tone: 'warning',
+                    confirmLabel: 'إغلاق الطلب',
+                },
+            );
             if (!ok) {
                 return;
             }
@@ -943,13 +1136,16 @@ export function PosEntry() {
         }
     }
 
-    const shortcutActions = useRef({ hold: () => {}, complete: () => {} });
+    const shortcutActions = useRef({ hold: () => {}, complete: () => {}, switchTab: (_id: string) => {} });
     shortcutActions.current = {
         hold: () => {
             void holdOrder();
         },
         complete: () => {
             void completeSale();
+        },
+        switchTab: (id: string) => {
+            void switchTab(id);
         },
     };
 
@@ -1000,7 +1196,7 @@ export function PosEntry() {
                     const target = tabs[Number(event.key) - 1];
                     if (target) {
                         event.preventDefault();
-                        setActiveTabId(target.id);
+                        shortcutActions.current.switchTab(target.id);
                     }
                 }
                 return;
@@ -1015,10 +1211,12 @@ export function PosEntry() {
                     event.preventDefault();
                     shortcutActions.current.hold();
                     break;
+                case 'F4':
                 case 'F5':
                     event.preventDefault();
                     shortcutActions.current.complete();
                     break;
+                case 'F9':
                 case 'F6':
                     if (canHistory) {
                         event.preventDefault();
@@ -1065,69 +1263,166 @@ export function PosEntry() {
             void productsQuery.refetch();
         }
     };
+    const orderTabs =
+        shift && !shift.isStale && view === 'cashier' && !catalogLoading && !catalogError ? (
+            <div className="pos-tabs" role="tablist" aria-label="الطلبات المتوازية">
+                {tabs.map((tab, index) => {
+                    const count = tab.cart.reduce((sum, row) => sum + row.quantity, 0);
+                    const selected = tab.id === activeTab.id;
+                    return (
+                        <div key={tab.id} className={`pos-tab${selected ? ' is-active' : ''}`}>
+                            <button
+                                type="button"
+                                role="tab"
+                                aria-selected={selected}
+                                aria-label={`طلب ${String(index + 1)}${count ? ` — ${String(count)} قطعة` : ''}`}
+                                title={count ? 'طلب غير محفوظ — سيبقى محفوظًا عند التبديل' : `طلب ${String(index + 1)}`}
+                                onClick={() => {
+                                    void switchTab(tab.id);
+                                }}
+                            >
+                                طلب {index + 1}
+                                <span className="pos-tab__count">{intOf(count)}</span>
+                                {count ? <span className="pos-tab__draft">مسودة</span> : null}
+                            </button>
+                            {tabs.length > 1 ? (
+                                <button
+                                    type="button"
+                                    className="pos-tab__close"
+                                    aria-label={`إغلاق طلب ${String(index + 1)}`}
+                                    onClick={() => {
+                                        void closeTab(tab.id);
+                                    }}
+                                >
+                                    ×
+                                </button>
+                            ) : null}
+                        </div>
+                    );
+                })}
+                <Button size="sm" variant="secondary" disabled={tabs.length >= MAX_TABS || busy} onClick={addTab}>
+                    + طلب جديد
+                </Button>
+                <Badge variant={heldQuery.data?.length ? 'warning' : 'neutral'}>
+                    معلّقة {intOf(heldQuery.data?.length ?? 0)}
+                </Badge>
+            </div>
+        ) : null;
 
     return (
-        <div className={`flex flex-col gap-md premium-screen pos-entry pos-entry--workspace pos-entry--pane-${mobilePane}`}>
+        <div
+            dir="rtl"
+            className={`flex flex-col gap-md premium-screen pos-entry pos-entry--workspace pos-entry--pane-${mobilePane}`}
+        >
             <h1 className="sr-only">الكاشير — نقطة البيع</h1>
             {shift ? (
-                <header className="pos-console" aria-label="شريط الكاشير">
+                <header className="pos-console">
                     <div className="pos-console__identity">
                         <span className="pos-console__status" aria-hidden="true" />
                         <div className="pos-console__copy">
-                            <strong>{shift.deptName || 'نقطة البيع'}</strong>
+                            <strong>{shift.deptName || 'قسم البيع الخارجي'}</strong>
                             <small>
                                 وردية #{shift.sessionId}
+                                {shift.isStale ? ` · من يوم ${shift.openedOn} — غير صالحة للبيع` : ''}
                                 {buffet ? ' · بوفيه مفتوح' : ''}
                             </small>
                         </div>
                     </div>
-                    <div className="pos-console__actions">
-                        {canHistory ? (
+                    <div className="pos-console__orders">
+                        {orderTabs}
+                        {shift.isStale ? <span className="pos-console__stale">وردية غير صالحة للبيع</span> : null}
+                    </div>
+                    <div className="pos-console__tools">
+                        {canSell ? (
                             <Button
+                                className="pos-drawer-button"
                                 size="sm"
                                 variant="secondary"
+                                aria-label="فتح الدرج"
+                                title="فتح الدرج"
+                                disabled={busy}
                                 onClick={() => {
-                                    setView('history');
+                                    void openDrawer();
                                 }}
                             >
-                                سجل الفواتير
+                                <svg
+                                    aria-hidden="true"
+                                    viewBox="0 0 24 24"
+                                    width="18"
+                                    height="18"
+                                    fill="none"
+                                    stroke="currentColor"
+                                    strokeWidth="1.8"
+                                >
+                                    <path
+                                        d="M4 10h16v9H4zM4 10l2-5h12l2 5M8 14h.01M12 14h.01M16 14h.01"
+                                        strokeLinecap="round"
+                                        strokeLinejoin="round"
+                                    />
+                                </svg>
                             </Button>
                         ) : null}
-                        {buffet && canManageBuffet ? (
-                            <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={() => {
-                                    setView('buffet-prices');
-                                }}
-                            >
-                                أسعار البوفيه
-                            </Button>
-                        ) : null}
-                        {buffet ? (
-                            <Button
-                                size="sm"
-                                variant="secondary"
-                                onClick={() => {
-                                    setView('buffet-report');
-                                }}
-                            >
-                                تقرير البوفيه
-                            </Button>
-                        ) : null}
-                        {canDayClose ? (
-                            <Button size="sm" variant="secondary" onClick={() => void runDayClose()} disabled={dayCloseBusy}>
-                                إقفال اليوم Z
-                            </Button>
-                        ) : null}
-                        <Button size="sm" variant="secondary" onClick={() => void refreshAll()}>
-                            تحديث
-                        </Button>
-                        <Button size="sm" variant="secondary" onClick={openCloseShiftDialog} disabled={!canSell || busy}>
-                            إغلاق الوردية
-                        </Button>
+                        <details className="pos-admin-menu">
+                            <summary>إدارة الوردية</summary>
+                            <div className="pos-admin-menu__items">
+                                {canHistory ? (
+                                    <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        aria-label="سجل الفواتير"
+                                        onClick={() => {
+                                            setView('history');
+                                        }}
+                                    >
+                                        سجل الفواتير <kbd>F9</kbd>
+                                    </Button>
+                                ) : null}
+                                {buffet && canManageBuffet ? (
+                                    <Button size="sm" variant="secondary" onClick={() => setView('buffet-prices')}>
+                                        أسعار البوفيه
+                                    </Button>
+                                ) : null}
+                                {buffet ? (
+                                    <Button size="sm" variant="secondary" onClick={() => setView('buffet-report')}>
+                                        تقرير البوفيه
+                                    </Button>
+                                ) : null}
+                                {canDayClose ? (
+                                    <Button
+                                        size="sm"
+                                        variant="secondary"
+                                        onClick={() => void runDayClose()}
+                                        disabled={dayCloseBusy}
+                                    >
+                                        إقفال اليوم Z
+                                    </Button>
+                                ) : null}
+                                {canManageCatalog ? (
+                                    <Button size="sm" variant="secondary" onClick={() => setPrintersOpen(true)}>
+                                        الطابعة
+                                    </Button>
+                                ) : null}
+                                <Button size="sm" variant="secondary" onClick={() => void refreshAll()}>
+                                    تحديث
+                                </Button>
+                                <Button
+                                    size="sm"
+                                    variant="danger"
+                                    onClick={openCloseShiftDialog}
+                                    disabled={!canSell || busy}
+                                >
+                                    إغلاق الوردية
+                                </Button>
+                            </div>
+                        </details>
                     </div>
                 </header>
+            ) : null}
+            {shift && view === 'cashier' && unbalancedInvoice ? (
+                <p className="pos-alert" role="alert">
+                    الفاتورة غير متوازنة (الصافي + الضريبة ≠ الإجمالي) — لا يمكن إصدارها أو طباعتها حتى تصحيح بيانات
+                    الأصناف.
+                </p>
             ) : null}
 
             {view === 'cashier' ? (
@@ -1148,7 +1443,9 @@ export function PosEntry() {
                                 departments={departments}
                                 canSell={canSell}
                                 busy={busy}
-                                error={openError || (departmentsQuery.isError ? errorMessage(departmentsQuery.error) : '')}
+                                error={
+                                    openError || (departmentsQuery.isError ? errorMessage(departmentsQuery.error) : '')
+                                }
                                 loading={departmentsQuery.isPending}
                                 onOpen={(departmentId, openingBalance) => {
                                     void handleOpenShift(departmentId, openingBalance);
@@ -1157,59 +1454,57 @@ export function PosEntry() {
                         </div>
                     ) : null}
 
-                    {shift ? (
+                    {shift && shift.isStale ? (
+                        <div className="pos-open__wrap">
+                            <section className="erp-card pos-open" aria-labelledby="pos-stale-title">
+                                <div className="erp-card__body flex flex-col gap-sm">
+                                    <div>
+                                        <h2 id="pos-stale-title" className="erp-card__title">
+                                            وردية يوم سابق ما زالت مفتوحة
+                                        </h2>
+                                        <p className="text-body-sm text-muted">
+                                            وردية #{shift.sessionId} فُتحت في {shift.openedOn}، والخادم يرفض البيع عليها
+                                            في يوم جديد. أغلقها أولًا (بعد عدّ النقد الفعلي) ثم افتح وردية اليوم.
+                                        </p>
+                                    </div>
+                                    <div className="flex flex-wrap items-center gap-sm">
+                                        <Button
+                                            variant="danger"
+                                            onClick={openCloseShiftDialog}
+                                            disabled={!canSell || busy}
+                                        >
+                                            إغلاق وردية الأمس
+                                        </Button>
+                                        <Button
+                                            variant="secondary"
+                                            onClick={() => {
+                                                void shiftQuery.refetch();
+                                            }}
+                                        >
+                                            تحديث
+                                        </Button>
+                                        {!canSell ? (
+                                            <p className="text-body-sm text-muted">
+                                                هذا الحساب للقراءة فقط ولا يمكنه إغلاق الوردية أو البيع.
+                                            </p>
+                                        ) : null}
+                                    </div>
+                                </div>
+                            </section>
+                        </div>
+                    ) : shift ? (
                         catalogLoading ? (
                             <StateLoading label={buffet ? 'جارٍ تحميل فئات البوفيه…' : 'جارٍ تحميل أصناف الوصفات…'} />
                         ) : catalogError ? (
                             <StateError message={errorMessage(catalogError)} onRetry={catalogRetry} />
                         ) : (
                             <>
-                                <div className="pos-tabs" role="tablist" aria-label="الطلبات المتوازية">
-                                    {tabs.map((tab, index) => {
-                                        const count = tab.cart.reduce((sum, row) => sum + row.quantity, 0);
-                                        const selected = tab.id === activeTab.id;
-                                        return (
-                                            <div key={tab.id} className={`pos-tab${selected ? ' is-active' : ''}`}>
-                                                <button
-                                                    type="button"
-                                                    role="tab"
-                                                    aria-selected={selected}
-                                                    aria-label={`طلب ${String(index + 1)}${count ? ` — ${String(count)} قطعة` : ''}`}
-                                                    onClick={() => {
-                                                        setActiveTabId(tab.id);
-                                                    }}
-                                                >
-                                                    طلب {index + 1}
-                                                    <span className="pos-tab__count">{intOf(count)}</span>
-                                                </button>
-                                                {tabs.length > 1 ? (
-                                                    <button
-                                                        type="button"
-                                                        className="pos-tab__close"
-                                                        aria-label={`إغلاق طلب ${String(index + 1)}`}
-                                                        onClick={() => {
-                                                            void closeTab(tab.id);
-                                                        }}
-                                                    >
-                                                        ×
-                                                    </button>
-                                                ) : null}
-                                            </div>
-                                        );
-                                    })}
-                                    <Button
-                                        size="sm"
-                                        variant="secondary"
-                                        disabled={tabs.length >= MAX_TABS || busy}
-                                        onClick={addTab}
-                                    >
-                                        + طلب جديد
-                                    </Button>
-                                    <span className="pos-tabs__hint" aria-hidden="true">
-                                        Ctrl+1…5 تبديل · F2 بحث · F3 تعليق · F5 إتمام · F6 السجل
-                                    </span>
-                                </div>
-                                <div className="pos-pane-switch" role="tablist" aria-label="عرض شاشة الكاشير">
+                                <div
+                                    ref={paneSwitchRef}
+                                    className="pos-pane-switch"
+                                    role="tablist"
+                                    aria-label="عرض شاشة الكاشير"
+                                >
                                     <button
                                         type="button"
                                         role="tab"
@@ -1252,81 +1547,74 @@ export function PosEntry() {
                                 </div>
                                 <div className="pos-entry__layout">
                                     <PosCatalog
-                                    buffet={buffet}
-                                    items={items}
-                                    heldOrders={heldQuery.data ?? []}
-                                    heldError={heldQuery.isError ? errorMessage(heldQuery.error) : ''}
-                                    buffetLive={buffetLiveQuery.data ?? null}
-                                    sales={salesRankQuery.data ?? EMPTY_SALES_INDEX}
-                                    query={query}
-                                    onQuery={setQuery}
-                                    selectedCategory={selectedCategory}
-                                    onCategory={setSelectedCategory}
-                                    onAdd={addItem}
-                                    onBarcodeEnter={barcodeEnter}
-                                    searchInputRef={searchInputRef}
-                                    favorites={favorites}
-                                    onToggleFavorite={toggleFavorite}
-                                    canSell={canSell}
-                                    canManageCatalog={canManageCatalog}
-                                    imagePending={imagePending}
-                                    onUploadImage={(item, file) => {
-                                        void uploadImage(item, file);
-                                    }}
-                                    onRecall={(order) => {
-                                        void recallOrder(order);
-                                    }}
-                                    onDeleteHeld={(order) => {
-                                        void removeHeldOrder(order);
-                                    }}
-                                    busy={busy || buffetBusy || dayCloseBusy}
-                                />
-                                <div className="pos-entry__side">
-                                    <PosCart
-                                        cart={cart}
-                                        totals={totals}
-                                        discount={discount}
-                                        onDiscount={setDiscountValue}
-                                        payments={payments}
-                                        paymentsTouched={paymentsTouched}
-                                        onPayment={setPayment}
-                                        references={references}
-                                        onReference={setReference}
-                                        canSell={canSell}
-                                        busy={busy}
                                         buffet={buffet}
-                                        onQty={changeQuantity}
-                                        onClear={() => {
-                                            resetSale();
-                                        }}
-                                        onHold={() => {
-                                            void holdOrder();
-                                        }}
-                                        onComplete={() => {
-                                            void completeSale();
-                                        }}
-                                        onOpenDrawer={() => {
-                                            void openDrawer();
-                                        }}
+                                        items={items}
+                                        heldOrders={heldQuery.data ?? EMPTY_HELD_ORDERS}
+                                        heldError={heldQuery.isError ? errorMessage(heldQuery.error) : ''}
+                                        buffetLive={buffetLiveQuery.data ?? null}
+                                        sales={salesRankQuery.data ?? EMPTY_SALES_INDEX}
+                                        query={query}
+                                        onQuery={setQuery}
+                                        selectedCategory={selectedCategory}
+                                        onCategory={setSelectedCategory}
+                                        onAdd={handleAddItem}
+                                        onBarcodeEnter={handleBarcodeEnter}
+                                        searchInputRef={searchInputRef}
+                                        favorites={favorites}
+                                        onToggleFavorite={handleToggleFavorite}
+                                        canSell={canSell}
+                                        canManageCatalog={canManageCatalog}
+                                        imagePending={imagePending}
+                                        onUploadImage={handleUploadImage}
+                                        onRemoveImage={handleRemoveImage}
+                                        onRecall={handleRecallOrder}
+                                        onDeleteHeld={handleDeleteHeld}
+                                        busy={busy || buffetBusy || dayCloseBusy}
                                     />
-                                    {receipt ? (
-                                        <PosReceipt
-                                            receipt={receipt}
-                                            buffet={buffet}
-                                            canReprint={canSell}
+                                    <div className="pos-entry__side">
+                                        <PosCart
+                                            cart={cart}
+                                            images={itemImages}
+                                            totals={totals}
+                                            discount={discount}
+                                            onDiscount={setDiscountValue}
+                                            payments={payments}
+                                            paymentsTouched={paymentsTouched}
+                                            onPayment={setPayment}
+                                            references={references}
+                                            onReference={setReference}
+                                            canSell={canSell}
                                             busy={busy}
-                                            onReprint={(orderId) => {
-                                                void reprint(orderId);
+                                            buffet={buffet}
+                                            onQty={changeQuantity}
+                                            onClear={() => {
+                                                resetSale();
                                             }}
-                                            onKot={(orderId, counter) => {
-                                                void openKot(orderId, counter);
+                                            onHold={() => {
+                                                void holdOrder();
                                             }}
-                                            onDismiss={() => {
-                                                updateActiveTab((tab) => ({ ...tab, receipt: null }));
+                                            onComplete={() => {
+                                                void completeSale();
                                             }}
                                         />
-                                    ) : null}
-                                </div>
+                                        {receipt ? (
+                                            <PosReceipt
+                                                receipt={receipt}
+                                                buffet={buffet}
+                                                canReprint={canSell}
+                                                busy={busy}
+                                                onReprint={(orderId) => {
+                                                    void reprint(orderId);
+                                                }}
+                                                onKot={(orderId, counter) => {
+                                                    void openKot(orderId, counter);
+                                                }}
+                                                onDismiss={() => {
+                                                    updateActiveTab((tab) => ({ ...tab, receipt: null }));
+                                                }}
+                                            />
+                                        ) : null}
+                                    </div>
                                 </div>
                             </>
                         )
@@ -1350,101 +1638,101 @@ export function PosEntry() {
                             </Button>
                         </div>
                         <div className="pos-overlay__body">
-            {view === 'history' && canHistory ? (
-                <PosHistory
-                    filters={historyFilters}
-                    onApply={(next) => {
-                        setHistoryFilters(next);
-                        setHistoryPage(1);
-                    }}
-                    result={historyQuery.data}
-                    loading={historyQuery.isPending || historyQuery.isFetching}
-                    error={historyQuery.isError ? errorMessage(historyQuery.error) : ''}
-                    printing={printingHistory}
-                    onPage={setHistoryPage}
-                    onRetry={() => {
-                        void historyQuery.refetch();
-                    }}
-                    onBack={() => {
-                        setView('cashier');
-                    }}
-                    onDetail={(orderId) => {
-                        setSelectedOrderId(orderId);
-                        setView('order-detail');
-                    }}
-                    onPrint={() => {
-                        void printHistory();
-                    }}
-                />
-            ) : null}
+                            {view === 'history' && canHistory ? (
+                                <PosHistory
+                                    filters={historyFilters}
+                                    onApply={(next) => {
+                                        setHistoryFilters(next);
+                                        setHistoryPage(1);
+                                    }}
+                                    result={historyQuery.data}
+                                    loading={historyQuery.isPending || historyQuery.isFetching}
+                                    error={historyQuery.isError ? errorMessage(historyQuery.error) : ''}
+                                    printing={printingHistory}
+                                    onPage={setHistoryPage}
+                                    onRetry={() => {
+                                        void historyQuery.refetch();
+                                    }}
+                                    onBack={() => {
+                                        setView('cashier');
+                                    }}
+                                    onDetail={(orderId) => {
+                                        setSelectedOrderId(orderId);
+                                        setView('order-detail');
+                                    }}
+                                    onPrint={() => {
+                                        void printHistory();
+                                    }}
+                                />
+                            ) : null}
 
-            {view === 'order-detail' ? (
-                <PosOrderDetailPanel
-                    detail={detailQuery.data}
-                    loading={detailQuery.isPending}
-                    error={detailQuery.isError ? errorMessage(detailQuery.error) : ''}
-                    canVoid={canVoid}
-                    canReprint={canSell}
-                    busy={busy}
-                    onBack={() => {
-                        setView('history');
-                    }}
-                    onRetry={() => {
-                        void detailQuery.refetch();
-                    }}
-                    onVoid={openVoidDialog}
-                    onReprint={(orderId) => {
-                        void reprint(orderId);
-                    }}
-                    onKot={(orderId, counter) => {
-                        void openKot(orderId, counter);
-                    }}
-                />
-            ) : null}
+                            {view === 'order-detail' ? (
+                                <PosOrderDetailPanel
+                                    detail={detailQuery.data}
+                                    loading={detailQuery.isPending}
+                                    error={detailQuery.isError ? errorMessage(detailQuery.error) : ''}
+                                    canVoid={canVoid}
+                                    canReprint={canSell}
+                                    busy={busy}
+                                    onBack={() => {
+                                        setView('history');
+                                    }}
+                                    onRetry={() => {
+                                        void detailQuery.refetch();
+                                    }}
+                                    onVoid={openVoidDialog}
+                                    onReprint={(orderId) => {
+                                        void reprint(orderId);
+                                    }}
+                                    onKot={(orderId, counter) => {
+                                        void openKot(orderId, counter);
+                                    }}
+                                />
+                            ) : null}
 
-            {view === 'buffet-prices' && buffet ? (
-                <PosBuffetPrices
-                    tiers={buffetConfigQuery.data?.tiers ?? []}
-                    canManage={canManageBuffet}
-                    busy={buffetBusy}
-                    onBack={() => {
-                        setView('cashier');
-                    }}
-                    onSave={(prices, renames) => {
-                        void saveBuffet(prices, renames);
-                    }}
-                    onAdd={(name, price) => {
-                        void addTier(name, price);
-                    }}
-                    onToggle={(tier) => {
-                        void toggleTier(tier);
-                    }}
-                />
-            ) : null}
+                            {view === 'buffet-prices' && buffet ? (
+                                <PosBuffetPrices
+                                    tiers={buffetConfigQuery.data?.tiers ?? []}
+                                    canManage={canManageBuffet}
+                                    busy={buffetBusy}
+                                    onBack={() => {
+                                        setView('cashier');
+                                    }}
+                                    onSave={(prices, renames) => {
+                                        void saveBuffet(prices, renames);
+                                    }}
+                                    onAdd={(name, price) => {
+                                        void addTier(name, price);
+                                    }}
+                                    onToggle={(tier) => {
+                                        void toggleTier(tier);
+                                    }}
+                                />
+                            ) : null}
 
-            {view === 'buffet-report' && buffet ? (
-                <PosBuffetReport
-                    date={reportDate}
-                    onDate={setReportDate}
-                    report={reportQuery.data}
-                    invoices={reportInvoicesQuery.data?.data ?? []}
-                    loading={reportQuery.isPending || reportInvoicesQuery.isPending}
-                    error={
-                        reportQuery.isError
-                            ? errorMessage(reportQuery.error)
-                            : reportInvoicesQuery.isError
-                              ? errorMessage(reportInvoicesQuery.error)
-                              : ''
-                    }
-                    onRetry={() => {
-                        void reportQuery.refetch();
-                        void reportInvoicesQuery.refetch();
-                    }}
-                    onBack={() => {
-                        setView('cashier');
-                    }}
-                />
-            ) : null}
+                            {view === 'buffet-report' && buffet ? (
+                                <PosBuffetReport
+                                    date={reportDate}
+                                    onDate={setReportDate}
+                                    report={reportQuery.data}
+                                    invoices={reportInvoicesQuery.data?.data ?? []}
+                                    loading={reportQuery.isPending || reportInvoicesQuery.isPending}
+                                    error={
+                                        reportQuery.isError
+                                            ? errorMessage(reportQuery.error)
+                                            : reportInvoicesQuery.isError
+                                              ? errorMessage(reportInvoicesQuery.error)
+                                              : ''
+                                    }
+                                    onRetry={() => {
+                                        void reportQuery.refetch();
+                                        void reportInvoicesQuery.refetch();
+                                    }}
+                                    onBack={() => {
+                                        setView('cashier');
+                                    }}
+                                />
+                            ) : null}
                         </div>
                     </div>
                 </div>
@@ -1611,6 +1899,12 @@ export function PosEntry() {
                     ) : null}
                 </div>
             </Dialog>
+
+            <PosPrinters
+                open={printersOpen}
+                departmentId={shift?.departmentId ?? ''}
+                onClose={() => setPrintersOpen(false)}
+            />
         </div>
     );
 }

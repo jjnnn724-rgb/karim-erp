@@ -9,11 +9,15 @@
 import type { BuffetTier, PosProduct } from '../../lib/pos';
 
 export const POS_ROLES = ['admin', 'manager', 'accountant', 'cashier'] as const;
-export const SELL_ROLES = ['admin', 'manager', 'cashier'] as const;
+/**
+ * صلاحيات الكاشير — الكاشير يبيع ويعلّق ويسترجع فقط؛ المحاسب والمدير والمسؤول
+ * يملكون الكاشير كاملًا (بيع، سجل الفواتير، إلغاء، تقفيل اليوم Z).
+ */
+export const SELL_ROLES = ['admin', 'manager', 'accountant', 'cashier'] as const;
 export const HISTORY_ROLES = ['admin', 'manager', 'accountant'] as const;
-export const VOID_ROLES = ['admin', 'manager'] as const;
+export const VOID_ROLES = ['admin', 'manager', 'accountant'] as const;
 export const CATALOG_IMAGE_ROLES = ['admin', 'manager'] as const;
-export const DAY_CLOSE_ROLES = ['admin', 'manager'] as const;
+export const DAY_CLOSE_ROLES = ['admin', 'manager', 'accountant'] as const;
 export const BUFFET_ADMIN_ROLES = ['admin', 'manager', 'accountant'] as const;
 
 export const PAYMENT_FIELDS = [
@@ -46,39 +50,18 @@ export function qtyText(value: number): string {
     return (Math.round(value * 1000) / 1000).toLocaleString('en-US', { maximumFractionDigits: 3 });
 }
 
-const MENU_UPLOAD_PREFIX = '/uploads/menu/';
-
-/**
- * هل اسم ملف الرفع يخص هذا المنتج فعلًا؟
- * أسماء الرفع الرسمية `product-<id>-<ts>-<hash>.<ext>`؛ وتُقبل الصيغ القديمة
- * `<id>.<ext>` أو التي تحمل المعرّف ككلمة مستقلة. أي ملف يخص صنفًا آخر يُرفض
- * حتى لا تظهر صورة صنف مكان صنف آخر.
- */
-function menuFileBelongsToProduct(fileName: string, productId: string): boolean {
-    const id = productId.trim();
-    if (!/^[0-9]+$/.test(id)) {
-        return false;
-    }
-    const token = new RegExp(`(^|[^0-9])${id}([^0-9]|$)`);
-    return token.test(fileName);
-}
-
-/**
- * رابط الصورة المقبول لعرضه في الكاشير.
- * - صور الرفع الداخلية تُقبل فقط إذا كان اسمها مرتبطًا بمعرّف الصنف نفسه.
- * - الروابط الخارجية (https) تُقبل كما هي لأنها مخزّنة في حقل الصنف نفسه.
- * - أي شيء آخر يُعاد فارغًا ⇒ واجهة بديلة آمنة، لا صورة صنف آخر.
- */
 export function safeProductImageUrl(value: string | null | undefined, productId?: string | null): string {
     const url = String(value ?? '').trim();
-    if (url.startsWith(MENU_UPLOAD_PREFIX)) {
-        if (productId == null || String(productId).trim() === '') {
-            return url;
+    if (url.startsWith('/uploads/menu/')) {
+        const id = String(productId ?? '').trim();
+        if (!/^[0-9]+$/.test(id)) {
+            return '';
         }
-        const fileName = url.slice(MENU_UPLOAD_PREFIX.length).split(/[?#]/)[0] ?? '';
-        return menuFileBelongsToProduct(fileName, String(productId)) ? url : '';
+        // اسم الرفع يخص هذا الصنف فقط: product-<id>-<ts>-<hash>.<ext> — لا صورة صنف آخر أبدًا.
+        const fileName = url.slice('/uploads/menu/'.length).split(/[?#]/)[0] ?? '';
+        return new RegExp(`(^|[^0-9])${id}([^0-9]|$)`).test(fileName) ? url : '';
     }
-    return /^https:\/\//i.test(url) ? url : '';
+    return url.startsWith('/v3/img/') || /^https:\/\//i.test(url) ? url : '';
 }
 
 /** حالة الفاتورة → تسمية عربية (نفس خريطة القديم). */
@@ -123,6 +106,8 @@ export interface CatalogItem {
     barcode: string;
     stock: number | null;
     imageUrl: string;
+    /** الصورة المخزنة قد تكون مخفية؛ يبقى حذفها متاحًا للمخوّلين. */
+    hasImage: boolean;
     category: string;
     tier: string;
     isBuffet: boolean;
@@ -132,28 +117,34 @@ export interface CatalogItem {
 }
 
 export function catalogFromProducts(products: readonly PosProduct[]): CatalogItem[] {
-    return products
-        .filter(
-            (product) => Number.isInteger(Number(product.id)) && Number(product.id) > 0 && product.is_active !== false,
-        )
-        .map((product) => {
-            const rawCode = product.metadata?.yara_code;
-            return {
-                id: String(product.id),
-                name: String(product.name_ar || product.name_en || 'صنف'),
-                price: Number.isFinite(product.price) ? product.price : 0,
-                vatRate: Number.isFinite(product.vat_rate) ? product.vat_rate : 15,
-                unit: String(product.unit ?? ''),
-                barcode: String(product.barcode ?? ''),
-                stock: product.stock_quantity,
-                imageUrl: safeProductImageUrl(product.image_url, String(product.id)),
-                category: String(product.category ?? '').trim(),
-                tier: '',
-                isBuffet: false,
-                isCore: false,
-                yaraCode: typeof rawCode === 'string' ? rawCode.trim() : '',
-            };
-        });
+    const active = products.filter(
+        (product) => Number.isInteger(Number(product.id)) && Number(product.id) > 0 && product.is_active !== false,
+    );
+    const imageUses = new Map<string, number>();
+    for (const product of active) {
+        const url = String(product.image_url ?? '').trim();
+        if (url) imageUses.set(url, (imageUses.get(url) ?? 0) + 1);
+    }
+    return active.map((product) => {
+        const rawCode = product.metadata?.yara_code;
+        const imageUrl = String(product.image_url ?? '').trim();
+        return {
+            id: String(product.id),
+            name: String(product.name_ar || product.name_en || 'صنف'),
+            price: Number.isFinite(product.price) ? product.price : 0,
+            vatRate: Number.isFinite(product.vat_rate) ? product.vat_rate : 15,
+            unit: String(product.unit ?? ''),
+            barcode: String(product.barcode ?? ''),
+            stock: product.stock_quantity,
+            imageUrl: (imageUses.get(imageUrl) ?? 0) > 1 ? '' : safeProductImageUrl(imageUrl, String(product.id)),
+            hasImage: Boolean(imageUrl),
+            category: String(product.category ?? '').trim(),
+            tier: '',
+            isBuffet: false,
+            isCore: false,
+            yaraCode: typeof rawCode === 'string' ? rawCode.trim() : '',
+        };
+    });
 }
 
 /** فئات البوفيه تُباع «أفرادًا» — نفس تحويل `buffetTierProducts` في V2. */
@@ -169,6 +160,7 @@ export function catalogFromTiers(tiers: readonly BuffetTier[]): CatalogItem[] {
             barcode: '',
             stock: null,
             imageUrl: '',
+            hasImage: false,
             category: 'بوفيه',
             tier: String(tier.tier ?? ''),
             isBuffet: true,
@@ -200,7 +192,7 @@ export function searchScore(item: CatalogItem, needle: string): number {
     const name = item.name.toLocaleLowerCase();
     const barcode = item.barcode.toLocaleLowerCase();
     if (barcode && barcode === q) return 0;
-    if (barcode.startsWith(q)) return 1;
+    if (barcode && barcode.startsWith(q)) return 1;
     if (name.startsWith(q)) return 2;
     if (name.split(/\s+/).some((word) => word.startsWith(q))) return 3;
     return 4;
@@ -284,10 +276,11 @@ export function escapeHtml(value: unknown): string {
 
 /** يفتح نافذة، يكتب HTML موثوقًا من الخادم أو مبنيًا هنا، ويطبعها. */
 export function openPrintWindow(title: string, html: string): boolean {
-    const win = window.open('', '_blank', 'noopener');
+    const win = window.open('', '_blank');
     if (!win) {
         return false;
     }
+    win.opener = null;
     win.document.open();
     win.document.write(
         `<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>` +

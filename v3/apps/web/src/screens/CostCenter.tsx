@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
+import { PrintActions } from '../components/PrintActions';
 import { KpiCard, RangeControls, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import {
@@ -10,7 +11,6 @@ import {
     selectableDepts,
 } from '../lib/cost-analysis';
 import { errorMessage, intOf, moneyOf, presetRange, rangeProblem, textOf } from '../lib/reporting';
-import { PrintActions } from '../components/PrintActions';
 
 /** حد نافذة بنود القسم على الخادم (`LIMIT 800`) — يُعلَن لا يُخفى. */
 const ITEM_WINDOW = 800;
@@ -189,7 +189,10 @@ export function CostCenter() {
                                     </thead>
                                     <tbody>
                                         {items.map((item) => (
-                                            <tr key={item.id} className="border-b border-hairline hover:bg-surface-hover">
+                                            <tr
+                                                key={item.id}
+                                                className="border-b border-hairline hover:bg-surface-hover"
+                                            >
                                                 <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">
                                                     {textOf(item.date) || '—'}
                                                 </td>
@@ -217,7 +220,10 @@ export function CostCenter() {
                             </TableScroll>
                         )}
                         {items.length >= ITEM_WINDOW ? (
-                            <p className="border-t border-hairline px-sm py-xs text-caption text-warning-text" role="status">
+                            <p
+                                className="border-t border-hairline px-sm py-xs text-caption text-warning-text"
+                                role="status"
+                            >
                                 {`النافذة مقصوصة عند ${intOf(ITEM_WINDOW)} بندًا — الأحدث بالأثر المالي أولًا.`}
                             </p>
                         ) : null}
@@ -227,4 +233,3 @@ export function CostCenter() {
         </div>
     );
 }
-

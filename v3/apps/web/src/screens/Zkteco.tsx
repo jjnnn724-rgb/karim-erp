@@ -1,9 +1,12 @@
 import './Zkteco.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { PrintActions } from '../components/PrintActions';
+import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
+import { ZktecoAdmin } from '../components/ZktecoAdmin';
+import { ZktecoControl } from '../components/ZktecoControl';
+import { ZktecoWorkbench } from '../components/ZktecoWorkbench';
 import { errorMessage, intOf, num } from '../lib/reporting';
 import { deviceToRow, fetchZkStatus, summarizeDevices } from '../lib/zkteco';
 
@@ -52,7 +55,10 @@ export function Zkteco() {
 
             {payload ? (
                 <>
-                    <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4" aria-label="مؤشرات أجهزة البصمة">
+                    <ul
+                        className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4"
+                        aria-label="مؤشرات أجهزة البصمة"
+                    >
                         <KpiCard
                             label="محرك المزامنة"
                             english="Sync engine"
@@ -81,6 +87,10 @@ export function Zkteco() {
                         />
                     </ul>
 
+                    <ZktecoWorkbench devices={rows} running={running} />
+
+                    <ZktecoAdmin devices={rows} />
+
                     <SectionCard
                         title="الأجهزة"
                         english="Devices"
@@ -91,10 +101,7 @@ export function Zkteco() {
                         }
                     >
                         {rows.length === 0 ? (
-                            <StateEmpty
-                                title="لا أجهزة مسجلة"
-                                hint="لا أجهزة مسجّلة."
-                            />
+                            <StateEmpty title="لا أجهزة مسجلة" hint="لا أجهزة مسجّلة." />
                         ) : (
                             <TableScroll label="جدول أجهزة البصمة">
                                 <table className="w-full border-collapse text-body-md">
@@ -119,7 +126,10 @@ export function Zkteco() {
                                     </thead>
                                     <tbody>
                                         {rows.map((device) => (
-                                            <tr key={device.id} className="border-b border-hairline hover:bg-surface-hover">
+                                            <tr
+                                                key={device.id}
+                                                className="border-b border-hairline hover:bg-surface-hover"
+                                            >
                                                 <td className="px-sm py-xxs text-ink">
                                                     {device.name}
                                                     {device.enabled ? null : (
@@ -174,6 +184,8 @@ export function Zkteco() {
                     <p className="text-caption text-muted" role="status">
                         {`الموظفون: ${intOf(totals.employees)} · المربوطون: ${intOf(totals.linkedEmployees)} · سجل البصمات: ${intOf(totals.logs)}`}
                     </p>
+
+                    <ZktecoControl />
                 </>
             ) : null}
 
