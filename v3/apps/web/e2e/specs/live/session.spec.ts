@@ -24,8 +24,13 @@ test.describe('الدخول الحي', () => {
     });
 });
 
-test.describe('القشرة — جلسة محفوظة', () => {
+test.describe('القشرة — جلسة حية', () => {
     test.skip(!hasLiveCreds, SKIP_NO_CREDS);
+    // دخول مستقل لكل اختبار (نمط المسح) — لا اعتماد على حالة محفوظة مشتركة.
+    test.use({ storageState: { cookies: [], origins: [] } });
+    test.beforeEach(async ({ page }) => {
+        await login(page);
+    });
 
     test('تستقر بلا أخطاء كونسول ولا فائض أفقي', async ({ page }) => {
         const watch = watchConsole(page);

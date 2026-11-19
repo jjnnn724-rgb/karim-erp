@@ -1,4 +1,5 @@
 import { expect, test } from '@playwright/test';
+import { HAS_SEED_DB, removeSeedDispatch, seedPendingDispatch, SKIP_NO_SEED } from '../../support/seed-dispatch';
 import {
     dialogMetrics,
     enter,
@@ -12,6 +13,11 @@ import {
     watchConsole,
     wheelAt,
 } from '../../support/harness';
+
+// تنظيف صف البذر بعد كل اختبار (لا أثر على بقية الحزم).
+test.afterEach(async () => {
+    await removeSeedDispatch();
+});
 
 /**
  * نوافذ القرار — العيب الذي أُصلح: نافذة على شكل شريط ضيق وأزرار اعتماد
@@ -30,6 +36,8 @@ test.describe('النوافذ — سطح مكتب', () => {
     test.skip(({ viewport }) => (viewport?.width ?? 0) < 1024, 'سطح مكتب فقط');
 
     test('اعتماد الصرف: الذيل مثبّت والجسم يمرّر', async ({ page }) => {
+        test.skip(!HAS_SEED_DB, SKIP_NO_SEED);
+        await seedPendingDispatch();
         const watch = watchConsole(page);
         await enter(page, '/v3/dispatch');
 
@@ -178,6 +186,8 @@ test.describe('النوافذ — جوال', () => {
     test.skip(({ viewport }) => (viewport?.width ?? 0) >= 1024, 'جوال فقط');
 
     test('اعتماد الصرف على 390: عرض كامل وأزرار لمس 44', async ({ page }) => {
+        test.skip(!HAS_SEED_DB, SKIP_NO_SEED);
+        await seedPendingDispatch();
         const watch = watchConsole(page);
         await enter(page, '/v3/dispatch');
 
