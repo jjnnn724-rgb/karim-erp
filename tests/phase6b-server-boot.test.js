@@ -240,13 +240,21 @@ beforeAll(async () => {
 
     const out = fs.openSync(OUT_LOG, 'w');
     const err = fs.openSync(ERR_LOG, 'w');
+    // عقد الإقلاع الإنتاجي: HTTPS بشهادة محلية ذاتية التوقيع للاختبار
+    // (server.js يفعّل TLS فقط عند وجود SSL_KEY/SSL_CERT — والفحص هنا https).
+    const TLS_KEY = path.join(RUN_DIR, 'tls.key');
+    const TLS_CERT = path.join(RUN_DIR, 'tls.crt');
+    execFileSync('openssl', ['req', '-x509', '-newkey', 'rsa:2048', '-keyout', TLS_KEY,
+        '-out', TLS_CERT, '-days', '2', '-nodes', '-subj', '/CN=127.0.0.1'], { stdio: 'ignore' });
     const env = {
         ...process.env,
         ...ENV,
         NODE_ENV: 'production',
+        SSL_KEY: TLS_KEY,
+        SSL_CERT: TLS_CERT,
         // حارس الإقلاع الإنتاجي يرفض ALLOWED_ORIGINS='*' (server.js) — أصل محدد
         // للاختبار بدل المعمم الموروث من بيئة CI/‏.env.
-        ALLOWED_ORIGINS: `http://127.0.0.1:${PORT}`,
+        ALLOWED_ORIGINS: `https://127.0.0.1:${PORT}`,
         PORT: String(PORT),
         HOST: '127.0.0.1',
         DB_NAME: DB,
@@ -305,7 +313,15 @@ describe('Phase 6b — server.js كامل، شبكة مقطوعة', () => {
         expect(live.status).toBe(200);
         expect(startup.status).toBe(200);
         expect(ready.status).toBe(200);
-        expect(ready.body.status).toBe('ok');
+        // النافذة مقطوعة الشبكة ومواردها محدودة: /ready يرد 200 مع warn عندما
+        // يفشل مكوّن غير حرج (قرص/ذاكرة/redis غير مضبوط). العقد المحمي:
+        // الجاهزية 200، وقاعدة البيانات ok، ولا فشل في أي مكوّن حرج.
+        expect(['ok', 'warn']).toContain(ready.body.status);
+        const comps = ready.body.critical || [];
+        const db = comps.find((c) => c.component === 'database');
+        expect(db && db.status).toBe('ok');
+        const criticalComps = comps.filter((c) => ['database', 'outbox', 'websocket'].includes(c.component));
+        expect(criticalComps.every((c) => c.status !== 'fail')).toBe(true);
     });
 
     test('2) حالة account_mapping مطابقة لمرحلة القاعدة (fallback أو مُهاجَرة)', async () => {

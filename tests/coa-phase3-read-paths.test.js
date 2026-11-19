@@ -92,10 +92,24 @@ async function cleanup() {
 }
 
 async function setMapping(operation, role, accountCode) {
-    await sql(
-        `UPDATE account_mapping SET account_code = $3, updated_at = now()
-          WHERE module = 'reports' AND operation = $1 AND role = $2`,
-        [operation, role, accountCode]);
+    // تحويل الربط على حسابات عليها قيود مرحّلة يتطلب موافقة صريحة (حارس 142).
+    // SET LOCAL داخل معاملة على اتصال واحد — pool.query المنفصل يفقدها.
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        await client.query(`SET LOCAL coa.allow_mapping_change = 'on'`);
+        await client.query(`SET LOCAL coa.change_reason = 'zz read-path test'`);
+        await client.query(
+            `UPDATE account_mapping SET account_code = $3, updated_at = now()
+              WHERE module = 'reports' AND operation = $1 AND role = $2`,
+            [operation, role, accountCode]);
+        await client.query('COMMIT');
+    } catch (e) {
+        await client.query('ROLLBACK').catch(() => {});
+        throw e;
+    } finally {
+        client.release();
+    }
 }
 
 beforeAll(async () => {

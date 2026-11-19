@@ -88,14 +88,18 @@ describe('coa-mapping — الرجوع الآمن إلى الثوابت', () => 
             expect(before).toBeGreaterThan(0);
 
             await client.query('BEGIN');
+            // موافقة صريحة لتحويل/حذف الربط (حارس 142) — الاختبار يثبت سلوك القراءة لا الحارس.
+            await client.query(`SET LOCAL coa.allow_mapping_change = 'on'`);
+            await client.query(`SET LOCAL coa.change_reason = 'zz fallback test'`);
             const seeded = await resolveAccounts(client, 'sales_pos', 'pos_sale', DEFAULTS);
             expect(seeded).toEqual(DEFAULTS); // البذر يطابق الثوابت حرفيًا
 
+            // حساب إيراد بديل (4030) — حارس النوع يرفض asset لدور revenue (fail-closed بحق).
             await client.query(
-                `UPDATE account_mapping SET account_code = '1150'
+                `UPDATE account_mapping SET account_code = '4030'
                   WHERE module = 'sales_pos' AND operation = 'pos_sale' AND role = 'revenue_account'`);
             const changed = await resolveAccounts(client, 'sales_pos', 'pos_sale', DEFAULTS);
-            expect(changed.revenue_account).toBe('1150');
+            expect(changed.revenue_account).toBe('4030');
 
             await client.query('DELETE FROM account_mapping');
             await expect(resolveAccounts(client, 'sales_pos', 'pos_sale', DEFAULTS)).resolves.toEqual(DEFAULTS);

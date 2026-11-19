@@ -75,15 +75,19 @@ const auditRows = async () =>
     (await client.query(
         `SELECT action, module, operation, role, old_account_code, new_account_code,
                 old_active, new_active, changed_by::int AS changed_by, reason
-           FROM account_mapping_audit ORDER BY id`)).rows;
+           FROM account_mapping_audit WHERE id > ${seedAuditMax} ORDER BY id`)).rows;
 
 let before;
+// بذور 142 نفسها تُسجَّل في التدقيق (36 عملية إعادة ربط) — نلتقط سقف معرّفاتها
+// بعد التطبيق حتى تقيس الاختبارات صفوفها هي فقط (عقد محدَّث 2026-11).
+let seedAuditMax = 0;
 
 beforeAll(async () => {
     client = await pool.connect();
     before = await snap();
     await client.query('BEGIN');
     await client.query(UP);
+    seedAuditMax = (await client.query('SELECT COALESCE(MAX(id),0)::int AS m FROM account_mapping_audit')).rows[0].m;
 });
 
 afterAll(async () => {
@@ -113,7 +117,8 @@ describe('تطبيق 142 — البنية والفحص المسبق', () => {
         const s = await snap();
         expect(s.triggers).toBe(2);
         expect(s.guardFn).toBe(true);
-        expect(s.audit).toBe(0);
+        // بذور 142 مُدقَّقة مسبقًا في القاعدة؛ إعادة التطبيق idempotent لا تضيف أثرًا.
+        expect(s.audit).toBe(before.audit);
     });
 
     test('الفحص المسبق: الـ25 صفًا القائمة كلها مطابقة لأدوارها (وإلا كان التطبيق فشل)', async () => {
@@ -194,6 +199,16 @@ describe('2) سجل التدقيق لكل تغيير', () => {
 
 describe('3) قفل الحساب الذي عليه قيود مرحّلة', () => {
     test('تحويل cash_account 1000 (عليه قيود) إلى 1010 يُرفض ACCOUNT_MAPPING_LOCKED', async () => {
+        // العقد ذاتي الاكتفاء: نزرع قيدًا مرحّلاً متوازنًا على 1000 داخل المعاملة
+        // (قاعدة الاختبار قد لا تحمل قيودًا على 1000 — الحارس يفحص القيود فعلًا).
+        const je = await client.query(
+            `INSERT INTO journal_entries (id, entry_no, date, status)
+             VALUES (999900001, 'ZZ-GUARD-LOCK-1', CURRENT_DATE, 'posted')
+             RETURNING id`);
+        const eid = je.rows[0].id;
+        await client.query(
+            `INSERT INTO journal_lines (id, entry_id, account_code, debit, credit)
+             VALUES (999900001, $1, '1000', 100, 0), (999900002, $1, '4000', 0, 100)`, [eid]);
         await expectFailure(
             () => client.query(
                 `UPDATE account_mapping SET account_code = '1010'
@@ -297,9 +312,10 @@ describe('إعادة التطبيق والرجوع', () => {
         await client.query('ROLLBACK');
         const after = await snap();
         expect(after).toEqual(before);
-        expect(after.rules).toBe(0);
-        expect(after.audit).toBe(0);
-        expect(after.triggers).toBe(0);
+        // الحالة المرجعية هي ما قبل الاختبار (قد تكون 142 مطبقة أصلًا من الترحيلات).
+        expect(after.rules).toBe(before.rules);
+        expect(after.audit).toBe(before.audit);
+        expect(after.triggers).toBe(before.triggers);
     });
 });
 
