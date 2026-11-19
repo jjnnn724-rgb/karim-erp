@@ -51,11 +51,12 @@ export function printLogoSrc(settings?: PrintSettings | null): string {
     if (/^[A-Za-z0-9+/]+={0,2}$/.test(value)) {
         return `data:image/png;base64,${value}`;
     }
-    try {
-        return new URL(value, 'http://localhost').href;
-    } catch {
-        return PRINT_LOGO_FALLBACK;
+    // مسار Same-origin فقط — النص/الإيموجي (شعار نصي مثل «🍽️») ليس صورة،
+    // ولا يجوز اختلاق أصل localhost له (كان يُحجب بـCSP ويفشل عقد الكونسول).
+    if (value.startsWith('/')) {
+        return value;
     }
+    return PRINT_LOGO_FALLBACK;
 }
 
 /** `طُبع dd/mm/yyyy hh:mm` — نفس `stampNow()` في V2. */

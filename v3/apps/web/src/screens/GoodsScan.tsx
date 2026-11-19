@@ -700,7 +700,7 @@ export function GoodsScan() {
                             }`}
                         >
                             {item.label}{' '}
-                            <span className="text-caption opacity-75" dir="ltr" lang="en">
+                            <span className="text-caption" dir="ltr" lang="en">
                                 {item.english}
                             </span>
                         </button>

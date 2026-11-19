@@ -47,7 +47,7 @@ export function Yarasoft() {
                         }`}
                     >
                         {item.label}{' '}
-                        <span className="hidden text-caption opacity-75 sm:inline" dir="ltr" lang="en">
+                        <span className="hidden text-caption sm:inline" dir="ltr" lang="en">
                             {item.hint}
                         </span>
                     </button>

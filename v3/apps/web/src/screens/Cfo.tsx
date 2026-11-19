@@ -130,7 +130,7 @@ export function Cfo() {
                     }`}
                 >
                     لوحة CFO{' '}
-                    <span className="hidden text-caption opacity-75 sm:inline" dir="ltr" lang="en">
+                    <span className="hidden text-caption sm:inline" dir="ltr" lang="en">
                         Dashboard
                     </span>
                 </button>
@@ -148,7 +148,7 @@ export function Cfo() {
                         }`}
                     >
                         {item.label}{' '}
-                        <span className="hidden text-caption opacity-75 sm:inline" dir="ltr" lang="en">
+                        <span className="hidden text-caption sm:inline" dir="ltr" lang="en">
                             {item.english}
                         </span>
                     </button>

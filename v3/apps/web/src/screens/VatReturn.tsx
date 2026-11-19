@@ -243,7 +243,7 @@ export function VatReturn() {
                         </aside>
                     ) : null}
 
-                    <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-5">
+                    <ul className="grid list-none gap-sm p-0 sm:grid-cols-2 xl:grid-cols-5">
                         <KpiCard
                             label="ضريبة المخرجات المرحّلة"
                             english="Posted output VAT"
@@ -274,10 +274,10 @@ export function VatReturn() {
                             value={moneyOf(report.net_payable > 0 ? report.net_payable : report.carry_forward_credit)}
                             hint="للمراجعة فقط — ليس إقرارًا معتمدًا"
                         />
-                    </div>
+                    </ul>
 
                     <SectionCard title="مطابقة فواتير الشراء" english="Posted purchase cross-check">
-                        <div className="grid gap-sm p-sm sm:grid-cols-3">
+                        <ul className="grid list-none gap-sm p-sm sm:grid-cols-3">
                             <KpiCard
                                 label="الفواتير المرتبطة بقيود مرحّلة"
                                 english="Posted invoices"
@@ -296,11 +296,11 @@ export function VatReturn() {
                                 value={moneyOf(purchaseVatDifference)}
                                 hint="المشتريات المسجلة ناقص مدخلات الأستاذ"
                             />
-                        </div>
+                        </ul>
                     </SectionCard>
 
                     <SectionCard title="أرصدة حسابات الضريبة" english="Posted control-account balances">
-                        <div className="grid gap-sm p-sm sm:grid-cols-2">
+                        <ul className="grid list-none gap-sm p-sm sm:grid-cols-2">
                             <KpiCard
                                 label="رصيد حساب ضريبة المخرجات"
                                 english="Output VAT balance"
@@ -313,7 +313,7 @@ export function VatReturn() {
                                 value={moneyOf(report.recoverable_balance)}
                                 hint="الرصيد المرحّل حتى نهاية الفترة"
                             />
-                        </div>
+                        </ul>
                     </SectionCard>
 
                     <SectionCard title="تصفية ضريبة القيمة المضافة" english="VAT settlement">
@@ -376,7 +376,7 @@ export function VatReturn() {
                             ) : null}
                             {settlement ? (
                                 <>
-                                    <div className="grid gap-sm sm:grid-cols-3">
+                                    <ul className="grid list-none gap-sm p-0 sm:grid-cols-3">
                                         <KpiCard
                                             label="قيمة التصفية"
                                             english="Clearing amount"
@@ -395,7 +395,7 @@ export function VatReturn() {
                                             value={moneyOf(settlement.carry_forward_after)}
                                             hint="يبقى رصيد 1150"
                                         />
-                                    </div>
+                                    </ul>
                                     {settlement.lines.length ? (
                                         <table className="w-full border-collapse">
                                             <caption className="sr-only">سطور قيد تصفية ضريبة القيمة المضافة</caption>

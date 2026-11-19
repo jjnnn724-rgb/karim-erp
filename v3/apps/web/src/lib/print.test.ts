@@ -25,12 +25,17 @@ describe('هوية الطباعة — الاسم والشعار', () => {
         expect(printBrandName({ name: '  مطاعم الشرفة  ' })).toBe('مطاعم الشرفة');
     });
 
-    it('الشعار: base64 خام أو data: أو URL أو المسار البديل', () => {
+    it('الشعار: base64 خام أو data: أو URL أو مسار same-origin، والنص/الإيموجي بديل', () => {
         expect(printLogoSrc({})).toBe(PRINT_LOGO_FALLBACK);
         expect(printLogoSrc({ logoB64: 'data:image/png;base64,AAA' })).toBe('data:image/png;base64,AAA');
         expect(printLogoSrc({ logoB64: 'QUJD' })).toBe('data:image/png;base64,QUJD');
         expect(printLogoSrc({ logo: 'https://example.test/logo.png' })).toBe('https://example.test/logo.png');
-        expect(printLogoSrc({ logoB64: '/app/assets/x.png' })).toBe('http://localhost/app/assets/x.png');
+        // المسار يبقى same-origin (لا اختلاق أصل localhost) — عقد 2026-11.
+        expect(printLogoSrc({ logoB64: '/app/assets/x.png' })).toBe('/app/assets/x.png');
+        // شعار نصي/إيموجي (settings.logo في قاعدة الاختبار «🍽️») ليس صورة ⇒ البديل،
+        // ولا request محجوب بـCSP يفشل عقد الكونسول الحي.
+        expect(printLogoSrc({ logo: '🍽️' })).toBe(PRINT_LOGO_FALLBACK);
+        expect(printLogoSrc({ logo: 'مطاعم' })).toBe(PRINT_LOGO_FALLBACK);
     });
 
     it('السطر الإنجليزي ثابت كما في V2', () => {
