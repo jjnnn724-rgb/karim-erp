@@ -88,8 +88,9 @@ async function wipe() {
     await pool.query('DELETE FROM dispatches WHERE id = ANY($1::bigint[])', [DISPATCH_IDS]);
     await pool.query('DELETE FROM inventory_locations WHERE code = ANY($1::text[])', [NEW_STORE_CODES]);
     await pool.query('DELETE FROM inventory WHERE id = ANY($1::bigint[])', [[MEAT, KUNAFA, SALT]]);
-    await pool.query('DELETE FROM users WHERE id = ANY($1::bigint[])', [USER_IDS]);
-    await pool.query('DELETE FROM departments WHERE code = ANY($1::text[])', [[CAF, NAS]]);
+    // عقيدة التدقيق append-only (003 §5.4): سجلات pos_audit_logs لا تُحذف ولا يُحذف
+    // مستخدموها (FK cascade يصطدم بالحارس). تجهيزات zz تُعاد استخدامها (upsert)
+    // وتبقى هيكلًا دائمًا في قاعدة الاختبار المعزولة — لا تنظيف لها.
 }
 
 beforeAll(async () => {
@@ -99,7 +100,9 @@ beforeAll(async () => {
         await pool.query('INSERT INTO departments (id, code, name) VALUES ($1,$2,$3),($4,$5,$6)',
             [990401, CAF, 'كافيه', 990402, NAS, 'كافيه ناصر']);
     }
-    await pool.query('INSERT INTO users (id, username, password, role, name) VALUES ($1,$2,$3,$4,$5),($6,$7,$8,$9,$10)',
+    // DO NOTHING: التحديث يُطلق تدقيق user_change_log (معرفه يولّده التطبيق لا القاعدة).
+    await pool.query(`INSERT INTO users (id, username, password, role, name) VALUES ($1,$2,$3,$4,$5),($6,$7,$8,$9,$10)
+        ON CONFLICT (id) DO NOTHING`,
         [990011, 'zz-voucher-admin', 'zz-no-credential', 'admin', 'مدير المخزن ZZ',
             990012, 'zz-voucher-chef', 'zz-no-credential', 'kitchen', 'شيف ZZ']);
     const loc = await sql('SELECT id FROM inventory_locations WHERE code = ' + "'KITCHEN-MAIN'" + ' AND active = true', []);
