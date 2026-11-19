@@ -54,8 +54,17 @@ jobs:
 
       # البوابة الكاملة: typecheck ثم اختبارات الوحدة ثم البناء ثم lint.
       # البناء هنا مقصود قبل الـe2e: الحزمة العامة تخدم dist عبر خادم ثابت.
-      - name: Gate — typecheck + test + build + lint
-        run: pnpm gate
+      - name: Gate 1/4 — typecheck (كل الحزم)
+        run: pnpm typecheck
+
+      - name: Gate 2/4 — tests (كل الحزم)
+        run: pnpm test
+
+      - name: Gate 3/4 — build (كل الحزم)
+        run: pnpm build
+
+      - name: Gate 4/4 — biome check (lint + format + imports)
+        run: pnpm lint
 
       - name: Install Playwright Chromium
         working-directory: v3/apps/web

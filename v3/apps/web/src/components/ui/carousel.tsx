@@ -142,7 +142,6 @@ function CarouselContent({ className, ...props }: React.ComponentProps<'div'>) {
 function CarouselItem({ className, ...props }: React.ComponentProps<'div'>) {
     const { orientation } = useCarousel();
 
-    // biome-ignore lint/a11y/useSemanticElements: carousel slides use the ARIA-recommended group role.
     return (
         <article
             aria-roledescription="slide"

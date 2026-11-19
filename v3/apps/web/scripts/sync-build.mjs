@@ -28,10 +28,17 @@ const files = new Set(fs.readdirSync(path.join(target, 'assets')));
 const html = fs.readFileSync(path.join(target, 'index.html'), 'utf8');
 // المدخل هو ما يشير إليه index.html فعلًا (لا أول ملف أبجدي — قد تبقى أجيال قديمة).
 const entryMatch = html.match(/assets\/(index-[^"]+\.js)/);
-const entry = entryMatch ? entryMatch[1] : fs.readdirSync(path.join(target, 'assets')).find((f) => /^index-.*\.js$/.test(f));
-if (!entry || !files.has(entry)) { console.error('✗ لا يوجد أصل مدخل index-*.js مطابق لـindex.html'); process.exit(1); }
+const entry = entryMatch
+    ? entryMatch[1]
+    : fs.readdirSync(path.join(target, 'assets')).find((f) => /^index-.*\.js$/.test(f));
+if (!entry || !files.has(entry)) {
+    console.error('✗ لا يوجد أصل مدخل index-*.js مطابق لـindex.html');
+    process.exit(1);
+}
 const js = fs.readFileSync(path.join(target, 'assets', entry), 'utf8');
-const refs = [...new Set(js.match(/[A-Za-z0-9_.-]+-[A-Za-z0-9_-]{8}\.(?:js|css|woff2?|ttf|svg|png|jpe?g|webp)/g) || [])];
+const refs = [
+    ...new Set(js.match(/[A-Za-z0-9_.-]+-[A-Za-z0-9_-]{8}\.(?:js|css|woff2?|ttf|svg|png|jpe?g|webp)/g) || []),
+];
 const missing = refs.filter((r) => !files.has(r));
 const htmlRefs = [...html.matchAll(/(?:src|href)="\.\/(assets\/[^"]+)"/g)].map((m) => m[1]);
 const htmlMissing = htmlRefs.filter((h) => !fs.existsSync(path.join(target, h)));

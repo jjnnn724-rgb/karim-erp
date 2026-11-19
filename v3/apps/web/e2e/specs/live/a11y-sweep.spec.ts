@@ -39,9 +39,8 @@ test.describe('مسح الوصول — الشاشات بجلسة محفوظة', 
                 test.skip(true, 'الشاشة معطّلة على هذا الخادم (وسم v3-screens)');
             }
             // نقطة البيع شاشة ملء مستقلة بلا قشرة (body.pos-cashier-fullscreen).
-            const root = route.name === 'pos-entry'
-                ? page.locator('body.pos-cashier-fullscreen')
-                : page.locator('.erp-shell');
+            const root =
+                route.name === 'pos-entry' ? page.locator('body.pos-cashier-fullscreen') : page.locator('.erp-shell');
             await expect(root).toBeAttached({ timeout: 60_000 });
             // نفس استقرار الحزمة الحية: مهلة قصيرة كي تستقر الشبكة قبل القياس.
             await page.waitForTimeout(1_500);

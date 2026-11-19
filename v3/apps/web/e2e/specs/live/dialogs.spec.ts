@@ -1,5 +1,4 @@
 import { expect, test } from '@playwright/test';
-import { HAS_SEED_DB, removeSeedDispatch, seedPendingDispatch, SKIP_NO_SEED } from '../../support/seed-dispatch';
 import {
     dialogMetrics,
     enter,
@@ -13,6 +12,7 @@ import {
     watchConsole,
     wheelAt,
 } from '../../support/harness';
+import { HAS_SEED_DB, removeSeedDispatch, SKIP_NO_SEED, seedPendingDispatch } from '../../support/seed-dispatch';
 
 // تنظيف صف البذر بعد كل اختبار (لا أثر على بقية الحزم).
 test.afterEach(async () => {
