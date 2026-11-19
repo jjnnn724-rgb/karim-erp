@@ -76,6 +76,7 @@ if (!QUICK) {
     // ── المرحلة 2: متوسطة (~دقيقة) ───────────────────────────────────────
     G('lint', () => run('ESLint (حصص ratchet)', node, [S('lint-gate.js')]));
     G('type', () => run('أنواع الطبقة القديمة', node, [S('type-gate.js')]));
+    G('type-ratchet', () => run('أنواع backend — حصص لكل ملف (ratchet)', node, [S('type-ratchet.js')]));
     G('security', () => run('بوابة الأمان (XSS/حقن)', node, [S('security-gate.js')]));
     G('jest-pure', () => run('اختبارات نقية (أمان/عقود)', node, [jestBin(), '--config', S('jest.pure.config.json'), '--silent', '--forceExit'], { timeout: 300000 }));
 }

@@ -57,3 +57,9 @@
 | Date | Backup file | Test DB | Result | By |
 |---|---|---|---|---|
 | 2026-11-19 | database/backups/dr-drill-2026-11-19T02-52-43.sql.kbak (AES-256-GCM، حُذف النص الصريح بعد التشفير، بصمة SHA-256) | karim_restore_test | **PASS** — استعادة كاملة من المشفّر: 181/181 جدولًا، تطابق صفوف (users 28، chart_of_accounts 124، journal_entries 12، journal_lines 24)؛ حُذفت قاعدة التمرين بعدها. ملاحظة تشغيلية: الاستعادة الأولى تتطلب إنشاء القاعدة الهدف فارغة أولًا (نسخة pre-restore تحتاج وجودها) | Hermes audit (خادم تحقق معزول على karim_erp_test، منفذ 5299) |
+| 2026-11-19 | database/backups/dr-drill-prod-2026-11-19T19-54-48.sql.kbak (621.6MB مشفر + SHA-256) | karim_restore_test | **PASS — بحجم الإنتاج الكامل**: المصدر karim_erp (747MB، 238 جدولًا) قراءةً فقط عبر pg_dump (MVCC بلا أقفال كتابة). نسخ 48ث + استعادة 37ث = **RTO 85 ثانية**. تطابق 238/238 جدولًا وصفوف: users 177، chart_of_accounts 124، journal_entries 50244، journal_lines 100801، inventory 440، attendance 6914، employees 139. حُذفت قاعدة التمرين؛ النسخة المشفرة أُبقيت كنسخة احتياطية إنتاجية طازجة (ومرآها). الإنتاج لم يُكتب فيه حرف واحد | Hermes audit (أدوات المستودع نفسها: backup.js/restore.js) |
+
+## 9. المراقبة والأهداف (SLO)
+- فاحص آلي: `scripts/slo-check.js` (بلا اعتماديات) يقيس 6 أهداف مقابل `/api/metrics` الحي — exit 0 سليم / 1 خرق / 2 تعذر. الأهداف والحدود في `docs/SLO.md`.
+- قياس حي موثق (2026-11-19، خادم التحقق): 5xx 0.24%، p95=125ms، lag p99=35.6ms، pool waiting=0، heap 61.8MB — **كل الأهداف محققة**.
+- مجسّات اختراق آلية: `scripts/security-probes.js` (15 هجومًا: SQLi/XSS/JWT tamper/alg=none/traversal/CORS/headers/lockout/IDOR/mass-assignment/بث مجهول…) — **15/15 PASS** على المعزول. لا تُشغَّل ضد الإنتاج أبدًا (حارس اسم القاعدة مدمج).
