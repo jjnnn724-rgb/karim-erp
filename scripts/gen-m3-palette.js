@@ -271,7 +271,6 @@ function assignDark(p) {
 }
 
 /* ─────────────────────────── قراءة الملفات ─────────────────────────── */
-const strip = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '');
 function blockAfter(css, needle) {
     const at = css.indexOf(needle);
     if (at < 0) {throw new Error('selector not found: ' + needle);}
@@ -428,8 +427,8 @@ function main() {
     };
     Object.assign(light, charts(lightBlock.body)); resolveVar(light);
     Object.assign(dark, charts(darkBlock.body)); resolveVar(dark);
-    const lr = identityContracts('light', light, failures);
-    const dr = identityContracts('dark', dark, failures);
+    identityContracts('light', light, failures);
+    identityContracts('dark', dark, failures);
 
     const moodMaps = {};
     for (const key of ['workshop', 'museum', 'copper']) {

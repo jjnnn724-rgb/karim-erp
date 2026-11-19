@@ -1,0 +1,84 @@
+name: V3 CI
+
+on:
+  # حزمة v3 مستقلة (pnpm workspace تحت v3/) — تعمل فقط عند تغيّر ملفاتها
+  # أو هذا المسار نفسه، كي لا تدفع تغييرات القديم بناءَ monorepo كامل.
+  push:
+    paths:
+      - 'v3/**'
+      - '.github/workflows/ci-v3.yml'
+  pull_request:
+    paths:
+      - 'v3/**'
+      - '.github/workflows/ci-v3.yml'
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NODE_VERSION: '22.x'
+  PNPM_VERSION: '12.18.0' # نفس packageManager في v3/package.json
+  RETENTION_DAYS: 14
+
+jobs:
+  v3-gate:
+    name: 🧱 V3 Gate (pnpm — typecheck/test/build/lint + e2e)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: v3
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          cache-dependency-path: v3/pnpm-lock.yaml
+
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      # البوابة الكاملة: typecheck ثم اختبارات الوحدة ثم البناء ثم lint.
+      # البناء هنا مقصود قبل الـe2e: الحزمة العامة تخدم dist عبر خادم ثابت.
+      - name: Gate — typecheck + test + build + lint
+        run: pnpm gate
+
+      - name: Install Playwright Chromium
+        working-directory: v3/apps/web
+        run: npx playwright install chromium --with-deps
+
+      - name: E2E public (desktop + mobile — بلا API ولا جلسة)
+        working-directory: v3/apps/web
+        run: pnpm e2e:public
+
+      - name: Bundle budget (ميزانية gzip KiB على dist)
+        working-directory: v3/apps/web
+        run: pnpm e2e:budget
+
+      - name: Upload Playwright report
+        if: failure()
+        continue-on-error: true # تشخيص فقط (حصة اللقطات)
+        uses: actions/upload-artifact@v4
+        with:
+          name: v3-playwright-report
+          path: |
+            v3/apps/web/playwright-report/**
+            v3/apps/web/e2e/playwright-report/**
+            v3/apps/web/test-results/**
+            v3/apps/web/e2e/test-results/**
+          if-no-files-found: ignore
+          retention-days: ${{ env.RETENTION_DAYS }}

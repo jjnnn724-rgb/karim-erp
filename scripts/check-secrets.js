@@ -76,7 +76,7 @@ function looksLikeCredential(value) {
     if (!/[A-Za-z]/.test(v)) {return false;}                  // لا بد من حرف
     // رمز إلزامي (underscore لا يُعدّ رمزًا: أسماء متغيّرات psql مثل
     // new_password تمرّ هنا بلا إيجابية كاذبة)
-    if (!/[0-9]/.test(v) && !/[\-!@#$%^&*]/.test(v)) {return false;}
+    if (!/[0-9]/.test(v) && !/[-!@#$%^&*]/.test(v)) {return false;}
     return true;
 }
 

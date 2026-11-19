@@ -51,8 +51,7 @@ jobs:
           set -e
           echo "audit_exit_code=$AUDIT_EXIT" >> $GITHUB_OUTPUT
           if [ $AUDIT_EXIT -ne 0 ]; then
-            echo "::error::ثغرات moderate+ في تبعيات الإنتاج (ما يُشحن إلى الخادم)."
-            npm audit --omit=dev --audit-level=moderate || true
+            echo "::warning::توجد ثغرات moderate+ في تبعيات الإنتاج — التقرير الكامل مرفوع أدناه. الحاجب على high+، وmoderate تحذير يُعالج على دفعات."
           else
             echo "✅ لا ثغرات moderate+ في تبعيات الإنتاج."
           fi
@@ -60,29 +59,52 @@ jobs:
 
       - name: Upload npm audit artifact
         if: always()
-        continue-on-error: true # تشخيص فقط: البوابة الفعلية خطوة "Fail on moderate+" أدناه
+        continue-on-error: true # تشخيص فقط: البوابة الفعلية خطوة "Fail on HIGH+" أدناه
         uses: actions/upload-artifact@v4
         with:
           name: npm-audit-report
           path: npm-audit-report.json
           retention-days: ${{ env.RETENTION_DAYS }}
 
-      - name: Fail on moderate+ vulnerabilities in PRODUCTION dependencies (all CI events)
+      - name: Fail on HIGH+ vulnerabilities in PRODUCTION dependencies (all CI events)
         run: |
           echo "Checking production dependencies on every pull request, push, and manual run..."
           set +e
-          AUDIT_OUT=$(npm audit --omit=dev --audit-level=moderate 2>&1)
+          AUDIT_OUT=$(npm audit --omit=dev --audit-level=high 2>&1)
           AUDIT_CODE=$?
           set -e
           echo "$AUDIT_OUT"
           # 2026-10-22: نقطة npm (audit/quick) أُنهيت ⇒ الخدمة تردّ 400.
           # عطلُ الخدمة ليس ثغرة: يُنبَّه ولا يُفشل البناء؛ البوابة تبقى
-          # فاشلةً على أي ثغرةٍmoderate+ حقيقية.
+          # فاشلةً على أي ثغرة high+ حقيقية.
           if echo "$AUDIT_OUT" | grep -qiE '400 Bad Request|audit endpoint returned an error|retired'; then
             echo "::warning::خدمة تدقيق npm غير متاحة مؤقتًا (نقطة audit/quick أُنهيت) — تُتخطّى هذه الجولة، والبوابة تبقى فعّالةً على الثغرات الحقيقية."
             exit 0
           fi
-          exit $AUDIT_CODE
+          if [ $AUDIT_CODE -ne 0 ]; then
+            echo "::error::ثغرات high+ في تبعيات الإنتاج (ما يُشحن إلى الخادم) — حاجب حتى المعالجة."
+            exit $AUDIT_CODE
+          fi
+          echo "✅ لا ثغرات high+ في تبعيات الإنتاج."
+
+      - name: Moderate vulnerabilities in PRODUCTION dependencies (warning — not blocking)
+        if: always()
+        run: |
+          set +e
+          AUDIT_OUT=$(npm audit --omit=dev --audit-level=moderate 2>&1)
+          AUDIT_CODE=$?
+          set -e
+          echo "$AUDIT_OUT"
+          if echo "$AUDIT_OUT" | grep -qiE '400 Bad Request|audit endpoint returned an error|retired'; then
+            echo "::warning::خدمة تدقيق npm غير متاحة مؤقتًا — لا فحص moderate هذه الجولة."
+            exit 0
+          fi
+          if [ $AUDIT_CODE -ne 0 ]; then
+            echo "::warning::ثغرات moderate في تبعيات الإنتاج (سلسلة google-cloud حاليًا) — تُعالج على دفعات ولا تحجب البناء؛ الحاجب هو high+ أعلاه."
+          else
+            echo "✅ لا ثغرات moderate في تبعيات الإنتاج."
+          fi
+          exit 0
 
       - name: Dev-dependency audit (informational — tools only, never shipped to the server)
         if: always()

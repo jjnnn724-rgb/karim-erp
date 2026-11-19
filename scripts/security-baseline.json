@@ -1,5 +1,5 @@
 {
-  "_generated": "2026-11-02T12:06:32.319Z",
+  "_generated": "2026-11-18T21:39:19.461Z",
   "_reasons": {
     "backend/middleware/health.js:::GET /live": "فحص liveness عام لأجهزة المراقبة — بلا بيانات (C9 موثّق داخل المعالج)",
     "backend/middleware/health.js:::GET /startup": "فحص إقلاع عام — بلا بيانات",
@@ -9,7 +9,9 @@
     "backend/hr-routes.js:::GET /card/v/:code": "تحقق QR موقّع HMAC(cardId)+cardVerifyLimiter — عمد عام موثّق في تعليق المسار",
     "backend/hr-routes.js:::GET /card/verify": "تحقق بطاقة إداري بحدّ معدل صارم cardVerifyLimiter — عمد موثّق",
     "backend/menu-board-routes.js:::GET /v2-state": "شاشة منيو عرض عامة — مُثبتة عمدًا في tests/menu-board-v2-state.test.js",
-    "backend/realtime/recovery-routes.js:::GET /version": "ملاحة توافق عقد EXE بلا بيانات — عمد موثّق في تعليق المسار (TASK 10)"
+    "backend/realtime/recovery-routes.js:::GET /version": "ملاحة توافق عقد EXE بلا بيانات — عمد موثّق في تعليق المسار (TASK 10)",
+    "backend/v3/static-routes.js:::GET /": "هيكل SPA لواجهة v3 (index.html فقط) — عام عمدًا كبوابة الدخول؛ كل البيانات عبر /api خلف jwtAuth، والأصول مبصومة immutable. لا بيانات في الاستجابة نفسها",
+    "backend/v3/static-routes.js:::GET *": "SPA fallback لنفس الهيكل (بلا امتداد ملف) — عام عمدًا لتوجيه العميل داخل v3؛ نفس ضمانات GET /: لا بيانات، والمصادقة على طبقة API"
   },
   "_exceptions": [
     {
@@ -83,7 +85,9 @@
     "backend/middleware/health.js:::GET /ready": 1,
     "backend/middleware/health.js:::GET /": 1,
     "backend/middleware/health.js:::GET /verbose": 1,
-    "backend/realtime/recovery-routes.js:::GET /version": 1
+    "backend/realtime/recovery-routes.js:::GET /version": 1,
+    "backend/v3/static-routes.js:::GET /": 1,
+    "backend/v3/static-routes.js:::GET *": 1
   },
   "shell-interp": {
     "backend/yarasoft/mirror.js": 2,
@@ -146,7 +150,7 @@
     "frontend/app/js/v2/screens/dept-head-dashboard.js": 2,
     "frontend/app/js/v2/screens/employee-portal.js": 2,
     "frontend/app/js/v2/screens/employees.js": 8,
-    "frontend/app/js/v2/screens/executive.js": 5,
+    "frontend/app/js/v2/screens/executive.js": 3,
     "frontend/app/js/v2/screens/goods-scan.js": 6,
     "frontend/app/js/v2/screens/hr-departments.js": 1,
     "frontend/app/js/v2/screens/inventory-inquiry-pro.js": 1,
