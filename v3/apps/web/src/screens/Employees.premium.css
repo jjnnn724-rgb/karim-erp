@@ -218,7 +218,8 @@
 }
 .erp-person__status--inactive {
     background: color-mix(in srgb, var(--erp-muted) 13%, transparent);
-    color: var(--erp-muted);
+    /* ink-secondary لا muted: النص على خلفية muted 13% يهبط إلى 4.46:1 (<4.5). */
+    color: var(--erp-ink-secondary);
 }
 .erp-person__facts {
     display: grid;

@@ -244,38 +244,22 @@ const ROTATION_ALLOWED_PATHS = new Set(['/api/auth/change-password', '/api/auth/
  * PASSWORD_MIGRATION_REQUIRED and the admin is instructed to run the
  * migration script.
  */
-// ─── R18 (Enterprise 2026-10-03): قفل تدريجي للحساب عند التخمين ──────────
-// كان الاعتماد على حد المعدل فقط (20 محاولة/15د لكل حساب+IP). الآن: 5 فشلات
-// خلال 15 دقيقة على (IP+اسم المستخدم) → قفل 15 دقيقة برسالة صريحة. النجاح
-// يصفّر العداد. في الذاكرة (يتصفّر بإعادة التشغيل) — نفس نمط محدد المعدل.
-const LOGIN_LOCKOUT = { MAX_FAILS: 5, WINDOW_MS: 15 * 60 * 1000, LOCK_MS: 15 * 60 * 1000 };
-const _loginFails = new Map();
+// ─── R18 (Enterprise 2026-10-03) + R18++ (2026-11-19): قفل تدريجي دائم ─────
+// 5 فشلات خلال 15 دقيقة على (IP+اسم المستخدم) → قفل 15 دقيقة برسالة صريحة.
+// النجاح يصفّر العداد. كان في الذاكرة (يتصفّر بإعادة التشغيل) — الآن يُحفَظ
+// في login_lockouts (ترحيل 153) مع تراجع تلقائي للذاكرة إن لم يُطبق الترحيل.
+const lockoutStore = require('./login-lockout-store');
+const LOGIN_LOCKOUT = lockoutStore.LOGIN_LOCKOUT;
 function loginLockKey(req, username) {
     return `${req.ip || 'ip'}:${String(username || '').toLowerCase().slice(0, 64)}`;
 }
-function loginLockState(req, username) {
+async function loginLockState(req, username) {
     const k = loginLockKey(req, username);
-    const e = _loginFails.get(k);
-    if (!e) {return { locked: false, k }; }
-    if (e.lockUntil && Date.now() < e.lockUntil) {
-        return { locked: true, k, retryAfter: Math.ceil((e.lockUntil - Date.now()) / 1000) };
-    }
-    if (e.firstAt && Date.now() - e.firstAt > LOGIN_LOCKOUT.WINDOW_MS) {_loginFails.delete(k);}
-    return { locked: false, k };
+    const s = await lockoutStore.state(k);
+    return { ...s, k };
 }
-function recordLoginFail(req, username) {
-    const k = loginLockKey(req, username);
-    const now = Date.now();
-    const e = _loginFails.get(k) || { count: 0, firstAt: now, lockUntil: 0 };
-    if (now - e.firstAt > LOGIN_LOCKOUT.WINDOW_MS) {e.count = 0; e.firstAt = now;}
-    e.count++;
-    if (e.count >= LOGIN_LOCKOUT.MAX_FAILS) {e.lockUntil = now + LOGIN_LOCKOUT.LOCK_MS;}
-    _loginFails.set(k, e);
-    if (_loginFails.size > 10000) {
-        for (const [kk, v] of _loginFails) {
-            if (v.firstAt < now - LOGIN_LOCKOUT.WINDOW_MS && !(v.lockUntil > now)) {_loginFails.delete(kk);}
-        }
-    }
+async function recordLoginFail(req, username) {
+    await lockoutStore.fail(loginLockKey(req, username));
 }
 
 function publicUserOf(user) {
@@ -338,7 +322,7 @@ async function loginHandler(req, res) {
     }
 
     // R18: حساب مقفل؟ (قبل أي استعلام — لا إجابة حتى عن وجود الحساب)
-    const lock = loginLockState(req, username);
+    const lock = await loginLockState(req, username);
     if (lock.locked) {
         logger.warn({ username: String(username).slice(0, 64), ip: req.ip }, '[auth] login attempt on LOCKED account');
         return res.status(423).json({ error: 'ACCOUNT_LOCKED', message: `الحساب مقفل مؤقتًا بسبب محاولات دخول فاشلة متكررة — أعد المحاولة بعد ${lock.retryAfter} ثانية`, retryAfter: lock.retryAfter });
@@ -352,7 +336,7 @@ async function loginHandler(req, res) {
             [username]
         );
         if (r.rows.length === 0 || !r.rows[0].active) {
-            recordLoginFail(req, username);
+            await recordLoginFail(req, username);
             return res.status(401).json({ error: 'INVALID_CREDENTIALS' });
         }
         const user = r.rows[0];
@@ -379,10 +363,10 @@ async function loginHandler(req, res) {
             return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر تسجيل الدخول — حاول مرة أخرى' });
         }
         if (!ok) {
-            recordLoginFail(req, username);
+            await recordLoginFail(req, username);
             return res.status(401).json({ error: 'INVALID_CREDENTIALS' });
         }
-        _loginFails.delete(loginLockKey(req, username)); // R18: نجاح = صفير العداد
+        await lockoutStore.clear(loginLockKey(req, username)); // R18: نجاح = تصفير العداد (دائم)
 
         const access = signAccessToken(user);
         if (user.must_change_password) {

@@ -507,12 +507,10 @@ function EmployeeCard({
             data-status={row.status === 'active' ? 'active' : 'inactive'}
             style={{ ['--erp-card-i' as string]: index }}
         >
-            <button
-                type="button"
-                className="erp-person__head erp-person__open"
-                onClick={() => onOpen(row)}
-                aria-label={`فتح كشف ${row.name}`}
-            >
+            <button type="button" className="erp-person__head erp-person__open" onClick={() => onOpen(row)}>
+                {/* الاسم المرئي يجب أن يدخل في الاسم المسموع (WCAG 2.5.3):
+                    sr-only بدل aria-label يستبدل النص المرئي. */}
+                <span className="sr-only">فتح كشف</span>
                 {photo ? (
                     <span className="erp-avatar" aria-hidden="true">
                         <img src={photo} alt="" loading="lazy" />

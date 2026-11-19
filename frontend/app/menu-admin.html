@@ -127,7 +127,7 @@
                                     <option value="midnight">ليل ملكي · أسود زمردي وذهب</option>
                                 </select>
                             </label>
-                            <div class="theme-swatches" aria-label="معاينة الثيمات">
+                            <div class="theme-swatches" role="group" aria-label="معاينة الثيمات">
                                 <button type="button" class="theme-swatch emerald" data-theme="emerald" data-karim-action="selectTheme" data-karim-args="[&quot;emerald&quot;]"><span>✦</span><b>زمرد</b></button>
                                 <button type="button" class="theme-swatch sapphire" data-theme="sapphire" data-karim-action="selectTheme" data-karim-args="[&quot;sapphire&quot;]"><span>✧</span><b>لازورد</b></button>
                                 <button type="button" class="theme-swatch ruby" data-theme="ruby" data-karim-action="selectTheme" data-karim-args="[&quot;ruby&quot;]"><span>✦</span><b>ياقوت</b></button>
@@ -148,7 +148,7 @@
                             <label>رفع خلفية خاصة
                                 <input id="setBackgroundFile" type="file" accept="image/jpeg,image/png,image/webp">
                             </label>
-                            <div id="backgroundPreview" class="background-preview hidden" aria-label="معاينة الخلفية"></div>
+                            <div id="backgroundPreview" class="background-preview hidden" role="img" aria-label="معاينة الخلفية"></div>
                             <p id="backgroundHint" class="hint">اختر نقشًا جاهزًا أو ارفع خلفية مخصصة؛ تُحفظ بأمان وتظهر على شاشة العرض.</p>
                         </div>
                     </div>
@@ -198,7 +198,7 @@
                     <div class="card-head">
                         <h2>محاكاة شاشة المطعم المباشرة</h2>
                         <button class="btn ghost sm" data-karim-action="reloadPreview">↻ تحديث المعاينة</button>
-                        <button class="btn gold sm" id="btnPreviewFullscreen" type="button" data-karim-action="togglePreviewFullscreen" aria-label="تكبير معاينة شاشة سامسونج الطولية">⛶ تكبير المعاينة</button>
+                        <button class="btn gold sm" id="btnPreviewFullscreen" type="button" data-karim-action="togglePreviewFullscreen" aria-label="⛶ تكبير المعاينة — شاشة سامسونج الطولية">⛶ تكبير المعاينة</button>
                     </div>
                     <div class="preview-stage">
                         <iframe id="previewFrame" src="/app/menu-board.html" title="معاينة الشاشة" loading="lazy"></iframe>
