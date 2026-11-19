@@ -130,8 +130,42 @@ export interface DataTableProps<T> {
     virtualizeThreshold?: number;
     rowHeight?: number;
     maxHeight?: number;
+    /** صفوف إضافية تُرسم خارج منطقة الرؤية لاستباق التمرير (افتراضي 10). */
+    overscan?: number;
+    /** أصناف CSS إضافية لصف البيانات — مثل تظليل الصف المختار في شاشة الاستعلامات. */
+    rowClassName?: (row: T) => string;
     footer?: ReactNode;
     className?: string;
+}
+
+/**
+ * هل العرض الحالي سطح مكتب (≥ 768px حيث `md:hidden`)؟ بطاقات الجوال مكرار
+ * بصري للجدول نفسه، وعلى سطح المكتب كانت تُرسم ثم تُخفى بـCSS — آلاف العقد
+ * الميتة في DOM مع البيانات الغنية. هنا لا تُرسم أصلًا على سطح المكتب،
+ * وتبقى على الجوال كما هي. عند غياب `matchMedia` (jsdom/SSR) تُرسم البطاقات
+ * دائمًا حفاظًا على سلوك الاختبارات والعرض الأولي.
+ */
+function useDesktopViewport(): boolean {
+    const [desktop, setDesktop] = useState<boolean>(() =>
+        typeof window !== 'undefined' && typeof window.matchMedia === 'function'
+            ? window.matchMedia('(min-width: 768px)').matches
+            : false,
+    );
+    useEffect(() => {
+        if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
+            return;
+        }
+        const query = window.matchMedia('(min-width: 768px)');
+        const onChange = (event: MediaQueryListEvent) => {
+            setDesktop(event.matches);
+        };
+        setDesktop(query.matches);
+        query.addEventListener('change', onChange);
+        return () => {
+            query.removeEventListener('change', onChange);
+        };
+    }, []);
+    return desktop;
 }
 
 interface TableScrollRegionProps {
@@ -297,10 +331,13 @@ export function DataTable<T>({
     virtualizeThreshold = 200,
     rowHeight = 34,
     maxHeight = 520,
+    overscan = 10,
+    rowClassName,
     footer,
     className,
 }: DataTableProps<T>) {
     const scrollRef = useRef<HTMLElement | null>(null);
+    const desktop = useDesktopViewport();
     const effectiveState: DataTableState = state ?? (rows.length === 0 ? 'empty' : 'data');
     const preferenceSignature = `${columnPreferenceKey ?? ''}:${columns
         .map(
@@ -407,7 +444,7 @@ export function DataTable<T>({
         count: tableRows.length,
         getScrollElement: () => scrollRef.current,
         estimateSize: () => rowHeight,
-        overscan: 10,
+        overscan,
         enabled: virtualized,
         initialRect: { width: 0, height: Math.min(maxHeight, rowHeight * 12) },
     });
@@ -511,7 +548,10 @@ export function DataTable<T>({
                 data-testid="datatable-row"
                 data-row-index={index}
                 aria-rowindex={index + 2}
-                className="border-b border-hairline transition-colors duration-[var(--erp-motion-fast)] hover:bg-surface-hover last:border-b-0"
+                className={cn(
+                    'border-b border-hairline transition-colors duration-[var(--erp-motion-fast)] hover:bg-surface-hover last:border-b-0',
+                    rowClassName?.(row.original),
+                )}
                 style={virtualized ? { height: rowHeight } : undefined}
             >
                 {visibleColumns.map((column) => (
@@ -735,7 +775,7 @@ export function DataTable<T>({
                     </table>
                 </TableScrollRegion>
             </div>
-            {effectiveState === 'data' ? (
+            {effectiveState === 'data' && !desktop ? (
                 <ul aria-label={`${caption} — بطاقات`} className="flex flex-col divide-y divide-hairline md:hidden">
                     {tableRows.map((row) => (
                         <li key={row.id} className="flex flex-col gap-xs p-sm">

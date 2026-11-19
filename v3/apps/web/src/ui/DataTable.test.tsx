@@ -78,6 +78,45 @@ describe('DataTable', () => {
         expect(within(cards).getByText('980.50')).toBeTruthy();
     });
 
+    it('على سطح المكتب لا تُرسم بطاقات الجوال المكررة (DOM أنظف)', () => {
+        // matchMedia حقيقي غير موجود في jsdom — نحاكي عرض سطح المكتب (≥768px).
+        const listeners = new Set<(event: { matches: boolean }) => void>();
+        vi.stubGlobal(
+            'matchMedia',
+            vi.fn((query: string) => ({
+                matches: query.includes('min-width'),
+                media: query,
+                addEventListener: (_: string, listener: (event: { matches: boolean }) => void) => {
+                    listeners.add(listener);
+                },
+                removeEventListener: (_: string, listener: (event: { matches: boolean }) => void) => {
+                    listeners.delete(listener);
+                },
+            })),
+        );
+        const { unmount } = render(<DataTable<Invoice> {...BASE} rows={rows} />);
+        expect(screen.getByRole('table', { name: 'فواتير المبيعات' })).toBeTruthy();
+        expect(screen.queryByRole('list', { name: 'فواتير المبيعات — بطاقات' })).toBeNull();
+        unmount();
+        expect(listeners.size).toBe(0);
+        vi.unstubAllGlobals();
+    });
+
+    it('rowClassName يضيف أصناف الصف المختار دون المساس بالافتراضي', () => {
+        render(
+            <DataTable<Invoice>
+                {...BASE}
+                rows={rows}
+                rowClassName={(row) => (row.id === 'INV-2' ? 'bg-surface-hover' : '')}
+            />,
+        );
+        const rendered = screen.getAllByTestId('datatable-row');
+        const classes = (el: Element | undefined) => (el?.className ?? '').split(/\s+/);
+        expect(classes(rendered[0])).not.toContain('bg-surface-hover');
+        expect(classes(rendered[1])).toContain('bg-surface-hover');
+        expect(classes(rendered[1])).toContain('border-hairline');
+    });
+
     it('حالة loading: الرؤوس تبقى وaria-busy ورسالة حالة', () => {
         render(<DataTable<Invoice> {...BASE} rows={[]} state="loading" />);
 

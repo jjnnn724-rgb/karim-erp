@@ -1,9 +1,9 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
+import { useMemo, useState } from 'react';
 import { ItemDossier } from '../components/ItemDossier';
 import { PrintActions } from '../components/PrintActions';
 import { KpiCard, RangeControls, ReportHeader, SectionCard } from '../components/Reports';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
+import { Card, StateEmpty, StateError, TableScroll, TableSkeleton } from '../components/TableState';
 import {
     expiryState,
     fetchInquiryDepartments,
@@ -15,6 +15,7 @@ import {
     saveDownload,
 } from '../lib/inventory-inquiry';
 import { errorMessage, intOf, moneyOf, presetRange, qtyOf, rangeProblem, textOf, todayIso } from '../lib/reporting';
+import { DataTable, type DataTableColumn } from '../ui';
 
 /**
  * محرك استعلامات المخزون — قراءة فقط من `/api/inventory-inquiry`.
@@ -24,6 +25,13 @@ import { errorMessage, intOf, moneyOf, presetRange, qtyOf, rangeProblem, textOf,
  *
  * `soldPos` و`soldYara` عمودان منفصلان دائمًا: الأول حقيقة بالمعرّف،
  * والثاني تقريب بالاسم المطبَّع — ولا يُجمعان.
+ *
+ * عقد الاستقرار (CLS = 0): شبكة المؤشرات تحجز مكانها بهيكل عظمي أثناء
+ * التحميل، وجدول الأصناف DataTable بحالاته الأربع داخل منطقة تمرير ثابتة
+ * الارتفاع (الصفوف الافتراضية فوق 50 صفًا — سقف الخادم 200)، فلا تدفع
+ * البياناتُ القادمة الأقسامَ والأسفلَ خارج الشاشة. الفرز يبقى للخادم عبر
+ * قائمة الترتيب: فرز محلي لقائمة مبتورة عند 200 يوحي بترتيب كامل وهو ليس
+ * كذلك (نفس عقد حركات المخزون).
  */
 
 const FILTER_LABELS: Record<(typeof INQ_FILTERS)[number], string> = {
@@ -106,6 +114,98 @@ export function InventoryInquiry() {
     const totals = itemsQuery.data?.totals;
     const departments = departmentsQuery.data?.rows ?? [];
     const today = todayIso();
+    const kpiLoading = itemsQuery.isPending && problem === '';
+
+    /**
+     * أعمدة الأصناف — القيم كما كانت حرفيًا (كميات ومبالغ لاتينية معزولة
+     * الاتجاه، واسم الصنف زر يفتح البطاقة، والتصنيف سطر ثانٍ). لا فرز محلي:
+     * الترتيب مسؤولية الخادم على كامل النتائج قبل بترها عند 200.
+     */
+    const columns = useMemo<DataTableColumn<InquiryRow>[]>(() => {
+        const expiryToneClass = (tone: 'danger' | 'warning' | 'success' | 'neutral') =>
+            tone === 'danger'
+                ? 'text-danger-text'
+                : tone === 'warning'
+                  ? 'text-warning-text'
+                  : tone === 'success'
+                    ? 'text-success-text'
+                    : 'text-muted';
+        return [
+            {
+                key: 'item',
+                header: 'الصنف',
+                className: 'text-ink',
+                cell: (row) => (
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setSelected(String(row.itemId));
+                            }}
+                            aria-pressed={String(row.itemId) === selected}
+                            className="erp-inline-btn min-h-6 py-0.5 text-start text-ink underline-offset-2 hover:underline"
+                        >
+                            {textOf(row.itemName) || `#${String(row.itemId)}`}
+                        </button>
+                        <span className="block text-caption text-faint">
+                            {textOf(row.category) || 'بلا تصنيف'}
+                            {row.yaraMatched === false ? ' · بلا مطابقة مرآة' : ''}
+                        </span>
+                    </>
+                ),
+            },
+            {
+                key: 'onHand',
+                header: 'الرصيد',
+                align: 'end',
+                className: 'erp-numeric text-ink',
+                cell: (row) => <span dir="ltr">{qtyOf(row.onHand)}</span>,
+            },
+            {
+                key: 'qtyIn',
+                header: 'دخل',
+                align: 'end',
+                className: 'erp-numeric text-ink',
+                cell: (row) => <span dir="ltr">{qtyOf(row.qtyInPurchases)}</span>,
+            },
+            {
+                key: 'qtyOut',
+                header: 'منصرف',
+                align: 'end',
+                className: 'erp-numeric text-ink',
+                cell: (row) => <span dir="ltr">{qtyOf(row.qtyOutTotal)}</span>,
+            },
+            {
+                key: 'soldPos',
+                header: 'مبيع POS',
+                align: 'end',
+                className: 'erp-numeric text-ink',
+                cell: (row) => <span dir="ltr">{qtyOf(row.soldPos)}</span>,
+            },
+            {
+                key: 'soldYara',
+                header: 'مبيع المرآة',
+                align: 'end',
+                className: 'erp-numeric text-muted',
+                cell: (row) => <span dir="ltr">{qtyOf(row.soldYara)}</span>,
+            },
+            {
+                key: 'stockValue',
+                header: 'قيمة المخزون',
+                align: 'end',
+                className: 'erp-numeric text-ink',
+                cell: (row) => <span dir="ltr">{moneyOf(row.stockValue)}</span>,
+            },
+            {
+                key: 'expiry',
+                header: 'الصلاحية',
+                cell: (row) => {
+                    const expiry = expiryState(textOf(row.nearestExpiry), today);
+                    return <span className={expiryToneClass(expiry.tone)}>{expiry.label}</span>;
+                },
+            },
+        ];
+    }, [selected, today]);
 
     return (
         <div className="mx-auto flex w-full min-w-0 flex-col gap-lg">
@@ -193,47 +293,40 @@ export function InventoryInquiry() {
                 </div>
             </Card>
 
-            {itemsQuery.isPending && problem === '' ? <StateLoading label="جارٍ تجميع حركة الأصناف…" /> : null}
-
-            {itemsQuery.isError ? (
-                <StateError
-                    message={errorMessage(itemsQuery.error)}
-                    onRetry={() => {
-                        void itemsQuery.refetch();
-                    }}
+            {/* شبكة المؤشرات تحجز ارتفاعها أثناء التحميل (هيكل عظمي داخل
+                البطاقة نفسها) — لا تُدرَج بعد البيانات فتدفع ما أسفلها (CLS). */}
+            <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4" aria-label="إجماليات المحرك">
+                <KpiCard
+                    label="قيمة المخزون"
+                    english="Stock value"
+                    loading={kpiLoading}
+                    value={totals ? moneyOf(totals.stockValue) : '—'}
+                    hint={totals ? `${intOf(totals.items)} صنفًا في النتائج` : '—'}
                 />
-            ) : null}
-
-            {totals ? (
-                <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4" aria-label="إجماليات المحرك">
-                    <KpiCard
-                        label="قيمة المخزون"
-                        english="Stock value"
-                        value={moneyOf(totals.stockValue)}
-                        hint={`${intOf(totals.items)} صنفًا في النتائج`}
-                    />
-                    <KpiCard
-                        label="داخل من الفواتير"
-                        english="Received"
-                        value={qtyOf(totals.qtyInPurchases)}
-                        hint="صافي مُوقَّع — يشمل عكوس الإلغاء والتعديل"
-                        tone="success"
-                    />
-                    <KpiCard
-                        label="المنصرف"
-                        english="Issued"
-                        value={qtyOf(totals.qtyOutTotal)}
-                        hint={`بتكلفة ${moneyOf(totals.outCost)}`}
-                        tone="warning"
-                    />
-                    <KpiCard
-                        label="تكلفة المشتريات"
-                        english="Purchase cost"
-                        value={moneyOf(totals.purchaseCost)}
-                        hint={`مبيع POS ${qtyOf(totals.qtySoldPos)} · إيراد ${moneyOf(totals.revenuePos)}`}
-                    />
-                </ul>
-            ) : null}
+                <KpiCard
+                    label="داخل من الفواتير"
+                    english="Received"
+                    loading={kpiLoading}
+                    value={totals ? qtyOf(totals.qtyInPurchases) : '—'}
+                    hint="صافي مُوقَّع — يشمل عكوس الإلغاء والتعديل"
+                    tone="success"
+                />
+                <KpiCard
+                    label="المنصرف"
+                    english="Issued"
+                    loading={kpiLoading}
+                    value={totals ? qtyOf(totals.qtyOutTotal) : '—'}
+                    hint={totals ? `بتكلفة ${moneyOf(totals.outCost)}` : '—'}
+                    tone="warning"
+                />
+                <KpiCard
+                    label="تكلفة المشتريات"
+                    english="Purchase cost"
+                    loading={kpiLoading}
+                    value={totals ? moneyOf(totals.purchaseCost) : '—'}
+                    hint={totals ? `مبيع POS ${qtyOf(totals.qtySoldPos)} · إيراد ${moneyOf(totals.revenuePos)}` : '—'}
+                />
+            </ul>
 
             <SectionCard
                 title="الأصناف"
@@ -264,104 +357,36 @@ export function InventoryInquiry() {
                     </div>
                 }
             >
-                {rows.length === 0 ? (
-                    <StateEmpty title="لا أصناف تطابق المرشّحات" hint="وسّع المدى أو امسح البحث." />
-                ) : (
-                    <TableScroll label="جدول أصناف المخزون — حركة الدخول والانصراف والمبيع">
-                        <table className="w-full border-collapse text-body-md">
-                            <thead>
-                                <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                    <th scope="col" className="px-sm py-xs text-start font-medium">
-                                        الصنف
-                                    </th>
-                                    <th scope="col" className="px-sm py-xs text-end font-medium">
-                                        الرصيد
-                                    </th>
-                                    <th scope="col" className="px-sm py-xs text-end font-medium">
-                                        دخل
-                                    </th>
-                                    <th scope="col" className="px-sm py-xs text-end font-medium">
-                                        منصرف
-                                    </th>
-                                    <th scope="col" className="px-sm py-xs text-end font-medium">
-                                        مبيع POS
-                                    </th>
-                                    <th scope="col" className="px-sm py-xs text-end font-medium">
-                                        مبيع المرآة
-                                    </th>
-                                    <th scope="col" className="px-sm py-xs text-end font-medium">
-                                        قيمة المخزون
-                                    </th>
-                                    <th scope="col" className="px-sm py-xs text-start font-medium">
-                                        الصلاحية
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {rows.map((row: InquiryRow) => {
-                                    const expiry = expiryState(textOf(row.nearestExpiry), today);
-                                    return (
-                                        <tr
-                                            key={String(row.itemId)}
-                                            className={`border-b border-hairline hover:bg-surface-hover ${
-                                                String(row.itemId) === selected ? 'bg-surface-hover' : ''
-                                            }`}
-                                        >
-                                            <td className="px-sm py-xxs">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => {
-                                                        setSelected(String(row.itemId));
-                                                    }}
-                                                    className="erp-inline-btn min-h-6 py-0.5 text-start text-ink underline-offset-2 hover:underline"
-                                                >
-                                                    {textOf(row.itemName) || `#${String(row.itemId)}`}
-                                                </button>
-                                                <span className="block text-caption text-faint">
-                                                    {textOf(row.category) || 'بلا تصنيف'}
-                                                    {row.yaraMatched === false ? ' · بلا مطابقة مرآة' : ''}
-                                                </span>
-                                            </td>
-                                            <td className="erp-numeric px-sm py-xxs text-end text-ink" dir="ltr">
-                                                {qtyOf(row.onHand)}
-                                            </td>
-                                            <td className="erp-numeric px-sm py-xxs text-end text-ink" dir="ltr">
-                                                {qtyOf(row.qtyInPurchases)}
-                                            </td>
-                                            <td className="erp-numeric px-sm py-xxs text-end text-ink" dir="ltr">
-                                                {qtyOf(row.qtyOutTotal)}
-                                            </td>
-                                            <td className="erp-numeric px-sm py-xxs text-end text-ink" dir="ltr">
-                                                {qtyOf(row.soldPos)}
-                                            </td>
-                                            <td className="erp-numeric px-sm py-xxs text-end text-muted" dir="ltr">
-                                                {qtyOf(row.soldYara)}
-                                            </td>
-                                            <td className="erp-numeric px-sm py-xxs text-end text-ink" dir="ltr">
-                                                {moneyOf(row.stockValue)}
-                                            </td>
-                                            <td className="px-sm py-xxs">
-                                                <span
-                                                    className={
-                                                        expiry.tone === 'danger'
-                                                            ? 'text-danger-text'
-                                                            : expiry.tone === 'warning'
-                                                              ? 'text-warning-text'
-                                                              : expiry.tone === 'success'
-                                                                ? 'text-success-text'
-                                                                : 'text-muted'
-                                                    }
-                                                >
-                                                    {expiry.label}
-                                                </span>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </TableScroll>
-                )}
+                <DataTable<InquiryRow>
+                    caption="جدول أصناف المخزون — حركة الدخول والانصراف والمبيع"
+                    columns={columns}
+                    rows={rows}
+                    rowKey={(row) => String(row.itemId)}
+                    state={
+                        problem !== ''
+                            ? 'empty'
+                            : itemsQuery.isPending
+                              ? 'loading'
+                              : itemsQuery.isError
+                                ? 'error'
+                                : rows.length === 0
+                                  ? 'empty'
+                                  : 'data'
+                    }
+                    loadingRows={9}
+                    emptyTitle="لا أصناف تطابق المرشّحات"
+                    emptyDescription={problem !== '' ? 'صحّح المدى الزمني أولًا.' : 'وسّع المدى أو امسح البحث.'}
+                    errorMessage={errorMessage(itemsQuery.error)}
+                    onRetry={() => {
+                        void itemsQuery.refetch();
+                    }}
+                    manualFiltering
+                    virtualizeThreshold={50}
+                    rowHeight={52}
+                    // ميزانية DOM: صفوف أقل خارج الرؤية تكفي لاستباق التمرير هنا.
+                    overscan={5}
+                    rowClassName={(row) => (String(row.itemId) === selected ? 'bg-surface-hover' : '')}
+                />
             </SectionCard>
 
             {selected ? (
@@ -378,6 +403,14 @@ export function InventoryInquiry() {
                             void departmentsQuery.refetch();
                         }}
                     />
+                ) : departmentsQuery.isPending && problem === '' ? (
+                    // هيكل عظمي ثابت أثناء التحميل — لا يومض «لا أقسام» ثم يقفز الجدول.
+                    <>
+                        <span role="status" className="sr-only">
+                            جارٍ تحميل تكلفة الأقسام…
+                        </span>
+                        <TableSkeleton rows={5} columns={6} />
+                    </>
                 ) : departments.length === 0 ? (
                     <StateEmpty title="لا أقسام في هذا المدى" hint="غيّر الفترة أو أعد التحميل." />
                 ) : (
@@ -435,12 +468,6 @@ export function InventoryInquiry() {
                     قيود الدفتر.
                 </p>
             </SectionCard>
-
-            {itemsQuery.isPending && problem === '' ? (
-                <Card>
-                    <TableSkeleton rows={5} columns={5} />
-                </Card>
-            ) : null}
         </div>
     );
 }

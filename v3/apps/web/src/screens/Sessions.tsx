@@ -1,7 +1,7 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
-import { useMemo, useState } from 'react';
+import { useCallback, useMemo, useState } from 'react';
 import { PrintActions } from '../components/PrintActions';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
+import { Card } from '../components/TableState';
 import { fetchJson } from '../lib/api';
 import { getAccessToken } from '../lib/auth';
 import { formatInt } from '../lib/format';
@@ -12,6 +12,7 @@ import {
     type SessionsResponse,
     sessionsResponseSchema,
 } from '../lib/sessions';
+import { DataTable, type DataTableColumn } from '../ui';
 
 function Kpi({ label, english, value, hint }: { label: string; english: string; value: string; hint: string }) {
     return (
@@ -30,6 +31,15 @@ function Kpi({ label, english, value, hint }: { label: string; english: string; 
     );
 }
 
+/**
+ * الأجهزة والجلسات — القراءة من `/api/auth/sessions` كما هي، والجدول الآن
+ * DataTable بعقد الحالات الأربع: كل الجلسات المحمّلة تُعرض بلا ترقيم، وفوق
+ * 200 صف يتكفّل الجدول بالتمرير الافتراضي (PLAN §3.4). البحث يبقى مسؤولية
+ * الشاشة (`manualFiltering`)، والفرز محلي آمن لأن كل النتائج محمّلة — نفس
+ * نهج كشف الرواتب. التواريخ تُفرز بقيمتها الخام لا بنصّها المعروض، والأرقام
+ * والتواريخ لاتينية معزولة الاتجاه (`dir="ltr"` + `erp-numeric`) كما كانت.
+ * لا تصدير CSV هنا — لم يكن في الشاشة القديمة ولا يُضاف الآن.
+ */
 export function Sessions() {
     const [filter, setFilter] = useState('');
     const [actionMsg, setActionMsg] = useState<string | null>(null);
@@ -82,26 +92,103 @@ export function Sessions() {
         return data.sessions.filter(
             (s) =>
                 s.device.toLowerCase().includes(q) ||
-                (s.ip && s.ip.toLowerCase().includes(q)) ||
+                (s.ip?.toLowerCase().includes(q) ?? false) ||
                 s.id.toLowerCase().includes(q),
         );
     }, [data.sessions, filter]);
 
-    const handleRevoke = (session: SessionRow) => {
-        const isCurrent = session.current || session.id === data.current_session_id;
-        const msg = isCurrent
-            ? 'هل أنت متأكد من إبطال هذه الجلسة الحالية؟ سيتم تسجيل خروجك فورًا.'
-            : `هل أنت متأكد من إبطال جلسة (${session.device})؟`;
-        if (window.confirm(msg)) {
-            revokeMutation.mutate(session.id);
-        }
-    };
+    // مرجع مستقر ما دامت الجلسة الحالية وآلية الإبطال ثابتتين — تعتمد عليه الأعمدة.
+    const currentSessionId = data.current_session_id;
+    const revokeMutate = revokeMutation.mutate;
+    const handleRevoke = useCallback(
+        (session: SessionRow) => {
+            const isCurrent = session.current || session.id === currentSessionId;
+            const msg = isCurrent
+                ? 'هل أنت متأكد من إبطال هذه الجلسة الحالية؟ سيتم تسجيل خروجك فورًا.'
+                : `هل أنت متأكد من إبطال جلسة (${session.device})؟`;
+            if (window.confirm(msg)) {
+                revokeMutate(session.id);
+            }
+        },
+        [currentSessionId, revokeMutate],
+    );
 
     const handleRevokeOthers = () => {
         if (window.confirm('هل أنت متأكد من إبطال جميع الجلسات الأخرى المفتوحة على الأجهزة المختلفة؟')) {
             revokeOthersMutation.mutate();
         }
     };
+
+    /**
+     * أعمدة الجلسات — الخلايا تحفظ دلالات العرض القديمة حرفيًا: شارة «الجلسة
+     * الحالية»، والـ IP والتواريخ لاتينية معزولة الاتجاه، وزر الإبطال بنفس
+     * التأكيد (رسالة أشد للجلسة الحالية) وتعطيله أثناء التنفيذ.
+     */
+    const columns = useMemo<DataTableColumn<SessionRow>[]>(() => {
+        const isCurrent = (session: SessionRow) => session.current || session.id === currentSessionId;
+        return [
+            {
+                key: 'device',
+                header: 'الجهاز',
+                className: 'text-ink font-medium',
+                cell: (session) => (
+                    <div className="flex items-center gap-xs">
+                        <span>{session.device}</span>
+                        {isCurrent(session) && (
+                            <span className="rounded-full bg-primary/10 px-xs py-xxs text-caption text-primary">
+                                الجلسة الحالية
+                            </span>
+                        )}
+                    </div>
+                ),
+                sortValue: (session) => session.device,
+            },
+            {
+                key: 'ip',
+                header: 'عنوان IP',
+                className: 'erp-numeric text-muted',
+                cell: (session) => <span dir="ltr">{session.ip || '—'}</span>,
+                sortValue: (session) => session.ip || null,
+            },
+            {
+                key: 'started',
+                header: 'بدأت في',
+                className: 'erp-numeric text-muted',
+                cell: (session) => <span dir="ltr">{formatSessionMoment(session.started_at)}</span>,
+                sortValue: (session) => session.started_at || null,
+            },
+            {
+                key: 'lastSeen',
+                header: 'آخر نشاط',
+                className: 'erp-numeric text-ink',
+                cell: (session) => <span dir="ltr">{formatSessionMoment(session.last_seen_at)}</span>,
+                sortValue: (session) => session.last_seen_at || null,
+            },
+            {
+                key: 'expires',
+                header: 'تنتهي في',
+                className: 'erp-numeric text-muted',
+                cell: (session) => <span dir="ltr">{formatSessionMoment(session.expires_at)}</span>,
+                sortValue: (session) => session.expires_at || null,
+            },
+            {
+                key: 'action',
+                header: 'الإجراءات',
+                cell: (session) => (
+                    <button
+                        type="button"
+                        onClick={() => {
+                            handleRevoke(session);
+                        }}
+                        disabled={revokeMutation.isPending}
+                        className="rounded border border-hairline-strong px-xs py-xxs text-caption text-danger hover:bg-danger/10"
+                    >
+                        إبطال الجلسة
+                    </button>
+                ),
+            },
+        ];
+    }, [currentSessionId, revokeMutation.isPending, handleRevoke]);
 
     return (
         <div className="flex flex-col gap-lg">
@@ -200,90 +287,30 @@ export function Sessions() {
                         />
                     </label>
                 </div>
-
-                {sessionsQuery.isPending ? (
-                    <StateLoading label="جارٍ تحميل سجل الجلسات…" />
-                ) : sessionsQuery.isError ? (
-                    <StateError
-                        message={sessionsQuery.error?.message || 'تعذّر جلب الجلسات'}
-                        onRetry={() => void sessionsQuery.refetch()}
-                    />
-                ) : filteredSessions.length === 0 ? (
-                    <StateEmpty title="لا توجد جلسات مطابقة" hint="لم يُعثر على جلسات توافق معيار البحث المدخل." />
-                ) : (
-                    <TableScroll label="سجل الجلسات النشطة">
-                        <table className="w-full min-w-[760px] border-collapse text-body-md">
-                            <caption className="sr-only">سجل الجلسات النشطة للأجهزة</caption>
-                            <thead>
-                                <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                    <th scope="col" className="px-sm py-xs text-start">
-                                        الجهاز
-                                    </th>
-                                    <th scope="col" className="px-sm py-xs text-start">
-                                        عنوان IP
-                                    </th>
-                                    <th scope="col" className="px-sm py-xs text-start">
-                                        بدأت في
-                                    </th>
-                                    <th scope="col" className="px-sm py-xs text-start">
-                                        آخر نشاط
-                                    </th>
-                                    <th scope="col" className="px-sm py-xs text-start">
-                                        تنتهي في
-                                    </th>
-                                    <th scope="col" className="px-sm py-xs text-start">
-                                        الإجراءات
-                                    </th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {filteredSessions.map((session) => {
-                                    const isCurrent = session.current || session.id === data.current_session_id;
-                                    return (
-                                        <tr
-                                            key={session.id}
-                                            className="border-b border-hairline hover:bg-surface-hover"
-                                        >
-                                            <td className="px-sm py-xs text-ink font-medium">
-                                                <div className="flex items-center gap-xs">
-                                                    <span>{session.device}</span>
-                                                    {isCurrent && (
-                                                        <span className="rounded-full bg-primary/10 px-xs py-xxs text-caption text-primary">
-                                                            الجلسة الحالية
-                                                        </span>
-                                                    )}
-                                                </div>
-                                            </td>
-                                            <td className="erp-numeric px-sm py-xs text-muted" dir="ltr">
-                                                {session.ip || '—'}
-                                            </td>
-                                            <td className="erp-numeric px-sm py-xs text-muted" dir="ltr">
-                                                {formatSessionMoment(session.started_at)}
-                                            </td>
-                                            <td className="erp-numeric px-sm py-xs text-ink" dir="ltr">
-                                                {formatSessionMoment(session.last_seen_at)}
-                                            </td>
-                                            <td className="erp-numeric px-sm py-xs text-muted" dir="ltr">
-                                                {formatSessionMoment(session.expires_at)}
-                                            </td>
-                                            <td className="px-sm py-xs text-start">
-                                                <button
-                                                    type="button"
-                                                    onClick={() => handleRevoke(session)}
-                                                    disabled={revokeMutation.isPending}
-                                                    className="rounded border border-hairline-strong px-xs py-xxs text-caption text-danger hover:bg-danger/10"
-                                                >
-                                                    إبطال الجلسة
-                                                </button>
-                                            </td>
-                                        </tr>
-                                    );
-                                })}
-                            </tbody>
-                        </table>
-                    </TableScroll>
-                )}
             </Card>
+            <DataTable<SessionRow>
+                caption="سجل الجلسات النشطة"
+                columns={columns}
+                rows={filteredSessions}
+                rowKey={(session) => session.id}
+                state={
+                    sessionsQuery.isPending
+                        ? 'loading'
+                        : sessionsQuery.isError
+                          ? 'error'
+                          : filteredSessions.length === 0
+                            ? 'empty'
+                            : 'data'
+                }
+                loadingRows={5}
+                emptyTitle="لا توجد جلسات مطابقة"
+                emptyDescription="لم يُعثر على جلسات توافق معيار البحث المدخل."
+                errorMessage={sessionsQuery.error?.message || 'تعذّر جلب الجلسات'}
+                onRetry={() => {
+                    void sessionsQuery.refetch();
+                }}
+                manualFiltering
+            />
         </div>
     );
 }

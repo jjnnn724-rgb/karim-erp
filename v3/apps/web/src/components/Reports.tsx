@@ -16,14 +16,17 @@ export function KpiCard({
     value,
     hint,
     tone = 'neutral',
+    loading = false,
 }: {
     label: string;
     english: string;
     value: string;
     hint: string;
     tone?: DisplayTone;
+    /** هيكل عظمي داخل البطاقة نفسها — الارتفاع لا يقفز بين التحميل والبيانات (CLS = 0). */
+    loading?: boolean;
 }) {
-    return <StatCard label={label} english={english} value={value} hint={hint} tone={tone} />;
+    return <StatCard label={label} english={english} value={value} hint={hint} tone={tone} loading={loading} />;
 }
 
 export function SectionCard({
