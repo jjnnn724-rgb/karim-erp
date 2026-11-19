@@ -29,8 +29,8 @@
  * ترويسة القديم (Authorization وحده) ولا شيء غيره.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.297';
-import { fetchMainSettings } from './portal-repo.js?v=4.9.297';
+import { apiFetch } from '../../core/api.js?v=4.9.317';
+import { fetchMainSettings } from './portal-repo.js?v=4.9.317';
 
 export const SETTINGS_WRITE_ROLES = ['admin', 'manager'];
 export const ZATCA_WRITE_ROLES = ['admin', 'manager'];
@@ -169,9 +169,17 @@ export async function uploadBackup(file) {
     return d;
 }
 
-export async function restoreBackup({ file, restoreEnv }) {
+// تحقق خطوة إضافية قبل الاستعادة (تأمين 2026-11): كلمة مرور + TOTP/استرداد
+// ← تذكرة restore_stepup قصيرة العمر تُرسل مع طلب الاستعادة وتُستهلك مرة واحدة.
+export async function backupStepUp({ password, code, recovery_code }) {
+    return apiFetch('/system/backup/step-up', {
+        method: 'POST', body: JSON.stringify({ password, code: code || '', recovery_code: recovery_code || '' }),
+    });
+}
+
+export async function restoreBackup({ file, restoreEnv, stepUpToken }) {
     return apiFetch('/system/restore', {
-        method: 'POST', body: JSON.stringify({ file, confirm: 'RESTORE', restoreEnv: !!restoreEnv }),
+        method: 'POST', body: JSON.stringify({ file, confirm: 'RESTORE', restoreEnv: !!restoreEnv, stepUpToken: stepUpToken || '' }),
     });
 }
 

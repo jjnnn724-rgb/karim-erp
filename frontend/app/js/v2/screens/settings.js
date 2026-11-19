@@ -12,15 +12,15 @@
  * dialogs become inline panels · no inline handlers (CSP contract).
  */
 
-import { canWrite } from '../session.js?v=4.9.297';
-import { formatInt } from '../data/reports-repo.js?v=4.9.297';
-import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.297';
-import { setV2PrintLogo } from '../print-branding.js?v=4.9.297';
-import { readMenuLabels } from '../layout/nav-model.js?v=4.9.297';
-import { captureFace } from '../portal-face.js?v=4.9.297';
-import { enrollFaceV1, enrollFaceV2 } from '../data/portal-repo.js?v=4.9.297';
-import { bindAdjacentLabels } from '../form-errors.js?v=4.9.297';
-import { fetchEmployees } from '../data/employees-repo.js?v=4.9.297';
+import { canWrite } from '../session.js?v=4.9.317';
+import { formatInt } from '../data/reports-repo.js?v=4.9.317';
+import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.317';
+import { setV2PrintLogo } from '../print-branding.js?v=4.9.317';
+import { readMenuLabels } from '../layout/nav-model.js?v=4.9.317';
+import { captureFace } from '../portal-face.js?v=4.9.317';
+import { enrollFaceV1, enrollFaceV2 } from '../data/portal-repo.js?v=4.9.317';
+import { bindAdjacentLabels } from '../form-errors.js?v=4.9.317';
+import { fetchEmployees } from '../data/employees-repo.js?v=4.9.317';
 import {
     ZATCA_WRITE_ROLES, KOT_WRITE_ROLES,
     fetchMainSettingsFull, updateMainSettings,
@@ -29,13 +29,13 @@ import {
     fetchKotSettings, saveKotSettings, fetchCardSettings, saveCardSettings,
     fetchPunchAdmin, fetchPunchAttempts, savePunchSettings, fetchPunchFaces,
     removePunchFace, fetchPunchDevices, unbindPunchDevice,
-    fetchBackups, doBackup, uploadBackup, restoreBackup,
+    fetchBackups, doBackup, uploadBackup, restoreBackup, backupStepUp,
     resetAllData, operationalReset,
     fetchServerControl, serverControlAction,
-} from '../data/settings-repo.js?v=4.9.297';
+} from '../data/settings-repo.js?v=4.9.317';
 // safeImgSrc: حارس <img src> ضد javascript: المخزَّن — الشاشة وحدة نظيفة
 // (no-undef: error) فلا تصلها globals، فتُستورد من المصدر الوحيد.
-import { safeImgSrc } from '../../core/utils.js?v=4.9.297';
+import { safeImgSrc } from '../../core/utils.js?v=4.9.317';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -1297,6 +1297,9 @@ export function mountSettingsScreen(host, ctx = {}) {
                     + `<label class="erp-text-sm"><input type="checkbox" data-v2-bk-env> استعادة .env أيضًا</label>`
                     + `<label class="erp-text-sm erp-text-muted">اكتب RESTORE</label>`
                     + `<input class="erp-input erp-input--ltr" data-v2-bk-confirm placeholder="RESTORE" dir="ltr" autocomplete="off">`
+                    + `<label class="erp-text-sm erp-text-muted">تحقق إضافي إلزامي: كلمة المرور + رمز المصادقة</label>`
+                    + `<input class="erp-input erp-input--ltr" type="password" data-v2-bk-pw placeholder="كلمة المرور" dir="ltr" autocomplete="current-password">`
+                    + `<input class="erp-input erp-input--ltr" data-v2-bk-totp placeholder="رمز المصادقة (أو رمز استرداد)" dir="ltr" autocomplete="one-time-code" inputmode="numeric">`
                     + `<button type="button" class="erp-btn erp-btn--sm erp-btn--danger" data-v2-bk-go="${esc(file)}">تنفيذ الاستعادة</button></div>`;
                 panel.scrollIntoView({ block: 'nearest' });
             }
@@ -1306,9 +1309,14 @@ export function mountSettingsScreen(host, ctx = {}) {
         if (bkgo) {
             const c = (el.querySelector('[data-v2-bk-confirm]')?.value || '').trim();
             if (c !== 'RESTORE') {say('اكتب RESTORE للتأكيد'); return;}
+            const pw = el.querySelector('[data-v2-bk-pw]')?.value || '';
+            const otp = (el.querySelector('[data-v2-bk-totp]')?.value || '').trim();
+            if (!pw || !otp) {say('أدخل كلمة المرور ورمز المصادقة للتحقق الإضافي'); return;}
             if (!await confirmFn('تأكيد نهائي: الاستعادة هتمسح الوضع الحالي وترجع النسخة؟')) {return;}
             try {
-                await restoreBackup({ file: bkgo.dataset.v2BkGo, restoreEnv: el.querySelector('[data-v2-bk-env]')?.checked === true });
+                // خطوة إضافية إلزامية (تأمين 2026-11): تذكرة 5 دقائق تُستهلك مرة واحدة.
+                const su = await backupStepUp({ password: pw, code: /^\d{6}$/.test(otp) ? otp : '', recovery_code: /^\d{6}$/.test(otp) ? '' : otp });
+                await restoreBackup({ file: bkgo.dataset.v2BkGo, restoreEnv: el.querySelector('[data-v2-bk-env]')?.checked === true, stepUpToken: su.stepUpToken });
                 say('تمت الاستعادة — أعد تشغيل خدمة السيرفر الآن');
                 loadBackups();
             } catch (e) {say((e && e.message) || 'فشلت الاستعادة');}

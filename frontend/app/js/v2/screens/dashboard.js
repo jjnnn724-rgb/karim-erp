@@ -38,12 +38,12 @@
  * the owner's speed rule: no interval, no polling, no layout thrash.
  */
 
-import { buildNavTree } from '../layout/nav-model.js?v=4.9.297';
-import { setPref } from '../theme.js?v=4.9.297';
-import { hydrateStatusNodes } from '../status.js?v=4.9.297';
-import { barChart, donutChart, lineChart, niceCeiling } from '../charts.js?v=4.9.297';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.297';
-import { fetchExecutiveSummary, buildLiveBoard } from '../data/executive-repo.js?v=4.9.297';
+import { buildNavTree } from '../layout/nav-model.js?v=4.9.317';
+import { setPref } from '../theme.js?v=4.9.317';
+import { hydrateStatusNodes } from '../status.js?v=4.9.317';
+import { barChart, donutChart, lineChart, niceCeiling } from '../charts.js?v=4.9.317';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.317';
+import { fetchExecutiveSummary, buildLiveBoard } from '../data/executive-repo.js?v=4.9.317';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -721,8 +721,8 @@ export function mountCommandPalette(shell) {
             return;
         }
         list.innerHTML = filtered.slice(0, 12).map((e, i) => `
-          <li role="option" id="erp-pal-opt-${i}" aria-selected="${i === active ? 'true' : 'false'}">
-            <button type="button" class="erp-pal__opt${i === active ? ' is-active' : ''}" data-idx="${i}" tabindex="-1">
+          <li role="option" id="erp-pal-opt-${esc(i)}" aria-selected="${esc(i === active ? 'true' : 'false')}">
+            <button type="button" class="erp-pal__opt${esc(i === active ? ' is-active' : '')}" data-idx="${esc(i)}" tabindex="-1">
               <i class="ji" data-i="${esc(e.icon)}" aria-hidden="true"></i>
               <span class="erp-pal__label">${esc(e.label)}</span>
               <span class="erp-pal__group">${esc(e.group)}</span>

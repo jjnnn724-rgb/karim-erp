@@ -11,9 +11,9 @@
  *   · رسوم SVG من مكتبة المشروع (بلا مكتبة خارجية) ⇒ بلا vendor جديد.
  *   · الأنيميشن CSS فقط (لا JS) ⇒ لا إعادة رسم.
  */
-import { apiFetch } from '../../core/api.js?v=4.9.297';
-import { barChart, lineChart, donutChart } from '../charts.js?v=4.9.297';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.297';
+import { apiFetch } from '../../core/api.js?v=4.9.317';
+import { barChart, lineChart, donutChart } from '../charts.js?v=4.9.317';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.317';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -112,7 +112,7 @@ export function mountExecutiveScreen(host, ctx = {}) {
                 { label: 'التكلفة', tone: 'chart-2', values: s.map((r) => r.cost) },
             ],
             formatValue: (v) => money(v),
-            formatMark: (v) => (Math.abs(v) >= 1000 ? `${Math.round(v / 1000)}k` : String(Math.round(v * 10) / 10)),
+            formatMark: (v) => (Math.abs(v) >= 1000 ? `${esc(Math.round(v / 1000))}k` : String(Math.round(v * 10) / 10)),
             emptyText: 'لا قيود في الفترة',
         });
         q('[data-exec-chart-net]').innerHTML = lineChart({
@@ -121,7 +121,7 @@ export function mountExecutiveScreen(host, ctx = {}) {
             labels,
             series: [{ label: 'الصافي', tone: 'brand', values: s.map((r) => r.net), fill: true }],
             formatValue: (v) => money(v),
-            formatMark: (v) => (Math.abs(v) >= 1000 ? `${Math.round(v / 1000)}k` : String(Math.round(v * 10) / 10)),
+            formatMark: (v) => (Math.abs(v) >= 1000 ? `${esc(Math.round(v / 1000))}k` : String(Math.round(v * 10) / 10)),
             emptyText: 'لا بيانات',
         });
         const cash = (data && data.cash) || [];
@@ -131,7 +131,7 @@ export function mountExecutiveScreen(host, ctx = {}) {
             slices: cash.map((c, i) => ({
                 label: String(c.name || c.code || '—'),
                 value: Math.abs(Number(c.balance) || 0),
-                tone: `chart-${(i % 6) + 1}`,
+                tone: `chart-${esc((i % 6) + 1)}`,
             })),
             formatValue: (v) => money(v),
             emptyText: 'لا حسابات نقد',

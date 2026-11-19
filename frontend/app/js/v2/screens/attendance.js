@@ -52,10 +52,10 @@
  *     in-flight response never touches a destroyed screen.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.297';
-import { statusBadge } from '../status.js?v=4.9.297';
-import { ensureXlsx } from '../vendor.js?v=4.9.297';
-import { prepareReportWorkbook } from '../report-export.js?v=4.9.297';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.317';
+import { statusBadge } from '../status.js?v=4.9.317';
+import { ensureXlsx } from '../vendor.js?v=4.9.317';
+import { prepareReportWorkbook } from '../report-export.js?v=4.9.317';
 import {
     attendanceToRow, ATTENDANCE_STATE_AR, PERIODS,
     fetchAttendanceRange, buildAttendanceKpis, buildAttendanceLegend,
@@ -72,10 +72,10 @@ import {
     fetchStrictAudit, summarizeAudit,
     fetchAttendanceAudit, auditEditRows,
     fetchMonthlyAttendance, buildMonthlySheet, minutesToHM,
-} from '../data/attendance-repo.js?v=4.9.297';
-import { fetchEmployees, employeeMap, fetchDepartments, departmentMap } from '../data/employees-repo.js?v=4.9.297';
-import { fetchLeaveWorkflow } from '../data/leaves-repo.js?v=4.9.297';
-import { kpiStrip } from '../role-dash-parts.js?v=4.9.297';
+} from '../data/attendance-repo.js?v=4.9.317';
+import { fetchEmployees, employeeMap, fetchDepartments, departmentMap } from '../data/employees-repo.js?v=4.9.317';
+import { fetchLeaveWorkflow } from '../data/leaves-repo.js?v=4.9.317';
+import { kpiStrip } from '../role-dash-parts.js?v=4.9.317';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -1079,6 +1079,31 @@ export function mountAttendanceScreen(host, ctx = {}) {
             + `<div class="erp-table__scroll" tabindex="0" style="max-height:520px;overflow:auto"><table class="erp-table__grid">`
             + `<thead><tr><th>النوع</th><th>الموظف</th><th>مَن غيّر</th><th>ما تغيّر</th><th>السبب</th><th>الوقت</th></tr></thead>`
             + `<tbody>${body}</tbody></table></div>`;
+    }
+
+    /* ── Export (W2-2) — نفس باب features/hr.js:545-552: المصفوفة من
+       attendance-repo (buildExportMatrix)، والمولّد محلي ensureXlsx،
+       واسم الملف exportFileName. كان الزر يستدعي doExport بلا تعريف. */
+    async function doExport() {
+        if (loading) {notify('جارٍ تحميل السجل — انتظر اكتماله ثم صدّر'); return;}
+        if (!rows.length) {notify('لا صفوف في الفترة الحالية للتصدير'); return;}
+        try {
+            const ready = await ensureXlsx();
+            if (!el.isConnected) {return;}
+            if (!ready) {notify('تعذر تحميل مولد ملفات Excel — تحقق من الشبكة وأعد المحاولة'); return;}
+            const matrix = buildExportMatrix(rows);
+            const ws = window.XLSX.utils.aoa_to_sheet(matrix);
+            ws['!cols'] = matrix[0].map(() => ({ wch: 20 }));
+            const wb = window.XLSX.utils.book_new();
+            window.XLSX.utils.book_append_sheet(wb, ws, 'الحضور');
+            prepareReportWorkbook(window.XLSX, wb, 'تقرير الحضور والانصراف');
+            const from = q('#v2att-from').value || todayIso();
+            const to = q('#v2att-to').value || todayIso();
+            window.XLSX.writeFile(wb, exportFileName(from, to));
+            notify(`تم تصدير ${formatInt(rows.length)} سجل (${rows.length === allRows.length ? 'الفترة كلها' : 'النتيجة المصفّاة'})`);
+        } catch (e) {
+            notify((e && e.message) || 'تعذر التصدير');
+        }
     }
 
     /* نداء طباعة واحد في الشاشة كلها؛ الكشف الشهري يركب شارة body قبله
