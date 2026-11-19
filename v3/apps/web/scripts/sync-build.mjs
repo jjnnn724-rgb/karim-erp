@@ -9,7 +9,7 @@ import { fileURLToPath } from 'node:url';
 const here = path.dirname(fileURLToPath(import.meta.url));
 const webDir = path.resolve(here, '..');
 const dist = path.join(webDir, 'dist');
-const target = path.resolve(webDir, '../../frontend/v3');
+const target = path.resolve(webDir, '../../../frontend/v3');
 
 if (!fs.existsSync(path.join(dist, 'index.html'))) {
     console.error('✗ لا يوجد dist/index.html — شغّل البناء أولًا: pnpm --filter @karim/web build');
