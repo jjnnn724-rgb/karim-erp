@@ -244,6 +244,9 @@ beforeAll(async () => {
         ...process.env,
         ...ENV,
         NODE_ENV: 'production',
+        // حارس الإقلاع الإنتاجي يرفض ALLOWED_ORIGINS='*' (server.js) — أصل محدد
+        // للاختبار بدل المعمم الموروث من بيئة CI/‏.env.
+        ALLOWED_ORIGINS: `http://127.0.0.1:${PORT}`,
         PORT: String(PORT),
         HOST: '127.0.0.1',
         DB_NAME: DB,

@@ -94,7 +94,7 @@ describe('الإعدادات — الأبواب', () => {
             'fetchKotSettings', 'saveKotSettings', 'fetchCardSettings', 'saveCardSettings',
             'fetchPunchAdmin', 'savePunchSettings', 'removePunchFace',
             'fetchPunchDevices', 'unbindPunchDevice', 'fetchBackups', 'doBackup',
-            'restoreBackup', 'resetAllData', 'operationalReset', 'updateMainSettings',
+            'backupStepUp', 'restoreBackup', 'resetAllData', 'operationalReset', 'updateMainSettings',
         ]);
         await ctx.fetchKotSettings();
         await ctx.saveKotSettings({ kot_enabled: true, kot_copies: 1, kot_include_notes: false });
@@ -107,7 +107,8 @@ describe('الإعدادات — الأبواب', () => {
         await ctx.unbindPunchDevice(9);
         await ctx.fetchBackups();
         await ctx.doBackup();
-        await ctx.restoreBackup({ file: 'x.sql', restoreEnv: false });
+        await ctx.backupStepUp({ password: 'fake-pw', code: '123456' });
+        await ctx.restoreBackup({ file: 'x.sql', restoreEnv: false, stepUpToken: 'tkt' });
         await ctx.resetAllData();
         await ctx.operationalReset({ confirmation: 'CONFIRM PRODUCTION RESET', reason: 'سبب واضح كاف', force: true });
         await ctx.updateMainSettings({ name: 'م', currency: 'SAR', workStartHour: 9 });
@@ -124,13 +125,15 @@ describe('الإعدادات — الأبواب', () => {
             'DELETE /attendance/portal/punch-devices/9',
             'GET /system/backups',
             'POST /system/backup',
+            'POST /system/backup/step-up',
             'POST /system/restore',
             'DELETE /state',
             'POST /warehouse/system/reset-all',
             'PUT /settings/main_settings',
         ]);
-        expect(JSON.parse(calls[12].body)).toEqual({ file: 'x.sql', confirm: 'RESTORE', restoreEnv: false });
-        expect(JSON.parse(calls[14].body)).toEqual({
+        expect(JSON.parse(calls[12].body)).toEqual({ password: 'fake-pw', code: '123456', recovery_code: '' });
+        expect(JSON.parse(calls[13].body)).toEqual({ file: 'x.sql', confirm: 'RESTORE', restoreEnv: false, stepUpToken: 'tkt' });
+        expect(JSON.parse(calls[15].body)).toEqual({
             confirmation: 'CONFIRM PRODUCTION RESET', reason: 'سبب واضح كاف', force: true, scope: 'full',
         });
     });

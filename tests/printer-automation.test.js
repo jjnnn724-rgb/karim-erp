@@ -239,3 +239,35 @@ describe('سلوك الاختيار على صفوف قاعدة حقيقية (ت�
         }
     });
 });
+
+describe('windows_local — طابور طباعة ويندوز المحلي (USB)', () => {
+    const { normalizeLocalPrinterName } = require('../backend/cashier-module/printer-logic');
+
+    test('يقبل اسم الطابور كما يظهر في ويندوز ويرفض المسارات ومحارف التحكم', () => {
+        expect(normalizeLocalPrinterName('POS-80')).toEqual({ name: 'POS-80' });
+        expect(normalizeLocalPrinterName('  طابعة الكاشير  ')).toEqual({ name: 'طابعة الكاشير' });
+        expect(normalizeLocalPrinterName('C:\\spool\\pos')).toBeNull();
+        expect(normalizeLocalPrinterName('pos/80')).toBeNull();
+        expect(normalizeLocalPrinterName('pos\u0000')).toBeNull();
+        expect(normalizeLocalPrinterName('')).toBeNull();
+        expect(normalizeLocalPrinterName(null)).toBeNull();
+    });
+
+    test('validatePrinterAddress يمرر windows_local ويبقي usb مرفوضًا', () => {
+        expect(validatePrinterAddress('windows_local', 'POS-80')).toEqual({ name: 'POS-80' });
+        expect(validatePrinterAddress('windows_local', '..')).toBeNull();
+        expect(validatePrinterAddress('usb', 'anything')).toBeNull();
+    });
+
+    test('printerRegistrationSchema يقبل الطابعة المحلية ويتحقق من الاسم', () => {
+        const ok = printerRegistrationSchema.safeParse({
+            kind: 'receipt', department_id: 7, connection_type: 'windows_local', address: 'POS-80',
+        });
+        expect(ok.success).toBe(true);
+        const bad = printerRegistrationSchema.safeParse({
+            kind: 'receipt', department_id: 7, connection_type: 'windows_local', address: 'a/b',
+        });
+        expect(bad.success).toBe(false);
+        if (!bad.success) {expect(bad.error.issues[0].message).toContain('اسم الطابعة المحلية');}
+    });
+});

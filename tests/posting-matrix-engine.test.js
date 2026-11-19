@@ -8,12 +8,8 @@
 const {
     round2,
     postPosCashSale,
-    postPosCardSale,
     postDeliveryPlatformSale,
     postFactoryTransfer,
-    postPurchaseInvoice,
-    postWasteAdjustment,
-    postMonthlyDepreciation,
 } = require('../backend/posting-matrix-engine');
 
 describe('PostingMatrixEngine — Unit & Integrity Tests', () => {
@@ -31,7 +27,11 @@ describe('PostingMatrixEngine — Unit & Integrity Tests', () => {
                 if (text.includes('SELECT code FROM cost_centers')) {
                     return { rows: [{ code: 'MAIN' }, { code: 'FACTZZ' }] };
                 }
-                if (text.includes('SELECT id, entry_no FROM journal_entries WHERE source_type = $1 AND source_id = $2')) {
+                if (text.includes('AS m') && text.includes('MAX(CAST(SUBSTRING(entry_no')) {
+                    // nextEntryNo — عدّاد اليوم يبدأ من 0 في القاعدة المحقونة
+                    return { rows: [{ m: 0 }] };
+                }
+                if (text.includes('FROM journal_entries WHERE source_type = $1 AND source_id = $2')) {
                     const existing = postedEntries.find(e => e.source_type === params[0] && e.source_id === params[1]);
                     return { rows: existing ? [existing] : [] };
                 }

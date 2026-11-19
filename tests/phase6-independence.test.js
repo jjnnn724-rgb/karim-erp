@@ -120,8 +120,20 @@ const postJson = async (p, body) => {
 };
 
 async function cleanup() {
-    await sql(`DELETE FROM customer_transactions WHERE reference_no LIKE $1`, [`${TAG}%`]);
-    await sql(`DELETE FROM journal_entries WHERE source_id LIKE $1`, [`${TAG}%`]);
+    // تنظيف مرخّص (2026-11): الحذف الصلب يمر ببوابة coa داخل معاملة (عقد 136).
+    const client = await pool.connect();
+    try {
+        await client.query('BEGIN');
+        await client.query(`SET LOCAL coa.allow_hard_delete = 'on'`);
+        await client.query(`DELETE FROM customer_transactions WHERE reference_no LIKE $1`, [`${TAG}%`]);
+        await client.query(`DELETE FROM journal_entries WHERE source_id LIKE $1`, [`${TAG}%`]);
+        await client.query('COMMIT');
+    } catch (e) {
+        await client.query('ROLLBACK').catch(() => {});
+        throw e;
+    } finally {
+        client.release();
+    }
 }
 
 async function restorePeriod() {

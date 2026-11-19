@@ -53,16 +53,16 @@ describe('makeEmitScoped — سلوك الوضعين', () => {
         expect(io.emit).not.toHaveBeenCalled();
     });
 
-    it('RT_REQUIRE_AUTH غير مفعّل → السلوك الإرثي (بثّ عام) كما كان', () => {
-        delete process.env[ENV_KEY];
+    it('RT_REQUIRE_AUTH=false (opt-out صريح) → السلوك الإرثي (بثّ عام) كما كان', () => {
+        process.env[ENV_KEY] = 'false';
         const { io } = mkIo();
         makeEmitScoped(io)('attendance:updated', { action: 'check_in' });
         expect(io.emit).toHaveBeenCalledWith('attendance:updated', { action: 'check_in' });
         expect(io.to).not.toHaveBeenCalled();
     });
 
-    it('الوضع الإرثي + exceptSocketId → io.except (لا يصل المُستثنى)', () => {
-        delete process.env[ENV_KEY];
+    it('الوضع الإرثي (opt-out) + exceptSocketId → io.except (لا يصل المُستثنى)', () => {
+        process.env[ENV_KEY] = 'false';
         const { io, globalExceptEmit } = mkIo();
         makeEmitScoped(io)('x', { y: 1 }, 'socket-7');
         expect(io.except).toHaveBeenCalledWith('socket-7');
@@ -79,10 +79,18 @@ describe('makeEmitScoped — سلوك الوضعين', () => {
 describe('لا io.emit خام في المسارات الحساسة', () => {
     const read = (p) => fs.readFileSync(path.join(__dirname, '..', p), 'utf8');
     const sensitive = [
-        'backend/attendance-push/processor.js',
+        // backend/attendance-push/processor.js لم يعد موجودًا على هذا الفرع (2026-11).
         'backend/hr-routes.js',
         'backend/zkteco/engine.js',
         'backend/attendance-engine.js',
+        // الوحدات المالية/التشغيلية التي كانت تبث entity_changed خامًا (تأمين 2026-11):
+        'backend/accounting-routes.js',
+        'backend/accounting-periods.js',
+        'backend/accounting-growth.js',
+        'backend/cashier-module/day-close-routes.js',
+        'backend/cashier-module/shift-routes.js',
+        'backend/procurement-routes.js',
+        'backend/warehouse-routes.js',
     ];
     for (const file of sensitive) {
         it(`${file} يمر عبر makeEmitScoped ولا يبثّ خامًا`, () => {
