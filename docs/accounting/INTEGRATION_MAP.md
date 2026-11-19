@@ -60,12 +60,26 @@
   * Credit: `6900` (Cash Overage / Other Operating Income)
 
 ### 7. VAT review workspace (internal draft)
-* **API:** `GET /api/accounting/vat-return` reads posted journal entries only.
+* **API:** `GET /api/accounting/vat-return` reports posted VAT-control-account
+  movements, POS invoice and void schedules by stored VAT rate, purchase-invoice
+  snapshots matched to posted `purchase_invoice` journals, unlinked legacy
+  revenue by source, and opening/closing control-account balances.
 * **Reconciliation:** POS void debits are shown as output-tax reversals; monthly
-  settlement entries are excluded from period tax movement. Purchase invoices
-  are cross-checked only when a matching posted `purchase_invoice` journal exists.
-* **Review gate:** other output-account debits and input-account credits are
-  surfaced as unclassified movements instead of being silently netted.
-* **Limitation:** this is an internal review, not a ZATCA submission or legal
-  compliance certification. Review original tax documents and unclassified
-  movements before using figures in a filing.
+  settlement entries are excluded from period movement. Unlinked revenue is
+  shown as an excluded reconciliation source, not silently counted as taxable
+  sales. Purchase records without a posted journal are reported separately.
+* **Review gate:** nonstandard/zero/missing VAT rates, unclassified ledger
+  movements, unposted documents, supplier-tax-profile gaps and source-to-ledger
+  differences are explicit blockers. The API deliberately reports
+  `can_file: false`; a formatted/valid VAT number does not verify active ZATCA
+  registration.
+* **Filing limitations:** legal supply categories (including exports, exempt,
+  out-of-scope and reverse-charge transactions), deductible-input eligibility,
+  the registered filing period, prior-return credits/payments, and ZATCA
+  submission/acceptance are not fully represented or verified by this
+  application. The displayed ledger net is not a filing amount. Reconcile
+  original documents, prior returns and the current ZATCA portal before filing.
+* **Quarterly period:** `tax_config.filing_frequency` defaults to `quarterly`;
+  the VAT review screen opens on the last completed calendar quarter and flags
+  date ranges that do not match complete quarter boundaries. Confirm the
+  actual dates shown in the taxpayer's ZATCA account before relying on them.

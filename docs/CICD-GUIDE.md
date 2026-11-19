@@ -271,3 +271,34 @@ _آخر تحديث: 2026-10-27_## فحص التنسيق (Prettier) — إعلا�
   يراه `{}` — وبذلك أخطأ في كل ملف ينادي `pool.query`. وسم نوع واحد على هدف الـProxy أزيل **1526
   خطأ** عبر المشروع كله دون تغيير سلوكي. ابحث عن نمط «كائن بلا نوع يمرّر النداءات» قبل إصلاح مئات
   الملفات واحدًا واحدًا.
+
+## مسار V3 (pnpm monorepo) — `.github/workflows/ci-v3.yml`
+
+- يعمل عند push/PR عندما تتغيّر `v3/**` أو المسار نفسه، يدويًا أيضًا (`workflow_dispatch`).
+- pnpm ‏12.18.0 عبر `pnpm/action-setup@v4`، وNode 22 مع كاش pnpm على `v3/pnpm-lock.yaml`.
+- الخطوات: `pnpm install --frozen-lockfile` ثم `pnpm gate` (typecheck + test + build + lint)،
+  ثم في `apps/web`: تثبيت Chromium و`pnpm e2e:public` و`pnpm e2e:budget`.
+- تقرير Playwright يُرفع عند الفشل باسم `v3-playwright-report`.
+- الحزمة الحية (`e2e:live`) ليست في CI: تتطلب خادم تحقق حيًا واعتمادات
+  `V3_E2E_USER` / `V3_E2E_PASS`، وبلا اعتماد تُتخطّى صراحةً.
+
+### بوابة تدقيق الإنتاج في `ci.yml` (مشدَّدة)
+
+- **high+ حاجبة** في تبعيات الإنتاج: `npm audit --omit=dev --audit-level=high` يُفشل الـjob.
+- **moderate تحذير فقط** يُعالج على دفعات (الوضع الحالي: 0 high، و7 ثغرات low/moderate في سلسلة google-cloud).
+- عطل خدمة التدقيق نفسها (400 / retired) يُنبَّه ولا يُفشل البناء — عطل الخدمة ليس ثغرة.
+
+### مسح الوصول الحي — `e2e/specs/live/a11y-sweep.spec.ts`
+
+- axe على كل شاشات `V3_SCREENS` + الرئيسية بجلسة `storageState` محفوظة (بلا استهلاك محاولات الدخول).
+- الحاجب: صفر مخالفات critical/serious — نفس عقد الحزمة العامة.
+- الشاشة المعطّلة على الخادم (وسم `v3-screens` يحوّل رابطها إلى القديم) تُتخطّى تلقائيًا.
+
+### ميزانية Lighthouse — `pnpm perf:lighthouse` (في `apps/web`)
+
+- يفحص الحزمة الثابتة على `http://127.0.0.1:5320/v3/`؛ يشغّل `static-server.mjs` بنفسه إن لم يكن قائمًا ويوقفه بعد الفحص. لهدف حي مرّر `LIGHTHOUSE_URL`.
+- الحدود في `e2e/lighthouse-budget.json`: performance ‏0.8 / accessibility ‏0.95 / best-practices ‏0.9 / seo ‏0.9 — الفشل عند أي تجاوز، ولا تُرفع الحدود إلا بمبرّر موثّق.
+- المتصفح: Chromium المثبّت عبر Playwright (يُبحث في ms-playwright ويُمرَّر عبر `CHROME_PATH`).
+- القياس الافتراضي mobile (محاكاة Lighthouse القياسية)؛ `LIGHTHOUSE_PRESET=desktop` لوضع سطح المكتب.
+- الخادم الثابت يضغط gzip للنصّيات مثل الإنتاج (`compression` في `backend/server.js`)؛ بلا الضغط كانت
+  نتيجة mobile performance تهبط ظلمًا (0.71) لأن الشبكة المحاكاة تنقل بايتات خامًا لا يخدمها الإنتاج.
