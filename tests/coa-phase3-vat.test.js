@@ -16,7 +16,10 @@
 
 const express = require('express');
 
-const mockUser = { id: 990031, role: 'accountant', name: 'محاسب ZZ' };
+// created_by عليه قيد FK إلى users (حارس سلامة الإسناد) — مستخدم وهمي بلا صف
+// يُسقط الترحيل بـ23503. نستخدم admin المبذور (id=1) في قاعدة الاختبار المعزولة
+// كما في coa-phase3-read-paths، بدل 990031 الذي لا وجود له في users.
+const mockUser = { id: 1, role: 'accountant', name: 'محاسب ZZ' };
 
 jest.mock('../backend/cashier-module/jwt-middleware', () => ({
   jwtAuth: (req, _res, next) => {

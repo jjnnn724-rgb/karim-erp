@@ -68,11 +68,15 @@ describe('تسميات الحقول في النماذج', () => {
 
     test('أدوات الحضور: كل حقل معرّف وتسميته تشير إليه', () => {
         const src = read(path.join(V2, 'screens', 'attendance.js'));
+        // حقول الورديات (sh-*) أُزيلت بقرار المالك 2026-11-05 مع أداة الورديات؛
+        // الربط يبقى مفروضًا على كل حقلٍ باقٍ، وحقلا سجل التعديلات يُضافان للعقد.
         for (const id of ['res-type', 'res-in', 'res-out', 'res-with', 'res-reason',
-            'exc-emp', 'exc-date', 'exc-reason', 'cor-in', 'cor-out', 'cor-reason', 'sh-month']) {
+            'exc-emp', 'exc-date', 'exc-reason', 'cor-in', 'cor-out', 'cor-reason',
+            'tr-from', 'tr-to']) {
             expect(src).toContain(`for="v2att-${id}"`);
             expect(src).toContain(`id="v2att-${id}"`);
         }
+        expect(src).not.toContain('v2att-sh-');
     });
 
     test('تقرير الكاشيرية: مرشّحا الكاشير والعرض مسمّيان', () => {

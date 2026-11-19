@@ -178,9 +178,14 @@ describe('مبيعات الكاشير — ملف الصنف والفاتورة',
     });
 
     test('سطرٌ واحد للوحة والطبع: loadSlip تُقرأ من الاثنين', () => {
-        const calls = [...backend.matchAll(/await loadSlip\(docNo\)/g)].length;
+        // المساران يمرّان عبر findAfterLive بنفس القارئ loadSlip: محاولةٌ في
+        // المرآة، وسحبٌ حيّ ثم إعادة البحث بنفس الدالة — فلا تختلف مطبوعةٌ عن معروضة.
+        const calls = [...backend.matchAll(/await findAfterLive\(req, loadSlip, docNo\)/g)].length;
         expect(calls).toBe(2);
         expect(backend).toMatch(/async function loadSlip\(docNo\)/);
+        expect(backend).toMatch(/async function findAfterLive\(req, find, docNo\)/);
+        expect(backend).toMatch(/const hit = await find\(docNo\);/);
+        expect(backend).toMatch(/return find\(docNo\);/);
         expect(backend).toMatch(/router\.get\('\/invoice\/:docNo\/html'/);
     });
 
@@ -344,11 +349,33 @@ describe('مبيعات الكاشير — الواجهة', () => {
 
 describe('مبيعات الكاشير — الطبقة والنشر', () => {
     test('الطبقة برموز --erp-* فقط (تبعُ الوضع الليلي بلا إعادة رسم)', () => {
-        const body = css.replace(/\/\*[\s\S]*?\*\//g, '').replace(/@media[^{]+\{/g, '');
+        /* الطبقةُ الأساسية رموزٌ فقط. كتلُ @media تُستبعد كاملةً (لا opener
+           وحده): كتلةُ الهاتف تستخدم px فيزيائية لأهداف اللمس 44px وهندسة
+           الزخرفة — مقاساتُ جهازٍ لا ألوانُ سمة، فلا تكسر الوضع الليلي. */
+        const noComments = css.replace(/\/\*[\s\S]*?\*\//g, '');
+        let body = '';
+        let i = 0;
+        while (i < noComments.length) {
+            const m = /@media[^{]*\{/.exec(noComments.slice(i));
+            if (!m) {body += noComments.slice(i); break;}
+            body += noComments.slice(i, i + m.index);
+            let j = i + m.index + m[0].length;
+            let depth = 1;
+            while (j < noComments.length && depth > 0) {
+                if (noComments[j] === '{') {depth++;} else if (noComments[j] === '}') {depth--;}
+                j++;
+            }
+            i = j;
+        }
         expect(body).not.toMatch(/#[0-9a-fA-F]{3,8}\b/);
         expect(body).not.toMatch(/rgba?\(/);
         expect(body).not.toMatch(/\b\d+(px|rem|em)\b/);
         expect(body).toMatch(/var\(--erp-space-/);
+        // وعقدُ الهاتف الجديد مثبَّتٌ إيجابيًا: أهدافُ لمس 44px داخل كتلة 720px
+        const mobile = /@media \(max-width: 720px\) \{[\s\S]*?\n\}/.exec(css);
+        expect(mobile).toBeTruthy();
+        expect(mobile[0]).toMatch(/min-block-size: 44px/);
+        expect(mobile[0]).toMatch(/min-block-size: 48px/);
     });
 
     test('فخُّ hidden: اللوحاتُ داخل erp-stack فلها قاعدةٌ تُلغيها', () => {

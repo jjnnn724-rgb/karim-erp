@@ -43,7 +43,8 @@ describe('عقد نظام التحويلات الداخلية بين الأقس�
         expect(src).toMatch(/router\.post\('\/dept-transfers\/:id\/approve'/);
         expect(src).toMatch(/router\.post\('\/dept-transfers\/:id\/reject'/);
         expect(src).toMatch(/router\.post\('\/dept-transfers\/:id\/cancel'/);
-        expect(src).toMatch(/module\.exports = \{ router \}/);
+        // الملف المعزول يصدّر البناة النقيين أيضًا (عقد Phase 3 لتسوية المصنع)
+        expect(src).toMatch(/module\.exports = \{ router, buildFactorySettlementLines, buildTransferCostLines \}/);
     });
 
     test('الخادم: دورة قرار الشيف نفسها في سلسلة الصرف + منع اعتماد الطلب الذاتي', () => {
@@ -128,8 +129,13 @@ describe('عقد نظام التحويلات الداخلية بين الأقس�
     test('الخادم: قيد نقل التكلفة بين مركزي القسمين (مدين 5000 مستلم / دائن 5000 مرسل)', () => {
         const src = read(ROUTES);
         expect(src).toMatch(/postJournal, ensureCostCenters, normalizeCostCenterCode/);
-        expect(src).toMatch(/account_code: '5000', debit: v, credit: 0/);
-        expect(src).toMatch(/account_code: '5000', debit: 0, credit: v/);
+        // السطور انتقلت إلى بانٍ نقي (buildTransferCostLines) والحساب يُحل عبر
+        // خريطة الحسابات — الافتراضي 5000 باقٍ في البانٍ وفي نداء resolveAccounts.
+        expect(src).toMatch(/const costAcct = accounts\.cost_account \|\| '5000';/);
+        expect(src).toMatch(/account_code: costAcct, debit: v, credit: 0, memo: 'تكلفة تحويل — القسم المستلم', cost_center_code: dst/);
+        expect(src).toMatch(/account_code: costAcct, debit: 0, credit: v, memo: 'خصم تكلفة — القسم المرسل', cost_center_code: src/);
+        expect(src).toMatch(/resolveAccounts\(pool, 'dept_transfer', 'inventory_transfer', \{\s*cost_account: '5000',\s*\}\)/);
+        expect(src).toMatch(/lines: buildTransferCostLines\(\{ total: v, sourceDept, destDept, accounts \}\)/);
         expect(src).toMatch(/source_type: 'inventory_transfer'/);
         expect(src).toMatch(/ensureCostCenters\(\[src, dst\]\)/);
     });

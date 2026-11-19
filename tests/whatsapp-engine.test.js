@@ -176,8 +176,11 @@ describe('employee normalization and delay logic', () => {
         const row = { checkIn: '09:35', checkOut: '17:30' };
         const employee = { shift_start: '09:00', shift_karim: 8 };
         const parts = calculateDelayParts(row, employee);
-        // 35 دقيقة دخول متأخر تُحسب كاملة
-        expect(parts.arrivalLateMinutes).toBe(35);
+        // قرار المالك 2026-11-07 (توحيد الحكم على أطراف اليوم): دقائق العجز تُوزَّع
+        // على طرفي اليوم بسقف العجز الكلي (دخول أولًا ثم انصراف) — فالعجز 5 دقائق
+        // يُنسب كله للدخول، ولا تُعرض 35 دقيقة كاملة ما دام البقاء غطّى معظمها.
+        // lateMinutes (المالي) = العجز الصافي 5 كما كان — بلا سماحية.
+        expect(parts.arrivalLateMinutes).toBe(5);
         expect(parts.earlyLeaveMinutes).toBe(0);
         expect(parts.lateMinutes).toBe(5);
     });

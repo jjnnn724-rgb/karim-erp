@@ -772,6 +772,33 @@ async function computeMonthDeductions(month, { skipFridays = false } = {}) {
           WHERE month = $1 AND reason LIKE $2 GROUP BY "employeeId", kind`,
         [month, `${AUTO_DEDUCTION_MARK}%`])).rows : [];
 
+    // تاريخ سريان الدوام (087) — يتقدّم على بطاقة الموظف في احتساب الراحة الأسبوعية:
+    // day_off الفعّال ليوم d = أحدث صف ≤ d موجود في employee_shift_history، وإلا البطاقة.
+    // (صف 2000-01-01 «تاريخ السريان الأصلي» مستبعد كما في باقي المسارات — يغطي اليوم نفسه).
+    // FIX 2026-11-05 (مراجعة خارجية P1): أُعيد هذا البلوك بعد فقدانه في عمل الميزات
+    // الجاري — تغيير الدوام لا يمس حسابات الأيام السابقة (ترحيل 087)، فيُحلّ لكل يوم
+    // على حدة بدل قراءة عمود البطاقة وحده (كان يخصم راحة الأربعاء لموظف راحته الخميس).
+    const shiftHist = empIds.length ? (await pool.query(
+        `SELECT employee_id, day_off, effective_from::text AS effective_from
+           FROM employee_shift_history
+          WHERE employee_id = ANY($1::bigint[])
+            AND effective_from <> DATE '2000-01-01'
+          ORDER BY employee_id, effective_from`, [empIds])).rows : [];
+    const histByEmp = new Map();
+    for (const h of shiftHist) {
+        const list = histByEmp.get(h.employee_id) || [];
+        list.push(h);
+        histByEmp.set(h.employee_id, list);
+    }
+    const dayOffFor = (empId, dateStr) => {
+        const list = histByEmp.get(empId) || [];
+        let eff = null;
+        for (const h of list) {
+            if (String(h.effective_from) <= dateStr) { eff = h.day_off; } else { break; }
+        }
+        return eff;
+    };
+
     const detail = [];
     // البطاقة هي المصدر: بداية الدوام وعدد الساعات وday_off كلها من بطاقة الموظف مباشرة.
     for (const emp of emps) {
@@ -805,8 +832,11 @@ async function computeMonthDeductions(month, { skipFridays = false } = {}) {
             if (joinDate && d < joinDate) {continue;}
             const weekday = new Date(`${d}T00:00:00Z`).getUTCDay();
             if (skipFridays && weekday === 5) {continue;}
-            // الراحة الأسبوعية من عمود البطاقة (day_off 0-6) — يوم راحته لا يُحسب غيابًا.
-            if (emp.day_off != null && weekday === Number(emp.day_off)) {continue;}
+            // الراحة الأسبوعية بتاريخ السريان (087) أولًا ثم عمود البطاقة (day_off 0-6)
+            // — يوم راحته الفعّال لذلك اليوم لا يُحسب غيابًا (FIX 2026-11-05).
+            const histDayOff = dayOffFor(emp.id, d);
+            const effectiveDayOff = histDayOff != null ? Number(histDayOff) : (emp.day_off != null ? Number(emp.day_off) : null);
+            if (effectiveDayOff != null && weekday === effectiveDayOff) {continue;}
             if (presentDays.has(d) || coveredLeave.has(d)) {continue;}
             absentDays += 1;
             absentDates.push(d);

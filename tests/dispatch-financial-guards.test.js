@@ -85,7 +85,8 @@ describe('وعي الإبطال (2026-11-06): الإصلاح الآلي لا ي�
     const DISPATCH_LEDGER = read('scripts', 'reconcile-dispatch-ledger.js');
 
     test('postJournal افتراضيًا لا يعيد ترحيل المُبطَل، ومُستدعٍ بشري واحد فقط يمرّره', () => {
-        expect(ACCT).toMatch(/repostVoided = false\s*\}/);
+        // التوقيع متعدد الأسطر بفاصلة لاحقة — العقد يتحمّلها، والافتراضي false باقٍ
+        expect(ACCT).toMatch(/repostVoided = false,?\s*\}/);
         expect(ACCT.match(/repostVoided:/g) || []).toHaveLength(1);
         for (const auto of [GLB, DAY_CLOSE, RECONCILE, DISPATCH_LEDGER]) {
             expect(auto).not.toMatch(/repostVoided:/);
@@ -123,7 +124,7 @@ describe('وعي الإبطال (2026-11-06): الإصلاح الآلي لا ي�
         const todoUnguarded = DISPATCH_LEDGER.replace(
             /const todo = rows\.filter\(\(r\) => !r\.was_voided && /, 'const todo = rows.filter((r) => ');
         expect(todoUnguarded).not.toMatch(/const todo = rows\.filter\(\(r\) => !r\.was_voided/);
-        expect(drop(ACCT, /repostVoided = false/)).not.toMatch(/repostVoided = false\s*\}/);
+        expect(drop(ACCT, /repostVoided = false/)).not.toMatch(/repostVoided = false,?\s*\}/);
         // والعكس: لو مرّر مسار آلي العلم التقطته الحلقة فورًا (نفس الوسيط المُستعمل أعلاه)
         const poison = GLB.replace("const out = await postJournal(pool, {",
             "const out = await postJournal(pool, { repostVoided: true,");

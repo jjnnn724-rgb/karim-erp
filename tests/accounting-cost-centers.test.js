@@ -53,14 +53,16 @@ describe('مراكز التكلفة — تطبيع الرمز وترحيل قي�
 
     test('الرمز يُطبَّع إلى ما يسمح به قيد الجدول قبل الإدراج', () => {
         expect(accounting).toMatch(/function normalizeCostCenterCode\(code\)/);
-        expect(accounting).toMatch(/\.trim\(\)\.toUpperCase\(\)/);
-        expect(accounting).toMatch(/\.replace\(\/\[\^A-Z0-9_-\]\/g, '_'\)\.slice\(0, 20\)/);
+        // التطبيع سلسلة واحدة (trim ثم رفع الأحرف ثم الإبدال ثم القص) — قد تُكتب
+        // على أسطر منفصلة، فالعقد يتحمّل المسافات البيضاء بين حلقات السلسلة.
+        expect(accounting).toMatch(/\.trim\(\)\s*\.toUpperCase\(\)/);
+        expect(accounting).toMatch(/\.replace\(\/\[\^A-Z0-9_-\]\/g, '_'\)\s*\.slice\(0, 20\)/);
         expect(accounting).toMatch(/codes\.map\(normalizeCostCenterCode\)/);
     });
 
     test('postJournal يستخدم نفس التطبيع — لا فرق بين ما يُدرَج وما يُبحث عنه', () => {
         expect(accounting).toMatch(/normalizeCostCenterCode\(l\.cost_center_code\) \|\| null/);
-        expect(accounting).not.toMatch(/String\(l\.cost_center_code\)\.trim\(\)\.toUpperCase\(\)\.slice\(0, 20\)/);
+        expect(accounting).not.toMatch(/String\(l\.cost_center_code\)\s*\.trim\(\)\s*\.toUpperCase\(\)\s*\.slice\(0, 20\)/);
     });
 
     test('الإدراج idempotent ويتحمّل سباق الاعتمادات (ON CONFLICT لا NOT EXISTS)', () => {

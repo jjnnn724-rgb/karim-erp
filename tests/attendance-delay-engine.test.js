@@ -13,8 +13,11 @@ describe('attendance delay engine', () => {
     // وخرج 00:30 (أكمل 10 ساعات) → صفر تأخير رغم الانصراف قبل نهاية الوردية.
     const completed = calculateDelayParts({ checkIn: '14:30', checkOut: '00:30' }, { shift_start: '15:00', shift_karim: 10 });
     expect(completed.arrivalLateMinutes).toBe(0);
-    // بلا سماحية (قرار المالك 2026-11-02): 30 دقيقة تبكير تُحسب كاملة.
-    expect(completed.earlyLeaveMinutes).toBe(30);
+    // قرار المالك 2026-11-07 (توحيد الحكم على أطراف اليوم): الوصول المبكر يغطي
+    // الانصراف المبكر — من أكمل ساعات ورديته لا يُعرض عليه تبكير (كانت 30 تُحسب
+    // كاملة بقاعدة 2026-11-02 قبل اعتماد معيار العجز؛ راجع
+    // docs/ATTENDANCE-EARLY-LEAVE-UNIFICATION.md §3).
+    expect(completed.earlyLeaveMinutes).toBe(0);
     expect(completed.lateMinutes).toBe(0);
     expect(calculateLateMinutes({ checkIn: '14:30', checkOut: '00:30' }, { shift_start: '15:00', shift_karim: 10 })).toBe(0);
     // وتأخير الدخول مع تعويضه بالبقاء: وصل 15:30 وخرج 01:30 (10 ساعات) → صفر
@@ -50,28 +53,48 @@ describe('attendance delay engine', () => {
 
   // طلب المالك 2026-10-29: «أقدر أعرف كل تأخير ولو دقيقة في بطاقة كل موظف».
   // وقراره الحاسم 2026-11-05: التأخير من أول دقيقة بعد بداية دوام البطاقة —
-  // بلا سماحية ولا ميزانية مشتركة.
+  // بلا سماحية ولا ميزانية مشتركة. ثم قرار 2026-11-07 (توحيد الحكم على أطراف
+  // اليوم): التأخير = العجز عن ساعات البطاقة، والبقاء أطول يغطي الوصول المتأخر —
+  // فمن أكمل ساعاته لا يُعرض عليه تأخير دخول (docs/ATTENDANCE-EARLY-LEAVE-UNIFICATION.md).
   test('التأخير من أول دقيقة بعد بداية الدوام (بلا سماحية)', () => {
+    // 15:01→01:01: أكمل 10 ساعات — البقاء غطّى دقيقة التأخير → صفر (قرار 2026-11-07)
     const oneMinute = calculateDelayParts({ checkIn: '15:01', checkOut: '01:01' }, { shift_start: '15:00', shift_karim: 10 });
-    expect(oneMinute.arrivalLateRawMinutes).toBe(1);
-    expect(oneMinute.arrivalLateMinutes).toBe(1);   // من أول دقيقة — بلا سماح
-    expect(oneMinute.lateMinutes).toBe(0);          // أكمل 10 ساعات
+    expect(oneMinute.arrivalLateRawMinutes).toBe(0);
+    expect(oneMinute.arrivalLateMinutes).toBe(0);
+    expect(oneMinute.lateMinutes).toBe(0);
 
+    // وبلا سماحية من أول دقيقة عند وجود عجز: 15:01→01:00 (9:59) → عجز دقيقة
+    // تُحسب كاملة على الدخول (لا اقتطاع ولا تسامح) — حارس «من أول دقيقة» يبقى مثبتًا.
+    const oneMinuteShort = calculateDelayParts({ checkIn: '15:01', checkOut: '01:00' }, { shift_start: '15:00', shift_karim: 10 });
+    expect(oneMinuteShort.arrivalLateRawMinutes).toBe(1);
+    expect(oneMinuteShort.arrivalLateMinutes).toBe(1);
+    expect(oneMinuteShort.lateMinutes).toBe(1);
+
+    // 15:13→01:13: أكمل 10 ساعات → صفر رغم الدخول المتأخر (البقاء غطّاه)
     const thirteen = calculateDelayParts({ checkIn: '15:13', checkOut: '01:13' }, { shift_start: '15:00', shift_karim: 10 });
-    expect(thirteen.arrivalLateRawMinutes).toBe(13);
-    expect(thirteen.arrivalLateMinutes).toBe(13);    // بلا سماحية إطلاقًا
+    expect(thirteen.arrivalLateRawMinutes).toBe(0);
+    expect(thirteen.arrivalLateMinutes).toBe(0);
     expect(thirteen.lateMinutes).toBe(0);
 
-    // 15:20 مقابل وردية 15:00 =20 دقيقة كاملة (لا اقتطاع)
+    // 15:20 مقابل وردية 15:00 مع إتمام الساعات (15:20→01:20) → صفر (قرار 2026-11-07)
     const twenty = calculateDelayParts({ checkIn: '15:20', checkOut: '01:20' }, { shift_start: '15:00', shift_karim: 10 });
-    expect(twenty.arrivalLateRawMinutes).toBe(20);
-    expect(twenty.arrivalLateMinutes).toBe(20);
+    expect(twenty.arrivalLateRawMinutes).toBe(0);
+    expect(twenty.arrivalLateMinutes).toBe(0);
     expect(twenty.lateMinutes).toBe(0); // أكمل 10 ساعات: العجز صفر رغم الدخول المتأخر
+    // ولو لم يبقَ للتعويض (15:20→01:00) → 20 دقيقة كاملة بلا اقتطاع
+    const twentyShort = calculateDelayParts({ checkIn: '15:20', checkOut: '01:00' }, { shift_start: '15:00', shift_karim: 10 });
+    expect(twentyShort.arrivalLateMinutes).toBe(20);
+    expect(twentyShort.lateMinutes).toBe(20);
 
-    // مثال المالك حرفيًا: دوام 12:00، وصول 12:25، انصراف 00:25 (12 ساعة) → 25 دقيقة
+    // مثال المالك: دوام 12:00، وصول 12:25، انصراف 00:25 (12 ساعة) → أكمل الساعات
+    // فصفر تأخير بقاعدة 2026-11-07 (كانت 25 بقاعدة «من أول دقيقة» قبل معيار العجز).
     const owner = calculateDelayParts({ checkIn: '12:25', checkOut: '00:25' }, { shift_start: '12:00', shift_karim: 12 });
-    expect(owner.arrivalLateMinutes).toBe(25);
+    expect(owner.arrivalLateMinutes).toBe(0);
     expect(owner.lateMinutes).toBe(0);
+    // ولو انصرف في الموعد (12:25→00:00) → عجز 25 دقيقة كاملة على الدخول — بلا سماح
+    const ownerShort = calculateDelayParts({ checkIn: '12:25', checkOut: '00:00' }, { shift_start: '12:00', shift_karim: 12 });
+    expect(ownerShort.arrivalLateMinutes).toBe(25);
+    expect(ownerShort.lateMinutes).toBe(25);
 
     // ومثال الانصراف: وردية تنتهي 00:00، خرج 23:30 → 30 دقيقة كاملة
     const earlyOwner = calculateDelayParts({ checkIn: '12:00', checkOut: '23:30' }, { shift_start: '12:00', shift_karim: 12 });
@@ -98,17 +121,19 @@ describe('attendance delay engine', () => {
       { checkIn: '15:01', checkOut: '00:51',
         arrivalLateRawMinutes: 1, arrivalLateMinutes: 1,
         earlyLeaveRawMinutes: 9, earlyLeaveMinutes: 9, lateMinutes: 10 },
-      // 14:30→00:30: أكمل 10 ساعات → لا عجز، والتبكير 30 دقيقة يُحسب كاملًا
+      // 14:30→00:30: أكمل 10 ساعات → لا عجز، والوصول المبكر يغطي الانصراف المبكر
+      // فلا تُعرض دقائق تبكير (قرار 2026-11-07 — كانت 30 كاملة بقاعدة 2026-11-02)
       { checkIn: '14:30', checkOut: '00:30',
         arrivalLateRawMinutes: 0, arrivalLateMinutes: 0,
-        earlyLeaveRawMinutes: 30, earlyLeaveMinutes: 30, lateMinutes: 0 },
+        earlyLeaveRawMinutes: 0, earlyLeaveMinutes: 0, lateMinutes: 0 },
       // 15:30→00:30: 9 ساعات فقط → عجز 60 دقيقة كاملة، وتأخير الدخول 30 كاملة
       { checkIn: '15:30', checkOut: '00:30',
         arrivalLateRawMinutes: 30, arrivalLateMinutes: 30,
         earlyLeaveRawMinutes: 30, earlyLeaveMinutes: 30, lateMinutes: 60 },
-      // 15:30→01:30: تأخير مُعوَّض بالبقاء → 10 ساعات كاملة → عجز صفر
+      // 15:30→01:30: تأخير مُعوَّض بالبقاء → 10 ساعات كاملة → عجز صفر، والبقاء
+      // يغطي الوصول المتأخر فلا تُعرض دقائق دخول (قرار 2026-11-07)
       { checkIn: '15:30', checkOut: '01:30',
-        arrivalLateRawMinutes: 30, arrivalLateMinutes: 30,
+        arrivalLateRawMinutes: 0, arrivalLateMinutes: 0,
         earlyLeaveRawMinutes: 0, earlyLeaveMinutes: 0, lateMinutes: 0 },
     ];
     for (const t of table) {
