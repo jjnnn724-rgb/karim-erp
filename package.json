@@ -107,7 +107,12 @@
     "v3:e2e:budget": "pnpm --dir v3 --filter @karim/web run e2e:budget",
     "v3:sync": "node v3/scripts/sync-build.mjs",
     "v3:sync:dry": "node v3/scripts/sync-build.mjs --dry-run",
-    "v3:gate": "npm run v3:typecheck && npm run v3:test && npm run v3:build && npm run v3:e2e:public"
+    "v3:gate": "npm run v3:typecheck && npm run v3:test && npm run v3:build && npm run v3:e2e:public",
+    "fortress": "node scripts/fortress.js",
+    "fortress:quick": "node scripts/fortress.js --quick",
+    "fortress:full": "node scripts/fortress.js --full",
+    "hooks:install": "node scripts/install-hooks.js",
+    "test:migrations:gate": "node scripts/migration-immutability.js"
   },
   "build": {
     "productName": "مطاعم الشرفه العالمي",

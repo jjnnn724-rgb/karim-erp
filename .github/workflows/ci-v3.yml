@@ -1,16 +1,13 @@
 name: V3 CI
 
 on:
-  # حزمة v3 مستقلة (pnpm workspace تحت v3/) — تعمل فقط عند تغيّر ملفاتها
-  # أو هذا المسار نفسه، كي لا تدفع تغييرات القديم بناءَ monorepo كامل.
+  # حزمة v3 مستقلة (pnpm workspace تحت v3/). على الدفع: تعمل عند تغيّر ملفاتها فقط.
+  # على كل PR: تعمل دائمًا — لأنها فحص مطلوب لحماية main (فحص غائب = دمج معلّق).
   push:
     paths:
       - 'v3/**'
       - '.github/workflows/ci-v3.yml'
   pull_request:
-    paths:
-      - 'v3/**'
-      - '.github/workflows/ci-v3.yml'
   workflow_dispatch:
 
 permissions:

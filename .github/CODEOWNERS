@@ -1,0 +1,13 @@
+# 🏰 ملكية الكود — كل تغيير يمر بمراجعة المالك قبل الدمج إلى main
+* @jjnnn724-rgb
+
+# الأبواب الحرجة (حماية مضاعفة بالمراجعة)
+/scripts/fortress.js @jjnnn724-rgb
+/scripts/git-hooks/ @jjnnn724-rgb
+/scripts/*gate*.js @jjnnn724-rgb
+/scripts/*baseline*.json @jjnnn724-rgb
+/scripts/migration-checksums.json @jjnnn724-rgb
+/database/migrations/ @jjnnn724-rgb
+/backend/cashier-module/ @jjnnn724-rgb
+/backend/middleware/security.js @jjnnn724-rgb
+/.github/ @jjnnn724-rgb
