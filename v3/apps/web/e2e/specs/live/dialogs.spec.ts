@@ -6,6 +6,7 @@ import {
     expectDialogUsable,
     hasLiveCreds,
     horizontalOverflow,
+    login,
     pageScrollTop,
     SKIP_NO_CREDS,
     watchConsole,
@@ -20,6 +21,12 @@ import {
 
 test.describe('النوافذ — سطح مكتب', () => {
     test.skip(!hasLiveCreds, SKIP_NO_CREDS);
+    // دخول مستقل لكل اختبار — جلسة storageState المشتركة تُبطل نفسها بتدوير
+    // رمز التحديث (نفس عقد a11y-sweep؛ خادم التحقق يرفع RATE_LIMIT_AUTH_MAX).
+    test.use({ storageState: { cookies: [], origins: [] } });
+    test.beforeEach(async ({ page }) => {
+        await login(page);
+    });
     test.skip(({ viewport }) => (viewport?.width ?? 0) < 1024, 'سطح مكتب فقط');
 
     test('اعتماد الصرف: الذيل مثبّت والجسم يمرّر', async ({ page }) => {
@@ -162,6 +169,12 @@ test.describe('النوافذ — سطح مكتب', () => {
 
 test.describe('النوافذ — جوال', () => {
     test.skip(!hasLiveCreds, SKIP_NO_CREDS);
+    // دخول مستقل لكل اختبار — جلسة storageState المشتركة تُبطل نفسها بتدوير
+    // رمز التحديث (نفس عقد a11y-sweep؛ خادم التحقق يرفع RATE_LIMIT_AUTH_MAX).
+    test.use({ storageState: { cookies: [], origins: [] } });
+    test.beforeEach(async ({ page }) => {
+        await login(page);
+    });
     test.skip(({ viewport }) => (viewport?.width ?? 0) >= 1024, 'جوال فقط');
 
     test('اعتماد الصرف على 390: عرض كامل وأزرار لمس 44', async ({ page }) => {

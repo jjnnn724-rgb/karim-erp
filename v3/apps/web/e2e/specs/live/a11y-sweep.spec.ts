@@ -1,10 +1,10 @@
 import AxeBuilder from '@axe-core/playwright';
 import { expect, test } from '@playwright/test';
 import { V3_SCREENS } from '../../../src/lib/screens';
-import { hasLiveCreds, SKIP_NO_CREDS } from '../../support/harness';
+import { hasLiveCreds, login, SKIP_NO_CREDS } from '../../support/harness';
 
 /**
- * مسح وصول (axe) لكل شاشات التطبيق بجلسة محفوظة — نفس عقد الحزمة العامة:
+ * مسح وصول (axe) لكل شاشات التطبيق — نفس عقد الحزمة العامة:
  * صفر مخالفات critical/serious.
  *
  * القائمة مشتقة من `V3_SCREENS` (مصدر الحقيقة الذي تعلنه القشرة) إضافةً إلى
@@ -12,8 +12,10 @@ import { hasLiveCreds, SKIP_NO_CREDS } from '../../support/harness';
  * الفشل. الشاشة المعطّلة على الخادم (وسم `v3-screens`) يحوّل رابطها
  * المباشر إلى القديم قبل تحميل التطبيق ⇒ تُتخطّى صراحةً لا تُعد فشلًا.
  *
- * الدخول من جلسة `storageState` المحفوظة (live-auth) — بلا استهلاك محاولات
- * تسجيل الدخول المحدودة على الخادم.
+ * دخول مستقل لكل اختبار (نمط pos/session): جلسة storageState المشتركة كانت
+ * تُبطل نفسها — مفتاح التطبيق في الذاكرة فقط، وأول اختبار يدوّر رمز التحديث
+ * المشترك فتفشل بقية الاختبارات بكشف إعادة الاستخدام (سلوك أمني صحيح).
+ * خادم التحقق يرفع RATE_LIMIT_AUTH_MAX لذلك فقط؛ الإنتاج يبقى 20/15د.
  */
 
 const ROUTES: readonly { readonly name: string; readonly path: string }[] = [
@@ -23,6 +25,11 @@ const ROUTES: readonly { readonly name: string; readonly path: string }[] = [
 
 test.describe('مسح الوصول — الشاشات بجلسة محفوظة', () => {
     test.skip(!hasLiveCreds, SKIP_NO_CREDS);
+    test.use({ storageState: { cookies: [], origins: [] } });
+
+    test.beforeEach(async ({ page }) => {
+        await login(page);
+    });
 
     for (const route of ROUTES) {
         test(`لا مخالفات وصول حرجة/كبرى — ${route.name}`, async ({ page }) => {
