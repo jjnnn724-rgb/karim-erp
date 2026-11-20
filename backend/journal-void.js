@@ -12,8 +12,8 @@
  * سطور عكسية فوقه تطرح المبلغ مرتين — خطأ، ليس حذرًا زائدًا.
  */
 
-const toId = (v) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : null);
-const likeEscape = (s) => String(s).replace(/[\\%_]/g, (m) => `\\${m}`);
+const toId = (/** @type {any} */ v) => (Number.isFinite(Number(v)) && Number(v) > 0 ? Number(v) : null);
+const likeEscape = (/** @type {any} */ s) => String(s).replace(/[\\%_]/g, (m) => `\\${m}`);
 
 /**
  * ترتيب النشر: أعمدة الإبطال من 137 قد تتأخر عن الكود (خادم يعمل قبل تطبيق
@@ -21,6 +21,7 @@ const likeEscape = (s) => String(s).replace(/[\\%_]/g, (m) => `\\${m}`);
  * المستدعي نفسه وبجملة لا تفشل أبدًا (قراءة catalog بـ EXISTS) في نفس المعاملة
  * وبلا savepoint، ويُقيَّد بـ current_database حتى لا يخلط قاعدة بأخرى.
  * الفحص لكل نداء (نداءات الإبطال نادرة) — لا حالة عملية تُخفي اختلاف قاعدة.
+ * @param {any} db
  */
 async function hasVoidColumns(db) {
     const r = await db.query(
@@ -31,6 +32,7 @@ async function hasVoidColumns(db) {
     return !!r.rows[0].ready;
 }
 
+/** @param {any} sourceIds */
 function normIds(sourceIds) {
     const list = Array.isArray(sourceIds) ? sourceIds : [sourceIds];
     return [...new Set(list.map((v) => String(v ?? '').trim()).filter(Boolean))];
@@ -86,8 +88,8 @@ const SQL_BY_ID_LEGACY = `
  * إبطال كل القيود المرحّلة لمصدر (أو مصادر) — داخل نفس اتصال/معاملة المستدعي.
  * لا يلمس المسودات ولا المُبطلة أصلًا، ولا يغيّر أي حقل هوية (الحصانة 095).
  * @param {{query:Function}} db - client المعاملة أو المسبح
- * @param {{sourceType:string, sourceIds:string|number|Array, matchPrefix?:boolean,
- *          reason?:string, actorUserId?:number|string, actor?:string}} o
+ * @param {{sourceType?:string, sourceIds?:string|number|Array<any>, matchPrefix?:boolean,
+ *          reason?:string, actorUserId?:number|string, actor?:string}} [o]
  *   matchPrefix=true يُبطل أيضًا كل المراجعات `المعرف:…` (قيود التعديلات المتسلسلة).
  * @returns {Promise<{voided:number, entries:Array<{id:string, entry_no:string, source_id:string}>}>}
  */
@@ -109,11 +111,12 @@ async function voidSourceJournals(db, { sourceType, sourceIds, matchPrefix = fal
         params = patterns ? [String(sourceType), ids, patterns] : [String(sourceType), ids];
     }
     const r = await db.query(sql, params);
-    return { voided: r.rows.length, entries: r.rows.map((e) => ({ id: String(e.id), entry_no: e.entry_no, source_id: e.source_id })) };
+    return { voided: r.rows.length, entries: r.rows.map((/** @type {any} */ e) => ({ id: String(e.id), entry_no: e.entry_no, source_id: e.source_id })) };
 }
 
 /**
  * إبطال قيد بمعرّفه (المسار اليدوي /journal/:id/void) بنفس سجل التصحيح.
+ * @param {any} db @param {{entryId?:any, reason?:any, actorUserId?:any, actor?:any}} [o]
  * @returns {Promise<{voided:boolean, entry:object|null}>}
  */
 async function voidJournalById(db, { entryId, reason, actorUserId, actor } = {}) {
@@ -132,6 +135,7 @@ async function voidJournalById(db, { entryId, reason, actorUserId, actor } = {})
  * `uq_journal_source UNIQUE NULLS NOT DISTINCT (source_type, source_id)` لا يسمح
  * بصف ثانٍ بنفس المرجع، والقيد المُبطل يحتفظ به إلى الأبد — فالنسخة الجديدة تأخذ
  * اللاحقة `#rN` (لا تُعيد ترقيم التاريخ ولا تعدّل هوية أي قيد قائم).
+ * @param {any} db @param {any} sourceType @param {any} baseSourceId
  * @returns {Promise<string>} مثل `412#r2`
  */
 async function nextRevisionSourceId(db, sourceType, baseSourceId) {

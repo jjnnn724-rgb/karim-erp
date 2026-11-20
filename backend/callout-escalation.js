@@ -67,6 +67,7 @@ const ESCALATION_LEVELS = Object.freeze([
     }),
 ]);
 
+/** @type {Promise<void>|null} */
 let schemaReady = null;
 
 /**
@@ -94,6 +95,7 @@ function ensureEscalationSchema() {
 
 /**
  * نقية: مستوى التصعيد المستحقّ لصفٍّ بُثّ في `createdAt`.
+ * @param {any} createdAt @param {number} [now]
  * @returns {0|1|2} 0 = لم يحن وقته بعد.
  */
 function levelFor(createdAt, now = Date.now()) {
@@ -108,7 +110,7 @@ function levelFor(createdAt, now = Date.now()) {
     return 0;
 }
 
-/** نقية: نص التصعيد — العنوان يشرح التأخير، والرسالة تربطه بأصله. */
+/** نقية: نص التصعيد — العنوان يشرح التأخير، والرسالة تربطه بأصله. @param {any} row @param {any} spec */
 function buildEscalationText(row, spec) {
     const minutes = Number(spec.minutes) || 0;
     const original = String(row?.title || '').trim() || 'إشعار';
@@ -131,6 +133,7 @@ function buildEscalationText(row, spec) {
  * المعاملات قابلة للحقن للاختبارات: { db, io, now, notify, ensureSchema }.
  * `ensureSchema` يُحقن في الاختبار حتى لا يتصل بعمود المخطط العالمي.
  *
+ * @param {{db?:any, io?:any, now?:number, notify?:any, ensureSchema?:()=>any}} [deps]
  * @returns {Promise<{candidates:number, escalated:number, claimed:number, failed:number}>}
  */
 async function sweepEscalations({ db, io, now = Date.now(), notify, ensureSchema = ensureEscalationSchema } = {}) {
@@ -138,7 +141,7 @@ async function sweepEscalations({ db, io, now = Date.now(), notify, ensureSchema
     const conn = db || pool;
     const send = typeof notify === 'function'
         ? notify
-        : async (opts) => {
+        : async (/** @type {any} */ opts) => {
             const { rows } = await createNotifications(conn, opts);
             emitNotificationRows(io, rows);
             if (rows.length) {void sendRowsAsPush(rows);}
@@ -199,13 +202,13 @@ async function sweepEscalations({ db, io, now = Date.now(), notify, ensureSchema
             } else {
                 /* صفوف التصعيد نفسها نهاية السلّم: لا تُصعَّد ولا مرة ثانية،
                    وصعود المدير يأتي من الصف الأصلي عند 45 دقيقة. */
-                const ids = made.map((r) => Number(r.id)).filter(Number.isInteger);
+                const ids = made.map((/** @type {any} */ r) => Number(r.id)).filter(Number.isInteger);
                 if (ids.length) {
                     await conn.query(
                         `UPDATE notifications SET escalation_level = $1
                           WHERE id = ANY($2::bigint[]) AND escalation_level < $1`,
                         [ESCALATION_DONE, ids],
-                    ).catch((markErr) => {
+                    ).catch((/** @type {any} */ markErr) => {
                         // لا نبتلع الفشل: صفٌّ لم يُعلَّم قد يُصعَّد ثانيةً بعد 15د.
                         logger.warn('[callout-escalation] تعذر تعليم صفوف التصعيد نهايةً للسلّم:', markErr.message);
                     });
@@ -214,7 +217,7 @@ async function sweepEscalations({ db, io, now = Date.now(), notify, ensureSchema
             }
         } catch (error) {
             failed += 1;
-            logger.warn('[callout-escalation] فشل تصعيد الإشعار', row.id, error.message);
+            logger.warn('[callout-escalation] فشل تصعيد الإشعار', row.id, (/** @type {any} */ (error)).message);
         }
     }
 
@@ -224,6 +227,7 @@ async function sweepEscalations({ db, io, now = Date.now(), notify, ensureSchema
 /**
  * عامل دوري unref'd: لا يمنع إنهاء العملية، ولا يُشغَّل في الاختبارات
  * (server.js وحده من يستدعيه).
+ * @param {{io?:any, intervalMs?:number, db?:any, now?:number, notify?:any, ensureSchema?:any}} [deps]
  */
 function startEscalationWorker({ io, intervalMs = SWEEP_MS, ...sweepDeps } = {}) {
     let running = false;
@@ -234,7 +238,7 @@ function startEscalationWorker({ io, intervalMs = SWEEP_MS, ...sweepDeps } = {})
             const r = await sweepEscalations({ io, ...sweepDeps });
             if (r.claimed) {logger.info(`[callout-escalation] دورة: ${r.claimed} تصعيد من ${r.candidates} مرشّح`);}
         } catch (error) {
-            logger.warn('[callout-escalation] دورة متعثرة (ستُعاد في الدورة التالية):', error.message);
+            logger.warn('[callout-escalation] دورة متعثرة (ستُعاد في الدورة التالية):', (/** @type {any} */ (error)).message);
         } finally {
             running = false;
         }

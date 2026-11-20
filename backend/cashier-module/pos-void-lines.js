@@ -58,7 +58,7 @@ function reverseJournalLines(lines, fallbackMemo = 'سطر قيد البيع') {
  * @param {number|string} [input.tax]
  * @param {number|string} [input.cogs]
  * @param {PaymentRow[]} [input.payments]
- * @param {Record<string,string>} [input.accounts] — من account_mapping (sales_pos.void)
+ * @param {Record<string,string>} [input.accounts] - من account_mapping (sales_pos.void)
  * @returns {JournalLine[]}
  */
 function buildFallbackVoidLines({ invoiceCounter, total, tax, cogs, payments, accounts = {} }) {

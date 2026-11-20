@@ -20,16 +20,18 @@ const FULL_FMT = new Intl.DateTimeFormat('en-CA', {
     hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
 });
 
+/** @param {any} value */
 function norm(value) {
     const d = value instanceof Date ? value : new Date(value);
     return Number.isFinite(d.getTime()) ? d : null;
 }
 
+/** @param {Date} value */
 function parts(value) {
     return Object.fromEntries(FULL_FMT.formatToParts(value).map(x => [x.type, x.value]));
 }
 
-/** 'YYYY-MM-DD' للتاريخ المدني في ساعة النظام. */
+/** 'YYYY-MM-DD' للتاريخ المدني في ساعة النظام. @param {any} value */
 function wallDate(value) {
     const d = norm(value);
     if (!d) {return null;}
@@ -37,7 +39,7 @@ function wallDate(value) {
     return `${p.year}-${p.month}-${p.day}`;
 }
 
-/** 'HH:MM' كما تُقرأ على الشاشة. */
+/** 'HH:MM' كما تُقرأ على الشاشة. @param {any} value */
 function wallTime(value) {
     const d = norm(value);
     if (!d) {return null;}
@@ -45,14 +47,14 @@ function wallTime(value) {
     return `${p.hour === '24' ? '00' : p.hour}:${p.minute}`;
 }
 
-/** 'YYYY-MM-DD HH:MM:SS' كامل — للتحقق والمراجعة، ليس للعرض. */
+/** 'YYYY-MM-DD HH:MM:SS' كامل — للتحقق والمراجعة، ليس للعرض. @param {any} value */
 function wallStamp(value) {
     const d = norm(value);
     if (!d) {return null;}
     return FULL_FMT.format(d).replace(',', ' ');
 }
 
-/** اليوم المدني + الساعة والدقيقة من تهيئةٍ واحدة. */
+/** اليوم المدني + الساعة والدقيقة من تهيئةٍ واحدة. @param {any} value */
 function wallParts(value) {
     const d = norm(value);
     if (!d) {return null;}
@@ -60,7 +62,7 @@ function wallParts(value) {
     return { date: `${p.year}-${p.month}-${p.day}`, hour: Number(p.hour === '24' ? '0' : p.hour), minute: Number(p.minute) };
 }
 
-/** الإزاحة الفعلية بالدقائق لحظةََ ما — تثبت أن +3 قرارٌ لا تخمين. */
+/** الإزاحة الفعلية بالدقائق لحظةََ ما — تثبت أن +3 قرارٌ لا تخمين. @param {any} [value] */
 function offsetMinutes(value) {
     const d = norm(value) || new Date();
     const p = parts(d);

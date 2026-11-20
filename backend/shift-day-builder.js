@@ -37,8 +37,10 @@ const DEFAULT_CLOSE_WINDOW_MINUTES = 90;
 /** إزاحة الرياض الثابتة (UTC+3) — نفس إزاحة المحرك، بلا تغيير موسمي. */
 const BUSINESS_TZ_OFFSET_MS = 3 * 60 * 60 * 1000;
 
+/** @param {any} n */
 function pad2(n) { return String(n).padStart(2, '0'); }
 
+/** @param {any} value */
 function minutesOfTime(value) {
     const m = String(value || '').match(/^(\d{1,2}):(\d{2})$/);
     if (!m) { return null; }
@@ -48,13 +50,14 @@ function minutesOfTime(value) {
     return h * 60 + mi;
 }
 
+/** @param {any} dateStr @param {any} delta */
 function addDays(dateStr, delta) {
     const [y, m, d] = String(dateStr).split('-').map(Number);
     const dt = new Date(Date.UTC(y, m - 1, d) + delta * 24 * 3600 * 1000);
     return `${dt.getUTCFullYear()}-${pad2(dt.getUTCMonth() + 1)}-${pad2(dt.getUTCDate())}`;
 }
 
-/** لحظة مطلقة → { date, time, hour, minute } بتوقيت الرياض. */
+/** لحظة مطلقة → { date, time, hour, minute } بتوقيت الرياض. @param {any} instant */
 function wallOf(instant) {
     const shifted = new Date(new Date(instant).getTime() + BUSINESS_TZ_OFFSET_MS);
     const hour = shifted.getUTCHours();
@@ -173,6 +176,7 @@ function validatePunch(punch = {}) {
     return { ok: true };
 }
 
+/** @param {any} punch */
 function punchInstant(punch) {
     const raw = punch && (punch.at ?? punch.instant);
     if (raw == null) { return null; }
@@ -183,7 +187,7 @@ function punchInstant(punch) {
 /**
  * يبني يوم وردية واحدًا من بصماته.
  *
- * @param {{shiftDate?:string, shiftStart?:string, shiftKarim?:number, punches?:Array,
+ * @param {{shiftDate?:string, shiftStart?:string, shiftKarim?:number, punches?:any[], filterByShiftDay?:boolean,
  *          duplicateWindowMinutes?:number, minRealMinutes?:number}} input
  * @returns {object} اليوم مبنيًا + الحالة + سبب المراجعة إن وُجد
  */
@@ -262,9 +266,9 @@ function buildShiftDay(input = {}) {
     const entry = unique[0] || null;
     const exit = unique.length > 1 ? unique[unique.length - 1] : null;
     const middle = unique.slice(1, -1);
-    const workMinutes = entry && exit
+    const workMinutes = /** @type {any} */ (entry && exit
         ? Math.max(0, Math.round((exit.at - entry.at) / 60000))
-        : null;
+        : null);
 
     let status;
     let needsReview = false;

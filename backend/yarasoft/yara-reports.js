@@ -17,6 +17,7 @@ const router = express.Router();
 const READ_ROLES = ['admin', 'manager', 'accountant', 'auditor'];
 router.use(jwtAuth);
 
+/** @param {any} group */
 const periodExpr = (group) => {
     if (group === 'month') {return `TO_CHAR(revenue_date, 'YYYY-MM')`;}
     if (group === 'year') {return `TO_CHAR(revenue_date, 'YYYY')`;}
@@ -82,7 +83,7 @@ function exactItemSql(code, name, params) {
  * لكل كاشير مفعّل (CC): فواتير/إجمالي اليوم + الأمس + نسبة التغير + آخر فاتورة.
  * + إجمالي اليوم الكلي (كل المصادر) للمقارنة.
  */
-router.get('/cashiers-live', requireRole(...READ_ROLES), async (req, res) => {
+router.get('/cashiers-live', requireRole(...READ_ROLES), /** @param {any} req @param {any} res */ async (req, res) => {
     try {
     await ensureYarasoftSchema();
         // ?date=YYYY-MM-DD لعرض أي يوم (افتراضي: اليوم) — يقارن دائمًا باليوم السابق له
@@ -226,6 +227,7 @@ async function _ciPoolGet(oracledb, cfg) {
  * ويُختار واحدٌ أو أكثر. التجميع يوميٌّ لكل كاشير كي تُقرأ الفترة المخصصة
  * بدقة (نصف شهر = أيامه وحدها) بدل تقريب الشهر كاملًا.
  * options.cashiers: مصفوفة أرقام مختارة؛ غيابها = كل المكتشَفين.
+ * @param {any} from @param {any} to @param {any} [options]
  */
 async function loadMonthlyLinkedCashierRevenue(from, to, options = {}) {
     let cashierRows;
@@ -237,9 +239,9 @@ async function loadMonthlyLinkedCashierRevenue(from, to, options = {}) {
                 AND NULLIF(TRIM(src_name), '') IS NOT NULL
               ORDER BY src_name`
         )).rows || [];
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
         logger.error('[YARASOFT] linked cashier map read failed:', e.message);
-        const err = new Error('تعذّرت قراءة خريطة الكاشيرات المرتبطة بيارا سوفت.');
+        const err = /** @type {any} */ (new Error('تعذّرت قراءة خريطة الكاشيرات المرتبطة بيارا سوفت.'));
         err.statusCode = 503;
         err.code = 'LINKED_CASHIER_MAP_UNAVAILABLE';
         throw err;
@@ -254,7 +256,7 @@ async function loadMonthlyLinkedCashierRevenue(from, to, options = {}) {
     const { loadOracleConfig, oraExecute, oracleConnect, sanitizeError } = require('./oracle-link');
     const cfg = loadOracleConfig();
     if (!cfg.enabled) {
-        const err = new Error('ربط يارا سوفت المباشر غير مفعّل؛ لم تُستخدم أرقام بديلة من النظام المحلي.');
+        const err = /** @type {any} */ (new Error('ربط يارا سوفت المباشر غير مفعّل؛ لم تُستخدم أرقام بديلة من النظام المحلي.'));
         err.statusCode = 503;
         err.code = 'YARASOFT_REVENUE_UNAVAILABLE';
         throw err;
@@ -285,7 +287,7 @@ async function loadMonthlyLinkedCashierRevenue(from, to, options = {}) {
         if (requested && requested.length) {
             const missing = requested.filter((no) => !discoveredNos.includes(no));
             if (missing.length) {
-                const err = new Error(`كاشيرات غير موجودة في فواتير هذه الفترة: ${missing.join('، ')}`);
+                const err = /** @type {any} */ (new Error(`كاشيرات غير موجودة في فواتير هذه الفترة: ${missing.join('، ')}`));
                 err.statusCode = 400;
                 err.code = 'INVALID_CASHIERS';
                 throw err;

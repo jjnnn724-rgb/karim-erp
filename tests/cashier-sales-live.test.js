@@ -73,7 +73,7 @@ describe('الزناد اللايف — backend/cashier-sales-routes.js', () => 
 describe('المقبس والبثّ — التوصيل الخارجي', () => {
     test('server.js يحقن req.io لمسار مبيعات الكاشير', () => {
         const src = read(SERVER);
-        expect(src).toMatch(/app\.use\('\/api\/cashier-sales', \(req, res, next\) => \{ req\.io = io; next\(\); \}, cashierSalesRouter\)/);
+        expect(src).toMatch(/app\.use\('\/api\/cashier-sales', \([^)]*\breq\b[^)]*\bres\b[^)]*\bnext\b[^)]*\) => \{ req\.io = io; next\(\); \}, cashierSalesRouter\)/);
     });
 
     test('المرآة تُصدَّر مرةً واحدة (سطر تكرارٍ كان يمحو نفسه)', () => {

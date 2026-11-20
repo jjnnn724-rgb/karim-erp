@@ -93,17 +93,20 @@ const PERMISSIONS = [
 const PERM_MAP = new Map(PERMISSIONS.map((p) => [p.key, p]));
 
 // entity → { read: key, write: key } derived from catalog (first match wins)
+/** @type {Record<string, Record<string, string>>} */
 const ENTITY_PERMS = {};
 for (const p of PERMISSIONS) {
     for (const e of p.entitiesRead || []) {ENTITY_PERMS[e] = ENTITY_PERMS[e] || {}; ENTITY_PERMS[e].read = ENTITY_PERMS[e].read || p.key;}
     for (const e of p.entitiesWrite || []) {ENTITY_PERMS[e] = ENTITY_PERMS[e] || {}; ENTITY_PERMS[e].write = ENTITY_PERMS[e].write || p.key;}
 }
 
+/** @param {any} entity @param {any} mode */
 function permForEntity(entity, mode) {
     const m = ENTITY_PERMS[entity];
     return (m && m[mode]) || null;
 }
 
+/** @param {any} grants */
 function menusForGrants(grants) {
     const out = new Set();
     for (const g of grants || []) {
@@ -113,7 +116,7 @@ function menusForGrants(grants) {
     return [...out];
 }
 
-/** Menus covered by deny keys (for hiding grant/role menus they map to). */
+/** Menus covered by deny keys (for hiding grant/role menus they map to). @param {any} denies */
 function menusForDenies(denies) {
     return menusForGrants(denies);
 }
@@ -122,6 +125,7 @@ function menusForDenies(denies) {
 const _cache = new Map(); // userId -> { at, grants:Set, denies:Set }
 const CACHE_MS = 30000;
 
+/** @param {any} userId @param {any} [db] */
 async function getUserPerms(userId, db) {
     const id = Number(userId);
     const empty = { grants: new Set(), denies: new Set() };
@@ -141,16 +145,17 @@ async function getUserPerms(userId, db) {
     return { grants, denies };
 }
 
-/** Backward-compatible: grants only. */
+/** Backward-compatible: grants only. @param {any} userId @param {any} [db] */
 async function getUserGrants(userId, db) {
     return (await getUserPerms(userId, db)).grants;
 }
 
+/** @param {any} userId */
 function invalidateUser(userId) {
     _cache.delete(Number(userId));
 }
 
-/** Effective check: admin → everything; DENY beats role AND grant; else role/grant. */
+/** Effective check: admin → everything; DENY beats role AND grant; else role/grant. @param {any} user @param {any} permKey @param {any[]} [roles] @param {any} [db] */
 async function userHasPerm(user, permKey, roles = [], db) {
     if (!user) {return false;}
     if (user.role === 'admin') {return true;}
@@ -164,10 +169,10 @@ async function userHasPerm(user, permKey, roles = [], db) {
     return grants.has(permKey);
 }
 
-/** Express guard: deny-first, then role, then grant. */
+/** Express guard: deny-first, then role, then grant. @param {any} roles @param {any} permKey */
 function requireRoleOrPerm(roles, permKey) {
     const list = Array.isArray(roles) ? roles : [roles];
-    return async (req, res, next) => {
+    return /** @param {any} req @param {any} res @param {any} next */ async (req, res, next) => {
         try {
             if (req.user?.role === 'admin') {return next();}
             if (permKey && PERM_MAP.has(permKey)) {
@@ -192,6 +197,7 @@ const SOD_CONFLICTS = Object.freeze([
     ['compliance.submit', 'compliance.review'],
 ]);
 
+/** @param {any} grants */
 function sodConflict(grants) {
     const set = new Set(Array.isArray(grants) ? grants : []);
     for (const [a, b] of SOD_CONFLICTS) {

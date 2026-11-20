@@ -20,12 +20,12 @@ const CHARSETS = ['utf8', 'cp864'];
 const PRINTER_ID_RE = /^[a-z0-9][a-z0-9-]{0,39}$/;
 const DEFAULT_PORT = 9100;
 
-/** kind من معرف المهمة/الطابعة: kot-* → kot، غير ذلك receipt */
+/** kind من معرف المهمة/الطابعة: kot-* → kot، غير ذلك receipt @param {any} printerId */
 function kindOfPrinterId(printerId) {
     return String(printerId || '').startsWith('kot-') ? 'kot' : 'receipt';
 }
 
-/** المعرف القياسي من النوع + رقم القسم */
+/** المعرف القياسي من النوع + رقم القسم @param {any} kind @param {any} departmentId */
 function resolvePrinterId(kind, departmentId) {
     if (!KINDS.includes(kind)) {return { ok: false, code: 'BAD_KIND' };}
     const id = Number(departmentId);

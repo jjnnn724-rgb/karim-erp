@@ -68,7 +68,13 @@ const LEGACY_MAPPING = Object.freeze({
     'reports.bank_reconciliation.bank_account': '1010',
 });
 
-/** مفتاح موحد: module.operation.role */
+/**
+ * مفتاح موحد: module.operation.role
+ * @param {any} module
+ * @param {any} operation
+ * @param {any} role
+ * @returns {string}
+ */
 const keyOf = (module, operation, role) => `${String(module || '').trim()}.${String(operation || '').trim()}.${String(role || '').trim()}`;
 
 /**
@@ -106,15 +112,15 @@ async function getMappedAccount(db, module, operation, role) {
             const code = r && r.rows && r.rows[0] && r.rows[0].account_code;
             if (code) {return String(code);}
         }
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
         // 42P01 = relation does not exist (134 لم تُطبق بعد) — فشل هادي إلى الثوابت.
         // 42703 = عمود غير موجود — نفس السياسة. أي خطأ آخر: نكتب تحذيرًا ونكمل بالثابت.
-        if (e && (e.code === '42P01' || e.code === '42703')) {return LEGACY_MAPPING[key] || null;}
+        if (e && (e.code === '42P01' || e.code === '42703')) {return /** @type {Record<string,string>} */ (LEGACY_MAPPING)[key] || null;}
         if (typeof console !== 'undefined' && console.warn) {
             console.warn(`[coa-mapping] تعذر قراءة account_mapping لـ ${key} — أُستخدم الثابت القديم (${e && e.message ? e.message : e})`);
         }
     }
-    return LEGACY_MAPPING[key] || null;
+    return /** @type {Record<string,string>} */ (LEGACY_MAPPING)[key] || null;
 }
 
 /**
@@ -146,7 +152,7 @@ async function resolveAccounts(db, module, operation, defaults = {}) {
                 }
             }
         }
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
         // نفس سياسة getMappedAccount: 134 غير مطبقة ⇒ صمت كامل على الثوابت.
         if (!(e && (e.code === '42P01' || e.code === '42703'))) {
             if (typeof console !== 'undefined' && console.warn) {

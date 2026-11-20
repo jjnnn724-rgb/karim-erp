@@ -8,12 +8,19 @@
 
 const { postJournal } = require('./accounting-routes');
 
+/**
+ * تقريب قيمة إلى منزلتين عشريتين — أساس مبالغ القيود.
+ * @param {any} v
+ * @returns {number}
+ */
 function round2(v) {
     return Math.round((Number(v) || 0) * 100) / 100;
 }
 
 /**
  * Record customer credit sale / catering invoice into Subledger & General Ledger
+ * @param {any} pool
+ * @param {any} payload — حقول فاتورة العميل كما تمرّرها الوحدة المستدعية.
  */
 async function postCustomerInvoice(pool, { customerId, date, netAmount, vatAmount, referenceNo, memo, costCenter, createdBy }) {
     const net = round2(netAmount);
@@ -57,6 +64,8 @@ async function postCustomerInvoice(pool, { customerId, date, netAmount, vatAmoun
 
 /**
  * Record customer payment / delivery platform bank settlement
+ * @param {any} pool
+ * @param {any} payload — حقول سند التحصيل كما تمرّرها الوحدة المستدعية.
  */
 async function postCustomerPayment(pool, { customerId, date, amount, bankAccountCode, referenceNo, memo, costCenter, createdBy }) {
     const amt = round2(amount);
@@ -96,6 +105,7 @@ async function postCustomerPayment(pool, { customerId, date, amount, bankAccount
 
 /**
  * Get continuous subledger vs GL reconciliation status
+ * @param {any} pool
  */
 async function getSubledgerReconciliation(pool) {
     const ap = (await pool.query('SELECT * FROM view_ap_reconciliation')).rows[0];

@@ -49,10 +49,22 @@ const canView = requireRoleOrPerm(VIEW_ROLES, 'compliance.view');
 const canConfigure = requireRoleOrPerm(WRITE_ROLES, 'compliance.configure');
 const canSubmit = requireRoleOrPerm(WRITE_ROLES, 'compliance.submit');
 
+/**
+ * @param {any} res
+ * @param {number} status
+ * @param {string} error
+ * @param {string} message
+ * @param {any} [extra={}]
+ */
 function fail(res, status, error, message, extra = {}) {
   return res.status(status).json({ error, message, ...extra });
 }
 
+/**
+ * @param {any} res
+ * @param {any} error
+ * @param {string} where
+ */
 function dbFail(res, error, where) {
   if (error && error.code === '42P01') {
     return fail(res, 503, 'INTEGRATION_NOT_READY', 'جداول التكامل غير مطبَّقة بعد — طبّق هجرة 147 (وحقول مدد) أولًا.');
@@ -61,6 +73,7 @@ function dbFail(res, error, where) {
   return fail(res, 500, 'WPS_FAILED', 'تعذر إكمال الطلب.');
 }
 
+/** @param {any} req */
 function actorOf(req) {
   return Number.isInteger(req.user?.id) ? req.user.id : null;
 }
@@ -72,6 +85,7 @@ function previousMonth() {
   return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}`;
 }
 
+/** @param {any} req */
 function monthOf(req) {
   const raw = req.query?.month ?? req.body?.month;
   const month = raw == null || raw === '' ? previousMonth() : String(raw);
@@ -79,12 +93,13 @@ function monthOf(req) {
 }
 
 router.use(jwtAuth);
-router.use((req, res, next) => {
+router.use(/** @param {any} req @param {any} res @param {any} next */ (req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
 });
 
 // ── حقول 147 (قد تكون غير مطبقة في الإنتاج) ────────────────────────────────
+/** @type {{at: number, cols: any}} */
 let columnsCache = { at: 0, cols: null };
 
 async function employeeColumns() {
@@ -118,6 +133,7 @@ async function loadEmployees() {
   return rows.map(r => ({ ...r, id: Number(r.id) }));
 }
 
+/** @param {string} month */
 async function loadPayrollLines(month) {
   const year = Number(month.slice(0, 4));
   const { rows } = await pool.query(
@@ -129,6 +145,7 @@ async function loadPayrollLines(month) {
   return new Map(rows.map(r => [String(r.employeeId), r]));
 }
 
+/** @param {string} month */
 async function payrollRunStatus(month) {
   const { rows } = await pool.query('SELECT status FROM payroll_runs WHERE month = $1', [month]);
   return rows[0]?.status ?? null;
@@ -139,6 +156,11 @@ async function employerIdentifier() {
   return { crn: rows[0]?.crn ?? null, name: rows[0]?.seller_name ?? null };
 }
 
+/**
+ * @param {any} db
+ * @param {string} action
+ * @param {{actorId: any, metadata: any}} opts
+ */
 async function audit(db, action, { actorId, metadata }) {
   try {
     await db.query(
@@ -148,7 +170,7 @@ async function audit(db, action, { actorId, metadata }) {
     );
     return true;
   } catch (error) {
-    if (error && error.code === '42P01') {
+    if (error && /** @type {any} */ (error).code === '42P01') {
       logger.warn('[integration/wps] audit table missing — event not persisted');
       return false;
     }
@@ -156,11 +178,15 @@ async function audit(db, action, { actorId, metadata }) {
   }
 }
 
+/**
+ * @param {any} id
+ * @param {any} patch
+ */
 function countedRequirement(id, patch) {
   return requirementStatus(id, patch);
 }
 
-router.get('/wps/requirements', canView, generalLimiter, async (req, res) => {
+router.get('/wps/requirements', canView, generalLimiter, /** @param {any} req @param {any} res */ async (req, res) => {
   try {
     const month = monthOf(req);
     if (!month) {
@@ -228,7 +254,7 @@ router.get('/wps/requirements', canView, generalLimiter, async (req, res) => {
   }
 });
 
-router.get('/wps/readiness', canView, generalLimiter, async (req, res) => {
+router.get('/wps/readiness', canView, generalLimiter, /** @param {any} req @param {any} res */ async (req, res) => {
   const month = monthOf(req);
   if (!month) {
     return fail(res, 422, 'INVALID_MONTH', 'صيغة الشهر يجب أن تكون YYYY-MM.');
@@ -269,7 +295,7 @@ router.get('/wps/readiness', canView, generalLimiter, async (req, res) => {
   }
 });
 
-router.put('/wps/employees/:id/bank', canConfigure, crudLimiter, async (req, res) => {
+router.put('/wps/employees/:id/bank', canConfigure, crudLimiter, /** @param {any} req @param {any} res */ async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return fail(res, 422, 'INVALID_ID', 'معرف الموظف غير صحيح.');
@@ -371,7 +397,7 @@ router.put('/wps/employees/:id/bank', canConfigure, crudLimiter, async (req, res
   }
 });
 
-router.post('/wps/export', canSubmit, crudLimiter, async (req, res) => {
+router.post('/wps/export', canSubmit, crudLimiter, /** @param {any} req @param {any} res */ async (req, res) => {
   const month = monthOf(req);
   if (!month) {
     return fail(res, 422, 'INVALID_MONTH', 'صيغة الشهر يجب أن تكون YYYY-MM.');
@@ -439,7 +465,7 @@ router.post('/wps/export', canSubmit, crudLimiter, async (req, res) => {
   }
 });
 
-router.get('/gosi/rates', canView, generalLimiter, (req, res) => {
+router.get('/gosi/rates', canView, generalLimiter, /** @param {any} req @param {any} res */ (req, res) => {
   res.json({
     rates: rateSetList(),
     verified: false,
@@ -448,7 +474,7 @@ router.get('/gosi/rates', canView, generalLimiter, (req, res) => {
   });
 });
 
-router.get('/gosi/preview', canView, generalLimiter, async (req, res) => {
+router.get('/gosi/preview', canView, generalLimiter, /** @param {any} req @param {any} res */ async (req, res) => {
   const month = monthOf(req);
   if (!month) {
     return fail(res, 422, 'INVALID_MONTH', 'صيغة الشهر يجب أن تكون YYYY-MM.');
@@ -491,7 +517,7 @@ router.get('/gosi/preview', canView, generalLimiter, async (req, res) => {
   }
 });
 
-router.get('/qiwa/readiness', canView, generalLimiter, async (req, res) => {
+router.get('/qiwa/readiness', canView, generalLimiter, /** @param {any} req @param {any} res */ async (req, res) => {
   try {
     const [employer, employees] = await Promise.all([employerIdentifier(), loadEmployees()]);
     let contracts = null;
@@ -509,7 +535,7 @@ router.get('/qiwa/readiness', canView, generalLimiter, async (req, res) => {
         )
       ).rows[0].n;
     } catch (error) {
-      if (!error || error.code !== '42P01') {
+      if (!error || /** @type {any} */ (error).code !== '42P01') {
         throw error;
       }
     }

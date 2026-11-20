@@ -1,5 +1,10 @@
 'use strict';
 
+/**
+ * تقريب قيمة إلى منزلتين عشريتين مع تجاهل القيم غير الرقمية.
+ * @param {any} value
+ * @returns {number}
+ */
 const round2 = value => {
   const number = Number(value);
   return Number.isFinite(number) ? Math.round((number + Number.EPSILON) * 100) / 100 : 0;
@@ -7,6 +12,11 @@ const round2 = value => {
 
 const INPUT_CREDIT_ADJUSTMENT_SOURCES = new Set(['purchase_credit_note', 'purchase_return']);
 
+/**
+ * حساب حركة ضريبة القيمة المضافة من حركات الأستاذ.
+ * @param {any[]} rows
+ * @param {any} accounts
+ */
 function calculateVatMovement(rows, accounts) {
   const totals = {
     output_vat: 0,
@@ -77,6 +87,11 @@ function calculateVatMovement(rows, accounts) {
   };
 }
 
+/**
+ * تصنيف معدل الضريبة مقابل المعدل النظامي المعتمد.
+ * @param {any} rate
+ * @param {any} applicableStandardRate
+ */
 function classifyVatRate(rate, applicableStandardRate) {
   const numericRate = Number(rate);
   const standardRate = Number(applicableStandardRate);
@@ -95,6 +110,10 @@ function classifyVatRate(rate, applicableStandardRate) {
   return 'other_rate_review';
 }
 
+/**
+ * تطبيع صفوف معدلات الضريبة قبل التصنيف.
+ * @param {any[]} rows
+ */
 function normalizeVatRateRows(rows) {
   return rows.map(row => ({
     kind: String(row.kind),
@@ -108,6 +127,12 @@ function normalizeVatRateRows(rows) {
   }));
 }
 
+/**
+ * مطابقة حدود الفترة مع دورية الإقرار (شهرية أو ربع سنوية).
+ * @param {any} from
+ * @param {any} to
+ * @param {any} frequency
+ */
 function matchesFilingFrequency(from, to, frequency) {
   if (!isValidDateOnly(from) || !isValidDateOnly(to) || from > to) {
     return false;
@@ -143,6 +168,10 @@ function matchesFilingFrequency(from, to, frequency) {
   return false;
 }
 
+/**
+ * بناء قائمة عوائق جاهزية الإقرار الضريبي من مؤشرات الفحص.
+ * @param {any} [metrics]
+ */
 function buildVatFilingReadiness(metrics = {}) {
   const blockers = [
     {
@@ -239,6 +268,10 @@ function buildVatFilingReadiness(metrics = {}) {
   return { status: 'blocked', can_file: false, blockers };
 }
 
+/**
+ * التحقق من صحة تاريخ نصي بصيغة سنة-شهر-يوم.
+ * @param {any} value
+ */
 function isValidDateOnly(value) {
   if (!/^\d{4}-\d{2}-\d{2}$/.test(String(value))) {
     return false;

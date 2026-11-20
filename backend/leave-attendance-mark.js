@@ -17,7 +17,7 @@
 const { pool } = require('./shared-pool');
 const { graceMinutes, normalizeShiftStart } = require('./shift-day');
 
-/** هل هذه البصمة متأخرة؟ بلا سماح (قرار المالك 2026-11-02 «حتي فتره السماح شيلها»). */
+/** هل هذه البصمة متأخرة؟ بلا سماح (قرار المالك 2026-11-02 «حتي فتره السماح شيلها»). @param {any} checkInAt @param {any} shiftStart */
 function computeLate(checkInAt, shiftStart) {
     if (!checkInAt) {return null;}
     const m = normalizeShiftStart(shiftStart);
@@ -32,7 +32,7 @@ function computeLate(checkInAt, shiftStart) {
 
 /**
  * يزامن حالة الإجازة لصفوف حضور موظف في مدى تاريخي.
- * @param {{employeeId:number|string, startDate:string, endDate:string, client?:object}} opts
+ * @param {{employeeId:number|string, startDate:string, endDate:string, client?:any}} opts
  * @returns Promise<{updated:number, rows:Array}>
  */
 async function syncLeaveMarks({ employeeId, startDate, endDate, client }) {
@@ -69,7 +69,7 @@ async function syncLeaveMarks({ employeeId, startDate, endDate, client }) {
                 `SELECT "checkInAt", "checkOutAt" FROM attendance WHERE id = $1`, [row.id]);
             const { checkInAt, checkOutAt } = full.rows[0] || {};
             const mins = (checkInAt && checkOutAt)
-                ? Math.max(0, Math.round((new Date(checkOutAt) - new Date(checkInAt)) / 60000)) : null;
+                ? Math.max(0, Math.round((/** @type {any} */ (new Date(checkOutAt)) - /** @type {any} */ (new Date(checkInAt))) / 60000)) : null;
             patch = {
                 on_leave: false,
                 workMinutes: mins,

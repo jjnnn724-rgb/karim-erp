@@ -37,8 +37,9 @@ const SERVER_INFO_STARTED_AT = new Date(Date.now() - process.uptime() * 1000);
 let _codeMtimeCache = { at: 0, value: null };
 function backendCodeMtime() {
     if (Date.now() - _codeMtimeCache.at < 60 * 1000 && _codeMtimeCache.value) {return _codeMtimeCache.value;}
+    /** @type {any} */
     let latest = null;
-    const scan = (dir) => {
+    const scan = (/** @type {any} */ dir) => {
         let entries;
         try { entries = fs.readdirSync(dir, { withFileTypes: true }); } catch (_) { return; }
         for (const e of entries) {
@@ -70,6 +71,7 @@ function backupsDir() {
     return path.resolve(process.env.KARIM_BACKUP_DIR || path.join(__dirname, '..', 'database', 'backups'));
 }
 function rootDir() { return path.resolve(__dirname, '..'); }
+/** @param {any} script @param {any} args @param {any} timeoutMs */
 function runNode(script, args, timeoutMs) {
     return new Promise((resolve) => {
         const p = spawn(process.execPath, [script, ...args], { windowsHide: true, timeout: timeoutMs });
@@ -82,6 +84,7 @@ function runNode(script, args, timeoutMs) {
 }
 // تجزئة متدفّقة: ملف النسخة قد يبلغ 1GB — قراءته كاملة في الذاكرة
 // تحبس حلقة الأحداث وتُجمّد كل الطلبات.
+/** @param {any} file */
 function sha256File(file) {
     return new Promise((resolve, reject) => {
         const hash = crypto.createHash('sha256');
@@ -112,6 +115,7 @@ function shaCachePersist() {
         fs.writeFileSync(shaCacheFile(), JSON.stringify(Object.fromEntries(shaCache)), 'utf8');
     } catch (_) { /* غير حرج — يُعاد الحساب لاحقًا */ }
 }
+/** @param {any} file */
 async function shaOkAsync(file) {
     try {
         const side = `${file}.sha256`;
@@ -127,6 +131,7 @@ async function shaOkAsync(file) {
         return expected === hash.digest('hex');
     } catch (_) { return false; }
 }
+/** @param {any} full @param {any} size @param {any} mtimeMs */
 function shaCached(full, size, mtimeMs) {
     shaCacheLoad();
     const key = `${path.basename(full)}|${size}|${mtimeMs}`;

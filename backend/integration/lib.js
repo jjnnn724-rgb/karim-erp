@@ -51,12 +51,19 @@ function staticProviders() {
   return PROVIDER_CATALOG.map(p => ({ ...p, is_enabled: false, last_verified_at: null }));
 }
 
-/** بوابة الإرسال: التفعيل يتطلب تصنيفًا موثّقًا — لا استثناء بحسب المزوّد. */
+/**
+ * بوابة الإرسال: التفعيل يتطلب تصنيفًا موثّقًا — لا استثناء بحسب المزوّد.
+ * @param {any} provider
+ */
 function canEnableProvider(provider) {
   return Boolean(provider) && provider.verification === 'VERIFIED';
 }
 
-/** مفتاح إعادة حتمي بحد 200 حرف، والإصدار الأصلي يبقى سالمًا للتدقيق. */
+/**
+ * مفتاح إعادة حتمي بحد 200 حرف، والإصدار الأصلي يبقى سالمًا للتدقيق.
+ * @param {any} base
+ * @param {number} attempt
+ */
 function retryIdempotencyKey(base, attempt) {
   const suffix = `:retry:${attempt}`;
   const text = String(base);
@@ -68,7 +75,11 @@ function retryIdempotencyKey(base, attempt) {
   return `${text.slice(0, 200 - suffix.length - 17)}~${digest}${suffix}`;
 }
 
-/** maker-checker: non-admin لا يعتمد نتيجة صفًا أنشأه هو. */
+/**
+ * maker-checker: non-admin لا يعتمد نتيجة صفًا أنشأه هو.
+ * @param {any} actor
+ * @param {any} row
+ */
 function isSelfReview(actor, row) {
   if (!actor || !row) {
     return false;
@@ -79,6 +90,11 @@ function isSelfReview(actor, row) {
   return row.created_by != null && String(row.created_by) === String(actor.id);
 }
 
+/**
+ * @param {any} value
+ * @param {number} [fallback=50]
+ * @param {number} [max=200]
+ */
 function clampLimit(value, fallback = 50, max = 200) {
   const n = parseInt(value, 10);
   if (!Number.isInteger(n) || n <= 0) {
@@ -87,7 +103,10 @@ function clampLimit(value, fallback = 50, max = 200) {
   return Math.min(n, max);
 }
 
-/** شكل عام للمزوّد: لا اعتمادات ولا حقول إضافية تتسرّب مستقبلًا. */
+/**
+ * شكل عام للمزوّد: لا اعتمادات ولا حقول إضافية تتسرّب مستقبلًا.
+ * @param {any} row
+ */
 function publicProvider(row) {
   return {
     code: row.code,
@@ -100,7 +119,10 @@ function publicProvider(row) {
   };
 }
 
-/** صف الصادر بلا payload — الحمولة تبقى في القاعدة لا في الشبكة. */
+/**
+ * صف الصادر بلا payload — الحمولة تبقى في القاعدة لا في الشبكة.
+ * @param {any} row
+ */
 function publicOutboxRow(row) {
   return {
     id: row.id,
@@ -119,6 +141,7 @@ function publicOutboxRow(row) {
   };
 }
 
+/** @param {any} row */
 function publicEventRow(row) {
   return {
     id: row.id,

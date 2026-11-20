@@ -15,6 +15,7 @@
 const { pool } = require('./shared-pool');
 const { logger } = require('./logger');
 
+/** @type {Promise<void>|null} */
 let schemaReady = null;
 
 // ── تصنيفات الإشعارات (2026-10-31) ─────────────────────────────────────
@@ -62,6 +63,8 @@ function ensureNotificationsSchema() {
  * - targetRoles: أدوار (kitchen/warehouse/...) — targetDeptCodes: أقسام —
  *   targetUserIds: مستخدمون بالهوية — targetUsernames: مطابقة اسم/اسم الدخول (لمقدمي الطلبات القدامى).
  * - يُستثنى الفاعل نفسه دائمًا حتى لا يُشعِر نفسه، والمكررون يُدمجون، وغير النشطين يُستبعدون.
+ * @param {any} users
+ * @param {any} [opts]
  */
 function resolveNotificationTargets(users, { targetRoles = [], targetDeptCodes = [], targetUserIds = [], targetUsernames = [], actorUserId = null } = {}) {
     const roles = new Set((Array.isArray(targetRoles) ? targetRoles : [targetRoles]).filter(Boolean).map(r => String(r).trim().toLowerCase()));
@@ -93,6 +96,7 @@ function resolveNotificationTargets(users, { targetRoles = [], targetDeptCodes =
     return targets;
 }
 
+/** @param {any} value @param {number} max @returns {string} */
 function cleanNotificationText(value, max) {
     let text = value == null ? '' : String(value);
     try {
@@ -103,7 +107,10 @@ function cleanNotificationText(value, max) {
     return text.length > max ? `${text.slice(0, max - 1).trim()}…` : text;
 }
 
-/** نقية: صف إشعار جاهز للإدخال — يعيد null إذا غاب العنوان والرسالة معًا. */
+/**
+ * نقية: صف إشعار جاهز للإدخال — يعيد null إذا غاب العنوان والرسالة معًا.
+ * @param {any} input
+ */
 function buildNotificationRow({ id, type, title, message, entity, entityId, link, category, userId }) {
     const cleanTitle = cleanNotificationText(title, 255);
     const cleanMessage = cleanNotificationText(message, 500);
@@ -129,6 +136,7 @@ function buildNotificationRow({ id, type, title, message, entity, entityId, link
  * ينشئ صفوف إشعارات لكل مستخدمي الهدف (باستخدام client معطى — يدعم المعاملة).
  * يعيد { rows, targets }. لا يرمي أخطاء المستخدمين الغائبين — يعيد قائمة فارغة.
  */
+/** @param {any} client @param {any} [opts] */
 async function createNotifications(client, opts) {
     const { type, title, message, entity = null, entityId = null, link = null, category = null, targetRoles = [], targetDeptCodes = [], targetUserIds = [], targetUsernames = [], actorUserId = null } = opts || {};
     const usersResult = await client.query('SELECT id, username, name, role, dept_code, active FROM users WHERE active = true');
@@ -161,7 +169,7 @@ async function createNotifications(client, opts) {
                 [row.id, row.title, row.message, row.type, row.date, row.read, row.user_id, row.entity, row.entity_id, row.link, row.category, row.created_at]
             );
             rows.push(row);
-        } catch (insertErr) {
+        } catch (/** @type {any} */ insertErr) {
             await db.query('ROLLBACK TO SAVEPOINT notify_row').catch(() => {});
             logger.warn('[notifications] INSERT failed for user', target.id, ':', insertErr.message);
         } finally {
@@ -175,6 +183,7 @@ async function createNotifications(client, opts) {
     نقية عمدًا: لا DB ولا Push هنا — الاختبارات تناديها بـ io وهمي،
     وأي عمل خلفي عالق كان يفجّر بيئة Jest بعد التفكيك (كراش pg Socket
     العشوائي 2026-10-31). إشعارات الهاتف تعيش في notifyBestEffort. */
+/** @param {any} io @param {any} rows @returns {number} */
 function emitNotificationRows(io, rows) {
     if (!io || !Array.isArray(rows)) {return 0;}
     let sent = 0;
@@ -196,6 +205,7 @@ function emitNotificationRows(io, rows) {
 /* ── سجلّ توكنات الأجهزة لإشعارات الهاتف (FCM) — 2026-10-31 ──────────
    كل الدوال هنا بمعاملات عادية (لا كائنات req) — المسارات تستدعيها من
    push-routes.js بعد jwtAuth. التوكن صلاحيته يديره FCM؛ نحذف الميت فقط. */
+/** @type {Promise<void>|null} */
 let pushSchemaReady = null;
 
 function ensurePushSchema() {
@@ -215,7 +225,13 @@ function ensurePushSchema() {
     return pushSchemaReady;
 }
 
-/** حفظ/تحديث توكن جهاز لمستخدم. يعيد true عند النجاح فقط. */
+/**
+ * حفظ/تحديث توكن جهاز لمستخدم. يعيد true عند النجاح فقط.
+ * @param {any} userId
+ * @param {any} token
+ * @param {any} platform
+ * @returns {Promise<boolean>}
+ */
 async function savePushToken(userId, token, platform) {
     const uid = Number(userId);
     const t = String(token || '').trim().slice(0, 4096);
@@ -229,13 +245,17 @@ async function savePushToken(userId, token, platform) {
             [t, uid, plat]
         );
         return true;
-    } catch (error) {
+    } catch (/** @type {any} */ error) {
         logger.warn('[push] savePushToken failed:', error.message);
         return false;
     }
 }
 
-/** حذف توكن (خروج الجهاز أو إبطال يدوي). */
+/**
+ * حذف توكن (خروج الجهاز أو إبطال يدوي).
+ * @param {any} token
+ * @returns {Promise<boolean>}
+ */
 async function deletePushToken(token) {
     const t = String(token || '').trim().slice(0, 4096);
     if (!t) {return false;}
@@ -243,13 +263,17 @@ async function deletePushToken(token) {
         await ensurePushSchema();
         const r = await pool.query('DELETE FROM push_tokens WHERE token = $1', [t]);
         return (r.rowCount || 0) > 0;
-    } catch (error) {
+    } catch (/** @type {any} */ error) {
         logger.warn('[push] deletePushToken failed:', error.message);
         return false;
     }
 }
 
-/** توكنات مجموعة مستخدمين — لخط الإرسال. */
+/**
+ * توكنات مجموعة مستخدمين — لخط الإرسال.
+ * @param {any} userIds
+ * @returns {Promise<any[]>}
+ */
 async function pushTokensForUsers(userIds) {
     const ids = (Array.isArray(userIds) ? userIds : [userIds])
         .map(Number).filter((v) => Number.isInteger(v) && v > 0);
@@ -258,13 +282,17 @@ async function pushTokensForUsers(userIds) {
         await ensurePushSchema();
         const r = await pool.query('SELECT token FROM push_tokens WHERE user_id = ANY($1::bigint[]) LIMIT 500', [ids]);
         return r.rows.map((x) => x.token);
-    } catch (error) {
+    } catch (/** @type {any} */ error) {
         logger.warn('[push] pushTokensForUsers failed:', error.message);
         return [];
     }
 }
 
-/** تنظيف التوكنات الميتة التي رفضها FCM. */
+/**
+ * تنظيف التوكنات الميتة التي رفضها FCM.
+ * @param {any} tokens
+ * @returns {Promise<number>}
+ */
 async function removePushTokens(tokens) {
     const list = (Array.isArray(tokens) ? tokens : []).filter(Boolean).slice(0, 500);
     if (!list.length) {return 0;}
@@ -272,7 +300,7 @@ async function removePushTokens(tokens) {
         await ensurePushSchema();
         const r = await pool.query('DELETE FROM push_tokens WHERE token = ANY($1::text[])', [list]);
         return r.rowCount || 0;
-    } catch (error) {
+    } catch (/** @type {any} */ error) {
         logger.warn('[push] removePushTokens failed:', error.message);
         return 0;
     }
@@ -282,13 +310,14 @@ async function removePushTokens(tokens) {
     إشعارات الهاتف (FCM Push) تُطلق من هنا لا من emitNotificationRows:
     هذه نقطة التدفقات الحقيقية فقط، وemitNotificationRows تبقى نقية
     للاختبارات (لا DB خلفي يعيش بعد تفكيك بيئة Jest). */
+/** @param {any} client @param {any} [opts] @returns {Promise<number>} */
 async function notifyBestEffort(client, opts) {
     try {
         const { rows } = await createNotifications(client, opts);
         emitNotificationRows(opts?.io, rows);
         if (rows.length) {void sendRowsAsPush(rows);}
         return rows.length;
-    } catch (error) {
+    } catch (/** @type {any} */ error) {
         logger.warn('[notifications] best-effort notify failed:', error.message);
         return 0;
     }
@@ -297,6 +326,7 @@ async function notifyBestEffort(client, opts) {
 /** (2026-10-31) إشعارات الهاتف: الصفوف الموجَّهة تُرسَل FCM لشريط إشعارات
     أندرويد **والتطبيق مقفول** — best-effort غير متزامن، فشله لا يمس الجرس
     ولا السوكت أبدًا. التوكنات من push_tokens والميتة تُنظَّف تلقائيًا. */
+/** @param {any[]} rows */
 async function sendRowsAsPush(rows) {
     try {
         const push = require('./push-service');

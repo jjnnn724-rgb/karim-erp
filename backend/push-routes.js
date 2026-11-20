@@ -21,12 +21,12 @@ const router = express.Router();
 router.use(jwtAuth);
 
 /** فحص حالة الخدمة (للتشخيص ولشاشة الجلسات لاحقًا). */
-router.get('/status', (req, res) => {
+router.get('/status', /** @param {any} req @param {any} res */ (req, res) => {
     res.json(pushStatus());
 });
 
 /** توكنات أجهزتي (للمراجعة/التشخيص). */
-router.get('/devices', async (req, res) => {
+router.get('/devices', /** @param {any} req @param {any} res */ async (req, res) => {
     try {
         const tokens = await pushTokensForUsers([req.user.id]);
         res.json({ devices: tokens.map((t) => ({ token: String(t).slice(0, 8) + '…', tokenHash8: t.slice(-6) })) });
@@ -37,7 +37,7 @@ router.get('/devices', async (req, res) => {
 });
 
 /** تسجيل توكن جهاز بعد منح الإذن في التطبيق. */
-router.post('/register', async (req, res) => {
+router.post('/register', /** @param {any} req @param {any} res */ async (req, res) => {
     try {
         const token = String(req.body?.token || '').trim();
         if (token.length < 20) {
@@ -54,7 +54,7 @@ router.post('/register', async (req, res) => {
 });
 
 /** إلغاء تسجيل توكن (خروج/مسح بيانات التطبيق). */
-router.post('/unregister', async (req, res) => {
+router.post('/unregister', /** @param {any} req @param {any} res */ async (req, res) => {
     try {
         const ok = await deletePushToken(req.body?.token);
         res.json({ ok });

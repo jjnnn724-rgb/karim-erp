@@ -42,39 +42,49 @@ const SHARED_STORE_NAME = 'مخزن المطبخ';
  *  المستخدم بضاعته «غير متاحة». */
 const SHARED_STORE_DEPTS = Object.freeze(['kitchen']);
 
+/** @param {any} deptCode @returns {boolean} */
 function usesSharedStore(deptCode) {
     return SHARED_STORE_DEPTS.indexOf(storeKey(deptCode)) !== -1;
 }
 
 /** تطبيع رمز المخزن المولد — نفس قاعدة normalizeCostCenterCode في
  *  accounting-routes.js (حروف كبيرة، غير مسموح يتحول إلى _، حد 20 حرفا). */
+/** @param {any} code @returns {string} */
 function normalizeStoreToken(code) {
     const s = String(code == null ? '' : code).trim().toUpperCase()
         .replace(/[^A-Z0-9_-]/g, '_').slice(0, 20);
     return s;
 }
 
+/** @param {any} deptCode @returns {string} */
 function storeKey(deptCode) {
     return String(deptCode == null ? '' : deptCode).trim().toLowerCase();
 }
 
-/** رمز المخزن المخصص للقسم، أو null إن لم يكن له مخزن مخصص. */
+/**
+ * رمز المخزن المخصص للقسم، أو null إن لم يكن له مخزن مخصص.
+ * @param {any} deptCode
+ * @returns {string|null}
+ */
 function dedicatedStoreCode(deptCode) {
-    return DEDICATED_STORE_CODES[storeKey(deptCode)] || null;
+    return /** @type {Record<string,string>} */ (DEDICATED_STORE_CODES)[storeKey(deptCode)] || null;
 }
 
+/** @param {any} client @param {any} code */
 async function findLocationByCode(client, code) {
     return (await client.query(
         'SELECT id, code, name_ar, dept_code, location_type FROM inventory_locations WHERE code = $1 AND active = true LIMIT 1',
         [code])).rows[0] || null;
 }
 
+/** @param {any} client @param {any} deptCode */
 async function findLocationByDept(client, deptCode) {
     return (await client.query(
         'SELECT id, code, name_ar, dept_code, location_type FROM inventory_locations WHERE LOWER(dept_code) = LOWER($1) AND active = true ORDER BY id LIMIT 1',
         [String(deptCode)])).rows[0] || null;
 }
 
+/** @param {any} client @param {any} fields */
 async function createLocation(client, { code, nameAr, deptCode, locationType }) {
     const created = (await client.query(
         `INSERT INTO inventory_locations (code, name_ar, location_type, dept_code, department_code, active)
@@ -86,14 +96,21 @@ async function createLocation(client, { code, nameAr, deptCode, locationType }) 
     return created;
 }
 
-/** اسم القسم لعرضه في اسم المخزن المولد. */
+/**
+ * اسم القسم لعرضه في اسم المخزن المولد.
+ * @param {any} client
+ * @param {any} deptCode
+ */
 async function deptLabel(client, deptCode) {
     const row = (await client.query(
         'SELECT code, name FROM departments WHERE LOWER(code) = LOWER($1)', [String(deptCode)])).rows[0];
     return row || null;
 }
 
-/** المخزن المشترك KITCHEN-MAIN — يوجد أو يُنشأ مرة واحدة. */
+/**
+ * المخزن المشترك KITCHEN-MAIN — يوجد أو يُنشأ مرة واحدة.
+ * @param {any} client
+ */
 async function sharedStore(client) {
     const shared = await findLocationByCode(client, SHARED_STORE_CODE);
     if (shared) {return shared;}
@@ -108,6 +125,7 @@ async function sharedStore(client) {
  * warehouse-routes.js (مخزن مخصص، وإلا المخزن المشترك). لا يتغير سلوك
  * الصرف القائم حتى لا تختل ارصدة الاقسام على الإنتاج.
  */
+/** @param {any} client @param {any} deptCode */
 async function resolveDispatchTargetStore(client, deptCode) {
     const dedicated = dedicatedStoreCode(deptCode);
     if (dedicated) {
@@ -123,6 +141,7 @@ async function resolveDispatchTargetStore(client, deptCode) {
  * هذا ما يجعل الجزار والكافيه وكافيه ناصر قابلين للتحويل فعليا، لأن
  * اذوناتهم تسلمت في KITCHEN-MAIN بينما STORE-BUTCHER يبقى فارغا.
  */
+/** @param {any} client @param {any} deptCode */
 async function resolveSourceStore(client, deptCode) {
     const code = String(deptCode == null ? '' : deptCode).trim();
     if (!code) {
@@ -159,6 +178,7 @@ async function resolveSourceStore(client, deptCode) {
  * ينشأ STORE-<القسم> — للبيع الخارجي STORE-EXTERNAL، وللمقاهي مخازنها
  * الخاصة حتى تقف مستقلة عن مخزن المطبخ.
  */
+/** @param {any} client @param {any} deptCode */
 async function resolveDestinationStore(client, deptCode) {
     const code = String(deptCode == null ? '' : deptCode).trim();
     if (!code) {

@@ -18,7 +18,7 @@
 const { pool } = require('./shared-pool');
 const { notifyBestEffort } = require('./notification-service');
 
-/** نقية: بناء نص الإشعار وأهدافه لكل حدث في السلسلة. */
+/** نقية: بناء نص الإشعار وأهدافه لكل حدث في السلسلة. @param {any} pr @param {any} event @param {{reason?:any}} [opts] */
 function buildRequestNotification(pr, event, { reason = null } = {}) {
     const rn = pr?.request_number || `#${pr?.id ?? '?'}`;
     const creator = pr?.creator_name || 'مقدم الطلب';
@@ -43,10 +43,11 @@ function buildRequestNotification(pr, event, { reason = null } = {}) {
 /**
  * يطلق إشعار الحدث بعد نجاح العملية (best-effort — لا يُفشل العملية أبدًا).
  * الهدف: أدوار الحدث + مقدم الطلب (created_by) ما عدا الفاعل نفسه.
+ * @param {any} req @param {any} pr @param {any} event @param {{io?:any, reason?:any}} [opts]
  */
 async function notifyRequestEvent(req, pr, event, { io = null, reason = null } = {}) {
     try {
-        const spec = buildRequestNotification(pr, event, { reason, finalStatus });
+        const spec = buildRequestNotification(pr, event, { reason });
         if (!spec) {return 0;}
         const creatorUserId = Number(pr?.created_by) || null;
         return await notifyBestEffort(pool, {

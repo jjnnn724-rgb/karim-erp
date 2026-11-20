@@ -31,23 +31,25 @@ const SAME_EVENT_WINDOW_MS = Number(process.env.PUNCH_DEDUP_WINDOW_MS || 180000)
 /** مقاطع أطول من هذا تُعلَّم للمراجعة: من النادر أن يكون دوامٌ متصلٌ أطول. */
 const LONG_SEGMENT_MINUTES = Number(process.env.PUNCH_LONG_SEGMENT_MINUTES || 840);
 
+/** @param {any} value */
 function toMs(value) {
     const d = value instanceof Date ? value : new Date(value);
     return Number.isFinite(d.getTime()) ? d.getTime() : null;
 }
 
-/** طول المقطع بالدقائق من اللحظتين — فرقٌ حقيقي لا تقريبٌ على نص HH:MM. */
+/** طول المقطع بالدقائق من اللحظتين — فرقٌ حقيقي لا تقريبٌ على نص HH:MM. @param {any} inMs @param {any} outMs */
 function minutesBetween(inMs, outMs) {
     return Math.max(0, Math.round((outMs - inMs) / 60000));
 }
 
-/** يفضّل بصمة الجهاز (أدق لحظةً وأصدق حالةً) على نسخة البوابة لنفس الحدث. */
+/** يفضّل بصمة الجهاز (أدق لحظةً وأصدق حالةً) على نسخة البوابة لنفس الحدث. @param {any} source */
 function sourceRank(source) {
     return source === 'device' ? 0 : source === 'attendance' ? 1 : 2;
 }
 
 /**
  * لقطة البصمات الخام لموظف واحد: كل المصادر في قائمة واحدة مرتّبة.
+ * @param {any} employeeId @param {any} startMs @param {any} endMs
  * @returns {Promise<Array<{employeeId:number, ms:number, source:string, direction:string|null, state:number|null, note:string}>>}
  */
 async function collectRawPunches(employeeId, startMs, endMs) {
@@ -115,6 +117,7 @@ async function collectRawPunches(employeeId, startMs, endMs) {
     rows.sort((a, b) => a.ms - b.ms || sourceRank(a.source) - sourceRank(b.source));
 
     // إزالة التكرار للحدث الواحد: أقرب نسخة لنفس الموظف داخل النافذة.
+    /** @type {any[]} */
     const deduped = [];
     for (const p of rows) {
         const prev = deduped[deduped.length - 1];
@@ -137,12 +140,13 @@ async function collectRawPunches(employeeId, startMs, endMs) {
  * أن تكون هي الحكم. تُعرض التسمية الأصلية للمحاكمة، وتُعلَّم البصمة التي
  * تتعارض مع دورها في التسلسل. لا تُستهلك بصمةٌ مرّتين: كل بصمةٍ إما طرف
  * بداية أو طرف نهاية في مقطعٍ واحد.
+ * @param {any} punches
  */
 function pairBySequence(punches) {
     const segments = [];
     let open = null;
 
-    const conflictFlag = (punch, role) => (punch.direction && punch.direction !== role)
+    const conflictFlag = (/** @type {any} */ punch, /** @type {any} */ role) => (punch.direction && punch.direction !== role)
         ? [`التصنيف الآلي قال «${punch.direction === 'in' ? 'دخول' : 'انصراف'}» والتسلسل يقول «${role === 'in' ? 'دخول' : 'انصراف'}»`] : [];
 
     for (const p of punches) {
@@ -171,7 +175,7 @@ function pairBySequence(punches) {
     return segments;
 }
 
-/** صفٌّ معروض: لحظةُ الدخول والخروج بالساعة المدنية المصرية والساعات. */
+/** صفٌّ معروض: لحظةُ الدخول والخروج بالساعة المدنية المصرية والساعات. @param {any} segment */
 function toRow(segment) {
     const inMs = segment.entry ? segment.entry.ms : null;
     const outMs = segment.exit ? segment.exit.ms : null;
@@ -196,7 +200,7 @@ function toRow(segment) {
 
 /**
  * كشف البصمات لفترة.
- * @param {{from:string,to:string,employeeIds?:number[],limit?:number}} opts من/إلى YYYY-MM-DD
+ * @param {{from?:string,to?:string,employeeIds?:number[],limit?:number}} [opts] من/إلى YYYY-MM-DD
  */
 async function buildPunchStatement(opts = {}) {
     const from = String(opts.from || '').slice(0, 10);
@@ -222,7 +226,7 @@ async function buildPunchStatement(opts = {}) {
         const punches = await collectRawPunches(emp.id, startMs, endMs);
         const segments = pairBySequence(punches);
         const rows = segments.map(toRow)
-            .filter(r => r.date >= from && r.date <= to)
+            .filter((/** @type {any} */ r) => r.date >= from && r.date <= to)
             .sort((a, b) => String(a.entryAt || a.exitAt).localeCompare(String(b.entryAt || b.exitAt)));
         const minutes = rows.reduce((s, r) => s + (r.minutesWorked || 0), 0);
         out.push({

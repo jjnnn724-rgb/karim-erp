@@ -21,13 +21,17 @@ const ID_RE = /^[12]\d{9}$/;
 const ISO2_RE = /^[A-Z]{2}$/;
 const GOSI_NUMBER_RE = /^[0-9]{6,12}$/;
 
+/** @param {any} value */
 function normalizeIban(value) {
   return String(value ?? '')
     .replace(/[\s-]/g, '')
     .toUpperCase();
 }
 
-/** تحقق فعلي: 24 حرفًا + بادئة SA + مجموع تحقق mod-97 = 1. */
+/**
+ * تحقق فعلي: 24 حرفًا + بادئة SA + مجموع تحقق mod-97 = 1.
+ * @param {any} value
+ */
 function isValidSaudIban(value) {
   const iban = normalizeIban(value);
   if (!SA_IBAN_RE.test(iban)) {
@@ -44,6 +48,7 @@ function isValidSaudIban(value) {
   return remainder === 1;
 }
 
+/** @param {any} value */
 function maskIban(value) {
   const iban = normalizeIban(value);
   if (!iban) {
@@ -55,6 +60,7 @@ function maskIban(value) {
   return `${iban.slice(0, 4)}${'*'.repeat(iban.length - 8)}${iban.slice(-4)}`;
 }
 
+/** @param {any} value */
 function maskIdNumber(value) {
   const id = String(value ?? '').trim();
   if (!id) {
@@ -66,10 +72,12 @@ function maskIdNumber(value) {
   return `${'*'.repeat(Math.max(0, id.length - 4))}${id.slice(-4)}`;
 }
 
+/** @param {any} value */
 function isValidIdNumber(value) {
   return ID_RE.test(String(value ?? '').trim());
 }
 
+/** @param {any} value */
 function normalizeNationality(value) {
   const code = String(value ?? '')
     .trim()
@@ -80,7 +88,10 @@ function normalizeNationality(value) {
   return ISO2_RE.test(code) ? code : null;
 }
 
-/** التصنيف التأميني: سعودي / وافد / غير معروف — لا تخمين. */
+/**
+ * التصنيف التأميني: سعودي / وافد / غير معروف — لا تخمين.
+ * @param {any} value
+ */
 function nationalityCategory(value) {
   const code = normalizeNationality(value);
   if (!code) {
@@ -115,8 +126,9 @@ const GOSI_RATE_SETS = Object.freeze({
   }),
 });
 
+/** @param {any} id */
 function resolveRateSet(id) {
-  return GOSI_RATE_SETS[String(id ?? '')] || null;
+  return /** @type {Record<string, any>} */ (GOSI_RATE_SETS)[String(id ?? '')] || null;
 }
 
 function rateSetList() {
@@ -130,6 +142,7 @@ function rateSetList() {
   }));
 }
 
+/** @param {any} value */
 function toCents(value) {
   const n = Number(value);
   if (!Number.isFinite(n) || n < 0) {
@@ -138,7 +151,12 @@ function toCents(value) {
   return Math.round(n * 100);
 }
 
-/** حسبة عرض فقط — لا تُكتب في الأستاذ ولا تغيّر أي معادلة رواتب قائمة. */
+/**
+ * حسبة عرض فقط — لا تُكتب في الأستاذ ولا تغيّر أي معادلة رواتب قائمة.
+ * @param {any} wage
+ * @param {any} category
+ * @param {any} rateSet
+ */
 function gosiAmounts(wage, category, rateSet) {
   if (!rateSet || !['saudi', 'expat'].includes(category)) {
     return null;
@@ -228,11 +246,16 @@ const WPS_REQUIREMENTS = Object.freeze([
   },
 ]);
 
+/**
+ * @param {any} id
+ * @param {any} patch
+ */
 function requirementStatus(id, patch) {
   const base = WPS_REQUIREMENTS.find(r => r.id === id);
   return { ...base, ...patch };
 }
 
+/** @param {any} value */
 function csvCell(value) {
   let text = String(value ?? '');
   // منع حقن الصيغ في Excel دون تغيير القيمة المرئية
@@ -258,6 +281,7 @@ const WPS_CSV_HEADERS = Object.freeze([
   'الصافي',
 ]);
 
+/** @param {any} value */
 function money(value) {
   const n = Number(value);
   return Number.isFinite(n) ? n.toFixed(2) : '0.00';
@@ -266,6 +290,7 @@ function money(value) {
 /**
  * كشف أجور للمراجعة البشرية — ليس SIF. البادئة BOM لفتح العربية في Excel،
  * والبصمة تُحسب على النص النهائي نفسه الذي يُعاد للعميل.
+ * @param {{month: any, employerId: any, rows: any[]}} opts
  */
 function buildWpsCsv({ month, employerId, rows }) {
   const lines = [WPS_CSV_HEADERS.map(csvCell).join(',')];
@@ -295,6 +320,7 @@ function buildWpsCsv({ month, employerId, rows }) {
  * تقييم جاهزية شهر: يمر على الموظفين النشطين ومقارنتهم ببنود الرواتب.
  * employees: {id,name,iqama,salary,iban,nationality}
  * payrollById: Map(id → {basic,allowances,deductions,net})
+ * @param {{employees: any[], payrollById: any, month: any, posted: any, employerId: any}} opts
  */
 function evaluateWpsReadiness({ employees, payrollById, month, posted, employerId }) {
   const rows = employees.map(e => {
@@ -328,6 +354,7 @@ function evaluateWpsReadiness({ employees, payrollById, month, posted, employerI
     };
   });
 
+  /** @type {(code: string) => number} */
   const countIssue = code => rows.filter(r => r.issues.includes(code)).length;
   const summary = {
     month,
@@ -368,11 +395,15 @@ function evaluateWpsReadiness({ employees, payrollById, month, posted, employerI
   return { summary, rows, blockers, export_ready: blockers.length === 0 };
 }
 
+/** @param {any} value */
 function isValidGosiNumber(value) {
   return value == null || value === '' || GOSI_NUMBER_RE.test(String(value));
 }
 
-/** صفوف التأمينات: أساس الرواتب = وعاء المسير إن وُجد، وإلا الراتب الأساسي (تقديري). */
+/**
+ * صفوف التأمينات: أساس الرواتب = وعاء المسير إن وُجد، وإلا الراتب الأساسي (تقديري).
+ * @param {{employees: any[], payrollById: any, rateSet: any}} opts
+ */
 function buildGosiPreview({ employees, payrollById, rateSet }) {
   const lines = [];
   const unknowns = [];
@@ -413,6 +444,7 @@ function buildGosiPreview({ employees, payrollById, rateSet }) {
     }),
     { employee: 0, employer: 0, total: 0 }
   );
+  /** @type {(n: number) => number} */
   const round = n => Math.round(n * 100) / 100;
   return {
     lines,

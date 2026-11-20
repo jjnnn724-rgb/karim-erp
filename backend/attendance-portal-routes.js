@@ -27,16 +27,17 @@ const router = express.Router();
 
 // SECURITY: limiter مخصص للبصمة — 300/دقيقة لكل IP (يستوعب طابور الصباح كله عبر
 // NAT مشترك واحد، ويمنع السكربتات). القفل السلوكي (5 رفض/10د لكل مستخدم) يبقى طبقة ثانية.
-const punchLimiter = createRateLimiter({
+const punchLimiter = createRateLimiter(/** @type {any} */ ({
     windowMs: 60 * 1000,
     maxRequests: Number(process.env.PUNCH_RATE_LIMIT_MAX) || 300,
     message: 'محاولات كثيرة جدًا — انتظر قليلًا',
-});
+}));
 
 // ─── الإعدادات الحية (من punch_settings — التغيير ينعكس بلا إعادة تشغيل) ────
 
 // كاش قصير (3 ثوانٍ): قراءة الإعدادات تحدث في كل محاولة بصمة/حالة/تسعير —
 // الكاش يوفر استعلامًا في كل طلب مع بقاء انعكاس التغيير الإداري عمليًا فوريًا (≤3 ثوانٍ).
+/** @type {any} */
 let _punchSettingsCache = null;
 let _punchSettingsCacheAt = 0;
 const PUNCH_SETTINGS_CACHE_MS = 3000;
@@ -51,7 +52,7 @@ async function loadPunchSettings() {
         _punchSettingsCacheAt = Date.now();
         return _punchSettingsCache;
     } catch (e) {
-        logger.error('[punch-portal] تعذر قراءة الإعدادات — الافتراضي: الميزة مغلقة:', e.message);
+        logger.error('[punch-portal] تعذر قراءة الإعدادات — الافتراضي: الميزة مغلقة:', /** @type {any} */ (e).message);
         // fail-safe: أي خلل في الإعدادات = الميزة مغلقة (ولا يُسمَّم الكاش بقيم خاطئة)
         return resolvePunchSettings([], process.env);
     }
@@ -63,6 +64,7 @@ async function loadPunchSettings() {
 // البصمة الخام، وتُقرأ على أنها «الكاميرا خالي». من اليوم: كل بصمة ناجحة
 // تُخزَّن خامًا أيضًا بجهاز البوابة الافتراضي (migration 128) — البصمة الخام
 // تصبح دليلًا موحّدًا للأجهزة والكاميرا بلا استثناء.
+/** @type {any} */
 let _portalDeviceId = null;
 async function portalDeviceId() {
     if (_portalDeviceId) {return _portalDeviceId;}
@@ -74,17 +76,23 @@ async function portalDeviceId() {
         _portalDeviceId = rows[0]?.id ?? null;
         return _portalDeviceId;
     } catch (e) {
-        logger.error('[punch-portal] تعذر إيجاد جهاز البوابة الافتراضي (migration 128 مطبّق؟):', e.message);
+        logger.error('[punch-portal] تعذر إيجاد جهاز البوابة الافتراضي (migration 128 مطبّق؟):', /** @type {any} */ (e).message);
         return null;
     }
 }
+/** @type {Record<string, number>} */
 const PORTAL_ACTION_STATE = { check_in: 0, fix_in: 0, check_out: 1, fix_out: 1 };
 
 /** يُخزّن بصمة الموظف في اللوج الخام. البصمة الفيزيائية لا تُضيع أبدًا
  *  (قرار المالك 2026-11-05): بلا اتجاه صريح (action='ignore' — البوابة بلا زر
  *  والاشتقاق توقّف) تُخزَّن الحالة المجهولة -1 — لا يُختلَق اتجاه ولا تُحذف
  *  البصمة من الدليل الخام. فشلُه لا يمنع استجابة الموظف (بصمة المراجعة
- *  مسجَّلة في attendance_decisions). */
+ *  مسجَّلة في attendance_decisions).
+ * @param {any} employeeId
+ * @param {any} instant
+ * @param {any} action
+ * @param {any} engineResult
+ */
 async function writePortalRawLog(employeeId, instant, action, engineResult) {
     try {
         const deviceId = await portalDeviceId();
@@ -101,11 +109,14 @@ async function writePortalRawLog(employeeId, instant, action, engineResult) {
     } catch (e) {
         // بصمة الحضور نفسها سبقت — الفشل هنا للأرشفة الخام فقط: صوت + تفاصيل
         logger.error('[punch-portal] تعذر أرشفة البصمة الخام (attendance_logs):',
-            e.message, JSON.stringify({ action: engineResult?.action ?? null, decision: engineResult?.decision ?? null }));
+            /** @type {any} */ (e).message, JSON.stringify({ action: engineResult?.action ?? null, decision: engineResult?.decision ?? null }));
     }
 }
 
-/** ربط الحساب بملف الموظف — بلا ملف موظف لا توجد بصمة ذاتية */
+/**
+ * ربط الحساب بملف الموظف — بلا ملف موظف لا توجد بصمة ذاتية
+ * @param {any} userId
+ */
 async function getEmployeeForUser(userId) {
     const { rows } = await pool.query(
         'SELECT id, name, "employeeId" FROM employees WHERE "userId" = $1 LIMIT 1',
@@ -120,6 +131,7 @@ function riyadhWall(now = new Date()) {
         timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit',
         hour: '2-digit', minute: '2-digit', second: '2-digit', hour12: false,
     });
+    /** @type {Record<string, string>} */
     const parts = {};
     for (const p of fmt.formatToParts(now)) {parts[p.type] = p.value;}
     const hour = Number(parts.hour) % 24;
@@ -132,6 +144,7 @@ function riyadhWall(now = new Date()) {
     };
 }
 
+/** @param {any} userId */
 async function getBoundDevice(userId) {
     const { rows } = await pool.query(
         'SELECT device_id FROM punch_devices WHERE user_id = $1 AND active = TRUE LIMIT 1',
@@ -151,8 +164,9 @@ async function ensurePunchAuditCols() {
                           ALTER TABLE punch_attempts ADD COLUMN IF NOT EXISTS trust_score INTEGER;
                           ALTER TABLE punch_attempts ADD COLUMN IF NOT EXISTS trust_signals TEXT;
                           ALTER TABLE punch_attempts ADD COLUMN IF NOT EXISTS teleport_kmh NUMERIC(10,1);`);
-    } catch (e) { logger.warn('[punch-portal] audit cols skipped:', e.message); }
+    } catch (e) { logger.warn('[punch-portal] audit cols skipped:', /** @type {any} */ (e).message); }
 }
+/** @param {any} entry */
 async function auditAttempt(entry) {
     try {
         await ensurePunchAuditCols();
@@ -173,12 +187,13 @@ async function auditAttempt(entry) {
                 entry.teleportKmh ?? null]
         );
     } catch (e) {
-        logger.error('[punch-portal] فشل تدقيق المحاولة (لا يوقف الحكم):', e.message);
+        logger.error('[punch-portal] فشل تدقيق المحاولة (لا يوقف الحكم):', /** @type {any} */ (e).message);
     }
 }
 
 // ─── الوجه الصارم (L5-strict) — كل دليل تُحسبه على السيرفر من صورة، لا من ادعاء ──
 
+/** @type {Record<string, string>} */
 const FACE_STRICT_MESSAGES = {
     PUNCH_FACE_SERVER_EMBED_REQUIRED: 'تحقق الوجه صارم الآن: يلزم إرسال صورة الوجه لا بصمته الرقمية المحسوبة على جهازك.',
     PUNCH_FACE_UPLOAD_FORBIDDEN: 'تحقق الوجه صارم الآن: الصورة يجب أن تكون من الكاميرا لحظة البصمة، لا مرفوعة من المعرض.',
@@ -200,7 +215,7 @@ const FACE_STRICT_MESSAGES = {
 async function verifyFaceStrict(input) {
     const { req, userId, settings } = input;
     const body = req.body || {};
-    const rawImages = (Array.isArray(body.faceImages) ? body.faceImages : [])
+    const rawImages = (/** @type {any[]} */ (Array.isArray(body.faceImages) ? body.faceImages : []))
         .concat(body.faceImage ? [body.faceImage] : [])
         .map((x) => String(x || ''))
         .filter((x) => x.length > 100)
@@ -261,7 +276,7 @@ async function verifyFaceStrict(input) {
 
 // ─── حالة البوابة للموظف (تقرأها الواجهة قبل عرض الزر) ──────────────────────
 
-router.get('/status', jwtAuth, async (req, res, next) => {
+router.get('/status', jwtAuth, /** @param {any} req @param {any} res @param {any} next */ async (req, res, next) => {
     try {
         const settings = await loadPunchSettings();
         const employee = await getEmployeeForUser(req.user.id);
@@ -302,7 +317,7 @@ router.get('/status', jwtAuth, async (req, res, next) => {
                     }
                 }
             } catch (e) {
-                logger.error('[punch-portal] تعذر قراءة حالة اليوم:', e.message);
+                logger.error('[punch-portal] تعذر قراءة حالة اليوم:', /** @type {any} */ (e).message);
             }
         }
         res.json({
@@ -332,7 +347,7 @@ router.get('/status', jwtAuth, async (req, res, next) => {
 
 // ─── البصمة الذاتية ─────────────────────────────────────────────────────────
 
-router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_head', 'cashier', 'kitchen', 'sous_chef', 'warehouse', 'employee'), async (req, res, next) => {
+router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_head', 'cashier', 'kitchen', 'sous_chef', 'warehouse', 'employee'), /** @param {any} req @param {any} res @param {any} next */ async (req, res, next) => {
     try {
         const settings = await loadPunchSettings();
 
@@ -349,9 +364,10 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
         // مُختار في خيارات المطور) تُسجَّل للتدقيق ولا ترفض — الرفض القاطع يحتاج
         // دليلًا على القراءة نفسها (mocked) ويُحسم في punch-portal-logic.
         const spoofSignals = Array.isArray(loc?.spoofSignals)
-            ? loc.spoofSignals.map((s) => String(s).slice(0, 40)).filter(Boolean).slice(0, 5)
+            ? /** @type {any[]} */ (loc.spoofSignals).map((s) => String(s).slice(0, 40)).filter(Boolean).slice(0, 5)
             : [];
         // الإصلاحات المتعددة تمر خامًا — السيرفر يحللها بنفسه (تجميد/انتقال/تشتت)
+        /** @type {any} */
         const evaluateInput = {
             remoteIp,
             viaTunnel,
@@ -450,6 +466,7 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
         }
         if (verdict.decision !== 'accepted') {
             await auditAttempt({ ...auditBase, decision: 'rejected', rejectCode: verdict.rejectCode });
+            /** @type {Record<string, string>} */
             const messages = {
                 PUNCH_OUT_OF_NETWORK: 'لا يمكن البصمة من خارج شبكة المطعم',
                 PUNCH_LOCATION_REQUIRED: 'تعذر الحصول على موقعك — فعّل تحديد الموقع وأعد المحاولة',
@@ -460,6 +477,7 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
                 PUNCH_DEVICE_MISMATCH: 'هذا الجهاز غير مربوط بحسابك — فعّل «الربط التلقائي للجهاز» من إعدادات البصمة أو اطلب فك الربط من الإدارة',
                 PUNCH_LOCATION_CLOCK_SKEW: 'ساعة جهازك غير مضبوطة — اضبط التاريخ والوقت تلقائيًا ثم أعد المحاولة',
             };
+            /** @type {Record<string, number>} */
             const statusMap = {
                 PUNCH_OUT_OF_NETWORK: 403, PUNCH_OUT_OF_RANGE: 403,
                 PUNCH_LOCATION_MOCKED: 403, PUNCH_DEVICE_MISMATCH: 403,
@@ -467,9 +485,9 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
                 PUNCH_LOCATION_CLOCK_SKEW: 422,
                 PUNCH_DEVICE_REQUIRED: 422,
             };
-            return res.status(statusMap[verdict.rejectCode] || 403).json({
+            return res.status(statusMap[/** @type {string} */ (verdict.rejectCode)] || 403).json({
                 ok: false, error: verdict.rejectCode,
-                message: messages[verdict.rejectCode] || 'تم رفض البصمة',
+                message: messages[/** @type {string} */ (verdict.rejectCode)] || 'تم رفض البصمة',
                 distanceM: verdict.details.distanceM,
                 radiusM: settings.radiusMeters,
             });
@@ -489,7 +507,7 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
                 if (last && Number.isFinite(Number(last.lat))) {
                     const tp = assessTeleport(
                         { lat: Number(last.lat), lng: Number(last.lng), atMs: new Date(last.attempted_at).getTime() },
-                        { lat: verdict.details.bestLat, lng: verdict.details.bestLng, nowMs: Date.now() },
+                        { lat: /** @type {number} */ (verdict.details.bestLat), lng: /** @type {number} */ (verdict.details.bestLng), nowMs: Date.now() },
                         Number(settings.maxTeleportKmh) || 250);
                     if (tp.teleport) {
                         await auditAttempt({ ...auditBase, decision: 'rejected', rejectCode: 'PUNCH_LOCATION_TELEPORT', teleportKmh: tp.speedKmh });
@@ -499,7 +517,7 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
                         });
                     }
                 }
-            } catch (e) { logger.warn('[punch-portal] teleport check skipped:', e.message); }
+            } catch (e) { logger.warn('[punch-portal] teleport check skipped:', /** @type {any} */ (e).message); }
         }
 
         // L5-v2: التحقق بالوجه بمحرك ArcFace 512-d على السيرفر (Apache-2.0) —
@@ -580,6 +598,7 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
             if (!faceRes.ok) {
                 const code = faceRes.rejectCode || 'PUNCH_FACE_MISMATCH';
                 await auditAttempt({ ...auditBase, decision: 'rejected', rejectCode: code, faceDistance });
+                /** @type {Record<string, string>} */
                 const messages = {
                     PUNCH_FACE_INVALID: 'بيانات الوجه غير سليمة — أعد المحاولة أمام إضاءة جيدة',
                     PUNCH_FACE_NOT_ENROLLED: 'لم يتم تسجيل وجهك بعد — راجع الموارد البشرية',
@@ -623,7 +642,7 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
         // 2026-11-05، يُلغي اشتقاق 2026-11-02): البصمة الفيزيائية مصدر الحقيقة
         // الوحيد — البوابة بلا زر ولا نيّة، والحالة الناقصة لا تُشتق: لا قرار
         // ولا كتابة صفوف، البصمة تُسجَّل خامًا (بحالة مجهولة) وتُعلَّم للمراجعة.
-        const { engine } = require('./attendance-engine');
+        const { engine } = /** @type {any} */ (require('./attendance-engine'));
         // هوية الجهاز الافتراضي إلزامية: بصمة بلا deviceId تُرفض في المحرك (2026-11-07).
         const portalDevice = await portalDeviceId();
         if (!portalDevice) {
@@ -669,7 +688,7 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
             at: now.toISOString(),
         });
     } catch (e) {
-        logger.error('[punch-portal] punch failed:', e.message);
+        logger.error('[punch-portal] punch failed:', /** @type {any} */ (e).message);
         return next(e);
     }
 });
@@ -682,7 +701,7 @@ const CLIENT_REJECT_CODES = new Set([
     'PUNCH_LOCATION_MOCKED_CLIENT',
     'PUNCH_LOCATION_UNAVAILABLE_CLIENT',
 ]);
-router.post('/punch/client-reject', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_head', 'cashier', 'kitchen', 'sous_chef', 'warehouse', 'employee'), async (req, res, next) => {
+router.post('/punch/client-reject', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_head', 'cashier', 'kitchen', 'sous_chef', 'warehouse', 'employee'), /** @param {any} req @param {any} res @param {any} next */ async (req, res, next) => {
     try {
         const raw = String(req.body?.reason || '');
         const rejectCode = CLIENT_REJECT_CODES.has(raw) ? raw : 'PUNCH_CLIENT_REJECTED';
@@ -710,7 +729,10 @@ router.post('/punch/client-reject', punchLimiter, jwtAuth, requireRole('admin', 
 
 // ─── لوحة الإدارة (S7–S8): إعدادات البصمة + سجل المحاولات — admin/hr ────────
 
-/** مواصفة المفاتيح المسموحة — أي مفتاح آخر يُرفض (لا حقن إعدادات) */
+/**
+ * مواصفة المفاتيح المسموحة — أي مفتاح آخر يُرفض (لا حقن إعدادات)
+ * @type {Record<string, any>}
+ */
 const PUNCH_SETTING_KEYS = {
     punch_portal_enabled:   { type: 'bool' },
     punch_geofence_enabled: { type: 'bool' },
@@ -739,6 +761,10 @@ const PUNCH_SETTING_KEYS = {
     punch_face_replay_min_distance: { type: 'float', min: 0, max: 0.2 },
 };
 
+/**
+ * @param {string} key
+ * @param {any} value
+ */
 function validatePunchSettingValue(key, value) {
     const spec = PUNCH_SETTING_KEYS[key];
     if (!spec) {return { error: 'UNKNOWN_KEY' };}
@@ -759,7 +785,7 @@ function validatePunchSettingValue(key, value) {
 }
 
 // حالة الإعدادات الكاملة (admin/hr)
-router.get('/settings-admin', jwtAuth, requireRole('admin', 'hr'), async (req, res, next) => {
+router.get('/settings-admin', jwtAuth, requireRole('admin', 'hr'), /** @param {any} req @param {any} res @param {any} next */ async (req, res, next) => {
     try {
         const { rows } = await pool.query('SELECT key, value, updated_at, updated_by FROM punch_settings ORDER BY key');
         res.json({ ok: true, settings: rows });
@@ -767,7 +793,7 @@ router.get('/settings-admin', jwtAuth, requireRole('admin', 'hr'), async (req, r
 });
 
 // تحديث الإعدادات — ينعكس فورًا (كل طلب بصمة يقرأها حيًا) بلا إعادة تشغيل
-router.put('/settings-admin', jwtAuth, requireRole('admin', 'hr'), async (req, res, next) => {
+router.put('/settings-admin', jwtAuth, requireRole('admin', 'hr'), /** @param {any} req @param {any} res @param {any} next */ async (req, res, next) => {
     try {
         const body = req.body || {};
         const updates = Object.entries(body).filter(([k]) => k in PUNCH_SETTING_KEYS);
@@ -800,7 +826,7 @@ router.put('/settings-admin', jwtAuth, requireRole('admin', 'hr'), async (req, r
 // فعلية — هذه هي الأداة: قائمة الأجهزة + فك ربط بنقرة (البصمة التالية تربط تلقائيًا).
 
 // قائمة الأجهزة المربوطة النشطة
-router.get('/punch-devices', jwtAuth, requireRole('admin', 'hr'), async (req, res, next) => {
+router.get('/punch-devices', jwtAuth, requireRole('admin', 'hr'), /** @param {any} req @param {any} res @param {any} next */ async (req, res, next) => {
     try {
         const { rows } = await pool.query(
             `SELECT d.user_id, u.username, u.name, d.device_id, d.bound_ip, d.bound_at, d.last_seen_at
@@ -813,7 +839,7 @@ router.get('/punch-devices', jwtAuth, requireRole('admin', 'hr'), async (req, re
 });
 
 // فك ربط أجهزة مستخدم — البصمة التالية من أي جهاز تربطه من جديد تلقائيًا
-router.delete('/punch-devices/:userId', jwtAuth, requireRole('admin', 'hr'), async (req, res, next) => {
+router.delete('/punch-devices/:userId', jwtAuth, requireRole('admin', 'hr'), /** @param {any} req @param {any} res @param {any} next */ async (req, res, next) => {
     try {
         const userId = Number(req.params.userId);
         if (!Number.isInteger(userId) || userId <= 0) {
@@ -833,7 +859,7 @@ router.delete('/punch-devices/:userId', jwtAuth, requireRole('admin', 'hr'), asy
 });
 
 // سجل المحاولات — فلاتر: decision / reject / username، حد أقصى 200 صف
-router.get('/attempts', jwtAuth, requireRole('admin', 'hr'), async (req, res, next) => {
+router.get('/attempts', jwtAuth, requireRole('admin', 'hr'), /** @param {any} req @param {any} res @param {any} next */ async (req, res, next) => {
     try {
         const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 50));
         const conds = [];
@@ -877,7 +903,7 @@ router.get('/attempts', jwtAuth, requireRole('admin', 'hr'), async (req, res, ne
 // UPGRADE 2026-10-01: يقبل descriptors (حتى 8 عينات متنوعة) — المطابقة لاحقًا
 // بأقل مسافة بين العينات تحل شكوى «سجّل الوجه ولا يقبل» الناتجة عن عينة واحدة
 // حساسة للإضاءة/الكاميرا. يقبل descriptor المفرد للتوافق مع العملاء القديمة.
-router.post('/face/enroll', jwtAuth, requireRole('admin', 'hr'), async (req, res, next) => {
+router.post('/face/enroll', jwtAuth, requireRole('admin', 'hr'), /** @param {any} req @param {any} res @param {any} next */ async (req, res, next) => {
     try {
         const { targetUserId, descriptor, descriptors } = req.body || {};
         if (!targetUserId) {return res.status(422).json({ ok: false, error: 'TARGET_REQUIRED', message: 'حدد الموظف المستهدف' });}
@@ -898,7 +924,7 @@ router.post('/face/enroll', jwtAuth, requireRole('admin', 'hr'), async (req, res
 });
 
 // إزالة قالب وجه موظف (المحركان معًا — إصلاح 2026-10-01: القديم كان يبقي قالب v2)
-router.delete('/face/enroll/:userId', jwtAuth, requireRole('admin', 'hr'), async (req, res, next) => {
+router.delete('/face/enroll/:userId', jwtAuth, requireRole('admin', 'hr'), /** @param {any} req @param {any} res @param {any} next */ async (req, res, next) => {
     try {
         const r = await pool.query(
             'UPDATE punch_face_templates SET active = FALSE WHERE user_id = $1 AND active = TRUE RETURNING id',
@@ -919,7 +945,7 @@ router.delete('/face/enroll/:userId', jwtAuth, requireRole('admin', 'hr'), async
 // ─── تسجيل وجه v2 (ArcFace 512-d على السيرفر) — admin/hr فقط ────────────────
 // العميل يرسل 1-8 لقطات وجه مقصوصة (base64) — السيرفر ينتج المتجهات ويخزنها.
 // لا صور تُخزَّن (الخصوصية §5.5): تُستهلك لحظيًا في الانتاج وتُهمل.
-router.post('/face/enroll-v2', jwtAuth, requireRole('admin', 'hr'), async (req, res, next) => {
+router.post('/face/enroll-v2', jwtAuth, requireRole('admin', 'hr'), /** @param {any} req @param {any} res @param {any} next */ async (req, res, next) => {
     try {
         const faceV2 = require('./face-engine-v2');
         if (!faceV2.modelAvailable()) {
@@ -955,7 +981,7 @@ router.post('/face/enroll-v2', jwtAuth, requireRole('admin', 'hr'), async (req, 
 });
 
 // قائمة الوجوه المسجلة (admin/hr) — للوحة الإدارة (v1 + v2 مع وسم المحرك)
-router.get('/face/list', jwtAuth, requireRole('admin', 'hr'), async (req, res, next) => {
+router.get('/face/list', jwtAuth, requireRole('admin', 'hr'), /** @param {any} req @param {any} res @param {any} next */ async (req, res, next) => {
     try {
         const { rows } = await pool.query(
             `SELECT t.user_id, u.username, u.name, t.enrolled_at, t.enrolled_by, t.active, 'v1' AS engine

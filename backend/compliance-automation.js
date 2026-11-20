@@ -6,6 +6,7 @@ const { createNotifications, emitNotificationRows, sendRowsAsPush } = require('.
 const ADVISORY_LOCK_KEY = 731942081;
 const DAY_MS = 24 * 60 * 60 * 1000;
 
+/** @param {number} daysRemaining */
 function dayBucket(daysRemaining) {
     if (daysRemaining < 0) {return 'overdue';}
     if (daysRemaining <= 7) {return '7d';}
@@ -13,9 +14,10 @@ function dayBucket(daysRemaining) {
     return '90d';
 }
 
+/** @param {any} rows @param {any} today */
 function buildExpiryAlerts(rows, today) {
     return rows
-        .map((row) => {
+        .map((/** @type {any} */ row) => {
             const daysRemaining = Math.ceil((Date.parse(`${row.expiry_date}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / DAY_MS);
             if (!Number.isFinite(daysRemaining) || daysRemaining > 90 || daysRemaining < -30) {return null;}
             const bucket = dayBucket(daysRemaining);
@@ -33,6 +35,7 @@ function buildExpiryAlerts(rows, today) {
         .filter(Boolean);
 }
 
+/** @param {any} row @param {any} today */
 function buildDeadlineAlert(row, today) {
     const daysRemaining = Math.ceil((Date.parse(`${row.due_date}T00:00:00Z`) - Date.parse(`${today}T00:00:00Z`)) / DAY_MS);
     if (!Number.isFinite(daysRemaining) || daysRemaining > 90 || daysRemaining < -30) {return null;}
@@ -49,8 +52,9 @@ function buildDeadlineAlert(row, today) {
     };
 }
 
+/** @param {any} rows @param {any} today */
 function buildIntegrityAlerts(rows, today) {
-    return rows.map((row) => {
+    return rows.map((/** @type {any} */ row) => {
         const lineCount = Number(row.line_count);
         const detail = Number.isInteger(lineCount) && lineCount < 2
             ? `عدد السطور ${lineCount} (الحد الأدنى سطران)`
@@ -85,12 +89,14 @@ function millisecondsUntilNextRun(now = new Date()) {
     return Math.max(1000, nextLocal.getTime() - localNow.getTime());
 }
 
+/** @param {{pool?:any, io?:any, log?:any, intervalForNextRun?:(now?:Date)=>number}} [deps] */
 function startComplianceAutomation({ pool, io, log = defaultLogger, intervalForNextRun = millisecondsUntilNextRun } = {}) {
     if (!pool || typeof pool.connect !== 'function') {
         throw new TypeError('Compliance automation requires a PostgreSQL pool');
     }
 
     let stopped = false;
+    /** @type {ReturnType<typeof setTimeout>|null} */
     let timer = null;
     let running = false;
 
@@ -149,7 +155,7 @@ function startComplianceAutomation({ pool, io, log = defaultLogger, intervalForN
 
             const alertCandidates = [
                 ...buildExpiryAlerts(expiries, today),
-                ...deadlines.map((row) => buildDeadlineAlert(row, today)).filter(Boolean),
+                ...deadlines.map((/** @type {any} */ row) => buildDeadlineAlert(row, today)).filter(Boolean),
                 ...buildIntegrityAlerts(unbalanced, today),
             ];
             const alerts = [...new Map(alertCandidates.map((alert) => [alert.eventKey, alert])).values()];
@@ -191,7 +197,7 @@ function startComplianceAutomation({ pool, io, log = defaultLogger, intervalForN
             return { expiries: expiries.length, deadlines: deadlines.length, unbalanced: unbalancedCount, sent };
         } finally {
             if (client && locked) {
-                await client.query('SELECT pg_advisory_unlock($1)', [ADVISORY_LOCK_KEY]).catch((error) =>
+                await client.query('SELECT pg_advisory_unlock($1)', [ADVISORY_LOCK_KEY]).catch((/** @type {any} */ error) =>
                     log.warn('[compliance-automation] advisory unlock failed:', error.message));
             }
             client?.release();

@@ -83,6 +83,11 @@ const BUCKET_SAMPLE = 50;
  * شرطُ نطاق سجلّات الجهاز — يُبنى مع مصفوفةِ معاملاتٍ مستقلة كل مرّة
  * (الأرقام النائبة $1… تعتمد على ترتيب الدفع، فإعادةُ الاستخدام خطأ).
  */
+/**
+ * @param {{from?:string, to?:string, employeeId?:number|string|null, deviceId?:number|string|null}} filter
+ * @param {any[]} params
+ * @returns {string}
+ */
 function logFilters({ from, to, employeeId, deviceId }, params) {
     const where = [];
     if (from) {
@@ -126,13 +131,14 @@ async function coverageStart() {
  * الدوام + نسق حالة الجهاز) حتى لا يخالف التقريرُ ما يفعل المحركُ فعلًا.
  *
  * @param {Array<{log_id:number, employee_id:number, attendance_time:Date|string,
- *                punch_state:number, device_user_id:*, device_id:*}>} punches
+ *                punch_state:number, device_user_id:*, device_id:*, employee_name?:string|null}>} punches
  * @param {string|null} coverageFrom
  */
 async function classifyUnmatched(punches, coverageFrom) {
     const kindById = new Map();
     const acc = new Map();
     const gapDays = new Map();
+    /** @type {{coverage_from:string|null, total:number, compared:number, before_coverage:number, gaps:number, benign:number, buckets:any[], truncated:boolean, gapDays?:Array<{employee_id:number, employee_name:string|null, date:string, has_row:boolean, kinds:string[], kind_labels:string[], punches:any[]}>, gapDaysWithoutRow?:number}} */
     const out = {
         coverage_from: coverageFrom || null,
         total: punches.length,
@@ -170,10 +176,11 @@ async function classifyUnmatched(punches, coverageFrom) {
         if (!minWall || w.date < minWall) {minWall = w.date;}
         if (!maxWall || w.date > maxWall) {maxWall = w.date;}
     }
+    /** @type {(dateStr:any, days:number)=>string} */
     const shiftDays = (dateStr, days) => {
         const [y, m, d] = String(dateStr).split('-').map(Number);
         const dt = new Date(Date.UTC(y, m - 1, d) + days * 86400000);
-        const p2 = (n) => String(n).padStart(2, '0');
+        const p2 = (/** @type {number} */ n) => String(n).padStart(2, '0');
         return `${dt.getUTCFullYear()}-${p2(dt.getUTCMonth() + 1)}-${p2(dt.getUTCDate())}`;
     };
     const fromDate = shiftDays(minWall, -2);
@@ -196,6 +203,7 @@ async function classifyUnmatched(punches, coverageFrom) {
         }
     }
 
+    /** @type {(kind:string, p:any)=>void} */
     const bump = (kind, p) => {
         if (!acc.has(kind)) {
             const meta = KIND_META[kind] || {label: kind, gap: false};
@@ -310,13 +318,13 @@ async function classifyUnmatched(punches, coverageFrom) {
     out.gapDays = [...gapDays.values()].sort((a, b) => (
         a.date === b.date ? a.employee_id - b.employee_id : (a.date < b.date ? -1 : 1)
     ));
-    out.gapDaysWithoutRow = out.gapDays.filter((g) => !g.has_row).length;
+    out.gapDaysWithoutRow = (/** @type {any[]} */ (out.gapDays)).filter((g) => !g.has_row).length;
     return {...out, kindById};
 }
 
 /**
- * @param {{from?:string, to?:string, employeeId?:number|string, deviceId?:number|string,
- *          limit?:number}} filter
+ * @param {{from?:string, to?:string, employeeId?:number|string|null, deviceId?:number|string|null,
+ *          limit?:number}} [filter]
  */
 async function deviceSystemReconciliation({ from, to, employeeId = null, deviceId = null, limit = 500 } = {}) {
     const filter = {from, to, employeeId, deviceId};
@@ -325,6 +333,7 @@ async function deviceSystemReconciliation({ from, to, employeeId = null, deviceI
     const coverageFrom = await coverageStart();
 
     /* ── بصماتُ الجهاز ─────────────────────────────────────────────── */
+    /** @type {any[]} */
     const logParams = [];
     const logClause = logFilters(filter, logParams);
 
@@ -453,6 +462,7 @@ async function deviceSystemReconciliation({ from, to, employeeId = null, deviceI
     const systemRows = Number(rowCounts.system_rows || 0);
     const rowsWithoutDeviceCount = Number(rowCounts.rows_without_device_punch || 0);
 
+    /** @type {(r:any)=>string} */
     const byReason = (r) => {
         if (r.check_in_at == null && r.check_out_at == null) {return 'لا أوقات';}
         if (r.source === 'portal') {return 'بوابة التطبيق';}

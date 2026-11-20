@@ -122,7 +122,7 @@ describe('عقد نظام التحويلات الداخلية بين الأقس�
         expect(src).toMatch(/writeTransferExpenses\(client, transfer, totalValue, srcRes\.deptCode, destDept/);
         expect(src).toMatch(/writeTransferExpenses\(client, transfer, totalValue, sourceDept, destDept/);
         expect(src).toMatch(/ON CONFLICT \(id\) DO NOTHING/);
-        expect(src).toMatch(/function expenseIdFor\(transferId, side\)/);
+        expect(src).toMatch(/function expenseIdFor\([^)]*\btransferId\b[^)]*\bside\b[^)]*\)/);
         expect(src).toMatch(/transfer-expense:/);
     });
 
@@ -291,7 +291,7 @@ describe('عقد نظام التحويلات الداخلية بين الأقس�
     test('التركيب: جبل الخادم مع req.io بجوار محرك التحويلات المخزني', () => {
         const server = read(SERVER);
         expect(server).toMatch(/const \{ router: deptTransferRouter \} = require\('\.\/dept-transfer-routes'\)/);
-        expect(server).toMatch(/app\.use\('\/api\/warehouse', \(req, res, next\) => \{ req\.io = io; next\(\); \}, deptTransferRouter\)/);
+        expect(server).toMatch(/app\.use\('\/api\/warehouse', \([^)]*\breq\b[^)]*\bres\b[^)]*\bnext\b[^)]*\) => \{ req\.io = io; next\(\); \}, deptTransferRouter\)/);
     });
 
     test('الملف الأصلي inventory-transfer-routes.js لم يُمَس — المعزولة صفر استخدام تبقى كما هي', () => {

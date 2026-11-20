@@ -12,10 +12,12 @@
  */
 'use strict';
 
+/** @param {any} v */
 function round2(v) {
     return Math.round((Number(v) || 0) * 100) / 100;
 }
 
+/** @param {any} pool @param {any} fromDate @param {any} toDate */
 async function postedEntryIntegrity(pool, fromDate, toDate) {
     const { rows } = await pool.query(`
         SELECT COUNT(*)::int AS posted_entries,
@@ -48,6 +50,7 @@ async function postedEntryIntegrity(pool, fromDate, toDate) {
 /**
  * 1. Statutory Balance Sheet (قائمة المركز المالي)
  * Formula: Assets = Liabilities + Equity + Period Net Profit
+ * @param {any} pool @param {any} asOfDate
  */
 async function generateBalanceSheet(pool, asOfDate) {
     const asOf = asOfDate || new Date().toISOString().slice(0, 10);
@@ -64,8 +67,8 @@ async function generateBalanceSheet(pool, asOfDate) {
         ORDER BY c.code
     `, [asOf]);
 
-    const isDr = (t) => t === 'asset' || t === 'cogs' || t === 'expense';
-    const accounts = rows.map(r => {
+    const isDr = (/** @type {any} */ t) => t === 'asset' || t === 'cogs' || t === 'expense';
+    const accounts = /** @type {any[]} */ (rows.map((/** @type {any} */ r) => {
         const net = isDr(r.type) ? (Number(r.debit) - Number(r.credit)) : (Number(r.credit) - Number(r.debit));
         return {
             code: r.code,
@@ -77,9 +80,9 @@ async function generateBalanceSheet(pool, asOfDate) {
             credit: Number(r.credit),
             balance: round2(net),
         };
-    });
+    }));
 
-    const sumByType = (t) => accounts.filter(a => a.type === t).reduce((s, a) => s + a.balance, 0);
+    const sumByType = (/** @type {any} */ t) => accounts.filter(a => a.type === t).reduce((s, a) => s + a.balance, 0);
 
     const totalAssets = round2(sumByType('asset'));
     const totalLiabilities = round2(sumByType('liability'));
@@ -128,6 +131,7 @@ async function generateBalanceSheet(pool, asOfDate) {
 
 /**
  * 2. Statutory Income Statement (قائمة الدخل الشامل من دفتر الأستاذ)
+ * @param {any} pool @param {any} fromDate @param {any} toDate
  */
 async function generateIncomeStatement(pool, fromDate, toDate) {
     const from = fromDate || `${new Date().toISOString().slice(0, 7)}-01`;
@@ -145,8 +149,8 @@ async function generateIncomeStatement(pool, fromDate, toDate) {
         ORDER BY c.code
     `, [from, to]);
 
-    const isDr = (t) => t === 'cogs' || t === 'expense';
-    const accounts = rows.map(r => {
+    const isDr = (/** @type {any} */ t) => t === 'cogs' || t === 'expense';
+    const accounts = /** @type {any[]} */ (rows.map((/** @type {any} */ r) => {
         const net = isDr(r.type) ? (Number(r.debit) - Number(r.credit)) : (Number(r.credit) - Number(r.debit));
         return {
             code: r.code,
@@ -156,7 +160,7 @@ async function generateIncomeStatement(pool, fromDate, toDate) {
             parent_code: r.parent_code,
             balance: round2(net),
         };
-    });
+    }));
 
     const revenues = accounts.filter(a => a.type === 'revenue');
     const cogs = accounts.filter(a => a.type === 'cogs');

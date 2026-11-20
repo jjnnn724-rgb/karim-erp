@@ -41,12 +41,14 @@ const TAX_STATUS_VALUES = ['REGISTERED', 'NOT_REGISTERED', 'EXEMPT'];
 
 // ─── Pure helpers (مصدَّرة للاختبارات) ────────────────────────────────────────
 
+/** @param {any} value */
 function roundMoney(value) {
     const n = Number(value);
     if (!Number.isFinite(n)) {return 0;}
     return Math.round(n * 100) / 100;
 }
 
+/** @param {any} totalAmount @param {any} paidAmount */
 function computeInvoicePaymentStatus(totalAmount, paidAmount) {
     const total = roundMoney(totalAmount);
     const paid = roundMoney(paidAmount);
@@ -56,10 +58,12 @@ function computeInvoicePaymentStatus(totalAmount, paidAmount) {
     return 'partial';
 }
 
+/** @param {any} openingBalance @param {any} invoicesTotal @param {any} paymentsTotal */
 function computeSupplierBalance(openingBalance, invoicesTotal, paymentsTotal) {
     return roundMoney(roundMoney(openingBalance) + roundMoney(invoicesTotal) - roundMoney(paymentsTotal));
 }
 
+/** @param {any} value */
 function normalizeDay(value) {
     if (value == null) {return '';}
     const raw = value instanceof Date ? value.toISOString() : String(value);
@@ -70,6 +74,7 @@ function normalizeDay(value) {
  * كشف حساب مورد: رصيد افتتاحي للفترة + حركات مُرتبة زمنيًا برصيد جارٍ.
  * الفواتير مدين (تزيد المستحق) والدفعات دائن (تخفضه). الحركات السابقة لبداية
  * الفترة تُطوى داخل الرصيد الافتتاحي حتى يظل الرصيد الجاري صادقًا.
+ * @param {any} openingBalance @param {any} invoices @param {any} payments @param {any} fromDate @param {any} toDate
  */
 function buildStatementRows(openingBalance, invoices, payments, fromDate, toDate) {
     const from = normalizeDay(fromDate);

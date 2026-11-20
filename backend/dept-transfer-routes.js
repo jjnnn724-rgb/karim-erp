@@ -42,6 +42,8 @@ const EXTERNAL_DESTS = ['external_sales', 'caf', 'nas'];
 // received هي الحالة المغلقة المعتمدة (overview يستثنيها من المفتوح).
 const STATUS_DONE = 'received';
 
+/** استجابة خطأ موحّدة للمسارات.
+ * @param {any} res @param {number} status @param {any} error @param {any} message @param {any} [extra] */
 function fail(res, status, error, message, extra) {
   return res.status(status).json(Object.assign({ error, message }, extra || {}));
 }
@@ -51,6 +53,8 @@ function newTransferNumber() {
   return 'TR-' + new Date().toISOString().replace(/[-:TZ.]/g, '').slice(0, 14) + '-' + crypto.randomInt(100, 1000);
 }
 
+/** حدث تحويل في inventory_transfer_events.
+ * @param {any} client @param {any} transferId @param {any} fromStatus @param {any} toStatus @param {any} userId @param {any} reason @param {any} [metadataObj] */
 async function writeEvent(client, transferId, fromStatus, toStatus, userId, reason, metadataObj) {
   const fromDb = fromStatus ? String(fromStatus) : null;
   const userDb = userId != null ? Number(userId) : null;
@@ -62,18 +66,18 @@ async function writeEvent(client, transferId, fromStatus, toStatus, userId, reas
   );
 }
 
-function deptList(user) {
+function deptList(/** @type {any} */ user) {
   return String(user && user.dept_code ? user.dept_code : '').split(',').map(function (s) { return s.trim(); }).filter(Boolean);
 }
 
-function deptCodeEquals(a, b) {
+function deptCodeEquals(/** @type {any} */ a, /** @type {any} */ b) {
   return String(a ? a : '').trim().toLowerCase() === String(b ? b : '').trim().toLowerCase();
 }
 
 /** أسماء الأقسام لرسائل الإشعار — استعلام بسيط واحد. */
-async function lookupDeptNames(codes) {
-  const wanted = codes.filter(Boolean).map(function (c) { return String(c).trim().toLowerCase(); }).filter(Boolean);
-  const map = {};
+async function lookupDeptNames(/** @type {any} */ codes) {
+  const wanted = codes.filter(Boolean).map(function (/** @type {any} */ c) { return String(c).trim().toLowerCase(); }).filter(Boolean);
+  const map = /** @type {Record<string, any>} */ ({});
   if (!wanted.length) {return map;}
   try {
     const r = await pool.query('SELECT code, name FROM departments WHERE LOWER(code) = ANY($1)', [wanted]);
@@ -85,7 +89,7 @@ async function lookupDeptNames(codes) {
 /** مصدر الطلب مُجبر على قسم الطالب — عقيدة resolveDeptHeadDispatch
  *  (warehouse-routes.js:145): dept_head ⇒ قسمه فقط؛ kitchen/sous_chef بلا
  *  قسم ⇒ المطبخ (KITCHEN-MAIN)؛ admin/manager/warehouse ⇒ حرّون بتحديد صريح. */
-function resolveSourceDept(user, requestedDept) {
+function resolveSourceDept(/** @type {any} */ user, /** @type {any} */ requestedDept) {
   const role = String(user && user.role ? user.role : '').toLowerCase();
   const own = deptList(user);
   if (['admin', 'manager', 'warehouse'].indexOf(role) !== -1) {
@@ -108,7 +112,8 @@ function resolveSourceDept(user, requestedDept) {
 
 /** مخزن القسم: يُحسم من dept-stores.js (مصدر واحد للحقيقة).
  *  - مصدر التحويل: الموقع الذي استُلمت فيه أذونات صرف القسم فعليًا.
- *  - وجهة التحويل: مخزن مخصص أو مرتبط بـ dept_code أو STORE-<القسم>. */
+ *  - وجهة التحويل: مخزن مخصص أو مرتبط بـ dept_code أو STORE-<القسم>.
+ * @param {any} client @param {any} deptCode @param {any} [role] */
 async function ensureDeptLocation(client, deptCode, role) {
   return role === 'destination'
     ? resolveDestinationStore(client, deptCode)
@@ -116,7 +121,7 @@ async function ensureDeptLocation(client, deptCode, role) {
 }
 
 /** تجميع بنود الطلب: {inventory_id, qty} — تكرار الصنف يُجمع ولا يُرفض. */
-function collectItems(rawItems) {
+function collectItems(/** @type {any} */ rawItems) {
   const items = new Map();
   for (const raw of rawItems) {
     const inventoryId = Number(raw.inventory_id);
@@ -134,7 +139,7 @@ function collectItems(rawItems) {
 /** إدخال بنود التحويل — بتكلفة الإذن الفعلي إن توفّرت (costOverrides)
  *  وبوحدة الإذن نفسها إن توفّرت (unitOverrides)، وإلا بلقطة التكلفة
  *  ووحدة الصنف العامة (تُحدَّث بلقطة التنفيذ عند الاعتماد). */
-async function insertTransferItems(client, transferId, items, costOverrides, unitOverrides) {
+async function insertTransferItems(/** @type {any} */ client, /** @type {any} */ transferId, /** @type {any} */ items, /** @type {any} */ costOverrides, /** @type {any} */ unitOverrides) {
   for (const [inventoryId, qty] of items) {
     const item = (await client.query(
       'SELECT id, unit, COALESCE("avgCost",0) avg_cost FROM inventory WHERE id=$1', [inventoryId])).rows[0];
@@ -154,12 +159,12 @@ async function insertTransferItems(client, transferId, items, costOverrides, uni
  *  نفس الحقل الذي يقرأه مسار الاستلام اليدوي (dispatch-routes /receive)
  *  كسقف، فتحديثه هنا يمنع أي ازدواج: لا يُستلم مرة ثانية ما استُلم
  *  تلقائيًا، ويظل المتبقي غير المستلَم قابلًا للتوقيع من رئيس القسم. */
-async function markDispatchReceived(client, transfer, source, inventoryId, take, unit) {
+async function markDispatchReceived(/** @type {any} */ client, /** @type {any} */ transfer, /** @type {any} */ source, /** @type {any} */ inventoryId, /** @type {any} */ take, /** @type {any} */ unit) {
   const row = (await client.query(
     'SELECT "approvedItems", "receivedItems", status FROM dispatches WHERE id=$1 FOR UPDATE',
     [source.dispatch_id])).rows[0];
   if (!row) {return;}
-  const received = (Array.isArray(row.receivedItems) ? row.receivedItems : []).map(function (r) {
+  const received = (Array.isArray(row.receivedItems) ? row.receivedItems : []).map(function (/** @type {any} */ r) {
     return Object.assign({}, r);
   });
   const name = String(source.item_name || '').trim();
@@ -174,7 +179,7 @@ async function markDispatchReceived(client, transfer, source, inventoryId, take,
     }
   }
   const approvedQty = Number(source.qty) || 0;
-  const round6 = function (v) { return Number(Number(v).toFixed(6)); };
+  const round6 = function (/** @type {any} */ v) { return Number(Number(v).toFixed(6)); };
   if (line) {
     line.itemId = line.itemId || inventoryId;
     line.itemName = line.itemName || name;
@@ -191,7 +196,7 @@ async function markDispatchReceived(client, transfer, source, inventoryId, take,
     });
   }
   const approvedLines = Array.isArray(row.approvedItems) ? row.approvedItems : [];
-  const complete = approvedLines.length > 0 && approvedLines.every(function (a) {
+  const complete = approvedLines.length > 0 && approvedLines.every(function (/** @type {any} */ a) {
     return receivedQtyForSource(received, a, Number(a.itemId)) >= (Number(a.approvedQty) || 0) - 0.000001;
   });
   let nextStatus = row.status;
@@ -209,11 +214,11 @@ async function markDispatchReceived(client, transfer, source, inventoryId, take,
  *  التحويل في نفس المعاملة. بدون هذا تقف البضاعة «في الطريق» فلا يملك القسم
  *  شيئًا يحوّله، وكان المتاح يُصفَّر بصمت. التخصيص FIFO على أذونات الإصدار،
  *  وكل قيد idempotent بمفتاح يحمل معرّف التحويل والصنف والإذن. */
-async function receiveInTransitVoucherStock(client, transfer, items, userId) {
+async function receiveInTransitVoucherStock(/** @type {any} */ client, /** @type {any} */ transfer, /** @type {any} */ items, /** @type {any} */ userId) {
   const meta = transfer.metadata || {};
   const deptCode = String(meta.sourceDeptCode || '');
   if (!deptCode || String(meta.cost_basis || '') !== 'issue_voucher') {return;}
-  const ids = items.map(function (i) { return Number(i.inventory_id); });
+  const ids = items.map(function (/** @type {any} */ i) { return Number(i.inventory_id); });
   const basis = await loadMonthVoucherBasis(client, deptCode, ids);
   for (const item of items) {
     const inventoryId = Number(item.inventory_id);
@@ -225,7 +230,7 @@ async function receiveInTransitVoucherStock(client, transfer, items, userId) {
     const onHand = Number(bal ? bal.on_hand : 0) || 0;
     let need = Number(item.requested_qty) - onHand;
     while (need > 0.000001) {
-      const source = entry.sources.find(function (s) { return s.in_transit > 0.000001; });
+      const source = entry.sources.find(function (/** @type {any} */ s) { return s.in_transit > 0.000001; });
       if (!source) {
         throw Object.assign(new Error('متاح القسم من إذن الصرف أقل من الكمية المطلوبة — راجع تحويلات القسم أو استلامات الإذن'), {
           code: 'INSUFFICIENT_STOCK', available: Number(onHand.toFixed(3)), requested: Number(item.requested_qty), inventoryId: inventoryId,
@@ -258,7 +263,7 @@ async function receiveInTransitVoucherStock(client, transfer, items, userId) {
  *  ومنع السلبيات بسياسة الموقع (deny).
  *  تكلفة التحويل حين يكون cost_basis=issue_voucher هي تكلفة أذونات الصرف
  *  نفسها (ما وقفت به القسم فعلًا)، لا متوسط المخزون. */
-async function executeStockMove(client, transfer, items, userId) {
+async function executeStockMove(/** @type {any} */ client, /** @type {any} */ transfer, /** @type {any} */ items, /** @type {any} */ userId) {
   let totalValue = 0;
   const meta = transfer.metadata || {};
   const useVoucherCost = String(meta.cost_basis || '') === 'issue_voucher';
@@ -311,7 +316,7 @@ async function executeStockMove(client, transfer, items, userId) {
 }
 
 /** تنسيق YYYY-MM-DD بتوقيت الرياض لقيد المحاسبة — نفس نهج inventory-ledger.js:116. */
-function riyadhDayOf(value) {
+function riyadhDayOf(/** @type {any} */ value) {
   if (/^\d{4}-\d{2}-\d{2}$/.test(String(value ? value : '').slice(0, 10))) {return String(value).slice(0, 10);}
   return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh' }).format(new Date(value ? value : Date.now()));
 }
@@ -326,12 +331,12 @@ function monthVoucherStartAtRiyadh() {
   return monthStartRiyadh() + 'T00:00:00+03:00';
 }
 
-function isExternalDest(code) {
+function isExternalDest(/** @type {any} */ code) {
   return EXTERNAL_DESTS.indexOf(String(code ? code : '').trim().toLowerCase()) !== -1;
 }
 
 /** وجهة بيع خارجية بمسارها الرسمي في departments (CAF/NAS/external_sales). */
-async function resolveExternalDest(client, raw) {
+async function resolveExternalDest(/** @type {any} */ client, /** @type {any} */ raw) {
   const wanted = String(raw ? raw : '').trim();
   const code = wanted || EXTERNAL_SALE_DEPT;
   if (!isExternalDest(code)) {return null;}
@@ -342,7 +347,7 @@ async function resolveExternalDest(client, raw) {
 
 /** معرّف مصروف ثابت لكل (تحويل، اتجاه) — يجعل كتابة القيد idempotent
  *  حتى لو أُعيد الطلب بعد انقطاع الشبكة، بلا اعتماد على notes LIKE. */
-function expenseIdFor(transferId, side) {
+function expenseIdFor(/** @type {any} */ transferId, /** @type {any} */ side) {
   const h = crypto.createHash('sha256').update('transfer-expense:' + transferId + ':' + side).digest();
   return Number(BigInt('0x' + h.subarray(0, 6).toString('hex')));
 }
@@ -355,7 +360,7 @@ const ISSUED_DISPATCH_STATUSES = ['approved', 'received', 'partially_received'];
 /** كمية هذا السطر المعتمد من الإذن التي استلمها القسم فعلًا.
  *  صفوف الاستلام في dispatches.receivedItems — نفس مصدر المسار اليدوي،
  *  بالمعرّف أولًا ثم بالاسم بعد التسوية. */
-function receivedQtyForSource(receivedItems, approvedItem, inventoryId) {
+function receivedQtyForSource(/** @type {any} */ receivedItems, /** @type {any} */ approvedItem, /** @type {any} */ inventoryId) {
   if (!Array.isArray(receivedItems) || !receivedItems.length) {return 0;}
   const name = String(approvedItem.name || approvedItem.itemName || '').trim().toLowerCase();
   for (const r of receivedItems) {
@@ -377,7 +382,7 @@ function receivedQtyForSource(receivedItems, approvedItem, inventoryId) {
  *  وقائمة أذونات الصرف المصدر بترتيب الإصدار (تخصيص FIFO عند الاستلام
  *  التلقائي). التاريخ يعتمد على وقت اعتماد المخزن الفعلي، لا تاريخ إنشاء
  *  الطلب في `dispatches.date`. */
-async function loadMonthVoucherBasis(client, deptCode, inventoryIds) {
+async function loadMonthVoucherBasis(/** @type {any} */ client, /** @type {any} */ deptCode, /** @type {any} */ inventoryIds) {
   const out = new Map();
   if (inventoryIds && !inventoryIds.length) {return out;}
   const wanted = inventoryIds ? new Set(inventoryIds.map(Number)) : null;
@@ -431,12 +436,12 @@ async function loadMonthVoucherBasis(client, deptCode, inventoryIds) {
 
 /** التكلفة الفعلية للإذن (تكلفة الصرف نفسها لا متوسط المخزون) — أساس
  *  تقييم التحويل حتى يحتسب ما يقف القسم به فعلًا. */
-function voucherUnitCost(basis) {
+function voucherUnitCost(/** @type {any} */ basis) {
   if (!basis || !(basis.qty > 0)) {return 0;}
   return Number((basis.value / basis.qty).toFixed(6));
 }
 
-function voucherCostOverrides(basis) {
+function voucherCostOverrides(/** @type {any} */ basis) {
   const costOverrides = new Map();
   for (const [inventoryId, entry] of basis) {
     costOverrides.set(inventoryId, voucherUnitCost(entry));
@@ -447,7 +452,7 @@ function voucherCostOverrides(basis) {
 /** وحدة الصنف كما صدرت في إذن الصرف — توجيه المالك 2026-11-02: «يكون نفس
  *  التصنيف اللي طلعت بيه في إذن الصرف، مثلا كيلو / كرتونة / حبة / علبة».
  *  تُتَّبع في بنود التحويل وقيود الدفتر بدل وحدة الصنف العامة. */
-function voucherUnitOverrides(basis) {
+function voucherUnitOverrides(/** @type {any} */ basis) {
   const unitOverrides = new Map();
   for (const [inventoryId, entry] of basis) {
     if (entry.unit) {unitOverrides.set(inventoryId, entry.unit);}
@@ -466,7 +471,7 @@ function voucherUnitOverrides(basis) {
 // تطابق الاسم بعد التسوية العربية. صنف بلا سعر = رفض صريح (لا صفر صامت).
 // ═══════════════════════════════════════════════════════════════════
 
-function normalizeMenuName(s) {
+function normalizeMenuName(/** @type {any} */ s) {
   return String(s || '')
     .replace(/[\u064B-\u0652\u0670]/g, '')
     .replace(/[\u0622\u0623\u0625\u0671]/g, '\u0627')
@@ -476,7 +481,7 @@ function normalizeMenuName(s) {
     .toLowerCase();
 }
 
-async function isFactoryDept(client, deptCode) {
+async function isFactoryDept(/** @type {any} */ client, /** @type {any} */ deptCode) {
   const row = (await client.query(
     'SELECT COALESCE(is_factory, false) AS f FROM departments WHERE LOWER(code) = LOWER($1)', [deptCode])).rows[0];
   return Boolean(row && row.f);
@@ -485,7 +490,7 @@ async function isFactoryDept(client, deptCode) {
 /** لقطة تسعير القائمة لكل صنف: الربط الصريح أولًا ثم تطابق الاسم. أكثر من
  *  سعر مختلف لنفس الصنف = رفض دائمًا (الغموض يُحسم بالربط لا بالتخمين)،
  *  والمفقود يُجمع في missing — يرميه resolveMenuPricing أو يعرضه المستدعي. */
-async function menuPricingSnapshot(client, items) {
+async function menuPricingSnapshot(/** @type {any} */ client, /** @type {any} */ items) {
   const products = (await client.query(
     `SELECT id, name_ar, price, legacy_inventory_id, COALESCE(metadata->>'yara_code','') AS yara_code
        FROM pos_products WHERE COALESCE(is_active, true) AND price > 0`)).rows;
@@ -505,13 +510,13 @@ async function menuPricingSnapshot(client, items) {
   }
   const pricing = new Map();
   const missing = [];
-  const pick = (cands, invName, inventoryId) => {
+  const pick = (/** @type {any} */ cands, /** @type {any} */ invName, /** @type {any} */ inventoryId) => {
     if (!cands || !cands.length) {return null;}
-    const prices = new Set(cands.map(function (p) { return Number(p.price); }));
+    const prices = new Set(cands.map(function (/** @type {any} */ p) { return Number(p.price); }));
     if (prices.size > 1) {
       throw Object.assign(new Error('أكثر من سعر قائمة للصنف «' + invName + '» — اربطه بمنتج واحد من القائمة'), {
         code: 'FACTORY_PRICE_AMBIGUOUS', inventoryId: inventoryId,
-        candidates: cands.map(function (p) { return { product_id: Number(p.id), name_ar: p.name_ar, price: Number(p.price) }; }),
+        candidates: cands.map(function (/** @type {any} */ p) { return { product_id: Number(p.id), name_ar: p.name_ar, price: Number(p.price) }; }),
       });
     }
     return cands[0];
@@ -537,7 +542,7 @@ async function menuPricingSnapshot(client, items) {
 
 /** سعر القائمة الإلزامي لبنود تحويل المصنع — أي صنف بلا سعر = رفض صريح
  *  (لا يُقيَّم التحويل بصفر صامت). */
-async function resolveMenuPricing(client, items) {
+async function resolveMenuPricing(/** @type {any} */ client, /** @type {any} */ items) {
   const snap = await menuPricingSnapshot(client, items);
   if (snap.missing.length) {
     throw Object.assign(new Error('أصناف بلا سعر في قائمة البيع: ' + snap.missing.join('، ')
@@ -547,7 +552,7 @@ async function resolveMenuPricing(client, items) {
 }
 
 /** قيمة تسوية المصنع لكل بند: الكمية × سعر القائمة لحظة التحويل. */
-function factoryPricingRows(pricing, items) {
+function factoryPricingRows(/** @type {any} */ pricing, /** @type {any} */ items) {
   const rows = [];
   let total = 0;
   for (const item of items) {
@@ -564,8 +569,8 @@ function factoryPricingRows(pricing, items) {
 
 /** معرّفا تسوية المصنع (إيراد للمصنع / تحميل على المنفذ) — ثابتان لكل تحويل
  *  فيجعلان الكتابة idempotent، نفس نمط expenseIdFor. */
-function factorySettlementIds(transferId) {
-  const h = (prefix) => Number(BigInt('0x' + crypto.createHash('sha256').update(prefix + ':' + transferId).digest().subarray(0, 6).toString('hex')));
+function factorySettlementIds(/** @type {any} */ transferId) {
+  const h = (/** @type {any} */ prefix) => Number(BigInt('0x' + crypto.createHash('sha256').update(prefix + ':' + transferId).digest().subarray(0, 6).toString('hex')));
   return { revId: h('factory-rev'), expId: h('factory-exp') };
 }
 
@@ -573,7 +578,7 @@ function factorySettlementIds(transferId) {
  *  الإيرادات (ما يقرأه تحليل التكاليف كإيراد القسم)، وتحميل +نفس القيمة على
  *  المنفذ كمصروف factory_settlement (يظهر في تكاليف التشغيل للمنفذ).
  *  التكلفة لا تُنقل: يبقى استهلاك المواد على المصنع من أذون الصرف. */
-async function writeFactorySettlement(client, transfer, settlement, sourceDept, destDept, day) {
+async function writeFactorySettlement(/** @type {any} */ client, /** @type {any} */ transfer, /** @type {any} */ settlement, /** @type {any} */ sourceDept, /** @type {any} */ destDept, /** @type {any} */ day) {
   const v = Number(settlement.total);
   if (!(v > 0) || !sourceDept || !destDept) {return 0;}
   const ids = factorySettlementIds(transfer.id);
@@ -596,7 +601,7 @@ async function writeFactorySettlement(client, transfer, settlement, sourceDept, 
 }
 
 /** سطور قيد تسوية المصنع — نقية للاختبار (عقد Phase 3: الافتراضي 4000/5000). */
-function buildFactorySettlementLines({ total, sourceDept, destDept, accounts = {} }) {
+function buildFactorySettlementLines(/** @type {{total:any,sourceDept:any,destDept:any,accounts?:any}} */ { total, sourceDept, destDept, accounts = {} }) {
   const v = Number(total);
   const src = normalizeCostCenterCode(sourceDept);
   const dst = normalizeCostCenterCode(destDept);
@@ -609,7 +614,7 @@ function buildFactorySettlementLines({ total, sourceDept, destDept, accounts = {
 }
 
 /** سطور نقل التكلفة بين مركزي القسمين — نقية للاختبار (الافتراضي 5000). */
-function buildTransferCostLines({ total, sourceDept, destDept, accounts = {} }) {
+function buildTransferCostLines(/** @type {{total:any,sourceDept:any,destDept:any,accounts?:any}} */ { total, sourceDept, destDept, accounts = {} }) {
   const v = Number(total);
   const src = normalizeCostCenterCode(sourceDept);
   const dst = normalizeCostCenterCode(destDept);
@@ -623,7 +628,7 @@ function buildTransferCostLines({ total, sourceDept, destDept, accounts = {} }) 
 /** قيد تسوية المصنع: 4000 دائن بمركز المصنع (إيراده) / 5000 مدين بمركز
  *  المنفذ (تحميله) بقيمة القائمة — idempotent بمفتاح (factory_settlement, id)
  *  منفصل عن مفتاح تحويل التكلفة فلا يمس القيود القديمة. */
-async function postFactoryJournal(transfer, total, sourceDept, destDept, day) {
+async function postFactoryJournal(/** @type {any} */ transfer, /** @type {any} */ total, /** @type {any} */ sourceDept, /** @type {any} */ destDept, /** @type {any} */ day) {
   const v = Number(total);
   const src = normalizeCostCenterCode(sourceDept);
   const dst = normalizeCostCenterCode(destDept);
@@ -643,7 +648,7 @@ async function postFactoryJournal(transfer, total, sourceDept, destDept, day) {
       lines: buildFactorySettlementLines({ total: v, sourceDept, destDept, accounts }),
     });
     logger.info('[LEDGER] factory settlement ' + transfer.transfer_number + ': ' + (out.replay ? 'replayed' : 'entry ' + out.entry.entry_no));
-  } catch (e) {
+  } catch (/** @type {any} */ e) {
     logger.error('[LEDGER] factory settlement failed ' + transfer.transfer_number + ': ' + e.message);
   }
 }
@@ -652,7 +657,7 @@ async function postFactoryJournal(transfer, total, sourceDept, destDept, day) {
 /** ما خرج من القسم بتحويلات هذا الشهر — يُخصم من سقف أذونات القسم.
  *  التصفية بمصدر التحويل (source_dept) لا بالموقع وحده: المخزن المشترك
  *  KITCHEN-MAIN يخدم عدة أقسام، فخصم تحويل الجزار من رصيد المطبخ خطأ. */
-async function loadTransferredOutQty(client, locationId, inventoryIds, deptCode) {
+async function loadTransferredOutQty(/** @type {any} */ client, /** @type {any} */ locationId, /** @type {any} */ inventoryIds, /** @type {any} */ deptCode) {
   const out = new Map();
   if (!inventoryIds.length) {return out;}
   const rows = (await client.query(
@@ -676,7 +681,7 @@ async function loadTransferredOutQty(client, locationId, inventoryIds, deptCode)
  *  في مخزنه بعد، لذلك تُحسب «لم يُستلم بعد» ضمن المتاح؛ يُستلم تلقائيًا
  *  عند التنفيذ (receiveInTransitVoucherStock). الحدّ المادي يبقى احتياطيًا
  *  لليتامى: نصيب القسم في مخزن مشترك أكله قسمٌ آخر. */
-function transferAvailability(entry, alreadyOut, onHand) {
+function transferAvailability(/** @type {any} */ entry, /** @type {any} */ alreadyOut, /** @type {any} */ onHand) {
   const headroom = Math.max(0, Number(entry.qty) || 0) - Math.max(0, Number(alreadyOut) || 0);
   const inTransit = Math.max(0, Number(entry.in_transit) || 0);
   const physical = Math.max(0, Number(onHand) || 0) + inTransit;
@@ -691,8 +696,8 @@ function transferAvailability(entry, alreadyOut, onHand) {
 /** حارس المصدر: لا يُحوَّل إلا ما اعتمده المخزن فعليًا للقسم منذ بداية
  *  الشهر الحالي — السقف أذنُ الصرف نفسها. الرسالة تحسب للمستخدم من أي حد
  *  جاء المتاح (إذن / في المخزن / لم يُستلم بعد) فلا يفشل «إضافة» بصمت. */
-async function assertMonthSourced(client, deptCode, locationId, items) {
-  const ids = items.map(function (i) { return Number(i.inventory_id); });
+async function assertMonthSourced(/** @type {any} */ client, /** @type {any} */ deptCode, /** @type {any} */ locationId, /** @type {any} */ items) {
+  const ids = items.map(function (/** @type {any} */ i) { return Number(i.inventory_id); });
   // Serialize eligibility checks by source location and item so concurrent
   // transfers cannot both spend the same dispatch quantity.
   const balances = await client.query(
@@ -702,7 +707,7 @@ async function assertMonthSourced(client, deptCode, locationId, items) {
     loadMonthVoucherBasis(client, deptCode, ids),
     loadTransferredOutQty(client, locationId, ids, deptCode),
   ]);
-  const onHand = new Map(balances.rows.map(function (r) { return [Number(r.inventory_id), Number(r.on_hand) || 0]; }));
+  const onHand = new Map(balances.rows.map(function (/** @type {any} */ r) { return [Number(r.inventory_id), Number(r.on_hand) || 0]; }));
   for (const item of items) {
     const id = Number(item.inventory_id);
     const entry = basis.get(id) || { qty: 0, value: 0, in_transit: 0, unit: '', sources: [] };
@@ -729,7 +734,7 @@ async function assertMonthSourced(client, deptCode, locationId, items) {
 /** تحويل التكلفة بين القسمين في دفتر المصروفات (نفس مصدر شاشة تحليل
  *  التكاليف): صادر سالب على المرسل، وارد موجب على المستلم — بلا ازدواج
  *  لأن المعرّف ثابت لكل اتجاه. القيد المحاسبي 5000/5000 يبقى في postJournal. */
-async function writeTransferExpenses(client, transfer, totalValue, sourceDept, destDept, day) {
+async function writeTransferExpenses(/** @type {any} */ client, /** @type {any} */ transfer, /** @type {any} */ totalValue, /** @type {any} */ sourceDept, /** @type {any} */ destDept, /** @type {any} */ day) {
   const v = Number(totalValue);
   if (!(v > 0) || !sourceDept || !destDept) {return 0;}
   const dayText = riyadhDayOf(day);
@@ -756,7 +761,7 @@ async function writeTransferExpenses(client, transfer, totalValue, sourceDept, d
 /** قيد نقل التكلفة بين مركزي القسمين: مدين 5000 مركز المستلم / دائن 5000
  *  مركز المرسل بالتكلفة الفعلية — idempotent بمفتاح (inventory_transfer, id)
  *  مثل postDispatchToLedger، best-effort بعد COMMIT بنمط سلسلة الصرف. */
-async function postTransferJournal(transfer, totalValue, sourceDept, destDept, day) {
+async function postTransferJournal(/** @type {any} */ transfer, /** @type {any} */ totalValue, /** @type {any} */ sourceDept, /** @type {any} */ destDept, /** @type {any} */ day) {
   const v = Number(totalValue);
   const src = normalizeCostCenterCode(sourceDept);
   const dst = normalizeCostCenterCode(destDept);
@@ -775,7 +780,7 @@ async function postTransferJournal(transfer, totalValue, sourceDept, destDept, d
       lines: buildTransferCostLines({ total: v, sourceDept, destDept, accounts }),
     });
     logger.info('[LEDGER] transfer ' + transfer.transfer_number + ': ' + (out.replay ? 'replayed' : 'entry ' + out.entry.entry_no));
-  } catch (e) {
+  } catch (/** @type {any} */ e) {
     logger.error('[LEDGER] transfer journal failed ' + transfer.transfer_number + ': ' + e.message);
   }
 }
@@ -785,7 +790,7 @@ async function postTransferJournal(transfer, totalValue, sourceDept, destDept, d
 /** رصيد مخزن قسم (لاختيار أصناف التحويل من مخزن المرسل).
  *  scope=month — التحويل يسحب من أذونات الصرف المعتمدة فعليًا منذ بداية
  *  الشهر الحالي، لا من كامل المخزون المتراكم. */
-router.get('/dept-transfers/stock', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
+router.get('/dept-transfers/stock', jwtAuth, requireRole(...WRITE_ROLES), async (/** @type {any} */ req, /** @type {any} */ res) => {
   try {
     const dept = String(req.query.dept ? req.query.dept : '').trim();
     if (!dept) {return fail(res, 422, 'DEPT_REQUIRED', 'حدد القسم');}
@@ -845,7 +850,7 @@ router.get('/dept-transfers/stock', jwtAuth, requireRole(...WRITE_ROLES), async 
         // المصنع: سعر القائمة لكل صنف مؤهل — يعرضه العميل على البند، والتنفيذ
         // يرفض ما لا سعر له (لا يُقيَّم بصفر صامت).
         let factory = false;
-        let menu_pricing = [];
+        let menu_pricing = /** @type {any[]} */ ([]);
         try {
           factory = await isFactoryDept(client, dept);
           if (factory && items.length) {
@@ -874,7 +879,7 @@ router.get('/dept-transfers/stock', jwtAuth, requireRole(...WRITE_ROLES), async 
       );
       res.json({ location: loc, items: rows.rows });
     } finally { client.release(); }
-  } catch (e) {
+  } catch (/** @type {any} */ e) {
     logger.error('[transfers] stock failed: ' + e.message);
     res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر جلب رصيد مخزن القسم' });
   }
@@ -882,7 +887,7 @@ router.get('/dept-transfers/stock', jwtAuth, requireRole(...WRITE_ROLES), async 
 
 /** قائمة التحويلات — استعلامان ساكنان بلا JOIN؛ تجميع البنود في JS،
  *  وأسماء الأقسام يحلها العميل من قائمة الأقسام (metadata فيها الأكواد). */
-router.get('/dept-transfers', jwtAuth, requireRole('admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'dept_head', 'auditor', 'accountant'), async (req, res) => {
+router.get('/dept-transfers', jwtAuth, requireRole('admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'dept_head', 'auditor', 'accountant'), async (/** @type {any} */ req, /** @type {any} */ res) => {
   try {
     const limit = Math.min(Math.max(Number(req.query.limit) || 200, 1), 200);
     const rows = await pool.query(
@@ -890,7 +895,7 @@ router.get('/dept-transfers', jwtAuth, requireRole('admin', 'manager', 'warehous
       [limit]
     );
     const ids = rows.rows.map(function (r) { return r.id; });
-    const itemsByTransfer = {};
+    const itemsByTransfer = /** @type {Record<string, any[]>} */ ({});
     if (ids.length) {
       const itemRows = await pool.query(
         'SELECT transfer_id, id, inventory_id, unit, requested_qty, received_qty, variance_qty, unit_cost FROM inventory_transfer_items WHERE transfer_id = ANY($1::uuid[])',
@@ -905,7 +910,7 @@ router.get('/dept-transfers', jwtAuth, requireRole('admin', 'manager', 'warehous
     res.json(rows.rows.map(function (r) {
       return Object.assign({}, r, { items: itemsByTransfer[String(r.id)] || [] });
     }));
-  } catch (e) {
+  } catch (/** @type {any} */ e) {
     logger.error('[transfers] list failed: ' + e.message);
     res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر جلب قائمة التحويلات' });
   }
@@ -913,7 +918,7 @@ router.get('/dept-transfers', jwtAuth, requireRole('admin', 'manager', 'warehous
 
 /** لوحة التحويلات — إجماليات وتوزيعات من نفس جداول التحويل (status=received)
  *  على مدى تاريخي بتوقيت الرياض. القيمة = الكمية المستلمة × التكلفة الفعلية. */
-router.get('/dept-transfers/summary', jwtAuth, requireRole('admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'dept_head', 'auditor', 'accountant'), async (req, res) => {
+router.get('/dept-transfers/summary', jwtAuth, requireRole('admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'dept_head', 'auditor', 'accountant'), async (/** @type {any} */ req, /** @type {any} */ res) => {
   const dayRe = /^\d{4}-\d{2}-\d{2}$/;
   const fromRaw = String(req.query.from ? req.query.from : '').slice(0, 10);
   const toRaw = String(req.query.to ? req.query.to : '').slice(0, 10);
@@ -996,7 +1001,7 @@ router.get('/dept-transfers/summary', jwtAuth, requireRole('admin', 'manager', '
     for (const r of bySource.rows) {if (r.dept_code) {codes.push(r.dept_code);}}
     for (const r of byDest.rows) {if (r.dept_code) {codes.push(r.dept_code);}}
     const names = await lookupDeptNames(codes);
-    const withName = (r) => Object.assign({}, r, {
+    const withName = (/** @type {any} */ r) => Object.assign({}, r, {
       dept_name: r.dept_code ? (names[String(r.dept_code).toLowerCase()] || r.dept_code) : 'غير محدد',
       value: Number(Number(r.value).toFixed(2)), qty: Number(Number(r.qty).toFixed(3)),
     });
@@ -1023,7 +1028,7 @@ router.get('/dept-transfers/summary', jwtAuth, requireRole('admin', 'manager', '
         });
       }),
     });
-  } catch (e) {
+  } catch (/** @type {any} */ e) {
     logger.error('[transfers] summary failed: ' + e.message);
     res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر جلب ملخص التحويلات' });
   }
@@ -1032,7 +1037,7 @@ router.get('/dept-transfers/summary', jwtAuth, requireRole('admin', 'manager', '
 /** ربط أسعار المصنع: أصناف مخزن قسم مُصنِّع (أساس أذون صرف الشهر) مع
  *  منتجات قائمة الكاشير — ربط هوية لا قائمة أسعار (السعر يُقرأ من القائمة
  *  لحظة التنفيذ). الربط عبر pos_products.legacy_inventory_id. */
-router.get('/dept-transfers/factory-links', jwtAuth, requireRole('admin', 'manager'), async (req, res) => {
+router.get('/dept-transfers/factory-links', jwtAuth, requireRole('admin', 'manager'), async (/** @type {any} */ req, /** @type {any} */ res) => {
   try {
     const dept = String(req.query.dept ? req.query.dept : '').trim();
     if (!dept) {return fail(res, 422, 'DEPT_REQUIRED', 'حدد القسم');}
@@ -1068,14 +1073,14 @@ router.get('/dept-transfers/factory-links', jwtAuth, requireRole('admin', 'manag
         menu_products: (await client.query('SELECT id, name_ar, price FROM pos_products WHERE COALESCE(is_active, true) AND price > 0 ORDER BY name_ar')).rows,
       });
     } finally { client.release(); }
-  } catch (e) {
+  } catch (/** @type {any} */ e) {
     logger.error('[transfers] factory-links failed: ' + e.message);
     res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر جلب روابط أسعار المصنع' });
   }
 });
 
 /** ربط/فك صنف مخزن بمنتج قائمة — ربط واحد لكل صنف (فك القديم عند الربط الجديد). */
-router.put('/dept-transfers/factory-links', jwtAuth, requireRole('admin', 'manager'), async (req, res) => {
+router.put('/dept-transfers/factory-links', jwtAuth, requireRole('admin', 'manager'), async (/** @type {any} */ req, /** @type {any} */ res) => {
   try {
     const inventoryId = Number(req.body && req.body.inventory_id);
     const rawProduct = (req.body && req.body.product_id) == null ? null : Number(req.body.product_id);
@@ -1100,19 +1105,19 @@ router.put('/dept-transfers/factory-links', jwtAuth, requireRole('admin', 'manag
       }
       await client.query('COMMIT');
       res.json({ ok: true, inventory_id: inventoryId, product_id: rawProduct });
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
       await client.query('ROLLBACK').catch(function () {});
       logger.error('[transfers] factory-link save failed: ' + e.message);
       res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر حفظ ربط سعر المصنع' });
     } finally { client.release(); }
-  } catch (e) {
+  } catch (/** @type {any} */ e) {
     logger.error('[transfers] factory-link failed: ' + e.message);
     res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر حفظ ربط سعر المصنع' });
   }
 });
 
 /** كاشيرات قسم (وأبنائه) من dept_cashier_links — مصدر واحد لربط الإيراد. */
-async function deptCashiers(client, deptCode) {
+async function deptCashiers(/** @type {any} */ client, /** @type {any} */ deptCode) {
   const rows = (await client.query(
     `WITH RECURSIVE tree AS (
        SELECT code FROM departments WHERE LOWER(code) = LOWER($1)
@@ -1121,14 +1126,14 @@ async function deptCashiers(client, deptCode) {
      )
      SELECT l.cashier_no FROM dept_cashier_links l
       WHERE LOWER(l.dept_code) IN (SELECT LOWER(code) FROM tree)`, [deptCode])).rows;
-  return rows.map(function (r) { return String(r.cashier_no).trim(); }).filter(Boolean);
+  return rows.map(function (/** @type {any} */ r) { return String(r.cashier_no).trim(); }).filter(Boolean);
 }
 
 /** مبيعات منتجات القائمة الفعلية من مرآة الكاشير (ys_mirror_orders) لشهر —
  *  المطابقة بكود Yara في بنود الفاتورة، محصورة بكاشيرات المنفذ الذي استلم
  *  التحويل (لا كاشيرات المصنع نفسه ولا غيره). القيمة = سعر البند × الكمية
  *  (بدون ضريبة — نفس أساس pos_products.price). */
-async function loadMenuSalesForMonth(client, from, to, cashiers, yaraCodes) {
+async function loadMenuSalesForMonth(/** @type {any} */ client, /** @type {any} */ from, /** @type {any} */ to, /** @type {any} */ cashiers, /** @type {any} */ yaraCodes) {
   if (!cashiers.length || !yaraCodes.length) {return new Map();}
   const rows = (await client.query(
     `SELECT it->>'code' AS code,
@@ -1147,7 +1152,7 @@ async function loadMenuSalesForMonth(client, from, to, cashiers, yaraCodes) {
 /** صفوف تقرير فرق المصنع لشهر: قيمة التحويل بسعر القائمة لحظة التنفيذ
  *  مقابل مبيعات كل منفذ الفعلية لنفس المنتجات (بكود Yara وبكاشيرات المنفذ
  *  نفسه فقط). التوزيع per-dest محفوظ في by_dest ليُستخدمه القفل بدقة. */
-async function factoryVarianceRows(client, month) {
+async function factoryVarianceRows(/** @type {any} */ client, /** @type {any} */ month) {
   const from = month + '-01';
   const d = new Date(month + '-01T00:00:00Z');
   d.setUTCMonth(d.getUTCMonth() + 1);
@@ -1170,7 +1175,7 @@ async function factoryVarianceRows(client, month) {
   for (const r of rows) {
     const meta = r.metadata || {};
     const fp = Array.isArray(meta.factory_pricing) ? meta.factory_pricing : [];
-    const priceRow = fp.find(function (p) { return Number(p.inventory_id) === Number(r.inventory_id); }) || null;
+    const priceRow = fp.find(function (/** @type {any} */ p) { return Number(p.inventory_id) === Number(r.inventory_id); }) || null;
     const src = String(r.src || '');
     const dst = String(r.dst || '');
     if (!byFactory.has(src)) {byFactory.set(src, []);}
@@ -1254,13 +1259,13 @@ async function factoryVarianceRows(client, month) {
 
 /** تقرير الفرق الشهري للمصنع: قيمة التسوية بسعر القائمة مقابل مبيعات
  *  المنفذ الفعلية لنفس المنتجات — لا يغيّر شيئًا، يُقرأ فقط. */
-router.get('/dept-transfers/factory-variance', jwtAuth, requireRole('admin', 'manager', 'auditor', 'accountant'), async (req, res) => {
+router.get('/dept-transfers/factory-variance', jwtAuth, requireRole('admin', 'manager', 'auditor', 'accountant'), async (/** @type {any} */ req, /** @type {any} */ res) => {
   try {
     const month = /^\d{4}-\d{2}$/.test(String(req.query.month ? req.query.month : '').trim())
       ? String(req.query.month).trim() : riyadhDayOf(Date.now()).slice(0, 7);
     const data = await factoryVarianceRows(pool, month);
     res.json({ month: month, ...data });
-  } catch (e) {
+  } catch (/** @type {any} */ e) {
     logger.error('[transfers] factory-variance failed: ' + e.message);
     res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر جلب تقرير فرق المصنع' });
   }
@@ -1269,7 +1274,7 @@ router.get('/dept-transfers/factory-variance', jwtAuth, requireRole('admin', 'ma
 /** قفل فرق الشهر لمصنع: يقيّد فرق كل منفذ (المنتجات القابلة للمطابقة بكود
  *  Yara فقط) تعديلًا واحدًا لكل (مصنع، منفذ، شهر): فرق موجب = إيراد إضافي
  *  للمصنع وتحميل إضافي على المنفذ، والسالب عكسه — idempotent بمفتاح الشهر. */
-router.post('/dept-transfers/factory-variance/:month/close', jwtAuth, requireRole('admin', 'manager'), async (req, res) => {
+router.post('/dept-transfers/factory-variance/:month/close', jwtAuth, requireRole('admin', 'manager'), async (/** @type {any} */ req, /** @type {any} */ res) => {
   const month = String(req.params.month || '').trim();
   if (!/^\d{4}-\d{2}$/.test(month)) {
     return fail(res, 422, 'INVALID_MONTH', 'الشهر بصيغة YYYY-MM');
@@ -1337,25 +1342,25 @@ router.post('/dept-transfers/factory-variance/:month/close', jwtAuth, requireRol
               source_type: 'factory_variance_close', source_id: deptCode + ':' + r.dest + ':' + month,
               lines: lines,
             });
-          } catch (e) {
+          } catch (/** @type {any} */ e) {
             logger.error('[LEDGER] factory variance close failed: ' + e.message);
           }
         })();
       }
       res.json({ ok: true, month: month, dept_code: deptCode, closed: posted, closable_diff_value: factory.totals.closable_diff_value });
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
       await client.query('ROLLBACK').catch(function () {});
       logger.error('[transfers] factory-variance close failed: ' + e.message);
       res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر قفل فرق المصنع' });
     } finally { client.release(); }
-  } catch (e) {
+  } catch (/** @type {any} */ e) {
     logger.error('[transfers] factory-variance close failed: ' + e.message);
     res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر قفل فرق المصنع' });
   }
 });
 
 /** المسار A — طلب تحويل بين قسمين (بموافقة الشيف، اكتمال فوري عند الاعتماد). */
-router.post('/dept-transfers', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
+router.post('/dept-transfers', jwtAuth, requireRole(...WRITE_ROLES), async (/** @type {any} */ req, /** @type {any} */ res) => {
   const srcRes = resolveSourceDept(req.user, req.body ? req.body.sourceDeptCode : null);
   if (!srcRes.ok) {return fail(res, 403, srcRes.code, srcRes.message);}
   const destDept = String(req.body && req.body.destDeptCode ? req.body.destDeptCode : '').trim();
@@ -1366,7 +1371,7 @@ router.post('/dept-transfers', jwtAuth, requireRole(...WRITE_ROLES), async (req,
   }
   let items;
   try { items = collectItems(Array.isArray(req.body && req.body.items) ? req.body.items : []); }
-  catch (e) { return fail(res, 422, e.code, e.message); }
+  catch (/** @type {any} */ e) { return fail(res, 422, e.code, e.message); }
   const client = await pool.connect();
   let transfer;
   try {
@@ -1398,7 +1403,7 @@ router.post('/dept-transfers', jwtAuth, requireRole(...WRITE_ROLES), async (req,
     void notifyTransferEvent(transfer, 'created_pending_chef', {
       io: req.io, actorUserId: req.user.id, fromName: fromName, toName: toName,
     });
-  } catch (e) {
+  } catch (/** @type {any} */ e) {
     await client.query('ROLLBACK').catch(function () {});
     if (e.code === 'INSUFFICIENT_STOCK' || e.code === 'NOT_FROM_CURRENT_DISPATCH') {
       return fail(res, 409, e.code, e.message, { available: e.available, requested: e.requested, inventoryId: e.inventoryId });
@@ -1416,7 +1421,7 @@ router.post('/dept-transfers', jwtAuth, requireRole(...WRITE_ROLES), async (req,
  *  المسموح تحويلها هي ما دخل القسم بأذونات صرف معتمدة في الشهر الحالي فقط
  *  (assertMonthSourced) — فيُخصم من القسم المرسل ويُحمَّل على الوجهة فعليًا،
  *  مع قيدَي مصروف متقابلين وقيد 5000/5000. */
-router.post('/dept-transfers/external', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
+router.post('/dept-transfers/external', jwtAuth, requireRole(...WRITE_ROLES), async (/** @type {any} */ req, /** @type {any} */ res) => {
   const srcRes = resolveSourceDept(req.user, req.body ? req.body.sourceDeptCode : null);
   if (!srcRes.ok) {return fail(res, 403, srcRes.code, srcRes.message);}
   const destRaw = String(req.body && req.body.destDeptCode ? req.body.destDeptCode : EXTERNAL_SALE_DEPT).trim();
@@ -1428,7 +1433,7 @@ router.post('/dept-transfers/external', jwtAuth, requireRole(...WRITE_ROLES), as
   }
   let items;
   try { items = collectItems(Array.isArray(req.body && req.body.items) ? req.body.items : []); }
-  catch (e) { return fail(res, 422, e.code, e.message); }
+  catch (/** @type {any} */ e) { return fail(res, 422, e.code, e.message); }
   const client = await pool.connect();
   let transfer;
   let destDept;
@@ -1459,11 +1464,13 @@ router.post('/dept-transfers/external', jwtAuth, requireRole(...WRITE_ROLES), as
     const itemShape = [...items.entries()].map(function (e) { return { inventory_id: e[0], requested_qty: e[1] }; });
     const factory = await isFactoryDept(client, srcRes.deptCode);
     let factoryPricing = null;
+    /** @type {any} */
     let settlement = null;
     if (factory) {
       factoryPricing = await resolveMenuPricing(client, itemShape);
       settlement = factoryPricingRows(factoryPricing, itemShape);
     }
+    /** @type {Record<string, any>} */
     const meta = {
       mode: 'external_sale', sourceDeptCode: srcRes.deptCode, destDeptCode: destDept,
       scope: 'month', cost_basis: 'issue_voucher',
@@ -1512,7 +1519,7 @@ router.post('/dept-transfers/external', jwtAuth, requireRole(...WRITE_ROLES), as
     void notifyTransferEvent(transfer, 'external_sale', {
       io: req.io, actorUserId: req.user.id, fromName: fromName, toName: names[String(destDept).toLowerCase()] || destDept,
     });
-  } catch (e) {
+  } catch (/** @type {any} */ e) {
     await client.query('ROLLBACK').catch(function () {});
     if (e.code === 'INSUFFICIENT_STOCK' || e.code === 'NOT_FROM_CURRENT_DISPATCH') {
       return fail(res, 409, e.code, e.message, { available: e.available, requested: e.requested, inventoryId: e.inventoryId });
@@ -1525,7 +1532,7 @@ router.post('/dept-transfers/external', jwtAuth, requireRole(...WRITE_ROLES), as
 
 /** الاعتماد = التنفيذ الفوري: خصم من المرسل + إضافة للمستلم في معاملة واحدة
  *  + قيد محاسبي + إشعارات. لا يعتمد أحدُ طلبه بنفسه (SELF_APPROVAL). */
-router.post('/dept-transfers/:id/approve', jwtAuth, requireRole(...APPROVE_ROLES), async (req, res) => {
+router.post('/dept-transfers/:id/approve', jwtAuth, requireRole(...APPROVE_ROLES), async (/** @type {any} */ req, /** @type {any} */ res) => {
   const client = await pool.connect();
   let transfer;
   let totalValue;
@@ -1561,9 +1568,9 @@ router.post('/dept-transfers/:id/approve', jwtAuth, requireRole(...APPROVE_ROLES
     const fromName = sourceDept ? (names[sourceDept.toLowerCase()] || sourceDept) : null;
     const toName = destDept ? (names[destDept.toLowerCase()] || destDept) : null;
     void notifyTransferEvent(fresh, 'approved', {
-      io: req.io, actorUserId: req.user.id, toDeptCode: destDept, fromName: fromName, toName: toName,
+      io: req.io, actorUserId: req.user.id, toDeptCode: /** @type {any} */ (destDept), fromName: fromName, toName: toName,
     });
-  } catch (e) {
+  } catch (/** @type {any} */ e) {
     await client.query('ROLLBACK').catch(function () {});
     if (e.code === 'INSUFFICIENT_STOCK' || e.code === 'NOT_FROM_CURRENT_DISPATCH') {
       const availText = e.available !== undefined ? String(e.available) : '0';
@@ -1575,7 +1582,7 @@ router.post('/dept-transfers/:id/approve', jwtAuth, requireRole(...APPROVE_ROLES
   } finally { client.release(); }
 });
 
-router.post('/dept-transfers/:id/reject', jwtAuth, requireRole(...APPROVE_ROLES), async (req, res) => {
+router.post('/dept-transfers/:id/reject', jwtAuth, requireRole(...APPROVE_ROLES), async (/** @type {any} */ req, /** @type {any} */ res) => {
   const client = await pool.connect();
   let transfer;
   try {
@@ -1598,17 +1605,17 @@ router.post('/dept-transfers/:id/reject', jwtAuth, requireRole(...APPROVE_ROLES)
     const destDept = transfer.metadata && transfer.metadata.destDeptCode ? String(transfer.metadata.destDeptCode) : '';
     const names = await lookupDeptNames([sourceDept, destDept].filter(Boolean));
     void notifyTransferEvent(transfer, 'rejected', {
-      io: req.io, actorUserId: req.user.id, reason: reasonDb,
+      io: req.io, actorUserId: req.user.id, reason: /** @type {any} */ (reasonDb),
       fromName: sourceDept ? (names[sourceDept.toLowerCase()] || sourceDept) : null,
       toName: destDept ? (names[destDept.toLowerCase()] || destDept) : null,
     });
-  } catch (e) {
+  } catch (/** @type {any} */ e) {
     await client.query('ROLLBACK').catch(function () {});
     res.status(500).json({ error: e.code || 'INTERNAL_ERROR', message: 'تعذر رفض التحويل' });
   } finally { client.release(); }
 });
 
-router.post('/dept-transfers/:id/cancel', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
+router.post('/dept-transfers/:id/cancel', jwtAuth, requireRole(...WRITE_ROLES), async (/** @type {any} */ req, /** @type {any} */ res) => {
   const client = await pool.connect();
   try {
     await client.query('BEGIN');
@@ -1625,7 +1632,7 @@ router.post('/dept-transfers/:id/cancel', jwtAuth, requireRole(...WRITE_ROLES), 
     await writeEvent(client, transfer.id, transfer.status, 'cancelled', req.user.id, 'إلغاء طلب التحويل');
     await client.query('COMMIT');
     res.json({ transfer_id: transfer.id, status: 'cancelled' });
-  } catch (e) {
+  } catch (/** @type {any} */ e) {
     await client.query('ROLLBACK').catch(function () {});
     res.status(500).json({ error: e.code || 'INTERNAL_ERROR', message: 'تعذر إلغاء التحويل' });
   } finally { client.release(); }

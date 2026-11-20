@@ -11,6 +11,7 @@ const CONTRIBUTION_RATES_BP = Object.freeze({
   expat: Object.freeze({ employee: 0, employer: 200 }),
 });
 
+/** @param {any} value @param {any} field */
 function toCents(value, field) {
   const text = String(value ?? '');
   if (!/^\d+(?:\.\d{1,2})?$/.test(text)) {
@@ -24,10 +25,12 @@ function toCents(value, field) {
   return cents;
 }
 
+/** @param {any} cents */
 function money(cents) {
   return `${Math.floor(cents / 100)}.${String(cents % 100).padStart(2, '0')}`;
 }
 
+/** @param {any} employeeId */
 function calculateContributions({ employeeId, payrollId = null, name, salary, nationality }) {
   const country = String(nationality ?? '').trim().toUpperCase();
   const category = country === 'SA' ? 'saudi' : country ? 'expat' : null;
@@ -71,6 +74,7 @@ class GosiService {
     this.pool = pool;
   }
 
+  /** @param {any} employeeId */
   async calculateForEmployee(employeeId) {
     if (!/^\d+$/.test(String(employeeId))) {
       throw new ValidationError('employeeId', 'must be a positive integer');
@@ -95,6 +99,7 @@ class GosiService {
     });
   }
 
+  /** @param {any} payrollId */
   async calculateForPayroll(payrollId) {
     if (!/^\d+$/.test(String(payrollId))) {
       throw new ValidationError('payrollId', 'must be a positive integer');
@@ -122,6 +127,7 @@ class GosiService {
     });
   }
 
+  /** @param {any} month */
   async calculateForMonth(month) {
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(String(month))) {
       throw new ValidationError('month', 'must be a valid YYYY-MM month');
@@ -173,6 +179,7 @@ class GosiService {
     });
   }
 
+  /** @param {any} calculation */
   async assertPayrollApprovalReady(calculation) {
     // Hard block: the amounts can be previewed, but payroll cannot be approved
     // until the applied rates have an evidenced, verified GOSI rate-set record.

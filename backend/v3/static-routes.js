@@ -7,6 +7,7 @@ const path = require('path');
 const SCREEN_KEY = /^[a-z0-9-]+$/;
 const HASHED_ASSET = /-[A-Za-z0-9_-]{8,}\.(?:js|css|woff2?|ttf|png|jpe?g|webp|svg)$/i;
 
+/** @param {any} rootDir */
 function readEnabledScreens(rootDir) {
   const manifestPath = path.join(rootDir, 'screens.json');
   const parsed = JSON.parse(fs.readFileSync(manifestPath, 'utf8'));
@@ -19,6 +20,7 @@ function readEnabledScreens(rootDir) {
   return parsed;
 }
 
+/** @param {any} rootDir */
 function buildIndex(rootDir) {
   const indexPath = path.join(rootDir, 'index.html');
   const html = fs.readFileSync(indexPath, 'utf8');
@@ -30,6 +32,7 @@ function buildIndex(rootDir) {
   return html.replace(/<\/head>/i, `${meta}</head>`);
 }
 
+/** @param {any} res @param {any} filePath */
 function setV3CacheHeaders(res, filePath) {
   const file = path.basename(filePath);
   if (file === 'index.html' || file === 'screens.json' || file === 'rollout.json') {
@@ -62,7 +65,7 @@ function createV3StaticRouter({
     setHeaders: setV3CacheHeaders,
   }));
 
-  router.get('/', (_req, res, next) => {
+  router.get('/', /** @param {any} _req @param {any} res @param {any} next */ (_req, res, next) => {
     try {
       res.status(200).type('html').set({
         'Cache-Control': 'no-store, no-cache, must-revalidate',
@@ -74,7 +77,7 @@ function createV3StaticRouter({
     }
   });
 
-  router.get('*', (req, res, next) => {
+  router.get('*', /** @param {any} req @param {any} res @param {any} next */ (req, res, next) => {
     if (path.extname(req.path)) {
       return next();
     }

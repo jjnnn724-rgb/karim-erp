@@ -45,10 +45,21 @@ const canWriteSettings = requireRoleOrPerm(WRITE_ROLES, 'compliance.configure');
 const canSubmit = requireRoleOrPerm(WRITE_ROLES, 'compliance.submit');
 const canReview = requireRoleOrPerm(WRITE_ROLES, 'compliance.review');
 
+/**
+ * @param {any} res
+ * @param {number} status
+ * @param {string} error
+ * @param {string} message
+ */
 function fail(res, status, error, message) {
   return res.status(status).json({ error, message });
 }
 
+/**
+ * @param {any} res
+ * @param {any} error
+ * @param {string} where
+ */
 function dbFail(res, error, where) {
   if (error && error.code === '42P01') {
     return fail(res, 503, 'INTEGRATION_NOT_READY', 'بنية التكامل غير مطبَّقة بعد — طبّق هجرة 145 أولًا.');
@@ -57,10 +68,15 @@ function dbFail(res, error, where) {
   return fail(res, 500, 'INTEGRATION_FAILED', 'تعذر إكمال الطلب.');
 }
 
+/** @param {any} req */
 function actorOf(req) {
   return Number.isInteger(req.user?.id) ? req.user.id : null;
 }
 
+/**
+ * @param {any} db
+ * @param {{outboxId?: any, providerCode: any, actorId: any, metadata: any}} opts
+ */
 async function writeInternalEvent(db, { outboxId = null, providerCode, actorId, metadata }) {
   await db.query(
     `INSERT INTO integration_events (outbox_id, provider_code, direction, outcome, actor_user_id, metadata)
@@ -69,6 +85,7 @@ async function writeInternalEvent(db, { outboxId = null, providerCode, actorId, 
   );
 }
 
+/** @param {string} name */
 async function tableExists(name) {
   const { rows } = await pool.query('SELECT to_regclass($1) AS t', [`public.${name}`]);
   return Boolean(rows[0] && rows[0].t);
@@ -94,6 +111,12 @@ async function readZatcaHealth() {
   };
 }
 
+/**
+ * @param {any} db
+ * @param {any} row
+ * @param {any} actorId
+ * @param {any} requestId
+ */
 async function enqueueRetry(db, row, actorId, requestId) {
   let key = null;
   for (let attempt = 1; attempt <= 100 && key === null; attempt++) {
@@ -128,7 +151,7 @@ async function enqueueRetry(db, row, actorId, requestId) {
 }
 
 router.use(jwtAuth);
-router.use((req, res, next) => {
+router.use(/** @param {any} req @param {any} res @param {any} next */ (req, res, next) => {
   res.set('Cache-Control', 'no-store');
   next();
 });
@@ -144,14 +167,14 @@ async function loadProviderRows() {
     ).rows;
     return rows.length ? rows.map(publicProvider) : staticProviders();
   } catch (error) {
-    if (error && error.code === '42P01') {
+    if (error && /** @type {any} */ (error).code === '42P01') {
       return staticProviders();
     }
     throw error;
   }
 }
 
-router.get('/health', canView, generalLimiter, async (req, res) => {
+router.get('/health', canView, generalLimiter, /** @param {any} req @param {any} res */ async (req, res) => {
   try {
     const providers = await loadProviderRows();
     let outbox = null;
@@ -183,7 +206,7 @@ router.get('/health', canView, generalLimiter, async (req, res) => {
         oldest_pending_age_seconds: ageSeconds,
       };
     } catch (error) {
-      if (!error || error.code !== '42P01') {
+      if (!error || /** @type {any} */ (error).code !== '42P01') {
         throw error;
       }
       infra = { migration_145: false };
@@ -200,7 +223,7 @@ router.get('/health', canView, generalLimiter, async (req, res) => {
   }
 });
 
-router.get('/providers', canView, generalLimiter, async (req, res) => {
+router.get('/providers', canView, generalLimiter, /** @param {any} req @param {any} res */ async (req, res) => {
   try {
     res.json({ providers: await loadProviderRows() });
   } catch (error) {
@@ -208,7 +231,7 @@ router.get('/providers', canView, generalLimiter, async (req, res) => {
   }
 });
 
-router.put('/providers/:code/settings', canWriteSettings, crudLimiter, async (req, res) => {
+router.put('/providers/:code/settings', canWriteSettings, crudLimiter, /** @param {any} req @param {any} res */ async (req, res) => {
   const code = String(req.params.code || '');
   const enabled = req.body?.enabled;
   if (typeof enabled !== 'boolean') {
@@ -255,7 +278,7 @@ router.put('/providers/:code/settings', canWriteSettings, crudLimiter, async (re
   }
 });
 
-router.put('/credentials/:provider/:key', canWriteSettings, crudLimiter, async (req, res) => {
+router.put('/credentials/:provider/:key', canWriteSettings, crudLimiter, /** @param {any} req @param {any} res */ async (req, res) => {
   const providerCode = String(req.params.provider || '');
   const keyName = String(req.params.key || '');
   const value = req.body?.value;
@@ -282,10 +305,12 @@ router.put('/credentials/:provider/:key', canWriteSettings, crudLimiter, async (
     }
     client = await pool.connect();
     await client.query('BEGIN');
-    const revoked = await client.query(
-      `UPDATE integration_credentials SET revoked_at = now()
+    const revoked = /** @type {{rows: any[], rowCount: number}} */ (
+      await client.query(
+        `UPDATE integration_credentials SET revoked_at = now()
               WHERE provider_code = $1 AND key_name = $2 AND revoked_at IS NULL`,
-      [providerCode, keyName]
+        [providerCode, keyName]
+      )
     );
     const inserted = await client.query(
       `INSERT INTO integration_credentials (provider_code, key_name, ciphertext, created_by)
@@ -316,7 +341,7 @@ router.put('/credentials/:provider/:key', canWriteSettings, crudLimiter, async (
   }
 });
 
-router.get('/outbox', canView, generalLimiter, async (req, res) => {
+router.get('/outbox', canView, generalLimiter, /** @param {any} req @param {any} res */ async (req, res) => {
   const status = req.query.status ? String(req.query.status) : null;
   const provider = req.query.provider ? String(req.query.provider) : null;
   if (status && !OUTBOX_STATUSES.includes(status)) {
@@ -349,7 +374,7 @@ router.get('/outbox', canView, generalLimiter, async (req, res) => {
   }
 });
 
-router.post('/outbox/:id/retry', canSubmit, crudLimiter, async (req, res) => {
+router.post('/outbox/:id/retry', canSubmit, crudLimiter, /** @param {any} req @param {any} res */ async (req, res) => {
   const id = Number(req.params.id);
   if (!Number.isInteger(id) || id <= 0) {
     return fail(res, 422, 'INVALID_ID', 'معرف الصادر غير صحيح.');
@@ -388,7 +413,7 @@ router.post('/outbox/:id/retry', canSubmit, crudLimiter, async (req, res) => {
   }
 });
 
-router.post('/outbox/:id/review', canReview, crudLimiter, async (req, res) => {
+router.post('/outbox/:id/review', canReview, crudLimiter, /** @param {any} req @param {any} res */ async (req, res) => {
   const id = Number(req.params.id);
   const decision = req.body?.decision;
   const reason = String(req.body?.reason ?? '')
@@ -452,7 +477,7 @@ router.post('/outbox/:id/review', canReview, crudLimiter, async (req, res) => {
   }
 });
 
-router.get('/events', canView, generalLimiter, async (req, res) => {
+router.get('/events', canView, generalLimiter, /** @param {any} req @param {any} res */ async (req, res) => {
   const outboxId = req.query.outbox_id ? Number(req.query.outbox_id) : null;
   if (outboxId !== null && (!Number.isInteger(outboxId) || outboxId <= 0)) {
     return fail(res, 422, 'INVALID_ID', 'معرف الصادر غير صحيح.');

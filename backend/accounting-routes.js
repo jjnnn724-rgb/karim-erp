@@ -37,6 +37,7 @@ const WRITE_ROLES = ['admin', 'accountant'];
 
 const crypto = require('crypto');
 const uid = () => Date.now() * 1000 + crypto.randomInt(0, 999999);
+/** @param {any} n */
 const round2 = n => Math.round((Number(n) || 0) * 100) / 100;
 // FIX 2026-10-11 (M20): use riyadhToday() instead of UTC toISOString()
 const { riyadhToday, riyadhMonth, riyadhDateOf } = require('./riyadh-date');
@@ -53,7 +54,9 @@ const {
 
 // مراكز التكلفة اختيارية على مستوى القاعدة: إن لم تُطبق migration 081 بعد،
 // يعمل الترحيل (يدوي وتلقائي) بدونها بدل أن يكسر البيع. يُكتشف مرة واحدة.
+/** @type {any} */
 let _ccReady = null;
+/** @param {any} db */
 async function ccReady(db) {
   if (_ccReady !== null) {
     return _ccReady;
@@ -67,9 +70,10 @@ async function ccReady(db) {
   return _ccReady;
 }
 
-/** ترقيم قيد يومي متسلسل — بالأقصى لا بالعدّ (الفجوات من حذف/إبطال لا تكسره) */
+/** ترقيم قيد يومي متسلسل — بالأقصى لا بالعدّ (الفجوات من حذف/إبطال لا تكسره)  @param {any} client */
 async function nextEntryNo(client) {
   const d = new Date();
+  /** @param {any} n */
   const p = n => String(n).padStart(2, '0');
   const day = `${d.getFullYear()}${p(d.getMonth() + 1)}${p(d.getDate())}`;
   const mx = (
@@ -178,7 +182,7 @@ async function postJournal(
     `SELECT code FROM chart_of_accounts WHERE code = ANY($1) AND is_active = true AND is_postable = true`,
     [codes]
   );
-  const ok = new Set(acc.rows.map(r => r.code));
+  const ok = new Set(acc.rows.map((/** @type {any} */ r) => r.code));
   const bad = codes.filter(c => !ok.has(c));
   if (bad.length) {
     throw Object.assign(new Error(`حسابات غير صالحة للترحيل: ${bad.join('، ')}`), { statusCode: 422 });
@@ -187,7 +191,7 @@ async function postJournal(
   const useCC = ccCodes.length > 0 && (await ccReady(db));
   if (ccCodes.length && useCC) {
     const cc = await db.query(`SELECT code FROM cost_centers WHERE code = ANY($1) AND is_active = true`, [ccCodes]);
-    const ccOk = new Set(cc.rows.map(r => r.code));
+    const ccOk = new Set(cc.rows.map((/** @type {any} */ r) => r.code));
     const ccBad = ccCodes.filter(c => !ccOk.has(c));
     if (ccBad.length) {
       throw Object.assign(new Error(`مراكز تكلفة غير صالحة: ${ccBad.join('، ')}`), { statusCode: 422 });
@@ -205,6 +209,7 @@ async function postJournal(
   // لا يُعاد ترحيلُه، فلا ينقلب قرار إبطال بشري ضمنيًا في أي sweep أو جسر.
   // repostVoided=true للمسار البشري الصريح: المُبطل خارج الأستاذ العام فلا يكون
   // «ترحيلًا موجودًا»، وإعادة الحفظ تُرحّل نسخة منقّحة بمرجع مراجعة `#rN`.
+  /** @param {any} ref */
   const findExisting = async ref =>
     (await db.query(repostVoided ? SQL_FIND_LIVE : SQL_FIND_ANY, [source_type, ref])).rows[0] || null;
 
@@ -221,7 +226,7 @@ async function postJournal(
         // للأبد ⇒ مرجع المراجعة. ولا تُعاد الترحيلات إن كان في العائلة سطر
         // حيّ أصلًا (رحّل المصدر من قبل) وإلا تكرّر الإيراد/المصروف في الأستاذ.
         const fam = await db.query(SQL_FIND_REV_LIVE, [source_type, effSourceId]);
-        const live = fam.rows.filter(r => String(r.source_id).split('#r')[0] === String(effSourceId))[0];
+        const live = fam.rows.filter((/** @type {any} */ r) => String(r.source_id).split('#r')[0] === String(effSourceId))[0];
         if (live) {
           return { entry: live, replay: true };
         }
@@ -252,7 +257,7 @@ async function postJournal(
         );
         const s2 =
           ll.rows
-            .map(l => `${l.account_code}:${Number(l.debit).toFixed(2)}:${Number(l.credit).toFixed(2)}`)
+            .map((/** @type {any} */ l) => `${l.account_code}:${Number(l.debit).toFixed(2)}:${Number(l.credit).toFixed(2)}`)
             .sort()
             .join('|') +
           '#' +
@@ -268,6 +273,7 @@ async function postJournal(
   }
 
   for (let attempt = 0; attempt < 3; attempt++) {
+    /** @param {any} client */
     const doRun = async client => {
       // قفل الفترة داخل نفس المعاملة (R-07): assertPeriodOpen خارج المعاملة كان
       // يترك نافذة سباق بين الفحص والإدراج — الآن الصف يُقفل FOR UPDATE هنا.
@@ -330,7 +336,7 @@ async function postJournal(
           const out = await doRun(q);
           await q.query('COMMIT');
           return out;
-        } catch (err) {
+        } catch (/** @type {any} */ err) {
           await q.query('ROLLBACK').catch(() => {});
           if (err.code === '23505') {
             const dup = await findExisting(effSourceId);
@@ -349,7 +355,7 @@ async function postJournal(
     }
     try {
       return await doRun(db);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
       if (err.code === '23505') {
         const dup = await findExisting(effSourceId).catch(() => null);
         if (dup) {
@@ -417,7 +423,7 @@ function buildSalePostingLines({ orderId, total, tax, cogs, pays, accounts = {} 
   return lines;
 }
 
-/** ترحيل فاتورة كاشير: نقدية/بنك ← إيراد + ضريبة + COGS للمكونات (idempotent برقم الفاتورة) */
+/** ترحيل فاتورة كاشير: نقدية/بنك ← إيراد + ضريبة + COGS للمكونات (idempotent برقم الفاتورة)  @param {any} orderId */
 async function postSaleToLedger(orderId) {
   const o = (
     await pool.query(
@@ -483,6 +489,8 @@ async function postSaleToLedger(orderId) {
  * ({invoiceId}:revision:{rev} عبر sourceId) — المرجع المُبطل يبقى محجوزًا في
  * uq_journal_source، فالإعادة بنفس invoiceId ستعيد القيد المُبطل لا قيدًا جديدًا.
  * يُستدعى best-effort بعد COMMIT الفاتورة — فشله لا يُسقط الشراء أبدًا.
+  * @param {any} invoiceId
+  * @param {any} sourceId
  */
 async function postPurchaseToLedger(invoiceId, { sourceId } = {}) {
   const inv = (
@@ -547,6 +555,7 @@ async function postPurchaseToLedger(invoiceId, { sourceId } = {}) {
  * ولا ضريبة مدخلات. المعالجة الصحيحة: Dr 1200 مخزون المواد ← Cr 3000 رأس المال
  * بإجمالي القيمة. يُستدعى لفواتير الأرصدة الافتتاحية (invoiceNumber يبدأ بـ OPEN-)
  * بنفس مفتاح idempotency (source_type, source_id) — إعادة الترحيل تُكتشف تلقائيًا.
+  * @param {any} invoiceId
  */
 async function postOpeningToLedger(invoiceId) {
   const inv = (
@@ -590,6 +599,10 @@ async function postOpeningToLedger(invoiceId) {
  * الحركات المتماثلة (نقية، قابلة للاختبار):
  *   صرف OUT: Dr 5000 تكلفة بضاعة ← Cr 1200 مخزون (بمتوسط التكلفة المرجح)
  *   إرجاع IN: Dr 1200 مخزون ← Cr 5000 تكلفة بضاعة (عكس متماثل)
+  * @param {any} totalValue
+  * @param {any} direction
+  * @param {any} costCenter
+  * @param {any} accounts
  */
 function buildStockMoveLines(totalValue, direction, costCenter = null, accounts = {}) {
   const v = round2(totalValue);
@@ -643,6 +656,7 @@ function buildStockMoveLines(totalValue, direction, costCenter = null, accounts 
  * فكان الإدراج الخامّ يفشل دائمًا بقيد `cost_centers_code_check`، ثم يرمي
  * postJournal «مركز غير معروف» بعد أن يرفع الرمز إلى أحرف كبيرة — فيسقط قيد
  * الصرف كله بصمت. التطبيع هنا هو مصدر الحقيقة الوحيد للرمز.
+  * @param {any} code
  */
 function normalizeCostCenterCode(code) {
   const s = String(code == null ? '' : code)
@@ -653,6 +667,7 @@ function normalizeCostCenterCode(code) {
   return s || '';
 }
 
+/** @param {any} codes */
 async function ensureCostCenters(codes = []) {
   const wanted = [...new Set(codes.map(normalizeCostCenterCode).filter(Boolean))];
   if (!wanted.length) {
@@ -667,7 +682,7 @@ async function ensureCostCenters(codes = []) {
              ON CONFLICT (code) DO NOTHING`,
       [wanted]
     );
-  } catch (e) {
+  } catch (/** @type {any} */ e) {
     logger.warn(`[cost-centers] ensure skipped: ${e.message}`);
   }
   return wanted;
@@ -675,7 +690,7 @@ async function ensureCostCenters(codes = []) {
 
 /** ترحيل صرف معتمد: idempotent بمفتاح (dispatch, id) — best-effort بعد COMMIT.
  *  سطر التكلفة يحمل cost_center_code = القسم الطالب (إن وُجد مركزُه) —
- *  فانقسام COGS لكل قسم يصبح ممكنًا من الأستاذ مباشرة. */
+ *  فانقسام COGS لكل قسم يصبح ممكنًا من الأستاذ مباشرة.  @param {any} dispatchId @param {any} totalValue */
 async function postDispatchToLedger(dispatchId, { totalValue, date, deptCode } = {}) {
   const v = round2(totalValue);
   if (!(v > 0)) {
@@ -700,7 +715,7 @@ async function postDispatchToLedger(dispatchId, { totalValue, date, deptCode } =
   return out;
 }
 
-/** ترحيل إرجاع معتمد (عكس متماثل): idempotent بمفتاح (kitchen_return, id). */
+/** ترحيل إرجاع معتمد (عكس متماثل): idempotent بمفتاح (kitchen_return, id).  @param {any} returnId @param {any} totalValue */
 async function postReturnToLedger(returnId, { totalValue, date, deptCode } = {}) {
   const v = round2(totalValue);
   if (!(v > 0)) {
@@ -736,7 +751,7 @@ async function postReturnToLedger(returnId, { totalValue, date, deptCode } = {})
 // الترحيل على أساس الأرصدة لا حركة الشهر، فأول تصفية تُنظّف التراكم التاريخي
 // ثم تُبقي كل شهر لاحق الأرصدة متطابقة — idempotent بمفتاح (vat_settlement, month).
 
-/** حركة ضريبية للمراجعة من القيود المرحّلة، مع فصل العكس والحركات غير المصنّفة. */
+/** حركة ضريبية للمراجعة من القيود المرحّلة، مع فصل العكس والحركات غير المصنّفة.  @param {any} db @param {any} from @param {any} to @param {any} accounts */
 async function vatMovement(db, from, to, accounts) {
   const posted = await db.query(
     `SELECT l.account_code, e.source_type,
@@ -750,7 +765,7 @@ async function vatMovement(db, from, to, accounts) {
   return calculateVatMovement(posted.rows, accounts);
 }
 
-/** أرصدة الضريبة المرحّلة حتى تاريخ: موجب = مستحق (2100) / قابل للاسترداد (1150). */
+/** أرصدة الضريبة المرحّلة حتى تاريخ: موجب = مستحق (2100) / قابل للاسترداد (1150).  @param {any} db @param {any} asOf @param {any} accounts */
 async function vatBalances(db, asOf, accounts) {
   const r = await db.query(
     `SELECT COALESCE(ROUND(SUM(CASE WHEN l.account_code = $2 THEN l.credit - l.debit ELSE 0 END),2),0)::float AS payable,
@@ -768,6 +783,7 @@ async function vatBalances(db, asOf, accounts) {
 /**
  * خطة التصفية — دالة نقية: الإطفاء = min(المستحق، القابل للاسترداد).
  * لا تُنشئ أي سطر لصافي المستحق (يبقى رصيد 2100) ولا لترحيل الرصيد (يبقى 1150).
+  * @param {any} payableBalance
  */
 function buildVatSettlementPlan({ payableBalance, recoverableBalance, accounts = {} }) {
   const payableAcct = accounts.payable_account || '2100';
@@ -790,7 +806,7 @@ function buildVatSettlementPlan({ payableBalance, recoverableBalance, accounts =
   };
 }
 
-router.get('/vat-return', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
+router.get('/vat-return', jwtAuth, requireRole(...READ_ROLES), async (/** @type {any} */ req, /** @type {any} */ res) => {
   try {
     // FIX (Enterprise 2026-10-21): الشهر واليوم بتوقيت الرياض — لا
     // التوقيت المحلي للخادم ولا UTC (كانا ينزلقان شهرًا/يومًا).
@@ -991,8 +1007,8 @@ router.get('/vat-return', jwtAuth, requireRole(...READ_ROLES), async (req, res) 
     };
     const salesBreakdown = normalizeVatRateRows(salesBreakdownResult.rows);
     const salesVatDifference = Math.abs(
-      salesBreakdown.filter(row => row.kind === 'sale').reduce((sum, row) => sum + row.vat, 0) -
-        salesBreakdown.filter(row => row.kind === 'void').reduce((sum, row) => sum + row.vat, 0) -
+      salesBreakdown.filter((/** @type {any} */ row) => row.kind === 'sale').reduce((/** @type {any} */ sum, /** @type {any} */ row) => sum + row.vat, 0) -
+        salesBreakdown.filter((/** @type {any} */ row) => row.kind === 'void').reduce((/** @type {any} */ sum, /** @type {any} */ row) => sum + row.vat, 0) -
         (movement.output_vat - movement.output_vat_reversals)
     );
     const purchaseVatDifference = Math.abs(Number(purchases.rows[0]?.vat || 0) - movement.input_vat);
@@ -1007,8 +1023,8 @@ router.get('/vat-return', jwtAuth, requireRole(...READ_ROLES), async (req, res) 
     );
     const missingTaxRuleCount = purchaseRows.reduce((sum, row) => sum + Number(row.missing_tax_rule_count || 0), 0);
     const missingTaxRateCount = purchaseBreakdown
-      .filter(row => row.classification === 'missing_rate')
-      .reduce((sum, row) => sum + row.document_count, 0);
+      .filter((/** @type {any} */ row) => row.classification === 'missing_rate')
+      .reduce((/** @type {any} */ sum, /** @type {any} */ row) => sum + row.document_count, 0);
     const unpostedPurchaseCount = Number(unpostedPurchases.rows[0]?.n || 0);
     const cancelledWithoutVoidDateCount = Number(cancelledWithoutDate.rows[0]?.n || 0);
     const unclassifiedRateCount = [...salesBreakdown, ...purchaseBreakdown]
@@ -1090,7 +1106,7 @@ router.get('/vat-return', jwtAuth, requireRole(...READ_ROLES), async (req, res) 
  * يُرفض الشهر الجاري/المستقبلي (لا تصفية لفترة لم تنتهِ) والفترة المقفولة (423)،
  * والإعادة لنفس الشهر تُرجع replay ولا تُضاعف أبدًا.
  */
-router.post('/vat-settlement', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
+router.post('/vat-settlement', jwtAuth, requireRole(...WRITE_ROLES), async (/** @type {any} */ req, /** @type {any} */ res) => {
   try {
     const month = String(req.body?.month || '').trim();
     if (!/^\d{4}-\d{2}$/.test(month)) {
@@ -1179,7 +1195,7 @@ router.post('/vat-settlement', jwtAuth, requireRole(...WRITE_ROLES), async (req,
       applied: true,
       entry: out.entry,
     });
-  } catch (error) {
+  } catch (/** @type {any} */ error) {
     if (error.statusCode === 423) {
       return res.status(423).json({ error: 'PERIOD_CLOSED', message: error.message });
     }
@@ -1189,7 +1205,7 @@ router.post('/vat-settlement', jwtAuth, requireRole(...WRITE_ROLES), async (req,
 });
 
 // ─── شجرة الحسابات ───────────────────────────────────────────────────────────
-router.get('/chart', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
+router.get('/chart', jwtAuth, requireRole(...READ_ROLES), async (/** @type {any} */ req, /** @type {any} */ res) => {
   try {
     const { rows } = await pool.query(
       `SELECT code, name_ar, name_en, type, parent_code, is_postable, is_active
@@ -1202,7 +1218,7 @@ router.get('/chart', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
   }
 });
 
-router.post('/chart', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
+router.post('/chart', jwtAuth, requireRole(...WRITE_ROLES), async (/** @type {any} */ req, /** @type {any} */ res) => {
   try {
     const code = String(req.body?.code || '')
       .trim()
@@ -1234,7 +1250,7 @@ router.post('/chart', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => 
       [uid(), code, name_ar, name_en, type, parent_code, req.body?.is_postable]
     );
     res.status(201).json(rows[0]);
-  } catch (error) {
+  } catch (/** @type {any} */ error) {
     if (error.code === '23505') {
       return res.status(409).json({ error: 'LEDGER_CODE_EXISTS', message: 'كود الحساب موجود بالفعل' });
     }
@@ -1244,7 +1260,7 @@ router.post('/chart', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => 
 });
 
 // ─── ميزان المراجعة ──────────────────────────────────────────────────────────
-router.get('/trial-balance', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
+router.get('/trial-balance', jwtAuth, requireRole(...READ_ROLES), async (/** @type {any} */ req, /** @type {any} */ res) => {
   try {
     const from = String(req.query.from || '2000-01-01').slice(0, 10);
     const to = String(req.query.to || '2100-12-31').slice(0, 10);
@@ -1293,7 +1309,7 @@ router.get('/trial-balance', jwtAuth, requireRole(...READ_ROLES), async (req, re
 });
 
 // ─── القوائم المالية الرسمية المستخرجة من الأستاذ العام (Single Source of Truth) ───
-router.get('/balance-sheet', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
+router.get('/balance-sheet', jwtAuth, requireRole(...READ_ROLES), async (/** @type {any} */ req, /** @type {any} */ res) => {
   try {
     const { generateBalanceSheet } = require('./financial-statements-engine');
     const asOf = req.query.as_of ? String(req.query.as_of).slice(0, 10) : null;
@@ -1305,7 +1321,7 @@ router.get('/balance-sheet', jwtAuth, requireRole(...READ_ROLES), async (req, re
   }
 });
 
-router.get('/income-statement', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
+router.get('/income-statement', jwtAuth, requireRole(...READ_ROLES), async (/** @type {any} */ req, /** @type {any} */ res) => {
   try {
     const { generateIncomeStatement } = require('./financial-statements-engine');
     const from = req.query.from ? String(req.query.from).slice(0, 10) : null;
@@ -1319,7 +1335,7 @@ router.get('/income-statement', jwtAuth, requireRole(...READ_ROLES), async (req,
 });
 
 // ─── دفتر القيود ─────────────────────────────────────────────────────────────
-router.get('/journal', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
+router.get('/journal', jwtAuth, requireRole(...READ_ROLES), async (/** @type {any} */ req, /** @type {any} */ res) => {
   try {
     const limit = Math.min(200, Math.max(1, Number(req.query.limit) || 50));
     const { rows } = await pool.query(
@@ -1339,7 +1355,7 @@ router.get('/journal', jwtAuth, requireRole(...READ_ROLES), async (req, res) => 
   }
 });
 
-router.post('/journal', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
+router.post('/journal', jwtAuth, requireRole(...WRITE_ROLES), async (/** @type {any} */ req, /** @type {any} */ res) => {
   try {
     const out = await postJournal(pool, {
       date: req.body?.date,
@@ -1359,7 +1375,7 @@ router.post('/journal', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) =
         .json({ error: 'LEDGER_DUPLICATE', message: 'قيد بنفس المرجع موجود مسبقًا', entry: out.entry });
     }
     res.status(201).json({ entry: out.entry, lines: out.lines });
-  } catch (error) {
+  } catch (/** @type {any} */ error) {
     const code = error.statusCode || 500;
     res
       .status(code)
@@ -1368,7 +1384,7 @@ router.post('/journal', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) =
 });
 
 // ─── إلغاء قيد (يُبقي الأثر للمراجعة — يُستبعد من الميزان) ────────────────────
-router.post('/journal/:id/void', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
+router.post('/journal/:id/void', jwtAuth, requireRole(...WRITE_ROLES), async (/** @type {any} */ req, /** @type {any} */ res) => {
   try {
     const id = Number(req.params.id);
     if (!Number.isInteger(id) || id <= 0) {
@@ -1380,7 +1396,7 @@ router.post('/journal/:id/void', jwtAuth, requireRole(...WRITE_ROLES), async (re
     }
     try {
       await require('./accounting-periods').assertPeriodOpen(cur.date);
-    } catch (pe) {
+    } catch (/** @type {any} */ pe) {
       return res.status(423).json({ error: 'PERIOD_LOCKED', message: pe.message });
     }
     const { voidJournalById } = require('./journal-void');
@@ -1390,7 +1406,7 @@ router.post('/journal/:id/void', jwtAuth, requireRole(...WRITE_ROLES), async (re
       actor: req.user?.username,
       actorUserId: req.user?.id,
     });
-    const rows = out.voided ? [out.entry] : [];
+    const rows = /** @type {any[]} */ (out.voided ? [out.entry] : []);
     if (!rows[0]) {
       return res.status(404).json({ error: 'LEDGER_ENTRY_NOT_FOUND', message: 'القيد غير موجود أو ملغي مسبقًا' });
     }
@@ -1411,7 +1427,7 @@ router.post('/journal/:id/void', jwtAuth, requireRole(...WRITE_ROLES), async (re
 });
 
 // ─── ترحيل رواتب شهر ─────────────────────────────────────────────────────────
-router.post('/post-payroll', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
+router.post('/post-payroll', jwtAuth, requireRole(...WRITE_ROLES), async (/** @type {any} */ req, /** @type {any} */ res) => {
   try {
     const month = String(req.body?.month || '').trim();
     if (!/^\d{4}-\d{2}$/.test(month)) {
@@ -1452,7 +1468,7 @@ router.post('/post-payroll', jwtAuth, requireRole(...WRITE_ROLES), async (req, r
         .json({ error: 'LEDGER_DUPLICATE', message: `رواتب ${month} مُرحّلة مسبقًا`, entry: out.entry });
     }
     res.status(201).json({ entry: out.entry, total: Number(total.t), count: Number(total.n) });
-  } catch (error) {
+  } catch (/** @type {any} */ error) {
     const code = error.statusCode || 500;
     res.status(code).json({ error: 'LEDGER_PAYROLL_FAILED', message: error.message });
   }
@@ -1463,10 +1479,11 @@ router.post('/post-payroll', jwtAuth, requireRole(...WRITE_ROLES), async (req, r
 // الدخل (loadPnlInputs + buildPnlStatement) — فلا يختلف رقم على اللوحة عن الرقم
 // في تقرير «قائمة الدخل» لنفس الفترة. الكتلة reconciliation تربط الدفتر بمرآة
 // الكاشير يومًا بيوم؛ المرآة تُقرأ هنا فقط ولا تُكتب منها ولا عليها.
-router.get('/cfo-summary', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
+router.get('/cfo-summary', jwtAuth, requireRole(...READ_ROLES), async (/** @type {any} */ req, /** @type {any} */ res) => {
   try {
     const from = String(req.query.from || `${riyadhMonth()}-01`).slice(0, 10);
     const to = String(req.query.to || riyadhToday()).slice(0, 10);
+    /** @param {any} sql @param {any} p @returns {Promise<any>} */
     const q = async (sql, p) => (await pool.query(sql, p)).rows[0];
     const { loadPnlInputs, buildPnlStatement } = require('./finance-routes');
     const pnl = buildPnlStatement({ ...(await loadPnlInputs(from, to)), fromDay: from, toDay: to });
@@ -1560,10 +1577,10 @@ router.get('/cfo-summary', jwtAuth, requireRole(...READ_ROLES), async (req, res)
       net_profit: pnl.net_profit,
       // alias قديم للوحة التقليدية — صار الرقم نفسه لا تقديرًا
       net_approx: pnl.net_profit.amount,
-      top_expense_categories: pnl.operating.items.slice(0, 5).map(i => ({ category: i.category, total: i.amount })),
+      top_expense_categories: pnl.operating.items.slice(0, 5).map((/** @type {any} */ i) => ({ category: i.category, total: i.amount })),
       revenue_by_dept: pnl.by_department
         .slice(0, 8)
-        .map(d => ({ code: d.code, name: d.name, total: d.revenue, net: d.net, margin_pct: d.margin_pct })),
+        .map((/** @type {any} */ d) => ({ code: d.code, name: d.name, total: d.revenue, net: d.net, margin_pct: d.margin_pct })),
       daily_series: pnl.daily_series,
       reconciliation: {
         status: reconciled ? 'متوافق' : 'غير متوافق',
@@ -1597,7 +1614,7 @@ router.get('/cfo-summary', jwtAuth, requireRole(...READ_ROLES), async (req, res)
   }
 });
 
-/** عكس اعتماد مخزن أُعيد — منقولة من نسخة الإنتاج للحفاظ على واجهتها */
+/** عكس اعتماد مخزن أُعيد — منقولة من نسخة الإنتاج للحفاظ على واجهتها  @param {any} dispatchId @param {any} reopenId @param {any} totalValue @param {any} db */
 async function postDispatchReopenToLedger(dispatchId, reopenId, { totalValue, date, deptCode } = {}, db = pool) {
     const v = round2(totalValue);
     if (!(v > 0)) {return { skipped: 'zero_total' };}

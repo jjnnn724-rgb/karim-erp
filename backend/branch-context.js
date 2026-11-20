@@ -32,7 +32,8 @@ async function loadBranches() {
             _cache.byCode.set(String(b.code).toUpperCase(), b);
         }
     } catch (e) {
-        if (e.code === '42P01') { // undefined_table — migration 102 لم تُطبق بعد
+        const err = /** @type {any} */ (e);
+        if (err.code === '42P01') { // undefined_table — migration 102 لم تُطبق بعد
             _cache = { at: Date.now(), byId: new Map(), byCode: new Map(), missing: true };
         } else {
             throw e;
@@ -49,6 +50,7 @@ function invalidateBranchCache() { _cache = { at: 0, byId: new Map(), byCode: ne
 // كل مستخدم بلا branch_id زائرًا لكل الفروع. تحذير واحد لكل مستخدم في
 // دورة التشغيل — تقرير فقط، لا تغيير في السلوك.
 const _nullScopeWarned = new Set();
+/** @param {any} user @param {string} where */
 async function _warnNullScope(user, where) {
     try {
         const cache = await loadBranches();
@@ -65,6 +67,7 @@ async function _warnNullScope(user, where) {
 
 /**
  * يحوّل القيمة المُرسلة (رقم id أو code مثل MAIN) إلى سطر فرع أو null.
+ * @param {any} raw
  */
 async function resolveBranchRef(raw) {
     if (raw === undefined || raw === null || raw === '') {return null;}
@@ -75,6 +78,7 @@ async function resolveBranchRef(raw) {
 }
 
 /**
+ * @param {any} req
  * @returns {Promise<number|null>} branchId للتصفية، أو null = بلا تصفية.
  * @throws {Error} .statusCode=404 فرع غير موجود/موقوف، 403 طلب فرع خارج النطاق.
  */
@@ -86,19 +90,19 @@ async function resolveBranch(req) {
     if (GLOBAL_ROLES.has(user.role)) {
         if (!requested) {return own ?? null;}
         const b = await resolveBranchRef(requested);
-        if (!b) {const e = new Error('BRANCH_NOT_FOUND'); e.statusCode = 404; throw e;}
+        if (!b) {const e = /** @type {Error & {statusCode:number}} */ (new Error('BRANCH_NOT_FOUND')); e.statusCode = 404; throw e;}
         return b.id;
     }
     // أدوار تشغيلية: مقفلة على فرع المستخدم إن لم يُعيَّن فرع ← سلوك قديم
     if (own == null) {
-        if (requested) {const e = new Error('BRANCH_NOT_FOUND'); e.statusCode = 404; throw e;}
+        if (requested) {const e = /** @type {Error & {statusCode:number}} */ (new Error('BRANCH_NOT_FOUND')); e.statusCode = 404; throw e;}
         await _warnNullScope(user, 'resolveBranch');
         return null;
     }
     if (requested) {
         const b = await resolveBranchRef(requested);
-        if (!b) {const e = new Error('BRANCH_NOT_FOUND'); e.statusCode = 404; throw e;}
-        if (b.id !== own) {const e = new Error('BRANCH_OUT_OF_SCOPE'); e.statusCode = 403; throw e;}
+        if (!b) {const e = /** @type {Error & {statusCode:number}} */ (new Error('BRANCH_NOT_FOUND')); e.statusCode = 404; throw e;}
+        if (b.id !== own) {const e = /** @type {Error & {statusCode:number}} */ (new Error('BRANCH_OUT_OF_SCOPE')); e.statusCode = 403; throw e;}
     }
     return own;
 }
@@ -107,6 +111,7 @@ async function resolveBranch(req) {
  * ختم الفرع عند الإنشاء: admin/manager يختار فرعًا صريحًا (أو فرعَه الافتراضي)،
  * وباقي الأدوار يُختم سجلهم تلقائيًا على فرع صاحبهم — محاولة كتابة لفرع
  * آخر = 403. فرع المستخدم NULL (ما قبل الترقية) = بلا ختم (سلوك قديم).
+ * @param {any} req @param {any} bodyBranchId
  */
 async function stampForCreate(req, bodyBranchId) {
     const user = req.user || {};
@@ -116,13 +121,13 @@ async function stampForCreate(req, bodyBranchId) {
     if (GLOBAL_ROLES.has(user.role)) {
         if (requested == null || requested === '') {return own ?? null;}
         const b = await resolveBranchRef(requested);
-        if (!b) {const e = new Error('BRANCH_NOT_FOUND'); e.statusCode = 404; throw e;}
+        if (!b) {const e = /** @type {Error & {statusCode:number}} */ (new Error('BRANCH_NOT_FOUND')); e.statusCode = 404; throw e;}
         return b.id;
     }
     if (own == null) {return null;}
     if (requested != null && requested !== '') {
         const b = await resolveBranchRef(requested);
-        if (!b || b.id !== own) {const e = new Error('BRANCH_OUT_OF_SCOPE'); e.statusCode = 403; throw e;}
+        if (!b || b.id !== own) {const e = /** @type {Error & {statusCode:number}} */ (new Error('BRANCH_OUT_OF_SCOPE')); e.statusCode = 403; throw e;}
     }
     return own;
 }

@@ -171,8 +171,9 @@ function emptyBuckets() {
   };
 }
 
+/** @param {any} left @param {any} right */
 function addMoney(left, right) {
-  const toCents = value => {
+  const toCents = (/** @type {any} */ value) => {
     const text = String(value);
     const negative = text.startsWith('-');
     const [whole, fraction = ''] = text.replace(/^-/, '').split('.');
@@ -184,6 +185,7 @@ function addMoney(left, right) {
   return `${cents < 0 ? '-' : ''}${Math.floor(absolute / 100)}.${String(absolute % 100).padStart(2, '0')}`;
 }
 
+/** @param {any} value */
 function isPositiveInteger(value) {
   return /^\d+$/.test(String(value)) && BigInt(String(value)) > 0n;
 }
@@ -194,6 +196,7 @@ class VatValidationService {
     this.accountResolver = accountResolver;
   }
 
+  /** @param {any} taxPeriodId */
   async resolvePeriod({ taxPeriodId, tax_period_id: taxPeriodIdSnake, from, to } = {}) {
     taxPeriodId = taxPeriodId ?? taxPeriodIdSnake;
     if (taxPeriodId !== undefined && taxPeriodId !== null) {
@@ -232,6 +235,7 @@ class VatValidationService {
     return { taxPeriodId: null, from, to };
   }
 
+  /** @param {any} period */
   async validatePeriod(period) {
     const resolved = await this.resolvePeriod(period);
     if (resolved.error) {
@@ -275,7 +279,7 @@ class VatValidationService {
     const input = emptyBuckets();
     let invalidTaxGroups = 0;
     for (const row of breakdownResult.rows) {
-      const side = row.direction === 'output' ? output : input;
+      const side = /** @type {any} */ (row.direction === 'output' ? output : input);
       const category = side[row.tax_category];
       if (!category) {
         invalidTaxGroups += Number(row.invalid_tax_groups) || 0;
@@ -286,7 +290,7 @@ class VatValidationService {
       invalidTaxGroups += Number(row.invalid_tax_groups) || 0;
     }
 
-    const total = buckets => Object.values(buckets).reduce(
+    const total = (/** @type {any} */ buckets) => Object.values(buckets).reduce(
       (sum, category) => addMoney(sum, category.vatAmount),
       '0.00'
     );

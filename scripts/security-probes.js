@@ -22,7 +22,7 @@ if (/prod|karim_erp$/i.test(DB_NAME) && DB_NAME !== 'karim_erp_test') { console.
 if (!env.V3_E2E_USER || !env.V3_E2E_PASS) { console.error('PROBE_USER/PROBE_PASS مطلوبان'); process.exit(2); }
 const results = [];
 const probe = (name, pass, detail) => { results.push({ name, pass, detail: String(detail).slice(0, 140) }); console.log((pass ? 'PASS' : 'FAIL') + ' | ' + name + ' | ' + String(detail).slice(0, 110)); };
-const jfetch = async (p, opt = {}) => { const r = await fetch(BASE + p, opt); let b = null; try { b = await r.json(); } catch (_) { b = await r.text().catch(() => ''); } return { status: r.status, headers: r.headers, body: b }; };
+const jfetch = async (p, opt = {}) => { const r = await fetch(BASE + p, opt); let b; try { b = await r.json(); } catch (_) { b = await r.text().catch(() => ''); } return { status: r.status, headers: r.headers, body: b }; };
 const dbConnect = async () => { const c = new Client({ host: '127.0.0.1', port: Number(creds.DB_PORT || 5432), user: creds.DB_USER, password: creds['DB_PASSWORD'], database: DB_NAME }); await c.connect(); return c; };
 
 (async () => {
@@ -89,11 +89,10 @@ const dbConnect = async () => { const c = new Client({ host: '127.0.0.1', port: 
   const hash = await bcrypt.hash('ProbePass!2345', 10);
   await db.query(`INSERT INTO users (id, username, password, role, name) VALUES (999900201,'zz_sec_probe',$1,'cashier','Security Probe') ON CONFLICT (id) DO UPDATE SET password=$1, username='zz_sec_probe'`, [hash]);
   await db.query("DELETE FROM login_lockouts WHERE key LIKE '%zz_sec_probe%'").catch(() => {});
-  let lockedSeen = false, lastStatus = 0;
+  let lockedSeen = false;
   for (let i = 0; i < 6; i++) {
     const r = await jfetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: 'zz_sec_probe', password: 'WrongPass!' + i }) });
-    lastStatus = r.status;
-    if (r.status === 423 || r.status === 429 || /lock|مقفل/i.test(JSON.stringify(r.body || ''))) lockedSeen = true;
+    if (r.status === 423 || r.status === 429 || /lock|مقفل/i.test(JSON.stringify(r.body || ''))) {lockedSeen = true;}
   }
   const p10 = await jfetch('/api/auth/login', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ username: 'zz_sec_probe', password: 'ProbePass!2345' }) });
   probe('lockout engages + correct pw still locked', lockedSeen && p10.status !== 200, 'lockedSeen=' + lockedSeen + ' correctPwStatus=' + p10.status);
@@ -126,7 +125,7 @@ const dbConnect = async () => { const c = new Client({ host: '127.0.0.1', port: 
     const ws = new WebSocket(BASE.replace('http', 'ws') + '/socket.io/?EIO=4&transport=websocket');
     const packets = [];
     let connected = false, done = false;
-    const finish = (pass, detail) => { if (done) return; done = true; try { ws.close(); } catch (_) {} resolve(probe('sensitive broadcast never reaches anonymous', pass, detail)); };
+    const finish = (pass, detail) => { if (done) {return;} done = true; try { ws.close(); } catch (_) {} resolve(probe('sensitive broadcast never reaches anonymous', pass, detail)); };
     ws.on('message', async (m) => {
       const s = String(m); packets.push(s);
       if (s.startsWith('0')) { ws.send('40'); }

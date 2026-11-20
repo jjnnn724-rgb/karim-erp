@@ -25,6 +25,7 @@ const { logger } = require('./logger');
 /** قناة الإشعارات على أندرويد — تُنشأ في MainActivity.java بنفس الاسم. */
 const ANDROID_CHANNEL_ID = 'karim_requests';
 
+/** @type {any} */
 let messaging = null;          // firebase-admin messaging بعد التهيئة
 let initAttempted = false;     // محاولة واحدة لكل عملية — لا إعادة قراءة متكررة
 
@@ -59,10 +60,11 @@ function ensurePushInit() {
         logger.info(`[push] مفتاح خدمة Firebase غير موجود (${keyPath}) — إشعارات الهاتف مطفأة حتى توفره.`);
         return false;
     }
+    /** @type {any} */
     let admin;
     try {
         admin = require('firebase-admin');
-    } catch (error) {
+    } catch (/** @type {any} */ error) {
         logger.warn('[push] حزمة firebase-admin غير مثبتة — إشعارات الهاتف مطفأة:', error.message);
         return false;
     }
@@ -74,14 +76,14 @@ function ensurePushInit() {
         messaging = admin.messaging();
         logger.info(`[push] Firebase جاهز — مشروع ${serviceAccount.project_id || 'غير معروف'}.`);
         return true;
-    } catch (error) {
+    } catch (/** @type {any} */ error) {
         logger.warn('[push] فشل تهيئة Firebase:', error.message);
         messaging = null;
         return false;
     }
 }
 
-/** نقية: رسالة FCM لتوكن واحد — نوع notification ليظهر والتطبيق مقفول. */
+/** نقية: رسالة FCM لتوكن واحد — نوع notification ليظهر والتطبيق مقفول. @param {any} token @param {any} notice */
 function buildFcmMessage(token, notice) {
     const title = String((notice && notice.title) || 'إشعار جديد').slice(0, 120);
     const body = String((notice && notice.message) || '').slice(0, 300);
@@ -102,8 +104,9 @@ function buildFcmMessage(token, notice) {
     };
 }
 
-/** نقية: استخراج التوكنات المستحقة للحذف من أخطاء الإرسال. */
+/** نقية: استخراج التوكنات المستحقة للحذف من أخطاء الإرسال. @param {any} responses @param {any} tokens */
 function staleTokensOf(responses, tokens) {
+    /** @type {any[]} */
     const stale = [];
     (Array.isArray(responses) ? responses : []).forEach((r, i) => {
         const code = String((r && r.error && (r.error.code || r.error.errorInfo?.code)) || '');
@@ -118,6 +121,7 @@ function staleTokensOf(responses, tokens) {
 /**
  * إرسال إشعار FCM لمجموعة توكنات (best-effort). يعيد { sent, stale } —
  * لا يرمي أبدًا: فشل الـ Push لا يمس الجرس والسوكت أبدًا.
+ * @param {any} tokens @param {any} notice
  */
 async function sendToTokens(tokens, notice) {
     const list = (Array.isArray(tokens) ? tokens : []).filter(Boolean).slice(0, 500);
@@ -127,7 +131,7 @@ async function sendToTokens(tokens, notice) {
         const messages = list.map((t) => buildFcmMessage(t, notice));
         const response = await messaging.sendEach(messages);
         return { sent: response.successCount || 0, stale: staleTokensOf(response.responses, list) };
-    } catch (error) {
+    } catch (/** @type {any} */ error) {
         logger.warn('[push] فشل إرسال دفعة:', error.message);
         return { sent: 0, stale: [] };
     }

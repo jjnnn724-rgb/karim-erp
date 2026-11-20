@@ -42,23 +42,27 @@ const COST_CARD_STANDALONE = new Set(['external_sales']);
 
 // ─── Pure helpers (مصدَّرة للاختبارات) ────────────────────────────────────────
 
+/** @param {any} value */
 function roundMoney(value) {
     const n = Number(value);
     if (!Number.isFinite(n)) {return 0;}
     return Math.round(n * 100) / 100;
 }
 
+/** @param {any} value */
 function num(value) {
     const n = Number(value);
     return Number.isFinite(n) ? n : 0;
 }
 
+/** @param {any} value */
 function normalizeDay(value) {
     if (value == null) {return '';}
     const raw = value instanceof Date ? value.toISOString() : String(value);
     return DATE_RE.test(raw.slice(0, 10)) ? raw.slice(0, 10) : '';
 }
 
+/** @param {any} year @param {any} month */
 function monthStartOf(year, month) {
     // month: 1..12 — يعيد YYYY-MM-DD أو '' عند فساد القيم
     const y = parseInt(year, 10);
@@ -67,6 +71,7 @@ function monthStartOf(year, month) {
     return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-01`;
 }
 
+/** @param {any} year @param {any} month */
 function monthEndOf(year, month) {
     const y = parseInt(year, 10);
     const m = parseInt(month, 10);
@@ -75,13 +80,15 @@ function monthEndOf(year, month) {
     return `${String(y).padStart(4, '0')}-${String(m).padStart(2, '0')}-${String(last).padStart(2, '0')}`;
 }
 
+/** @param {any} fromDay @param {any} toDay */
 function daysBetween(fromDay, toDay) {
     const a = new Date(`${fromDay}T00:00:00Z`);
     const b = new Date(`${toDay}T00:00:00Z`);
     if (Number.isNaN(a.getTime()) || Number.isNaN(b.getTime())) {return 0;}
-    return Math.max(1, Math.round((b - a) / 86400000) + 1);
+    return Math.max(1, Math.round((/** @type {any} */ (b) - /** @type {any} */ (a)) / 86400000) + 1);
 }
 
+/** @param {any} fromDay @param {any} toDay */
 function computePreviousPeriod(fromDay, toDay) {
     // فترة سابقة بنفس الطول تقع مباشرة قبل "from" — أساس المقارنة
     const from = normalizeDay(fromDay);
@@ -92,10 +99,12 @@ function computePreviousPeriod(fromDay, toDay) {
     prevTo.setUTCDate(prevTo.getUTCDate() - 1);
     const prevFrom = new Date(prevTo);
     prevFrom.setUTCDate(prevFrom.getUTCDate() - (span - 1));
+    /** @param {any} d */
     const iso = (d) => d.toISOString().slice(0, 10);
     return { from: iso(prevFrom), to: iso(prevTo) };
 }
 
+/** @param {any} current @param {any} previous */
 function pctChange(current, previous) {
     const cur = roundMoney(current);
     const prev = roundMoney(previous);
@@ -113,23 +122,28 @@ const SHRINKAGE_TYPES = new Set(['count_correction']);
 const INTERNAL_MOVE_TYPES = new Set(STOCK_EXPENSE_TYPES
     .filter((t) => !COGS_TYPES.has(t) && !SHRINKAGE_TYPES.has(t)));
 
+/** @param {any} row */
 function expenseAdjustmentType(row) {
     return String(row?.adjustmentType ?? row?.adjustment_type ?? '').toLowerCase().trim();
 }
 
+/** @param {any} row */
 function isCogsExpense(row) {
     return COGS_TYPES.has(expenseAdjustmentType(row));
 }
 
+/** @param {any} row */
 function isShrinkageExpense(row) {
     return SHRINKAGE_TYPES.has(expenseAdjustmentType(row));
 }
 
+/** @param {any} row */
 function isOperatingExpenseRow(row) {
     const t = expenseAdjustmentType(row);
     return !COGS_TYPES.has(t) && !SHRINKAGE_TYPES.has(t) && !INTERNAL_MOVE_TYPES.has(t);
 }
 
+/** @param {any} day @param {any} fromDay @param {any} toDay */
 function inRange(day, fromDay, toDay) {
     if (!day) {return false;}
     if (fromDay && day < fromDay) {return false;}
@@ -137,6 +151,7 @@ function inRange(day, fromDay, toDay) {
     return true;
 }
 
+/** @param {any} expenseRows @param {any} fromDay @param {any} toDay */
 function classifyExpenses(expenseRows, fromDay, toDay) {
     const rows = (Array.isArray(expenseRows) ? expenseRows : [])
         .map((r) => ({ ...r, amount: num(r.amount), day: normalizeDay(r.date) }))
@@ -189,6 +204,7 @@ function classifyExpenses(expenseRows, fromDay, toDay) {
     };
 }
 
+/** @param {any} payrollRows @param {any} fromDay @param {any} toDay */
 function aggregatePayroll(payrollRows, fromDay, toDay) {
     // مسير رواتب = استحقاق شهري. عند فترة جزئية يوزَّع تناسبيًا على أيام الشهر
     // الواقعة داخل الفترة (proration) — فتكون القائمة صادقة في أي نطاق زمني.
@@ -214,6 +230,7 @@ function aggregatePayroll(payrollRows, fromDay, toDay) {
     return { total, count, months: Array.from(months).sort() };
 }
 
+/** @param {any} profit @param {any} revenue */
 function marginPct(profit, revenue) {
     const rev = roundMoney(revenue);
     if (rev === 0) {return null;}
@@ -221,6 +238,7 @@ function marginPct(profit, revenue) {
 }
 
 // بناء قائمة الدخل من صفوف خام — نقية بالكامل (لا SQL هنا)
+/** @param {any} orders */
 function buildPnlStatement({ orders, manualRevenues, expenses, payroll, posDeptMap, fromDay, toDay, deptHierarchy }) {
     const from = normalizeDay(fromDay);
     const to = normalizeDay(toDay);
@@ -268,6 +286,7 @@ function buildPnlStatement({ orders, manualRevenues, expenses, payroll, posDeptM
     const grossProfit = roundMoney(revenue.total - cls.cogs.net);
     const netProfit = roundMoney(grossProfit - cls.shrinkage.amount - cls.operating.total - payrollAgg.total);
 
+    /** @type {any} */
     const statement = {
         period: { from, to },
         revenue,
@@ -295,6 +314,7 @@ function buildPnlStatement({ orders, manualRevenues, expenses, payroll, posDeptM
     }
 
     const deptAgg = new Map();
+    /** @param {any} code */
     const deptBucket = (code) => {
         const key = code || '—';
         if (!deptAgg.has(key)) {deptAgg.set(key, { code: key, name: key, revenue: 0, manual: 0, cogs: 0, shrinkage: 0, operating: 0 });}
@@ -322,7 +342,7 @@ function buildPnlStatement({ orders, manualRevenues, expenses, payroll, posDeptM
         else {b.operating = roundMoney(b.operating + amt);}
     }
 
-    const byDepartment = Array.from(deptAgg.values())
+    const byDepartment = /** @type {any[]} */ (Array.from(deptAgg.values())
         .filter((b) => b.code !== '—' || b.revenue || b.manual || b.cogs || b.shrinkage || b.operating)
         .map((b) => {
             const rev = roundMoney(b.revenue + b.manual);
@@ -339,7 +359,7 @@ function buildPnlStatement({ orders, manualRevenues, expenses, payroll, posDeptM
                 margin_pct: marginPct(net, rev),
             };
         })
-        .sort((a, b) => Math.abs(b.net) - Math.abs(a.net));
+        .sort((a, b) => Math.abs(b.net) - Math.abs(a.net)));
 
     // ─── رحيل الأقسام الفرعية للأب (مصروف وإيراد) ───
     // يعمل ولو لم يكن للأب صفوف مباشرة، وعبر مستويات متعددة، وآمن ضد الدورات
@@ -350,6 +370,7 @@ function buildPnlStatement({ orders, manualRevenues, expenses, payroll, posDeptM
         }
     }
     const byCode = new Map(byDepartment.map(b => [b.code, b]));
+    /** @param {any} code */
     const ensureDeptRow = (code) => {
         let r = byCode.get(code);
         if (!r) {
@@ -399,6 +420,7 @@ function buildPnlStatement({ orders, manualRevenues, expenses, payroll, posDeptM
 
     // ─── السلسلة اليومية (للرسم) ───
     const dailyMap = new Map();
+    /** @param {any} day */
     const dayBucket = (day) => {
         if (!dailyMap.has(day)) {dailyMap.set(day, { date: day, revenue: 0, cogs: 0, opex: 0 });}
         return dailyMap.get(day);
@@ -431,16 +453,19 @@ function buildPnlStatement({ orders, manualRevenues, expenses, payroll, posDeptM
 }
 
 // مقارنة فترتين مبنيتين بنفس الدالة النقية
+/** @param {any} currentStatement @param {any} previousStatement */
 function buildComparison(currentStatement, previousStatement) {
+    /** @type {any[]} */
     const fields = [
-        ['revenue', (s) => s.revenue.total],
-        ['cogs', (s) => s.cogs.net],
-        ['gross_profit', (s) => s.gross_profit.amount],
-        ['operating', (s) => s.operating.total],
-        ['shrinkage', (s) => s.shrinkage.amount],
-        ['payroll', (s) => s.payroll.total],
-        ['net_profit', (s) => s.net_profit.amount],
+        ['revenue', (/** @type {any} */ s) => s.revenue.total],
+        ['cogs', (/** @type {any} */ s) => s.cogs.net],
+        ['gross_profit', (/** @type {any} */ s) => s.gross_profit.amount],
+        ['operating', (/** @type {any} */ s) => s.operating.total],
+        ['shrinkage', (/** @type {any} */ s) => s.shrinkage.amount],
+        ['payroll', (/** @type {any} */ s) => s.payroll.total],
+        ['net_profit', (/** @type {any} */ s) => s.net_profit.amount],
     ];
+    /** @type {any} */
     const out = {};
     for (const [key, get] of fields) {
         const cur = roundMoney(get(currentStatement));
@@ -462,6 +487,7 @@ function buildComparison(currentStatement, previousStatement) {
 const MONTHLY_DEFAULT_MONTHS = 12;
 const MONTHLY_MAX_MONTHS = 24;
 
+/** @type {Object<string, string>} */
 const ORACLE_MONTH_ABBR = {
     jan: '01', feb: '02', mar: '03', apr: '04', may: '05', jun: '06',
     jul: '07', aug: '08', sep: '09', oct: '10', nov: '11', dec: '12',
@@ -481,17 +507,20 @@ const ORACLE_COST_SQL = `
      WHERE substring(doc_date, 12, 4) ~ '^[0-9]{4}$'
      GROUP BY 1, 2`;
 
+/** @param {any} value @param {any} fallback */
 function clampMonths(value, fallback = MONTHLY_DEFAULT_MONTHS) {
     const n = parseInt(value, 10);
     if (!Number.isInteger(n)) {return fallback;}
     return Math.max(1, Math.min(n, MONTHLY_MAX_MONTHS));
 }
 
+/** @param {any} day */
 function monthKeyOf(day) {
     const d = normalizeDay(day);
     return d ? d.slice(0, 7) : '';
 }
 
+/** @param {any} key @param {any} delta */
 function shiftMonthKey(key, delta) {
     const y = parseInt(String(key).slice(0, 4), 10);
     const m = parseInt(String(key).slice(5, 7), 10);
@@ -500,7 +529,7 @@ function shiftMonthKey(key, delta) {
     return `${String(Math.floor(total / 12)).padStart(4, '0')}-${String((total % 12) + 1).padStart(2, '0')}`;
 }
 
-/** مفاتيح الشهور المنتهية بشهر `toDay` — تصاعديًا، بعدد `count`. */
+/** مفاتيح الشهور المنتهية بشهر `toDay` — تصاعديًا، بعدد `count`.  @param {any} toDay @param {any} count */
 function monthKeysEndingAt(toDay, count) {
     const end = monthKeyOf(toDay);
     if (!end) {return [];}
@@ -512,7 +541,7 @@ function monthKeysEndingAt(toDay, count) {
     return out;
 }
 
-/** نافذة الشهر: من أوله إلى آخره، وتُقصّ عند اليوم الجاري في الشهر الجاري. */
+/** نافذة الشهر: من أوله إلى آخره، وتُقصّ عند اليوم الجاري في الشهر الجاري.  @param {any} key @param {any} toDay */
 function monthWindow(key, toDay) {
     const y = parseInt(String(key).slice(0, 4), 10);
     const m = parseInt(String(key).slice(5, 7), 10);
@@ -522,7 +551,7 @@ function monthWindow(key, toDay) {
     return { from, to, partial: Boolean(last && last > toDay) };
 }
 
-/** تاريخٌ فعليٌّ صالح (لا يكفي شكل YYYY-MM-DD: 2026-02-31 شكلٌ صحيح وتاريخٌ باطل). */
+/** تاريخٌ فعليٌّ صالح (لا يكفي شكل YYYY-MM-DD: 2026-02-31 شكلٌ صحيح وتاريخٌ باطل).  @param {any} value */
 function strictDay(value) {
     const day = normalizeDay(value);
     if (!day) {return '';}
@@ -530,8 +559,9 @@ function strictDay(value) {
     return !Number.isNaN(parsed.getTime()) && parsed.toISOString().slice(0, 10) === day ? day : '';
 }
 
+/** @param {any} code @param {any} message */
 function rangeError(code, message) {
-    const err = new Error(message);
+    const err = /** @type {any} */ (new Error(message));
     err.statusCode = 400;
     err.code = code;
     return err;
@@ -540,6 +570,8 @@ function rangeError(code, message) {
 /**
  * نوافذ الشهور داخل [from, to] — كل نافذة مقصوصة على حدود الفترة،
  * فالشهر الواقع في طرفها جزئيٌّ بنافذته الحقيقية لا بالشهر كاملًا.
+  * @param {any} from
+  * @param {any} to
  */
 function monthWindowsInRange(from, to) {
     const start = strictDay(from);
@@ -569,7 +601,7 @@ function monthWindowsInRange(from, to) {
     return out;
 }
 
-/** اختيار الكاشيرات: غياب القيمة = كل المكتشَفين، وإلا أرقامٌ صحيحة بلا تكرار. */
+/** اختيار الكاشيرات: غياب القيمة = كل المكتشَفين، وإلا أرقامٌ صحيحة بلا تكرار.  @param {any} value */
 function parseCashierSelection(value) {
     if (value == null) {return null;}
     const raw = Array.isArray(value) ? value.join(',') : String(value);
@@ -586,6 +618,8 @@ function parseCashierSelection(value) {
  * الفترة المطلوبة: إمّا نافذة متجددة (months) أو فترة مخصصة (from/to).
  * الفترة المخصصة لا تتجاوز اليوم، ولا تتجاوز 24 شهرًا، وتُبنى نوافذها
  * مقصوصةً على حدودها كي يُحسب الإيراد من أيام الفترة وحدها.
+  * @param {any} query
+  * @param {any} toDay
  */
 function monthlyRangeFromQuery(query, toDay) {
     const day = strictDay(toDay);
@@ -611,7 +645,7 @@ function monthlyRangeFromQuery(query, toDay) {
     return { from, to, mode: 'custom', months: windows.length, windows };
 }
 
-/** مجموع أيام كاشيرات مختارة داخل نافذة — الفترة المخصصة تُقرأ أيامها وحدها. */
+/** مجموع أيام كاشيرات مختارة داخل نافذة — الفترة المخصصة تُقرأ أيامها وحدها.  @param {any} days @param {any} from @param {any} to */
 function summarizeCashierDays(days, from, to) {
     const start = strictDay(from);
     const end = strictDay(to);
@@ -632,7 +666,7 @@ function summarizeCashierDays(days, from, to) {
     };
 }
 
-/** صفوف إيراد الكاشيرات للفترة: كل كاشيرٍ مختار ومعه حصته من إجمالي المعروض. */
+/** صفوف إيراد الكاشيرات للفترة: كل كاشيرٍ مختار ومعه حصته من إجمالي المعروض.  @param {any} byCashier @param {any} selectedNo */
 function buildCashierRevenueRows(byCashier, selectedNo) {
     const rows = (Array.isArray(byCashier) ? byCashier : []).map((row) => ({
         no: String(row.no || ''),
@@ -663,7 +697,7 @@ async function loadOracleMonthlyCost() {
     return map;
 }
 
-/** صفوف المقارنة — إيراد يارا مباشر، وبقية مكونات P&L من مدخلات ERP. */
+/** صفوف المقارنة — إيراد يارا مباشر، وبقية مكونات P&L من مدخلات ERP.  @param {any} monthKeys */
 function buildMonthlyComparison({
     monthKeys, monthWindows, toDay, inputs, oracleByMonth,
     cashierRevenueByMonth, cashierRevenueForWindow,
@@ -738,6 +772,7 @@ function buildMonthlyComparison({
     });
 }
 
+/** @param {any} expenseRows @param {any} toDay */
 function buildDispatchYearSummary(expenseRows, toDay) {
     const day = normalizeDay(toDay);
     if (!day) {throw new Error('تاريخ ملخص أذونات الصرف غير صالح');}
@@ -788,8 +823,10 @@ const MONTHLY_SUM_FIELDS = [
     'net_profit', 'ledger_rows', 'oracle_docs',
 ];
 
+/** @param {any} rows */
 function sumMonthlyTotals(rows) {
     const rowsArr = Array.isArray(rows) ? rows : [];
+    /** @type {any} */
     const out = {};
     for (const f of MONTHLY_SUM_FIELDS) {
         out[f] = roundMoney(rowsArr.reduce((s, r) => s + num(r[f]), 0));
@@ -815,22 +852,27 @@ function sumMonthlyTotals(rows) {
 
 // ─── HTML: قائمة دخل A4 قابلة للطباعة ────────────────────────────────────────
 
+/** @param {any} value */
 function escHtml(value) {
-    return String(value ?? '').replace(/[&<>"']/g, (c) => ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' }[c]));
+    return String(value ?? '').replace(/[&<>"']/g, (c) => (/** @type {any} */ ({ '&': '&amp;', '<': '&lt;', '>': '&gt;', '"': '&quot;', "'": '&#39;' })[c]));
 }
 
+/** @param {any} value */
 function fmtMoney(value) {
     return roundMoney(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 }
 
+/** @param {any} stmt @param {any} opts */
 function renderPnlPrintHtml(stmt, opts = {}) {
     const restaurantName = escHtml(opts.restaurantName || 'النظام المالي');
+    /** @param {any} label @param {any} value @param {any} cls @param {any} pct */
     const line = (label, value, cls = '', pct = null) => `
         <tr class="${cls}">
             <td>${escHtml(label)}</td>
             <td class="amt ${Number(value) < 0 ? 'neg' : ''}">${fmtMoney(value)}</td>
             <td class="pct">${pct == null ? '—' : `${roundMoney(pct)}%`}</td>
         </tr>`;
+    /** @param {any} label @param {any} value */
     const sub = (label, value) => `
         <tr class="sub">
             <td>${escHtml(label)}</td>
@@ -839,10 +881,10 @@ function renderPnlPrintHtml(stmt, opts = {}) {
         </tr>`;
 
     const opRows = (stmt.operating?.items || [])
-        .map((it) => sub(it.category, it.amount))
+        .map((/** @type {any} */ it) => sub(it.category, it.amount))
         .join('');
     const deptRows = (stmt.by_department || [])
-        .map((d) => `
+        .map((/** @type {any} */ d) => `
             <tr>
                 <td>${escHtml(d.name)}</td>
                 <td class="amt">${fmtMoney(d.revenue)}</td>
@@ -931,6 +973,7 @@ ${deptRows ? `<table>
 
 const AR_MONTHS_FULL = ['يناير', 'فبراير', 'مارس', 'أبريل', 'مايو', 'يونيو', 'يوليو', 'أغسطس', 'سبتمبر', 'أكتوبر', 'نوفمبر', 'ديسمبر'];
 
+/** @param {any} key */
 function arMonthLabel(key) {
     const y = String(key).slice(0, 4);
     const m = parseInt(String(key).slice(5, 7), 10);
@@ -938,8 +981,10 @@ function arMonthLabel(key) {
     return name ? `${name} ${y}` : String(key);
 }
 
+/** @param {any} rows @param {any} totals @param {any} opts */
 function renderMonthlyPrintHtml(rows, totals, opts = {}) {
     const restaurantName = escHtml(opts.restaurantName || 'النظام المالي');
+    /** @param {any} v */
     const money = (v) => (v == null ? '—' : fmtMoney(v));
     const body = (Array.isArray(rows) ? rows : []).map((r) => `
         <tr>
@@ -1030,7 +1075,7 @@ ${Array.isArray(opts.cashierRevenue?.rows) && opts.cashierRevenue.rows.length > 
 <table>
   <thead><tr><th style="width:8%">#</th><th style="width:38%">الكاشير</th><th style="width:16%">الفواتير</th><th style="width:22%">الإيراد</th><th style="width:16%">الحصة</th></tr></thead>
   <tbody>
-    ${opts.cashierRevenue.rows.map((cashier) => `<tr>
+    ${opts.cashierRevenue.rows.map((/** @type {any} */ cashier) => `<tr>
       <td>${escHtml(cashier.no)}</td>
       <td>${escHtml(cashier.name)}</td>
       <td class="amt">${num(cashier.invoices)}</td>
@@ -1041,7 +1086,7 @@ ${Array.isArray(opts.cashierRevenue?.rows) && opts.cashierRevenue.rows.length > 
 </table>` : ''}
 <div class="notes">
   <div>· مصدر الإيراد: تقرير الكاشيريات المعتمد (CC_BILLS3.NET_VAL؛ قيمة التحصيل وتشمل الضريبة)، الفواتير المُرحّلة ذات القيمة الموجبة فقط (PSTD=Y وNET_VAL&gt;0) لكل كاشيرٍ ظهرت له فواتير في الفترة — بما فيهم الكاشير 2 وأي كاشيرٍ جديد على الشبكة — بلا بديل محلي. لا يضم الإجمالي إيرادات يدوية أو POS محلية.</div>
-  <div>· الكاشيرات الداخلة في التقرير: ${escHtml((opts.cashiers || []).map((c) => `${c.name} (${c.no})`).join('، ') || '—')}.</div>
+  <div>· الكاشيرات الداخلة في التقرير: ${escHtml((opts.cashiers || []).map((/** @type {any} */ c) => `${c.name} (${c.no})`).join('، ') || '—')}.</div>
   <div>· «صافي تكلفة المخزون» = أذونات الصرف − المرتجعات، وهو رقم الدفتر المستخدم في قائمة الدخل. «فواتير المخزون (مقارنة)» مصدر مستقل ولا تُدمج معه.</div>
   <div>· أذونات الصرف ومرتجعاتها أعمدة مستقلة؛ وإجمالي القيود المسجلة من ${escHtml(opts.dispatchYear?.from || '—')} إلى ${escHtml(opts.dispatchYear?.to || '—')}: صرف ${money(opts.dispatchYear?.totals?.dispatch)}، مرتجعات ${money(opts.dispatchYear?.totals?.returns)}، صافي ${money(opts.dispatchYear?.totals?.net)} (${escHtml(String(opts.dispatchYear?.totals?.rows || 0))} قيدًا). لا تُضاف مرة ثانية للمصروفات التشغيلية.</div>
   <div>· «كوست فواتير المخزون» = مجموع فواتير المخزون في مرآة قاعدة الكاشير — عمودٌ مستقل للمقارنة ولا يُدمج مع الأول.</div>
@@ -1066,22 +1111,25 @@ ${Array.isArray(opts.cashierRevenue?.rows) && opts.cashierRevenue.rows.length > 
 const MONTHLY_DETAIL_ROW_CAP = 250;
 const MONTHLY_DETAIL_MANUAL_CAP = 100;
 
+/** @type {Object<string, string>} */
 const EXPENSE_TYPE_LABELS = {
     dispatch: 'صرف مخزون',
     dispatch_return: 'مرتجع صرف',
     count_correction: 'فرق جرد',
 };
 
+/** @param {any} value @param {any} base */
 function sharePct(value, base) {
     const b = roundMoney(base);
     if (b === 0) {return null;}
     return roundMoney((roundMoney(value) / b) * 100);
 }
 
+/** @param {any} value */
 function monthKeyOrThrow(value) {
     const key = String(value || '').trim();
     if (!/^\d{4}-(0[1-9]|1[0-2])$/.test(key)) {
-        const err = new Error('صيغة الشهر غير صالحة — استخدم YYYY-MM');
+        const err = /** @type {any} */ (new Error('صيغة الشهر غير صالحة — استخدم YYYY-MM'));
         err.statusCode = 400;
         err.code = 'INVALID_MONTH';
         throw err;
@@ -1089,7 +1137,7 @@ function monthKeyOrThrow(value) {
     return key;
 }
 
-/** خريطة أسماء الأقسام: أكواد POS وأكواد الأقسام القديمة معًا. */
+/** خريطة أسماء الأقسام: أكواد POS وأكواد الأقسام القديمة معًا.  @param {any} inputs */
 function departmentNames(inputs) {
     const map = new Map();
     for (const d of (Array.isArray(inputs?.deptHierarchy) ? inputs.deptHierarchy : [])) {
@@ -1103,13 +1151,14 @@ function departmentNames(inputs) {
     return map;
 }
 
+/** @param {any} type */
 function expenseTypeMeta(type) {
     return EXPENSE_TYPE_LABELS[type]
         ? { type, label: EXPENSE_TYPE_LABELS[type] }
         : { type: 'operating', label: 'تشغيلي' };
 }
 
-/** سطور المصروفات كما هي مسجّلة — تُعرض ولا تُصلح. */
+/** سطور المصروفات كما هي مسجّلة — تُعرض ولا تُصلح.  @param {any} inputs @param {any} from @param {any} to @param {any} names */
 function monthlyExpenseLedger(inputs, from, to, names) {
     const rows = [];
     const byType = new Map();
@@ -1141,7 +1190,7 @@ function monthlyExpenseLedger(inputs, from, to, names) {
     return { rows, byType: order.map((t) => byType.get(t)).filter(Boolean) };
 }
 
-/** الحركة اليومية للدفتر: كوستٌ ومصروفات أخرى — الإيراد شهريّ لا يوميّ. */
+/** الحركة اليومية للدفتر: كوستٌ ومصروفات أخرى — الإيراد شهريّ لا يوميّ.  @param {any} rows */
 function dailyLedgerMovement(rows) {
     const map = new Map();
     for (const r of Array.isArray(rows) ? rows : []) {
@@ -1157,12 +1206,13 @@ function dailyLedgerMovement(rows) {
     return Array.from(map.values()).sort((a, b) => a.date.localeCompare(b.date));
 }
 
+/** @param {any} monthKey */
 function buildMonthlyDetail({ monthKey, win, inputs, cashierHit, oracleHit, oracleAvailable }) {
     const st = buildPnlStatement({ ...inputs, fromDay: win.from, toDay: win.to });
     const names = departmentNames(inputs);
     const ledger = monthlyExpenseLedger(inputs, win.from, win.to, names);
     const manual = (Array.isArray(inputs.manualRevenues) ? inputs.manualRevenues : [])
-        .map((r) => {
+        .map((/** @type {any} */ r) => {
             const code = String(r.deptId ?? '').trim();
             return {
                 date: normalizeDay(r.date),
@@ -1172,8 +1222,8 @@ function buildMonthlyDetail({ monthKey, win, inputs, cashierHit, oracleHit, orac
                 amount: roundMoney(r.amount),
             };
         })
-        .filter((r) => inRange(r.date, win.from, win.to))
-        .sort((a, b) => b.date.localeCompare(a.date));
+        .filter((/** @type {any} */ r) => inRange(r.date, win.from, win.to))
+        .sort((/** @type {any} */ a, /** @type {any} */ b) => b.date.localeCompare(a.date));
     /* الإيراد المعتمد هو نفس إيراد صفّ المقارنة (تحصيل الكاشيريات) — لا أساس ثانٍ
        يخالف الجدول. إيراد دفتر النظام يُعرض للمطابقة فقط، والإيرادات اليدوية
        تُعرض بندًا مستقلًا ولا تُضاف إليه. */
@@ -1236,6 +1286,7 @@ function buildMonthlyDetail({ monthKey, win, inputs, cashierHit, oracleHit, orac
 
 // ─── HTML: قائمة شهرٍ واحد A4 ────────────────────────────────────────────────
 
+/** @param {any} detail @param {any} opts */
 function renderMonthlyDetailPrintHtml(detail, opts = {}) {
     const restaurantName = escHtml(opts.restaurantName || 'النظام المالي');
     const currency = escHtml(opts.currency || 'ريال سعودي (SAR)');
@@ -1249,23 +1300,28 @@ function renderMonthlyDetailPrintHtml(detail, opts = {}) {
     const np = st.net_profit || {};
     const der = detail.derived || {};
     const cashierRows = Array.isArray(detail.cashier_scope?.rows) ? detail.cashier_scope.rows : [];
-    const cashierNames = cashierRows.map((row) => row.name).filter(Boolean);
+    const cashierNames = cashierRows.map((/** @type {any} */ row) => row.name).filter(Boolean);
+    /** @param {any} v */
     const money = (v) => (v == null ? '—' : fmtMoney(v));
+    /** @param {any} v */
     const pctTxt = (v) => (v == null ? '—' : `${roundMoney(v)}%`);
+    /** @param {any} v @param {any} base */
     const bar = (v, base) => {
         const p = Math.max(0, Math.min(100, Number(sharePct(v, base)) || 0));
         return `<span class="bar" aria-hidden="true"><i style="width:${p}%"></i></span>`;
     };
+    /** @param {any} label @param {any} value @param {any} cls @param {any} pct @param {any} extra */
     const row = (label, value, cls = '', pct = null, extra = '') => `
         <tr class="${cls}">
             <td>${escHtml(label)}${extra}</td>
             <td class="n${Number(value) < 0 ? ' neg' : ''}">${money(value)}</td>
             <td class="p">${pct == null ? '—' : pctTxt(pct)}</td>
         </tr>`;
+    /** @param {any} label @param {any} value */
     const sub = (label, value) => row(label, value, 'sub');
 
-    const opItems = (op.items || []).map((it) => sub(`${it.category} (${num(it.count)})`, it.amount)).join('');
-    const expCats = (op.items || []).map((it) => `
+    const opItems = (op.items || []).map((/** @type {any} */ it) => sub(`${it.category} (${num(it.count)})`, it.amount)).join('');
+    const expCats = (op.items || []).map((/** @type {any} */ it) => `
         <tr>
             <td>${escHtml(it.category)}</td>
             <td class="p">${num(it.count)}</td>
@@ -1275,7 +1331,7 @@ function renderMonthlyDetailPrintHtml(detail, opts = {}) {
         </tr>`).join('');
 
     const daily = Array.isArray(der.daily) ? der.daily : [];
-    const dailyRows = daily.map((d) => `
+    const dailyRows = daily.map((/** @type {any} */ d) => `
         <tr>
             <td class="d">${escHtml(d.date)}</td>
             <td class="n${num(d.cost) < 0 ? ' neg' : ''}">${money(d.cost)}</td>
@@ -1284,7 +1340,7 @@ function renderMonthlyDetailPrintHtml(detail, opts = {}) {
         </tr>`).join('');
 
     const ledger = Array.isArray(detail.expenses?.rows) ? detail.expenses.rows : [];
-    const topRows = ledger.slice(0, 40).map((r) => `
+    const topRows = ledger.slice(0, 40).map((/** @type {any} */ r) => `
         <tr>
             <td class="d">${escHtml(r.date)}</td>
             <td>${escHtml(r.type_label)}</td>
@@ -1294,7 +1350,7 @@ function renderMonthlyDetailPrintHtml(detail, opts = {}) {
             <td class="n${num(r.amount) < 0 ? ' neg' : ''}">${money(r.amount)}</td>
         </tr>`).join('');
 
-    const manualRows = (detail.manual_revenues?.rows || []).map((r) => `
+    const manualRows = (detail.manual_revenues?.rows || []).map((/** @type {any} */ r) => `
         <tr>
             <td class="d">${escHtml(r.date)}</td>
             <td>${escHtml(r.source)}</td>
@@ -1395,7 +1451,7 @@ tr.net td{background:#eef7f0;font-weight:900;color:#1d6b47;border-top:2px solid 
 ${cashierRows.length ? `<h2>إيرادات الكاشيرات المشمولة (${num(cashierRows.length)})</h2>
 <table>
   <thead><tr><th style="width:8%">#</th><th style="width:38%">الكاشير</th><th style="width:16%">الفواتير</th><th style="width:22%">الإيراد</th><th style="width:16%">الحصة</th></tr></thead>
-  <tbody>${cashierRows.map((cashier) => `
+  <tbody>${cashierRows.map((/** @type {any} */ cashier) => `
     <tr>
       <td class="d">${escHtml(cashier.no)}</td>
       <td>${escHtml(cashier.name)}${cashier.linked ? '' : ' <span style="color:#9a7b2f">(غير مرتبط في الخريطة)</span>'}</td>
@@ -1470,6 +1526,7 @@ ${topRows ? `<h2>أهم حركات المصروفات (${num(detail.expenses?.ro
 
 // ─── Routes ──────────────────────────────────────────────────────────────────
 
+/** @param {any} query */
 function resolvePeriod(query) {
     let from = normalizeDay(query.from);
     let to = normalizeDay(query.to);
@@ -1478,19 +1535,19 @@ function resolvePeriod(query) {
         from = `${today.slice(0, 7)}-01`;
         to = today;
     } else if (!from || !to) {
-        const err = new Error('يجب تمرير تاريخي البداية والنهاية معًا');
+        const err = /** @type {any} */ (new Error('يجب تمرير تاريخي البداية والنهاية معًا'));
         err.statusCode = 400;
         err.code = 'INVALID_PERIOD';
         throw err;
     }
     if (from > to) {
-        const err = new Error('تاريخ البداية يجب أن يكون قبل النهاية أو مساويًا له');
+        const err = /** @type {any} */ (new Error('تاريخ البداية يجب أن يكون قبل النهاية أو مساويًا له'));
         err.statusCode = 400;
         err.code = 'INVALID_PERIOD';
         throw err;
     }
     if (daysBetween(from, to) > MAX_SPAN_DAYS) {
-        const err = new Error(`أقصى نطاق مسموح ${MAX_SPAN_DAYS} يومًا`);
+        const err = /** @type {any} */ (new Error(`أقصى نطاق مسموح ${MAX_SPAN_DAYS} يومًا`));
         err.statusCode = 400;
         err.code = 'PERIOD_TOO_LONG';
         throw err;
@@ -1498,13 +1555,15 @@ function resolvePeriod(query) {
     return { from, to };
 }
 
+/** @param {any} query */
 function resolveCostAnalysisPeriod(query) {
+    /** @param {any} value */
     const parseDay = (value) => {
         if (value == null || value === '') {return '';}
         const day = String(value);
         const parsed = DATE_RE.test(day) ? new Date(`${day}T00:00:00.000Z`) : null;
         if (!parsed || Number.isNaN(parsed.getTime()) || parsed.toISOString().slice(0, 10) !== day) {
-            const err = new Error('صيغة التاريخ غير صالحة — استخدم YYYY-MM-DD');
+            const err = /** @type {any} */ (new Error('صيغة التاريخ غير صالحة — استخدم YYYY-MM-DD'));
             err.statusCode = 400;
             err.code = 'INVALID_PERIOD';
             throw err;
@@ -1516,7 +1575,7 @@ function resolveCostAnalysisPeriod(query) {
     const from = parseDay(query.from) || monthStart;
     const to = parseDay(query.to) || today;
     if (from > to) {
-        const err = new Error('تاريخ البداية يجب أن يكون قبل النهاية أو مساويًا له');
+        const err = /** @type {any} */ (new Error('تاريخ البداية يجب أن يكون قبل النهاية أو مساويًا له'));
         err.statusCode = 400;
         err.code = 'INVALID_PERIOD';
         throw err;
@@ -1525,9 +1584,9 @@ function resolveCostAnalysisPeriod(query) {
        V2_CURRENT_MONTH_ONLY الذي كان يحبس التحليل في الشهر الحالي أُلغي —
        الحسبة كلها تجميعات نطاق على revenues/dispatches/expenses بلا أي
        حالة «شهر حالي». يبقى سقف سخي 366 يومًا حفاظًا على الأداء فقط. */
-    const spanDays = Math.round((new Date(`${to}T00:00:00.000Z`) - new Date(`${from}T00:00:00.000Z`)) / 86400000) + 1;
+    const spanDays = Math.round((/** @type {any} */ (new Date(`${to}T00:00:00.000Z`)) - /** @type {any} */ (new Date(`${from}T00:00:00.000Z`))) / 86400000) + 1;
     if (spanDays > 366) {
-        const err = new Error('أقصى نطاق للتحليل 366 يومًا — قسّم الفترة على مرات');
+        const err = /** @type {any} */ (new Error('أقصى نطاق للتحليل 366 يومًا — قسّم الفترة على مرات'));
         err.statusCode = 400;
         err.code = 'PERIOD_TOO_LONG';
         throw err;
@@ -1535,8 +1594,11 @@ function resolveCostAnalysisPeriod(query) {
     return { from, to };
 }
 
+/** @param {any} from @param {any} to */
 function costAnalysisSql(from, to) {
+    /** @type {any[]} */
     const params = [];
+    /** @param {any} column */
     const predicates = (column) => {
         const parts = [];
         if (from) {
@@ -1725,6 +1787,7 @@ function isRevenueChannel(code) {
     return /^ys_cc_\d+$/i.test(String(code ?? '').trim());
 }
 
+/** @param {any} rows */
 function buildCostAnalysisResult(rows) {
     const departments = (Array.isArray(rows) ? rows : []).map((row) => {
         const rev = num(row.revenue);
@@ -1773,6 +1836,7 @@ function buildCostAnalysisResult(rows) {
         };
     });
     const overall = Array.isArray(rows) && rows.length ? rows[0] : {};
+    /** @type {any} */
     const totals = {
         rev: num(overall.total_revenue),
         mat: num(overall.total_materials),
@@ -1792,7 +1856,7 @@ function buildCostAnalysisResult(rows) {
 }
 
 /** الفترة السابقة مباشرة — نفس عدد أيام الفترة الحالية (مقارنة التكلفة).
- *  تُحسب بتوقيت UTC على تواريخ YYYY-MM-DD بلا مناطق زمنية غامضة. */
+ *  تُحسب بتوقيت UTC على تواريخ YYYY-MM-DD بلا مناطق زمنية غامضة.  @param {any} from @param {any} to */
 function previousCostPeriod(from, to) {
     const start = new Date(`${from}T00:00:00.000Z`);
     const end = new Date(`${to}T00:00:00.000Z`);
@@ -1809,7 +1873,7 @@ function previousCostPeriod(from, to) {
 /** تكلفة الفترة السابقة لكل قسم — نفس منطق تجميع costAnalysisSql (شجري):
  *  مواد + تحويلات + تسوية جرد + تشغيلية. تُستخدم لمقارنة التكلفة.
  *  byDept[code].exp شجري (القسم وفروعه)، وbyDept[code].ownExp رقم القسم وحده
- *  — لأن الشجرة تُسقط تكلفة الفرع على أبيه، فجمع الأسطر يُضاعفها. */
+ *  — لأن الشجرة تُسقط تكلفة الفرع على أبيه، فجمع الأسطر يُضاعفها.  @param {any} from @param {any} to */
 async function loadPreviousCostTotals(from, to) {
     const prev = previousCostPeriod(from, to);
     const { rows } = await pool.query(
@@ -1844,6 +1908,7 @@ async function loadPreviousCostTotals(from, to) {
         bucket.push(code);
         kidCodesOf.set(parent, bucket);
     }
+    /** @type {Object<string, any>} */
     const byDept = {};
     for (const r of rows) {
         const materials = num(r.materials);
@@ -1882,7 +1947,7 @@ async function loadPreviousCostTotals(from, to) {
 }
 
 /** تفاصيل تكلفة قسم — البنود خلف الرقم (مراجعة احترافية: من أين جاءت
- *  التكلفة). تشمل أقسام القسم الفرعية (نفس الشجرة). */
+ *  التكلفة). تشمل أقسام القسم الفرعية (نفس الشجرة).  @param {any} code @param {any} from @param {any} to */
 async function loadDeptCostDetail(code, from, to) {
     const { rows } = await pool.query(
         `WITH RECURSIVE dept_tree(root_code, code, path) AS (
@@ -1901,6 +1966,7 @@ async function loadDeptCostDetail(code, from, to) {
           ORDER BY ABS(COALESCE(e.amount, 0)) DESC, e.date DESC
           LIMIT 800`,
         [code, from, to]);
+    /** @type {Object<string, number>} */
     const buckets = { materials: 0, transfers: 0, countAdj: 0, operating: 0 };
     const items = rows.map((r) => {
         const type = String(r.adjustment_type || '').toLowerCase();
@@ -2033,7 +2099,7 @@ async function financePrintBrand() {
             currency: String(row.currency || '').trim() || fallback.currency,
             logo: /^data:image\//i.test(logo) ? logo : fallback.logo,
         };
-    } catch (error) {
+    } catch (/** @type {any} */ error) {
         logger.warn(`[finance] print brand unavailable: ${error.message}`);
         return fallback;
     }
@@ -2041,7 +2107,7 @@ async function financePrintBrand() {
 
 /** حركة التحويلات بين الأقسام للفترة — تُعرض كبند موقَّع في تحليل التكاليف
  *  ومعه توزيع المصادر والوجهات وأعلى الأصناف. قراءة واحدة مستقلة عن جداول
- *  المصروفات (المصدر: inventory_transfers المنفَّذة) — لا تُخترع أرقام. */
+ *  المصروفات (المصدر: inventory_transfers المنفَّذة) — لا تُخترع أرقام.  @param {any} from @param {any} to */
 async function loadTransferFlow(from, to) {
     const RANGE = `t.status = 'received'
       AND (t.created_at AT TIME ZONE 'Asia/Riyadh')::date BETWEEN $1::date AND $2::date`;
@@ -2092,6 +2158,7 @@ async function loadTransferFlow(from, to) {
             ? await pool.query('SELECT code, name FROM departments WHERE LOWER(code) = ANY($1)', [codes.map((c) => String(c).toLowerCase())])
             : { rows: [] };
         const nameByCode = new Map(nameRows.rows.map((r) => [String(r.code).toLowerCase(), r.name]));
+        /** @param {any} code */
         const label = (code) => (code ? (nameByCode.get(String(code).toLowerCase()) || code) : 'غير محدد');
         const total = bySource.rows.reduce((sum, r) => sum + num(r.value), 0);
         return {
@@ -2109,13 +2176,13 @@ async function loadTransferFlow(from, to) {
                 lines: Number(r.lines), value: roundMoney(r.value),
             })),
         };
-    } catch (error) {
+    } catch (/** @type {any} */ error) {
         logger.error(`[finance] transfer-flow analysis failed: ${error.message}`);
         throw error;
     }
 }
 
-/** مستند تحليل التكاليف: الأرقام نفسها التي تعرضها الشاشة، بلا أي حساب جديد. */
+/** مستند تحليل التكاليف: الأرقام نفسها التي تعرضها الشاشة، بلا أي حساب جديد.  @param {any} payload @param {any} opts */
 function renderCostAnalysisPrintHtml(payload, opts = {}) {
     /* قنوات البيع (ys_cc_N) ليست أقسامًا: إيرادها أُسند لأقسامه، وصفوفها
        صفرية — لا تُطبع كأقسام. مرآة البيع الخارجي تبقى للمراجعة موسومة. */
@@ -2131,12 +2198,16 @@ function renderCostAnalysisPrintHtml(payload, opts = {}) {
     };
     const generatedAt = opts.generatedAt || new Date().toISOString().slice(0, 16).replace('T', ' ');
     const generatedBy = opts.generatedBy || '—';
+    /** @param {any} v */
     const money = (v) => fmtMoney(v);
+    /** @param {any} part @param {any} base */
     const share = (part, base) => (Number(base) > 0 ? `${roundMoney((Number(part) / Number(base)) * 100)}%` : '—');
+    /** @param {any} v */
     const signedClass = (v) => (Number(v) < 0 ? 'neg' : 'pos');
     /* A pure cost centre is not a «خاسر»: revenue and cost live on different
        departments in this ledger, so the verdict names the centre unless both
        sides exist. Same rule as the V2 screen. */
+    /** @param {any} row */
     const deptVerdict = (row) => {
         const hasRev = num(row.rev) > 0;
         const hasCost = num(row.exp) > 0;
@@ -2153,10 +2224,11 @@ function renderCostAnalysisPrintHtml(payload, opts = {}) {
     const prevByDept = (previous && previous.byDept) || {};
     /* سابقة القسم وحده، لا شجرته: الخادم يعطي ownExp، وإن غاب (بناء أقدم)
        تُخصم سابقات الأبناء المباشرين من سابقة الأب الشجرية. */
+    /** @param {any} row */
     const prevOwnOf = (row) => {
         const p = prevByDept[String(row.code)] || {};
         if (p.ownExp != null) {return num(p.ownExp);}
-        const kidsRolled = rows.reduce((s, k) => (String(k.parent) === String(row.code)
+        const kidsRolled = rows.reduce((/** @type {any} */ s, /** @type {any} */ k) => (String(k.parent) === String(row.code)
             ? s + num((prevByDept[String(k.code)] || {}).exp) : s), 0);
         return Math.max(0, num(p.exp) - kidsRolled);
     };
@@ -2164,7 +2236,7 @@ function renderCostAnalysisPrintHtml(payload, opts = {}) {
     const deltaExp = num(totals.exp) - prevTotalExp;
     const deltaPct = prevTotalExp > 0 ? (deltaExp / prevTotalExp) * 100 : 0;
     const comparisonRows = rows
-        .map((row) => {
+        .map((/** @type {any} */ row) => {
             const prevExp = prevOwnOf(row);
             const exp = num((row.own || {}).exp);
             const diff = exp - prevExp;
@@ -2177,8 +2249,8 @@ function renderCostAnalysisPrintHtml(payload, opts = {}) {
                 pct: prevExp > 0 ? (diff / prevExp) * 100 : null,
             };
         })
-        .filter((r) => r.exp !== 0 || r.prevExp !== 0)
-        .sort((a, b) => Math.abs(b.diff) - Math.abs(a.diff));
+        .filter((/** @type {any} */ r) => r.exp !== 0 || r.prevExp !== 0)
+        .sort((/** @type {any} */ a, /** @type {any} */ b) => Math.abs(b.diff) - Math.abs(a.diff));
     const comparisonSection = previous ? `
     <h3 class="sec">مقارنة التكلفة بالفترة السابقة (${escHtml(previous.from)} → ${escHtml(previous.to)})</h3>
     <table class="t">
@@ -2189,7 +2261,7 @@ function renderCostAnalysisPrintHtml(payload, opts = {}) {
           <td class="n">${money(prevTotalExp)}</td>
           <td class="n">${money(totals.exp)}</td>
           <td class="n ${signedClass(deltaExp)}">${money(deltaExp)} (${deltaPct > 0 ? '+' : ''}${roundMoney(deltaPct)}%)</td></tr>
-        ${comparisonRows.map((r) => `<tr>
+        ${comparisonRows.map((/** @type {any} */ r) => `<tr>
           <td>${escHtml(r.name)}<span class="pill" style="margin-inline-start:6px">${escHtml(r.code)}</span></td>
           <td class="n">${money(r.prevExp)}</td>
           <td class="n">${money(r.exp)}</td>
@@ -2232,6 +2304,7 @@ function renderCostAnalysisPrintHtml(payload, opts = {}) {
             familyKids.set(parent, bucket);
         }
     }
+    /** @returns {any} */
     const collectKids = (/** @type {string} */ code, /** @type {Set<string>} */ guard) => {
         const out = [];
         for (const kid of (familyKids.get(code) || [])) {
@@ -2254,8 +2327,8 @@ function renderCostAnalysisPrintHtml(payload, opts = {}) {
     /* صفوف الجدول بأرقام القسم وحده — نفس وجه البطاقة. */
     const deptRows = rows
         .slice()
-        .sort((a, b) => (num((b.own || {}).exp) - num((a.own || {}).exp)) || (num((b.own || {}).rev) - num((a.own || {}).rev)))
-        .map((row, index) => {
+        .sort((/** @type {any} */ a, /** @type {any} */ b) => (num((b.own || {}).exp) - num((a.own || {}).exp)) || (num((b.own || {}).rev) - num((a.own || {}).rev)))
+        .map((/** @type {any} */ row, /** @type {any} */ index) => {
             const own = row.own || {};
             const rev = num(own.rev);
             const exp = num(own.exp);
@@ -2315,8 +2388,10 @@ function renderCostAnalysisPrintHtml(payload, opts = {}) {
     cardRoots.sort(byCost);
     const cardSeq = [];
     const cardSeen = new Set();
+    /** @returns {any} */
     const walkCards = (/** @type {any} */ row, /** @type {number} */ depth) => {
         const code = String(row.code);
+        /** @type {any[]} */
         const kids = [];
         if (cardSeen.has(code)) {return kids;}
         cardSeen.add(code);
@@ -2387,8 +2462,8 @@ function renderCostAnalysisPrintHtml(payload, opts = {}) {
 
     const categoryRows = categories
         .slice()
-        .sort((a, b) => num(b.value) - num(a.value))
-        .map((category, index) => `
+        .sort((/** @type {any} */ a, /** @type {any} */ b) => num(b.value) - num(a.value))
+        .map((/** @type {any} */ category, /** @type {any} */ index) => `
         <tr>
             <td class="c">${index + 1}</td>
             <td>${escHtml(category.label || 'أخرى')}</td>
@@ -2400,6 +2475,7 @@ function renderCostAnalysisPrintHtml(payload, opts = {}) {
     /* حركة التحويلات — قسم مستقل في المستند، يُبنى من inventory_transfers
        المنفَّذة في الفترة (لا من جدول المصروفات) فلا يظهر صفّ بلا حركة. */
     const flow = (payload && payload.flow) || { total: 0, transfers: 0, bySource: [], byDest: [], topItems: [], recent: [] };
+    /** @param {any} label @param {any} value @param {any} sub */
     const flowRow = (label, value, sub) => `
         <tr><td>${escHtml(label)}</td><td class="c">${escHtml(sub || '')}</td>
             <td class="n ${signedClass(value)}">${money(value)}</td></tr>`;
@@ -2409,15 +2485,15 @@ function renderCostAnalysisPrintHtml(payload, opts = {}) {
       <thead><tr><th style="width:56%">القسم</th><th style="width:16%">عدد التحويلات</th>
         <th style="width:28%">القيمة</th></tr></thead>
       <tbody>
-        ${flow.bySource.map((r) => flowRow(r.name + ' — مُرسِل', r.value, String(r.transfers))).join('')}
-        ${flow.byDest.map((r) => flowRow(r.name + ' — مُستلِم', r.value, String(r.transfers))).join('')}
+        ${flow.bySource.map((/** @type {any} */ r) => flowRow(r.name + ' — مُرسِل', r.value, String(r.transfers))).join('')}
+        ${flow.byDest.map((/** @type {any} */ r) => flowRow(r.name + ' — مُستلِم', r.value, String(r.transfers))).join('')}
       </tbody>
     </table>
     ${Array.isArray(flow.topItems) && flow.topItems.length ? `
     <table class="t" style="margin-top:8px">
       <thead><tr><th style="width:52%">أعلى الأصناف المحوَّلة</th><th style="width:16%">الكمية</th>
         <th style="width:14%">الوحدة</th><th style="width:18%">القيمة</th></tr></thead>
-      <tbody>${flow.topItems.map((r) => `
+      <tbody>${flow.topItems.map((/** @type {any} */ r) => `
         <tr><td>${escHtml(r.name)}</td><td class="n">${money(r.qty)}</td>
             <td class="c">${escHtml(r.unit || '—')}</td><td class="n">${money(r.value)}</td></tr>`).join('')}</tbody>
     </table>` : ''}
@@ -2425,7 +2501,7 @@ function renderCostAnalysisPrintHtml(payload, opts = {}) {
     <table class="t" style="margin-top:8px">
       <thead><tr><th style="width:22%">رقم التحويل</th><th style="width:13%">اليوم</th><th style="width:23%">من</th>
         <th style="width:23%">إلى</th><th style="width:9%">بنود</th><th style="width:10%">القيمة</th></tr></thead>
-      <tbody>${flow.recent.map((r) => `
+      <tbody>${flow.recent.map((/** @type {any} */ r) => `
         <tr><td class="c" style="direction:ltr">${escHtml(r.number || '—')}</td>
             <td class="c" style="direction:ltr">${escHtml(r.day)}</td><td>${escHtml(r.from)}</td>
             <td>${escHtml(r.to)}</td><td class="c">${r.lines}</td>
@@ -2547,7 +2623,7 @@ async function loadCostAttribution(from, to) {
     };
 }
 
-router.get('/cost-analysis', jwtAuth, requireRole(...COST_ANALYSIS_READ_ROLES), asyncHandler(async (req, res) => {
+router.get('/cost-analysis', jwtAuth, requireRole(...COST_ANALYSIS_READ_ROLES), asyncHandler(async (/** @type {any} */ req, /** @type {any} */ res) => {
     const { from, to } = resolveCostAnalysisPeriod(req.query);
     const query = costAnalysisSql(from, to);
     const [result, attribution, flow, previous] = await Promise.all([
@@ -2560,7 +2636,7 @@ router.get('/cost-analysis', jwtAuth, requireRole(...COST_ANALYSIS_READ_ROLES), 
 }));
 
 /** تفاصيل تكلفة قسم واحد — البنود خلف الرقم (مراجعة احترافية). */
-router.get('/cost-analysis/dept', jwtAuth, requireRole(...COST_ANALYSIS_READ_ROLES), asyncHandler(async (req, res) => {
+router.get('/cost-analysis/dept', jwtAuth, requireRole(...COST_ANALYSIS_READ_ROLES), asyncHandler(async (/** @type {any} */ req, /** @type {any} */ res) => {
     const { from, to } = resolveCostAnalysisPeriod(req.query);
     const code = String(req.query.code ? req.query.code : '').trim();
     if (!code) {
@@ -2570,7 +2646,7 @@ router.get('/cost-analysis/dept', jwtAuth, requireRole(...COST_ANALYSIS_READ_ROL
     return res.json({ ...detail, period: { from, to } });
 }));
 
-router.get('/cost-analysis/print', jwtAuth, requireRole(...COST_ANALYSIS_READ_ROLES), asyncHandler(async (req, res) => {
+router.get('/cost-analysis/print', jwtAuth, requireRole(...COST_ANALYSIS_READ_ROLES), asyncHandler(async (/** @type {any} */ req, /** @type {any} */ res) => {
     const { from, to } = resolveCostAnalysisPeriod(req.query);
     const query = costAnalysisSql(from, to);
     const [result, attribution, flow, previous] = await Promise.all([
@@ -2594,6 +2670,7 @@ router.get('/cost-analysis/print', jwtAuth, requireRole(...COST_ANALYSIS_READ_RO
 
 router.use(jwtAuth, requireRole(...READ_ROLES));
 
+/** @param {any} from @param {any} to */
 async function loadPnlInputs(from, to) {
     const [ordersRes, manualRes, expensesRes, payrollRes, deptMapRes, deptHierarchyRes] = await Promise.all([
         pool.query(`
@@ -2634,7 +2711,7 @@ async function loadPnlInputs(from, to) {
     };
 }
 
-router.get('/pnl', asyncHandler(async (req, res) => {
+router.get('/pnl', asyncHandler(async (/** @type {any} */ req, /** @type {any} */ res) => {
     const { from, to } = resolvePeriod(req.query);
     const inputs = await loadPnlInputs(from, to);
     const current = buildPnlStatement({ ...inputs, fromDay: from, toDay: to });
@@ -2645,7 +2722,7 @@ router.get('/pnl', asyncHandler(async (req, res) => {
         try {
             const prevInputs = await loadPnlInputs(prev.from, prev.to);
             previous = buildPnlStatement({ ...prevInputs, fromDay: prev.from, toDay: prev.to });
-        } catch (e) {
+        } catch (/** @type {any} */ e) {
             logger.warn(`[finance] previous period build failed: ${e.message}`);
         }
     }
@@ -2660,7 +2737,7 @@ router.get('/pnl', asyncHandler(async (req, res) => {
     });
 }));
 
-router.get('/pnl/print', asyncHandler(async (req, res) => {
+router.get('/pnl/print', asyncHandler(async (/** @type {any} */ req, /** @type {any} */ res) => {
     const { from, to } = resolvePeriod(req.query);
     const inputs = await loadPnlInputs(from, to);
     const current = buildPnlStatement({ ...inputs, fromDay: from, toDay: to });
@@ -2695,6 +2772,7 @@ async function restaurantDisplayName() {
     } catch (_) {return 'النظام المالي';}
 }
 
+/** @param {any} query */
 async function monthlyComparisonPayload(query) {
     const toDay = normalizeDay(riyadhToday());
     const range = monthlyRangeFromQuery(query, toDay);
@@ -2710,14 +2788,14 @@ async function monthlyComparisonPayload(query) {
     let oracleAvailable = true;
     try {
         oracleByMonth = await loadOracleMonthlyCost();
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
         oracleAvailable = false;
         logger.warn(`[finance] oracle monthly cost unavailable: ${e.message}`);
     }
 
     const rows = buildMonthlyComparison({
         monthWindows: range.windows, toDay, inputs, oracleByMonth,
-        cashierRevenueForWindow: (win) => summarizeCashierDays(cashierRevenue.days, win.from, win.to),
+        cashierRevenueForWindow: (/** @type {any} */ win) => summarizeCashierDays(cashierRevenue.days, win.from, win.to),
     });
     const dispatchYear = buildDispatchYearSummary(inputs.expenses, range.to);
     const selectedNos = cashierRevenue.selected.map((cashier) => cashier.no);
@@ -2755,7 +2833,7 @@ async function monthlyComparisonPayload(query) {
     };
 }
 
-/** نافذة تفصيل الشهر: الشهر كاملًا افتراضيًا، أو الجزء المحدد داخل حدوده فقط. */
+/** نافذة تفصيل الشهر: الشهر كاملًا افتراضيًا، أو الجزء المحدد داخل حدوده فقط.  @param {any} monthKey @param {any} query @param {any} toDay */
 function detailWindowFor(monthKey, query, toDay) {
     const y = parseInt(monthKey.slice(0, 4), 10);
     const m = parseInt(monthKey.slice(5, 7), 10);
@@ -2784,11 +2862,12 @@ function detailWindowFor(monthKey, query, toDay) {
 }
 
 /* ── تفصيل شهر واحد (قراءة فقط): نفس بوابة المقارنة ونفس أساس الإيراد ────── */
+/** @param {any} query */
 async function monthlyDetailPayload(query) {
     const monthKey = monthKeyOrThrow(query?.month);
     const toDay = normalizeDay(riyadhToday());
     if (monthKey > toDay.slice(0, 7)) {
-        const err = new Error('لا يمكن تفصيل شهر لم يبدأ بعد');
+        const err = /** @type {any} */ (new Error('لا يمكن تفصيل شهر لم يبدأ بعد'));
         err.statusCode = 400;
         err.code = 'MONTH_IN_FUTURE';
         throw err;
@@ -2806,20 +2885,20 @@ async function monthlyDetailPayload(query) {
     let oracleAvailable = true;
     try {
         oracleByMonth = await loadOracleMonthlyCost();
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
         oracleAvailable = false;
         logger.warn(`[finance] oracle monthly cost unavailable: ${e.message}`);
     }
     const cashierHit = summarizeCashierDays(cashierRevenue.days, win.from, win.to);
     const selectedNos = cashierRevenue.selected.map((cashier) => cashier.no);
-    const detail = buildMonthlyDetail({
+    const detail = /** @type {any} */ (buildMonthlyDetail({
         monthKey,
         win,
         inputs,
         cashierHit: cashierHit.invoices > 0 ? cashierHit : null,
         oracleHit: oracleByMonth.get(monthKey) || null,
         oracleAvailable,
-    });
+    }));
     detail.cashier_scope = {
         selected: selectedNos,
         rows: buildCashierRevenueRows(cashierRevenue.byCashier, selectedNos),
@@ -2828,6 +2907,7 @@ async function monthlyDetailPayload(query) {
     return detail;
 }
 
+/** @param {any} error @param {any} res */
 function sendMonthlyComparisonSourceError(error, res) {
     const codes = ['YARASOFT_REVENUE_UNAVAILABLE', 'NO_LINKED_CASHIERS', 'INVALID_LINKED_CASHIER', 'LINKED_CASHIER_MAP_UNAVAILABLE'];
     if (!error || !codes.includes(error.code)) {return false;}
@@ -2835,7 +2915,7 @@ function sendMonthlyComparisonSourceError(error, res) {
     return true;
 }
 
-router.get('/monthly-comparison', asyncHandler(async (req, res) => {
+router.get('/monthly-comparison', asyncHandler(async (/** @type {any} */ req, /** @type {any} */ res) => {
     let payload;
     try {
         payload = await monthlyComparisonPayload(req.query);
@@ -2847,7 +2927,7 @@ router.get('/monthly-comparison', asyncHandler(async (req, res) => {
     res.json(payload);
 }));
 
-router.get('/monthly-comparison/print', asyncHandler(async (req, res) => {
+router.get('/monthly-comparison/print', asyncHandler(async (/** @type {any} */ req, /** @type {any} */ res) => {
     let payload;
     try {
         payload = await monthlyComparisonPayload(req.query);
@@ -2869,7 +2949,7 @@ router.get('/monthly-comparison/print', asyncHandler(async (req, res) => {
     }));
 }));
 
-router.get('/monthly-comparison/month', asyncHandler(async (req, res) => {
+router.get('/monthly-comparison/month', asyncHandler(async (/** @type {any} */ req, /** @type {any} */ res) => {
     let detail;
     try {
         detail = await monthlyDetailPayload(req.query);
@@ -2882,7 +2962,7 @@ router.get('/monthly-comparison/month', asyncHandler(async (req, res) => {
     res.json(detail);
 }));
 
-router.get('/monthly-comparison/month/print', asyncHandler(async (req, res) => {
+router.get('/monthly-comparison/month/print', asyncHandler(async (/** @type {any} */ req, /** @type {any} */ res) => {
     let detail;
     try {
         detail = await monthlyDetailPayload(req.query);
@@ -2900,8 +2980,9 @@ router.get('/monthly-comparison/month/print', asyncHandler(async (req, res) => {
 }));
 
 // asyncHandler بسيط محلي (نفس نمط بقية الملفات)
+/** @param {(req: any, res: any, next: any) => any} fn @returns {(req: any, res: any, next: any) => any} */
 function asyncHandler(fn) {
-    return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
+    return (/** @type {any} */ req, /** @type {any} */ res, /** @type {any} */ next) => Promise.resolve(fn(req, res, next)).catch(next);
 }
 
 module.exports = {

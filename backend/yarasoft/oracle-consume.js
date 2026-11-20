@@ -26,12 +26,14 @@ function liveConsume() {
  * قاعدة «فاتورة قابلة للتسجيل» — مصدر وحيد للحقيقة يشاركه عدّاد التغطية في
  * sync-doctor (`COALESCE(NET_VAL, TOTAL_VAL, 0) > 0`). اختلاف الصيغتين هو ما جعل
  * كل نافذة تبدو «ناقصة» للأبد، فيعيد اللحاق سحبها كاملة كل دورة (130 جيجا مخلفات).
+ * @param {any} total
  */
 function isPostableTotal(total) {
     const v = Number(total);
     return Number.isFinite(v) && v > 0;
 }
 
+/** @param {any} v */
 function isoDay(v) {
     // يوم الرياض المحلي — toISOString (UTC) كان يزيح فواتير منتصف الليل يومًا كاملًا للخلف
     try {
@@ -43,7 +45,7 @@ function isoDay(v) {
     }
 }
 
-/** تجميع سطور staging إلى فواتير {(SRC,DOC_NO) → header + lines} */
+/** تجميع سطور staging إلى فواتير {(SRC,DOC_NO) → header + lines} @param {any} rows */
 function groupStaged(rows) {
     const map = new Map();
     const skipped = [];
@@ -79,6 +81,7 @@ function groupStaged(rows) {
     return { invoices: [...map.values()], skipped };
 }
 
+/** @param {any} filePath @param {{io?:any}} [opts] */
 async function consumeStagingFile(filePath, { io = null } = {}) {
     const base = loadConfig();
     const config = liveConsume() ? { ...base, dryRun: false } : base;
@@ -86,7 +89,7 @@ async function consumeStagingFile(filePath, { io = null } = {}) {
     let bundle;
     try {
         bundle = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
         return { ok: false, error: 'ملف staging غير صالح: ' + e.message };
     }
     const { invoices, skipped } = groupStaged(bundle.rows);
@@ -134,8 +137,8 @@ async function consumeStagingFile(filePath, { io = null } = {}) {
             if (res.status === STATUS.COMPLETED) {out.completed++;}
             else if (res.status === STATUS.DUPLICATE) {out.duplicates++;}
             else if (res.status === STATUS.DRY_RUN) {out.dryRuns++;}
-            else { out.failed++; out.errors.push(`${inv.key}: ${res.reason || res.status}`); }
-        } catch (e) {
+            else { out.failed++; out.errors.push(`${inv.key}: ${/** @type {any} */ (res).reason || res.status}`); }
+        } catch (/** @type {any} */ e) {
             out.failed++;
             out.errors.push(`${inv.key}: ${String(e.message).slice(0, 160)}`);
             logger.error('[yarasoft_oracle_consume]', e.message);
@@ -161,7 +164,7 @@ async function consumeAllPending(opts = {}) {
     return { ok: true, files: files.length, results };
 }
 
-/** حذف نسخ staging المستهلكة (.done) الأقدم من N ساعة — لا يقرأها أحد بعد الاستهلاك */
+/** حذف نسخ staging المستهلكة (.done) الأقدم من N ساعة — لا يقرأها أحد بعد الاستهلاك @param {any} maxAgeHours */
 function pruneConsumed(maxAgeHours) {
     const { loadOracleConfig } = require('./oracle-link');
     const dir = loadOracleConfig().stagingDir;

@@ -13,7 +13,8 @@ const { notifyBestEffort } = require('./notification-service');
 
 /** نقية: بناء نص الإشعار وأهدافه لكل حدث في سلسلة التحويلات.
  *  transfer: { id, transfer_number, requested_by } — أسماء الأقسام تُمرَّر
- *  مُحلولة من المسار (source/dest) كي تبقى الدالة بلا DB. */
+ *  مُحلولة من المسار (source/dest) كي تبقى الدالة بلا DB.
+ *  @param {any} transfer @param {any} event */
 function buildTransferNotification(transfer, event, { reason = null, fromName = null, toName = null, toDeptCode = null } = {}) {
     const num = transfer?.transfer_number || '?';
     const from = fromName || 'قسم';
@@ -55,7 +56,8 @@ function buildTransferNotification(transfer, event, { reason = null, fromName = 
 }
 
 /** يطلق إشعار الحدث بعد نجاح العملية (best-effort — لا يُفشل العملية أبدًا).
- *  يُستدعى بعد COMMIT من المسارات، بمعامل pool — مستقل عن المعاملة الأم. */
+ *  يُستدعى بعد COMMIT من المسارات، بمعامل pool — مستقل عن المعاملة الأم.
+ *  @param {any} transfer @param {any} event */
 async function notifyTransferEvent(transfer, event, {
     io = null, reason = null, fromName = null, toName = null,
     toDeptCode = null, actorUserId = null,

@@ -15,12 +15,21 @@
 
 const { postJournal } = require('./accounting-routes');
 
+/**
+ * تقريب قيمة إلى منزلتين عشريتين — أساس كل مبالغ القيود.
+ * @param {any} val
+ * @returns {number}
+ */
 function round2(val) {
     return Math.round((Number(val) || 0) * 100) / 100;
 }
 
 /**
  * 1. POS Cash Sale (بيوع الكاشير النقدية)
+ */
+/**
+ * @param {any} pool
+ * @param {any} payload — حقول الحدث التشغيلي كما تمرّرها الوحدة المستدعية.
  */
 async function postPosCashSale(pool, { orderId, date, netAmount, vatAmount, costAmount, costCenter, createdBy }) {
     const net = round2(netAmount);
@@ -52,6 +61,10 @@ async function postPosCashSale(pool, { orderId, date, netAmount, vatAmount, cost
 
 /**
  * 2. POS Card/Mada Sale (بيوع الكاشير عبر الشبكة ومدى)
+ */
+/**
+ * @param {any} pool
+ * @param {any} payload — حقول الحدث التشغيلي كما تمرّرها الوحدة المستدعية.
  */
 async function postPosCardSale(pool, { orderId, date, netAmount, vatAmount, costAmount, costCenter, createdBy }) {
     const net = round2(netAmount);
@@ -85,6 +98,10 @@ async function postPosCardSale(pool, { orderId, date, netAmount, vatAmount, cost
  * 3. Delivery Platform Sale (مبيعات تطبيقات التوصيل — جاهز، هنقرستيشن...)
  * Gross revenue to 4030/4000, Platform Commission to 6420, AR receivable held in 1310.
  */
+/**
+ * @param {any} pool
+ * @param {any} payload — حقول الحدث التشغيلي كما تمرّرها الوحدة المستدعية.
+ */
 async function postDeliveryPlatformSale(pool, { orderId, platformName, date, grossSale, commission, vatAmount, costCenter, createdBy }) {
     const gross = round2(grossSale);
     const comm = round2(commission);
@@ -115,6 +132,10 @@ async function postDeliveryPlatformSale(pool, { orderId, platformName, date, gro
  * 4. Factory Department Production Transfer (تسوية تحويلات المصنع بسعر القائمة)
  * As decreed: Factory cost center credited (Revenue 4050/4000), Outlet debited (Expense/COGS 5000).
  */
+/**
+ * @param {any} pool
+ * @param {any} payload — حقول الحدث التشغيلي كما تمرّرها الوحدة المستدعية.
+ */
 async function postFactoryTransfer(pool, { transferId, date, totalValue, factoryDept, outletDept, memoText, createdBy }) {
     const val = round2(totalValue);
 
@@ -135,6 +156,10 @@ async function postFactoryTransfer(pool, { transferId, date, totalValue, factory
 
 /**
  * 5. Purchase Invoice (فاتورة مشتريات مورد)
+ */
+/**
+ * @param {any} pool
+ * @param {any} payload — حقول الحدث التشغيلي كما تمرّرها الوحدة المستدعية.
  */
 async function postPurchaseInvoice(pool, { invoiceId, supplierName, date, netAmount, vatAmount, costCenter, createdBy }) {
     const net = round2(netAmount);
@@ -162,6 +187,10 @@ async function postPurchaseInvoice(pool, { invoiceId, supplierName, date, netAmo
 /**
  * 6. Inventory Waste & Spoilage (هدر وتالف تشغيلي)
  */
+/**
+ * @param {any} pool
+ * @param {any} payload — حقول الحدث التشغيلي كما تمرّرها الوحدة المستدعية.
+ */
 async function postWasteAdjustment(pool, { wasteId, date, totalCost, costCenter, reason, createdBy }) {
     const cost = round2(totalCost);
 
@@ -182,6 +211,10 @@ async function postWasteAdjustment(pool, { wasteId, date, totalCost, costCenter,
 
 /**
  * 7. Fixed Assets Monthly Depreciation (إهلاك الأصول الثابتة)
+ */
+/**
+ * @param {any} pool
+ * @param {any} payload — حقول الحدث التشغيلي كما تمرّرها الوحدة المستدعية.
  */
 async function postMonthlyDepreciation(pool, { periodMonth, date, totalDepreciation, costCenter, createdBy }) {
     const dep = round2(totalDepreciation);

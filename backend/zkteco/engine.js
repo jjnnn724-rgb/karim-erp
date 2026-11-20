@@ -24,15 +24,16 @@ const proto = require('./protocol');
 
 const AUTO_MATCH_DEFAULT = String(process.env.ZK_AUTO_MATCH_EMPLOYEE_ID ?? 'true') !== 'false';
 
+/** @param {any} n */
 function pad2(n) { return String(n).padStart(2, '0'); }
 
-/** تحويل وقت الجهاز المحلي (توقيت الرياض فعليًا) إلى لحظة زمنية صريحة */
+/** تحويل وقت الجهاز المحلي (توقيت الرياض فعليًا) إلى لحظة زمنية صريحة @param {any} wall */
 function wallToInstant(wall) {
     return new Date(Date.UTC(wall.year, wall.month - 1, wall.day, wall.hour, wall.minute, wall.second)
         - BUSINESS_TZ_OFFSET_MS);
 }
 
-/** مطابقة رقم جهاز بموظف: تطابق حرفي ثم رقمي (123 = 0123) */
+/** مطابقة رقم جهاز بموظف: تطابق حرفي ثم رقمي (123 = 0123) @param {any} deviceUserId @param {any} byDeviceId @param {any} byEmployeeNo */
 function matchUserToEmployee(deviceUserId, byDeviceId, byEmployeeNo) {
     return matchUtil(deviceUserId, byDeviceId, byEmployeeNo);
 }
@@ -52,6 +53,7 @@ class AttendanceSyncEngine {
         this.states = new Map();
     }
 
+    /** @param {any} id */
     _state(id) {
         let st = this.states.get(id);
         if (!st) {
@@ -76,6 +78,7 @@ class AttendanceSyncEngine {
         return Math.min(max, base * Math.pow(2, failures - 1));
     }
 
+    /** @param {any} io */
     start(io) {
         if (this.running) {return;}
         this.io = io || null;
@@ -125,6 +128,7 @@ class AttendanceSyncEngine {
     /**
      * إعادة ضبط حالة جهاز في الذاكرة (عند تعديل عنوان IP أو المنفذ)
      * ليحاول المحرك الاتصال فورًا في الدورة التالية بدل انتظار التراجع الأسي.
+     * @param {any} deviceId
      */
     resetDeviceState(deviceId) {
         const st = this.states.get(deviceId);
@@ -341,7 +345,7 @@ class AttendanceSyncEngine {
                     // beyond int32 range ("integer out of range"). Clamp to
                     // NULL instead of failing the whole batch (card is BIGINT).
                     const INT32_MAX = 2147483647;
-                    const toInt32 = (v, dflt) => {
+                    const toInt32 = (/** @type {any} */ v, /** @type {any} */ dflt) => {
                         const n = Number(v);
                         if (!Number.isFinite(n) || n < 0 || n > INT32_MAX) {return dflt;}
                         return Math.trunc(n);

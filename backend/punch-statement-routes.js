@@ -21,17 +21,18 @@ const ADMIN_ROLES = ['admin', 'hr', 'manager'];
 const DAY = /^\d{4}-\d{2}-\d{2}$/;
 
 function defaultRange() {
-    const today = wallDate(new Date());
+    const today = /** @type {string} */ (wallDate(new Date()));
     return { from: `${today.slice(0, 8)}01`, to: today };
 }
 
-router.get('/punches', jwtAuth, async (req, res) => {
+router.get('/punches', jwtAuth, /** @param {any} req @param {any} res */ async (req, res) => {
     try {
         const range = defaultRange();
         const from = DAY.test(String(req.query.from || '')) ? String(req.query.from) : range.from;
         const to = DAY.test(String(req.query.to || '')) ? String(req.query.to) : range.to;
         if (from > to) {return res.status(400).json({ error: 'BAD_RANGE', message: 'من بعد إلى' });}
 
+        /** @type {any} */
         let employeeIds = null;
         if (ADMIN_ROLES.includes(req.user?.role)) {
             if (req.query.employee_id) {

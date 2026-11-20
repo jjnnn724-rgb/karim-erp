@@ -32,11 +32,13 @@ const WRITE_ROLES = ['admin', 'hr'];
 
 const IP_RE = /^(\d{1,3}\.){3}\d{1,3}$/;
 
+/** @param {any} ip */
 function isValidIPv4(ip) {
     if (!IP_RE.test(ip)) {return false;}
-    return ip.split('.').every(o => Number(o) <= 255);
+    return ip.split('.').every((/** @type {any} */ o) => Number(o) <= 255);
 }
 
+/** @param {any} row @param {any} engineState */
 function deviceStatusView(row, engineState) {
     return {
         ...row,
@@ -50,6 +52,7 @@ function deviceStatusView(row, engineState) {
     };
 }
 
+/** @param {any} body */
 function validateDevicePayload(body, { partial = false } = {}) {
     const errors = [];
     const out = {};
@@ -85,10 +88,11 @@ function validateDevicePayload(body, { partial = false } = {}) {
 // ─── ملخص المحرك ─────────────────────────────────────────────────────────────
 // PERF: عدّادات totals تمسح جداول كبيرة — تُحفظ 20 ثانية في الذاكرة.
 // القراءة فقط ولا تمس أي كتابة — آمنة تمامًا على المزامنة الحية.
+/** @type {any} */
 let _statusCache = null;
 let _statusCacheAt = 0;
 const STATUS_TTL_MS = 20_000;
-router.get('/status', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
+router.get('/status', jwtAuth, requireRole(...READ_ROLES), /** @param {any} req @param {any} res */ async (req, res) => {
     try {
         if (_statusCache && Date.now() - _statusCacheAt < STATUS_TTL_MS) {
             return res.json(_statusCache);
@@ -130,12 +134,12 @@ router.get('/status', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
 });
 
 // ─── إدارة الأجهزة ───────────────────────────────────────────────────────────
-router.get('/devices', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
+router.get('/devices', jwtAuth, requireRole(...READ_ROLES), /** @param {any} req @param {any} res */ async (req, res) => {
     try {
         const engine = req.app.locals.attendanceEngine;
         const { rows } = await pool.query('SELECT * FROM attendance_devices ORDER BY id');
         const states = engine ? engine.getStatus().devices : [];
-        res.json(rows.map(r => deviceStatusView(r, states.find(s => s.id === r.id))));
+        res.json(rows.map(r => deviceStatusView(r, states.find((/** @type {any} */ s) => s.id === r.id))));
     } catch (error) {
         logger.error('[zkteco/devices]', error);
         res.status(500).json({ error: 'ZK_DEVICES_FAILED', message: 'تعذر جلب أجهزة البصمة' });

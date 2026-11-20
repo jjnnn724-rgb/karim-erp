@@ -35,6 +35,7 @@ const {
 } = require('./printer-logic');
 
 // نسخة الإنتاج لا تُصدِّر normalizeLocalPrinterName؛ نستخدم واجهتها الموحّدة.
+/** @param {any} name */
 const normalizeLocalPrinterName = (name) => validatePrinterAddress('windows_local', name);
 
 const router = express.Router();
@@ -49,12 +50,18 @@ const SCAN_TIMEOUT_MAX = 1500;
 const SCAN_CONCURRENCY = 60;
 const SCAN_MAX_HOSTS = 254;
 
-/** فحص TCP واحد — {reachable, latency_ms, error} */
+/**
+ * فحص TCP واحد — {reachable, latency_ms, error}
+ * @param {string} host
+ * @param {number} port
+ * @param {number} [timeoutMs=PROBE_TIMEOUT_MS]
+ */
 function tcpProbe(host, port, timeoutMs = PROBE_TIMEOUT_MS) {
     return new Promise((resolve) => {
         const started = Date.now();
         const socket = new net.Socket();
         let settled = false;
+        /** @param {boolean} reachable @param {any} error */
         const done = (reachable, error) => {
             if (settled) {return;}
             settled = true;
@@ -64,11 +71,11 @@ function tcpProbe(host, port, timeoutMs = PROBE_TIMEOUT_MS) {
         socket.setTimeout(timeoutMs);
         socket.once('connect', () => done(true, null));
         socket.once('timeout', () => done(false, 'timeout'));
-        socket.once('error', (err) => done(false, err.code || err.message));
+        socket.once('error', (err) => done(false, /** @type {any} */ (err).code || err.message));
         try {
             socket.connect(port, host);
         } catch (err) {
-            done(false, err.code || err.message);
+            done(false, /** @type {any} */ (err).code || /** @type {any} */ (err).message);
         }
     });
 }
@@ -81,10 +88,15 @@ function localQueueSupported() {
     return process.platform === 'win32';
 }
 
+/** @param {any} value */
 function powershellQuote(value) {
     return String(value).replace(/'/g, "''");
 }
 
+/**
+ * @param {string} script
+ * @param {number} [timeout=LOCAL_PROBE_TIMEOUT_MS]
+ */
 async function runPowerShell(script, timeout = LOCAL_PROBE_TIMEOUT_MS) {
     const { stdout } = await execFileAsync(
         'powershell.exe',
@@ -94,6 +106,7 @@ async function runPowerShell(script, timeout = LOCAL_PROBE_TIMEOUT_MS) {
     return String(stdout || '').trim();
 }
 
+/** @param {any} value */
 function statusText(value) {
     if (typeof value === 'number') {
         return value === 0 ? 'ready' : `status_${String(value)}`;
@@ -101,6 +114,7 @@ function statusText(value) {
     return String(value || '').trim() || 'unknown';
 }
 
+/** @param {any} printer */
 function looksLikeReceiptPrinter(printer) {
     const haystack = `${printer.name} ${printer.driver}`.toLowerCase();
     return /(pos|receipt|thermal|epson|tm-|xp-|xprinter|rongta|gprinter|bil|nice|black copper|sunmi)/.test(haystack);
@@ -125,7 +139,7 @@ async function listLocalPrintQueues() {
         return [];
     }
     const parsed = JSON.parse(raw);
-    const rows = Array.isArray(parsed?.printers) ? parsed.printers : parsed?.printers ? [parsed.printers] : [];
+    const rows = /** @type {any[]} */ (Array.isArray(parsed?.printers) ? parsed.printers : parsed?.printers ? [parsed.printers] : []);
     const defaultName = parsed?.default ? String(parsed.default) : '';
     return rows
         .filter((row) => row && row.Name)
@@ -145,9 +159,12 @@ async function listLocalPrintQueues() {
         });
 }
 
-/** فحص طابور محلي: هل الاسم موجود فعلًا في ويندوز؟ */
+/**
+ * فحص طابور محلي: هل الاسم موجود فعلًا في ويندوز؟
+ * @param {any} printerName
+ */
 async function probeLocalQueue(printerName) {
-    const normalized = normalizeLocalPrinterName(printerName);
+    const normalized = /** @type {any} */ (normalizeLocalPrinterName(printerName));
     if (!normalized) {
         return { reachable: false, latency_ms: null, error: 'BAD_PRINTER_NAME' };
     }
@@ -166,13 +183,18 @@ async function probeLocalQueue(printerName) {
         }
         return { reachable: false, latency_ms: null, error: 'QUEUE_NOT_FOUND' };
     } catch (err) {
-        return { reachable: false, latency_ms: null, error: err.code || err.message };
+        return { reachable: false, latency_ms: null, error: /** @type {any} */ (err).code || /** @type {any} */ (err).message };
     }
 }
 
-/** فحص موحّد لأي نوع اتصال مدعوم — يُستخدم في probe والاكتشاف التلقائي. */
+/**
+ * فحص موحّد لأي نوع اتصال مدعوم — يُستخدم في probe والاكتشاف التلقائي.
+ * @param {any} connectionType
+ * @param {any} address
+ * @param {number} [timeoutMs=PROBE_TIMEOUT_MS]
+ */
 async function probePrinter(connectionType, address, timeoutMs = PROBE_TIMEOUT_MS) {
-    const normalized = validatePrinterAddress(connectionType, address);
+    const normalized = /** @type {any} */ (validatePrinterAddress(connectionType, address));
     if (!normalized) {
         return { reachable: false, latency_ms: null, error: 'BAD_ADDRESS' };
     }
@@ -186,7 +208,11 @@ async function probePrinter(connectionType, address, timeoutMs = PROBE_TIMEOUT_M
     return { reachable: true, latency_ms: null, error: null };
 }
 
-/** تحديث حالة الاتصال المخزنة للطابعة */
+/**
+ * تحديث حالة الاتصال المخزنة للطابعة
+ * @param {any} printerId
+ * @param {boolean} isOnline
+ */
 async function setOnlineState(printerId, isOnline) {
     await pool.query(
         `UPDATE pos_printers SET is_online = $2,
@@ -196,7 +222,7 @@ async function setOnlineState(printerId, isOnline) {
     );
 }
 
-router.get('/', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
+router.get('/', jwtAuth, requireRole(...READ_ROLES), /** @param {any} req @param {any} res */ async (req, res) => {
     try {
         const result = await pool.query(
             `SELECT id, name, kind, department_id, connection_type, address,
@@ -205,12 +231,12 @@ router.get('/', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
         );
         return res.json({ printers: result.rows });
     } catch (err) {
-        logger.error('[printers] list failed:', err.message);
+        logger.error('[printers] list failed:', /** @type {any} */ (err).message);
         return res.status(500).json({ error: 'PRINTERS_LIST_FAILED', message: 'فشل جلب قائمة الطابعات' });
     }
 });
 
-router.post('/', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
+router.post('/', jwtAuth, requireRole(...WRITE_ROLES), /** @param {any} req @param {any} res */ async (req, res) => {
     const parsed = printerRegistrationSchema.safeParse(req.body || {});
     if (!parsed.success) {
         return res.status(422).json({
@@ -228,7 +254,7 @@ router.post('/', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
         if (!resolved.ok) {
             return res.status(422).json({ error: 'PRINTER_ID_DERIVE', message: 'لا يمكن اشتقاق معرف الطابعة — تأكد من رقم القسم' });
         }
-        printerId = resolved.id;
+        printerId = /** @type {string} */ (resolved.id);
     }
 
     const address = validatePrinterAddress(data.connection_type, data.address);
@@ -243,7 +269,7 @@ router.post('/', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
                 return res.status(422).json({ error: 'DEPARTMENT_NOT_FOUND', message: 'القسم المحدد غير موجود' });
             }
         }
-        const exists = await pool.query(`SELECT 1 FROM pos_printers WHERE id = $1;`, [printerId]);
+        const exists = /** @type {{rows: any[], rowCount: number}} */ (await pool.query(`SELECT 1 FROM pos_printers WHERE id = $1;`, [printerId]));
         if (exists.rowCount > 0) {
             return res.status(409).json({ error: 'PRINTER_EXISTS', message: `الطابعة ${printerId} مسجلة بالفعل — استخدم التعديل` });
         }
@@ -272,12 +298,12 @@ router.post('/', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
         logger.info(`[printers] registered ${printerId} (${data.connection_type} ${data.address}) by ${req.user?.username}`);
         return res.status(201).json({ printer: finalRow.rows[0], normalized_address: address, probe: probeInfo });
     } catch (err) {
-        logger.error('[printers] register failed:', err.message);
+        logger.error('[printers] register failed:', /** @type {any} */ (err).message);
         return res.status(500).json({ error: 'PRINTER_REGISTER_FAILED', message: 'فشل تسجيل الطابعة' });
     }
 });
 
-router.put('/:id', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
+router.put('/:id', jwtAuth, requireRole(...WRITE_ROLES), /** @param {any} req @param {any} res */ async (req, res) => {
     const printerId = String(req.params.id || '').toLowerCase();
     const parsed = printerUpdateSchema.safeParse(req.body || {});
     if (!parsed.success) {
@@ -316,12 +342,12 @@ router.put('/:id', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
         logger.info(`[printers] updated ${printerId} by ${req.user?.username}`);
         return res.json({ printer: updated.rows[0] });
     } catch (err) {
-        logger.error('[printers] update failed:', err.message);
+        logger.error('[printers] update failed:', /** @type {any} */ (err).message);
         return res.status(500).json({ error: 'PRINTER_UPDATE_FAILED', message: 'فشل تعديل الطابعة' });
     }
 });
 
-router.delete('/:id', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
+router.delete('/:id', jwtAuth, requireRole(...WRITE_ROLES), /** @param {any} req @param {any} res */ async (req, res) => {
     const printerId = String(req.params.id || '').toLowerCase();
     try {
         const deleted = await pool.query(`DELETE FROM pos_printers WHERE id = $1 RETURNING id;`, [printerId]);
@@ -331,12 +357,12 @@ router.delete('/:id', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => 
         logger.info(`[printers] deleted ${printerId} by ${req.user?.username}`);
         return res.json({ deleted: printerId });
     } catch (err) {
-        logger.error('[printers] delete failed:', err.message);
+        logger.error('[printers] delete failed:', /** @type {any} */ (err).message);
         return res.status(500).json({ error: 'PRINTER_DELETE_FAILED', message: 'فشل حذف الطابعة' });
     }
 });
 
-router.post('/probe', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
+router.post('/probe', jwtAuth, requireRole(...WRITE_ROLES), /** @param {any} req @param {any} res */ async (req, res) => {
     const body = req.body || {};
     const printerId = body.id ? String(body.id).toLowerCase() : null;
     try {
@@ -356,7 +382,7 @@ router.post('/probe', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => 
                 message: 'الفحص المباشر مدعوم لطابعات network وwindows_local فقط',
             });
         }
-        const normalized = validatePrinterAddress(connType, address);
+        const normalized = /** @type {any} */ (validatePrinterAddress(connType, address));
         if (!normalized) {
             return res.status(422).json({
                 error: 'PRINTER_ADDRESS',
@@ -375,12 +401,12 @@ router.post('/probe', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => 
             error: result.error,
         });
     } catch (err) {
-        logger.error('[printers] probe failed:', err.message);
+        logger.error('[printers] probe failed:', /** @type {any} */ (err).message);
         return res.status(500).json({ error: 'PRINTER_PROBE_FAILED', message: 'فشل فحص الطابعة' });
     }
 });
 
-router.post('/scan', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
+router.post('/scan', jwtAuth, requireRole(...WRITE_ROLES), /** @param {any} req @param {any} res */ async (req, res) => {
     const body = req.body || {};
     const port = Number(body.port) > 0 ? Math.min(Number(body.port), 65535) : SCAN_PORT_DEFAULT;
     const timeoutMs = Math.max(100, Math.min(Number(body.timeout_ms) || SCAN_TIMEOUT_DEFAULT, SCAN_TIMEOUT_MAX));
@@ -398,6 +424,7 @@ router.post('/scan', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
         }
         const hosts = buildSubnetHosts(base).slice(0, SCAN_MAX_HOSTS);
         const started = Date.now();
+        /** @type {any[]} */
         const reachable = [];
         let cursor = 0;
         async function worker() {
@@ -418,7 +445,7 @@ router.post('/scan', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
             reachable,
         });
     } catch (err) {
-        logger.error('[printers] scan failed:', err.message);
+        logger.error('[printers] scan failed:', /** @type {any} */ (err).message);
         return res.status(500).json({ error: 'PRINTER_SCAN_FAILED', message: 'فشل فحص الشبكة' });
     }
 });
@@ -428,20 +455,22 @@ router.post('/scan', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
  * 9100 + الطابعات المسجلة. لا يسجّل شيئًا: الشاشة تعرض والمدير يختار.
  * ?scan=0 يتخطى مسح الشبكة (فتح سريع على جهاز واحد).
  */
-router.get('/discover', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
+router.get('/discover', jwtAuth, requireRole(...WRITE_ROLES), /** @param {any} req @param {any} res */ async (req, res) => {
     const doScan = String(req.query.scan ?? '1') !== '0';
     try {
         const registered = (await pool.query(`SELECT * FROM pos_printers ORDER BY kind, id;`)).rows;
 
+        /** @type {any[]} */
         let local = [];
         let localError = null;
         try {
             local = await listLocalPrintQueues();
         } catch (err) {
-            localError = err.code || err.message;
+            localError = /** @type {any} */ (err).code || /** @type {any} */ (err).message;
             logger.warn('[printers] local queue discovery failed:', localError);
         }
 
+        /** @type {any[]} */
         const network = [];
         let subnet = null;
         if (doScan) {
@@ -478,7 +507,7 @@ router.get('/discover', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) =
             scanned_at: new Date().toISOString(),
         });
     } catch (err) {
-        logger.error('[printers] discover failed:', err.message);
+        logger.error('[printers] discover failed:', /** @type {any} */ (err).message);
         return res.status(500).json({ error: 'PRINTER_DISCOVER_FAILED', message: 'فشل اكتشاف الطابعات' });
     }
 });
@@ -489,7 +518,7 @@ router.get('/discover', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) =
  *   - بلا عنوان: يختار أفضل طابعة إيصالات/مطبخ (طابور ويندوز حراري، ثم الافتراضي،
  *     ثم طابعة شبكة متاحة) ويسجّلها بالمعرف القياسي pos-<قسم> / kot-<قسم>.
  */
-router.post('/auto', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
+router.post('/auto', jwtAuth, requireRole(...WRITE_ROLES), /** @param {any} req @param {any} res */ async (req, res) => {
     const body = req.body || {};
     const kind = body.kind === 'kot' ? 'kot' : 'receipt';
     const departmentId = body.department_id != null && body.department_id !== '' ? Number(body.department_id) : null;
@@ -514,11 +543,12 @@ router.post('/auto', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
         }
     } else {
         source = 'discovery';
+        /** @type {any[]} */
         let local = [];
         try {
             local = await listLocalPrintQueues();
         } catch (err) {
-            logger.warn('[printers] auto detect local queues failed:', err.code || err.message);
+            logger.warn('[printers] auto detect local queues failed:', /** @type {any} */ (err).code || /** @type {any} */ (err).message);
         }
         const thermal = local.filter((p) => p.thermal);
         const preferred =
@@ -530,6 +560,7 @@ router.post('/auto', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
         } else {
             const lanIp = detectLanIp(os.networkInterfaces());
             const base = lanIp ? subnetBaseFromIp(lanIp) : null;
+            /** @type {any} */
             let found = null;
             if (base) {
                 const hosts = buildSubnetHosts(base).slice(0, SCAN_MAX_HOSTS);
@@ -597,7 +628,7 @@ router.post('/auto', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
                 : 'حُفظت الطابعة لكنها غير متاحة الآن؛ سيعيد عامل الطباعة المحاولة تلقائيًا عند توفرها.',
         });
     } catch (err) {
-        logger.error('[printers] auto link failed:', err.message);
+        logger.error('[printers] auto link failed:', /** @type {any} */ (err).message);
         return res.status(500).json({ error: 'PRINTER_AUTO_FAILED', message: 'فشل الربط التلقائي بالطابعة' });
     }
 });

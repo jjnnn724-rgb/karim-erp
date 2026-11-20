@@ -9,6 +9,7 @@ class BankReconciliationService {
     this.pool = pool;
   }
 
+  /** @param {any} transactions */
   async matchTransactions(transactions) {
     if (!Array.isArray(transactions) || transactions.length > MAX_TRANSACTIONS_PER_RUN) {
       throw new ValidationError('transactions', `must be an array of at most ${MAX_TRANSACTIONS_PER_RUN} persisted bank statement IDs`);

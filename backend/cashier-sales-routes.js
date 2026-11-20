@@ -47,37 +47,47 @@ const READ_ROLES = ['admin', 'manager', 'accountant', 'cashier'];
 
 /* ── أدوات ──────────────────────────────────────────────────────────────── */
 const dayRe = /^\d{4}-\d{2}-\d{2}$/;
+/** @param {any} v */
 const round2 = (v) => Math.round((Number(v) || 0) * 100) / 100;
+/** @param {any} v @param {any} d */
 const num = (v, d = 2) => Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: d, maximumFractionDigits: d });
 /* esc يستعمل &quot;: الشعار يصل إلى خاصية src كما هو، والفواصل في سلسلة
    base64 هي ; و , — لو استُبدلت مراجعها لانكسر الصورة. */
+/** @param {any} v */
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;');
+/** @param {any} v */
 const hhmm = (v) => String(v || '').slice(0, 5) || '—';
 /** التاريخ يُقرأ من SQL بـ to_char: عمود DATE يعود كـ Date عند منتصف الليل
-    المحلي، وtoISOString().slice(0,10) يُرجّعه يومًا للوراء. */
+    المحلي، وtoISOString().slice(0,10) يُرجّعه يومًا للوراء.  @param {any} col */
 const DAY = (col) => `to_char(${col},'YYYY-MM-DD')`;
 /* الطابع بالتوقيت المحلي — هو ما تقرأه الشاشة وما طُبِع على الإذن. */
+/** @param {any} v */
 const stamp = (v) => {
     const d = v instanceof Date ? v : new Date(String(v || ''));
     if (Number.isNaN(d.getTime())) {return String(v || '').slice(0, 16).replace('T', ' ');}
+    /** @param {any} n */
     const p = (n) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())} ${p(d.getHours())}:${p(d.getMinutes())}`;
 };
 
+/** @type {Object<string, string>} */
 const CURRENCY_AR = { SAR: 'ر.س', EGP: 'ج.م', AED: 'د.إ', USD: '$', EUR: '€', GBP: '£' };
 
 /* رقمٌ أو تاريخٌ داخل جملةٍ عربية يُعزل ثنائيًّا: بلا عزلةٍ يضعُ ترتيبُ
    Unicode التاريخَ الأخير قبل الأول، فيُطبع الكشف «من 22-10 إلى 01-10»
    ويقرأه المحاسبُ فترةً معكوسة. العزلةُ تُرجِعه إلى نصابه. */
+/** @param {any} v */
 const ltr = (v) => `<span class="ltr">${esc(v)}</span>`;
 
 /* خليةُ مؤشرٍ في الكشف: القيمةُ HTMLٌ مبنيٌّ بمكانه — فإمّا ltr() وإمّا esc(),
    ولا قيمةً خامًا تصل إلى الورقة. */
+/** @param {any} k @param {any} v */
 const cell = (k, v) => `<div class="cell"><b>${esc(k)}</b><span>${v}</span></div>`;
 /* مبلغٌ بعملةٍ في سطرٍ واحد: بلا هذا العزل تنفصل «ر.س» عن رقمها في عمودٍ
    ضيّق، فتُطبع الخليةُ رقمًا في سطرٍ وعملَةً في سطرٍ تحته. */
+/** @param {any} v @param {any} cur */
 const moneyLtr = (v, cur) => `<span class="ltr">${esc(num(v))} ${esc(cur)}</span>`;
 
 const BRAND_FALLBACK = { name: 'مطاعم الشرفة العالمي', currency: 'ر.س', logo: '' };
@@ -93,7 +103,7 @@ async function loadBrand() {
             currency: CURRENCY_AR[code.toUpperCase()] || code || BRAND_FALLBACK.currency,
             logo: /^data:image\//i.test(String(row.logoB64 || '')) ? String(row.logoB64) : '',
         };
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
         logger.warn({ err: err.message }, '[cashier-sales] brand unavailable — fallback');
         return { ...BRAND_FALLBACK };
     }
@@ -130,6 +140,7 @@ const L_PRICE = `COALESCE((l->>'price')::numeric,0)`;
    من + إلى + كاشير + بحث ⇒ شرطٌ واحد يُبنى في مكانٍ واحد، فلا يختلف
    «المجموع» عن «الصفوف» عن «السلسلة» عن «الكشف المطبوع». البحث في الفواتير
    يمس رقم السند أو أيَّ صنفٍ فيه؛ وفي كشف الأصناف يمس الصنف نفسه. */
+/** @param {any} query */
 function readQuery(query) {
     return {
         from: dayRe.test(String(query.from || '')) ? String(query.from) : '',
@@ -142,10 +153,14 @@ function readQuery(query) {
 const LINES_LEN = `CASE WHEN jsonb_typeof(o.lines) = 'array'
                         THEN jsonb_array_length(o.lines) ELSE 0 END`;
 
+/** @param {any} f */
 function buildWhere(f) {
+    /** @type {any[]} */
     const params = [];
+    /** @type {any[]} */
     const where = [];
     /* `?` قد تتكرر في المرشّح الواحد، فالترقيم لكل معاملٍ على حده. */
+    /** @param {any} sql @param {...any} values */
     const add = (sql, ...values) => {
         let i = 0;
         where.push(sql.replace(/\?/g, () => { params.push(values[i]); i += 1; return `$${params.length}`; }));
@@ -167,10 +182,13 @@ function buildWhere(f) {
 }
 
 /** شرط كشف الأصناف: البحث عن الصنف يُصبح ANDًا لا ORًا مع البقية، لأن
-    «بحثٌ في السطر» ضيّقٌ و«بحثٌ في السند» واسِع. */
+    «بحثٌ في السطر» ضيّقٌ و«بحثٌ في السند» واسِع.  @param {any} f */
 function lineFilter(f) {
+    /** @type {any[]} */
     const params = [];
+    /** @type {any[]} */
     const where = [];
+    /** @param {any} sql @param {...any} values */
     const add = (sql, ...values) => {
         let i = 0;
         where.push(sql.replace(/\?/g, () => { params.push(values[i]); i += 1; return `$${params.length}`; }));
@@ -183,23 +201,28 @@ function lineFilter(f) {
 }
 
 /* الفرز على قائمة بيضاء — لا إدخالٌ يصل إلى SQL. */
+/** @type {Object<string, string>} */
 const ORDER_SORTS = {
     date: 'o.doc_date, o.doc_time::time', no: 'o.doc_no::bigint',
     collected: 'o.net', ex_vat: 'o.total', vat: 'o.vat', items: LINES_LEN,
 };
+/** @type {Object<string, string>} */
 const ITEM_SORTS = {
     qty: 'c.qty', total: 'c.ex_vat', vat: 'c.vat', docs: 'c.docs',
     name: 't.name', code: 'c.code', lines: 'c.lines', prices: 'c.prices',
 };
+/** @param {any} map @param {any} query @param {any} fallback */
 function pickSort(map, query, fallback) {
     const raw = String(query.sort || '').slice(0, 12);
     return map[raw] ? raw : fallback;
 }
 
+/** @param {any} query @param {any} dflt */
 const pageOf = (query, dflt) => ({
     limit: Math.min(Math.max(Number(query.limit) || dflt, 1), 1000),
     offset: Math.max(Number(query.offset) || 0, 0),
 });
+/** @param {any} v @param {any} total */
 const shareOf = (v, total) => (total > 0 ? round2((Number(v) || 0) / total * 100) : 0);
 
 /* ── المحرّك اللايف ─────────────────────────────────────────────────────────
@@ -223,11 +246,12 @@ const LIVE_MIN_GAP_MS = 15_000;
 /** اليوم بالتوقيت المحلي — هو المعيار الذي يقاس عليه «هل المدى يشمل الآن». */
 function localDay() {
     const d = new Date();
+    /** @param {any} n */
     const p = (n) => String(n).padStart(2, '0');
     return `${d.getFullYear()}-${p(d.getMonth() + 1)}-${p(d.getDate())}`;
 }
 
-/** سحب المرآة إن لم يكن مثله جارٍ ومضى على السابق وقته. null حين لا سحب. */
+/** سحب المرآة إن لم يكن مثله جارٍ ومضى على السابق وقته. null حين لا سحب.  @param {any} io */
 function startLiveRefresh(io) {
     if (_liveBusy || Date.now() - _liveLast < LIVE_MIN_GAP_MS) {return null;}
     _liveBusy = true;
@@ -243,7 +267,7 @@ function startLiveRefresh(io) {
                 logger.info(`[cashier-sales] live mirror: ${m.upserted} orders, ${(m.newDocs || []).length} new`);
                 return true;
             }
-            logger.warn(`[cashier-sales] live mirror skipped: ${(m && m.error) || 'unknown'}`);
+            logger.warn(`[cashier-sales] live mirror skipped: ${(m && /** @type {any} */ (m).error) || 'unknown'}`);
             return false;
         })
         .catch(async (e) => {
@@ -281,6 +305,7 @@ async function findAfterLive(req, find, docNo) {
    إذا حُدد الطرفان، وإلا كان «الفرق» رقمًا من فراغ. والمرآة تبدأ من يومٍ
    معلوم، فما سبقها ليس مبيعات صفرًا بل بياناتٍ غير موجودة؛ فإن مسّت
    النافذةُ السابقةُ ذلك الحدَّ تُبلَّغ `partial` ولا يُحسب «فرق». */
+/** @param {any} f @param {any} firstDay */
 async function prevCollected(f, firstDay) {
     if (!f.from || !f.to) {return null;}
     const dayMs = 86400000;
@@ -288,6 +313,7 @@ async function prevCollected(f, firstDay) {
     const b = Date.parse(`${f.to}T00:00:00Z`);
     if (!Number.isFinite(a) || !Number.isFinite(b) || b < a) {return null;}
     const span = Math.round((b - a) / dayMs) + 1;
+    /** @param {any} d */
     const shift = (d) => new Date(d - span * dayMs).toISOString().slice(0, 10);
     const from = shift(a);
     const to = shift(b);
@@ -305,7 +331,7 @@ async function prevCollected(f, firstDay) {
 }
 
 /* ── ١) ملخص الفترة ─────────────────────────────────────────────────────── */
-router.get('/summary', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async (req, res) => {
+router.get('/summary', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async (/** @type {any} */ req, /** @type {any} */ res) => {
     try {
         maybeLiveRefresh(req);
         const f = buildWhere(readQuery(req.query));
@@ -458,14 +484,14 @@ router.get('/summary', jwtAuth, requireRole(...READ_ROLES), generalLimiter, asyn
             mirror: { ...mirrorRows, synced_at: stamp(mirrorRows.synced_at) },
             zatca: zatcaCov,
         });
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
         logger.error({ err: err.message }, '[cashier-sales] summary failed');
         res.status(500).json({ error: 'INTERNAL', message: err.message });
     }
 });
 
 /* ── ٢) الفواتير ────────────────────────────────────────────────────────── */
-router.get('/orders', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async (req, res) => {
+router.get('/orders', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async (/** @type {any} */ req, /** @type {any} */ res) => {
     try {
         maybeLiveRefresh(req);
         const f = buildWhere(readQuery(req.query));
@@ -519,7 +545,7 @@ router.get('/orders', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async
             },
             page: { limit, offset },
         });
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
         logger.error({ err: err.message }, '[cashier-sales] orders failed');
         res.status(500).json({ error: 'INTERNAL', message: err.message });
     }
@@ -530,6 +556,7 @@ router.get('/orders', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async
    (مرصودٌ فعلًا)، فالتجميع بالاسم يجعله صنفين ويُضاعف «عدد الأصناف».
    الاسم المعروض أكثرُ أسمائه بيعًا، وعددُ الأسماء والأسعار يُبلَّغ كي لا
    يُدار الغموض. هذا البناء واحدٌ يستعمله JSON والكشف المطبوع. */
+/** @param {any} lf */
 function itemsCte(lf) {
     return `WITH pair AS (
         SELECT ${L_CODE} AS code, ${L_NAME} AS name, COALESCE(SUM(${L_QTY}),0) AS qty
@@ -551,7 +578,7 @@ const ITEM_SELECT = `
     SELECT c.code, t.name, c.names, c.prices, c.lines, c.docs, c.qty, c.ex_vat, c.vat
       FROM per_code c JOIN top t ON t.code = c.code`;
 
-router.get('/items', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async (req, res) => {
+router.get('/items', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async (/** @type {any} */ req, /** @type {any} */ res) => {
     try {
         const query = readQuery(req.query);
         const lf = lineFilter(query);
@@ -633,7 +660,7 @@ router.get('/items', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async 
             reconcile,
             page: { limit, offset },
         });
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
         logger.error({ err: err.message }, '[cashier-sales] items failed');
         res.status(500).json({ error: 'INTERNAL', message: err.message });
     }
@@ -643,7 +670,7 @@ router.get('/items', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async 
 const CODE_RE = /^[\w -]{1,24}$/;
 
 /** قارئٌ واحد يستعمله JSON والورقة المطبوعة معًا، فلا يختلف «ملف الصنف»
-    على الشاشة عن الكشف الطبعي لنفس الصنف. */
+    على الشاشة عن الكشف الطبعي لنفس الصنف.  @param {any} code @param {any} f @param {any} limit */
 async function loadItem(code, f, { limit, offset }) {
         /* القاعدة: كل سطرٍ بهذا الكود في النطاق — تُحدَّد الأسماء والأسعار
            المرصودة منه، فلا يُختار اسمٌ واحد ويُعرض كأنه الحقيقة.
@@ -754,7 +781,7 @@ async function loadItem(code, f, { limit, offset }) {
         };
 }
 
-router.get('/item/:code', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async (req, res) => {
+router.get('/item/:code', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async (/** @type {any} */ req, /** @type {any} */ res) => {
     try {
         const code = String(req.params.code || '').trim().slice(0, 24);
         if (!CODE_RE.test(code)) {
@@ -763,7 +790,7 @@ router.get('/item/:code', jwtAuth, requireRole(...READ_ROLES), generalLimiter, a
         const brand = await loadBrand();
         const d = await loadItem(code, readQuery(req.query), pageOf(req.query, 50));
         res.json({ ok: true, currency: brand.currency, code, ...d });
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
         logger.error({ err: err.message }, '[cashier-sales] item failed');
         res.status(500).json({ error: 'INTERNAL', message: err.message });
     }
@@ -904,6 +931,7 @@ const receiptStyles = () => `
   .foot .who { font-size:8.5px; margin-top:.8mm; }
   @media print { body { background:#fff; padding:0; } .rcpt { box-shadow:none; padding:0; max-width:none; } }`;
 
+/** @param {any} brand @param {any} title */
 function head(brand, { title, subtitle, docNo }) {
     const logo = brand.logo || '/app/assets/al-shurfa-logo.png';
     return `<header class="brand" data-v2-print-brand>
@@ -914,13 +942,14 @@ function head(brand, { title, subtitle, docNo }) {
     <div class="doc"><h2>${esc(title)}</h2></div>`;
 }
 
+/** @param {any} brand @param {any} extra @param {any} mirrorAt */
 const footLine = (brand, extra, mirrorAt) => `<div class="foot">
     <span>${esc(brand.name)} — ${esc(extra)}</span>
     <span>طُبع ${ltr(stamp(new Date()))}${mirrorAt ? ` · المرآة حتى ${ltr(mirrorAt)}` : ''} · Karim ERP</span>
   </div>`;
 
 /** نصُّ الانضباط الذي يُطبع أسفل كل كشف: كم سندًا بلا سطور، وكم سندًا
-    يخرج فيه الإجمالي عن (صافٍ + ضريبة) ولماذا — الحقيقة لا تُخفى بتقريبٍ في الواجهة. */
+    يخرج فيه الإجمالي عن (صافٍ + ضريبة) ولماذا — الحقيقة لا تُخفى بتقريبٍ في الواجهة.  @param {any} f */
 async function honestyNote(f) {
     const w = buildWhere(f);
     const r = await pool.query(`
@@ -959,6 +988,7 @@ async function honestyNote(f) {
 
 /* قارئ السند الواحد: الشاشة المطبوعة والشاشة المعروضة يقرآن نفس الصفّ من
    نفس الاستعلام، فلا يختلف «ما على الورق» عن «ما في اللوحة». */
+/** @param {any} docNo */
 async function loadSlip(docNo) {
     const r = await pool.query(`
         WITH ${CC_CTE}
@@ -976,6 +1006,7 @@ async function loadSlip(docNo) {
     return r.rows[0] || null;
 }
 
+/** @param {any} docNo */
 async function loadZatca(docNo) {
     const r = await pool.query(`
         SELECT inv_no, pih, isvalid, issuedate, issuetime, payableamount, taxcategory_percent
@@ -991,6 +1022,7 @@ async function loadZatca(docNo) {
 /* تغطيةُ الاعتماد الزكوي: جدولُ ora_e_invoices يملؤه مسارُ اعتمادٍ منفصل،
    فإما توقفَ أو قُطفَ بقيت سندٌ بلا شارة. اللوحةُ تقول ذلك بدل صمتِ الشارة:
    كم سندًا في الفترة له اعتماد، وإلى أيِّ يومٍ وصل الجدول. */
+/** @param {any} f */
 async function loadZatcaCoverage(f) {
     try {
         const r = await pool.query(`
@@ -1015,7 +1047,7 @@ async function loadZatcaCoverage(f) {
             win_first: String(t.win_first || ''),
             win_last: String(t.win_last || ''),
         };
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
         // الجدولُ قد لا يكون مُهيَّأً: التغطيةُ تُذكر غائبةً، والفشلُ لا يُدارى
         logger.warn({ err: err.message }, '[cashier-sales] ZATCA coverage unavailable');
         return null;
@@ -1025,7 +1057,7 @@ async function loadZatcaCoverage(f) {
 const docNoRe = /^[\w-]{1,24}$/;
 
 /* ── ٥أ) الفاتورة على الشاشة: سطورها ودفعها واعتمادها ───────────────────── */
-router.get('/invoice/:docNo', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async (req, res) => {
+router.get('/invoice/:docNo', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async (/** @type {any} */ req, /** @type {any} */ res) => {
     try {
         const docNo = String(req.params.docNo || '').trim().slice(0, 24);
         if (!docNoRe.test(docNo)) {
@@ -1036,7 +1068,7 @@ router.get('/invoice/:docNo', jwtAuth, requireRole(...READ_ROLES), generalLimite
         if (!slip) {return res.status(404).json({ error: 'NOT_FOUND', message: 'السند غير موجود في مرآة الكاشير' });}
         const zatca = await loadZatca(docNo);
         const raw = Array.isArray(slip.lines) ? slip.lines : [];
-        const lines = raw.map((it, i) => ({
+        const lines = raw.map((/** @type {any} */ it, /** @type {any} */ i) => ({
             no: i + 1,
             name: String((it && it.name) || '').trim() || 'بلا اسم',
             code: String((it && it.code) || '').trim(),
@@ -1071,7 +1103,7 @@ router.get('/invoice/:docNo', jwtAuth, requireRole(...READ_ROLES), generalLimite
                 drift: round2(round2(slip.collected) - (round2(slip.ex_vat) + round2(slip.vat))),
                 drift_within_rounding: Math.abs(round2(slip.collected) - (round2(slip.ex_vat) + round2(slip.vat)))
                     <= 0.01 * lines.length + 0.005,
-                line_sum: round2(lines.reduce((s, l) => s + l.total, 0)),
+                line_sum: round2(lines.reduce((/** @type {any} */ s, /** @type {any} */ l) => s + l.total, 0)),
             },
             lines,
             zatca: zatca && {
@@ -1081,14 +1113,14 @@ router.get('/invoice/:docNo', jwtAuth, requireRole(...READ_ROLES), generalLimite
                 taxcategory_percent: zatca.taxcategory_percent,
             },
         });
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
         logger.error({ err: err.message }, '[cashier-sales] invoice failed');
         res.status(500).json({ error: 'INTERNAL', message: err.message });
     }
 });
 
 /* ── ٥ب) الفاتورة مطبوعة (إيصال 80مم) ───────────────────────────────────── */
-router.get('/invoice/:docNo/html', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async (req, res) => {
+router.get('/invoice/:docNo/html', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async (/** @type {any} */ req, /** @type {any} */ res) => {
     try {
         const docNo = String(req.params.docNo || '').trim().slice(0, 24);
         if (!docNoRe.test(docNo)) {return res.status(422).send('رقم السند غير صالح');}
@@ -1101,7 +1133,7 @@ router.get('/invoice/:docNo/html', jwtAuth, requireRole(...READ_ROLES), generalL
                 SELECT qrcode, pih, isvalid FROM ora_e_invoices WHERE doc_no = $1 LIMIT 1
             `, [docNo]);
             zatca = z.rows[0] || null;
-        } catch (err) {
+        } catch (/** @type {any} */ err) {
             /* جدول الاعتماد قد لا يكون مُهيَّأ — الإيصال يُطبع بدونه، ولا
                يُدارى الفشل: يُسجَّل ولا يُترك صامتًا. */
             logger.warn({ err: err.message }, '[cashier-sales] ZATCA row unavailable');
@@ -1110,7 +1142,7 @@ router.get('/invoice/:docNo/html', jwtAuth, requireRole(...READ_ROLES), generalL
         if (zatca && zatca.qrcode) {
             try {
                 qrImage = await QRCode.toDataURL(String(zatca.qrcode), { errorCorrectionLevel: 'M', margin: 1, width: 220 });
-            } catch (e) {
+            } catch (/** @type {any} */ e) {
                 logger.warn({ err: e.message }, '[cashier-sales] QR render failed');
             }
         }
@@ -1118,7 +1150,7 @@ router.get('/invoice/:docNo/html', jwtAuth, requireRole(...READ_ROLES), generalL
         /* سطرُ الصنف جدولٌ لا أعمدةٌ عائمة: العمودُ الأوسط «كمية × سعر»
            والأخير الإجمالي، فتصطفُّ الأرقامُ عبر الإيصال كلّه بدل أن
            يتقافز كلُّ سطرٍ حيث انتهى اسمُه. */
-        const items = (Array.isArray(slip.lines) ? slip.lines : []).map((it) => {
+        const items = (Array.isArray(slip.lines) ? slip.lines : []).map((/** @type {any} */ it) => {
             const nm = String((it && it.name) || '').trim() || 'بلا اسم';
             const cd = String((it && it.code) || '').trim();
             const qty = Number(it && it.qty) || 0;
@@ -1179,14 +1211,14 @@ router.get('/invoice/:docNo/html', jwtAuth, requireRole(...READ_ROLES), generalL
 </body></html>`;
         res.set('Content-Type', 'text/html; charset=utf-8');
         res.send(html);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
         logger.error({ err: err.message }, '[cashier-sales] invoice html failed');
         res.status(500).json({ error: 'INTERNAL', message: err.message });
     }
 });
 
 /* ── ٦) الكشف مطبوعًا: أوراق / أصناف / صنفٌ واحد ────────────────────────── */
-router.get('/html', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async (req, res) => {
+router.get('/html', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async (/** @type {any} */ req, /** @type {any} */ res) => {
     try {
     const raw = String(req.query.view || '');
     const view = raw === 'items' || raw === 'item' || raw === 'items-detail' ? raw : 'orders';
@@ -1362,7 +1394,7 @@ router.get('/html', jwtAuth, requireRole(...READ_ROLES), generalLimiter, async (
 </body></html>`;
         res.set('Content-Type', 'text/html; charset=utf-8');
         res.send(html);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
         logger.error({ err: err.message }, '[cashier-sales] sheet failed');
         res.status(500).json({ error: 'INTERNAL', message: err.message });
     }

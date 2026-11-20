@@ -25,6 +25,7 @@ function nightCutoffHour() {
     return 5;
 }
 
+/** @param {any} value */
 function normalizeEmployeeCode(value) {
     const raw = String(value ?? '').trim();
     if (!raw) {return null;}
@@ -41,6 +42,7 @@ function normalizeEmployeeCode(value) {
     return raw;
 }
 
+/** @param {any} value */
 function normalizeDepartmentCode(value) {
     const raw = String(value ?? '').trim();
     if (!raw) {return null;}
@@ -64,7 +66,7 @@ function normalizeDepartmentCode(value) {
     return map[normalized] || normalized;
 }
 
-/** تاريخ أمس بصيغة yyyy-mm-dd */
+/** تاريخ أمس بصيغة yyyy-mm-dd @param {any} dateStr */
 function prevDay(dateStr) {
     const [y, m, d] = String(dateStr).split('-').map(Number);
     const dt = new Date(Date.UTC(y, m - 1, d) - 24 * 3600 * 1000);
@@ -72,7 +74,7 @@ function prevDay(dateStr) {
     return `${dt.getUTCFullYear()}-${p(dt.getUTCMonth() + 1)}-${p(dt.getUTCDate())}`;
 }
 
-/** يوم الوردية لبصمة: قبل الفجر → أمس */
+/** يوم الوردية لبصمة: قبل الفجر → أمس @param {any} wallDate @param {any} wallHour @param {any} [cutoff] */
 function shiftDateFor(wallDate, wallHour, cutoff = nightCutoffHour()) {
     if (cutoff == null) {return wallDate;}
     if (Number(wallHour) < cutoff) {return prevDay(wallDate);}
@@ -96,30 +98,30 @@ function shiftDateForEmployee(wallDate, wallHour, employee, cutoff = nightCutoff
     return wallDate;
 }
 
-/** تحقق بداية الوردية HH:MM — يرجع المطبّع أو يرمي */
+/** تحقق بداية الوردية HH:MM — يرجع المطبّع أو يرمي @param {any} value */
 function normalizeShiftStart(value) {
     if (value == null || String(value).trim() === '') {return null;}
     const m = String(value).trim().match(/^(\d{1,2}):(\d{2})$/);
     if (!m) {
-        const err = new Error('بداية الوردية بصيغة HH:MM (مثال 22:00)');
+        const err = /** @type {any} */ (new Error('بداية الوردية بصيغة HH:MM (مثال 22:00)'));
         err.statusCode = 422; err.code = 'SHIFT_START_INVALID'; throw err;
     }
     const h = Number(m[1]);
     const mi = Number(m[2]);
     if (h > 23 || mi > 59) {
-        const err = new Error('بداية الوردية ساعة غير صالحة');
+        const err = /** @type {any} */ (new Error('بداية الوردية ساعة غير صالحة'));
         err.statusCode = 422; err.code = 'SHIFT_START_INVALID'; throw err;
     }
     const p = (n) => String(n).padStart(2, '0');
     return `${p(h)}:${p(mi)}`;
 }
 
-/** تحقق ساعات الوردية 1–24 — يرجع الرقم أو يرمي */
+/** تحقق ساعات الوردية 1–24 — يرجع الرقم أو يرمي @param {any} value */
 function normalizeShiftKarim(value) {
     if (value == null || String(value).trim() === '') {return null;}
     const n = Number(value);
     if (!Number.isFinite(n) || n < 1 || n > 24) {
-        const err = new Error('ساعات الوردية بين 1 و 24');
+        const err = /** @type {any} */ (new Error('ساعات الوردية بين 1 و 24'));
         err.statusCode = 422; err.code = 'SHIFT_HOURS_INVALID'; throw err;
     }
     return Math.round(n * 100) / 100;

@@ -3,7 +3,7 @@
  * ────────────────────────────────────────────────────────────────────────────
  * المشروع لا يثبّت @types/express ونحوه، فـtsc يرفع TS7016 («لا يوجد إعلان»)
  * في كل ملف يستوردها. الإعلان المُحيطي القصير هنا يُعاملها كـany صراحةً:
- *   · نفس الاستدلال الذي كانت تصل إليهimplicitly — لا تغيير في أي فحص آخر.
+ *   · نفس الاستدلال الذي كانت تصل إليه ضمنًا — لا تغيير في أي فحص آخر.
  *   · لا تعليق @ts-ignore/on في ملفات الكود، ولا تغيير في package.json.
  *   · ملفات .js وحدها لا تحمل إعلانات — هنا مكانتها الصحيحة.
  */
@@ -12,3 +12,6 @@ declare module 'pngjs';
 declare module 'qrcode';
 declare module 'bcryptjs';
 declare module 'jsonwebtoken';
+declare module 'compression';
+declare module 'multer';
+declare module 'oracledb';

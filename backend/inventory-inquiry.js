@@ -98,6 +98,7 @@ const READ_PERM = 'inventory-inquiry.view';
 
 const MAX_SPAN_DAYS = 93;
 
+/** @param {any} value */
 function isValidDay(value) {
     const match = /^(\d{4})-(\d{2})-(\d{2})$/.exec(value);
     if (!match) {return false;}
@@ -122,7 +123,7 @@ function riyadhDay(offsetDays = 0) {
     return new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh', year: 'numeric', month: '2-digit', day: '2-digit' }).format(new Date(ms));
 }
 
-/** مرآة حرفية لـ normName في yara-reports.js:1005-1012 — تطبيع الأسماء العربي. */
+/** مرآة حرفية لـ normName في yara-reports.js:1005-1012 — تطبيع الأسماء العربي. @param {any} s */
 function normName(s) {
     return String(s || '')
         .replace(/[\u064B-\u065F\u0670\u0640]/g, '')
@@ -131,11 +132,13 @@ function normName(s) {
         .replace(/\s+/g, ' ').trim().toLowerCase();
 }
 
+/** @param {any} v */
 function n(v) {
     const x = Number(v);
     return Number.isFinite(x) ? x : 0;
 }
 
+/** @param {any} v @param {any} [digits] */
 function round(v, digits = 2) {
     const p = 10 ** digits;
     return Math.round(n(v) * p) / p;
@@ -147,7 +150,7 @@ function fail(res, status, code, message) {
 
 /**
  * بوابة المدى — نفس أكواد الأبواب الموجودة.
- * @returns {{ok:boolean, from?:string, to?:string, code?:string, message?:string}}
+ * @returns {{ok:boolean, from?:string, to?:string, span?:number, code?:string, message?:string}}
  */
 function readRange(query) {
     const fromValue = query.from == null ? '' : String(query.from).trim();

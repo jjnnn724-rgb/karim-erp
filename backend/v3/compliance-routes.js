@@ -15,10 +15,15 @@ const FINANCE_READ_ROLES = ['admin', 'accountant', 'manager', 'auditor'];
 const PAYROLL_READ_ROLES = ['admin', 'accountant', 'hr'];
 const BANK_WRITE_ROLES = ['admin', 'accountant'];
 
+/**
+ * @param {(req:any, res:any, next:any)=>any} handler
+ * @returns {(req:any, res:any, next:any)=>any}
+ */
 function asyncRoute(handler) {
   return (req, res, next) => Promise.resolve(handler(req, res, next)).catch(next);
 }
 
+/** @param {any} today */
 function currentMonthRange(today) {
   return { from: `${today.slice(0, 7)}-01`, to: today };
 }
@@ -156,7 +161,7 @@ function createComplianceRouter({
       };
     }
 
-    const result = await vatValidationService.validatePeriod(period);
+    const result = /** @type {any} */ (await vatValidationService.validatePeriod(period));
     if (!result.ok) {
       return res.status(result.error.statusCode || 422).json({
         error: result.error.code,

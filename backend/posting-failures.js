@@ -17,7 +17,7 @@
 /**
  * يسجّل فشل ترحيل واحدًا ويعيد معرّفه، أو null إن تعذّر التسجيل.
  * @param {{query:(sql:string, params?:any[])=>Promise<{rows:any[]}>}|null} db — pool أو client بعد COMMIT
- * @param {{module:string, source_type:string, source_id?:string|number|null, payload?:object|null, error:unknown}} info
+ * @param {{module?:string, source_type?:string, source_id?:string|number|null, payload?:object|null, error?:any}} [info]
  * @returns {Promise<number|string|null>}
  */
 async function recordPostingFailure(db, info = {}) {
@@ -41,10 +41,11 @@ async function recordPostingFailure(db, info = {}) {
         );
         return (r && r.rows && r.rows[0] && r.rows[0].id) || null;
     } catch (e) {
+        const err = /** @type {any} */ (e);
         // 42P01 = الجدول غير موجود (134 لم تُطبَّق). الباقي خطأ اتصال/صلاحية.
         // في الحالتين: لا نرمي — التجارة أولى بالتسجيل من تقرير التشغيل.
         if (typeof console !== 'undefined' && console.warn) {
-            console.warn(`[posting-failures] تعذر تسجيل الفشل (${info && info.source_type}/${info && info.source_id}): ${e && e.message ? e.message : e}`);
+            console.warn(`[posting-failures] تعذر تسجيل الفشل (${info && info.source_type}/${info && info.source_id}): ${err && err.message ? err.message : err}`);
         }
         return null;
     }

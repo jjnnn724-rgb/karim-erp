@@ -63,6 +63,7 @@ CREATE INDEX IF NOT EXISTS idx_attendance_edit_log_row
     ON attendance_edit_log ("attendanceId");
 `;
 
+/** @type {Promise<void>|null} */
 let schemaReady = null;
 
 /** مخطّط السجلّ — يُطبَّق مرّةً عند أول استخدام (idempotent). */
@@ -75,13 +76,18 @@ function ensureGovernanceSchema() {
     return schemaReady;
 }
 
-/** قيمةٌ قابلةٌ للمقارنة: '' و NULL سواء، والأرقام كالأرقام. */
+/**
+ * قيمةٌ قابلةٌ للمقارنة: '' و NULL سواء، والأرقام كالأرقام.
+ * @param {any} value
+ * @returns {string|number|boolean|null}
+ */
 function normValue(value) {
     if (value === undefined || value === null || value === '') {return null;}
     if (typeof value === 'boolean' || typeof value === 'number') {return value;}
     return String(value);
 }
 
+/** @param {any} value @param {number} [max] */
 function trunc(value, max = 500) {
     if (typeof value !== 'string' || value.length <= max) {return value;}
     return `${value.slice(0, max)}…`;
@@ -94,12 +100,13 @@ function trunc(value, max = 500) {
  * الحقلُ غير الوارد في الطلب لا يُحسب تغييرًا — وإلا لبدا كلُّ حقلٍ
  * لم يُرسل تغييرًا إلى null.
  *
- * @param {object} before
- * @param {object} after
+ * @param {Record<string,any>} before
+ * @param {Record<string,any>} after
  * @param {{partial?:boolean, removed?:boolean}} [opts]
  * @returns {Record<string, {before: any, after: any}>}
  */
 function diffAttendance(before = {}, after = {}, { partial = false, removed = false } = {}) {
+    /** @type {Record<string,{before:any,after:any}>} */
     const out = {};
     for (const field of AUDITED_FIELDS) {
         const hasAfter = after && after[field] !== undefined;
@@ -121,7 +128,7 @@ function isSubstantiveChange(diff = {}) {
  * قاعدة السبب الإجباري: تصحيحُ حضورٍ بلا سببٍ مكتوب مرفوض.
  * الواجهة تطلب السبب، لكن الطلب يأتي من أي عميل — فالقاعدة في الخادم.
  *
- * @param {{action:string, before?:object, after?:object, filtered?:object}} input
+ * @param {{action?:string, before?:Record<string,any>|null, after?:Record<string,any>|null, filtered?:Record<string,any>|null}} [input]
  * @returns {{status:number, error:string, message:string}|null}
  */
 function attendanceCorrectionViolation({ action, before = null, after = null, filtered = null } = {}) {
@@ -150,6 +157,7 @@ function attendanceCorrectionViolation({ action, before = null, after = null, fi
 /**
  * تجميد الحضور في فترةٍ محاسبية مغلقة — كتجميد الرواتب نفسه:
  * الاعتماد المالي يجمّد ما بُني عليه.
+ * @param {Record<string,any>} [row]
  * @returns {Promise<{status:number, error:string, message:string}|null>}
  */
 async function attendancePeriodViolation(row = {}) {
@@ -174,11 +182,11 @@ async function attendancePeriodViolation(row = {}) {
  * يكتب سطر تدقيق. يُستدعى داخل معاملة الكتابة نفسها: إما يُحفظ
  * التعديل ويُسجَّل، أو لا يُحفظ شيء.
  *
- * @param {{db?:object, action:string, before?:object, after?:object,
- *          actor?:object, source?:string, reason?:string}} input
+ * @param {{db?:any, action?:string, before?:any, after?:any,
+ *          actor?:any, source?:string, reason?:string|null}} [input]
  */
 async function recordAttendanceEdit({ db, action, before = null, after = null, actor = null, source = 'api', reason = null } = {}) {
-    if (!AUDIT_ACTIONS.includes(action)) {return null;}
+    if (!AUDIT_ACTIONS.includes(/** @type {string} */ (action))) {return null;}
     const conn = db || pool;
     const diff = action === 'delete'
         ? diffAttendance(before || {}, {}, { removed: true })
@@ -210,8 +218,8 @@ async function recordAttendanceEdit({ db, action, before = null, after = null, a
 
 /**
  * قراءة السجلّ للعرض.
- * @param {{from?:string, to?:string, employeeId?:number|string, actorId?:number|string,
- *          action?:string, limit?:number, offset?:number}} filter
+ * @param {{from?:string, to?:string, employeeId?:number|string|null, actorId?:number|string|null,
+ *          action?:string, limit?:number, offset?:number}} [filter]
  */
 async function listAttendanceEdits({ from = '', to = '', employeeId = null, actorId = null, action = '', limit = 200, offset = 0 } = {}) {
     await ensureGovernanceSchema();

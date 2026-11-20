@@ -29,12 +29,14 @@ const CHEF_APPROVAL_ROLES = ['admin', 'manager', 'kitchen', 'sous_chef'];
 // حتى 20 ثانية، فتتجمد المعاملات المخزنية كلها. الرفض الفوري يحمي الخصم من
 // الازدواج ويظهر للمستخدم سببًا واضحًا بدل التعليق.
 const _dispatchOpInFlight = new Set();
+/** @param {any} id @param {any} kind */
 function beginDispatchOp(id, kind) {
     const key = `${kind}:${id}`;
     if (_dispatchOpInFlight.has(key)) {return false;}
     _dispatchOpInFlight.add(key);
     return true;
 }
+/** @param {any} id @param {any} kind */
 function endDispatchOp(id, kind) { _dispatchOpInFlight.delete(`${kind}:${id}`); }
 
 // خريطة الربط المعياري بين أكواد أقسام التشغيل/المخزن وأكواد الموارد البشرية
@@ -61,12 +63,14 @@ const DEPT_CODE_ALIASES = Object.freeze({
     'kstore': 'kstore',
 });
 
+/** @param {any} code */
 function canonicalDeptCode(code) {
     if (!code) {return '';}
     const clean = String(code).trim().toLowerCase();
     return DEPT_CODE_ALIASES[clean] || String(code).trim();
 }
 
+/** @param {any} codeA @param {any} codeB */
 function deptsMatch(codeA, codeB) {
     if (!codeA || !codeB) {return false;}
     const cleanA = String(codeA).trim().toLowerCase();
@@ -78,6 +82,7 @@ function deptsMatch(codeA, codeB) {
 }
 
 // ═══ بوابة استلام رئيس القسم: يستلم إذن قسمه هو فقط ═══
+/** @param {any} user @param {any} dispatch */
 function canReceiveDispatch(user, dispatch) {
     if (!user || !dispatch) {return { ok: false, code: 'INVALID_INPUT' };}
     if (user.role === 'dept_head') {
@@ -110,6 +115,7 @@ const DEPT_STORES = Object.freeze(Object.keys(DEDICATED_STORE_CODES).reduce(func
 /**
  * نقية: متجر القسم الخاص بحسب كود القسم (null إن لم يوجد مخزن مخصص).
  * kitchen و open_buffet يكملان إلى KITCHEN-MAIN كما في السلوك القديم.
+ * @param {any} deptCode
  */
 function resolveDispatchTargetStore(deptCode) {
     const key = String(deptCode || '').trim().toLowerCase();
@@ -120,6 +126,7 @@ function resolveDispatchTargetStore(deptCode) {
  * نقية: هل يمكن للمخازن اعتماد هذا الإذن وخصم المخزون؟
  * يحدد أخطاء السلسلة: طلب رئيس قسم يجب أن يمر بالشيف العمومي أولًا،
  * ولا يجوز الاعتماد المزدوج لإذن معتمد/مرفوض/مستلم سلفًا.
+ * @param {any} dispatch
  */
 function canWarehouseApprove(dispatch) {
     if (!dispatch) {return { ok: false, code: 'DISPATCH_NOT_FOUND' };}
@@ -138,6 +145,7 @@ function canWarehouseApprove(dispatch) {
 
 /**
  * نقية: هل يستطيع الشيف العمومي تداول هذا الإذن (اعتماد/رفض)؟
+ * @param {any} dispatch
  */
 function canChefDecide(dispatch) {
     if (!dispatch) {return { ok: false, code: 'DISPATCH_NOT_FOUND' };}
