@@ -237,6 +237,7 @@ jobs:
       DB_NAME: karim_erp_test
       DB_ADMIN_USER: postgres
       DB_ADMIN_PASSWORD: postgres
+      PHASE6B_EXPECT_MAPPING: '1'
       DB_POOL_MAX: 10
       KARIM_TEST_DB_NAME: karim_erp_test
       KARIM_TEST_DB_ISOLATED: '1'
@@ -271,6 +272,15 @@ jobs:
 
       - name: Run migrations
         run: npm run migrate
+
+      # تشخيص صلاحيات حاسم (يظهر في السجل): الدور الفعلي وملكية/منح جدول
+      # التدقيق — يثبت حالة القاعدة بعد الترحيلات مباشرة.
+      - name: DB privilege diagnostic
+        run: |
+          psql -h localhost -U postgres -d karim_erp_test -Atc "SELECT 'current_user=' || current_user || ' session_user=' || session_user;"
+          psql -h localhost -U postgres -d karim_erp_test -Atc "SELECT relname || ' owner=' || pg_get_userbyid(relowner) || ' acl=' || COALESCE(relacl::text,'(default)') FROM pg_class WHERE relname IN ('journal_ledger_audit','cost_centers');"
+        env:
+          PGPASSWORD: postgres
 
       # لقطة من القاعدة المُرحّلة لاختبار إقلاع phase6b (ينشئ قاعدته المعزولة
       # ويستعيدها من هذا الـdump — نفس تصميم الاختبار محليًا، بلا إضعاف).

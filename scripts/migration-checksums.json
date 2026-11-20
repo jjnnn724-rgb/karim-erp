@@ -173,6 +173,8 @@
     "152_audit_restore_actions.sql": "6c61bbcd5a0e91991fd8896f27d06286f75fe9e2402c5be1c20afc2164d7248a",
     "152_audit_restore_actions_down.sql": "3d2e22581e5ee7aa5057a6f4a5286a555bd424a3b34dc1ff04334973d4f0e682",
     "153_login_lockouts.sql": "9f45fc50481dd90d45530d666cbda999543488a85b448ec216beed5fa4b22d73",
-    "153_login_lockouts_down.sql": "731718e318e3a6d115ebbe256e5f702deba7adf3a4f1fdd9e4095f8740e7832c"
+    "153_login_lockouts_down.sql": "731718e318e3a6d115ebbe256e5f702deba7adf3a4f1fdd9e4095f8740e7832c",
+    "154_post113_grants_down.sql": "8e6e7e62ace3eb281a248c15da19afa9305801a97d1d2de8a704bdb78ff9fac7",
+    "154_post113_grants.sql": "8e64e8b733cc6d941eb38618ba2777fa53cdcde028dda24e6ca6e9287cc28fc4"
   }
 }
