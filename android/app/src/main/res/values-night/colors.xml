@@ -1,17 +1,17 @@
 <?xml version="1.0" encoding="utf-8"?>
 <resources>
-    <!-- Karim ERP Professional Palette (Dark Mode) -->
-    <color name="colorPrimary">#0F172A</color>
-    <color name="colorPrimaryDark">#020617</color>
-    <color name="colorAccent">#3B82F6</color>
-    <color name="colorSecondary">#60A5FA</color>
+    <!-- Karim ERP — هوية «بتrol» الخضراء المطابقة لواجهة V3 (#72E1D5 على الداكن)، وضع داكن -->
+    <color name="colorPrimary">#0B5A5F</color>
+    <color name="colorPrimaryDark">#062E33</color>
+    <color name="colorAccent">#D4AF37</color>
+    <color name="colorSecondary">#1F8A91</color>
 
-    <color name="backgroundColor">#0F172A</color>
-    <color name="surfaceColor">#1E293B</color>
-    <color name="splashBackground">#0F172A</color>
+    <color name="backgroundColor">#06181B</color>
+    <color name="surfaceColor">#0E2B30</color>
+    <color name="splashBackground">#062E33</color>
 
-    <color name="textColorPrimary">#F8FAFC</color>
-    <color name="textColorSecondary">#94A3B8</color>
-    <color name="statusBarColor">#020617</color>
-    <color name="navigationBarColor">#0F172A</color>
+    <color name="textColorPrimary">#EAF2F2</color>
+    <color name="textColorSecondary">#8FB3B5</color>
+    <color name="statusBarColor">#062E33</color>
+    <color name="navigationBarColor">#062E33</color>
 </resources>

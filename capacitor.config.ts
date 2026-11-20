@@ -9,7 +9,11 @@ const PUBLIC_SERVER = 'https://karimeg.online';
 const config: CapacitorConfig = {
   appId: 'com.karimerp.app',
   appName: 'Karim ERP',
-  webDir: 'frontend/app',
+  // حزمة أوفلاين قليلة الحجم (branded fallback) — التطبيق يحمّل الواجهة من
+  // https://karimeg.online/v3/ لحظيًا؛ هذي الصفحة تظهر فقط عند انقطاع الشبكة.
+  // كانت webDir تشير إلى frontend/app (واجهة قديمة كاملة 46MB مع ملف APK متداخل)
+  // — خطر bloat والتباس للمستخدم، وفيها نسخة قديمة من الواجهة لا تطابق الحية.
+  webDir: 'android-offline',
   // التطبيق واجهة للسيرفر مباشرة (لا نسخ ملفات) — التحديثات فورية بلا إعادة نشر APK
   // النسخة الحالية — V3 (واجهة كاريم المهنية) — يفتحها التطبق الرئيسي للشركة
   // مخصّص: V3 فيه كل الوحدات بشرفة (وضع القسم + تحليل الافطار + المساعد الذكي)

@@ -1,5 +1,26 @@
 apply plugin: 'com.android.application'
 
+/*
+ * 🔐 التوقيع خارج git: كلمات السر في android/local.properties (gitignored)
+ * أو متغيرات بيئة (KARIM_RELEASE_STORE_PASSWORD وغيرها). كان السر مكتوبًا
+ * هنا صراحةً — أُزيل 2026-11-18. إن غاب السر تتوقف assembleRelease بخطأ واضح.
+ */
+def localProps = new Properties()
+def localPropsFile = rootProject.file('local.properties')
+if (localPropsFile.exists()) {
+    localPropsFile.withInputStream { localProps.load(it) }
+}
+def propOrEnv = { String key, String envName ->
+    def v = localProps.getProperty(key)
+    if (v == null || v.trim().isEmpty()) { v = System.getenv(envName) }
+    return (v == null || v.trim().isEmpty()) ? null : v
+}
+def releaseStoreFile = propOrEnv('release.storeFile', 'KARIM_RELEASE_STORE_FILE') ?: 'release.keystore'
+def releaseStorePassword = propOrEnv('release.storePassword', 'KARIM_RELEASE_STORE_PASSWORD')
+def releaseKeyAlias = propOrEnv('release.keyAlias', 'KARIM_RELEASE_KEY_ALIAS') ?: 'karimerp'
+def releaseKeyPassword = propOrEnv('release.keyPassword', 'KARIM_RELEASE_KEY_PASSWORD')
+def releaseSigningReady = releaseStorePassword != null && releaseKeyPassword != null
+
 android {
     namespace = "com.karimerp.app"
     compileSdk = rootProject.ext.compileSdkVersion
@@ -7,8 +28,8 @@ android {
         applicationId "com.karimerp.app"
         minSdkVersion rootProject.ext.minSdkVersion
         targetSdkVersion rootProject.ext.targetSdkVersion
-        versionCode 13
-        versionName "4.10.1"
+        versionCode 14
+        versionName "4.10.2"
         testInstrumentationRunner "androidx.test.runner.AndroidJUnitRunner"
         aaptOptions {
              // Files and dirs to omit from the packaged assets dir, modified to accommodate modern web apps.
@@ -18,16 +39,23 @@ android {
     }
     signingConfigs {
         release {
-            storeFile file('release.keystore')
-            storePassword 'KarimERP2026Key'
-            keyAlias 'karimerp'
-            keyPassword 'KarimERP2026Key'
+            if (releaseSigningReady) {
+                storeFile file(releaseStoreFile)
+                storePassword releaseStorePassword
+                keyAlias releaseKeyAlias
+                keyPassword releaseKeyPassword
+            }
         }
     }
     buildTypes {
         release {
-            minifyEnabled false
-            signingConfig signingConfigs.release
+            minifyEnabled true
+            shrinkResources true
+            if (releaseSigningReady) {
+                signingConfig signingConfigs.release
+            } else {
+                logger.error('⚠️  أسرار التوقيع غير موجودة في local.properties — assembleRelease سينتج APK غير موقّع. لا تنشره.')
+            }
             proguardFiles getDefaultProguardFile('proguard-android-optimize.txt'), 'proguard-rules.pro'
         }
     }
