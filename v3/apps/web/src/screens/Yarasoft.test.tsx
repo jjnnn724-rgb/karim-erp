@@ -202,7 +202,8 @@ describe('جودة مخازن الكاشير', () => {
 
         fireEvent.click(screen.getByRole('button', { name: 'طباعة بنود الحجر' }));
 
-        expect(open).toHaveBeenCalledWith('', '_blank');
+        // printSmart يفتح نافذة المعاينة بأبعادها الثابتة (تطور جسر الطباعة).
+        expect(open).toHaveBeenCalledWith('', '_blank', 'width=980,height=1100');
         expect(print).toHaveBeenCalledOnce();
         expect(printDocument.body.innerHTML).toContain('&lt;script&gt;unsafe()&lt;/script&gt;');
         expect(printDocument.body.innerHTML).not.toContain('<script>');

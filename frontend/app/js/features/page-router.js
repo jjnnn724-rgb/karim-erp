@@ -40,8 +40,7 @@ case 'wh-prs': html=renderWhPrs(); break;
 case 'procurement': html=renderProcurement(); break;
 case 'roster': html=(typeof renderRoster==='function')?renderRoster():'<div class="mcard u-empty">تعذر تحميل وحدة الدوامات — حدّث الصفحة (Ctrl+F5)</div>'; break;
 case 'dept-employees': html=(typeof renderDeptEmployeesPage==='function')?renderDeptEmployeesPage():'<div class="mcard u-empty">تعذر تحميل وحدة موظفي القسم — حدّث الصفحة (Ctrl+F5)</div>'; break;
-case 'shelves': html=renderShelves(); break;
-case 'weight': html=renderWeight(); break;
+// تنظيف 2026-11-20: صفحتا الرفوف والميزان حُذفتان بقرار المالك (بيانات shelves تبقى للخادم ومستورد الإكسل).
 case 'dispatch': html=renderDispatch(); break;
 case 'kitchen': html=renderKitchen(); break;
 case 'recipes': html=renderRecipes(); break;

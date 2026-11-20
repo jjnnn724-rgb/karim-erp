@@ -611,7 +611,7 @@ function RecipeBomDialog({ open, row, locked, canBom, onClose, onCloseUpdate }: 
                                             key={item.id}
                                             type="button"
                                             role="option"
-                                            className="flex w-full items-center justify-between gap-sm border-b border-hairline px-sm py-xs text-right hover:bg-surface-hover"
+                                            className="flex w-full items-center justify-between gap-sm border-b border-hairline px-sm py-xs text-start hover:bg-surface-hover"
                                             onClick={() => addLine(item)}
                                         >
                                             <span className="text-body-sm text-ink">{item.name}</span>

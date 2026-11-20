@@ -6,15 +6,15 @@
  * (v1 متجهات / v2 لقطات). الأدوار مرآة الخادم، والخادم يبقى الحاكم.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.407';
+import { apiFetch } from '../../core/api.js?v=4.9.411';
 
 export const WALK_PAGES = 8;
 
 /** أدوار البصمة الذاتية — مرآة requireRole في attendance-portal-routes.js:151 */
 export const PUNCH_ROLES = ['admin', 'hr', 'dept_head', 'cashier', 'kitchen', 'sous_chef', 'warehouse', 'employee'];
 
-/** قوالب الوجه — مرآة requireRole في :661 و:703 (admin/hr فقط) */
-export const FACE_ENROLL_ROLES = ['admin', 'hr'];
+/** قوالب الوجه — مرآة requireRole في face/enroll وface/enroll-v2 (admin/owner) */
+export const FACE_ENROLL_ROLES = ['admin', 'owner'];
 
 /** رموز الرفض الأصلية المسموحة — مرآة CLIENT_REJECT_CODES في :471 */
 export const CLIENT_REJECT_CODES = ['PUNCH_LOCATION_MOCKED_CLIENT', 'PUNCH_LOCATION_UNAVAILABLE_CLIENT'];

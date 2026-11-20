@@ -143,6 +143,134 @@ export async function fetchOrders(query: OrdersQuery, signal?: AbortSignal): Pro
     return fetchJson(ordersSchema, `/api/yara-reports/orders?${params.toString()}`, getAccessToken(), signal ? { signal } : {});
 }
 
+/* ── تنقيب الصنف (دمج استعلام المبيعات 2026-11-20) ──────────────────────── */
+
+const itemInvoiceRowSchema = z
+    .object({
+        doc_no: idValue,
+        cashier_no: text,
+        cashier_name: text,
+        doc_date: text,
+        doc_time: text,
+        net: numLike,
+        total: numLike,
+        discount: numLike,
+        vat: numLike,
+        payed: numLike,
+        pay_cash: numLike,
+        pay_network: numLike,
+        pay_credit: numLike,
+        pay_mobile: numLike,
+        table_name: text,
+        zone_name: text,
+        item_name: text,
+        item_code: text,
+        item_qty: numLike,
+        item_net: numLike,
+        item_price: numLike,
+        item_discount: numLike,
+        item_vat: numLike,
+        item_lines: numLike,
+    })
+    .passthrough();
+
+export type ItemInvoiceRow = z.infer<typeof itemInvoiceRowSchema>;
+
+export const itemInvoicesSchema = z
+    .object({
+        ok: z.unknown().optional(),
+        from: text,
+        to: text,
+        item: text,
+        code: text,
+        match: text,
+        invoices: z.array(itemInvoiceRowSchema).optional(),
+        totals: z.object({ invoices: numLike, qty: numLike, net: numLike, vat: numLike }).passthrough().optional(),
+        limit: numLike,
+        offset: numLike,
+    })
+    .passthrough();
+
+export type ItemInvoices = z.infer<typeof itemInvoicesSchema>;
+
+export interface ItemInvoicesQuery {
+    /** اسم الصنف أو كوده — أحدهما مطلوب على الخادم. */
+    item?: string;
+    code?: string;
+    from: string;
+    to: string;
+    cashier?: string;
+    limit?: number;
+    offset?: number;
+}
+
+/** فواتير صنفٍ واحد بكل تفاصيلها — باب الخادم `/item-invoices` (سقف 93 يومًا). */
+export async function fetchItemInvoices(query: ItemInvoicesQuery, signal?: AbortSignal): Promise<ItemInvoices> {
+    const params = new URLSearchParams({ from: query.from, to: query.to });
+    if (query.code) {
+        params.set('code', query.code);
+    }
+    if (query.item) {
+        params.set('item', query.item);
+    }
+    if (query.cashier) {
+        params.set('cashier', query.cashier);
+    }
+    params.set('limit', String(query.limit ?? 100));
+    params.set('offset', String(query.offset ?? 0));
+    return fetchJson(itemInvoicesSchema, `/api/yara-reports/item-invoices?${params.toString()}`, getAccessToken(), signal ? { signal } : {});
+}
+
+const orderLineSchema = z
+    .object({
+        name: text,
+        code: text,
+        qty: numLike,
+        price: numLike,
+        total: numLike,
+        vat: numLike,
+        discount: numLike,
+    })
+    .passthrough();
+
+export type YaraOrderLine = z.infer<typeof orderLineSchema>;
+
+export const orderDetailSchema = z
+    .object({
+        ok: z.unknown().optional(),
+        order: z
+            .object({
+                doc_no: idValue,
+                cashier_no: text,
+                doc_date: text,
+                doc_time: text,
+                shift_no: numLike,
+                net: numLike,
+                total: numLike,
+                discount: numLike,
+                vat: numLike,
+                payed: numLike,
+                pay_cash: numLike,
+                pay_network: numLike,
+                pay_credit: numLike,
+                pay_mobile: numLike,
+                table_name: text,
+                zone_name: text,
+                printed: z.unknown().optional(),
+                lines: z.array(orderLineSchema).optional(),
+            })
+            .passthrough()
+            .optional(),
+    })
+    .passthrough();
+
+export type OrderDetail = z.infer<typeof orderDetailSchema>;
+
+/** تفاصيل أوردر واحد — باب الخادم `/order-detail/:docNo`. */
+export async function fetchOrderDetail(docNo: string, signal?: AbortSignal): Promise<OrderDetail> {
+    return fetchJson(orderDetailSchema, `/api/yara-reports/order-detail/${encodeURIComponent(docNo)}`, getAccessToken(), signal ? { signal } : {});
+}
+
 /* ── المستلَم ───────────────────────────────────────────────────────────── */
 
 const receivedItemRowSchema = z

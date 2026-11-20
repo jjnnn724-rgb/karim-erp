@@ -12,15 +12,15 @@
  * dialogs become inline panels · no inline handlers (CSP contract).
  */
 
-import { canWrite } from '../session.js?v=4.9.407';
-import { formatInt } from '../data/reports-repo.js?v=4.9.407';
-import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.407';
-import { setV2PrintLogo } from '../print-branding.js?v=4.9.407';
-import { readMenuLabels } from '../layout/nav-model.js?v=4.9.407';
-import { captureFace } from '../portal-face.js?v=4.9.407';
-import { enrollFaceV1, enrollFaceV2 } from '../data/portal-repo.js?v=4.9.407';
-import { bindAdjacentLabels } from '../form-errors.js?v=4.9.407';
-import { fetchEmployees } from '../data/employees-repo.js?v=4.9.407';
+import { canWrite } from '../session.js?v=4.9.411';
+import { formatInt } from '../data/reports-repo.js?v=4.9.411';
+import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.411';
+import { setV2PrintLogo } from '../print-branding.js?v=4.9.411';
+import { readMenuLabels } from '../layout/nav-model.js?v=4.9.411';
+import { captureFace } from '../portal-face.js?v=4.9.411';
+import { enrollFaceV1, enrollFaceV2 } from '../data/portal-repo.js?v=4.9.411';
+import { bindAdjacentLabels } from '../form-errors.js?v=4.9.411';
+import { fetchEmployees } from '../data/employees-repo.js?v=4.9.411';
 import {
     ZATCA_WRITE_ROLES, KOT_WRITE_ROLES,
     fetchMainSettingsFull, updateMainSettings,
@@ -32,11 +32,11 @@ import {
     fetchBackups, doBackup, uploadBackup, restoreBackup,
     resetAllData, operationalReset,
     fetchServerControl, serverControlAction,
-} from '../data/settings-repo.js?v=4.9.407';
+} from '../data/settings-repo.js?v=4.9.411';
 // safeImgSrc: حارس <img src> ضد javascript: المخزَّن — الشاشة وحدة نظيفة
 // (no-undef: error) فلا تصلها globals، فتُستورد من المصدر الوحيد.
-import { safeImgSrc } from '../../core/utils.js?v=4.9.407';
-import { mountComplianceSection } from './compliance.js?v=4.9.407';
+import { safeImgSrc } from '../../core/utils.js?v=4.9.411';
+import { mountComplianceSection } from './compliance.js?v=4.9.411';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -67,7 +67,7 @@ function fmtDuration(sec) {
     return `${m}د`;
 }
 
-const NAV_KEYS = ['cfo', 'cash-register', 'cashier-sales', 'sales-inquiry', 'revenues', 'expenses', 'cost-analysis', 'pnl', 'monthly-comparison', 'departments',
+const NAV_KEYS = ['cfo', 'cash-register', 'cashier-sales', 'revenues', 'expenses', 'cost-analysis', 'pnl', 'monthly-comparison', 'departments',
     'warehouse', 'wh-invoices', 'wh-moves', 'wh-returns', 'wh-prs', 'kitchen', 'dispatch',
     'recipes', 'procurement', 'hr-dashboard', 'employees', 'leaves', 'attendance', 'zkteco',
     'payroll', 'hr-departments', 'employee-portal', 'roster', 'reports', 'users', 'permissions',
@@ -77,7 +77,7 @@ const NAV_KEYS = ['cfo', 'cash-register', 'cashier-sales', 'sales-inquiry', 'rev
    resolves these from ALL_PERMISSIONS.menus (readMenuLabels); this map only
    stops an English route key from reaching an Arabic admin screen. */
 const NAV_LABELS_AR = {
-    'cfo': 'المدير المالي', 'cash-register': 'سجلّ الصرف', 'cashier-sales': 'مبيعات الكاشير', 'sales-inquiry': 'استعلام المبيعات', 'revenues': 'الإيرادات', 'expenses': 'المصروفات',
+    'cfo': 'المدير المالي', 'cash-register': 'سجلّ الصرف', 'cashier-sales': 'مبيعات الكاشير', 'revenues': 'الإيرادات', 'expenses': 'المصروفات',
     'cost-analysis': 'تحليل التكاليف', 'pnl': 'الأرباح والخسائر', 'monthly-comparison': 'مقارنة الشهور', 'departments': 'الأقسام',
     'warehouse': 'المخزون', 'wh-invoices': 'فواتير المخزن', 'wh-moves': 'حركات المخزون',
     'wh-returns': 'مرتجعات المخزون', 'wh-prs': 'طلبات الشراء', 'kitchen': 'المطبخ',

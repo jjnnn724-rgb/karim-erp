@@ -1,5 +1,6 @@
 import './Warehouse.premium.css';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useMemo, useState } from 'react';
 import { BulkReceiptDialog } from '../components/BulkReceiptDialog';
 import { useConfirm } from '../components/ConfirmProvider';
@@ -527,6 +528,9 @@ export function Warehouse() {
     const confirm = useConfirm();
     const { toast } = useToast();
     const queryClient = useQueryClient();
+    const navigate = useNavigate();
+    // حوكمة المخزن نزلت من القائمة الجانبية (2026-11-20) — تُفتح من هنا كما في V2.
+    const canGov = role === 'admin' || role === 'manager' || role === 'warehouse' || role === 'accountant';
 
     // البحث نداء خادم — الانتظار 300ms يجمع ضربات المفتاح بدل طلب لكل حرف.
     useEffect(() => {
@@ -681,6 +685,18 @@ export function Warehouse() {
                     <p className="text-body-sm text-muted">سجل الأصناف وأرصدتها — وارد سريع وتعديل مباشر وحذف ودمج للمكرر وصلاحياتها.</p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>
+                    {canGov ? (
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            onClick={() => {
+                                void navigate({ to: '/warehouse-gov' });
+                            }}
+                        >
+                            حوكمة المخزن
+                        </Button>
+                    ) : null}
                     {canWrite ? (
                         <Button
                             type="button"

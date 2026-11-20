@@ -1,18 +1,25 @@
 /**
  * خرائط الأدوار → الشاشات — مرآة V2 حرفيًا (`frontend/app/js/core/config.js`
  * `ROLES`) مضافًا إليها الشاشات الجديدة في V3 فقط (accounts/journal/
- * daily-locks/purchase-invoices/payments/warehouse-gov/shelves/weight/
- * goods-scan/sessions/briefing/executive/warehouse-dashboard/
- * accountant-dashboard/dept-head-dashboard/inventory-inquiry/
- * inventory-inquiry-pro). `pos-entry` شاشة V3 فقط (V2 يفتح الكاشير المستقل)،
- * ومفتاحها ممنوح لأدوار الكاشير الأربعة في `POS_ROLES` — لا قائمة V2 لها.
+ * daily-locks/purchase-invoices/payments/warehouse-gov/goods-scan/sessions/
+ * executive/warehouse-dashboard/accountant-dashboard/dept-head-dashboard/
+ * inventory-inquiry).
+ *
+ * تنظيف 2026-11-20 («النظام الأنظف»): حُذفت من القوائم شاشات الدمج/الحذف —
+ * `sales-inquiry` (دمجت في `sales-analyzer`)، `briefing` (المحتوى في
+ * `executive` + الرئيسية)، `reports` (مصدرها POS الميت)،
+ * `inventory-inquiry-pro` (الـDossier يفتح داخل المحرك)، `shelves` و`weight`
+ * (واجهات محذوفة). مفاتيح V2 القديمة `query`/`professional` أُزيلت أيضًا.
+ *
+ * `pos-entry` شاشة V3 فقط (V2 يفتح الكاشير المستقل)، ومفتاحها ممنوح لأدوار
+ * الكاشير الأربعة في `POS_ROLES` — لا قائمة V2 لها.
  *
  * مفاتيح V2 → V3: `wh-invoices` = `purchase-invoices`، `query` =
- * `inventory-inquiry`، `professional` = `inventory-inquiry-pro`،
- * `yara-daily-locks` = `daily-locks`. القوائم المالية (cfo/journal/accounts/
- * pnl/cost-center/cost-analysis/monthly-comparison/reports) محجوزة
- * للأدوار المالية في الخادم (`accounting-routes.js` READ_ROLES) كما في V2 —
- * الـ sous_chef لا يرى هذه الشاشات في القائمة بدل أن يفتحها فيُرفض (403).
+ * `inventory-inquiry`، `yara-daily-locks` = `daily-locks`. القوائم المالية
+ * (cfo/journal/accounts/pnl/cost-center/cost-analysis/monthly-comparison)
+ * محجوزة للأدوار المالية في الخادم (`accounting-routes.js` READ_ROLES) كما
+ * في V2 — الـ sous_chef لا يرى هذه الشاشات في القائمة بدل أن يفتحها فيُرفض
+ * (403).
  */
 
 export const ROLES = {
@@ -27,7 +34,6 @@ export const ROLES = {
         'journal',
         'cash-register',
         'cashier-sales',
-        'sales-inquiry',
         'revenues',
         'expenses',
         'daily-locks',
@@ -48,12 +54,10 @@ export const ROLES = {
         'procurement',
         'kitchen',
         'veg-requests',
-        'weight',
         'goods-scan',
         'dispatch',
         'recipes',
         'buffet',
-        'reports',
         'ext-sales',
         'vat-return',
         'settings',
@@ -75,17 +79,12 @@ export const ROLES = {
         'mudad',
         'employee-portal',
         'roster',
-        'query',
-        'professional',
-        'shelves',
         'sessions',
-        'briefing',
         'executive',
         'warehouse-dashboard',
         'accountant-dashboard',
         'dept-head-dashboard',
         'inventory-inquiry',
-        'inventory-inquiry-pro',
         'dept-employees',
         'received-analyzer',
         'wh-vs-pos',
@@ -106,7 +105,6 @@ export const ROLES = {
         'journal',
         'cash-register',
         'cashier-sales',
-        'sales-inquiry',
         'revenues',
         'expenses',
         'daily-locks',
@@ -118,7 +116,6 @@ export const ROLES = {
         'dispatch',
         'recipes',
         'buffet',
-        'reports',
         'ext-sales',
         'vat-return',
         'hr-dashboard',
@@ -139,10 +136,8 @@ export const ROLES = {
         'procurement',
         'kitchen',
         'veg-requests',
-        'weight',
         'goods-scan',
         'roster',
-        'shelves',
         'warehouse-dashboard',
         'accountant-dashboard',
         'pos-entry',
@@ -166,8 +161,6 @@ export const ROLES = {
         'procurement',
         'dispatch',
         'roster',
-        'shelves',
-        'weight',
         'goods-scan',
         'warehouse-dashboard',
     ],
@@ -179,20 +172,15 @@ export const ROLES = {
         'dept-transfers',
         'veg-requests',
         'sales-analyzer',
-        'sales-inquiry',
         'received-analyzer',
         'wh-vs-pos',
-        'query',
-        'professional',
         'recipes',
         'buffet',
         'attendance',
         'leaves',
         'employee-portal',
         'roster',
-        'weight',
         'inventory-inquiry',
-        'inventory-inquiry-pro',
         'warehouse',
         'item-prices',
     ],
@@ -235,7 +223,6 @@ export const ROLES = {
         'dept-transfers',
         'procurement',
         'dispatch',
-        'reports',
         'ext-sales',
         'vat-return',
         'payroll',
@@ -249,7 +236,7 @@ export const ROLES = {
         'bank-rec',
     ],
     employee: ['dashboard', 'leaves', 'employee-portal'],
-    owner: ['cashier-monitor', 'dashboard', 'zkteco', 'punch-control', 'sales-inquiry'],
+    owner: ['cashier-monitor', 'dashboard', 'zkteco', 'punch-control', 'sales-analyzer'],
     cashier: ['dashboard', 'leaves', 'employee-portal', 'pos-entry'],
 } as const;
 

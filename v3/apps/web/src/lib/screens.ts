@@ -23,7 +23,6 @@ export const V3_SCREENS = [
     'dispatch',
     'warehouse',
     'warehouse-gov',
-    'shelves',
     'wh-returns',
     'wh-prs',
     'dept-transfers',
@@ -33,7 +32,6 @@ export const V3_SCREENS = [
     'branches',
     'permissions',
     'veg-requests',
-    'weight',
     'recipes',
     'buffet',
     'goods-scan',
@@ -44,7 +42,6 @@ export const V3_SCREENS = [
     'roster',
     'sessions',
     'whatsapp',
-    'briefing',
     'settings',
     'executive',
     'hr-dashboard',
@@ -59,20 +56,17 @@ export const V3_SCREENS = [
     'cost-analysis',
     'cost-center',
     'inventory-inquiry',
-    'inventory-inquiry-pro',
     'pnl',
     'cfo',
     'ai-assistant',
     'dept-cost',
     'monthly-comparison',
-    'reports',
     'vat-return',
     'cashier-sales',
     'cashier-monitor',
     'pos-entry',
     'pos-reports',
     'sales-analyzer',
-    'sales-inquiry',
     'received-analyzer',
     'wh-vs-pos',
     'yarasoft',
@@ -86,6 +80,13 @@ export const V3_SCREENS = [
     'item-prices',
 ] as const;
 export type V3Screen = (typeof V3_SCREENS)[number];
+
+/**
+ * شاشات مفعّلة ومسجّلة خارج القائمة الجانبية — تُفتح من أزرار داخل الشاشات
+ * الأم، لا من السايدبار (تنظيف 2026-11-20 «النظام الأنظف»).
+ * حاليًا: `warehouse-gov` زر داخل صفحة المخزن بدل عنصر قائمة.
+ */
+export const OFF_NAV_SCREENS = ['warehouse-gov'] as const;
 
 export const LEGACY_APP_URL = '/app/v2.html?live=1';
 

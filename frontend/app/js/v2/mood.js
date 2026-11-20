@@ -73,7 +73,6 @@ export const SCREEN_MOODS = Object.freeze({
     cfo: 'museum',
     'sales-analyzer': 'museum',
     'received-analyzer': 'museum',
-    'sales-inquiry': 'museum',
     'wh-vs-pos': 'museum',
     'oracle-data': 'museum',
     query: 'museum',

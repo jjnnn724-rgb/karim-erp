@@ -204,8 +204,6 @@ menus: {
     'wh-prs': '<i class=ji data-i=clipboard-list></i>',
     'dept-transfers': '<i class=ji data-i=arrow-left-right></i>',
     'roster': '<i class=ji data-i=calendar-clock></i>',
-    shelves: '<i class=ji data-i=archive></i>',
-    weight: '<i class=ji data-i=scale></i>',
     kitchen: '<i class=ji data-i=chef-hat></i>',
     dispatch: '<i class=ji data-i=clipboard-list></i>',
     recipes: '<i class=ji data-i=utensils></i>',

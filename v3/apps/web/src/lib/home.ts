@@ -571,20 +571,23 @@ export interface HomeQuickAction {
 }
 
 const ROLE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
-    owner: ['command-center', 'executive', 'briefing', 'cfo', 'reports', 'settings'],
-    admin: ['command-center', 'executive', 'briefing', 'cfo', 'reports', 'settings'],
-    manager: ['command-center', 'executive', 'briefing', 'reports', 'warehouse-dashboard', 'cashier-monitor'],
+    // تنظيف 2026-11-20: briefing/reports/shelves/weight أُزيلوا؛ المالك والإدارة
+    // يحصلون على sales-analyzer (بوابة yara: sous_chef/admin/owner) والمدير على
+    // pos-reports (مركز التقارير).
+    owner: ['command-center', 'executive', 'cfo', 'sales-analyzer', 'settings'],
+    admin: ['command-center', 'executive', 'cfo', 'sales-analyzer', 'settings'],
+    manager: ['command-center', 'executive', 'pos-reports', 'warehouse-dashboard', 'cashier-monitor'],
     accountant: ['command-center', 'cfo', 'pnl', 'monthly-comparison', 'cost-analysis', 'revenues', 'expenses'],
-    auditor: ['command-center', 'briefing', 'reports', 'pnl', 'monthly-comparison', 'journal'],
+    auditor: ['command-center', 'pnl', 'monthly-comparison', 'journal'],
     hr: ['hr-dashboard', 'employees', 'attendance', 'leaves', 'payroll', 'roster'],
-    dept_head: ['dept-head-dashboard', 'dept-employees', 'dispatch', 'dept-transfers', 'cost-center', 'reports'],
+    dept_head: ['dept-head-dashboard', 'dept-employees', 'dispatch', 'dept-transfers', 'cost-center'],
     warehouse: ['warehouse', 'warehouse-dashboard', 'dispatch', 'wh-prs', 'inventory-inquiry', 'wh-moves'],
-    kitchen: ['kitchen', 'recipes', 'menu-board', 'dispatch', 'wh-returns', 'weight'],
+    kitchen: ['kitchen', 'recipes', 'menu-board', 'dispatch', 'wh-returns'],
     // قوائم الكاشير في V2 لا تشمل المالية ولا التقارير — الإجراءات من قوائمه الفعلية فقط.
     cashier: ['pos-entry', 'leaves', 'employee-portal'],
     // الموظف لا يرى payroll/roster في V2؛ نبقي ما يُسمح به فعلًا.
     employee: ['employee-portal', 'leaves'],
-    default: ['executive', 'reports', 'warehouse', 'employees', 'settings', 'briefing'],
+    default: ['executive', 'warehouse', 'employees', 'settings'],
 };
 
 /**

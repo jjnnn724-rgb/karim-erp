@@ -233,7 +233,8 @@ describe('الصفحة الرئيسية', () => {
             { to: '/cfo', label: 'المدير المالي' },
             { to: '/pnl', label: 'الأرباح والخسائر' },
         ]);
-        expect(quickActionsForRole('ghost-role', new Set(V3_SCREENS))).toHaveLength(6);
+        // تنظيف 2026-11-20: قائمة default صارت 4 إجراءات (بلا briefing/reports).
+        expect(quickActionsForRole('ghost-role', new Set(V3_SCREENS))).toHaveLength(4);
         expect(quickActionsForRole('accountant', new Set())).toEqual([]);
     });
 

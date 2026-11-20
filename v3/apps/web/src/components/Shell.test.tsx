@@ -15,7 +15,7 @@ import {
     titleForPath,
     writeNavPrefs,
 } from '../lib/navigation';
-import { V3_SCREENS } from '../lib/screens';
+import { OFF_NAV_SCREENS, V3_SCREENS } from '../lib/screens';
 import { NAV_ITEMS } from './Shell';
 
 /**
@@ -42,19 +42,26 @@ describe('التنقّل — سبع مجموعات', () => {
         expect(new Set(NAV_GROUPS.map((group) => group.id)).size).toBe(7);
     });
 
-    it('كل شاشة في مجموعة واحدة بالضبط (تغطية كاملة)', () => {
+    it('كل شاشة في مجموعة واحدة بالضبط أو في قائمة «خارج القائمة» (تغطية كاملة)', () => {
         const grouped = NAV_GROUPS.flatMap((group) => group.keys);
-        expect(grouped).toHaveLength(V3_SCREENS.length);
+        const expected = V3_SCREENS.filter((key) => !OFF_NAV_SCREENS.includes(key as (typeof OFF_NAV_SCREENS)[number]));
+        expect(grouped).toHaveLength(expected.length);
         expect(new Set(grouped).size).toBe(grouped.length);
-        expect([...grouped].sort()).toEqual([...V3_SCREENS].sort());
+        expect([...grouped].sort()).toEqual([...expected].sort());
+        // شاشات خارج القائمة مسجلة فعلًا لكنها تُفتح بأزرار لا بالسايدبار.
+        for (const key of OFF_NAV_SCREENS) {
+            expect(V3_SCREENS).toContain(key);
+            expect(grouped).not.toContain(key);
+        }
     });
 
     it('كتلة NAV_ITEMS تطابق المفاتيح والعناوين', () => {
         // مسارات خدمية خارج مصفوفة التكافؤ (كشك الكاشير ومصدر البيانات):
         // تُعرض في التنقّل لكن لا تقابلها شاشات V2.
         const utilityPaths = new Set(['/cashier', '/integrations']);
+        const expected = V3_SCREENS.filter((key) => !OFF_NAV_SCREENS.includes(key as (typeof OFF_NAV_SCREENS)[number]));
         const parityItems = NAV_ITEMS.filter((item) => !utilityPaths.has(item.to));
-        expect(parityItems).toHaveLength(V3_SCREENS.length);
+        expect(parityItems).toHaveLength(expected.length);
         const groupKeys = new Set(NAV_GROUPS.flatMap((group) => group.keys));
         for (const item of parityItems) {
             const key = item.to.slice(1);
@@ -66,9 +73,14 @@ describe('التنقّل — سبع مجموعات', () => {
         }
     });
 
-    it('كل عنوان في الخريطة يطابق تسمية تنقّل أو الرئيسية', () => {
+    it('كل عنوان في الخريطة يطابق تسمية تنقّل أو الرئيسية أو شاشة خارج القائمة', () => {
         const itemTitles = new Map<string, string>(NAV_ITEMS.map((item) => [item.to, item.label]));
+        const offNavPaths = new Set(OFF_NAV_SCREENS.map((key) => `/${key}`));
         for (const path of Object.keys(NAV_TITLES)) {
+            if (offNavPaths.has(path)) {
+                // شاشة تُفتح بزرًا داخل شاشة أم — عنوانها مطلوب للفتات والوثيقة.
+                continue;
+            }
             const expected = path === '/' ? HOME_TITLE : itemTitles.get(path);
             expect(NAV_TITLES[path]).toBe(expected);
         }

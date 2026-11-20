@@ -77,10 +77,13 @@ describe('المالك يرى بصمة الحضور في V2', () => {
         expect(configSrc).toMatch(/owner:\s*\{[^}]*'zkteco'/);
     });
 
-    test('الخادم يسمح للمالك بالقراءة فقط (لا كتابة)', () => {
+    test('الخادم يسمح للمالك بالقراءة وإدارة الأجهزة (كتابة) — اتساقًا مع face/enroll admin+owner', () => {
+        // تحديث 2026-11-20: الخادم رقّى المالك لإدارة أجهزة البصمة (WRITE_ROLES
+        // = admin+owner) بما يتسق مع ترقية face/enroll إلى admin+owner — المرآة
+        // تتبع الخادم.
         const readRoles = zkRoutes.match(/const READ_ROLES = \[([^\]]*)\]/)[1];
         const writeRoles = zkRoutes.match(/const WRITE_ROLES = \[([^\]]*)\]/)[1];
         expect(readRoles).toMatch(/'owner'/);
-        expect(writeRoles).not.toMatch(/'owner'/);
+        expect(writeRoles).toMatch(/'owner'/);
     });
 });

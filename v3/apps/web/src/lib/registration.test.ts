@@ -1,7 +1,7 @@
 import { existsSync, readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { describe, expect, it } from 'vitest';
-import { V3_SCREENS } from './screens';
+import { OFF_NAV_SCREENS, V3_SCREENS } from './screens';
 
 /**
  * حرّاس التسجيل — يمنعون انحراف القوائم الأربع التي يجب أن تبقى متطابقة:
@@ -50,6 +50,9 @@ const navBlock = shellText.split('const NAV_ITEMS = [')[1]?.split('] as const;')
 const navKeys = [...navBlock.matchAll(/to: '\/([a-z0-9-]+)'/g)]
     .map((match) => match[1] ?? '')
     .filter((key) => !UTILITY_ROUTE_KEYS.has(key));
+
+/** الشاشات خارج القائمة تُستثنى من تكافؤ التنقّل — تُفتح بأزرار لا بالسايدبار. */
+const offNav = new Set<string>(OFF_NAV_SCREENS);
 
 function lazyModule(moduleName: string) {
     const path = join(SCREENS_DIR, `${moduleName}.lazy.tsx`);
@@ -100,9 +103,10 @@ describe('حرّاس تسجيل الشاشات', () => {
         expect(failures).toEqual([]);
     });
 
-    it('التنقّل يساوي المفاتيح بلا زيادة أو تكرار', () => {
-        expect(navKeys).toHaveLength(V3_SCREENS.length);
+    it('التنقّل يساوي المفاتيح ناقص الشاشات خارج القائمة، بلا زيادة أو تكرار', () => {
+        const expectedNav = V3_SCREENS.filter((key) => !offNav.has(key));
+        expect(navKeys).toHaveLength(expectedNav.length);
         expect(new Set(navKeys).size).toBe(navKeys.length);
-        expect([...navKeys].sort()).toEqual([...V3_SCREENS].sort());
+        expect([...navKeys].sort()).toEqual([...expectedNav].sort());
     });
 });

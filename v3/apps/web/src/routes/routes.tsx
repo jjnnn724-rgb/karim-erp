@@ -177,13 +177,6 @@ export const goodsScanRoute = createRoute({
 });
 goodsScanRoute.lazy(() => import('../screens/GoodsScan.lazy').then((module) => module.Route));
 
-/** الرفوف — للقراءة فقط. */
-export const shelvesRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/shelves',
-});
-shelvesRoute.lazy(() => import('../screens/Shelves.lazy').then((module) => module.Route));
-
 /** مرتجعات المطبخ — للقراءة فقط. */
 export const kitchenReturnsRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -282,13 +275,6 @@ export const vegRequestsRoute = createRoute({
 });
 vegRequestsRoute.lazy(() => import('../screens/VegRequests.lazy').then((module) => module.Route));
 
-/** الميزان — للقراءة فقط. */
-export const weightRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/weight',
-});
-weightRoute.lazy(() => import('../screens/Weight.lazy').then((module) => module.Route));
-
 /** الوصفات — للقراءة فقط. */
 export const recipesRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -316,13 +302,6 @@ export const whatsappRoute = createRoute({
     path: '/whatsapp',
 });
 whatsappRoute.lazy(() => import('../screens/Whatsapp.lazy').then((module) => module.Route));
-
-/** الموجز التنفيذي — لوحة متابعة للمدير. */
-export const briefingRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/briefing',
-});
-briefingRoute.lazy(() => import('../screens/Briefing.lazy').then((module) => module.Route));
 
 /** إعدادات النظام — عامة وفواتير وطابعات. */
 export const settingsRoute = createRoute({
@@ -430,13 +409,6 @@ export const inventoryInquiryRoute = createRoute({
 });
 inventoryInquiryRoute.lazy(() => import('../screens/InventoryInquiry.lazy').then((module) => module.Route));
 
-/** البطاقة الفاخرة للصنف — قراءة فقط. */
-export const inventoryInquiryProRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/inventory-inquiry-pro',
-});
-inventoryInquiryProRoute.lazy(() => import('../screens/InventoryInquiryPro.lazy').then((module) => module.Route));
-
 /** الأرباح والخسائر — قائمة الدخل. */
 export const pnlRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -457,13 +429,6 @@ export const monthlyComparisonRoute = createRoute({
     path: '/monthly-comparison',
 });
 monthlyComparisonRoute.lazy(() => import('../screens/MonthlyComparison.lazy').then((module) => module.Route));
-
-/** التقارير — تقرير مبيعات POS وفهرس مخرجات التقارير المتاحة حسب الصلاحية. */
-export const reportsRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/reports',
-});
-reportsRoute.lazy(() => import('../screens/Reports.lazy').then((module) => module.Route));
 
 /** البيع الخارجي — مبيعات موثقة + مسحوبات أذون الصرف بفترة يختارها المستخدم. */
 export const externalSalesRoute = createRoute({
@@ -542,13 +507,6 @@ export const salesAnalyzerRoute = createRoute({
 });
 salesAnalyzerRoute.lazy(() => import('../screens/SalesAnalyzer.lazy').then((module) => module.Route));
 
-/** استعلام المبيعات (مرآة YaraSoft). */
-export const salesInquiryRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/sales-inquiry',
-});
-salesInquiryRoute.lazy(() => import('../screens/SalesInquiry.lazy').then((module) => module.Route));
-
 /** تحليل المستلَم (مرآة YaraSoft). */
 export const receivedAnalyzerRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -602,7 +560,6 @@ export const routeTree = rootRoute.addChildren([
     itemPricesRoute,
     warehouseGovRoute,
     goodsScanRoute,
-    shelvesRoute,
     kitchenReturnsRoute,
     purchaseRequestsRoute,
     deptTransfersRoute,
@@ -617,12 +574,10 @@ export const routeTree = rootRoute.addChildren([
     branchesRoute,
     permissionsRoute,
     vegRequestsRoute,
-    weightRoute,
     recipesRoute,
     buffetRoute,
     sessionsRoute,
     whatsappRoute,
-    briefingRoute,
     settingsRoute,
     executiveRoute,
     hrDashboardRoute,
@@ -638,11 +593,9 @@ export const routeTree = rootRoute.addChildren([
     costAnalysisRoute,
     costCenterRoute,
     inventoryInquiryRoute,
-    inventoryInquiryProRoute,
     pnlRoute,
     cfoRoute,
     monthlyComparisonRoute,
-    reportsRoute,
     externalSalesRoute,
     vatReturnRoute,
     cashierSalesRoute,
@@ -654,7 +607,6 @@ export const routeTree = rootRoute.addChildren([
     cashierKioskRoute,
     legacySourceRoute,
     salesAnalyzerRoute,
-    salesInquiryRoute,
     receivedAnalyzerRoute,
     whVsPosRoute,
     yarasoftRoute,

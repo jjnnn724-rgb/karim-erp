@@ -29,15 +29,18 @@ const PERMISSIONS = [
     { key: 'payroll.edit', ar: 'إدارة الرواتب', group: 'الموارد البشرية',
       menus: ['payroll'], entitiesRead: ['payroll', 'salary_advances', 'payroll_adjustments', 'payroll_runs', 'employee_contracts', 'employee_evaluations'],
       entitiesWrite: ['payroll', 'salary_advances', 'payroll_adjustments', 'payroll_runs', 'employee_contracts', 'employee_evaluations'] },
-    // المخزون
+    // المخزون — تنظيف 2026-11-20: واجهتا الرفوف والميزان حُذفتان (قرار المالك)،
+    // فأُزيل مفتاحا القائمة 'shelves'/'weightReadings' من المنح؛ بيانات shelves
+    // وعمود inventory."shelfId" يبقيان (مستورد الإكسل معتمد عليهما)، ومنح
+    // كيان shelves يبقى للقراءة/الكتابة على مستوى API بلا واجهة.
     { key: 'inventory.view', ar: 'عرض المخزون', group: 'المخزون',
-      menus: ['warehouse', 'shelves'], entitiesRead: ['inventory', 'inventoryTx', 'shelves', 'weightReadings'], entitiesWrite: [] },
+      menus: ['warehouse'], entitiesRead: ['inventory', 'inventoryTx', 'shelves'], entitiesWrite: [] },
     { key: 'inventory.edit', ar: 'إدارة المخزون', group: 'المخزون',
-      menus: ['warehouse', 'shelves'], entitiesRead: ['inventory', 'inventoryTx', 'shelves', 'weightReadings'],
-      entitiesWrite: ['inventory', 'shelves', 'weightReadings'] },
-    // استعلامات المخزون (قراءة فقط — محرك الاستعلامات وبطاقة الصنف)
+      menus: ['warehouse'], entitiesRead: ['inventory', 'inventoryTx', 'shelves'],
+      entitiesWrite: ['inventory', 'shelves'] },
+    // استعلامات المخزون (قراءة فقط — محرك الاستعلامات يفتح ملف الصنف داخله)
     { key: 'inventory-inquiry.view', ar: 'استعلامات المخزون', group: 'المخزون',
-      menus: ['query', 'professional'], entitiesRead: [], entitiesWrite: [] },
+      menus: ['inventory-inquiry'], entitiesRead: [], entitiesWrite: [] },
     // طلبيات الخضار — فتح تدفق الخضار لسلطة رئيس قسم محدد (قرار المالك 2026-11-16)
     { key: 'veg.create', ar: 'إنشاء طلبية الخضار', group: 'التشغيل',
       menus: ['veg-requests'], entitiesRead: [], entitiesWrite: [] },

@@ -64,17 +64,6 @@
           "sizes": "192x192"
         }
       ]
-    },
-    {
-      "name": "استعلام المبيعات",
-      "short_name": "المبيعات",
-      "url": "/app/v2.html?live=1&v2routing=1#/sales-inquiry",
-      "icons": [
-        {
-          "src": "/app/assets/icon-192.png",
-          "sizes": "192x192"
-        }
-      ]
     }
   ]
 }

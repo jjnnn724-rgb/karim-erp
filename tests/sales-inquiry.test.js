@@ -35,6 +35,7 @@ const navModel = read('frontend', 'app', 'js', 'v2', 'layout', 'nav-model.js');
 const authNav = read('frontend', 'app', 'js', 'features', 'auth-navigation.js');
 const preview = read('frontend', 'app', 'js', 'v2', 'preview.js');
 const settings = read('frontend', 'app', 'js', 'v2', 'screens', 'settings.js');
+const v3Navigation = read('v3', 'apps', 'web', 'src', 'lib', 'navigation.ts');
 
 /** جسم الباب وحده — كي لا تتحقق الشروط على بقية العائلة. */
 function door() {
@@ -225,25 +226,27 @@ describe('دقّة فلترة الصنف — منتجٌ واحد بلا خلط',
     });
 });
 
-describe('التربيط — الشاشة تصل للشريط الجانبي', () => {
-    test('MENU_STRINGS + مفاتيح pg بالعربي والإنجليزي', () => {
-        expect(i18n).toMatch(/'sales-inquiry':\s*\{ icon: '[a-z-]+', ar: 'استعلام المبيعات'/);
-        expect(i18n).toMatch(/'pg\.sales-inquiry': 'استعلام المبيعات'/);
-        expect(i18n).toMatch(/'pg\.sales-inquiry': 'Sales Inquiry'/);
+describe('التربيط — الشاشة مُقاعدتا من القائمة (دمج 2026-11-20 في تحليل المبيعات)', () => {
+    test('المفاتيح أُزيلت من قوائم التنقّل (MENU_STRINGS + pg بالعربي والإنجليزي)', () => {
+        expect(i18n).not.toMatch(/'sales-inquiry':\s*\{ icon:/);
+        expect(i18n).not.toMatch(/'pg\.sales-inquiry'/);
     });
 
-    test('الأدوار: admin وsous_chef وowner', () => {
+    test('الأدوار لا تحمل المفتاح — والمالك قرأته انتقل إلى sales-analyzer', () => {
         for (const role of ['admin', 'sous_chef', 'owner']) {
             const line = config.split('\n').find((l) => l.startsWith(`${role}:`));
             expect(line).toBeTruthy();
-            expect(line).toContain(`'sales-inquiry'`);
+            expect(line).not.toContain(`'sales-inquiry'`);
         }
+        const owner = config.split('\n').find((l) => l.startsWith('owner:'));
+        expect(owner).toContain(`'sales-analyzer'`);
     });
 
-    test('مجموعة تنقّل finance في الطبقتين + إدارة الصفحات في settings', () => {
-        expect(navModel).toMatch(/'finance'[^\n]*'sales-inquiry'/);
-        expect(authNav).toMatch(/'finance'[^\n]*'sales-inquiry'/);
-        expect(settings).toContain(`'sales-inquiry'`);
+    test('مجموعة finance في الطبقتين بلا sales-inquiry، ومرة الميزة في محرك V3', () => {
+        expect(navModel).not.toMatch(/'finance'[^\n]*'sales-inquiry'/);
+        expect(authNav).not.toMatch(/'finance'[^\n]*'sales-inquiry'/);
+        expect(settings).not.toContain(`'sales-inquiry'`);
+        expect(v3Navigation).not.toMatch(/'sales-inquiry'/);
     });
 
     test('preview: تحميل + مسار + تفكيك', () => {
