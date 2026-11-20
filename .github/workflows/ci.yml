@@ -235,6 +235,9 @@ jobs:
       DB_USER: postgres
       DB_PASSWORD: postgres
       DB_NAME: karim_erp_test
+      DB_ADMIN_USER: postgres
+      DB_ADMIN_PASSWORD: postgres
+      PHASE6B_DUMP: ${{ runner.temp }}/phase6b.dump
       DB_POOL_MAX: 10
       KARIM_TEST_DB_NAME: karim_erp_test
       KARIM_TEST_DB_ISOLATED: '1'
@@ -269,6 +272,13 @@ jobs:
 
       - name: Run migrations
         run: npm run migrate
+
+      # لقطة من القاعدة المُرحّلة لاختبار إقلاع phase6b (ينشئ قاعدته المعزولة
+      # ويستعيدها من هذا الـdump — نفس تصميم الاختبار محليًا، بلا إضعاف).
+      - name: Prepare phase6b restore dump
+        run: pg_dump -h localhost -p 5432 -U postgres -Fc -d karim_erp_test -f "$RUNNER_TEMP/phase6b.dump"
+        env:
+          PGPASSWORD: postgres
 
       # فحص النظام الشامل — يعمل على القاعدة المعزولة (حارس العزل في
       # scripts/audit.js يرفض أي قاعدة غير معزولة). معلوماتي الآن: نجمع

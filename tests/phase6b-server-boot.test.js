@@ -36,7 +36,10 @@ const jwt = require('jsonwebtoken');
 const { Client } = require('pg');
 
 const ROOT = path.join(__dirname, '..');
-const PG_BIN = 'C:/Program Files/PostgreSQL/18/bin';
+// عابر للمنصات: Windows مسار التثبيت المحلي، Linux/CI ثنائي pg_restore من PATH
+// (postgresql-client مثبت على العدّاد — نفس حزمة pg_isready المستخدمة في الانتظار).
+const PG_BIN = process.env.PG_BIN || (process.platform === 'win32' ? 'C:/Program Files/PostgreSQL/18/bin' : '');
+const PG_RESTORE = process.platform === 'win32' ? path.join(PG_BIN, 'pg_restore.exe') : 'pg_restore';
 const DB = process.env.PHASE6B_DB || 'karim_erp_phase6b';
 const PORT = Number(process.env.PHASE6B_PORT || 18973);
 const GUARD = path.join(ROOT, 'scripts', 'phase6b-egress-guard.js');
@@ -146,7 +149,7 @@ async function ensureRestoredDb() {
     try {
         await c.query(`CREATE DATABASE ${JSON.stringify(DB).replace(/"/g, '"')} OWNER ${ENV.DB_USER}`);
     } finally { await c.end(); }
-    execFileSync(path.join(PG_BIN, 'pg_restore.exe'), [
+    execFileSync(PG_RESTORE, [
         '-h', ENV.DB_HOST || '127.0.0.1', '-p', String(ENV.DB_PORT || 5432),
         '-U', ENV.DB_ADMIN_USER, '-d', DB, '--jobs=4', dump,
     ], { env: { ...process.env, PGPASSWORD: ENV.DB_ADMIN_PASSWORD }, timeout: 600000 });
