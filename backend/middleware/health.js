@@ -41,11 +41,21 @@ const BOOT_STATE = {
 };
 
 // ─── Package version (cached) ──────────────────────────────
+// التوحيد 2026-11-20: الإصدار المعروض = بصمة الواجهة الفعلية
+// (scripts/frontend-version.json 4.9.4xx) والرجوع إلى root package.json.
 let packageInfo = null;
 function getPackageInfo() {
     if (packageInfo) {return packageInfo;}
+    let fv = null;
+    try { fv = require('../../scripts/frontend-version.json'); } catch (_) { fv = null; }
+    if (fv && /^\d+(?:\.\d+)*$/.test(String(fv.version || ''))) {
+        let pkg = {};
+        try { pkg = require('../../package.json'); } catch (_) { pkg = {}; }
+        packageInfo = { name: pkg.name || 'karim-erp', version: String(fv.version), commit: (process.env.GIT_COMMIT || '').slice(0, 8) || null };
+        return packageInfo;
+    }
     try {
-        const pkg = require(path.join(__dirname, '..', '..', 'package.json'));
+        const pkg = require('../../package.json');
         packageInfo = { name: pkg.name, version: pkg.version, commit: (process.env.GIT_COMMIT || '').slice(0, 8) || null };
     } catch {
         packageInfo = { name: 'karim-erp', version: '0.0.0', commit: null };
