@@ -21,11 +21,11 @@
 ### الباب 3 — CI على العدّاد (push + كل PR)
 - **V3 CI:** أربع مراحل مسماة (typecheck → vitest → build → biome check) + e2e العام + ميزانية gzip. فشل تنزيل Chromium محصّن بـ3 محاولات + تراجع + سجل مرفوع.
 - **CI Probe (Probe):** فحص سريع مستقل.
-- **CI/CD Pipeline (القديم):** أمن npm + وحدات + تكامل + e2e + دخان — **غير مطلوب للدمج حاليًا** لأن فشل `npm ci` على العدّاد سابق لهذا الفرع؛ عند إصلاحه (artifact ‏npm-ci-log) يُضاف لفحوص main المطلوبة.
+- **CI/CD Pipeline (القديم):** **أخضر بالكامل منذ 2026-11-20** (أمن npm → Lint/TypeCheck → Unit Tests بعتبات التغطية → Smoke → E2E Playwright). جذر الفشل التاريخي (npm ci EUSAGE — قفل ناقص تبعيات electron-builder بين npm 10/11) أُصلح، ثم دين الأنواع سُدّد، ثم فجوات بيئة العدّاد (.env اختياري، pg_restore عابر للمنصات، postgres:18 مطابقة للإنتاج، منح ما بعد 113 بترحيل 154). Integration/Build مقصورة على main بتصميمها.
 
 ### الباب 4 — حماية main على GitHub (مُطبقة ومُتحقق منها بالقراءة)
 - **PR إلزامي + مراجعة مالك الكود (CODEOWNERS) + إغلاق المحادثات**
-- **فحوص مطلوبة:** `🧱 V3 Gate (pnpm — typecheck/test/build/lint + e2e)` + `Probe` — وكلاهما يعمل على **كل PR** (فحص غائب = دمج معلّق، لا ممر صامت)
+- **فحوص مطلوبة (7):** `🧱 V3 Gate (pnpm — typecheck/test/build/lint + e2e)` + `Probe` + `🔒 Security Audit (npm)` + `🧹 Lint, Format & TypeCheck` + `🧪 Unit Tests` + `🔥 Smoke Test (Startup + Health)` + `🎭 E2E (Playwright)` — كلها تعمل على **كل PR** (فحص غائب = دمج معلّق، لا ممر صامت)
 - **strict:** يجب أن يكون الفرع محدثًا بـmain قبل الدمج
 - **ممنوع:** force-push، حذف الفرع، التجاوز حتى للـadmins (`enforce_admins`)
 
