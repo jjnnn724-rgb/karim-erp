@@ -47,11 +47,13 @@ function createdTables(ctx, file) {
 
 // مطابقة منطق scripts/shared.js دون استيراده (يتجنب تحميل dotenvx وطباعة شعاره)
 const DEMO_MIGRATIONS = new Set(['006_demo_seed.sql']);
+// ملفات _down.sql هي سكريبتات rollback عمدًا — نفس منطق run-migration.js (لا تُطبَّق تلقائيًا)
+function isRollbackMigration(f) { return /_down\.sql$/i.test(path.basename(String(f || ''))); }
 function isDemoMode(ctx) {
     const v = String(ctx.envValue('KARIM_MIGRATION_MODE') || ctx.envValue('HORUS_MIGRATION_MODE') || '').toLowerCase();
     return v === 'demo';
 }
-function shouldApply(ctx, f) { return isDemoMode(ctx) || !DEMO_MIGRATIONS.has(path.basename(String(f || ''))); }
+function shouldApply(ctx, f) { return isDemoMode(ctx) || (!DEMO_MIGRATIONS.has(path.basename(String(f || ''))) && !isRollbackMigration(f)); }
 
 module.exports = [
     {
