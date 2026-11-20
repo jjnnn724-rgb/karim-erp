@@ -1090,7 +1090,16 @@ require('./menu-legacy-routes').register(app, { io });
     // العميل يكتشف السيرفر عبر UDP (common/lan-discovery) ثم يتحقق من هنا،
     // وملف latest.yml + حزمة التثبيت داخل مجلد updates يكفيان لتحديث كل
     // أجهزة الشبكة من السيرفر نفسه — بلا إنترنت ولا GitHub.
-    const SERVER_PKG_VERSION = (() => { try { return require('../package.json').version || ''; } catch (_) { return ''; } })();
+    // الإصدار المعروض = بصمة الواجهة (scripts/frontend-version.json، 4.9.x)
+    // والرجوع إلى root package.json إن غابت — حتى لا يبلغ الـhealth «4.9.2»
+    // القديمة بينما الواجهة الفعلية 4.9.4xx (توحيد 2026-11-20).
+    const SERVER_PKG_VERSION = (() => {
+        try {
+            const fv = require('../scripts/frontend-version.json');
+            if (fv && /^\d+(?:\.\d+)*$/.test(String(fv.version || ''))) { return String(fv.version); }
+        } catch (_) { /* الملف غائب — الرجوع للباقة */ }
+        try { return require('../package.json').version || ''; } catch (_) { return ''; }
+    })();
     const UPDATES_DIR = process.env.KARIM_UPDATES_DIR
         || (process.resourcesPath ? path.join(process.resourcesPath, 'updates')
             : path.join(__dirname, '..', 'updates'));

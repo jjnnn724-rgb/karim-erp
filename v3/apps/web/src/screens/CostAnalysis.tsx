@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { PrintActions } from '../components/PrintActions';
 import { BarList, ReportHeader, SectionCard } from '../components/Reports';
@@ -10,11 +11,22 @@ import { FilterBar, StatCard } from '../ui';
 /**
  * تحليل التكاليف — تكلفة كل قسم مقابل إيراده من `finance-routes`.
  * النسبة والتكلفة والصافي كلها أرقام الخادم؛ الواجهة ترتّب وتعرض فقط.
+ * تنقيب القسم يتفتح في «مركز التكلفة» عبر ?dept= (2026-11-20).
  */
+
+/** الفترات الجاهزة — نفس مفاتيح presetRange في lib/reporting. */
+const PRESETS: ReadonlyArray<{ preset: 'today' | 'week' | 'month' | 'year'; label: string }> = [
+    { preset: 'today', label: 'اليوم' },
+    { preset: 'week', label: 'آخر ٧ أيام' },
+    { preset: 'month', label: 'هذا الشهر' },
+    { preset: 'year', label: 'هذا العام' },
+];
+
 export function CostAnalysis() {
     const [draft, setDraft] = useState(() => presetRange('month'));
     const [range, setRange] = useState(draft);
     const [problem, setProblem] = useState('');
+    const navigate = useNavigate();
 
     const analysisQuery = useQuery({
         queryKey: ['finance', 'cost-analysis', range.from, range.to],
@@ -45,6 +57,13 @@ export function CostAnalysis() {
         }
     }
 
+    function applyPreset(preset: (typeof PRESETS)[number]['preset']) {
+        const next = presetRange(preset);
+        setDraft(next);
+        setRange(next);
+        setProblem('');
+    }
+
     return (
         <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-lg">
             <ReportHeader
@@ -72,6 +91,29 @@ export function CostAnalysis() {
                 pending={analysisQuery.isFetching}
                 error={problem}
                 data-testid="cost-filter-bar"
+                advancedFilters={
+                    <div className="flex flex-col gap-xxs" data-testid="cost-presets">
+                        <span className="text-label-md text-ink-secondary">فترات جاهزة</span>
+                        <div className="flex flex-wrap gap-xxs" role="group" aria-label="فترات جاهزة">
+                            {PRESETS.map((preset) => (
+                                <button
+                                    key={preset.preset}
+                                    type="button"
+                                    onClick={() => {
+                                        applyPreset(preset.preset);
+                                    }}
+                                    className={`rounded-md border px-sm py-xxs text-button-md ${
+                                        draft.from === presetRange(preset.preset).from && draft.to === presetRange(preset.preset).to
+                                            ? 'border-primary bg-primary/10 text-primary'
+                                            : 'border-hairline-strong bg-surface text-muted hover:bg-surface-hover hover:text-ink'
+                                    }`}
+                                >
+                                    {preset.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                }
             />
 
             {analysisQuery.isPending ? <StateLoading label="جارٍ تحليل التكاليف…" /> : null}
@@ -163,7 +205,7 @@ export function CostAnalysis() {
                         english="Department costs"
                         actions={
                             <span className="text-body-sm text-muted" role="status">
-                                {`${intOf(rows.length)} قسمًا`}
+                                {`${intOf(rows.length)} قسمًا — اضغط صفًّا لفتح بنوده في مركز التكلفة`}
                             </span>
                         }
                     >
@@ -201,7 +243,14 @@ export function CostAnalysis() {
                                         {filteredRows.map((row) => (
                                             <tr
                                                 key={textOf(row.code) || textOf(row.name)}
-                                                className="border-b border-hairline hover:bg-surface-hover"
+                                                className="cursor-pointer border-b border-hairline hover:bg-surface-hover"
+                                                onClick={() => {
+                                                    const code = textOf(row.code);
+                                                    if (code) {
+                                                        void navigate({ to: '/cost-center', search: { dept: code } });
+                                                    }
+                                                }}
+                                                title="اضغط لفتح بنود هذا القسم في مركز التكلفة"
                                             >
                                                 <td className="px-sm py-xxs text-ink">
                                                     {textOf(row.name) || textOf(row.code) || '—'}{' '}

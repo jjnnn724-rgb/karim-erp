@@ -1,89 +1,50 @@
 /* ╔════════════════════════════════════════════════════════════════════════╗
-   ║  K A R I M   E R P — «Luxury Passe Partout» (v4.9.354)                ║
-   ║  طبقة فخامة عابرة تتحرق على كـل الشاشات بأقل تدخل: أي مكوّن يستفيد      ║
-   ║  من العملات الجذرية المضافه — خلفية، ظل، زخرفة، لمعان باستيل الذهب     ║
-   ║  المعتّق — بلا أي كسر للتكاملات المواكبة على components + print.      ║
+   ║  K A R I M   E R P — «كحلي فولاذي منظم» (v4.9.411 — ترويض الطبقة)      ║
+   ║  طبقة موحّدة عابرة على كل الشاشات: بطاقات بإطار رفيع واحد وظل هادئ     ║
+   ║  وأرقام جدولية — بلا تدرجات ولا لمعان ولا ذهبي (قرار المالك 2026-11-20: │
+   ║  «كحلي فولاذي منظم»). الألوان من مراسين design-tokens المثبّتة بالاختبار:│
+   ║  primary #0F766E · hairline #DCE5EC · ink #172B3B · dark canvas #0C1722 │
    ╚════════════════════════════════════════════════════════════════════════╝ */
 
 @layer components {
-    /* ── أيقونات دافئة ببقع ذهبية بدلاً من zimmermoss العادي ──────────── */
-    .erp-card .text-brand-text {
-        color: #8a6b2f;
-    }
-
-    /* ── البطاقة الرئيسية: لمعان ذهبي أوتلجي مميز ────────────────────── */
+    /* ── البطاقة الموحدة: إطار رفيع وظل هادئ — لغة واحدة لكل الشاشات ──── */
     .erp-card {
-        border: 1px solid rgb(138 107 47 / 0.22);
-        border-radius: 18px;
-        background:
-            linear-gradient(180deg, rgb(255 255 255 / 0.94), rgb(255 255 255 / 0.97)),
-            radial-gradient(700px 300px at 100% -10%, rgb(255 226 130 / 0.35), transparent 60%),
-            radial-gradient(700px 420px at -10% 110%, rgb(191 161 91 / 0.16), transparent 55%),
-            var(--erp-surface);
+        border: 1px solid rgb(220 229 236);
+        border-radius: 16px;
+        background: var(--erp-surface, #ffffff);
         box-shadow:
-            0 1px 2px rgb(12 61 62 / 0.07),
-            0 18px 40px -22px rgb(12 61 62 / 0.30);
+            0 1px 2px rgb(23 43 59 / 0.06),
+            0 12px 28px -18px rgb(23 43 59 / 0.22);
         position: relative;
         isolation: isolate;
     }
 
-    .erp-card::before {
-        content: "";
-        position: absolute;
-        inset-inline-start: 14px;
-        inset-inline-end: 14px;
-        inset-block-start: 0;
-        block-size: 1.5px;
-        background: linear-gradient(90deg,
-            rgb(138 107 47 / 0.00),
-            rgb(191 161 91 / 0.85) 18%,
-            rgb(255 226 130 / 1) 45%,
-            rgb(191 161 91 / 0.85) 75%,
-            rgb(138 107 47 / 0.00));
-        border-radius: 999px;
-        pointer-events: none;
-        z-index: 0;
-    }
-
     .erp-card > * { position: relative; z-index: 1; }
 
-    /* ــ Edge hover accent ─────────────────────────────────────────────── */
+    /* ── hover: تعزيز الإطار والظل بلا لون ولا حركة زائدة ──────────────── */
     .erp-card:hover {
-        border-color: rgb(138 107 47 / 0.35);
+        border-color: rgb(15 118 110 / 0.35);
         box-shadow:
-            0 2px 3px rgb(12 61 62 / 0.08),
-            0 22px 46px -20px rgb(191 161 91 / 0.55),
-            0 18px 32px -22px rgb(12 61 62 / 0.32);
+            0 2px 3px rgb(23 43 59 / 0.07),
+            0 16px 34px -18px rgb(15 118 110 / 0.25);
     }
 
-    /* ── البطاقات الرئيسية (KPI highlight): ✦ لامعة ────────────────────── */
-    .erp-kpi-glass::before,
-    .luxury-hero::before {
-        content: "";
-        position: absolute;
-        inset: 0;
-        border-radius: inherit;
-        background:
-            radial-gradient(600px 280px at 100% 0%, rgb(255 240 180 / 0.42), transparent 60%),
-            radial-gradient(500px 300px at 0% 100%, rgb(155 121 55 / 0.30), transparent 55%);
-        pointer-events: none;
-        z-index: 0;
-    }
-
+    /* ── بطاقات المؤشرات البارزة: سطح واحد بإطار أوضح — بلا زجاج ولا لمعان ── */
     .erp-kpi-glass,
     .luxury-hero {
-        border: 1px solid rgb(138 107 47 / 0.28);
-        border-radius: 18px;
+        border: 1px solid rgb(15 118 110 / 0.28);
+        border-radius: 16px;
         position: relative;
+        background: var(--erp-surface, #ffffff);
         box-shadow:
-            0 1px 2px rgb(12 61 62 / 0.07),
-            0 24px 50px -24px rgb(155 121 55 / 0.45);
+            0 1px 2px rgb(23 43 59 / 0.06),
+            0 14px 30px -20px rgb(15 118 110 / 0.20);
     }
 
     .erp-kpi-glass > *,
     .luxury-hero > * { position: relative; z-index: 1; }
 
-    /* ── الدالة الرطبة: مسافة تو سيارات للاكريلي ─────────────────────── */
+    /* ── الطباعة الرقمية الموحدة — أرقام جدولية لا ترقص ─────────────────── */
     .erp-ink,
     .text-ink { letter-spacing: 0.01em; }
 
@@ -94,109 +55,83 @@
         font-feature-settings: "tnum" 1, "lnum" 1;
     }
 
-    /* ── زر ذهبي بسيط للإجراء المهم ─────────────────────────────────────── */
+    /* ── زر الإجراء المهم: تركواز النظام الصلب — بلا تدرج ──────────────── */
     .erp-button-luxury {
-        background: linear-gradient(180deg, #c8a24a 0%, #9b7937 100%);
-        color: #1b1205;
-        border: 1px solid #6d4e1e;
+        background: #0f766e;
+        color: #ffffff;
+        border: 1px solid rgb(15 118 110 / 0.9);
         box-shadow:
-            0 1px 0 rgb(255 255 255 / 0.55) inset,
-            0 6px 18px -6px rgb(109 78 30 / 0.55),
-            0 2px 4px rgb(27 18 5 / 0.35);
+            0 1px 0 rgb(255 255 255 / 0.18) inset,
+            0 6px 16px -8px rgb(15 118 110 / 0.5);
         transition: filter 140ms, transform 140ms;
     }
-    .erp-button-luxury:hover:not(:disabled) { filter: brightness(1.06); transform: translateY(-1px); }
+    .erp-button-luxury:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
     .erp-button-luxury:active:not(:disabled) { transform: translateY(0.5px); }
 
-    /* ــ─ focus واضح ذهبي للتنقّل بالكيبورد ───────────────────────────── */
+    /* ── focus واضح بلون النظام للتنقّل بالكيبورد ───────────────────────── */
     :focus-visible {
-        outline-color: #c8a24a;
+        outline-color: #0f766e;
         outline-offset: 2px;
     }
 
-    /* ــ─ dark theme ────────────────────────────────────────────────────── */
+    /* ── dark theme: نفس اللغة على القماش الداكن ────────────────────────── */
     .dark .erp-card {
-        border: 1px solid rgb(200 162 74 / 0.22);
-        background:
-            linear-gradient(180deg, rgb(26 32 30 / 0.92), rgb(18 22 21 / 0.96)),
-            radial-gradient(700px 300px at 100% -10%, rgb(200 162 74 / 0.18), transparent 60%),
-            radial-gradient(700px 420px at -10% 110%, rgb(140 106 44 / 0.22), transparent 55%),
-            var(--erp-surface);
+        border: 1px solid rgb(38 54 66);
+        background: var(--erp-surface, #0c1722);
         box-shadow:
             0 1px 2px rgb(0 0 0 / 0.35),
-            0 24px 48px -20px rgb(0 0 0 / 0.55);
-    }
-
-    .dark .erp-card::before {
-        background: linear-gradient(90deg,
-            rgb(200 162 74 / 0.00),
-            rgb(255 226 130 / 0.55) 18%,
-            rgb(255 240 180 / 0.85) 45%,
-            rgb(255 226 130 / 0.55) 75%,
-            rgb(200 162 74 / 0.00));
+            0 16px 34px -18px rgb(0 0 0 / 0.5);
     }
 
     .dark .erp-card:hover {
-        border-color: rgb(200 162 74 / 0.38);
+        border-color: rgb(83 211 197 / 0.35);
         box-shadow:
             0 2px 3px rgb(0 0 0 / 0.38),
-            0 26px 52px -18px rgb(200 162 74 / 0.32);
+            0 18px 38px -18px rgb(0 0 0 / 0.55);
     }
 
-    .dark .erp-card .text-brand-text { color: #e0c56f; }
+    .dark .erp-kpi-glass,
+    .dark .luxury-hero {
+        border-color: rgb(83 211 197 / 0.28);
+        background: var(--erp-surface, #0c1722);
+    }
+
+    .dark .erp-card .text-brand-text { color: #53d3c5; }
 }
 
-/* ــ─ sidebar/topbar brand luxe addendum (shell-premium لا تتلاعب) ────── */
+/* ــ─ علامة العلامة في الشل: إطار رفيع واحد بلا هالة ───────────────────── */
 .erp-shell__brand-mark {
     box-shadow:
-        0 0 0 1.5px rgb(200 162 74 / 0.65),
-        0 0 0 4px rgb(200 162 74 / 0.12),
-        0 6px 16px -6px rgb(0 0 0 / 0.55);
+        0 0 0 1.5px rgb(15 118 110 / 0.55),
+        0 6px 16px -6px rgb(0 0 0 / 0.45);
 }
 
-.erp-shell__sidebar::after,
-.erp-shell__topbar::after {
-    content: "";
-    position: absolute;
-    inset-inline-start: 8px;
-    inset-inline-end: 8px;
-    inset-block-end: 0;
-    block-size: 2px;
-    background: linear-gradient(90deg,
-        rgb(200 162 74 / 0) 0%,
-        rgb(200 162 74 / 0.55) 28%,
-        rgb(255 226 130 / 0.85) 50%,
-        rgb(200 162 74 / 0.55) 72%,
-        rgb(200 162 74 / 0) 100%);
-    border-radius: 999px;
-    pointer-events: none;
-}
 /* القائمة الجانبية تلتصق بـ position:sticky من shell-premium.css على 100dvh —
    إجبارها position:relative كان يكسر الالتصاق فتقف القائمة قبل نهاية الصفحة الطويلة.
-   التوبار فقط يُثبَّت relative كي يبقى ::after متموضعًا داخله. */
+   التوبار فقط يُثبَّت relative كي تتموضع عناصره الزخرفية داخله. */
 .erp-shell__topbar { position: relative; }
 
-/* ــ─ وسام رقم ميزة الكوين صغيرة للسيرفر ─────────────────────────── */
+/* ــ─ زر نقطة البيع: تركواز النظام الصلب — بلا تدرج ولا برتقالي ───────── */
 .erp-shell__pos-link {
-    background: linear-gradient(180deg, #ffb84d 0%, #b45309 100%) !important;
-    color: #1b0f00 !important;
-    border: 1px solid #7c3f06 !important;
+    background: #0f766e !important;
+    color: #ffffff !important;
+    border: 1px solid rgb(15 118 110 / 0.9) !important;
     border-radius: 18px !important;
     box-shadow:
-        0 1px 0 rgb(255 255 255 / 0.6) inset,
-        0 14px 32px -10px rgb(180 83 9 / 0.55);
+        0 1px 0 rgb(255 255 255 / 0.18) inset,
+        0 10px 24px -10px rgb(15 118 110 / 0.5);
 }
-.erp-shell__pos-link:hover { filter: brightness(1.07); }
+.erp-shell__pos-link:hover { filter: brightness(1.08); }
 
-/* ــ─ كروت KPI تظهر بلون عسل معتّق ───────────────────────────────── */
+/* ــ─ كروت KPI العائلية: سطح النظام الموحد بإطار رفيع — بلا عسل ───────── */
 .erp-family-kpi {
-    background: linear-gradient(160deg, #fffcf0 0%, #fdf0c0 120%);
-    border-color: #d9b56a !important;
+    background: var(--erp-surface, #ffffff);
+    border-color: rgb(220 229 236) !important;
 }
 .dark .erp-family-kpi {
-    background: linear-gradient(160deg, #332a15 0%, #1d1610 120%);
-    border-color: #8b6925 !important;
-    color: #fff8e0;
+    background: var(--erp-surface, #0c1722);
+    border-color: rgb(38 54 66) !important;
+    color: #e6eef4;
 }
-.dark .erp-family-kpi .text-muted { color: #d9c994; }
-.dark .erp-family-kpi .text-ink { color: #fff8e0; }
+.dark .erp-family-kpi .text-muted { color: #8fa6b5; }
+.dark .erp-family-kpi .text-ink { color: #e6eef4; }

@@ -1,4 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { PrintActions } from '../components/PrintActions';
 import { ReportHeader, SectionCard } from '../components/Reports';
@@ -17,12 +18,39 @@ const STATUS_AR: Record<string, string> = {
     unknown: 'بلا حالة',
 };
 
+/** لون الحالة — أخضر للمستلم، تحذير للمعلّق، أحمر للمرفوض. */
+const STATUS_TONE: Record<string, string> = {
+    pending: 'text-warning-text',
+    chef_approved: 'text-warning-text',
+    approved: 'text-primary',
+    partially_received: 'text-warning-text',
+    received: 'text-success-text',
+    rejected: 'text-danger-text',
+    unknown: 'text-muted',
+};
+
+/** الفترات الجاهزة — نفس مفاتيح presetRange في lib/reporting. */
+const PRESETS: ReadonlyArray<{ preset: 'today' | 'week' | 'month' | 'year'; label: string }> = [
+    { preset: 'today', label: 'اليوم' },
+    { preset: 'week', label: 'آخر ٧ أيام' },
+    { preset: 'month', label: 'هذا الشهر' },
+    { preset: 'year', label: 'هذا العام' },
+];
+
 /** لوحة رئيس القسم — القسم ونطاقه ومصروفاته وأذونه من لوحة القسم على الخادم. */
 export function DeptHeadDashboard() {
     const [draft, setDraft] = useState(() => presetRange('month'));
     const [range, setRange] = useState(draft);
     const [problem, setProblem] = useState('');
     const [q, setQ] = useState('');
+    const navigate = useNavigate();
+
+    function applyPreset(preset: (typeof PRESETS)[number]['preset']) {
+        const next = presetRange(preset);
+        setDraft(next);
+        setRange(next);
+        setProblem('');
+    }
 
     const snapshot = useQuery({
         queryKey: ['dashboard', 'dept-head', range.from, range.to],
@@ -81,6 +109,15 @@ export function DeptHeadDashboard() {
                 }}
             />
             <div className="flex justify-end gap-xs" data-erp-print-hide>
+                <button
+                    type="button"
+                    onClick={() => {
+                        void navigate({ to: '/dispatch' });
+                    }}
+                    className="rounded-md bg-primary px-md py-xs text-button-md text-ink-inverse hover:bg-primary-strong"
+                >
+                    أذون الصرف والقرارات
+                </button>
                 <PrintActions title="لوحة رئيس القسم" />
             </div>
 
@@ -98,6 +135,29 @@ export function DeptHeadDashboard() {
                 pending={snapshot.isFetching}
                 error={problem}
                 data-testid="dept-head-filter-bar"
+                advancedFilters={
+                    <div className="flex flex-col gap-xxs" data-testid="dept-head-presets">
+                        <span className="text-label-md text-ink-secondary">فترات جاهزة</span>
+                        <div className="flex flex-wrap gap-xxs" role="group" aria-label="فترات جاهزة">
+                            {PRESETS.map((preset) => (
+                                <button
+                                    key={preset.preset}
+                                    type="button"
+                                    onClick={() => {
+                                        applyPreset(preset.preset);
+                                    }}
+                                    className={`rounded-md border px-sm py-xxs text-button-md ${
+                                        draft.from === presetRange(preset.preset).from && draft.to === presetRange(preset.preset).to
+                                            ? 'border-primary bg-primary/10 text-primary'
+                                            : 'border-hairline-strong bg-surface text-muted hover:bg-surface-hover hover:text-ink'
+                                    }`}
+                                >
+                                    {preset.label}
+                                </button>
+                            ))}
+                        </div>
+                    </div>
+                }
             />
 
             {snapshot.isPending ? <StateLoading label="جارٍ جمع لوحة القسم…" /> : null}
@@ -167,9 +227,11 @@ export function DeptHeadDashboard() {
                                     {filteredDispatches.map((status) => (
                                         <li
                                             key={status.key}
-                                            className="flex items-center justify-between rounded-md bg-surface-sunken p-xs text-body-md"
+                                            className="flex items-center justify-between rounded-md border border-hairline bg-surface-sunken p-xs text-body-md"
                                         >
-                                            <span className="text-ink">{STATUS_AR[status.key] ?? status.key}</span>
+                                            <span className={`font-medium ${STATUS_TONE[status.key] ?? 'text-ink'}`}>
+                                                {STATUS_AR[status.key] ?? status.key}
+                                            </span>
                                             <span className="erp-numeric text-ink" dir="ltr">
                                                 {intOf(status.count)}
                                             </span>

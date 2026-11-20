@@ -43,6 +43,7 @@ import {
 } from '../lib/veg-requests-write';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
+import { StatCard } from '../ui/StatCard';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
@@ -1341,6 +1342,14 @@ export function VegRequests() {
                     </button>
                 </div>
             </header>
+
+            <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-5" aria-label="مؤشرات طلبات الخضار">
+                <StatCard label="بانتظار الاستلام" english="Pending" value={formatInt(counts.pending)} hint="طلبات لم تُستلم بعد" tone="warning" />
+                <StatCard label="مستلمة" english="Received" value={formatInt(counts.received)} hint="استلمها المخزن" />
+                <StatCard label="مُسعّرة" english="Priced" value={formatInt(counts.priced)} hint="سعّرها المخزن" />
+                <StatCard label="عاجلة" english="Urgent" value={formatInt(counts.urgent)} hint="طلبات بعلامة الاستعجال" tone={counts.urgent > 0 ? 'danger' : 'neutral'} />
+                <StatCard label="إجمالي المعروض" english="Total shown" value={formatInt(counts.total)} hint={`من ${formatInt(summary.pending)} معلّق على الخادم`} />
+            </ul>
 
             <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
                 <Kpi label="معلقة" english="Pending" value={formatInt(summary.pending)} />

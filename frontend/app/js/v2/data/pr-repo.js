@@ -51,7 +51,7 @@
  * PAIRS WITH: screens/wh-prs.js (screen 21 in js/v2/MIGRATION.md).
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.411';
+import { apiFetch } from '../../core/api.js?v=4.9.412';
 
 const num = (v) => {
     const n = Number(v);

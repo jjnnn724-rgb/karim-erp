@@ -1,4 +1,4 @@
-import { apiFetch } from '../../core/api.js?v=4.9.411';
+import { apiFetch } from '../../core/api.js?v=4.9.412';
 
 const WRITE_ROLES = Object.freeze(['admin', 'manager']);
 

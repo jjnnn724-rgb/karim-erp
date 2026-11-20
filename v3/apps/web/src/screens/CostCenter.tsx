@@ -12,11 +12,18 @@ const ITEM_WINDOW = 800;
 /**
  * مركز التكلفة — بنود قسمٍ واحد خلف رقمه (`/finance/cost-analysis/dept`).
  * الاختيار من قائمة الأقسام التي يرجعها التحليل نفسه، لا من قائمة مكتوبة هنا.
+ * يقبل ?dept=CODE من صفحة تحليل التكاليف (ربط الصف ← البند، 2026-11-20).
  */
 export function CostCenter() {
     const [draft, setDraft] = useState(() => presetRange('month'));
     const [range, setRange] = useState(draft);
-    const [code, setCode] = useState('');
+    const [code, setCode] = useState(() => {
+        try {
+            return new URLSearchParams(window.location.search).get('dept') ?? '';
+        } catch {
+            return '';
+        }
+    });
     const [problem, setProblem] = useState('');
 
     const analysisQuery = useQuery({
