@@ -48,9 +48,17 @@ const ERR_LOG = path.join(RUN_DIR, 'server.err.log');
 
 function loadEnv() {
     const env = {};
-    for (const line of fs.readFileSync(path.join(ROOT, '.env'), 'utf8').split(/\r?\n/)) {
-        const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
-        if (m) {env[m[1]] = m[2];}
+    // .env اختياري: CI يحقن البيئة مباشرة (بلا ملف). الملف المحلي يتقدم إن وُجد،
+    // وقيم process.env تكمل المفاتيح الناقصة — نفس السلوك محليًا، ويعمل على العدّاد.
+    const envPath = path.join(ROOT, '.env');
+    if (fs.existsSync(envPath)) {
+        for (const line of fs.readFileSync(envPath, 'utf8').split(/\r?\n/)) {
+            const m = line.match(/^([A-Z0-9_]+)=(.*)$/);
+            if (m) {env[m[1]] = m[2];}
+        }
+    }
+    for (const k of Object.keys(process.env)) {
+        if (/^[A-Z0-9_]+$/.test(k) && env[k] === undefined) {env[k] = process.env[k];}
     }
     return env;
 }
