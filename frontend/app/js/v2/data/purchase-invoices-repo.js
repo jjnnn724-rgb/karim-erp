@@ -26,7 +26,7 @@
  * THIS FILE NEVER WRITES. No POST/PUT/DELETE here by construction.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.405';
+import { apiFetch } from '../../core/api.js?v=4.9.406';
 
 const num = (v) => {
     const n = Number(v);
