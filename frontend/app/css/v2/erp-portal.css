@@ -68,6 +68,10 @@
   background: var(--erp-scrim);
   transform: scaleX(-1);
 }
+/* الكاميرا الخلفية لا تُعكس — المرآة للأمامية فقط (2026-11-18) */
+.erp-face-cam__video--no-mirror {
+  transform: none;
+}
 .erp-face-cam__msg {
   margin: 0;
   min-block-size: var(--erp-space-6);

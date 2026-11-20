@@ -16,6 +16,7 @@ function mediaStream() {
 describe('FaceCaptureDialog camera', () => {
     beforeEach(() => {
         vi.restoreAllMocks();
+        globalThis.localStorage?.clear?.();
     });
 
     it('surfaces playback failures and retries from a direct user action', async () => {
@@ -42,5 +43,32 @@ describe('FaceCaptureDialog camera', () => {
         expect(getUserMedia).toHaveBeenCalledTimes(2);
         expect(await screen.findByText(/وجّه وجهك للكاميرا ثم اضغط «التقاط»/)).toBeInTheDocument();
         expect(screen.queryByRole('button', { name: 'إعادة تشغيل الكاميرا' })).not.toBeInTheDocument();
+    });
+
+    it('defaults to the rear camera and switches to front on toggle (persisted)', async () => {
+        const getUserMedia = vi.fn().mockImplementation(() => Promise.resolve(mediaStream().stream));
+        Object.defineProperty(navigator, 'mediaDevices', {
+            configurable: true,
+            value: { getUserMedia },
+        });
+        vi.spyOn(HTMLMediaElement.prototype, 'play').mockResolvedValue(undefined);
+
+        render(<FaceCaptureDialog open wantDescriptors={false} onOpenChange={vi.fn()} onComplete={vi.fn()} />);
+
+        await waitFor(() => expect(getUserMedia).toHaveBeenCalled());
+        // الافتراضي: الكاميرا الخلفية
+        expect(getUserMedia).toHaveBeenLastCalledWith(
+            expect.objectContaining({ video: expect.objectContaining({ facingMode: 'environment' }) }),
+        );
+
+        // التبديل للأمامية — يعمل ويحفظ الاختيار
+        fireEvent.click(screen.getByRole('button', { name: /الكاميرا الخلفية/ }));
+        await waitFor(() =>
+            expect(getUserMedia).toHaveBeenLastCalledWith(
+                expect.objectContaining({ video: expect.objectContaining({ facingMode: 'user' }) }),
+            ),
+        );
+        expect(globalThis.localStorage?.getItem('karim.faceCapture.facingMode')).toBe('user');
+        expect(await screen.findByRole('button', { name: /الكاميرا الأمامية/ })).toBeInTheDocument();
     });
 });

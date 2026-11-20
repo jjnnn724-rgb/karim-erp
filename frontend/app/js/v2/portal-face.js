@@ -19,16 +19,36 @@
  *     لا كاميرا تعمل بعد الإغلاق.
  */
 
-import { trapFocus } from './focus-trap.js?v=4.9.405';
+import { trapFocus } from './focus-trap.js?v=4.9.406';
 
 const FACE_API_SRC = 'vendor/face-api.js?v=4.9.77';
 const FACE_MODELS_URI = 'vendor/face-models';
-const CAMERA_TRIES = [
-    { video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false },
-    { video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false },
-    { video: true, audio: false },
-];
 const MAX_SAMPLES = 8;
+const FACING_STORAGE_KEY = 'karim.faceCapture.facingMode'; // نفس مفتاح V3 — الاختيار ينتقل بين الواجهتين
+
+/** الافتراضي 2026-11-18: «الخلفية» — المالك أبلغ أن الخلفية هي الشغالة على أجهزة المطعم */
+function getPreferredFacing() {
+    try {
+        const saved = globalThis.localStorage && globalThis.localStorage.getItem(FACING_STORAGE_KEY);
+        return saved === 'user' ? 'user' : 'environment';
+    } catch (_) { return 'environment'; }
+}
+function persistFacing(facing) {
+    try { globalThis.localStorage && globalThis.localStorage.setItem(FACING_STORAGE_KEY, facing); } catch (_) { /* وضع خاص */ }
+}
+function otherFacing(facing) { return facing === 'user' ? 'environment' : 'user'; }
+function facingLabel(facing) { return facing === 'user' ? 'الأمامية' : 'الخلفية'; }
+/** المفضلة بمقاسين، ثم الأخرى كاحتياطي، ثم أي كاميرا */
+function cameraTries(preferred) {
+    const other = otherFacing(preferred);
+    return [
+        { constraints: { video: { facingMode: preferred, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }, facing: preferred },
+        { constraints: { video: { facingMode: preferred, width: { ideal: 640 }, height: { ideal: 480 } }, audio: false }, facing: preferred },
+        { constraints: { video: { facingMode: other, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }, facing: other },
+        { constraints: { video: { facingMode: other, width: { ideal: 640 }, height: { ideal: 480 } }, audio: false }, facing: other },
+        { constraints: { video: true, audio: false }, facing: null },
+    ];
+}
 
 let _faceApiPromise = null;
 
@@ -84,8 +104,8 @@ function isSecureCameraContext() {
     return host === 'localhost' || host === '127.0.0.1';
 }
 
-/** @returns {Promise<MediaStream>} */
-async function openCameraStream(video) {
+/** @returns {Promise<{stream: MediaStream, facing: 'user'|'environment'|null}>} */
+async function openCameraStream(video, preferred = 'environment') {
     if (!isSecureCameraContext()) {
         throw new Error('الكاميرا تحتاج اتصالًا آمنًا (HTTPS) — افتح النظام عبر https، أو ارفع صورة بالأسفل');
     }
@@ -94,13 +114,18 @@ async function openCameraStream(video) {
         throw new Error('المتصفح لا يدعم الكاميرا — استخدم «رفع صورة» بالأسفل');
     }
     let lastErr = null;
-    for (const constraints of CAMERA_TRIES) {
+    let opened = null;
+    for (const attempt of cameraTries(preferred)) {
         try {
-            const stream = await media.getUserMedia(constraints);
-            video.srcObject = stream;
-            await video.play().catch(() => {});
-            return stream;
+            const stream = await media.getUserMedia(attempt.constraints);
+            opened = { stream, facing: attempt.facing };
+            break;
         } catch (e) { lastErr = e; }
+    }
+    if (opened) {
+        video.srcObject = opened.stream;
+        await video.play().catch(() => {});
+        return opened;
     }
     const name = (lastErr && lastErr.name) || '';
     if (name === 'NotAllowedError' || name === 'SecurityError') {
@@ -227,9 +252,11 @@ export function captureFace(opts = {}) {
             <p class="erp-face-cam__msg erp-text-sm" data-face-msg role="status" aria-live="polite">جارٍ تشغيل الكاميرا…</p>
             <progress class="erp-face-cam__progress" data-face-progress max="${max}" value="0" hidden></progress>
             <div class="erp-face-cam__actions">
+              <button type="button" class="erp-btn erp-btn--sm" data-face-switch-cam
+                      title="اضغط للتبديل بين الكاميرا الأمامية والخلفية">🔄 الكاميرا: الخلفية</button>
               <button type="button" class="erp-btn erp-btn--primary" data-face-shoot>التقاط</button>
               ${allowUpload ? `<label class="erp-btn erp-btn--sm erp-face-cam__upload">رفع صورة
-                <input type="file" accept="image/*" capture="user" data-face-upload hidden>
+                <input type="file" accept="image/*" capture="environment" data-face-upload hidden>
               </label>` : ''}
             </div>
             <p class="erp-text-xs erp-text-muted erp-face-cam__hint">الصور لا تُخزَّن على الخادم — تُستخدم لحظيًا لاستخراج البصمة ثم تُهمل.</p>
@@ -246,12 +273,16 @@ export function captureFace(opts = {}) {
         const progress = q('[data-face-progress]');
         const shoot = q('[data-face-shoot]');
         const upload = q('[data-face-upload]');
+        const switchCam = q('[data-face-switch-cam]');
         const images = [];
         const descriptors = [];
         /** أصل كل لقطة: 'live' من الكاميرا أو 'upload' من الملف — السيرفر يرفض المرفوعة في الوضع الصارم */
         const sources = [];
 
         let stream = null;
+        let facing = getPreferredFacing();
+        /** الاتجاه الذي فُتحت فعليًا (قد يختلف عن facing عند الاحتياطي) — للمرآة وعنوان الزر */
+        let openedFacing = null;
         let disposed = false;
         let busy = false;
         let fapi = null;
@@ -268,6 +299,37 @@ export function captureFace(opts = {}) {
             try { stream?.getTracks().forEach((track) => track.stop()); } catch (_) { /* متجاهَل عمدًا */ }
             stream = null;
             try { if (video) { video.srcObject = null; } } catch (_) { /* متجاهَل عمدًا */ }
+        };
+        /** مرآة العرض: أمامية فقط — الخلفية تُعرض كما هي. ويحدّث زر التبديل ورفع الصورة. */
+        const applyFacingUI = () => {
+            const effective = openedFacing || facing;
+            if (video) { video.classList.toggle('erp-face-cam__video--no-mirror', effective !== 'user'); }
+            if (switchCam) {
+                switchCam.textContent = `🔄 الكاميرا: ${facingLabel(effective)}`;
+                switchCam.setAttribute('aria-label', `الكاميرا ${facingLabel(effective)} — اضغط للتبديل إلى ${facingLabel(otherFacing(facing))}`);
+            }
+            if (upload) { upload.setAttribute('capture', facing); }
+        };
+        /** فتح/إعادة فتح الكاميرا بالاتجاه المختار — لقطات سابقة تبقى كما هي */
+        const startCamera = async () => {
+            stopStream();
+            try {
+                const opened = await openCameraStream(video, facing);
+                stream = opened.stream;
+                openedFacing = opened.facing;
+                applyFacingUI();
+                const intro = max > 1
+                    ? `وجّه وجهك للكاميرا — سنلتقط ${max} لقطات متنوعة`
+                    : 'وجّه وجهك للكاميرا ثم اضغط «التقاط»';
+                say(opened.facing && opened.facing !== facing
+                    ? `تعذرت الكاميرا ${facingLabel(facing)} — فُتحت ${facingLabel(opened.facing)} بدلًا منها. ${intro}`
+                    : intro);
+                return true;
+            } catch (camErr) {
+                applyFacingUI();
+                say(`${camErr.message} — يمكنك رفع صورة واضحة بدل الكاميرا.`);
+                return false;
+            }
         };
         const cleanup = () => {
             if (disposed) { return; }
@@ -374,15 +436,20 @@ export function captureFace(opts = {}) {
 
         if (upload) { upload.addEventListener('change', onUpload); }
 
+        if (switchCam) {
+            switchCam.addEventListener('click', async () => {
+                if (disposed || busy) { return; }
+                facing = otherFacing(facing);
+                openedFacing = null;
+                persistFacing(facing);
+                say('جارٍ تبديل الكاميرا…');
+                await startCamera();
+            });
+        }
+        applyFacingUI();
+
         (async () => {
-            try {
-                stream = await openCameraStream(video);
-                say(max > 1
-                    ? `وجّه وجهك للكاميرا — سنلتقط ${max} لقطات متنوعة`
-                    : 'وجّه وجهك للكاميرا ثم اضغط «التقاط»');
-            } catch (camErr) {
-                say(`${camErr.message} — يمكنك رفع صورة واضحة بدل الكاميرا.`);
-            }
+            await startCamera();
             if (disposed || !(wantDescriptors || requireDescriptor)) { return; }
             enginePromise = withTimeout(loadFaceApi(), 12000)
                 .then((api) => {
