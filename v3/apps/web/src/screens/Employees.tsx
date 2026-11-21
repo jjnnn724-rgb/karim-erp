@@ -419,6 +419,10 @@ function EmployeeCard({
     onOpen: (row: EmployeeRow) => void;
 }) {
     const navigate = useNavigate();
+    // فتح البطاقة الكاملة للأدمن وHR فقط (قرار المالك 2026-11-21) — البطاقة
+    // تحمل كل بيانات الموظف وحقول تحريرها، فزرها بنفس الصلاحية.
+    const auth = useAuthState();
+    const canOpenCard = auth.user?.role === 'admin' || auth.user?.role === 'hr';
     const photo = validPhotoSrc(extras?.photo ?? '');
     const sh = extras
         ? shiftSummary({
@@ -630,17 +634,19 @@ function EmployeeCard({
                     </div>
                 ) : null}
             </div>
-            <div className="erp-person__meta" data-erp-print-hide>
-                <button
-                    type="button"
-                    onClick={() => {
-                        void navigate({ to: '/employee-card', search: { id: String(row.id ?? '') } });
-                    }}
-                    className="rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-button-md text-ink hover:bg-surface-hover"
-                >
-                    🪪 فتح البطاقة الكاملة
-                </button>
-            </div>
+            {canOpenCard ? (
+                <div className="erp-person__meta" data-erp-print-hide>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            void navigate({ to: '/employee-card', search: { id: String(row.id ?? '') } });
+                        }}
+                        className="rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-button-md text-ink hover:bg-surface-hover"
+                    >
+                        🪪 فتح البطاقة الكاملة
+                    </button>
+                </div>
+            ) : null}
         </li>
     );
 }

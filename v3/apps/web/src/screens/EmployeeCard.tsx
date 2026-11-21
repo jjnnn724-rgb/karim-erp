@@ -10,6 +10,7 @@ import { employeeWriteVisible, updateEmployeeProfile } from '../lib/employees-wr
 import { formatMoney } from '../lib/format';
 import { printSmart } from '../lib/print-viewer';
 import { errorMessage, intOf, presetRange } from '../lib/reporting';
+import { PRINT_COMPANY_EN, usePrintBrand } from '../lib/print';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Drawer } from '../ui/Drawer';
@@ -101,6 +102,7 @@ export function EmployeeCard() {
     });
 
     const [editSection, setEditSection] = useState<SectionKey | null>(null);
+    const brand = usePrintBrand();
 
     function invalidate() {
         void queryClient.invalidateQueries({ queryKey: ['employees'] });
@@ -170,6 +172,27 @@ export function EmployeeCard() {
 
     return (
         <div className="flex flex-col gap-lg premium-screen premium-employee-card">
+            <section
+                className="flex flex-wrap items-center gap-md rounded-lg bg-sidebar p-md shadow-card"
+                aria-label="هوية الشركة"
+                data-erp-print-hide
+            >
+                <span className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-xl bg-surface shadow-card">
+                    <img src={brand.logoSrc} alt="شعار الشركة" className="size-14 object-contain" />
+                </span>
+                <div className="flex min-w-0 flex-col gap-xxs">
+                    <span className="text-heading-md text-sidebar-ink">{brand.name}</span>
+                    <span className="text-caption uppercase tracking-[0.18em] text-sidebar-plaque-ink" dir="ltr" lang="en">
+                        {PRINT_COMPANY_EN}
+                    </span>
+                </div>
+                <span
+                    className="ms-auto inline-flex items-center gap-xxs rounded-full border border-sidebar-accent px-md py-xxs text-caption font-medium text-sidebar-plaque-ink"
+                >
+                    <span aria-hidden="true" className="inline-block size-1.5 rounded-full bg-sidebar-accent" />
+                    بطاقة موظف رسمية
+                </span>
+            </section>
             <ScreenHero
                 title={name}
                 english="EMPLOYEE CARD"
