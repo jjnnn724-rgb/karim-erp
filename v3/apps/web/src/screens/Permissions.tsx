@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import {
@@ -186,7 +185,6 @@ export function Permissions() {
                     </p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>
-                    <PrintActions title="الصلاحيات" />
                     <button
                         type="button"
                         onClick={refetchAll}

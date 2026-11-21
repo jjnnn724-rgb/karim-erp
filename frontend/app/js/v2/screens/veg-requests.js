@@ -727,7 +727,7 @@ export function mountVegScreen(host, ctx = {}) {
             }
             const res = await priceVegRequest(panelRaw.id, prices);
             closePanel();
-            notify(`تم التسعير: ${moneyPlain(res && res.total || 0)} — حُمّلت مصروف على قسم المطبخ (مصروف #${(res && res.expenseId) || ''})`);
+            notify(`تم التسعير: ${moneyPlain(res && res.total || 0)} — فاتورة خضار مسددة ومصروف على قسم المطبخ (فاتورة #${(res && res.invoiceId) || ''})`);
             await reload();
         } catch (e) {
             panelMsg((e && e.message) || 'فشل التسعير');

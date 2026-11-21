@@ -1,7 +1,6 @@
 import './ReceivedAnalyzer.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { KpiCard, RangeControls, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { errorMessage, intOf, presetRange, qtyOf, rangeProblem, textOf } from '../lib/reporting';
@@ -47,7 +46,6 @@ export function ReceivedAnalyzer() {
 
     return (
         <div className="screen-premium flex flex-col gap-md">
-            <PrintActions title="تحليل المستلَم" />
             <ReportHeader
                 title="تحليل المستلَم"
                 english="Received Analyzer"

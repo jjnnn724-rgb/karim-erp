@@ -1,14 +1,15 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { fetchMyPermissions } from '../lib/my-menus';
 import { fetchCurrency } from '../lib/finance';
 import { formatMoney, parseArabicDecimal } from '../lib/format';
+import { presetRange } from '../lib/reporting';
 import { printSmart } from '../lib/print-viewer';
 import { vegRequestPrintHtml } from '../lib/veg-print';
 import {
+    fetchVegConsumption,
     fetchVegRequests,
     priorityLabel,
     searchVegRequests,
@@ -1054,6 +1055,8 @@ export function VegRequests() {
     const [printingId, setPrintingId] = useState<string | null>(null);
 
     const [createOpen, setCreateOpen] = useState(false);
+    // تحليل الخضار (2026-11-21): المستلم/المستهلك/الرصيد لكل صنف في فترة
+    const [analysisOpen, setAnalysisOpen] = useState(false);
     const [contactsOpen, setContactsOpen] = useState(false);
     const [editOpen, setEditOpen] = useState(false);
     const [editRow, setEditRow] = useState<VegRequestRow | null>(null);
@@ -1330,7 +1333,18 @@ export function VegRequests() {
                             📞 أرقام واتساب
                         </Button>
                     ) : null}
-                    <PrintActions title="طلبات شراء الخضار" />
+                    <button
+                        type="button"
+                        onClick={() => {
+                            setAnalysisOpen((open) => !open);
+                        }}
+                        aria-expanded={analysisOpen}
+                        className={`rounded-md px-md py-xs text-button-md ${
+                            analysisOpen ? 'bg-primary text-ink-inverse' : 'border border-hairline-strong bg-surface text-ink hover:bg-surface-hover'
+                        }`}
+                    >
+                        تحليل الخضار
+                    </button>
                     <button
                         type="button"
                         onClick={() => {
@@ -1350,6 +1364,9 @@ export function VegRequests() {
                 <StatCard label="عاجلة" english="Urgent" value={formatInt(counts.urgent)} hint="طلبات بعلامة الاستعجال" tone={counts.urgent > 0 ? 'danger' : 'neutral'} />
                 <StatCard label="إجمالي المعروض" english="Total shown" value={formatInt(counts.total)} hint={`من ${formatInt(summary.pending)} معلّق على الخادم`} />
             </ul>
+
+            {analysisOpen ? <VegAnalysisPanel /> : null}
+
 
             <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
                 <Kpi label="معلقة" english="Pending" value={formatInt(summary.pending)} />
@@ -1704,5 +1721,192 @@ export function VegRequests() {
                 onSave={async (value) => { await contactsMutation.mutateAsync(value); }}
             />
         </div>
+    );
+}
+
+/* ─── تحليل الخضار — المستلم/المستهلك/الرصيد لكل صنف (2026-11-21) ───────── */
+
+const ANALYSIS_PRESETS: ReadonlyArray<{ preset: 'today' | 'week' | 'month' | 'year'; label: string }> = [
+    { preset: 'today', label: 'اليوم' },
+    { preset: 'week', label: 'آخر ٧ أيام' },
+    { preset: 'month', label: 'هذا الشهر' },
+    { preset: 'year', label: 'هذا العام' },
+];
+
+function VegAnalysisPanel() {
+    const [draft, setDraft] = useState(() => ({ from: presetRange('month').from, to: presetRange('month').to }));
+    const [range, setRange] = useState(draft);
+    const [q, setQ] = useState('');
+
+    const analysisQuery = useQuery({
+        queryKey: ['veg', 'consumption', range.from, range.to, q],
+        queryFn: ({ signal }) => fetchVegConsumption(range.from, range.to, q, signal),
+    });
+
+    const data = analysisQuery.data;
+    const rows = data?.rows ?? [];
+    const totals = data?.totals;
+
+    function applyPreset(preset: (typeof ANALYSIS_PRESETS)[number]['preset']) {
+        const next = presetRange(preset);
+        setDraft(next);
+        setRange(next);
+    }
+
+    return (
+        <Card className="flex flex-col gap-sm">
+            <div className="flex flex-wrap items-center justify-between gap-sm border-b border-hairline px-sm py-xs">
+                <h2 className="text-heading-md text-ink">
+                    تحليل الخضار — استهلاك الأصناف{' '}
+                    <span className="text-body-sm text-muted" dir="ltr" lang="en">
+                        Veg Consumption
+                    </span>
+                </h2>
+                <span className="text-body-sm text-muted" role="status" dir="ltr">
+                    {`${range.from} → ${range.to}`}
+                </span>
+            </div>
+
+            <div className="flex flex-wrap items-end gap-sm p-sm" data-erp-print-hide>
+                <label className="flex flex-col gap-xxs text-label-md text-ink-secondary">
+                    من
+                    <input
+                        type="date"
+                        value={draft.from}
+                        onChange={(event) => {
+                            setDraft((current) => ({ ...current, from: event.target.value }));
+                        }}
+                        className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
+                    />
+                </label>
+                <label className="flex flex-col gap-xxs text-label-md text-ink-secondary">
+                    إلى
+                    <input
+                        type="date"
+                        value={draft.to}
+                        onChange={(event) => {
+                            setDraft((current) => ({ ...current, to: event.target.value }));
+                        }}
+                        className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
+                    />
+                </label>
+                <button
+                    type="button"
+                    onClick={() => {
+                        setRange(draft);
+                    }}
+                    className="rounded-md bg-primary px-md py-xs text-button-md text-ink-inverse hover:bg-primary-strong"
+                >
+                    عرض
+                </button>
+                <div className="flex flex-wrap gap-xxs" role="group" aria-label="فترات جاهزة">
+                    {ANALYSIS_PRESETS.map((preset) => (
+                        <button
+                            key={preset.preset}
+                            type="button"
+                            onClick={() => {
+                                applyPreset(preset.preset);
+                            }}
+                            className={`rounded-md border px-sm py-xxs text-button-md ${
+                                draft.from === presetRange(preset.preset).from && draft.to === presetRange(preset.preset).to
+                                    ? 'border-primary bg-primary/10 text-primary'
+                                    : 'border-hairline-strong bg-surface text-muted hover:bg-surface-hover hover:text-ink'
+                            }`}
+                        >
+                            {preset.label}
+                        </button>
+                    ))}
+                </div>
+                <label className="flex flex-col gap-xxs text-label-md text-ink-secondary">
+                    بحث عن صنف
+                    <input
+                        type="search"
+                        value={q}
+                        onChange={(event) => {
+                            setQ(event.target.value);
+                        }}
+                        placeholder="مثال: طماطم"
+                        className="h-9 w-56 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
+                    />
+                </label>
+            </div>
+
+            {analysisQuery.isPending ? <StateLoading label="جارٍ تحليل الخضار…" /> : null}
+            {analysisQuery.isError ? (
+                <StateError
+                    message={analysisQuery.error instanceof Error ? analysisQuery.error.message : 'خطأ غير معروف'}
+                    onRetry={() => {
+                        void analysisQuery.refetch();
+                    }}
+                />
+            ) : null}
+
+            {data ? (
+                <>
+                    <ul className="grid list-none gap-sm px-sm sm:grid-cols-2 xl:grid-cols-4" aria-label="مؤشرات تحليل الخضار">
+                        <StatCard
+                            label="المستلم في الفترة"
+                            english="Received"
+                            value={`${totals ? Math.round(totals.receivedQty * 1000) / 1000 : 0} ${'كجم'}`}
+                            hint={`بقيمة ${totals?.receivedValue ?? 0}`}
+                        />
+                        <StatCard
+                            label="المستهلك في الفترة"
+                            english="Consumed"
+                            value={String(totals ? Math.round(totals.consumedQty * 1000) / 1000 : 0)}
+                            hint="صرف مخزني + بيع + توليد + هالك"
+                            tone="warning"
+                        />
+                        <StatCard label="أصناف في التحليل" english="Items" value={String(totals?.items ?? 0)} hint="أصناف الخضار المتتبعة" />
+                        <StatCard
+                            label="الفترة"
+                            english="Range"
+                            value={`${data.from.slice(5)} ← ${data.to.slice(5)}`}
+                            hint="حدّث الفترة من الأعلى"
+                        />
+                    </ul>
+
+                    {rows.length === 0 ? (
+                        <StateEmpty title="لا حركة خضار في الفترة" hint="غيّر الفترة أو امسح البحث." />
+                    ) : (
+                        <TableScroll label="جدول تحليل الخضار">
+                            <table className="w-full border-collapse text-body-md">
+                                <thead>
+                                    <tr className="bg-surface-sunken text-label-md text-ink-secondary">
+                                        <th scope="col" className="px-sm py-xs text-start font-medium">الصنف</th>
+                                        <th scope="col" className="px-sm py-xs text-start font-medium">الوحدة</th>
+                                        <th scope="col" className="px-sm py-xs text-start font-medium">المستلم</th>
+                                        <th scope="col" className="px-sm py-xs text-start font-medium">قيمة المستلم</th>
+                                        <th scope="col" className="px-sm py-xs text-start font-medium">المستهلك</th>
+                                        <th scope="col" className="px-sm py-xs text-start font-medium">قيمة المستهلك</th>
+                                        <th scope="col" className="px-sm py-xs text-start font-medium">الرصيد الحالي</th>
+                                        <th scope="col" className="px-sm py-xs text-start font-medium">متوسط التكلفة</th>
+                                        <th scope="col" className="px-sm py-xs text-start font-medium">طلبات</th>
+                                    </tr>
+                                </thead>
+                                <tbody>
+                                    {rows.map((row) => (
+                                        <tr key={`${row.name}-${String(row.inventoryId ?? 'x')}`} className="border-b border-hairline hover:bg-surface-hover">
+                                            <td className="px-sm py-xxs text-ink">{row.name}</td>
+                                            <td className="px-sm py-xxs text-body-sm text-muted">{row.unit || 'كجم'}</td>
+                                            <td className="erp-numeric px-sm py-xxs" dir="ltr">{Math.round(row.receivedQty * 1000) / 1000}</td>
+                                            <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">{String(row.receivedValue)}</td>
+                                            <td className="erp-numeric px-sm py-xxs font-medium" dir="ltr">{Math.round(row.consumedQty * 1000) / 1000}</td>
+                                            <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">{String(row.consumedValue)}</td>
+                                            <td className="erp-numeric px-sm py-xxs" dir="ltr">{Math.round(row.onHand * 1000) / 1000}</td>
+                                            <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">{String(row.avgCost)}</td>
+                                            <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">{row.requests}</td>
+                                        </tr>
+                                    ))}
+                                </tbody>
+                            </table>
+                        </TableScroll>
+                    )}
+                    <p className="px-sm pb-xs text-caption text-faint">
+                        المستلم من سجل الطلبيات المسلمة/المعتمدة في الفترة؛ المستهلك من دفتر حركات المخزون (صرف، بيع، توليد، هالك)؛ الرصيد ومتوسط التكلفة لحظة العرض.
+                    </p>
+                </>
+            ) : null}
+        </Card>
     );
 }

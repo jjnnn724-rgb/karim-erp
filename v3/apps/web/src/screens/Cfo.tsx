@@ -3,7 +3,6 @@ import { useMemo, useState } from 'react';
 import { CFO_GROWTH_TABS, CfoGrowth, type CfoGrowthView } from '../components/CfoGrowth';
 import { CfoOpsPanel } from '../components/CfoOpsPanel';
 import { CfoWorkbench } from '../components/CfoWorkbench';
-import { PrintActions } from '../components/PrintActions';
 import { ReportHeader, SectionCard } from '../components/Reports';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { balanceLine, type CfoSnapshot, fetchCfoSnapshot, type JournalEntry, marginText, reconciliationTone } from '../lib/cfo';
@@ -90,7 +89,6 @@ export function Cfo() {
                     void query.refetch();
                 }}
             />
-            <PrintActions title="المدير المالي" />
             <CfoWorkbench periods={periods} />
             <CfoOpsPanel from={range.from} to={range.to} />
 

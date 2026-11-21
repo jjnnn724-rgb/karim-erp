@@ -2,7 +2,6 @@ import './Departments.premium.css';
 import { DepartmentsLive } from './DepartmentsLive';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { buildDepartmentRows, compareDepartmentRows, type DepartmentSortKey, isMirrorDepartment, monthTotals } from '../lib/departments';
@@ -388,7 +387,6 @@ export function Departments() {
                             + إضافة قسم
                         </Button>
                     ) : null}
-                    <PrintActions title="الأقسام" />
                     <button
                         type="button"
                         onClick={() => {

@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { type CSSProperties, type FormEvent, type ReactNode, useMemo, useState } from 'react';
 import { MudadCredentials } from '../components/MudadCredentials';
 import { MudadDelivery } from '../components/MudadDelivery';
-import { PrintActions } from '../components/PrintActions';
 import { ShellIcon } from '../components/ShellIcons';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
@@ -496,7 +495,6 @@ export function Mudad() {
                     </ul>
                 </div>
                 <div className="mudad-hero__actions">
-                    <PrintActions title="مدد والتأمينات وقوى" />
                     <button type="button" onClick={printReviewSheet} disabled={!readiness} className="mudad-btn">
                         طباعة ورقة المراجعة
                     </button>

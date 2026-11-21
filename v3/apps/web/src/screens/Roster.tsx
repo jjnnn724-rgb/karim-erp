@@ -1,7 +1,6 @@
 import './Roster.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { RosterWorkbench } from '../components/RosterWorkbench';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { formatInt } from '../lib/inventory-register';
@@ -213,7 +212,6 @@ export function Roster() {
                     </h1>
                     <p className="text-body-sm text-muted">شبكة دوام الأسبوع.</p>
                 </div>
-                <PrintActions title="الدوام" />
                 <button
                     type="button"
                     onClick={() => {

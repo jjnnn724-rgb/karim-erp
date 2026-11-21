@@ -3,7 +3,6 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useRef, useState } from 'react';
 import { useConfirm } from '../components/ConfirmProvider';
 import { FaceCaptureDialog, type FaceCaptureResult } from '../components/FaceCaptureDialog';
-import { PrintActions } from '../components/PrintActions';
 import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
@@ -467,7 +466,6 @@ export function EmployeePortal() {
                     void snapshotQuery.refetch();
                 }}
             />
-            <PrintActions title="بوابة الموظف" />
 
             {snapshotQuery.isPending ? <StateLoading label="جارٍ قراءة بوابة الموظف…" /> : null}
 

@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import './ExternalSales.premium.css';
-import { PrintActions } from '../components/PrintActions';
 import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { errorMessage, intOf, moneyOf, qtyOf, textOf } from '../lib/reporting';
@@ -249,7 +248,6 @@ export function ExternalSales() {
 
     return (
         <div className="erp-premium-screen ext-sales flex flex-col gap-md">
-            <PrintActions title="البيع الخارجي" />
 
             <ReportHeader
                 title="البيع الخارجي — المبيعات مقابل المسحوبات"

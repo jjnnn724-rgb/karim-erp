@@ -1,7 +1,6 @@
 import { toCents } from '@karim/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { fetchCurrency } from '../lib/finance';
@@ -199,7 +198,6 @@ export function KitchenReturns() {
                             مرتجع جديد
                         </Button>
                     ) : null}
-                    <PrintActions title="مرتجعات المطبخ" />
                     <button
                         type="button"
                         onClick={() => {

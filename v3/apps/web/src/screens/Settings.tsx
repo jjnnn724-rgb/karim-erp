@@ -1,7 +1,6 @@
 import { useIsFetching, useQueryClient } from '@tanstack/react-query';
 import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { PageHeader } from '../components/PageHeader';
-import { PrintActions } from '../components/PrintActions';
 import { useAuthState } from '../lib/auth';
 import {
     backupVisible,
@@ -124,7 +123,6 @@ export function Settings() {
                         >
                             تحديث
                         </Button>
-                        <PrintActions title="إعدادات النظام" />
                     </>
                 }
             />

@@ -1,6 +1,5 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { YarasoftWorkbench } from '../components/YarasoftWorkbench';
@@ -115,7 +114,6 @@ function LocalRevenueReport() {
                 }}
             />
             <div className="flex justify-end gap-xs" data-erp-print-hide>
-                <PrintActions title="إيرادات الكاشير" />
             </div>
 
             <FilterBar

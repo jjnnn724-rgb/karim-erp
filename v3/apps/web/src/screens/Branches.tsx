@@ -1,7 +1,6 @@
 import './Branches.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import {
@@ -446,7 +445,6 @@ export function Branches() {
                     >
                         تحديث
                     </button>
-                    <PrintActions title="فروع المنشأة" />
                 </div>
             </header>
 

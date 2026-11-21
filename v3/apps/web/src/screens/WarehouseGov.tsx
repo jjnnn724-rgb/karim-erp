@@ -1,7 +1,6 @@
 import './WarehouseGov.premium.css';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { fetchCurrency } from '../lib/finance';
@@ -181,7 +180,6 @@ export function WarehouseGov() {
                     </p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>
-                    <PrintActions title="حوكمة المخزن" />
                     <button
                         type="button"
                         onClick={() => {

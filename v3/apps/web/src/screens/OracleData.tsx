@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { formatInt } from '../lib/format';
@@ -296,7 +295,6 @@ export function OracleData() {
                     english="Table"
                     actions={
                         <div className="flex flex-wrap gap-xs">
-                            {content ? <PrintActions title="بيانات Oracle المنسوخة" /> : null}
                             <button
                                 type="button"
                                 onClick={closeDetail}

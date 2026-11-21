@@ -208,48 +208,10 @@ router.post('/journal/:id/approve', jwtAuth, requireRole(...WRITE_ROLES), async 
     }
 });
 
-// ─── الميزانية العمومية ─────────────────────────────────────────────────────
-router.get('/balance-sheet', jwtAuth, requireRole(...READ_ROLES), async (req, res, next) => {
-    try {
-        const asOf = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.as_of || ''))
-            ? String(req.query.as_of) : riyadhToday();
-        const { rows } = await pool.query(
-            `SELECT c.code, c.name_ar, c.name_en, c.type,
-                    COALESCE(SUM(l.debit), 0)::numeric(14,2) AS dr,
-                    COALESCE(SUM(l.credit), 0)::numeric(14,2) AS cr
-               FROM chart_of_accounts c
-               LEFT JOIN journal_lines l ON l.account_code = c.code
-                AND EXISTS (SELECT 1 FROM journal_entries e
-                             WHERE e.id = l.entry_id
-                               AND e.status = 'posted' AND e.date <= $1::date)
-              WHERE c.is_active = TRUE
-              GROUP BY c.code, c.name_ar, c.name_en, c.type
-              ORDER BY c.code`,
-            [asOf]
-        );
-        const bal = (r) => Number(r.dr) - Number(r.cr); // مدين موجب
-        const isDr = (t) => t === 'asset' || t === 'cogs' || t === 'expense';
-        const accounts = rows.map((r) => ({ ...r, balance: isDr(r.type) ? bal(r) : -bal(r) }));
-        const sum = (t) => accounts.filter((a) => a.type === t)
-            .reduce((s, a) => s + a.balance, 0);
-        const profit = sum('revenue') - sum('cogs') - sum('expense');
-        const assets = sum('asset'), liabilities = sum('liability');
-        const equity = sum('equity') + profit;
-        res.json({
-            ok: true, as_of: asOf,
-            assets: accounts.filter((a) => a.type === 'asset'),
-            liabilities: accounts.filter((a) => a.type === 'liability'),
-            equity: accounts.filter((a) => a.type === 'equity'),
-            totals: {
-                assets: Math.round(assets * 100) / 100,
-                liabilities: Math.round(liabilities * 100) / 100,
-                equity: Math.round(equity * 100) / 100,
-                currentProfit: Math.round(profit * 100) / 100,
-                balanced: Math.abs(assets - liabilities - equity) < 0.02,
-            },
-        });
-    } catch (e) { next(e); }
-});
+/* ─── الميزانية العمومية هنا أُزيلت (2026-11-21) ──────────────────────────
+   كانت مظللة: accounting-routes.js (المركَّب قبل هذا الملف في server.js)
+   يخدم /balance-sheet بنفس المسار فعليًا عبر financial-statements-engine —
+   هذه النسخة لم يصلها طلب أبدًا. /cash-flow التالية حيّة وهي الوحيدة. */
 
 // ─── التدفق النقدي (الطريقة المباشرة على حسابَي النقدية/البنك من الخريطة) ────
 router.get('/cash-flow', jwtAuth, requireRole(...READ_ROLES), async (req, res, next) => {

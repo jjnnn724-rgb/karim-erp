@@ -1,7 +1,6 @@
 import './Zkteco.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { ZktecoAdmin } from '../components/ZktecoAdmin';
@@ -39,7 +38,6 @@ export function Zkteco() {
                 }}
             />
             <div className="flex justify-end gap-xs" data-erp-print-hide>
-                <PrintActions title="أجهزة البصمة" />
             </div>
 
             {statusQuery.isPending ? <StateLoading label="جارٍ قراءة حالة أجهزة البصمة…" /> : null}

@@ -3,7 +3,6 @@ import { toCents } from '@karim/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useConfirm } from '../components/ConfirmProvider';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { fetchCurrency, firstOfMonth, riyadhToday } from '../lib/finance';
@@ -1005,7 +1004,6 @@ export function PurchaseInvoices() {
                             {INVOICE_TEXT.createAction}
                         </button>
                     ) : null}
-                    <PrintActions title="فواتير الشراء" />
                     <button
                         type="button"
                         onClick={refresh}

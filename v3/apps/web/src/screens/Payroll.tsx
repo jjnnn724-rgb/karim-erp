@@ -3,7 +3,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { PayrollSuite } from '../components/PayrollSuite';
 import { PayrollWorkbench } from '../components/PayrollWorkbench';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { fetchHrDepartments } from '../lib/employees';
 import { formatInt } from '../lib/inventory-register';
@@ -106,7 +105,6 @@ export function Payroll() {
                 </div>
                 <div className="flex items-center gap-xs">
                     <PayrollWorkbench month={month} />
-                    <PrintActions title="الرواتب" />
                     <button
                         type="button"
                         onClick={() => {

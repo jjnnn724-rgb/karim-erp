@@ -24,8 +24,6 @@ vi.mock('../lib/cash-flow', async (importOriginal) => {
     return { ...original, fetchCashFlow: mocks.fetchCashFlow };
 });
 
-vi.mock('../components/PrintActions', () => ({ PrintActions: () => null }));
-
 const report = {
     ok: true,
     from: '2026-10-01',

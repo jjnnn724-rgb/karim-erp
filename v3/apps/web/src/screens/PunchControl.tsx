@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
 import './Zkteco.premium.css';
-import { PrintActions } from '../components/PrintActions';
 import { ReportHeader, SectionCard } from '../components/Reports';
 import { StateError, StateLoading } from '../components/TableState';
 import { AttendanceFixPanel } from '../components/AttendanceFixPanel';
@@ -43,7 +42,6 @@ export function PunchControl() {
 
     return (
         <div className="flex flex-col gap-md erp-premium erp-premium-zkteco">
-            <PrintActions title="مركز التحكم بالبصمة والحضور" />
             <ReportHeader
                 title="مركز التحكم بالبصمة والحضور"
                 english="Fingerprint & Attendance Control"

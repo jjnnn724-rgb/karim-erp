@@ -2,7 +2,6 @@ import './JournalViewer.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { Fragment, useState } from 'react';
 import { ChevronIcon } from '../components/icons';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { formatMoney, statusLabel, totalCredit, totalDebit } from '../lib/format';
 import { fetchJournal } from '../lib/queries';
@@ -36,7 +35,6 @@ export function JournalViewer() {
                     <p className="text-body-sm text-muted">{query.isSuccess ? `${String(entries.length)} قيدًا معروضًا` : 'دفتر القيود'}</p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>
-                    <PrintActions title="القيود اليومية" />
                     <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-v3-journal-limit">
                         عدد القيود
                         <select

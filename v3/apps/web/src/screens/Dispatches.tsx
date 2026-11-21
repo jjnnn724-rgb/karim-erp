@@ -2,7 +2,6 @@ import './Dispatches.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { type FormEvent, type ReactNode, useMemo, useState } from 'react';
 import { useConfirm } from '../components/ConfirmProvider';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { buildDispatchPrintHtml, fetchDispatchFull, parseDispatchPrintRecord } from '../lib/dispatch-print';
@@ -1434,7 +1433,6 @@ export function Dispatches() {
                             طلب صرف جديد
                         </Button>
                     ) : null}
-                    <PrintActions title="أذون الصرف" />
                     <button
                         type="button"
                         onClick={() => {

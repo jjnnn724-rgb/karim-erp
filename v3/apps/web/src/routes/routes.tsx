@@ -1,5 +1,4 @@
 import { createRoute } from '@tanstack/react-router';
-import { validateAccountantDashboardSearch } from '../lib/accountant-search';
 import { firstEnabledScreen, LEGACY_APP_URL } from '../lib/screens';
 import { rootRoute } from './root';
 
@@ -373,14 +372,6 @@ export const warehouseDashboardRoute = createRoute({
 });
 warehouseDashboardRoute.lazy(() => import('../screens/WarehouseDashboard.lazy').then((module) => module.Route));
 
-/** لوحة المحاسب — مؤشرات مالية وتشغيلية. */
-export const accountantDashboardRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/accountant-dashboard',
-    validateSearch: validateAccountantDashboardSearch,
-});
-accountantDashboardRoute.lazy(() => import('../screens/AccountantDashboard.lazy').then((module) => module.Route));
-
 /** لوحة رئيس القسم — أداء القسم. */
 export const deptHeadDashboardRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -471,13 +462,6 @@ export const departmentCostRoute = createRoute({
     path: '/dept-cost',
 });
 departmentCostRoute.lazy(() => import('../screens/DepartmentCost.lazy').then((module) => module.Route));
-
-/** المساعد الذكي — «وين الزيادة؟»: مقارنات وتخفيض + تنبيهات (admin/manager/accountant). */
-export const aiAssistantRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/ai-assistant',
-});
-aiAssistantRoute.lazy(() => import('../screens/AiAssistant.lazy').then((module) => module.Route));
 
 /** نقطة البيع — الكاشير الحيّ: أصناف وسلة ودفع ووردية وإيصال. */
 export const posEntryRoute = createRoute({
@@ -588,7 +572,6 @@ export const routeTree = rootRoute.addChildren([
     kitchenRoute,
     menuBoardRoute,
     warehouseDashboardRoute,
-    accountantDashboardRoute,
     deptHeadDashboardRoute,
     costAnalysisRoute,
     costCenterRoute,
@@ -603,7 +586,6 @@ export const routeTree = rootRoute.addChildren([
     posEntryRoute,
     posReportsRoute,
     departmentCostRoute,
-    aiAssistantRoute,
     cashierKioskRoute,
     legacySourceRoute,
     salesAnalyzerRoute,

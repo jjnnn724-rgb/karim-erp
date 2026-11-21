@@ -1,7 +1,6 @@
 import './Recipes.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { fetchCurrency, fetchDepartments } from '../lib/finance';
@@ -806,7 +805,6 @@ export function Recipes() {
                             إضافة وصفة
                         </Button>
                     ) : null}
-                    <PrintActions title="الوصفات" />
                     <button
                         type="button"
                         onClick={() => {

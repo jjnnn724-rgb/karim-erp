@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { type AccountChartFilterDraft, SearchToolbar } from '../components/AccountingChartFilters';
 import { ChevronIcon } from '../components/icons';
-import { PrintActions } from '../components/PrintActions';
 import type { AccountChartNode } from '../lib/account-chart';
 import { mockAccountChartPageService } from '../lib/account-chart';
 import { accountTypeLabel, formatInt } from '../lib/format';
@@ -143,7 +142,6 @@ export function AccountsTree() {
                     </p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>
-                    <PrintActions title="شجرة الحسابات" />
                 </div>
             </header>
 

@@ -1,7 +1,6 @@
 import './GoodsScan.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useId, useMemo, useRef, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { ApiError } from '../lib/api';
 import { useAuthState } from '../lib/auth';
@@ -645,7 +644,6 @@ export function GoodsScan() {
                     </p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>
-                    <PrintActions title="مسح البضاعة" />
                     <button
                         type="button"
                         onClick={() => void campaignQuery.refetch()}

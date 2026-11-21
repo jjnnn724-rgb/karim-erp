@@ -29,6 +29,7 @@ const paths = {
     panel: 'M3 3h18v18H3V3Zm12 0v18m-7-9 3-3m-3 3 3 3',
     logout: 'M9 3H3v18h6m5-14 5 5-5 5m-7-5h12',
     spark: 'M12 3l1.9 4.8L18.7 9l-4.8 1.9L12 15.7l-1.9-4.8L5.3 9l4.8-1.2L12 3ZM19 14l.9 2.1L22 17l-2.1.9L19 20l-.9-2.1L16 17l2.1-.9L19 14Z',
+    print: 'M6 9V3h12v6M6 18H4a2 2 0 0 1-2-2v-5a2 2 0 0 1 2-2h16a2 2 0 0 1 2 2v5a2 2 0 0 1-2 2h-2m-12 0h12v6H6v-6Zm3 3h6',
 } as const;
 
 export type ShellIconName = keyof typeof paths;
@@ -50,7 +51,6 @@ export function shellIconForPath(path: string): ShellIconName {
     if (/dashboard|executive|briefing|command-center/.test(path)) return 'grid';
     if (/balance-sheet|cash-flow/.test(path)) return 'finance';
     if (/bank-rec/.test(path)) return 'wallet';
-    if (/ai-assistant/.test(path)) return 'spark';
     if (/dept-cost/.test(path)) return 'chart';
     if (/reports|analyzer|inquiry|cost-|pnl|cfo|comparison|wh-vs-pos/.test(path)) return 'chart';
     if (/payments|revenues|expenses|payroll|cash-register|cashier-sales/.test(path)) return 'wallet';

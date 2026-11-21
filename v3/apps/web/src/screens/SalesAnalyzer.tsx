@@ -1,7 +1,6 @@
 import './SalesAnalyzer.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { BarList, KpiCard, RangeControls, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { getAppKey, getAccessToken } from '../lib/auth';
@@ -43,7 +42,6 @@ export function SalesAnalyzer() {
 
     return (
         <div className="screen-premium flex flex-col gap-md">
-            <PrintActions title="تحليل المبيعات" />
             <ReportHeader
                 title="تحليل المبيعات"
                 english="Sales Analyzer"

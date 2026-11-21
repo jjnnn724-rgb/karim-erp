@@ -37,8 +37,6 @@ vi.mock('../lib/vat-return', async (importOriginal) => {
     };
 });
 
-vi.mock('../components/PrintActions', () => ({ PrintActions: () => null }));
-
 const report = {
     from: '2026-10-01',
     to: '2026-10-31',

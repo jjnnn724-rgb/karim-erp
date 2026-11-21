@@ -1,7 +1,6 @@
 import './Employees.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { attendanceMinutes, fetchAttendanceRange, todayIso, weekdayAr } from '../lib/attendance';
 import { useAuthState } from '../lib/auth';
@@ -1271,7 +1270,6 @@ export function Employees() {
                             إضافة موظف
                         </Button>
                     ) : null}
-                    <PrintActions title="دليل الموظفين" />
                     <button
                         type="button"
                         onClick={() => {

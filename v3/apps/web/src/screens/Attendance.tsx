@@ -2,7 +2,6 @@ import './Attendance.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { AttendanceCorrectButton, AttendanceResolveButton, AttendanceWorkbench } from '../components/AttendanceWorkbench';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { ApiError } from '../lib/api';
 import {
@@ -213,7 +212,6 @@ export function Attendance() {
                     </h1>
                     <p className="text-body-sm text-muted">سجل البصمات ومؤشرات الفترة.</p>
                 </div>
-                <PrintActions title="الحضور والانصراف" />
                 <AttendanceWorkbench employees={employeesQuery.data ?? []} todayStr={today} />
                 <button
                     type="button"

@@ -1,7 +1,6 @@
 import './Executive.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { fetchJson } from '../lib/api';
@@ -140,7 +139,6 @@ function AccountingBrief() {
     return (
         <>
             <div className="flex justify-end gap-xs" data-erp-print-hide>
-                <PrintActions title="الموجز التنفيذي — المحاسبي" />
             </div>
 
             {summary.isPending ? <StateLoading label="جارٍ تحميل الموجز المحاسبي…" /> : null}
@@ -393,7 +391,6 @@ function OperationalBrief() {
     return (
         <>
             <div className="flex justify-end gap-xs" data-erp-print-hide>
-                <PrintActions title="الموجز التنفيذي — التشغيلي" />
             </div>
 
             {isPending ? (

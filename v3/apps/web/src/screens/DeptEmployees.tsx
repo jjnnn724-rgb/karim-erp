@@ -1,7 +1,6 @@
 import './DeptEmployees.premium.css';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
@@ -77,7 +76,6 @@ export function DeptEmployees() {
                         إضافة موظف
                     </button>
                 ) : null}
-                <PrintActions title="موظفو القسم" />
             </div>
             {formRow !== undefined && canWrite ? (
                 <form

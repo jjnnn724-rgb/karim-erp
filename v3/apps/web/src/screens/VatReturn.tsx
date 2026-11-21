@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { type ReactNode, useEffect, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { KpiCard, RangeControls, ReportHeader, SectionCard } from '../components/Reports';
 import { StateError, StateLoading } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
@@ -388,7 +387,6 @@ export function VatReturn() {
                 }}
             />
             <div data-erp-print-hide className="flex flex-wrap items-center gap-sm">
-                <PrintActions title="مسودة مراجعة ضريبة القيمة المضافة" />
                 <Button variant="secondary" onClick={printReview} disabled={!report}>
                     طباعة ورقة المراجعة
                 </Button>

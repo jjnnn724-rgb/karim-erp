@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { Card } from '../components/TableState';
 import { WhatsappWorkbench } from '../components/WhatsappWorkbench';
 import { formatInt } from '../lib/format';
@@ -76,7 +75,6 @@ export function Whatsapp() {
                     </p>
                 </div>
                 <div className="flex flex-wrap items-center gap-xs">
-                    <PrintActions title="واتساب والتنبيهات" />
                     <span
                         className={`rounded-full px-sm py-xs text-label-md font-medium ${
                             stateDisplay.tone === 'success'

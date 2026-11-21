@@ -2,8 +2,7 @@
  * خرائط الأدوار → الشاشات — مرآة V2 حرفيًا (`frontend/app/js/core/config.js`
  * `ROLES`) مضافًا إليها الشاشات الجديدة في V3 فقط (accounts/journal/
  * daily-locks/purchase-invoices/payments/warehouse-gov/goods-scan/sessions/
- * executive/warehouse-dashboard/accountant-dashboard/dept-head-dashboard/
- * inventory-inquiry).
+ * executive/warehouse-dashboard/dept-head-dashboard/inventory-inquiry).
  *
  * تنظيف 2026-11-20 («النظام الأنظف»): حُذفت من القوائم شاشات الدمج/الحذف —
  * `sales-inquiry` (دمجت في `sales-analyzer`)، `briefing` (المحتوى في
@@ -28,7 +27,6 @@ export const ROLES = {
         'dashboard',
         'menu-board',
         'cfo',
-        'ai-assistant',
         'dept-cost',
         'accounts',
         'journal',
@@ -82,7 +80,6 @@ export const ROLES = {
         'sessions',
         'executive',
         'warehouse-dashboard',
-        'accountant-dashboard',
         'dept-head-dashboard',
         'inventory-inquiry',
         'dept-employees',
@@ -139,7 +136,6 @@ export const ROLES = {
         'goods-scan',
         'roster',
         'warehouse-dashboard',
-        'accountant-dashboard',
         'pos-entry',
         'balance-sheet',
         'cash-flow',
@@ -228,7 +224,6 @@ export const ROLES = {
         'payroll',
         'oracle-data',
         'roster',
-        'accountant-dashboard',
         'pos-entry',
         'balance-sheet',
         'cash-flow',

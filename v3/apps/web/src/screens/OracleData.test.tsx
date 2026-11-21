@@ -310,15 +310,13 @@ describe('بيانات Oracle', () => {
 });
 
 describe('بيانات Oracle', () => {
-    it('يفتح الجدول ويطبع محتواه', async () => {
-        const print = vi.spyOn(window, 'print').mockImplementation(() => undefined);
+    it('يفتح الجدول ويقرأ محتواه — الطباعة عبر زر الشريط العلوي الموحد (2026-11-21)', async () => {
         stubFetch();
         renderScreen();
         await waitFor(() => expect(screen.getByRole('table')).toBeTruthy());
         fireEvent.click(screen.getByRole('button', { name: 'عرض جدول ITEMS' }));
         await waitFor(() => expect(screen.getAllByRole('table').length).toBe(2));
-        fireEvent.click(screen.getByRole('button', { name: 'طباعة' }));
-        expect(print).toHaveBeenCalledTimes(1);
-        print.mockRestore();
+        // أزرار الطباعة رُفعت من رأس الصفحة — الزر الموحد في Shell يطبع الصفحة الحالية.
+        expect(screen.queryByRole('button', { name: 'تحميل PDF' })).toBeNull();
     });
 });

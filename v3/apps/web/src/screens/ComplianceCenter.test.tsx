@@ -24,8 +24,6 @@ vi.mock('../lib/compliance-report', async (importOriginal) => {
     return { ...original, fetchComplianceReport: mocks.fetchComplianceReport };
 });
 
-vi.mock('../components/PrintActions', () => ({ PrintActions: () => null }));
-
 const report = {
     ok: true,
     report: {

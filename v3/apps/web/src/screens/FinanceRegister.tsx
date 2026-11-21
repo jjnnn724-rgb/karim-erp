@@ -3,7 +3,6 @@ import { toCents } from '@karim/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useConfirm } from '../components/ConfirmProvider';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import {
@@ -723,7 +722,6 @@ export function FinanceRegister({ config }: { config: RegisterConfig }) {
                             {config.entity === 'revenues' ? 'إضافة إيراد' : 'إضافة مصروف'}
                         </Button>
                     ) : null}
-                    <PrintActions title={config.title} />
                     <button
                         type="button"
                         onClick={resetFilters}

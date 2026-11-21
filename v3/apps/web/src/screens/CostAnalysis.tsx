@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { BarList, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { fetchCostAnalysis, topCostRows } from '../lib/cost-analysis';
@@ -75,7 +74,6 @@ export function CostAnalysis() {
                     void analysisQuery.refetch();
                 }}
             />
-            <PrintActions title="تحليل التكاليف" />
 
             <FilterBar
                 id="cost-filter"

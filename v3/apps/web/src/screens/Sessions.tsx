@@ -1,6 +1,5 @@
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { fetchJson } from '../lib/api';
 import { getAccessToken } from '../lib/auth';
@@ -129,7 +128,6 @@ export function Sessions() {
                             {revokeOthersMutation.isPending ? 'جارٍ الإبطال…' : 'إبطال الجلسات الأخرى'}
                         </button>
                     )}
-                    <PrintActions title="الجلسات" />
                 </div>
             </header>
 

@@ -24,8 +24,6 @@ vi.mock('../lib/balance-sheet', async (importOriginal) => {
     return { ...original, fetchBalanceSheet: mocks.fetchBalanceSheet };
 });
 
-vi.mock('../components/PrintActions', () => ({ PrintActions: () => null }));
-
 const report = {
     statement: 'BALANCE_SHEET',
     as_of_date: '2026-10-31',

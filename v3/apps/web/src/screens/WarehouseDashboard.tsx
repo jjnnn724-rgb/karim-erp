@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { fetchWarehouseSnapshot } from '../lib/dashboards';
@@ -49,7 +48,6 @@ export function WarehouseDashboard() {
                 }}
             />
             <div className="flex justify-end gap-xs" data-erp-print-hide>
-                <PrintActions title="لوحة المخزن" />
             </div>
 
             <FilterBar

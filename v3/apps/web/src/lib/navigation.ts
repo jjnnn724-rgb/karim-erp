@@ -31,7 +31,9 @@ export interface NavGroup {
     readonly keys: readonly string[];
 }
 
-/** سبع مجموعات تغطّي 63 شاشة بلا تكرار ولا زيادة (يحرسه `Shell.test.tsx`). */
+/** سبع مجموعات تغطّي 54 شاشة بلا تكرار ولا زيادة (يحرسه `Shell.test.tsx`) —
+ *  تنظيفا 2026-11-20/21: الرفوف والميزان واستعلام المبيعات وموجز المدير
+ *  وتقارير المبيعات والبطاقة الفاخرة والمساعد الذكي ولوحة المحاسب. */
 export const NAV_GROUPS: readonly NavGroup[] = [
     {
         id: 'operations',
@@ -53,11 +55,9 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             'bank-rec',
             'pnl',
             'cfo',
-            'ai-assistant',
             'monthly-comparison',
             'cost-analysis',
             'cost-center',
-            'accountant-dashboard',
             'yarasoft',
             'balance-sheet',
             'cash-flow',
@@ -187,14 +187,12 @@ export const NAV_TITLES: Readonly<Record<string, string>> = {
     '/kitchen': 'المطبخ',
     '/menu-board': 'شاشة القائمة',
     '/warehouse-dashboard': 'لوحة المخزن',
-    '/accountant-dashboard': 'لوحة المحاسب',
     '/dept-head-dashboard': 'لوحة رئيس القسم',
     '/cost-analysis': 'تحليل التكلفة',
     '/cost-center': 'مركز التكلفة',
     '/inventory-inquiry': 'محرك الاستعلامات',
     '/pnl': 'الأرباح والخسائر',
     '/cfo': 'المدير المالي',
-    '/ai-assistant': 'المساعد الذكي',
     '/monthly-comparison': 'المقارنة الشهرية',
     '/ext-sales': 'البيع الخارجي — المبيعات والمسحوبات',
     '/vat-return': 'مسودة مراجعة ضريبة القيمة المضافة',

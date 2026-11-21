@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import './Kitchen.premium.css';
 import { KitchenStudio } from '../components/KitchenStudio';
-import { PrintActions } from '../components/PrintActions';
 import { BarList, KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
@@ -223,7 +222,6 @@ export function Kitchen() {
 
     return (
         <div className="erp-premium-screen erp-premium-screen--kitchen flex flex-col gap-md">
-            <PrintActions title="المطبخ" />
 
             <ReportHeader
                 title="المطبخ"

@@ -259,7 +259,7 @@ router.post('/:id/receive', ...receiveGate, async (req, res, next) => {
             (Array.isArray(req.body?.rejections) ? req.body.rejections : [])
                 .map((n) => cleanText(n, 80).toLowerCase()).filter(Boolean)
         );
-        const row0 = (await pool.query('SELECT items, request_no FROM veg_requests WHERE id = $1', [id])).rows[0];
+        const row0 = (await pool.query('SELECT id, items, request_no, department FROM veg_requests WHERE id = $1', [id])).rows[0];
         const items0 = Array.isArray(row0?.items) ? row0.items : (() => { try { return JSON.parse(row0?.items || '[]'); } catch (_) { return []; } })();
         // الاستلام الجزئي (طلب المالك 2026-10-09): استلمت 80 طماطم والسليم 30 —
         // الحساب على السليم فقط، والتالف موثق ولا يُسعَّر ولا يُحمَّل
@@ -316,7 +316,8 @@ router.post('/:id/receive', ...receiveGate, async (req, res, next) => {
                 await client.query('BEGIN');
                 const userName = cleanText(req.user.name || req.user.username, 120);
                 const inv = await createVegInvoice(client, {
-                    requestNo: row0.request_no, items: directApprove.items, user: req.user, pricedByName: userName,
+                    requestNo: row0.request_no, requestId: row0.id, items: directApprove.items, user: req.user,
+                    pricedByName: userName, department: row0.department,
                 });
                 upd = await client.query(
                     `UPDATE veg_requests
@@ -349,6 +350,36 @@ router.post('/:id/receive', ...receiveGate, async (req, res, next) => {
                             error: ledgerErr,
                         });
                     } catch (_) { /* الفشل نفسه لا يُسقط */ }
+                }
+                // قيد سداد المورد النقدي (2026-11-21): Dr 2000 ذمم / Cr 1000 صندوق —
+                // يغلق الدائن الذي كانت الدفعة الآلية تتركه مفتوحًا في الدفتر.
+                if (inv.paymentId) {
+                    try {
+                        const { postJournal } = require('./accounting-routes');
+                        const accts = await require('./coa-mapping').resolveAccounts(pool, 'procurement', 'supplier_payment', {
+                            payable_account: '2000', cash_account: '1000', bank_account: '1010',
+                        });
+                        await postJournal(pool, {
+                            date: new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10),
+                            memo: `سداد مورد الخضار ${inv.supplierName} — فاتورة ${inv.invoiceNumber}`,
+                            source_type: 'supplier_payment', source_id: String(inv.paymentId),
+                            lines: [
+                                { account_code: accts.payable_account, debit: Number(inv.total), credit: 0, memo: `سداد ذمم ${inv.supplierName}` },
+                                { account_code: accts.cash_account, debit: 0, credit: Number(inv.total), memo: 'خروج نقدية — دفعة فاتورة خضار' },
+                            ],
+                        });
+                    } catch (payErr) {
+                        logger.error('[veg-requests] journal سداد المورد فشل — لا يؤثر على الاستلام', { err: { message: String(payErr && payErr.message || payErr) } });
+                        try {
+                            await require('./posting-failures').recordPostingFailure(pool, {
+                                module: 'procurement',
+                                source_type: 'supplier_payment',
+                                source_id: String(inv.paymentId),
+                                payload: { invoice_id: inv.invoiceId, amount: Number(inv.total) },
+                                error: payErr,
+                            });
+                        } catch (_) { /* الفشل نفسه لا يُسقط */ }
+                    }
                 }
             } catch (txnErr) {
                 await client.query('ROLLBACK').catch(() => {});
@@ -409,7 +440,8 @@ router.post('/:id/price', jwtAuth, requireRole('warehouse', 'admin', 'owner', 'm
             await client.query('BEGIN');
             const userName = cleanText(req.user.name || req.user.username, 120);
             const inv = await createVegInvoice(client, {
-                requestNo: row.request_no, items: checked.items, user: req.user, pricedByName: userName,
+                requestNo: row.request_no, requestId: row.id, items: checked.items, user: req.user,
+                pricedByName: userName, department: row.department,
             });
             const upd = await client.query(
                 `UPDATE veg_requests
@@ -440,6 +472,35 @@ router.post('/:id/price', jwtAuth, requireRole('warehouse', 'admin', 'owner', 'm
                     });
                 } catch (_) { /* الفشل نفسه لا يُسقط */ }
             }
+            // قيد سداد المورد النقدي (2026-11-21) — نفس نمط مسار الاستلام
+            if (inv.paymentId) {
+                try {
+                    const { postJournal } = require('./accounting-routes');
+                    const accts = await require('./coa-mapping').resolveAccounts(pool, 'procurement', 'supplier_payment', {
+                        payable_account: '2000', cash_account: '1000', bank_account: '1010',
+                    });
+                    await postJournal(pool, {
+                        date: new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10),
+                        memo: `سداد مورد الخضار ${inv.supplierName} — فاتورة ${inv.invoiceNumber}`,
+                        source_type: 'supplier_payment', source_id: String(inv.paymentId),
+                        lines: [
+                            { account_code: accts.payable_account, debit: Number(inv.total), credit: 0, memo: `سداد ذمم ${inv.supplierName}` },
+                            { account_code: accts.cash_account, debit: 0, credit: Number(inv.total), memo: 'خروج نقدية — دفعة فاتورة خضار' },
+                        ],
+                    });
+                } catch (payErr) {
+                    logger.error('[veg-requests] journal سداد المورد فشل — لا يؤثر على التسعير', { err: { message: String(payErr && payErr.message || payErr) } });
+                    try {
+                        await require('./posting-failures').recordPostingFailure(pool, {
+                            module: 'procurement',
+                            source_type: 'supplier_payment',
+                            source_id: String(inv.paymentId),
+                            payload: { invoice_id: inv.invoiceId, amount: Number(inv.total) },
+                            error: payErr,
+                        });
+                    } catch (_) { /* الفشل نفسه لا يُسقط */ }
+                }
+            }
             logger.info('[veg-requests] تسعير طلب + فاتورة مورد خضار تلقائية', {
                 request_no: row.request_no, total: checked.total, invoice_id: inv.invoiceId,
             });
@@ -451,6 +512,107 @@ router.post('/:id/price', jwtAuth, requireRole('warehouse', 'admin', 'owner', 'm
         } finally {
             client.release();
         }
+    } catch (e) { next(e); }
+});
+
+// ─── تحليل الخضار (طلب المالك 2026-11-21): «الطماطم كم كيلو في فترة؟» ──────
+// لكل صنف خضار: المستلم من سجل الطلبيات، المستهلك من دفتر المخزون
+// (صرف/بيع/توليد/هالك)، والرصيد الحالي ومتوسط التكلفة من جدول المخزون.
+router.get('/consumption', jwtAuth, requireRole(...READ_ROLES, 'kitchen', 'manager'), async (req, res, next) => {
+    try {
+        await ensureSchema();
+        const dayRe = /^\d{4}-\d{2}-\d{2}$/;
+        const to = dayRe.test(String(req.query.to || '')) ? req.query.to : new Date(Date.now() + 3 * 3600 * 1000).toISOString().slice(0, 10);
+        const from = dayRe.test(String(req.query.from || '')) ? req.query.from : `${to.slice(0, 8)}01`;
+        if (from > to) {return res.status(422).json({ ok: false, error: 'INVALID_RANGE', message: 'الفترة غير سليمة' });}
+        if ((new Date(to + 'T12:00:00Z') - new Date(from + 'T12:00:00Z')) / 86400000 > 366) {
+            return res.status(422).json({ ok: false, error: 'RANGE_TOO_WIDE', message: 'الحد الأقصى 366 يومًا' });
+        }
+        const q = cleanText(req.query.q || '', 60);
+        const { normName } = require('./veg-invoice');
+
+        // 1) سجل المخزون للأصناف الخضراوية (الرصيد ومتوسط التكلفة)
+        const invRows = (await pool.query(
+            'SELECT id, name, unit, qty, "avgCost" FROM inventory WHERE category = $1', ['خضار']
+        )).rows;
+        // 2) المستهلك من دفتر المخزون في الفترة (الدلتا السالبة = خروج)
+        const consumedRows = (await pool.query(
+            `SELECT inventory_id, SUM(quantity_delta) AS delta, SUM(total_cost) AS cost
+             FROM inventory_ledger
+             WHERE transaction_type IN ('transfer_out','sale_consumption','production_consumption','waste')
+               AND business_date BETWEEN $1 AND $2
+             GROUP BY inventory_id`,
+            [from, to]
+        )).rows;
+        const consumedById = new Map(consumedRows.map((r) => [Number(r.inventory_id), r]));
+        // 3) المستلم من سجل الطلبيات المسلمة/المعتمدة في الفترة (JS تجميع)
+        const reqRows = (await pool.query(
+            `SELECT items, department FROM veg_requests
+             WHERE status IN ('received','priced')
+               AND COALESCE(received_at, created_at)::date BETWEEN $1 AND $2`,
+            [from, to]
+        )).rows;
+        const received = new Map(); // key → { name, unit, qty, value, requests }
+        for (const r of reqRows) {
+            const items = Array.isArray(r.items) ? r.items : (() => { try { return JSON.parse(r.items || '[]'); } catch (_) { return []; } })();
+            for (const it of items) {
+                if (it.rejected) {continue;}
+                const qty = Number(it.qty) || 0;
+                if (qty <= 0) {continue;}
+                const key = normName(it.name);
+                const cur = received.get(key) || { name: String(it.name || '').trim(), unit: String(it.unit || 'كجم'), qty: 0, value: 0, requests: 0 };
+                cur.qty = Math.round((cur.qty + qty) * 1000) / 1000;
+                cur.value = Math.round((cur.value + (Number(it.lineTotal) || qty * (Number(it.price) || 0))) * 100) / 100;
+                cur.requests += 1;
+                if (!cur.name) {cur.name = String(it.name || '').trim();}
+                received.set(key, cur);
+            }
+        }
+        // 4) الدمج: أساسه أصناف المخزون الخضراوية + ما استُلم تاريخيًا بلا صنف مخزون
+        const merged = new Map();
+        for (const inv of invRows) {
+            merged.set(normName(inv.name), {
+                name: inv.name, unit: inv.unit || 'كجم',
+                inventoryId: Number(inv.id), onHand: Number(inv.qty) || 0,
+                avgCost: Number(inv.avgCost) || 0,
+                receivedQty: 0, receivedValue: 0, requests: 0,
+                consumedQty: 0, consumedValue: 0,
+            });
+        }
+        for (const [key, rec] of received) {
+            const cur = merged.get(key) || {
+                name: rec.name, unit: rec.unit || 'كجم', inventoryId: null,
+                onHand: 0, avgCost: 0, receivedQty: 0, receivedValue: 0, requests: 0,
+                consumedQty: 0, consumedValue: 0,
+            };
+            cur.receivedQty = Math.round((cur.receivedQty + rec.qty) * 1000) / 1000;
+            cur.receivedValue = Math.round((cur.receivedValue + rec.value) * 100) / 100;
+            cur.requests += rec.requests;
+            if (rec.unit && cur.unit === 'كجم' && rec.unit !== 'كجم') {cur.unit = rec.unit;}
+            merged.set(key, cur);
+        }
+        for (const [invId, agg] of consumedById) {
+            const key = [...merged.entries()].find(([, v]) => v.inventoryId === Number(invId))?.[0];
+            if (!key) {continue;}
+            const cur = merged.get(key);
+            const delta = Number(agg.delta || 0);
+            cur.consumedQty = Math.round((cur.consumedQty + (delta < 0 ? -delta : 0)) * 1000) / 1000;
+            cur.consumedValue = Math.round((cur.consumedValue + (delta < 0 ? -(Number(agg.cost) || 0) : 0)) * 100) / 100;
+        }
+        let rows = [...merged.values()].filter((row) => row.receivedQty > 0 || row.consumedQty > 0 || row.onHand > 0);
+        if (q) {
+            const needle = normName(q);
+            rows = rows.filter((row) => normName(row.name).includes(needle));
+        }
+        rows.sort((a, b) => (b.consumedQty - a.consumedQty) || (b.receivedQty - a.receivedQty) || a.name.localeCompare(b.name, 'ar'));
+        const totals = {
+            receivedQty: Math.round(rows.reduce((s, r) => s + r.receivedQty, 0) * 1000) / 1000,
+            receivedValue: Math.round(rows.reduce((s, r) => s + r.receivedValue, 0) * 100) / 100,
+            consumedQty: Math.round(rows.reduce((s, r) => s + r.consumedQty, 0) * 1000) / 1000,
+            items: rows.length,
+        };
+        res.set('Cache-Control', 'no-store');
+        return res.json({ ok: true, from, to, rows, totals });
     } catch (e) { next(e); }
 });
 

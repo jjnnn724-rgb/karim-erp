@@ -1,7 +1,6 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { ItemDossier } from '../components/ItemDossier';
-import { PrintActions } from '../components/PrintActions';
 import { KpiCard, RangeControls, ReportHeader, SectionCard } from '../components/Reports';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import {
@@ -260,7 +259,6 @@ export function InventoryInquiry() {
                         >
                             {exportFile.isPending ? 'جارٍ التصدير…' : 'تصدير Excel'}
                         </button>
-                        <PrintActions title="محرك الاستعلامات" />
                     </div>
                 }
             >

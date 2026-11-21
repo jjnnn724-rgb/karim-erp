@@ -1,7 +1,6 @@
 import './CashRegister.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import {
@@ -695,7 +694,6 @@ export function CashRegister() {
                 <div className="flex flex-col gap-sm p-sm">
                     <div className="flex flex-wrap items-end gap-sm">
                         <div className="flex flex-wrap items-end gap-sm" data-erp-print-hide>
-                            <PrintActions title="سجلّ الصرف" />
                             <button
                                 type="button"
                                 onClick={() => {

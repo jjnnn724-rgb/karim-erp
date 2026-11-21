@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { KpiCard, RangeControls, ReportHeader, SectionCard } from '../components/Reports';
 import { StateError, StateLoading } from '../components/TableState';
 import { fetchCashFlow } from '../lib/cash-flow';
@@ -49,7 +48,6 @@ export function CashFlow() {
                 }}
             />
             <div data-erp-print-hide className="flex flex-wrap items-center gap-sm">
-                <PrintActions title={`التدفقات النقدية — ${range.from} إلى ${range.to}`} />
             </div>
             <SectionCard title="الفترة" english="Period">
                 <div className="flex flex-col gap-sm p-sm">

@@ -1,7 +1,6 @@
 import './Leaves.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { fetchEmployees } from '../lib/employees';
@@ -367,7 +366,6 @@ export function Leaves() {
                     <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
                         طلب إجازة جديد
                     </Button>
-                    <PrintActions title="الإجازات" />
                     <button
                         type="button"
                         onClick={() => {

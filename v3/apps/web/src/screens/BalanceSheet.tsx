@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { StateError, StateLoading } from '../components/TableState';
 import { accountAmount, type BalanceSheetAccount, fetchBalanceSheet, sumAccounts } from '../lib/balance-sheet';
@@ -125,7 +124,6 @@ export function BalanceSheet() {
                 }}
             />
             <div data-erp-print-hide className="flex flex-wrap items-center gap-sm">
-                <PrintActions title={`قائمة المركز المالي — ${asOf}`} />
             </div>
             <SectionCard title="تاريخ القائمة" english="As-of date">
                 <div className="flex flex-wrap items-end gap-sm p-sm">

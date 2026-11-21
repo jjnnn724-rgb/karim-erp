@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { fetchDeptHeadSnapshot } from '../lib/dashboards';
@@ -118,7 +117,6 @@ export function DeptHeadDashboard() {
                 >
                     أذون الصرف والقرارات
                 </button>
-                <PrintActions title="لوحة رئيس القسم" />
             </div>
 
             <FilterBar

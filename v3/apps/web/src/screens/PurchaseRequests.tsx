@@ -1,7 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useConfirm } from '../components/ConfirmProvider';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { fetchDepartments } from '../lib/finance';
@@ -1072,7 +1071,6 @@ export function PurchaseRequests() {
                             {PR_WRITE_TEXT.createButton}
                         </button>
                     ) : null}
-                    <PrintActions title="طلبات شراء النواقص" />
                     <button
                         type="button"
                         onClick={() => {

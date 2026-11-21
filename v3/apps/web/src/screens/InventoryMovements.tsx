@@ -2,7 +2,6 @@ import './InventoryMovements.premium.css';
 import { fromCents, toCents } from '@karim/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { fetchCurrency, firstOfMonth, riyadhToday } from '../lib/finance';
 import { formatMoney } from '../lib/format';
@@ -121,7 +120,6 @@ export function InventoryMovements() {
                 </div>
 
                 <div className="flex items-center gap-xs">
-                    <PrintActions title="حركات المخزون" />
                     <button
                         type="button"
                         onClick={() => {

@@ -1,7 +1,6 @@
 import './WhVsPos.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { KpiCard, RangeControls, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { errorMessage, intOf, moneyOf, pctOf, presetRange, qtyOf, rangeProblem, textOf } from '../lib/reporting';
@@ -51,7 +50,6 @@ export function WhVsPos() {
                     void compareQuery.refetch();
                 }}
             />
-            <PrintActions title="مقارنة المخزن بنقطة البيع" />
 
             <SectionCard title="الفترة" english="Period">
                 <div className="p-sm">

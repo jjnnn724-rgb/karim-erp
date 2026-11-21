@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { BarList, KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { fetchMonthlyComparison, latestMonth, MONTH_OPTIONS, topMonth } from '../lib/monthly-comparison';
@@ -36,7 +35,6 @@ export function MonthlyComparison() {
                     void comparisonQuery.refetch();
                 }}
             />
-            <PrintActions title="المقارنة الشهرية" />
 
             <SectionCard title="النافذة" english="Window">
                 <fieldset className="m-0 flex min-w-0 flex-wrap items-center gap-xs border-0 p-sm" aria-label="عدد الشهور">

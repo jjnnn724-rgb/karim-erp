@@ -734,54 +734,56 @@
         display: none;
     }
 }
-/* ─── زر المساعد الذكي العائم (أدمن فقط) ─── */
-.ai-fab {
+/* ─── زر الطباعة الموحد + قائمته (2026-11-21) ─── لغة واحدة، مكان واحد */
+.erp-shell__print-wrap {
     position: relative;
+    display: inline-flex;
+}
+.erp-shell__print-btn {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    inline-size: 2.5rem;
-    block-size: 2.5rem;
-    border-radius: 14px;
-    background: linear-gradient(135deg, #0b3b3a, #168653);
-    border: 1px solid rgb(22 134 83 / 40%);
-    color: #fff;
-    text-decoration: none;
-    box-shadow: 0 6px 18px -6px rgb(9 68 54 / 55%);
-    transition: transform 140ms ease, box-shadow 140ms ease;
+    inline-size: 2.25rem;
+    block-size: 2.25rem;
+    border-radius: 10px;
+    border: 1px solid var(--erp-hairline-strong, rgb(220 229 236));
+    background: var(--erp-surface, #fff);
+    color: var(--erp-ink, #172b3b);
+    cursor: pointer;
+    transition: background 140ms ease, border-color 140ms ease;
 }
-.ai-fab:hover { transform: translateY(-2px); box-shadow: 0 12px 26px -8px rgb(9 68 54 / 60%); }
-.ai-fab .erp-shell__icon {inline-size: 1.25rem; block-size: 1.25rem;}
-.ai-fab__badge {
+.erp-shell__print-btn:hover {
+    background: var(--erp-surface-hover, #f3f6fa);
+    border-color: rgb(15 118 110 / 45%);
+}
+.erp-shell__print-menu {
     position: absolute;
-    inset-block-start: -6px;
-    inset-inline-end: -6px;
-    min-inline-size: 1.3rem;
-    block-size: 1.3rem;
-    padding-inline: 0.3rem;
-    display: grid;
-    place-items: center;
-    border-radius: 999px;
-    background: #d97706;
-    color: #fff;
-    font-size: 0.65rem;
-    font-weight: 800;
-    font-variant-numeric: tabular-nums;
-    border: 2px solid var(--erp-surface, #fff);
-    animation: ai-fab-pulse 1.6s ease-in-out infinite;
+    inset-block-start: calc(100% + 6px);
+    inset-inline-end: 0;
+    z-index: 60;
+    min-inline-size: 11rem;
+    padding: 0.35rem;
+    border-radius: 12px;
+    border: 1px solid var(--erp-hairline-strong, rgb(220 229 236));
+    background: var(--erp-surface, #fff);
+    box-shadow: 0 14px 30px -14px rgb(23 43 59 / 35%);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
 }
-.ai-fab__badge[data-level='critical'] { background: #c0392b; }
-@keyframes ai-fab-pulse {
-    0%, 100% { box-shadow: 0 0 0 0 rgb(217 119 6 / 45%); }
-    50% { box-shadow: 0 0 0 5px rgb(217 119 6 / 18%); }
+.erp-shell__print-item {
+    border: 0;
+    background: transparent;
+    color: var(--erp-ink, #172b3b);
+    text-align: start;
+    padding: 0.45rem 0.6rem;
+    border-radius: 8px;
+    font-size: 0.85rem;
+    cursor: pointer;
 }
-.ai-fab__badge[data-level='critical'] {
-    animation: ai-fab-pulse-critical 1.1s ease-in-out infinite;
-}
-@keyframes ai-fab-pulse-critical {
-    0%, 100% { box-shadow: 0 0 0 0 rgb(192 57 43 / 50%); }
-    50% { box-shadow: 0 0 0 6px rgb(192 57 43 / 22%); }
-}
+.erp-shell__print-item:hover { background: var(--erp-surface-hover, #f3f6fa); }
+.erp-shell__print-item:disabled { opacity: 0.55; cursor: default; }
+
 /* Language toggle: Arabic / English */
 .erp-shell__lang-toggle {
     display: inline-flex;

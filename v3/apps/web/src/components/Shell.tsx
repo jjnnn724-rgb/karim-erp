@@ -1,8 +1,7 @@
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { useQuery } from '@tanstack/react-query';
 import { logout, useAuthState } from '../lib/auth';
-import { fetchRadar } from '../lib/ai-assistant';
+import { exportElementPdf } from '../lib/pdf-share';
 import { useHiddenNavKeys } from '../lib/hidden-nav';
 import { useLanguage } from '../lib/i18n';
 import { enLabel } from '../lib/nav-en';
@@ -89,9 +88,7 @@ export const NAV_ITEMS = [
     { to: '/menu-board', label: 'شاشة القائمة', hint: 'Menu Board' },
     { to: '/warehouse-dashboard', label: 'لوحة المخزن', hint: 'WH Dashboard' },
     { to: '/inventory-inquiry', label: 'محرك الاستعلامات', hint: 'Inventory Query' },
-    { to: '/accountant-dashboard', label: 'لوحة المحاسب', hint: 'Accountant' },
     { to: '/cfo', label: 'المدير المالي', hint: 'CFO' },
-    { to: '/ai-assistant', label: 'المساعد الذكي', hint: 'المساعد الذكي' },
     { to: '/dept-cost', label: 'وضع القسم', hint: 'Department Cost' },
     { to: '/dept-head-dashboard', label: 'لوحة رئيس القسم', hint: 'Dept Head' },
     { to: '/cost-analysis', label: 'تحليل التكلفة', hint: 'Cost Analysis' },
@@ -160,16 +157,43 @@ function ShellLayout() {
     const currentGroup = groupForPath(currentPath);
     // AccountsTree exposes only fetchChart; never infer access for other screens.
     const chartReadOnly = currentPath.replace(/\/+$/, '') === '/accounts';
-    const isAdmin = auth.user?.role === 'admin';
-    const radarQuery = useQuery({
-        queryKey: ['ai-radar'],
-        queryFn: ({ signal }) => fetchRadar(signal),
-        staleTime: 60_000,
-        refetchInterval: 120_000,
-        retry: 0,
-        enabled: isAdmin,
-    });
-    const radarCount = (radarQuery.data?.critical ?? 0) + (radarQuery.data?.high ?? 0);
+
+    // الطباعة الموحدة (2026-11-21): زر واحد في الشريط العلوي بدل أزرار رؤوس
+    // الصفحات — طباعة الصفحة (print.css مؤطر A4) أو PDF للصفحة الحالية.
+    const [printMenuOpen, setPrintMenuOpen] = useState(false);
+    const [printBusy, setPrintBusy] = useState<'download' | 'share' | null>(null);
+    const printMenuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!printMenuOpen) {
+            return undefined;
+        }
+        const onDocClick = (event: MouseEvent) => {
+            if (!printMenuRef.current?.contains(event.target as Node)) {
+                setPrintMenuOpen(false);
+            }
+        };
+        document.addEventListener('click', onDocClick);
+        return () => {
+            document.removeEventListener('click', onDocClick);
+        };
+    }, [printMenuOpen]);
+
+    const runPagePdf = useCallback(
+        async (mode: 'download' | 'share') => {
+            setPrintBusy(mode);
+            setPrintMenuOpen(false);
+            try {
+                const target = document.getElementById('erp-v3-main') ?? document.body;
+                await exportElementPdf(target, currentTitle ?? 'Karim ERP', { mode });
+            } catch {
+                /* فشل التجهيز لا يُسقط الواجهة — المستخدم يعيد المحاولة */
+            } finally {
+                setPrintBusy(null);
+            }
+        },
+        [currentTitle],
+    );
 
     useDocumentMeta(currentTitle);
 
@@ -189,6 +213,30 @@ function ShellLayout() {
                 hint: 'POS',
                 run: () => {
                     void navigate({ to: '/pos-entry' });
+                },
+            },
+            {
+                id: 'print-page',
+                label: 'طباعة الصفحة الحالية',
+                hint: currentTitle ?? 'Print',
+                run: () => {
+                    window.print();
+                },
+            },
+            {
+                id: 'print-pdf',
+                label: 'تحميل الصفحة PDF',
+                hint: currentTitle ?? 'PDF',
+                run: () => {
+                    void runPagePdf('download');
+                },
+            },
+            {
+                id: 'print-share',
+                label: 'مشاركة الصفحة PDF',
+                hint: currentTitle ?? 'Share',
+                run: () => {
+                    void runPagePdf('share');
                 },
             },
             {
@@ -609,12 +657,58 @@ function ShellLayout() {
                                 ) : null}
                             </div>
                         </div>
-                        {isAdmin ? (
-                            <Link to="/ai-assistant" title="المساعد الذكي — صاحي دايمًا" className="ai-fab" aria-label="المساعد الذكي">
-                                <ShellIcon name="spark" />
-                                {radarCount > 0 ? <span className="ai-fab__badge" data-level={radarQuery.data?.critical ? 'critical' : 'high'}>{radarCount}</span> : null}
-                            </Link>
-                        ) : null}
+                        <div className="erp-shell__print-wrap" ref={printMenuRef}>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setPrintMenuOpen((open) => !open);
+                                }}
+                                aria-expanded={printMenuOpen}
+                                aria-haspopup="menu"
+                                title="طباعة وتصدير الصفحة الحالية"
+                                className="erp-shell__print-btn"
+                                data-erp-print-hide
+                            >
+                                <ShellIcon name="print" />
+                            </button>
+                            {printMenuOpen ? (
+                                <div className="erp-shell__print-menu" role="menu" aria-label="طباعة وتصدير الصفحة الحالية">
+                                    <button
+                                        type="button"
+                                        role="menuitem"
+                                        onClick={() => {
+                                            setPrintMenuOpen(false);
+                                            window.print();
+                                        }}
+                                        className="erp-shell__print-item"
+                                    >
+                                        طباعة الصفحة
+                                    </button>
+                                    <button
+                                        type="button"
+                                        role="menuitem"
+                                        disabled={printBusy !== null}
+                                        onClick={() => {
+                                            void runPagePdf('download');
+                                        }}
+                                        className="erp-shell__print-item"
+                                    >
+                                        {printBusy === 'download' ? 'جارٍ التجهيز…' : 'تحميل PDF'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        role="menuitem"
+                                        disabled={printBusy !== null}
+                                        onClick={() => {
+                                            void runPagePdf('share');
+                                        }}
+                                        className="erp-shell__print-item"
+                                    >
+                                        {printBusy === 'share' ? 'جارٍ التجهيز…' : 'مشاركة PDF'}
+                                    </button>
+                                </div>
+                            ) : null}
+                        </div>
                         <Link to="/pos-entry" title="فتح نقطة البيع داخل النظام" className="erp-shell__command-trigger erp-shell__pos-link">
                             <ShellIcon name="monitor" />
                             <span>الكاشير</span>

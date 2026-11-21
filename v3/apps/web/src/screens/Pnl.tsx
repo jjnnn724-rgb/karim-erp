@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { KpiCard, RangeControls, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { buildPnlLines, fetchPnl } from '../lib/pnl';
@@ -46,7 +45,6 @@ export function Pnl() {
                     void pnlQuery.refetch();
                 }}
             />
-            <PrintActions title="الأرباح والخسائر" />
 
             <SectionCard title="الفترة" english="Period">
                 <div className="p-sm">

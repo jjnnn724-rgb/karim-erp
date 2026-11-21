@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { StateError, StateLoading } from '../components/TableState';
 import { fetchComplianceReport } from '../lib/compliance-report';
@@ -67,7 +66,6 @@ export function ComplianceCenter() {
             />
 
             <div data-erp-print-hide className="flex flex-wrap items-center gap-sm">
-                <PrintActions title={`تقرير الامتثال — ${month}`} />
             </div>
 
             <SectionCard title="شهر الامتثال" english="Compliance month">

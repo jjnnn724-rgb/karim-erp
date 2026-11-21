@@ -106,8 +106,9 @@ function pctChange(current, previous) {
 // عائلة «مصروف المخزون»: نفس القائمة التي يستثنيها التقرير اليومي وباب استعلام
 // المخزون — dispatch تكلفة، count_correction فروق جرد، والخمس الباقية حركة داخلية
 // لا نقد خرج بها. عَدّها مصروفًا تشغيليًا يضاعف التكلفة ويكذب هامش الربح.
+// veg_purchase (2026-11-21): فواتير الخضار المسددة — مادة مباشرة على قسم المطبخ.
 const STOCK_EXPENSE_TYPES = Object.freeze(['dispatch', 'dispatch_return', 'transfer', 'receipt',
-    'stock_transfer', 'inventory_transfer', 'kitchen_return', 'count_correction']);
+    'stock_transfer', 'inventory_transfer', 'kitchen_return', 'count_correction', 'veg_purchase']);
 const COGS_TYPES = new Set(['dispatch', 'dispatch_return']);
 const SHRINKAGE_TYPES = new Set(['count_correction']);
 const INTERNAL_MOVE_TYPES = new Set(STOCK_EXPENSE_TYPES
@@ -1599,7 +1600,7 @@ function costAnalysisSql(from, to) {
                        GREATEST(0, COALESCE(SUM(e.amount) FILTER (
                            WHERE LOWER(COALESCE(e."adjustmentType", '')) IN
                                ('dispatch', 'dispatch_return', 'receipt', 'stock_transfer',
-                                'kitchen_return')
+                                'kitchen_return', 'veg_purchase')
                        ), 0)) AS materials,
                        /* التحويلات بين الأقسام: بند موقَّع مستقل (سالب على المرسل،
                           موجب على المستلم) — لا يُدمج في materials حتى لا يُلغى
@@ -1614,7 +1615,7 @@ function costAnalysisSql(from, to) {
                        COALESCE(SUM(e.amount) FILTER (
                            WHERE LOWER(COALESCE(e."adjustmentType", '')) NOT IN
                                ('dispatch', 'dispatch_return', 'receipt', 'stock_transfer',
-                                'inventory_transfer', 'kitchen_return', 'count_correction')
+                                'inventory_transfer', 'kitchen_return', 'count_correction', 'veg_purchase')
                        ), 0) AS operating,
                        COUNT(e.id)::int AS row_count
                   FROM dept_tree tree
@@ -1630,7 +1631,7 @@ function costAnalysisSql(from, to) {
                        GREATEST(0, COALESCE(SUM(e.amount) FILTER (
                            WHERE LOWER(COALESCE(e."adjustmentType", '')) IN
                                ('dispatch', 'dispatch_return', 'receipt', 'stock_transfer',
-                                'kitchen_return')
+                                'kitchen_return', 'veg_purchase')
                        ), 0)) AS materials,
                        COALESCE(SUM(e.amount) FILTER (
                            WHERE LOWER(COALESCE(e."adjustmentType", '')) = 'inventory_transfer'
@@ -1641,7 +1642,7 @@ function costAnalysisSql(from, to) {
                        COALESCE(SUM(e.amount) FILTER (
                            WHERE LOWER(COALESCE(e."adjustmentType", '')) NOT IN
                                ('dispatch', 'dispatch_return', 'receipt', 'stock_transfer',
-                                'inventory_transfer', 'kitchen_return', 'count_correction')
+                                'inventory_transfer', 'kitchen_return', 'count_correction', 'veg_purchase')
                        ), 0) AS operating,
                        COUNT(e.id)::int AS row_count
                   FROM expenses e
@@ -1660,7 +1661,7 @@ function costAnalysisSql(from, to) {
                        FROM expenses e
                       WHERE LOWER(COALESCE(e."adjustmentType", '')) IN
                           ('dispatch', 'dispatch_return', 'receipt', 'stock_transfer',
-                           'kitchen_return')${expenseRange}) AS materials,
+                           'kitchen_return', 'veg_purchase')${expenseRange}) AS materials,
                     (SELECT COALESCE(SUM(e.amount), 0)
                        FROM expenses e
                       WHERE LOWER(COALESCE(e."adjustmentType", '')) = 'inventory_transfer'${expenseRange}) AS transfers,
@@ -1671,7 +1672,7 @@ function costAnalysisSql(from, to) {
                        FROM expenses e
                       WHERE LOWER(COALESCE(e."adjustmentType", '')) NOT IN
                           ('dispatch', 'dispatch_return', 'receipt', 'stock_transfer',
-                           'inventory_transfer', 'kitchen_return', 'count_correction')${expenseRange}) AS operating
+                           'inventory_transfer', 'kitchen_return', 'count_correction', 'veg_purchase')${expenseRange}) AS operating
             ),
             category_totals AS (
                 SELECT COALESCE(x.category, 'أخرى') AS label,
@@ -1822,12 +1823,12 @@ async function loadPreviousCostTotals(from, to) {
          )
          SELECT tree.root_code,
                 COALESCE(SUM(e.amount) FILTER (WHERE LOWER(COALESCE(e."adjustmentType", '')) IN
-                    ('dispatch', 'dispatch_return', 'receipt', 'stock_transfer', 'kitchen_return')), 0) AS materials,
+                    ('dispatch', 'dispatch_return', 'receipt', 'stock_transfer', 'kitchen_return', 'veg_purchase')), 0) AS materials,
                 COALESCE(SUM(e.amount) FILTER (WHERE LOWER(COALESCE(e."adjustmentType", '')) = 'inventory_transfer'), 0) AS transfers,
                 COALESCE(SUM(e.amount) FILTER (WHERE LOWER(COALESCE(e."adjustmentType", '')) = 'count_correction'), 0) AS count_adj,
                 COALESCE(SUM(e.amount) FILTER (WHERE LOWER(COALESCE(e."adjustmentType", '')) NOT IN
                     ('dispatch', 'dispatch_return', 'receipt', 'stock_transfer',
-                     'inventory_transfer', 'kitchen_return', 'count_correction')), 0) AS operating
+                     'inventory_transfer', 'kitchen_return', 'count_correction', 'veg_purchase')), 0) AS operating
            FROM dept_tree tree
            LEFT JOIN expenses e ON e."deptId" = tree.code
                   AND LEFT(e.date, 10) >= $1 AND LEFT(e.date, 10) <= $2
@@ -1905,7 +1906,7 @@ async function loadDeptCostDetail(code, from, to) {
     const items = rows.map((r) => {
         const type = String(r.adjustment_type || '').toLowerCase();
         let bucket = 'operating';
-        if (['dispatch', 'dispatch_return', 'receipt', 'stock_transfer', 'kitchen_return'].includes(type)) {bucket = 'materials';}
+        if (['dispatch', 'dispatch_return', 'receipt', 'stock_transfer', 'kitchen_return', 'veg_purchase'].includes(type)) {bucket = 'materials';}
         else if (type === 'inventory_transfer') {bucket = 'transfers';}
         else if (type === 'count_correction') {bucket = 'countAdj';}
         buckets[bucket] += num(r.amount);

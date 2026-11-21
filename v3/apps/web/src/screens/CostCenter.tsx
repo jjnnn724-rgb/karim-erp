@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { KpiCard, RangeControls, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { ADJUSTMENT_AR, BUCKET_AR, fetchCostAnalysis, fetchDeptCostDetail, selectableDepts } from '../lib/cost-analysis';
@@ -66,7 +65,6 @@ export function CostCenter() {
                     }
                 }}
             />
-            <PrintActions title="مركز التكلفة" />
 
             <SectionCard title="النطاق" english="Scope">
                 <div className="flex flex-col gap-sm p-sm">

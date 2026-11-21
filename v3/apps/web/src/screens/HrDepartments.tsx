@@ -1,7 +1,6 @@
 import './HrDepartments.premium.css';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useMemo, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import {
@@ -140,7 +139,6 @@ export function HrDepartments() {
                     <p className="text-body-sm text-muted">دليل أقسام الموارد البشرية وعدد الموظفين المرتبطين بكل قسم.</p>
                 </div>
                 <div className="flex flex-wrap gap-xs">
-                    <PrintActions title="أقسام الموظفين" />
                     <button
                         type="button"
                         onClick={() => {

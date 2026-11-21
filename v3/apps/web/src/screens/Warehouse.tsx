@@ -5,7 +5,6 @@ import { useEffect, useMemo, useState } from 'react';
 import { BulkReceiptDialog } from '../components/BulkReceiptDialog';
 import { useConfirm } from '../components/ConfirmProvider';
 import { InventoryAuditStudio } from '../components/InventoryAuditStudio';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { canReadAudit } from '../lib/inventory-audits';
@@ -743,7 +742,6 @@ export function Warehouse() {
                     >
                         تحديث
                     </button>
-                    <PrintActions title="المخزون" />
                 </div>
             </header>
 

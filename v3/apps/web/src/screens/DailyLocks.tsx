@@ -1,7 +1,6 @@
 import './DailyLocks.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { ApiError } from '../lib/api';
@@ -58,7 +57,6 @@ export function DailyLocks() {
                 }}
             />
             <div className="flex justify-end gap-xs" data-erp-print-hide>
-                <PrintActions title="لوحة التقفيل اليومي" />
             </div>
 
             <SectionCard title="اليوم" english="Day">

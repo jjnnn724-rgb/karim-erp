@@ -1,7 +1,6 @@
 import './CashierSales.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { BarList, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { cashierLabel, deltaText, fetchCashierSales } from '../lib/cashier-sales';
@@ -49,7 +48,6 @@ export function CashierSales() {
 
     return (
         <div className="flex flex-col gap-md premium-screen premium-cashiersales">
-            <PrintActions title="مبيعات الكاشير" />
             <ReportHeader
                 title="مبيعات الكاشير"
                 english="Cashier Sales"

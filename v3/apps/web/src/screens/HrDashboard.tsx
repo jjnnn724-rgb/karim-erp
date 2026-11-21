@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { BarList, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { buildHrKpis, departmentDistribution, fetchHrSnapshot, pendingLeaveRows, weeklyAttendance } from '../lib/hr-dashboard';
@@ -56,7 +55,6 @@ export function HrDashboard() {
                     void snapshotQuery.refetch();
                 }}
             />
-            <PrintActions title="لوحة الموارد البشرية" />
 
             <FilterBar
                 id="hr-filter"

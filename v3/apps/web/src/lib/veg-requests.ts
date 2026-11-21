@@ -280,3 +280,48 @@ export function vegStatusCounts(rows: readonly VegRequestRow[]): VegStatusCounts
         urgent: rows.filter((row) => row.urgent).length,
     };
 }
+
+/* ─── تحليل الخضار (2026-11-21) — المستلم/المستهلك/الرصيد لكل صنف ───────── */
+
+const consumptionRowSchema = z
+    .object({
+        name: z.string(),
+        unit: optionalText,
+        inventoryId: z.union([z.string(), z.number()]).nullable().optional(),
+        onHand: z.number(),
+        avgCost: z.number(),
+        receivedQty: z.number(),
+        receivedValue: z.number(),
+        requests: z.number(),
+        consumedQty: z.number(),
+        consumedValue: z.number(),
+    })
+    .passthrough();
+
+export type VegConsumptionRow = z.infer<typeof consumptionRowSchema>;
+
+const consumptionResponseSchema = z
+    .object({
+        ok: z.unknown().optional(),
+        from: z.string(),
+        to: z.string(),
+        rows: z.array(consumptionRowSchema),
+        totals: z.object({
+            receivedQty: z.number(),
+            receivedValue: z.number(),
+            consumedQty: z.number(),
+            items: z.number(),
+        }),
+    })
+    .passthrough();
+
+export type VegConsumption = z.infer<typeof consumptionResponseSchema>;
+
+/** تحليل الخضار للفترة — باب الخادم `/api/veg-requests/consumption`. */
+export async function fetchVegConsumption(from: string, to: string, q: string, signal?: AbortSignal): Promise<VegConsumption> {
+    const params = new URLSearchParams({ from, to });
+    if (q.trim()) {
+        params.set('q', q.trim().slice(0, 60));
+    }
+    return fetchJson(consumptionResponseSchema, `/api/veg-requests/consumption?${params.toString()}`, getAccessToken(), signal ? { signal } : {});
+}

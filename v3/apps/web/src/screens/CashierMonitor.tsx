@@ -1,7 +1,6 @@
 import './CashierMonitor.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import {
@@ -66,7 +65,6 @@ export function CashierMonitor() {
 
     return (
         <div className="flex flex-col gap-md premium-screen premium-cashiermonitor">
-            <PrintActions title="متابعة الكاشير" />
             <ReportHeader
                 title="متابعة الكاشير"
                 english="Cashier Monitor"

@@ -1,6 +1,5 @@
 import { useState } from 'react';
 import './MenuBoard.premium.css';
-import { PrintActions } from '../components/PrintActions';
 import { ReportHeader, SectionCard } from '../components/Reports';
 
 /**
@@ -25,7 +24,6 @@ export function MenuBoard() {
                 }}
             />
             <div className="flex justify-end gap-xs" data-erp-print-hide>
-                <PrintActions title="شاشات المنيو" />
             </div>
 
             <SectionCard

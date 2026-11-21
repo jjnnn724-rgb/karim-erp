@@ -1,6 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { fetchCurrency } from '../lib/finance';
 import { formatMoney } from '../lib/format';
@@ -119,7 +118,6 @@ export function ItemPrices() {
                     >
                         تحديث
                     </button>
-                    <PrintActions title="أسعار الأصناف" />
                 </div>
             </header>
 

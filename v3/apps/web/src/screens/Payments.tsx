@@ -2,7 +2,6 @@ import './Payments.premium.css';
 import { toCents } from '@karim/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { fetchCurrency, riyadhToday } from '../lib/finance';
@@ -429,7 +428,6 @@ export function Payments() {
                             تسجيل دفعة
                         </Button>
                     ) : null}
-                    <PrintActions title="مدفوعات الموردين" />
                     <button
                         type="button"
                         onClick={() => {
