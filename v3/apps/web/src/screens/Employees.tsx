@@ -1,5 +1,6 @@
 import './Employees.premium.css';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useMemo, useState } from 'react';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { attendanceMinutes, fetchAttendanceRange, todayIso, weekdayAr } from '../lib/attendance';
@@ -417,6 +418,7 @@ function EmployeeCard({
     index: number;
     onOpen: (row: EmployeeRow) => void;
 }) {
+    const navigate = useNavigate();
     const photo = validPhotoSrc(extras?.photo ?? '');
     const sh = extras
         ? shiftSummary({
@@ -627,6 +629,17 @@ function EmployeeCard({
                         </div>
                     </div>
                 ) : null}
+            </div>
+            <div className="erp-person__meta" data-erp-print-hide>
+                <button
+                    type="button"
+                    onClick={() => {
+                        void navigate({ to: '/employee-card', search: { id: String(row.id ?? '') } });
+                    }}
+                    className="rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-button-md text-ink hover:bg-surface-hover"
+                >
+                    🪪 فتح البطاقة الكاملة
+                </button>
             </div>
         </li>
     );

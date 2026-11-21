@@ -90,7 +90,12 @@ const entitySchemas = {
             'shift_start', 'shift_karim',  // الوردية (migration 040)
             'day_off',  // الراحة الأسبوعية 0-6 (migration 070)
             'auto_checkout',  // انصراف تلقائي — مدير فقط (migration 044)
-            'auto_lock'  // قفل اليوم بعد الإغلاق التلقائي — مدير فقط (migration 046)
+            'auto_lock',  // قفل اليوم بعد الإغلاق التلقائي — مدير فقط (migration 046)
+            // بطاقة الموظف الكاملة (2026-11-21) — أعمدة migration 105/147:
+            'iqamaNumber',  // رقم الإقامة/الهوية
+            'iban',  // الحساب البنكي — WPS
+            'nationality',  // الجنسية (رمز/اسم)
+            'gosi_number'  // رقم التأمينات الاجتماعية
         ],
         required: ['name', 'employeeId'],
         types: {
@@ -116,6 +121,10 @@ const entitySchemas = {
             day_off: TYPES.NUMBER,
             auto_checkout: TYPES.BOOLEAN,
             auto_lock: TYPES.BOOLEAN,
+            iqamaNumber: TYPES.STRING,
+            iban: TYPES.STRING,
+            nationality: TYPES.STRING,
+            gosi_number: TYPES.STRING,
         },
         maxLength: {
             name: 255, employeeId: 50, department: 50, position: 255,
@@ -123,6 +132,7 @@ const entitySchemas = {
             iqamaExpiry: 50, healthCertExpiry: 50, healthEduExpiry: 50,
             digitalFingerprint: 100, cardId: 100,
             deviceUserId: 64, shift_start: 5,
+            iqamaNumber: 20, iban: 50, nationality: 60, gosi_number: 40,
         },
         protected: ['id'],
         description: 'Employee records',
@@ -811,7 +821,9 @@ const OPEN_ENTITY_WRITE_ROLES = Object.freeze({
     inventory:       ['admin', 'manager', 'warehouse'],
     inventoryTx:     ['admin', 'manager', 'warehouse'],
     shelves:         ['admin', 'manager', 'warehouse'],
-    employees:       ['admin', 'manager', 'hr'],
+    // employees: كتابة الموظفين للأدمن وHR فقط (قرار المالك 2026-11-21 —
+    // «التعديل يكون صلاحية hr والأدمن فقط») — المدير يبقى قارئًا برواتب مقنّعة.
+    employees:       ['admin', 'hr'],
     hrDepartments:   ['admin', 'manager', 'hr'],
     // attendance خارج الخريطة عمداً: تسجيل الدخول/الانصراف خدمة ذاتية لأي موظف
     // مرتبط — الحماية عبر enforceAttendanceSelfService (نفسه فقط) في server.js،

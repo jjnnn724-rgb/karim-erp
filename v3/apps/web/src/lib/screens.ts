@@ -27,6 +27,7 @@ export const V3_SCREENS = [
     'wh-prs',
     'dept-transfers',
     'employees',
+    'employee-card',
     'hr-departments',
     'users',
     'branches',
@@ -82,9 +83,10 @@ export type V3Screen = (typeof V3_SCREENS)[number];
 /**
  * شاشات مفعّلة ومسجّلة خارج القائمة الجانبية — تُفتح من أزرار داخل الشاشات
  * الأم، لا من السايدبار (تنظيف 2026-11-20 «النظام الأنظف»).
- * حاليًا: `warehouse-gov` زر داخل صفحة المخزن بدل عنصر قائمة.
+ * حاليًا: `warehouse-gov` زر داخل صفحة المخزن، و`employee-card` بطاقة الموظف
+ * الكاملة تُفتح من بطاقات شاشة الموظفين (2026-11-21).
  */
-export const OFF_NAV_SCREENS = ['warehouse-gov'] as const;
+export const OFF_NAV_SCREENS = ['warehouse-gov', 'employee-card'] as const;
 
 export const LEGACY_APP_URL = '/app/v2.html?live=1';
 

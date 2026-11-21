@@ -2,17 +2,18 @@ import { z } from 'zod';
 import { isWriteRole, writeAck, writeJson } from './write';
 
 /**
- * كتابة الموظفين — منقولة من V2 بوابات الصلاحية نفسها:
- *  • إنشاء     POST   /api/employees          (admin|manager|hr)
- *  • تعديل     PATCH  /api/employees/:id      (admin|manager|hr)
- *  • إيقاف/تفعيل PATCH /api/employees/:id/active (admin|manager|hr)
+ * كتابة الموظفين — الصلاحية اتسعت ثم ضاقت بقرار المالك:
+ *  • 2026-10: أُنقلت من V2 ببوابات admin|manager|hr.
+ *  • **2026-11-21 («بطاقة الموظف»)**: الكتابة للأدمن وHR فقط —
+ *    «التعديل يكون صلاحية hr والأدمن فقط». المدير يبقى قارئًا برواتب مقنّعة.
+ *  • المسارات:
+ *  • إنشاء     POST   /api/employees          (admin|hr)
+ *  • تعديل     PUT    /api/employees/:id      (admin|hr) — كل الحقول القابلة للكتابة
+ *  • إيقاف/تفعيل PUT /api/employees/:id      (admin|hr)
  *  • حذف نهائي DELETE /api/employees/:id      (admin)
- *
- * حتى تُفعَّل هذه المسارات في الباكendien، تُعدّ الدوال جاهزة للاستدعاء
- * عبر writeJson/writeAck stesse العقود المستخدمة في المخزون والفروع.
  */
 
-export const EMPLOYEE_WRITE_ROLES = ['admin', 'manager', 'hr'] as const;
+export const EMPLOYEE_WRITE_ROLES = ['admin', 'hr'] as const;
 export const EMPLOYEE_DELETE_ROLES = ['admin'] as const;
 
 export function employeeWriteVisible(role: string | null | undefined): boolean {
@@ -103,6 +104,60 @@ export async function updateEmployee(id: string | number, input: EmployeeUpdateI
         phone: input.phone.trim(),
         ...(input.status !== undefined ? { status: input.status } : {}),
     });
+}
+
+/* ── بطاقة الموظف — تحرير كامل بالأقسام (2026-11-21) ──────────────────── */
+
+/**
+ * حقول البطاقة القابلة للتحرير — كل ما يقبلها الخادم من schema-registry
+ * (writeable list) مع حماياته الحقلية: أعلام auto_* للأدمن فقط تُرفض
+ * من غيره على الخادم، وemployeeId للإنشاء لا للتعديل، وuserId ربط الحساب.
+ */
+export const employeeProfileSchema = z.object({
+    name: z.string().min(1, EMPLOYEE_TEXT.nameRequired),
+    department: z.string().optional().nullable(),
+    position: z.string().optional().nullable(),
+    phone: z.string().optional().nullable(),
+    email: z.string().optional().nullable(),
+    joinDate: z.string().optional().nullable(),
+    salary: z.number().optional().nullable(),
+    status: z.string().optional(),
+    iqamaNumber: z.string().optional().nullable(),
+    iqamaExpiry: z.string().optional().nullable(),
+    healthCertExpiry: z.string().optional().nullable(),
+    healthEduExpiry: z.string().optional().nullable(),
+    nationality: z.string().optional().nullable(),
+    iban: z.string().optional().nullable(),
+    gosi_number: z.string().optional().nullable(),
+    cardId: z.string().optional().nullable(),
+    deviceUserId: z.string().optional().nullable(),
+    shift_start: z.string().optional().nullable(),
+    day_off: z.number().int().min(0).max(6).optional().nullable(),
+    photo: z.string().optional().nullable(),
+    auto_checkout: z.boolean().optional(),
+    auto_lock: z.boolean().optional(),
+});
+
+export type EmployeeProfileInput = z.infer<typeof employeeProfileSchema>;
+
+/** تحديث موسّع بأي مجموعة حقول (نموذج بطاقة الموظف بالأقسام). */
+export async function updateEmployeeProfile(id: string | number, input: EmployeeProfileInput): Promise<EmployeeResult> {
+    const payload: Record<string, unknown> = {};
+    const nullable = ['department', 'position', 'phone', 'email', 'joinDate', 'salary', 'iqamaNumber', 'iqamaExpiry', 'healthCertExpiry', 'healthEduExpiry', 'nationality', 'iban', 'gosi_number', 'cardId', 'deviceUserId', 'shift_start', 'day_off', 'photo'];
+    for (const [key, value] of Object.entries(input)) {
+        if (value === undefined) {
+            continue;
+        }
+        if (nullable.includes(key)) {
+            payload[key] = value === '' ? null : value;
+        } else {
+            payload[key] = value;
+        }
+    }
+    if (typeof payload.name === 'string') {
+        payload.name = payload.name.trim();
+    }
+    return writeJson(employeeResultSchema, `/api/employees/${encodeURIComponent(String(id))}`, 'PUT', payload);
 }
 
 export async function setEmployeeActive(id: string | number, active: boolean): Promise<EmployeeResult> {

@@ -204,6 +204,13 @@ export const employeesRoute = createRoute({
 });
 employeesRoute.lazy(() => import('../screens/Employees.lazy').then((module) => module.Route));
 
+/** بطاقة الموظف الكاملة — ?id= من شاشة الموظفين (خارج القائمة، 2026-11-21). */
+export const employeeCardRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/employee-card',
+});
+employeeCardRoute.lazy(() => import('../screens/EmployeeCard.lazy').then((module) => module.Route));
+
 /** أقسام الموارد البشرية — دليل وعمليات مقيّدة بعلم الكتابة. */
 export const hrDepartmentsRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -548,6 +555,7 @@ export const routeTree = rootRoute.addChildren([
     purchaseRequestsRoute,
     deptTransfersRoute,
     employeesRoute,
+    employeeCardRoute,
     hrDepartmentsRoute,
     attendanceRoute,
     leavesRoute,

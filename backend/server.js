@@ -2594,6 +2594,18 @@ entities.forEach(entity => {
                     actor: { userId: req.user?.id, userName: req.user?.name, role: req.user?.role, ip: req.ip, requestId: req.id },
                 }).catch((e) => logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[user-audit] update:'));
             }
+            // تدقيق بطاقة الموظف (2026-11-21): أي تعديل على بيانات موظف يُسجَّل
+            // بالحقول المُغيَّرة فقط — الصلاحية admin/hr (قرار المالك).
+            if (entity === 'employees') {
+                await writeAuditLog({
+                    action: 'EMPLOYEE_UPDATED',
+                    tableName: 'employees',
+                    rowPk: id,
+                    reason: 'تعديل بيانات موظف',
+                    metadata: { fields: Object.keys(filtered ?? {}), actor_role: req.user?.role },
+                    actor: { userId: req.user?.id, userName: req.user?.name, role: req.user?.role, ip: req.ip, requestId: req.id },
+                }).catch((e) => logger.warn({ err: { message: String(e.message), stack: (e && e.stack) || null } }, '[employee-audit] update:'));
+            }
             if (entity === 'expenses' && (filtered.amount !== undefined || filtered.date !== undefined || filtered.notes !== undefined)) {
                 await voidExpenseJournal(id, req.user);
                 await postExpenseJournal(result.rows[0], req.user);
