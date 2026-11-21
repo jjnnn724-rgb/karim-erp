@@ -4,8 +4,9 @@ import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useMemo, useState } from 'react';
 import { BulkReceiptDialog } from '../components/BulkReceiptDialog';
 import { useConfirm } from '../components/ConfirmProvider';
+import { AnswerStrip, EmptyState, ScreenHero } from '../ui';
 import { InventoryAuditStudio } from '../components/InventoryAuditStudio';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
+import { Card, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { canReadAudit } from '../lib/inventory-audits';
 import {
@@ -88,20 +89,7 @@ const TONE_CLASS: Record<string, string> = {
     neutral: 'text-muted',
 };
 
-function Kpi({ label, english, value, hint }: { label: string; english: string; value: string; hint: string }) {
-    return (
-        <div className="rounded-lg border border-hairline bg-surface p-md shadow-card">
-            <p className="text-label-md text-muted">
-                {label}{' '}
-                <span className="text-caption text-faint" dir="ltr" lang="en">
-                    {english}
-                </span>
-            </p>
-            <p className="erp-numeric mt-xs text-heading-lg text-ink">{value}</p>
-            <p className="mt-xxs text-caption text-muted">{hint}</p>
-        </div>
-    );
-}
+/* Kpi المحلي أُزيل (لغة كريم 2026-11-21) — جواب البطل عبر AnswerStrip. */
 
 /* ── نموذج الوارد السريع (وارد) ─────────────────────────────────────────── */
 
@@ -673,97 +661,96 @@ export function Warehouse() {
 
     return (
         <div className="flex flex-col gap-md erp-premium-Warehouse">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        المخزون{' '}
-                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
-                            Inventory
-                        </span>
-                    </h1>
-                    <p className="text-body-sm text-muted">سجل الأصناف وأرصدتها — وارد سريع وتعديل مباشر وحذف ودمج للمكرر وصلاحياتها.</p>
-                </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                    {canGov ? (
-                        <Button
+            <ScreenHero
+                title="المخزون"
+                english="INVENTORY"
+                description="سجل الأصناف وأرصدتها — وارد سريع وتعديل مباشر وحذف ودمج للمكرر وصلاحياتها."
+                answer={
+                    <AnswerStrip
+                        items={[
+                            {
+                                label: 'الأصناف المعروضة',
+                                english: 'Items',
+                                value: rows.length,
+                                format: formatInt,
+                                hint: truncated ? `أول ${formatInt(rows.length)} من ${formatInt(total)} — سقف الجلب` : `من ${formatInt(total)} في السجل`,
+                            },
+                            { label: 'تحت الحد', english: 'Below minimum', value: counts.low, format: formatInt, hint: 'الرصيد عند حد إعادة الطلب أو تحته', tone: 'warning' },
+                            { label: 'نفد', english: 'Out of stock', value: counts.out, format: formatInt, hint: 'رصيد صفر أو أقل', tone: counts.out > 0 ? 'danger' : 'neutral' },
+                            { label: 'متوفر', english: 'In stock', value: counts.ok, format: formatInt, hint: 'الرصيد أعلى من الحد المسجّل', tone: 'success' },
+                        ]}
+                        columns={4}
+                    />
+                }
+                actions={
+                    <>
+                        {canGov ? (
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => {
+                                    void navigate({ to: '/warehouse-gov' });
+                                }}
+                            >
+                                حوكمة المخزن
+                            </Button>
+                        ) : null}
+                        {canWrite ? (
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => {
+                                    setBulkOpen(true);
+                                }}
+                            >
+                                استلام مجمّع
+                            </Button>
+                        ) : null}
+                        {canAudit ? (
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => {
+                                    setAuditsOpen(true);
+                                }}
+                            >
+                                الجرد الفعلي
+                            </Button>
+                        ) : null}
+                        {canMerge ? (
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => {
+                                    setPageError('');
+                                    setMergeOpen(true);
+                                }}
+                            >
+                                دمج أصناف مكررة
+                            </Button>
+                        ) : null}
+                        <button
                             type="button"
-                            size="sm"
-                            variant="secondary"
                             onClick={() => {
-                                void navigate({ to: '/warehouse-gov' });
+                                void inventoryQuery.refetch();
                             }}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
                         >
-                            حوكمة المخزن
-                        </Button>
-                    ) : null}
-                    {canWrite ? (
-                        <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => {
-                                setBulkOpen(true);
-                            }}
-                        >
-                            استلام مجمّع
-                        </Button>
-                    ) : null}
-                    {canAudit ? (
-                        <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => {
-                                setAuditsOpen(true);
-                            }}
-                        >
-                            الجرد الفعلي
-                        </Button>
-                    ) : null}
-                    {canMerge ? (
-                        <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => {
-                                setPageError('');
-                                setMergeOpen(true);
-                            }}
-                        >
-                            دمج أصناف مكررة
-                        </Button>
-                    ) : null}
-                    <button
-                        type="button"
-                        onClick={() => {
-                            void inventoryQuery.refetch();
-                        }}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                </div>
-            </header>
+                            تحديث
+                        </button>
+                    </>
+                }
+            />
 
             {pageError ? (
                 <p role="alert" className="text-body-sm text-danger-text">
                     {pageError}
                 </p>
             ) : null}
-
-            <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
-                <Kpi
-                    label="الأصناف المعروضة"
-                    english="Items"
-                    value={formatInt(rows.length)}
-                    hint={
-                        truncated ? `أول ${formatInt(rows.length)} من ${formatInt(total)} — سقف الجلب` : `من ${formatInt(total)} في السجل`
-                    }
-                />
-                <Kpi label="تحت الحد" english="Below minimum" value={formatInt(counts.low)} hint="الرصيد عند حد إعادة الطلب أو تحته" />
-                <Kpi label="نفد" english="Out of stock" value={formatInt(counts.out)} hint="رصيد صفر أو أقل" />
-                <Kpi label="متوفر" english="In stock" value={formatInt(counts.ok)} hint="الرصيد أعلى من الحد المسجّل" />
-            </div>
 
             <Card className="p-sm">
                 <div className="flex flex-wrap items-end gap-sm">
@@ -945,7 +932,25 @@ export function Warehouse() {
                 ) : null}
 
                 {!inventoryQuery.isPending && !inventoryQuery.isError && rows.length === 0 ? (
-                    <StateEmpty title="لا أصناف" hint="لا صنف يطابق البحث أو الفئة أو حالة المخزون — امسح المرشّحات أو غيّر كلمة البحث." />
+                    <EmptyState
+                        title="لا أصناف"
+                        description="لا صنف يطابق البحث أو الفئة أو حالة المخزون."
+                        action={
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => {
+                                    setSearchInput('');
+                                    setCategory('');
+                                    setStock('all');
+                                    setPage(1);
+                                }}
+                            >
+                                مسح المرشّحات
+                            </Button>
+                        }
+                    />
                 ) : null}
 
                 {!inventoryQuery.isPending && !inventoryQuery.isError && rows.length > 0 ? (

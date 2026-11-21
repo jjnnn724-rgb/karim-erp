@@ -1,13 +1,16 @@
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { KpiCard, RangeControls, ReportHeader, SectionCard } from '../components/Reports';
+import { RangeControls, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { buildPnlLines, fetchPnl } from '../lib/pnl';
+import { printRegisterTwin } from '../lib/screen-document';
 import { errorMessage, intOf, moneyOf, pctOf, presetRange, rangeProblem, textOf } from '../lib/reporting';
+import { AnswerStrip, ScreenHero } from '../ui';
 
 /**
  * الأرباح والخسائر — بيان الخادم كما هو (`/api/finance/pnl`).
  * لا جمع ولا هامش في الواجهة: كل رقم يصل محسوبًا من ستة جداول وفترتين.
+ * لغة كريم (2026-11-21): ScreenHero + AnswerStrip + التوأم الورقي الرسمي.
  */
 export function Pnl() {
     const [draft, setDraft] = useState(() => presetRange('month'));
@@ -22,6 +25,7 @@ export function Pnl() {
     const payload = pnlQuery.data;
     const statement = payload?.statement ?? {};
     const lines = buildPnlLines(statement);
+    const headlineLines = lines.filter((line) => ['revenue', 'gross', 'operating', 'net'].includes(line.id));
     // الخادم يعلّم الصفوف التي رُحّلت إلى أبيها بـ`rolledUp`؛ عرضها بجانبه يضاعف الرقم.
     const departments = (statement.by_department ?? []).filter((dept) => dept.rolledUp !== true);
     const daily = (statement.daily_series ?? []).slice(-10);
@@ -34,16 +38,69 @@ export function Pnl() {
         }
     }
 
+    function printTwin() {
+        const from = textOf(payload?.period?.from).slice(0, 10);
+        const to = textOf(payload?.period?.to).slice(0, 10);
+        printRegisterTwin({
+            title: 'قائمة الأرباح والخسائر',
+            englishTitle: 'Profit & Loss',
+            ...(from ? { from } : {}),
+            ...(to ? { to } : {}),
+            kpis: headlineLines.map((line) => ({ label: line.label, value: moneyOf(line.value), hint: line.hint })),
+            columns: [
+                { key: 'line', header: 'البند' },
+                { key: 'value', header: 'القيمة', align: 'end', width: '32%' },
+                { key: 'detail', header: 'التفصيل' },
+            ],
+            rows: lines.map((line) => ({ line: line.label, value: moneyOf(line.value), detail: line.hint ?? '' })),
+            notes: [
+                `هامش صافي الربح: ${pctOf(statement.net_profit?.margin_pct)}`,
+                `تحقق التوازن: ${statement.checks?.balanced === true ? 'متوازن' : 'غير مؤكد'}`,
+                `الأقسام: ${intOf(departments.length)} · أيام السلسلة: ${intOf(daily.length)}`,
+            ],
+        });
+    }
+
     return (
         <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-lg">
-            <ReportHeader
+            <ScreenHero
                 title="الأرباح والخسائر"
-                english="Profit & Loss"
+                english="PROFIT & LOSS"
                 description="قائمة الدخل من دفتر الحركات المسجَّلة: الإيراد والتكلفة والتشغيل والرواتب وصافي الربح."
-                pending={pnlQuery.isFetching}
-                onRefresh={() => {
-                    void pnlQuery.refetch();
-                }}
+                answer={
+                    <AnswerStrip
+                        items={headlineLines.map((line) => ({
+                            label: line.label,
+                            english: line.english,
+                            value: line.value,
+                            format: moneyOf,
+                            hint: line.hint,
+                            tone: line.tone,
+                        }))}
+                    />
+                }
+                actions={
+                    <>
+                        <button
+                            type="button"
+                            onClick={printTwin}
+                            disabled={pnlQuery.isPending || !payload}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                        >
+                            🧾 الورقة الرسمية
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                void pnlQuery.refetch();
+                            }}
+                            disabled={pnlQuery.isFetching}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                        >
+                            تحديث
+                        </button>
+                    </>
+                }
             />
 
             <SectionCard title="الفترة" english="Period">
@@ -81,21 +138,6 @@ export function Pnl() {
 
             {payload ? (
                 <>
-                    <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4" aria-label="مؤشرات قائمة الدخل">
-                        {lines
-                            .filter((line) => ['revenue', 'gross', 'operating', 'net'].includes(line.id))
-                            .map((line) => (
-                                <KpiCard
-                                    key={line.id}
-                                    label={line.label}
-                                    english={line.english}
-                                    value={moneyOf(line.value)}
-                                    hint={line.hint}
-                                    tone={line.tone}
-                                />
-                            ))}
-                    </ul>
-
                     <SectionCard
                         title="البيان"
                         english="Statement"

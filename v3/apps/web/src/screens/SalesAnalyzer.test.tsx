@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { render, screen } from '@testing-library/react';
+import { render, screen, waitFor } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ToastProvider } from '../ui/Toast';
 import { SalesAnalyzer } from './SalesAnalyzer';
@@ -66,7 +66,8 @@ describe('تحليل مبيعات الأصناف', () => {
         renderScreen();
 
         expect(await screen.findByText('صافي المبيعات')).toBeTruthy();
-        expect(screen.getAllByText('1,400.00 SAR').length).toBeGreaterThan(0);
+        // جواب البطل يعرض هيكل التحميل أولًا ثم القيمة عند وصول البيانات
+        await waitFor(() => expect(screen.getAllByText('1,400.00 SAR').length).toBeGreaterThan(0));
         expect(screen.getAllByText('برجر').length).toBeGreaterThan(0);
         expect(screen.getByText('1 صنفًا مختلفًا')).toBeTruthy();
     });

@@ -8,6 +8,7 @@ import { formatMoney, parseArabicDecimal } from '../lib/format';
 import { presetRange } from '../lib/reporting';
 import { printSmart } from '../lib/print-viewer';
 import { vegRequestPrintHtml } from '../lib/veg-print';
+import { AnswerStrip, ScreenHero } from '../ui';
 import {
     fetchVegConsumption,
     fetchVegRequests,
@@ -69,20 +70,6 @@ type SortKey = 'number' | 'itemsCount' | 'priority' | 'total' | 'by' | 'created'
 
 function formatInt(value: number): string {
     return value.toLocaleString('en-US');
-}
-
-function Kpi({ label, english, value }: { label: string; english: string; value: string }) {
-    return (
-        <div className="rounded-lg border border-hairline bg-surface p-md shadow-card">
-            <p className="text-caption text-faint" dir="ltr" lang="en">
-                {english}
-            </p>
-            <p className="erp-numeric mt-xxs text-heading-lg font-bold text-ink" dir="ltr">
-                {value}
-            </p>
-            <p className="text-label-sm text-muted">{label}</p>
-        </div>
-    );
 }
 
 function SortableTh({
@@ -1098,7 +1085,6 @@ export function VegRequests() {
     const currency = String(currencyQuery.data ?? '');
 
     const allRows = useMemo(() => (vegQuery.data?.requests ?? []).map(vegRequestToRow), [vegQuery.data]);
-    const summary = vegQuery.data?.summary ?? { pending: 0, pendingToday: 0, today: 0 };
     const counts = useMemo(() => vegStatusCounts(allRows), [allRows]);
 
     const search = useMemo(() => searchVegRequests(allRows, query), [allRows, query]);
@@ -1310,70 +1296,59 @@ export function VegRequests() {
 
     return (
         <div className="mx-auto flex w-full min-w-0 flex-col gap-lg">
-            <header className="flex flex-wrap items-end justify-between gap-md border-b border-hairline pb-md">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        طلبات شراء الخضار{' '}
-                        <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted" dir="ltr" lang="en">
-                            Vegetable Requests
-                        </span>
-                    </h1>
-                    <p className="mt-xs text-body-sm text-muted">
-                        طلبات المطبخ ← المخازن — إنشاء، استلام، تسعير.
-                    </p>
-                </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                    {canCreate ? (
-                        <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
-                            طلب جديد
-                        </Button>
-                    ) : null}
-                    {isContactsAdmin ? (
-                        <Button type="button" size="sm" variant="secondary" onClick={() => setContactsOpen(true)} title="أرقام واتساب المورد والمخزن">
-                            📞 أرقام واتساب
-                        </Button>
-                    ) : null}
-                    <button
-                        type="button"
-                        onClick={() => {
-                            setAnalysisOpen((open) => !open);
-                        }}
-                        aria-expanded={analysisOpen}
-                        className={`rounded-md px-md py-xs text-button-md ${
-                            analysisOpen ? 'bg-primary text-ink-inverse' : 'border border-hairline-strong bg-surface text-ink hover:bg-surface-hover'
-                        }`}
-                    >
-                        تحليل الخضار
-                    </button>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            void vegQuery.refetch();
-                        }}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                </div>
-            </header>
-
-            <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-5" aria-label="مؤشرات طلبات الخضار">
-                <StatCard label="بانتظار الاستلام" english="Pending" value={formatInt(counts.pending)} hint="طلبات لم تُستلم بعد" tone="warning" />
-                <StatCard label="مستلمة" english="Received" value={formatInt(counts.received)} hint="استلمها المخزن" />
-                <StatCard label="مُسعّرة" english="Priced" value={formatInt(counts.priced)} hint="سعّرها المخزن" />
-                <StatCard label="عاجلة" english="Urgent" value={formatInt(counts.urgent)} hint="طلبات بعلامة الاستعجال" tone={counts.urgent > 0 ? 'danger' : 'neutral'} />
-                <StatCard label="إجمالي المعروض" english="Total shown" value={formatInt(counts.total)} hint={`من ${formatInt(summary.pending)} معلّق على الخادم`} />
-            </ul>
+            <ScreenHero
+                title="طلبات شراء الخضار"
+                english="VEGETABLE REQUESTS"
+                description="طلبات المطبخ ← المخازن — إنشاء، استلام، تسعير."
+                answer={
+                    <AnswerStrip
+                        items={[
+                            { label: 'بانتظار الاستلام', english: 'Pending', value: counts.pending, format: formatInt, hint: 'طلبات لم تُستلم بعد', tone: 'warning' },
+                            { label: 'مستلمة', english: 'Received', value: counts.received, format: formatInt, hint: 'استلمها المخزن' },
+                            { label: 'مُسعّرة', english: 'Priced', value: counts.priced, format: formatInt, hint: 'سعّرها المخزن' },
+                            { label: 'عاجلة', english: 'Urgent', value: counts.urgent, format: formatInt, hint: 'طلبات بعلامة الاستعجال', tone: counts.urgent > 0 ? 'danger' : 'neutral' },
+                        ]}
+                        columns={4}
+                    />
+                }
+                actions={
+                    <>
+                        {canCreate ? (
+                            <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
+                                طلب جديد
+                            </Button>
+                        ) : null}
+                        {isContactsAdmin ? (
+                            <Button type="button" size="sm" variant="secondary" onClick={() => setContactsOpen(true)} title="أرقام واتساب المورد والمخزن">
+                                📞 أرقام واتساب
+                            </Button>
+                        ) : null}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                setAnalysisOpen((open) => !open);
+                            }}
+                            aria-expanded={analysisOpen}
+                            className={`rounded-md px-md py-xs text-button-md ${
+                                analysisOpen ? 'bg-primary text-ink-inverse' : 'border border-hairline-strong bg-surface text-ink hover:bg-surface-hover'
+                            }`}
+                        >
+                            تحليل الخضار
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                void vegQuery.refetch();
+                            }}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                        >
+                            تحديث
+                        </button>
+                    </>
+                }
+            />
 
             {analysisOpen ? <VegAnalysisPanel /> : null}
-
-
-            <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
-                <Kpi label="معلقة" english="Pending" value={formatInt(summary.pending)} />
-                <Kpi label="معلقة اليوم" english="Today" value={formatInt(summary.pendingToday)} />
-                <Kpi label="طلبات اليوم" english="All" value={formatInt(summary.today)} />
-                <Kpi label="عاجل" english="Urgent" value={formatInt(counts.urgent)} />
-            </div>
 
             <Card className="p-sm">
                 <div className="flex flex-wrap items-end gap-sm">

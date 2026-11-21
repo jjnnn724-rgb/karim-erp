@@ -4,6 +4,7 @@ import { type FormEvent, type ReactNode, useMemo, useState } from 'react';
 import { useConfirm } from '../components/ConfirmProvider';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
+import { AnswerStrip, ScreenHero, StatusRail } from '../ui';
 import { buildDispatchPrintHtml, fetchDispatchFull, parseDispatchPrintRecord } from '../lib/dispatch-print';
 import { printSmart } from '../lib/print-viewer';
 import {
@@ -96,6 +97,22 @@ import { useToast } from '../ui/Toast';
 
 const PAGE_SIZE = 20;
 
+/** سكة دورة الإذن (لغة كريم 2026-11-21) — ترتيب المراحل التقدمية وموضع كل حالة. */
+const DISPATCH_RAIL_STEPS = [
+    { key: 'pending', label: 'بانتظار اعتماد المخزن', tone: 'warning' as const },
+    { key: 'chef_approved', label: 'معتمد من الشيف', tone: 'info' as const },
+    { key: 'approved', label: 'بانتظار الاستلام', tone: 'success' as const },
+    { key: 'partially_received', label: 'استلام جزئي', tone: 'warning' as const },
+    { key: 'received', label: 'مستلم ومغلق', tone: 'success' as const },
+];
+const DISPATCH_RAIL_CURRENT: Record<string, number> = {
+    pending: 0,
+    chef_approved: 1,
+    approved: 2,
+    partially_received: 3,
+    received: 4,
+};
+
 const TONE_CLASS: Record<string, string> = {
     warning: 'text-ink-secondary',
     info: 'text-ink-secondary',
@@ -112,19 +129,13 @@ function formatQty(value: number): string {
     return value.toLocaleString('en-US', { maximumFractionDigits: 3 });
 }
 
-function Kpi({ label, english, value, hint }: { label: string; english: string; value: string; hint: string }) {
-    return (
-        <div className="rounded-lg border border-hairline bg-surface p-md shadow-card">
-            <p className="text-label-md text-muted">
-                {label}{' '}
-                <span className="text-caption text-faint" dir="ltr" lang="en">
-                    {english}
-                </span>
-            </p>
-            <p className="erp-numeric mt-xs text-heading-lg text-ink">{value}</p>
-            <p className="mt-xxs text-caption text-muted">{hint}</p>
-        </div>
-    );
+/** موضع الحالة على السكة — null للحالات خارج المسار التقدمي (مرفوض/مجهول). */
+function railCurrentFor(status?: string): number | null {
+    if (!status) {
+        return null;
+    }
+    const index = DISPATCH_RAIL_CURRENT[status];
+    return index === undefined ? null : index;
 }
 
 function deptNameOf(dispatch: Dispatch | null): string {
@@ -1407,66 +1418,52 @@ export function Dispatches() {
 
     return (
         <div className="erp-premium-screen flex flex-col gap-md">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        أذون الصرف{' '}
-                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
-                            Dispatch Orders
-                        </span>
-                    </h1>
-                    <p className="text-body-sm text-muted">
-                        سجل أذون الصرف ودورة قرارها كاملة (إنشاء · اعتماد الشيف · اعتماد المخازن · استلام بالتوقيع · تعديل · إرجاع المعتمد
-                        قبل الاستلام للتعديل · حذف).
-                    </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-xs" data-erp-print-hide>
-                    {canCreate ? (
-                        <Button
+            <ScreenHero
+                title="أذون الصرف"
+                english="DISPATCH ORDERS"
+                description="سجل أذون الصرف ودورة قرارها كاملة (إنشاء · اعتماد الشيف · اعتماد المخازن · استلام بالتوقيع · تعديل · إرجاع المعتمد قبل الاستلام للتعديل · حذف)."
+                answer={
+                    <AnswerStrip
+                        items={[
+                            { label: 'الأذون المعروضة', english: 'Dispatches', value: rows.length, format: formatInt, hint: 'بعد المرشّحات' },
+                            { label: 'بانتظار الاعتماد', english: 'Pending', value: counts.pending ?? 0, format: formatInt, hint: DISPATCH_STATUS.pending.label, tone: 'warning' },
+                            { label: 'معتمد بانتظار الاستلام', english: 'Approved', value: counts.approved ?? 0, format: formatInt, hint: DISPATCH_STATUS.approved.label },
+                            { label: 'مستلم ومغلق', english: 'Received', value: counts.received ?? 0, format: formatInt, hint: DISPATCH_STATUS.received.label, tone: 'success' },
+                        ]}
+                    />
+                }
+                actions={
+                    <>
+                        {canCreate ? (
+                            <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => {
+                                    setPageError('');
+                                    setActive({ kind: 'create' });
+                                }}
+                            >
+                                طلب صرف جديد
+                            </Button>
+                        ) : null}
+                        <button
                             type="button"
-                            size="sm"
                             onClick={() => {
-                                setPageError('');
-                                setActive({ kind: 'create' });
+                                void dispatchesQuery.refetch();
                             }}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
                         >
-                            طلب صرف جديد
-                        </Button>
-                    ) : null}
-                    <button
-                        type="button"
-                        onClick={() => {
-                            void dispatchesQuery.refetch();
-                        }}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                </div>
-            </header>
+                            تحديث
+                        </button>
+                    </>
+                }
+            />
 
             {pageError ? (
                 <p role="alert" className="text-body-sm text-danger-text">
                     {pageError}
                 </p>
             ) : null}
-
-            <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
-                <Kpi label="الأذون المعروضة" english="Dispatches" value={formatInt(rows.length)} hint="بعد المرشّحات" />
-                <Kpi
-                    label="بانتظار الاعتماد"
-                    english="Pending"
-                    value={formatInt(counts.pending ?? 0)}
-                    hint={DISPATCH_STATUS.pending.label}
-                />
-                <Kpi
-                    label="معتمد بانتظار الاستلام"
-                    english="Approved"
-                    value={formatInt(counts.approved ?? 0)}
-                    hint={DISPATCH_STATUS.approved.label}
-                />
-                <Kpi label="مستلم ومغلق" english="Received" value={formatInt(counts.received ?? 0)} hint={DISPATCH_STATUS.received.label} />
-            </div>
 
             <Card className="p-sm">
                 <div className="flex flex-wrap items-end gap-sm">
@@ -1665,6 +1662,10 @@ export function Dispatches() {
                                                             </span>
                                                         ) : null}
                                                     </span>
+                                                    {/* سكة الدورة — بصرية بجانب النص المثبَّت (لغة كريم 2026-11-21) */}
+                                                    {railCurrentFor(row.status) !== null ? (
+                                                        <StatusRail steps={DISPATCH_RAIL_STEPS} current={railCurrentFor(row.status) ?? -1} compact />
+                                                    ) : null}
                                                     {row.stage ? <span className="block text-caption text-muted">{row.stage}</span> : null}
                                                 </td>
                                                 <td className="px-sm py-xxs text-body-sm text-muted">{row.by}</td>

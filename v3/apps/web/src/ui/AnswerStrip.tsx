@@ -17,6 +17,8 @@ export interface AnswerItem {
     english?: string;
     /** رقم ⇒ كشف تدريجي؛ نص ⇒ كما هو (مُنسّق مسبقًا). */
     value: string | number;
+    /** مُنسّق العرض للقيم الرقمية أثناء الكشف وبعده (moneyOf مثلًا). */
+    format?: (value: number) => string;
     unit?: string;
     hint?: string;
     tone?: 'neutral' | 'success' | 'warning' | 'danger' | 'info';
@@ -41,7 +43,11 @@ const COLUMN_CLASS: Record<2 | 3 | 4, string> = {
 function AnswerCard({ item }: { item: AnswerItem }) {
     const isNumber = typeof item.value === 'number' && Number.isFinite(item.value);
     const animated = useCountUp(isNumber ? (item.value as number) : 0);
-    const displayValue = isNumber ? Math.round(animated * 100) / 100 : item.value;
+    const displayValue = isNumber
+        ? item.format
+            ? item.format(animated)
+            : String(Math.round(animated * 100) / 100)
+        : item.value;
     return (
         <StatCard
             {...definedProps({

@@ -2,10 +2,13 @@ import { useEffect, useRef, useState } from 'react';
 import { usePrefersReducedMotion } from './use-prefers-reduced-motion';
 
 /**
- * useCountUp — كشف الرقم تدريجيًا عند تغيّره («الحركة بمعنى»: العين تلاحظ
- * الاتجاه قبل الرقم). ليس انتقالًا بين حالات الواجهة (ميزانية DESIGN.md
- * 120–260ms للانتقالات) بل كشف بيانات — لذا مدته 700ms الافتراضية،
- * وتُلغى كليًا مع prefers-reduced-motion (يعيد الهدف فورًا).
+ * useCountUp — كشف الرقم تدريجيًا **عند تغيّره فقط** («الحركة بمعنى»: العين
+ * تلاحظ الاتجاه قبل الرقم). أول ظهور للقيمة يُعرض فورًا — العدّ على كل
+ * تحميل صفحة يصبح لعبة ولا يُقرأ بيانًا؛ الحركة للتحوّل بين قيمتين.
+ *
+ * ليس انتقالًا بين حالات الواجهة (ميزانية DESIGN.md 120–260ms للانتقالات)
+ * بل كشف بيانات — مدته 700ms الافتراضية، وتُلغى كليًا مع
+ * prefers-reduced-motion (يعيد الهدف فورًا).
  *
  * العقد:
  *  - يعيد العدد المعروض (لا سلاسل) — التنسيق مسؤولية المستدعي.
@@ -18,13 +21,17 @@ export function useCountUp(target: number, options?: { duration?: number }): num
     const [display, setDisplay] = useState(() => (Number.isFinite(target) ? target : 0));
     const displayRef = useRef(display);
     displayRef.current = display;
+    /** أول هدف يُعرض فورًا؛ الحركة تبدأ من الهدف الثاني فصاعدًا. */
+    const seenTargetRef = useRef<number | null>(null);
 
     useEffect(() => {
         if (!Number.isFinite(target)) {
             setDisplay(target);
             return;
         }
-        if (reduced || duration <= 0) {
+        const isFirstReveal = seenTargetRef.current === null;
+        seenTargetRef.current = target;
+        if (isFirstReveal || reduced || duration <= 0) {
             setDisplay(target);
             return;
         }

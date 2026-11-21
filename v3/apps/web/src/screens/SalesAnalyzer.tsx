@@ -1,12 +1,15 @@
 import './SalesAnalyzer.premium.css';
 import { useQuery } from '@tanstack/react-query';
-import { useState } from 'react';
-import { BarList, KpiCard, RangeControls, ReportHeader, SectionCard } from '../components/Reports';
+import { useMemo, useState } from 'react';
+import { BarList, KpiCard, RangeControls, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { getAppKey, getAccessToken } from '../lib/auth';
 import { formatCurrency } from '../lib/format';
-import { errorMessage, intOf, moneyOf, presetRange, qtyOf, rangeProblem, shareOf, textOf } from '../lib/reporting';
-import { fetchItemInvoices, fetchItemSales, fetchOrderDetail, groupItemSales, YARA_MAX_DAYS, type ItemInvoiceRow } from '../lib/yara-reports';
+import { errorMessage, intOf, moneyOf, presetRange, qtyOf, rangeProblem, shareOf, shiftIsoDays, textOf } from '../lib/reporting';
+import { fetchItemInvoices, fetchItemSales, fetchOrderDetail, groupItemSales, YARA_MAX_DAYS, type ItemInvoiceRow, type ItemSales } from '../lib/yara-reports';
+import { definedProps } from '../ui/definedProps';
+import type { AnswerItem } from '../ui/AnswerStrip';
+import { AnswerStrip, ScreenHero } from '../ui';
 
 /**
  * تحليل المبيعات — صفحة واحدة بتابين (دمج 2026-11-20، قرار المالك):
@@ -14,6 +17,8 @@ import { fetchItemInvoices, fetchItemSales, fetchOrderDetail, groupItemSales, YA
  *  • «استعلام تفصيلي»: تنقيب الصنف (دمج شاشة استعلام المبيعات المحذوفة) —
  *    فواتير الصنف سطرًا سطرًا عبر `/item-invoices`، وتفاصيل الأمر عبر
  *    `/order-detail/:docNo` مع إيصال 80mm قابل للطباعة.
+ * لغة كريم (2026-11-21): ScreenHero بجواب فوري (الصافي + دلتا النافذة
+ * السابقة) + deep-link ?item= يفتح التنقيب مباشرة (أوامر Ctrl+K).
  * المجاميع من الخادم؛ التجميع هنا كمية وصافٍ على الصفوف الواصلة فقط.
  */
 
@@ -23,13 +28,35 @@ const INQUIRY_PAGE = 100;
 export function SalesAnalyzer() {
     const [draft, setDraft] = useState(() => presetRange('week'));
     const [range, setRange] = useState(draft);
-    const [tab, setTab] = useState<AnalyzerTab>('aggregate');
+    const [tab, setTab] = useState<AnalyzerTab>(() => {
+        try {
+            return new URLSearchParams(window.location.search).get('item') ? 'inquiry' : 'aggregate';
+        } catch {
+            return 'aggregate';
+        }
+    });
+    const [inquiryItem] = useState(() => {
+        try {
+            return new URLSearchParams(window.location.search).get('item') ?? '';
+        } catch {
+            return '';
+        }
+    });
     const [problem, setProblem] = useState('');
 
     const itemsQuery = useQuery({
         queryKey: ['yara', 'item-sales', range.from, range.to],
         queryFn: ({ signal }) => fetchItemSales(range.from, range.to, signal),
-        enabled: tab === 'aggregate',
+    });
+    // دلتا الجواب: نفس طول النافذة قبلها — رقمان فقط لا كثافة
+    const prevWindow = useMemo(() => {
+        const days = Math.max(1, Math.round((new Date(range.to + 'T12:00:00Z').getTime() - new Date(range.from + 'T12:00:00Z').getTime()) / 86400000));
+        return { from: shiftIsoDays(range.from, -days), to: shiftIsoDays(range.from, -1) };
+    }, [range.from, range.to]);
+    const prevQuery = useQuery({
+        queryKey: ['yara', 'item-sales', prevWindow.from, prevWindow.to],
+        queryFn: ({ signal }) => fetchItemSales(prevWindow.from, prevWindow.to, signal),
+        staleTime: 5 * 60_000,
     });
 
     function apply() {
@@ -40,16 +67,65 @@ export function SalesAnalyzer() {
         }
     }
 
+    const net = itemsQuery.data?.totals?.net;
+    const prevNet = prevQuery.data?.totals?.net;
+    const deltaPct = Number.isFinite(net) && Number.isFinite(prevNet) && Number(prevNet) > 0
+        ? Math.round((((Number(net) - Number(prevNet)) / Number(prevNet)) * 100) * 10) / 10
+        : null;
+    const groupedCount = itemsQuery.data
+        ? new Set((itemsQuery.data.rows ?? []).map((row) => String(row.item_code ?? row.item_name ?? ''))).size
+        : 0;
+    // جواب البطل — نفس تسميات عقود الاختبار حرفيًا («صافي المبيعات» و«صنفًا مختلفًا»)
+    const heroAggregateItems: AnswerItem[] = [
+        definedProps({
+            label: 'صافي المبيعات',
+            english: 'Net',
+            value: Number.isFinite(Number(net)) ? Number(net) : '—',
+            format: moneyOf,
+            hint: `ضريبة ${moneyOf(itemsQuery.data?.totals?.vat)}`,
+            trend: deltaPct === null ? undefined : deltaPct > 2 ? ('up' as const) : deltaPct < -2 ? ('down' as const) : ('flat' as const),
+            delta: deltaPct === null ? undefined : `${deltaPct >= 0 ? '+' : ''}${deltaPct}% عن الفترة السابقة`,
+            loading: itemsQuery.isPending,
+        }),
+        definedProps({
+            label: 'الفواتير',
+            english: 'Invoices',
+            value: Number.isFinite(Number(itemsQuery.data?.totals?.invoices)) ? Number(itemsQuery.data?.totals?.invoices) : '—',
+            format: (n: number) => intOf(n),
+            hint: 'فواتير المرآة في الفترة',
+            loading: itemsQuery.isPending,
+        }),
+        definedProps({
+            label: 'الكميات المباعة',
+            english: 'Quantity',
+            value: Number.isFinite(Number(itemsQuery.data?.totals?.qty)) ? Number(itemsQuery.data?.totals?.qty) : '—',
+            format: (n: number) => qtyOf(n),
+            hint: itemsQuery.data ? `${intOf(groupedCount)} صنفًا مختلفًا` : undefined,
+            loading: itemsQuery.isPending,
+        }),
+    ];
+
     return (
         <div className="screen-premium flex flex-col gap-md">
-            <ReportHeader
+            <ScreenHero
                 title="تحليل المبيعات"
-                english="Sales Analyzer"
+                english="SALES ANALYZER"
                 description="تحليل الأصناف من مرآة YaraSoft مع تنقيب تفصيلي: فواتير كل صنف وتفاصيل الأمر وإيصاله — في صفحة واحدة."
-                pending={itemsQuery.isFetching}
-                onRefresh={() => {
-                    void itemsQuery.refetch();
-                }}
+                answer={
+                    <AnswerStrip items={heroAggregateItems} />
+                }
+                actions={
+                    <button
+                        type="button"
+                        onClick={() => {
+                            void itemsQuery.refetch();
+                        }}
+                        disabled={itemsQuery.isFetching}
+                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                    >
+                        تحديث
+                    </button>
+                }
             />
 
             <SectionCard title="الفترة" english="Period">
@@ -113,7 +189,7 @@ export function SalesAnalyzer() {
                 </div>
             ) : (
                 <div role="tabpanel" id="sales-panel-inquiry" aria-labelledby="sales-tab-inquiry" className="flex flex-col gap-md">
-                    <InquiryPanel from={range.from} to={range.to} />
+                    <InquiryPanel from={range.from} to={range.to} initialItem={inquiryItem} />
                 </div>
             )}
         </div>
@@ -123,7 +199,7 @@ export function SalesAnalyzer() {
 /* ─── التاب المجمع — الأصناف على النافذة ────────────────────────────────── */
 
 interface AggregateProps {
-    itemsQuery: ReturnType<typeof useQuery<Awaited<ReturnType<typeof fetchItemSales>>>>;
+    itemsQuery: ReturnType<typeof useQuery<ItemSales, Error>>;
 }
 
 function AggregatePanel({ itemsQuery }: AggregateProps) {
@@ -147,27 +223,7 @@ function AggregatePanel({ itemsQuery }: AggregateProps) {
 
             {data ? (
                 <>
-                    <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4" aria-label="مؤشرات مبيعات الأصناف">
-                        <KpiCard
-                            label="صافي المبيعات"
-                            english="Net"
-                            value={moneyOf(data.totals?.net)}
-                            hint={`ضريبة ${moneyOf(data.totals?.vat)}`}
-                        />
-                        <KpiCard label="الفواتير" english="Invoices" value={intOf(data.totals?.invoices)} hint="فواتير المرآة في الفترة" />
-                        <KpiCard
-                            label="الكميات المباعة"
-                            english="Quantity"
-                            value={qtyOf(data.totals?.qty)}
-                            hint={`${intOf(grouped.length)} صنفًا مختلفًا`}
-                        />
-                        <KpiCard
-                            label="صفوف المصدر"
-                            english="Source rows"
-                            value={intOf((data.rows ?? []).length)}
-                            hint="الصفوف قبل التجميع برمز الصنف"
-                        />
-                    </ul>
+                    {/* المؤشرات في جواب البطل (ScreenHero) — لا تكرار هنا */}
 
                     <div className="grid gap-md lg:grid-cols-2">
                         <SectionCard title="أعلى الأصناف صافيًا" english="Top items">
@@ -237,9 +293,9 @@ function AggregatePanel({ itemsQuery }: AggregateProps) {
 
 /* ─── تاب الاستعلام التفصيلي — فواتير الصنف وتفاصيل الأمر ───────────────── */
 
-function InquiryPanel({ from, to }: { from: string; to: string }) {
-    const [itemDraft, setItemDraft] = useState('');
-    const [item, setItem] = useState('');
+function InquiryPanel({ from, to, initialItem }: { from: string; to: string; initialItem: string }) {
+    const [itemDraft, setItemDraft] = useState(initialItem);
+    const [item, setItem] = useState(initialItem);
     const [code, setCode] = useState('');
     const [cashier, setCashier] = useState('');
     const [offset, setOffset] = useState(0);
