@@ -3,11 +3,11 @@ import { useMemo, useState } from 'react';
 import { CFO_GROWTH_TABS, CfoGrowth, type CfoGrowthView } from '../components/CfoGrowth';
 import { CfoOpsPanel } from '../components/CfoOpsPanel';
 import { CfoWorkbench } from '../components/CfoWorkbench';
-import { ReportHeader, SectionCard } from '../components/Reports';
+import { SectionCard } from '../components/Reports';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { balanceLine, type CfoSnapshot, fetchCfoSnapshot, type JournalEntry, marginText, reconciliationTone } from '../lib/cfo';
 import { errorMessage, intOf, moneyOf, num, presetRange, rangeProblem, textOf } from '../lib/reporting';
-import { FilterBar, StatCard } from '../ui';
+import { FilterBar, StatCard , ScreenHero } from '../ui';
 
 /**
  * المدير المالي — قراءة فقط. كل رقم يصل جاهزًا من الخادم؛ لا جمع ولا حساب
@@ -80,14 +80,24 @@ export function Cfo() {
 
     return (
         <div className="flex flex-col gap-md">
-            <ReportHeader
+<ScreenHero
                 title="المدير المالي"
                 english="CFO"
                 description="الإيراد والتكلفة والصافي والنقد وميزان المراجعة والفترات — قراءة واحدة من دفتر القيود المرحّلة."
-                pending={query.isFetching}
-                onRefresh={() => {
+                actions={
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => { () => {
                     void query.refetch();
-                }}
+                } }}
+                            disabled={query.isFetching}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                        >
+                            تحديث
+                        </button>
+                    </>
+                }
             />
             <CfoWorkbench periods={periods} />
             <CfoOpsPanel from={range.from} to={range.to} />

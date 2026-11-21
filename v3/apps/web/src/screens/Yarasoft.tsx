@@ -1,12 +1,12 @@
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { ReportHeader, SectionCard } from '../components/Reports';
+import { SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { YarasoftWorkbench } from '../components/YarasoftWorkbench';
 import { cashierLabel, cashierMatches, fetchCashierRevenues } from '../lib/cashier-revenues';
 import { formatMoney } from '../lib/format';
 import { presetRange, rangeProblem } from '../lib/reporting';
-import { FilterBar, StatCard } from '../ui';
+import { FilterBar, StatCard , ScreenHero } from '../ui';
 
 /**
  * شاشة يارسوفت — تبويبان كاملان:
@@ -63,14 +63,24 @@ function IntegrationConsole() {
 
     return (
         <div className="flex flex-col gap-sm">
-            <ReportHeader
+<ScreenHero
                 title="تكامل قاعدة الكاشير"
                 english="YaraSoft Integration"
                 description="حالة الاستيراد والمراجعة والأقسام والروابط وربط Oracle وجودة البيانات والمرآة — نفس عقود V2."
-                pending={false}
-                onRefresh={() => {
+                actions={
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => { () => {
                     void queryClient.invalidateQueries({ queryKey: ['yarasoft'] });
-                }}
+                } }}
+                            disabled={false}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                        >
+                            تحديث
+                        </button>
+                    </>
+                }
             />
             <YarasoftWorkbench />
         </div>
@@ -104,14 +114,24 @@ function LocalRevenueReport() {
 
     return (
         <div className="flex flex-col gap-md">
-            <ReportHeader
+<ScreenHero
                 title="إيرادات الكاشير"
                 english="Cashier Revenue"
                 description="إيرادات الكاشير مقروءة من قاعدة البيانات المحلية — مصدر القراءة هو PostgreSQL عندنا لا مزامنة Yarasoft."
-                pending={snapshot.isFetching}
-                onRefresh={() => {
+                actions={
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => { () => {
                     void snapshot.refetch();
-                }}
+                } }}
+                            disabled={snapshot.isFetching}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                        >
+                            تحديث
+                        </button>
+                    </>
+                }
             />
             <div className="flex justify-end gap-xs" data-erp-print-hide>
             </div>

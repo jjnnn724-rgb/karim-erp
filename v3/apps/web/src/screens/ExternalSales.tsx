@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
+import { ScreenHero } from '../ui';
 import { useMemo, useState } from 'react';
 import './ExternalSales.premium.css';
-import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
+import { KpiCard, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { errorMessage, intOf, moneyOf, qtyOf, textOf } from '../lib/reporting';
 import {
@@ -249,14 +250,24 @@ export function ExternalSales() {
     return (
         <div className="erp-premium-screen ext-sales flex flex-col gap-md">
 
-            <ReportHeader
+<ScreenHero
                 title="البيع الخارجي — المبيعات مقابل المسحوبات"
                 english="External sales — issued cost vs real sales"
                 description="كل صنف كم اتباع من مرآة Oracle، وكل وحدة خرجت من المخزن على إذن صرف — بنفس الفترة."
-                pending={query.isFetching}
-                onRefresh={() => {
+                actions={
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => { () => {
                     void query.refetch();
-                }}
+                } }}
+                            disabled={query.isFetching}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                        >
+                            تحديث
+                        </button>
+                    </>
+                }
             />
 
             <div className="ext-filters" role="group" aria-label="فترة التقرير">

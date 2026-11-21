@@ -1,9 +1,10 @@
 import './EmployeePortal.premium.css';
+import { ScreenHero } from '../ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useRef, useState } from 'react';
 import { useConfirm } from '../components/ConfirmProvider';
 import { FaceCaptureDialog, type FaceCaptureResult } from '../components/FaceCaptureDialog';
-import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
+import { KpiCard, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { fetchAttendanceReport } from '../lib/employee-card';
@@ -457,14 +458,24 @@ export function EmployeePortal() {
 
     return (
         <div className="flex flex-col gap-md employeeportal-premium">
-            <ReportHeader
+<ScreenHero
                 title="بوابة الموظف"
                 english="Employee Portal"
                 description="بصمة ذاتية، وربط الحساب بالموظف، وقوالب الوجه، وسجل البصمات."
-                pending={snapshotQuery.isFetching}
-                onRefresh={() => {
+                actions={
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => { () => {
                     void snapshotQuery.refetch();
-                }}
+                } }}
+                            disabled={snapshotQuery.isFetching}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                        >
+                            تحديث
+                        </button>
+                    </>
+                }
             />
 
             {snapshotQuery.isPending ? <StateLoading label="جارٍ قراءة بوابة الموظف…" /> : null}

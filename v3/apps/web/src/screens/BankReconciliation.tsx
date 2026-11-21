@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
+import { ScreenHero } from '../ui';
 import { useState } from 'react';
-import { KpiCard, RangeControls, ReportHeader, SectionCard } from '../components/Reports';
+import { KpiCard, RangeControls, SectionCard } from '../components/Reports';
 import { StateError, StateLoading } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { fetchBankRec, matchBankRec } from '../lib/bank-rec';
@@ -58,14 +59,24 @@ export function BankReconciliation() {
 
     return (
         <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-lg">
-            <ReportHeader
+<ScreenHero
                 title="مطابقة البنك"
                 english="Bank reconciliation"
                 description="كشف البنك مقابل الدفتر المرحّل: المطابقات الآلية والحركات غير المطابقة في الفترة."
-                pending={query.isFetching}
-                onRefresh={() => {
+                actions={
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => { () => {
                     void query.refetch();
-                }}
+                } }}
+                            disabled={query.isFetching}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                        >
+                            تحديث
+                        </button>
+                    </>
+                }
             />
 
             <SectionCard title="فترة المطابقة" english="Period">

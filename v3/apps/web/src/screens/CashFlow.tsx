@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
+import { ScreenHero } from '../ui';
 import { useState } from 'react';
-import { KpiCard, RangeControls, ReportHeader, SectionCard } from '../components/Reports';
+import { KpiCard, RangeControls, SectionCard } from '../components/Reports';
 import { StateError, StateLoading } from '../components/TableState';
 import { fetchCashFlow } from '../lib/cash-flow';
 import { errorMessage, moneyOf, presetRange, rangeProblem } from '../lib/reporting';
@@ -38,14 +39,24 @@ export function CashFlow() {
 
     return (
         <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-lg">
-            <ReportHeader
+<ScreenHero
                 title="قائمة التدفقات النقدية"
                 english="Cash Flow"
                 description="مقبوضات ومدفوعات على حسابات النقد والبنك — قراءة من الأستاذ المرحّل فقط."
-                pending={query.isFetching}
-                onRefresh={() => {
+                actions={
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => { () => {
                     void query.refetch();
-                }}
+                } }}
+                            disabled={query.isFetching}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                        >
+                            تحديث
+                        </button>
+                    </>
+                }
             />
             <div data-erp-print-hide className="flex flex-wrap items-center gap-sm">
             </div>

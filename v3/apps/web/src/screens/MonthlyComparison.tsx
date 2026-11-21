@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
+import { ScreenHero } from '../ui';
 import { useState } from 'react';
-import { BarList, KpiCard, ReportHeader, SectionCard } from '../components/Reports';
+import { BarList, KpiCard, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { fetchMonthlyComparison, latestMonth, MONTH_OPTIONS, topMonth } from '../lib/monthly-comparison';
 import { errorMessage, intOf, moneyOf, pctOf, shareOf } from '../lib/reporting';
@@ -26,14 +27,24 @@ export function MonthlyComparison() {
 
     return (
         <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-lg">
-            <ReportHeader
+<ScreenHero
                 title="المقارنة الشهرية"
                 english="Monthly Comparison"
                 description="إيراد وتكلفة وصافي وهامش كل شهر."
-                pending={comparisonQuery.isFetching}
-                onRefresh={() => {
+                actions={
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => { () => {
                     void comparisonQuery.refetch();
-                }}
+                } }}
+                            disabled={comparisonQuery.isFetching}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                        >
+                            تحديث
+                        </button>
+                    </>
+                }
             />
 
             <SectionCard title="النافذة" english="Window">

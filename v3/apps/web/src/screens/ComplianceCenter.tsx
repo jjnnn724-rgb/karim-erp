@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
+import { ScreenHero } from '../ui';
 import { useMemo, useState } from 'react';
-import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
+import { KpiCard, SectionCard } from '../components/Reports';
 import { StateError, StateLoading } from '../components/TableState';
 import { fetchComplianceReport } from '../lib/compliance-report';
 import { currentMonth } from '../lib/payroll';
@@ -55,14 +56,24 @@ export function ComplianceCenter() {
 
     return (
         <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-lg">
-            <ReportHeader
+<ScreenHero
                 title="لوحة الامتثال الشهري"
                 english="Compliance Center"
                 description="رواتب ومدد وتأمينات وقوى في ورقة واحدة — أرقام حقيقية من النظام، بلا إرسال ولا رفع ولا اعتماد تلقائي."
-                pending={query.isFetching}
-                onRefresh={() => {
+                actions={
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => { () => {
                     void query.refetch();
-                }}
+                } }}
+                            disabled={query.isFetching}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                        >
+                            تحديث
+                        </button>
+                    </>
+                }
             />
 
             <div data-erp-print-hide className="flex flex-wrap items-center gap-sm">

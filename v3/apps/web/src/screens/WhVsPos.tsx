@@ -1,7 +1,8 @@
 import './WhVsPos.premium.css';
+import { ScreenHero } from '../ui';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { KpiCard, RangeControls, ReportHeader, SectionCard } from '../components/Reports';
+import { KpiCard, RangeControls, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { errorMessage, intOf, moneyOf, pctOf, presetRange, qtyOf, rangeProblem, textOf } from '../lib/reporting';
 import { fetchWhVsPos, isTruthyFlag, WH_VS_POS_STATUS_AR, YARA_MAX_DAYS } from '../lib/yara-reports';
@@ -41,14 +42,24 @@ export function WhVsPos() {
 
     return (
         <div className="screen-premium flex flex-col gap-md">
-            <ReportHeader
+<ScreenHero
                 title="مقارنة المخزن بنقطة البيع"
                 english="Warehouse vs POS"
                 description="كمية الصرف المخزني مقابل المسجَّل مبيعًا لكل صنف — الفرق ونسبته وحالته من الخادم."
-                pending={compareQuery.isFetching}
-                onRefresh={() => {
+                actions={
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => { () => {
                     void compareQuery.refetch();
-                }}
+                } }}
+                            disabled={compareQuery.isFetching}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                        >
+                            تحديث
+                        </button>
+                    </>
+                }
             />
 
             <SectionCard title="الفترة" english="Period">

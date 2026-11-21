@@ -1,7 +1,8 @@
 import './Executive.premium.css';
+import { ScreenHero } from '../ui';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
+import { KpiCard, SectionCard } from '../components/Reports';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { fetchJson } from '../lib/api';
 import { getAccessToken, useAuthState } from '../lib/auth';
@@ -46,14 +47,24 @@ export function Executive() {
 
     return (
         <div className="flex flex-col gap-md premium-screen premium-executive">
-            <ReportHeader
+<ScreenHero
                 title="الموجز التنفيذي"
                 english="Executive Summary"
                 description="تاب المحاسبي من دفتر القيود المُرحَّل، وتاب التشغيلي من موجز المدير: مبيعات اليوم والمصروفات والنواقص — في صفحة واحدة."
-                pending={false}
-                onRefresh={() => {
+                actions={
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => { () => {
                     window.location.reload();
-                }}
+                } }}
+                            disabled={false}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                        >
+                            تحديث
+                        </button>
+                    </>
+                }
             />
 
             {canAccounting && canOperational ? (

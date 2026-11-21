@@ -1,11 +1,11 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
-import { ReportHeader, SectionCard } from '../components/Reports';
+import { SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { fetchDeptHeadSnapshot } from '../lib/dashboards';
 import { intOf, moneyOf, presetRange, rangeProblem } from '../lib/reporting';
-import { FilterBar, StatCard } from '../ui';
+import { FilterBar, StatCard , ScreenHero } from '../ui';
 
 const STATUS_AR: Record<string, string> = {
     pending: 'معلّق',
@@ -98,14 +98,24 @@ export function DeptHeadDashboard() {
 
     return (
         <div className="flex flex-col gap-md">
-            <ReportHeader
+<ScreenHero
                 title="لوحة رئيس القسم"
                 english="Dept Head Dashboard"
                 description="قسمك ونطاقه الفرعي، ومصروفاته بحسب المصدر، وأذون الصرف بمراحلها — النطاق محسوم على الخادم."
-                pending={snapshot.isFetching}
-                onRefresh={() => {
+                actions={
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => { () => {
                     void snapshot.refetch();
-                }}
+                } }}
+                            disabled={snapshot.isFetching}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                        >
+                            تحديث
+                        </button>
+                    </>
+                }
             />
             <div className="flex justify-end gap-xs" data-erp-print-hide>
                 <button

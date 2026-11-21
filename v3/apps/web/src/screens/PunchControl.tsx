@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
+import { ScreenHero } from '../ui';
 import { useMemo } from 'react';
 import './Zkteco.premium.css';
-import { ReportHeader, SectionCard } from '../components/Reports';
+import { SectionCard } from '../components/Reports';
 import { StateError, StateLoading } from '../components/TableState';
 import { AttendanceFixPanel } from '../components/AttendanceFixPanel';
 import { ZktecoAdmin } from '../components/ZktecoAdmin';
@@ -42,14 +43,24 @@ export function PunchControl() {
 
     return (
         <div className="flex flex-col gap-md erp-premium erp-premium-zkteco">
-            <ReportHeader
+<ScreenHero
                 title="مركز التحكم بالبصمة والحضور"
                 english="Fingerprint & Attendance Control"
                 description="جهاز البصمة، كاميرا الموبايل، والموقع الجغرافي — كل التحكم هنا، كتابةً بتمرير السبب وخلفيها بوابات الخادم."
-                pending={statusQuery.isFetching}
-                onRefresh={() => {
+                actions={
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => { () => {
                     void statusQuery.refetch();
-                }}
+                } }}
+                            disabled={statusQuery.isFetching}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                        >
+                            تحديث
+                        </button>
+                    </>
+                }
             />
 
             {statusQuery.isPending ? <StateLoading label="جارٍ قراءة حالة الأجهزة…" /> : null}

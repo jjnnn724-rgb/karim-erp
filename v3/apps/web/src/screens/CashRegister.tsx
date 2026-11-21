@@ -1,7 +1,8 @@
 import './CashRegister.premium.css';
+import { ScreenHero } from '../ui';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
-import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
+import { KpiCard, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import {
     type CashRegisterDept,
@@ -680,14 +681,24 @@ export function CashRegister() {
 
     return (
         <div className="cash-register-premium flex flex-col gap-md">
-            <ReportHeader
+<ScreenHero
                 title="سجلّ الصرف"
                 english="Expense Register"
                 description="كل ما خرج من الصندوق: حركةٌ بإذنها وحالتها، مع مؤشرات الفترة وتوزيع الأقسام."
-                pending={registerQuery.isFetching}
-                onRefresh={() => {
+                actions={
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => { () => {
                     void registerQuery.refetch();
-                }}
+                } }}
+                            disabled={registerQuery.isFetching}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                        >
+                            تحديث
+                        </button>
+                    </>
+                }
             />
 
             <SectionCard title="الفترة والمرشّحات" english="Period & filters">

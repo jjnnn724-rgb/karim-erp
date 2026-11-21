@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query';
+import { ScreenHero } from '../ui';
 import { Link } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
-import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
+import { KpiCard, SectionCard } from '../components/Reports';
 import { StateError, StateLoading } from '../components/TableState';
 import {
     type CommandRisk,
@@ -143,14 +144,24 @@ export function CommandCenter() {
 
     return (
         <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-lg">
-            <ReportHeader
+<ScreenHero
                 title="مركز القيادة الموحّد"
                 english="Command Center"
                 description="قراءة موحّدة من الضريبة والرواتب ومدد ومطابقة البنك — لا أرقام مخمّنة ولا إرسال إلى زاتكا."
-                pending={query.isFetching}
-                onRefresh={() => {
+                actions={
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => { () => {
                     void query.refetch();
-                }}
+                } }}
+                            disabled={query.isFetching}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                        >
+                            تحديث
+                        </button>
+                    </>
+                }
             />
 
             <SectionCard title="شهر المتابعة" english="Period">

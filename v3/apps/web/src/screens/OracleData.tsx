@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
+import { ScreenHero } from '../ui';
 import { useState } from 'react';
-import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
+import { KpiCard, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { formatInt } from '../lib/format';
 import {
@@ -132,14 +133,24 @@ export function OracleData() {
 
     return (
         <div className="flex flex-col gap-md">
-            <ReportHeader
+<ScreenHero
                 title="بيانات Oracle المنسوخة"
                 english="Oracle Data"
                 description="الجداول المنسوخة من Oracle: عدّاد صفوفها الحيّ، وأعمدتها وصفوفها بحثًا وترقيمًا من الخادم."
-                pending={tablesQuery.isFetching}
-                onRefresh={() => {
+                actions={
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => { () => {
                     void tablesQuery.refetch();
-                }}
+                } }}
+                            disabled={tablesQuery.isFetching}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                        >
+                            تحديث
+                        </button>
+                    </>
+                }
             />
 
             {tablesQuery.isPending ? (

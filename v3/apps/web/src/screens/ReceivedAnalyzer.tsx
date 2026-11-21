@@ -1,7 +1,8 @@
 import './ReceivedAnalyzer.premium.css';
+import { ScreenHero } from '../ui';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
-import { KpiCard, RangeControls, ReportHeader, SectionCard } from '../components/Reports';
+import { KpiCard, RangeControls, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { errorMessage, intOf, presetRange, qtyOf, rangeProblem, textOf } from '../lib/reporting';
 import { DISPATCH_STATUS_AR, fetchReceivedDispatches, fetchReceivedItems, receivedLabel, YARA_MAX_DAYS } from '../lib/yara-reports';
@@ -46,15 +47,25 @@ export function ReceivedAnalyzer() {
 
     return (
         <div className="screen-premium flex flex-col gap-md">
-            <ReportHeader
+<ScreenHero
                 title="تحليل المستلَم"
                 english="Received Analyzer"
                 description="بنود الاستلام وأذونها في الفترة: الكمية المرسلة والمستلمة والفرق، بحالة كل إذن."
-                pending={itemsQuery.isFetching || dispatchesQuery.isFetching}
-                onRefresh={() => {
+                actions={
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => { () => {
                     void itemsQuery.refetch();
                     void dispatchesQuery.refetch();
-                }}
+                } }}
+                            disabled={itemsQuery.isFetching || dispatchesQuery.isFetching}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                        >
+                            تحديث
+                        </button>
+                    </>
+                }
             />
 
             <SectionCard title="الفترة" english="Period">

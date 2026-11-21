@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
+import { ScreenHero } from '../ui';
 import { useMemo, useState } from 'react';
-import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
+import { KpiCard, SectionCard } from '../components/Reports';
 import { StateError, StateLoading } from '../components/TableState';
 import { accountAmount, type BalanceSheetAccount, fetchBalanceSheet, sumAccounts } from '../lib/balance-sheet';
 import { errorMessage, moneyOf, num } from '../lib/reporting';
@@ -114,14 +115,24 @@ export function BalanceSheet() {
 
     return (
         <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-lg">
-            <ReportHeader
+<ScreenHero
                 title="قائمة المركز المالي"
                 english="Balance Sheet"
                 description="قائمة مركزية من الأستاذ العام — للقراءة فقط، لا تعديل ولا ترحيل. تُولَّد من القيود المرحّلة مباشرة."
-                pending={query.isFetching}
-                onRefresh={() => {
+                actions={
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => { () => {
                     void query.refetch();
-                }}
+                } }}
+                            disabled={query.isFetching}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                        >
+                            تحديث
+                        </button>
+                    </>
+                }
             />
             <div data-erp-print-hide className="flex flex-wrap items-center gap-sm">
             </div>

@@ -1,8 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
+import { ScreenHero } from '../ui';
 import { useMemo, useState } from 'react';
 import './Kitchen.premium.css';
 import { KitchenStudio } from '../components/KitchenStudio';
-import { BarList, KpiCard, ReportHeader, SectionCard } from '../components/Reports';
+import { BarList, KpiCard, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import {
@@ -223,17 +224,27 @@ export function Kitchen() {
     return (
         <div className="erp-premium-screen erp-premium-screen--kitchen flex flex-col gap-md">
 
-            <ReportHeader
+<ScreenHero
                 title="المطبخ"
                 english="Kitchen Overview"
                 description="أوامر الإنتاج والاستثناءات والتوزيعات والسياسات — على نافذة الخادم المعلنة، لا ادعاء اكتمال خارجها."
-                pending={overviewQuery.isFetching || costCardsQuery.isFetching}
-                onRefresh={() => {
+                actions={
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => { () => {
                     void overviewQuery.refetch();
                     if (!costRangeInvalid) {
                         void costCardsQuery.refetch();
                     }
-                }}
+                } }}
+                            disabled={overviewQuery.isFetching || costCardsQuery.isFetching}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                        >
+                            تحديث
+                        </button>
+                    </>
+                }
             />
 
             <div className="flex flex-wrap items-center justify-end gap-sm">

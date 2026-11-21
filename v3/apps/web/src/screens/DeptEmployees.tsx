@@ -1,7 +1,8 @@
 import './DeptEmployees.premium.css';
+import { ScreenHero } from '../ui';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import { KpiCard, ReportHeader, SectionCard } from '../components/Reports';
+import { KpiCard, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import {
@@ -54,14 +55,24 @@ export function DeptEmployees() {
 
     return (
         <div className="flex flex-col gap-md erp-premium erp-premium-dept-employees">
-            <ReportHeader
+<ScreenHero
                 title="موظفو القسم"
                 english="Dept Employees"
                 description="سجل موظفي قسمك كما يراه رئيس القسم: الاسم والرقم الوظيفي والوظيفة والهاتف — بلا راتب ولا صلاحيات."
-                pending={employeesQuery.isFetching}
-                onRefresh={() => {
+                actions={
+                    <>
+                        <button
+                            type="button"
+                            onClick={() => { () => {
                     void employeesQuery.refetch();
-                }}
+                } }}
+                            disabled={employeesQuery.isFetching}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                        >
+                            تحديث
+                        </button>
+                    </>
+                }
             />
 
             <div className="flex gap-sm" data-erp-print-hide>
