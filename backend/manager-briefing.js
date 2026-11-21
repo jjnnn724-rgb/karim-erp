@@ -46,7 +46,7 @@ async function collectBriefing(pool, date) {
         pool.query(
             `SELECT COUNT(*)::int AS count, COALESCE(SUM(amount),0)::float AS total FROM expenses
               WHERE LEFT(COALESCE(date,''),10) = $1
-                AND COALESCE("adjustmentType",'') NOT IN ('dispatch','dispatch_return','transfer','receipt','stock_transfer','inventory_transfer','kitchen_return','count_correction')`, [day]),
+                AND COALESCE("adjustmentType",'') NOT IN ('dispatch','dispatch_return','transfer','receipt','stock_transfer','inventory_transfer','kitchen_return','count_correction','veg_purchase')`, [day]),
         pool.query(
             `SELECT id, name, unit, COALESCE(qty,0)::float AS qty, COALESCE("minQty",0)::float AS min_qty
                FROM inventory
@@ -93,7 +93,7 @@ async function collectBriefing(pool, date) {
         pool.query(
             `SELECT COALESCE(SUM(amount),0)::float AS total FROM expenses
               WHERE LEFT(COALESCE(date,''),10) = $1
-                AND COALESCE("adjustmentType",'') NOT IN ('dispatch','dispatch_return','transfer','receipt','stock_transfer','inventory_transfer','kitchen_return','count_correction')`, [yesterday]),
+                AND COALESCE("adjustmentType",'') NOT IN ('dispatch','dispatch_return','transfer','receipt','stock_transfer','inventory_transfer','kitchen_return','count_correction','veg_purchase')`, [yesterday]),
         pool.query(
             `SELECT p.method AS method, COALESCE(SUM(p.amount),0)::float AS amount, COUNT(*)::int AS count
                FROM pos_invoice_payments p JOIN pos_orders o ON o.id = p.order_id

@@ -114,7 +114,7 @@ function isValidDay(value) {
 const PURCHASE_REFS = `('purchase_invoice','purchase_invoice_void','purchase_invoice_edit','purchase_invoice_edit_reversal')`;
 
 /** عائلات المصروفات المخزنية/الجردية التي تُستثنى من «التشغيلي» في كل الخادم. */
-const STOCK_EXPENSE_TYPES = `('dispatch','dispatch_return','transfer','receipt','stock_transfer','inventory_transfer','kitchen_return','count_correction')`;
+const STOCK_EXPENSE_TYPES = `('dispatch','dispatch_return','transfer','receipt','stock_transfer','inventory_transfer','kitchen_return','count_correction','veg_purchase')`;
 
 /** يوم الرياض بصيغة YYYY-MM-DD — نفس مولّد الواجهات الأخرى (yara-reports.js:30). */
 function riyadhDay(offsetDays = 0) {

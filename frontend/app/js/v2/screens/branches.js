@@ -24,10 +24,10 @@
  *     convoy (dispatch approvals, 2026-10-13).
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.412';
-import { statusBadge } from '../status.js?v=4.9.412';
-import { canWrite } from '../session.js?v=4.9.412';
-import { paintFormErrors } from '../form-errors.js?v=4.9.412';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.413';
+import { statusBadge } from '../status.js?v=4.9.413';
+import { canWrite } from '../session.js?v=4.9.413';
+import { paintFormErrors } from '../form-errors.js?v=4.9.413';
 import {
     fetchBranches,
     createBranch,
@@ -35,7 +35,7 @@ import {
     deactivateBranch,
     reactivateBranch,
     validateBranch,
-} from '../data/branches-repo.js?v=4.9.412';
+} from '../data/branches-repo.js?v=4.9.413';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

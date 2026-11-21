@@ -15,11 +15,11 @@ const index = fs.readFileSync(path.join(APP, 'index.html'), 'utf8');
 const styles = fs.readFileSync(path.join(APP, 'css', 'styles.css'), 'utf8');
 
 describe('شريط إيقاف الواجهة القديمة', () => {
-    test('يعلو الصفحة ويحمل موعد الإيقاف ورابط V2', () => {
+    test('يعلو الصفحة ويحمل موعد الإيقاف ورابط V3 (الأساسية منذ 2026-11-10)', () => {
         expect(index).toContain('<body class="legacy-sunset-on">');
         expect(index).toContain('class="legacy-sunset" role="status"');
         expect(index).toContain('هذه الواجهة ستُوقف خلال شهر');
-        expect(index).toContain('href="/app/v2.html?live=1"');
+        expect(index).toContain('href="/v3/"');
         expect(index).toContain('target="_blank" rel="noopener"');
         expect(index).toContain('الانتقال إلى الواجهة الجديدة');
     });

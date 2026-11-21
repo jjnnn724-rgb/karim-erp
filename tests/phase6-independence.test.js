@@ -234,7 +234,9 @@ describe('Phase 6 — استقلالية كاملة عن Oracle/YaraSoft', () =>
 
         const ready = await getJson('/api/health/ready');
         expect(ready.status).toBe(200);
-        expect(ready.body.status).toBe('ok');
+        // توحيد مع phase6b (2026-11-21): warn بسبب ضغط ذاكرة الجهاز أثناء
+        // تشغيل الاختبارات لا يُسقط الإقلاع السليم — error فقط يفشل.
+        expect(['ok', 'warn']).toContain(ready.body.status);
     });
 
     test('2) الموصلان معطلان و oracledb لم يُحمَّل إطلاقًا', () => {

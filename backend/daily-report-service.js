@@ -53,7 +53,7 @@ async function collectDailyReport(pool, reportDate = todayInTimezone()) {
              GROUP BY i.product_name ORDER BY quantity DESC LIMIT 20`, [dayStart, dayEnd]),
         pool.query(`
             SELECT COUNT(*)::int AS expense_count, COALESCE(SUM(amount),0)::numeric AS total
-              FROM expenses WHERE LEFT(COALESCE(date,''),10) = $1 AND COALESCE("adjustmentType",'') NOT IN ('dispatch','dispatch_return','transfer','receipt','stock_transfer','inventory_transfer','kitchen_return','count_correction')`, [reportDate]),
+              FROM expenses WHERE LEFT(COALESCE(date,''),10) = $1 AND COALESCE("adjustmentType",'') NOT IN ('dispatch','dispatch_return','transfer','receipt','stock_transfer','inventory_transfer','kitchen_return','count_correction','veg_purchase')`, [reportDate]),
         pool.query(`
             SELECT COUNT(*)::int AS attendance_count,
                    COUNT(*) FILTER (WHERE "checkIn" IS NOT NULL)::int AS checked_in,

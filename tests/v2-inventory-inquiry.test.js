@@ -151,8 +151,9 @@ describe('الباب ↔ الخادم — الأدوار والمسار والس
 });
 
 describe('لا ازدواج تكلفة ولا مزج مصدرين', () => {
+    // veg_purchase (2026-11-21): فواتير الخضار المسددة — مادة مباشرة على المطبخ
     const EXPECTED_EXCLUSIONS = ['dispatch', 'dispatch_return', 'transfer', 'receipt',
-        'stock_transfer', 'inventory_transfer', 'kitchen_return', 'count_correction'];
+        'stock_transfer', 'inventory_transfer', 'kitchen_return', 'count_correction', 'veg_purchase'];
     const quoted = EXPECTED_EXCLUSIONS.map((t) => `'${t}'`).join(',');
 
     test('قائمة الاستثناء المخزني/الجردي واحدة في الخدمات الثلاثة', () => {
