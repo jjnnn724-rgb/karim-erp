@@ -126,21 +126,95 @@ function extractText(jsx) {
         .trim();
 }
 
+/** يجد نهاية وسم متوازن (عداد فتح/إغلاق لنفس الوسم) من موضع فتحه. */
+function balancedClose(src, openIdx, tag) {
+    const openRe = new RegExp(`<${tag}(\\s|>)`, 'g');
+    const closeRe = new RegExp(`</${tag}>`, 'g');
+    openRe.lastIndex = openIdx + 1;
+    let depth = 1;
+    let open;
+    const closes = [];
+    while ((open = openRe.exec(src)) !== null) {
+        depth += 1;
+    }
+    while ((closeRe.exec(src)) !== null) {
+        closes.push(closeRe.lastIndex);
+    }
+    // الطريقة الأدق: مسح متسلسل لكلا النمطين بالترتيب
+    const tokens = [];
+    openRe.lastIndex = openIdx + 1;
+    while ((open = openRe.exec(src)) !== null) {
+        tokens.push({ at: open.index, open: true });
+    }
+    let closeScan = /<\/div>/g;
+    closeScan.lastIndex = openIdx + 1;
+    let close;
+    while ((close = closeScan.exec(src)) !== null) {
+        tokens.push({ at: close.index + close[0].length, open: false });
+    }
+    tokens.sort((x, y) => x.at - y.at);
+    for (const token of tokens) {
+        depth += token.open ? 1 : -1;
+        if (depth === 0) {
+            return token.at;
+        }
+    }
+    return -1;
+}
+
 function passB(src) {
-    // رأس يدوي موحّد: <header …><div><h1 …>…</h1>[<p …>وصف</p>]</div>
-    // [<div …data-erp-print-hide…>إجراءات</div>]</header>
-    const headerRe = /^[ \t]*<header className="[^"]*">\r?\n([ \t]*)<div>\r?\n([ \t]*)<h1 className="text-display-lg text-ink">([\s\S]*?)<\/h1>\r?\n(?:[ \t]*<p className="[^"]*text-muted[^"]*">([^<]*?)<\/p>\r?\n)?[ \t]*<\/div>\r?\n([ \t]*<div className="flex[^"]*" data-erp-print-hide>[\s\S]*?<\/div>)\r?\n?[ \t]*<\/header>\r?\n?/gm;
+    // رأس يدوي: أي <header> يحوي <h1 className="text-display-lg text-ink"> —
+    // استخراج بالمسح المتوازن (div/header) ليتحمل الإجراءات المتشعبة.
     let count = 0;
     const skipped = [];
-    const out = src.replace(headerRe, (match, indent1, indent2, h1Inner, desc, actionsBlock) => {
+    let out = '';
+    let cursor = 0;
+    const H1 = '<h1 className="text-display-lg text-ink">';
+    while (true) {
+        const h1At = src.indexOf(H1, cursor);
+        if (h1At === -1) {
+            out += src.slice(cursor);
+            break;
+        }
+        const headerAt = src.lastIndexOf('<header', h1At);
+        const between = src.slice(headerAt === -1 ? cursor : headerAt, h1At);
+        if (headerAt === -1 || headerAt < cursor || between.includes('ScreenHero') || between.length > 400) {
+            out += src.slice(cursor, h1At + H1.length);
+            cursor = h1At + H1.length;
+            continue;
+        }
+        const headerEnd = src.indexOf('</header>', h1At);
+        if (headerEnd === -1) {
+            out += src.slice(cursor, h1At + H1.length);
+            cursor = h1At + H1.length;
+            continue;
+        }
+        const headerBlock = src.slice(headerAt, headerEnd + '</header>'.length);
+        const afterHeader = src.indexOf('<', headerEnd + 1);
+        const h1Inner = headerBlock.slice(headerBlock.indexOf(H1) + H1.length, headerBlock.indexOf('</h1>'));
         const title = extractText(h1Inner);
         const englishMatch = /<span[^>]*dir="ltr"[^>]*lang="en"[^>]*>([\s\S]*?)<\/span>/.exec(h1Inner);
         const english = englishMatch ? englishMatch[1].trim() : '';
-        if (!title || title.includes('{') || title.includes('<')) {
-            skipped.push(title.slice(0, 30));
-            return match;
+        const descMatch = /<p className="[^"]*text-muted[^"]*">([\s\S]*?)<\/p>/.exec(headerBlock.slice(headerBlock.indexOf('</h1>')));
+        const descRaw = descMatch ? descMatch[1] : '';
+        const descText = extractText(descRaw);
+        const printHideAt = headerBlock.indexOf('data-erp-print-hide');
+        let actionsInner = '';
+        if (printHideAt !== -1) {
+            const divAt = headerBlock.lastIndexOf('<div', printHideAt);
+            const closeAt = balancedClose(headerBlock, divAt, 'div');
+            if (closeAt !== -1) {
+                const block = headerBlock.slice(divAt, closeAt);
+                actionsInner = block.replace(/^[ \t]*<div[^>]*>\r?\n/, '').replace(/\r?\n[ \t]*<\/div>\s*$/, '');
+            }
         }
-        const indent = /^[ \t]*/.exec(match)[0];
+        if (!title || title.includes('{') || title.includes('<') || !actionsInner) {
+            skipped.push(title.slice(0, 30) || '(بلا عنوان)');
+            out += src.slice(cursor, headerEnd + '</header>'.length);
+            cursor = headerEnd + '</header>'.length;
+            continue;
+        }
+        const indent = /^[ \t]*/.exec(headerBlock)[0];
         const pad = (s) => `${indent}    ${s}`;
         const lines = [];
         lines.push('<ScreenHero');
@@ -148,20 +222,21 @@ function passB(src) {
         if (english) {
             lines.push(pad(`english="${english}"`));
         }
-        if (desc && desc.trim()) {
-            lines.push(pad(`description="${desc.trim().replace(/"/g, '&quot;')}"`));
+        if (descText && !descText.includes('{')) {
+            lines.push(pad(`description="${descText.replace(/"/g, '&quot;')}"`));
+        } else if (descRaw.trim()) {
+            lines.push(pad(`description={<>${descRaw.trim()}</>}`));
         }
-        // الإجراءات كما هي — نزيل غلافها الخارجي ونحتفظ بالمحتوى بإزاحة ثابتة
-        const actionsInner = actionsBlock.replace(/^[ \t]*<div[^>]*>\r?\n/, '').replace(/\r?\n[ \t]*<\/div>\s*$/, '');
         lines.push(pad('actions={<>'));
         for (const line of actionsInner.split('\n')) {
             lines.push(pad(`    ${line.trim()}`));
         }
         lines.push(pad('</>'));
         lines.push(`${indent}/>`);
+        out += src.slice(cursor, headerAt) + lines.join('\n') + '\n';
+        cursor = headerEnd + '</header>'.length;
         count += 1;
-        return `${lines.join('\n')}\n`;
-    });
+    }
     return { src: out, count, skipped };
 }
 
