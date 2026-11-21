@@ -1,6 +1,7 @@
 import { type ReactNode, useState } from 'react';
 import {
     Alert,
+    AnswerStrip,
     Badge,
     Button,
     Card,
@@ -25,7 +26,10 @@ import {
     PageHeader,
     Pagination,
     RadioGroup,
+    RegisterShell,
+    ScreenHero,
     SearchInput,
+    StatusRail,
     SegmentedControl,
     Select,
     Skeleton,
@@ -533,6 +537,75 @@ function GalleryContent() {
 
             <Section id="filters" title="المرشّحات" description="FilterBar: نطاق تاريخ وبحث، مع مساحة مرشّحات إضافية وزر مسح اختياري.">
                 <FilterBarDemo />
+            </Section>
+
+            <Section
+                id="patterns"
+                title="الأنماط التوقيعية — لغة كريم"
+                description="ScreenHero (الجواب أولًا) · AnswerStrip (مؤشرات بكشف تدريجي) · RegisterShell (عرضات محفوظة + التوأم الورقي) · StatusRail (دورة العمل مسارًا)."
+            >
+                <Modes>
+                    <div className="flex flex-col gap-md">
+                        <ScreenHero
+                            title="تحليل المبيعات"
+                            english="SALES ANALYZER"
+                            description="شاشة تجاوب سؤالها قبل أدواتها — النمط يوحّد فاتحة كل صفحة."
+                            answer={
+                                <AnswerStrip
+                                    items={[
+                                        { label: 'الصافي', value: '42,300.00 SAR', trend: 'up', delta: '+8%' },
+                                        { label: 'الفواتير', value: 312 },
+                                        { label: 'المستهلك', value: 18.5, unit: 'كجم', tone: 'warning' },
+                                    ]}
+                                />
+                            }
+                            actions={<span className="text-caption text-faint">فتحة الإجراءات — مخفية من الطباعة</span>}
+                        />
+                        <RegisterShell
+                            viewKey="gallery-demo"
+                            currentFilters={{ status: 'received' }}
+                            filters={<span className="text-body-sm text-muted">فتحة الفلاتر (بحث/نطاق/قوائم)</span>}
+                            summary={<span className="text-caption text-muted" role="status">353 سجلًا</span>}
+                            twin={() => ({
+                                title: 'كشف معرض النظام',
+                                columns: [
+                                    { key: 'name', header: 'الصنف' },
+                                    { key: 'qty', header: 'الكمية', align: 'end' },
+                                ],
+                                rows: [
+                                    { name: 'طماطم', qty: '12.5' },
+                                    { name: 'بصل', qty: '8' },
+                                ],
+                                totalsRow: ['', '20.5'],
+                            })}
+                        >
+                            <div className="rounded-lg border border-hairline p-sm text-body-sm text-muted">
+                                الأطفال = الجدول الحالي للشاشة كما هو — الغلاف يضيف العرضات والتوأم الورقي دون هجرة قسرية.
+                            </div>
+                        </RegisterShell>
+                        <div className="flex flex-wrap items-start gap-md">
+                            <StatusRail
+                                steps={[
+                                    { key: 'pending', label: 'بانتظار اعتماد المخزن', tone: 'warning' },
+                                    { key: 'chef_approved', label: 'معتمد من الشيف', tone: 'info' },
+                                    { key: 'approved', label: 'بانتظار الاستلام', tone: 'success' },
+                                    { key: 'received', label: 'مستلم ومغلق', tone: 'success' },
+                                ]}
+                                current={1}
+                                label="بانتظار اعتماد المخزن"
+                            />
+                            <StatusRail
+                                steps={[
+                                    { key: 'pending', label: 'معلّق', tone: 'warning' },
+                                    { key: 'received', label: 'مستلم', tone: 'success' },
+                                    { key: 'priced', label: 'مُسعّر', tone: 'info' },
+                                ]}
+                                current={2}
+                                compact
+                            />
+                        </div>
+                    </div>
+                </Modes>
             </Section>
 
             <Section id="choices" title="الاختيارات" description="Checkbox · Switch · Radio · SegmentedControl (أصول native/Radix).">

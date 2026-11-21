@@ -6,6 +6,7 @@
  */
 
 export { Alert, type AlertProps, type AlertVariant } from './Alert';
+export { AnswerStrip, type AnswerItem, type AnswerStripProps } from './AnswerStrip';
 export { Badge, type BadgeProps, type BadgeVariant } from './Badge';
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from './Button';
 export type { CardBodyProps, CardDescriptionProps, CardFooterProps, CardHeaderProps, CardProps, CardTitleProps } from './Card';
@@ -36,12 +37,15 @@ export { KpiTile, type KpiTileProps, type KpiTone, type KpiTrend } from './KpiTi
 export { PageHeader, type PageHeaderProps } from './PageHeader';
 export { Pagination, type PaginationLabels, type PaginationProps } from './Pagination';
 export { Radio, RadioGroup, type RadioGroupProps, type RadioOption, type RadioProps } from './Radio';
+export { RegisterShell, type RegisterShellProps } from './RegisterShell';
+export { ScreenHero, type ScreenHeroProps } from './ScreenHero';
 export { SearchInput, type SearchInputProps } from './SearchInput';
 export { SegmentedControl, type SegmentedControlProps, type SegmentedOption, type SegmentedSize } from './SegmentedControl';
 export { Select, type SelectOption, SelectParts, type SelectProps } from './Select';
 export { normalizeSignatureName, paintTypedSignature, SignaturePad, type SignaturePadProps } from './SignaturePad';
 export { Skeleton, type SkeletonProps, type SkeletonVariant } from './Skeleton';
 export { StatCard, type StatCardProps } from './StatCard';
+export { StatusRail, type StatusRailProps, type StatusRailStep } from './StatusRail';
 export { Switch, type SwitchProps } from './Switch';
 export { Tabs, TabsContent, TabsList, TabsTrigger } from './Tabs';
 export { Textarea, type TextareaProps } from './Textarea';
