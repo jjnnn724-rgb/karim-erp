@@ -1233,7 +1233,7 @@ router.post('/rebuild-days', jwtAuth, requireRole(...CONTROL_ROLES), async (req,
                 message: `البصمات في المدى ${punchTotal} وأقصى ما يُعاد بناؤه ${REBUILD_MAX_PUNCHES} — قسّم المدى إلى فترات أقصر`,
             });
         }
-        const punches = (await pool.query(             `SELECT l.id, l."attendanceTime", l."deviceId", d.name AS "deviceName"
+        const punches = (await pool.query(             `SELECT l.id, l."attendanceTime", l."deviceId", l."punchState", d.name AS "deviceName"
                FROM attendance_logs l
                LEFT JOIN attendance_devices d ON d.id = l."deviceId"
               WHERE l."employeeId" = $1 AND NOT l.ignored
@@ -1265,6 +1265,7 @@ router.post('/rebuild-days', jwtAuth, requireRole(...CONTROL_ROLES), async (req,
                 const instant = new Date(p.attendanceTime);
                 await engine.processPunch({
                     employeeId,
+                    punchState: p.punchState,
                     instant,
                     wall: instantToWall(instant),
                     source: 'device',

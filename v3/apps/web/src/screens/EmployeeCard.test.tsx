@@ -91,10 +91,10 @@ describe('بطاقة الموظف الكاملة', () => {
         expect(screen.getByText('آخر الإجازات')).toBeTruthy();
     });
 
-    it('الأدمن يرى زر تحرير لكل قسم', async () => {
+    it('الأدمن يرى زر تحرير البيانات الشامل', async () => {
         renderCard({ role: 'admin' });
         await waitFor(() => expect(screen.getAllByText('سالم تجريبي').length).toBeGreaterThan(0));
-        expect(screen.getAllByRole('button', { name: 'تحرير' }).length).toBeGreaterThanOrEqual(4);
+        expect(screen.getByRole('button', { name: /تحرير البيانات/ })).toBeTruthy();
     });
 
     it('حساب بلا صلاحية كتابة (accountant) يرى البطاقة مقروءة بلا أزرار تحرير', async () => {

@@ -136,9 +136,15 @@ class AttendanceEngine {
      *   • لا حراس: إعادة تطبيق نفس البصمة لا تغيّر شيئًا (المعادلة لا ترتبط
      *     بترتيب الورود)، ولا نافذة زمنية ولا كاش ولا ملصق جهاز — بلا استثناء.
      */
-    // ملاحظة: punchState ليست في قائمة الوسائط — ملصق حالة الجهاز لا يُقرأ إطلاقًا.
+    // ملصق حالة الجهاز (قرار المالك 2026-11-21: «عايزه يقراء من جهاز البصمه»):
+    // يُقرأ في نقطة الالتباس الوحيدة فقط — بصمة وحيدة بلا صفٍّ مفتوح تحاكمها
+    // البنيةُ بالتساوي بين «دخول» و«انصراف يتيم»، فملصق «خروج» (1) يجعلها
+    // انصرافًا محجوزًا لا «دخولًا متخلَّقًا» تُغلقه بصمةُ الصباح التالية
+    // فتنقلب السلسلة كلها (داء عبد اللطيف 2026-11-16). أما ما له سياق بنائي
+    // (صف مفتوح أو مغلق) فالبنية حاكمه: أقدم بصمة دخول وأحدثها انصراف —
+    // درس 2026-11-05: الملصقات تنقلب لدى بعض الموظفين فلا تُدلّ حيث البنية يقين.
     // بلا مصدرٍ معتمد أو هوية جهاز لا بصمة: الرفض قبل أي قراءة/كتابة (قرار 2026-11-07).
-    async processPunch({ employeeId, instant, wall, device, source, forDate = null }) {
+    async processPunch({ employeeId, punchState = null, instant, wall, device, source, forDate = null }) {
         const deviceId = device && (device.id ?? device.deviceId);
         const identity = validatePunch({ source, deviceId, device });
         if (!identity.ok) {
@@ -232,6 +238,42 @@ class AttendanceEngine {
             });
             const entryAt = dayBuild.entryAt;
             const exitAt = dayBuild.exitAt;
+
+            // بصمة وحيدة بلا صفٍّ مفتوح: لا سياق بنائي يحسم اتجاهها — ملصق
+            // الجهاز يحسمه (قرار المالك 2026-11-21). ملصق «خروج» ⇒ انصراف يتيم
+            // محجوز على يومه (missing_in في الكشوف)، لا صفُّ دخولٍ متخلَّق.
+            // الدخول الملصوق «خروجًا» يَشِفّ تلقائيًا: بصمته التالية تعيد بناء
+            // الصف من أطرافه فتعيد الدخول إلى مكانه.
+            if (!row && !exitAt && entryAt && sameSecond(entryAt, instant)
+                && Number(punchState) === 1) {
+                const loneWall = instantToWall(instant);
+                const loneNote = `بصمة ${source}${device ? ` (${device.name || device.deviceName})` : ''}`
+                    + `: انصراف ${loneWall.time} — دخول غير مُبصم`;
+                const id = Date.now() * 1000 + Math.floor(Math.random() * 1000);
+                const record = (await client.query(
+                    `INSERT INTO attendance (id, "employeeId", date, "checkIn", "checkOut", "checkInAt",
+                        "checkOutAt", "workMinutes", late, early_leave, notes, source, on_leave)
+                     VALUES ($1,$2,$3,NULL,$4,NULL,$5,NULL,false,false,$6,$7,false) RETURNING *`,
+                    [id, employeeId, day, loneWall.time, instant, loneNote, source]
+                )).rows[0];
+                try {
+                    const { emitDomainEvent } = require('./realtime/producers');
+                    await emitDomainEvent(pool, client, 'HR', {
+                        eventType: 'EMPLOYEE_CLOCK_OUT',
+                        aggregateType: 'attendance',
+                        aggregateId: record.id,
+                        payload: { employee_id: employeeId, date: day,
+                            time: record.checkOut, source },
+                    });
+                } catch (_) { /* البصمة أهم من الحدث */ }
+                await client.query('COMMIT');
+                if (this.io) {
+                    this.emit('attendance:updated', { action: 'check_out', source,
+                        employee: { id: employeeId }, record });
+                }
+                return { action: 'check_out', record, day, changed: true,
+                    status: 'missing_in', needsReview: true, reviewReason: 'missing_in' };
+            }
 
             const inWall = instantToWall(entryAt);
             const outWall = exitAt ? instantToWall(exitAt) : null;

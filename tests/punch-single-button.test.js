@@ -6,7 +6,8 @@
  * الوحيد، سواء بصمة الجهاز أو بصمة الكاميرا — دون ذلك لا، لا إكملة، لا تعقيدات»:
  *   • الاتجاه من تسلسل بصمات الموظف نفسه للمصدرين معًا: أول بصمة في يوم الوردية
  *     حضور، وكل بصمة بعدها انصرافٌ حتى آخرها.
- *   • ملصق حالة الجهاز (0/1) لا يُقرأ في الحكم مطلقًا — يبقى عمودًا خامًا في attendance_logs.
+ *   • ملصق حالة الجهاز (0/1) يُقرأ حيث البنية وحدها تحاكم فقط — البصمة الوحيدة
+ *     بلا صفٍّ مفتوح (قرار المالك 2026-11-21) — ويبقى عمودًا خامًا في attendance_logs.
  *   • لا نيّة في الحمولة، ولا نصوص زر في الواجهة — regression محفوظ من 2026-11-02.
  */
 'use strict';
@@ -14,7 +15,7 @@
 const fs = require('fs');
 const path = require('path');
 
-describe('البصمة حاكمة — لا ملصق جهاز ولا تفريق بين المصدرين (قرار 2026-11-05 مساءً)', () => {
+describe('البصمة حاكمة — ملصق الجهاز للالتباس فقط ولا تفريق بين المصدرين (قرارا 2026-11-05 و2026-11-21)', () => {
     // classifyPunch حُذفت، وderiveSequencePunchState حُذفت: القاعدة صارت سطرًا واحدًا
     // في processPunch يقرؤه من صفوف الموظف نفسها. ما يُختبر هنا عقد المصدر لا الوظيفة.
     const engine = fs.readFileSync(path.join(__dirname, '..', 'backend', 'attendance-engine.js'), 'utf8');
@@ -45,12 +46,14 @@ describe('البصمة حاكمة — لا ملصق جهاز ولا تفريق �
         expect(engine).toContain("error: identity.code");
     });
 
-    it('بصمة بملصقٍ مجهول أو معاكس تُحجز كما هي — الملصق لا يُقرأ أصلًا في الحكم', () => {
+    it('بصمة بملصقٍ مجهول أو معاكس تُحجز كما هي — الملصق لا يُدلّ حيث للبنية سياق', () => {
         expect(engine).not.toMatch(/حالة بصمة غير معروفة/);
         expect(engine).not.toMatch(/state_conflict|IN_STATES|OUT_STATES/);
         expect(engine).not.toMatch(/Number\.isFinite\(Number\(raw\)\)/);
-        // processPunch لا يستقبل punchState — ولا فرع مبني على قيمة الملصق
-        expect(engine.match(/async processPunch\(\{[^}]*\}\)/)[0]).not.toMatch(/punchState/);
+        // الملصق يُقرأ في نقطة الالتباس الوحيدة فقط (قرار المالك 2026-11-21):
+        // بصمة وحيدة بلا صفٍّ مفتوح + ملصق «خروج» = انصراف يتيم محجوز، لا دخول متخلَّق
+        expect(engine.match(/async processPunch\(\{[^}]*\}\)/)[0]).toMatch(/punchState/);
+        expect(engine).toContain('Number(punchState) === 1');
         expect(engine.indexOf('INSERT INTO attendance')).toBeGreaterThan(engine.indexOf('const entryAt ='));
     });
 

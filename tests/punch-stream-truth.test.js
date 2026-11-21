@@ -5,8 +5,14 @@
 //
 // القاعدة الواحدة في attendance-engine.js: أطراف يوم الوردية من بصمات الموظف —
 // أقدم بصمة دخول وأحدثها انصراف، للمصدرين معًا بلا تفريق وبلا ترتيب ورود.
-// ملصق حالة الجهاز (0/1) لا يُقرأ، ولا حارس تكرار ولا نافذة ولا استثناء
-// (قرار المالك 2026-11-05 مساءً: «مش عايز تقيدات ولا شفاعات ولا حراس»).
+// ولا حارس تكرار ولا نافذة ولا استثناء (قرار المالك 2026-11-05 مساءً:
+// «مش عايز تقيدات ولا شفاعات ولا حراس»).
+//
+// تحديث المالك 2026-11-21 («عايزه يقراء من جهاز البصمه»): ملصق الجهاز (0/1)
+// يُقرأ في نقطة الالتباس الوحيدة فقط — بصمة وحيدة بلا صفٍّ مفتوح تحاكمها
+// البنيةُ بالتساوي بين دخولٍ وانصراف؛ ملصق «خروج» يجعلها انصرافًا يتيمًا
+// محجوزًا (missing_in) لا «دخولًا متخلَّقًا». حيث للبنية سياق (صف مفتوح/مغلق)
+// تبقى حاكمًا — درس 2026-11-05: الملصقات تنقلب لدى بعض الموظفين.
 //
 // الداء الذي يُغلقه هذا الملف: انقلب الملصق على خمسة موظفين (EMP-002 انصرافه
 // ملصوق «دخولًا» فهُمل كيوم مفتوح، ومازن دخوله ملصوق «انصرافًا» فأُيِّم يومه)
@@ -87,14 +93,16 @@ describe('عقد المصدر: البصمة حاكمة — لا ملصق ولا 
         expect(ENGINE).not.toMatch(/source === 'portal'/);
     });
 
-    test('ملصق الجهاز لا يُقرأ في الحكم أصلًا — لا وسيط ولا بروتوكول ولا مجموعة حالات', () => {
+    test('ملصق الجهاز يُقرأ حيث البنية وحدها تحاكم: البصمة الوحيدة بلا صفٍّ مفتوح فقط (قرار 2026-11-21)', () => {
         expect(ENGINE).not.toMatch(/IN_STATES|OUT_STATES/);
         expect(ENGINE).not.toMatch(/require\(['"]\.\/zkteco\/protocol['"]\)/);
         expect(ENGINE).not.toMatch(/state_conflict/);
-        expect(ENGINE).not.toMatch(/deviceIn|deviceOut/);
-        // processPunch لا يستقبل punchState أصلًا (الوسيط محذوف من قائمة الوسائط)
+        // الوسيط وصل من مُستدعي الجهاز والمحرك يستقبله في التوقيع
         expect(ENGINE).toMatch(/async processPunch\(\{[^}]*\}\)/);
-        expect(ENGINE.match(/async processPunch\(\{[^}]*\}\)/)[0]).not.toMatch(/punchState/);
+        expect(ENGINE.match(/async processPunch\(\{[^}]*\}\)/)[0]).toMatch(/punchState/);
+        // نقطة القراءة الوحيدة: لا صفّ لهذا اليوم + بصمة وحيدة (دخولها = لحظتها، لا انصراف) + ملصق خروج
+        expect(ENGINE).toContain('!row && !exitAt && entryAt && sameSecond(entryAt, instant)');
+        expect(ENGINE).toContain('Number(punchState) === 1');
     });
 
     test('لا حراس ولا «تجاهل» إطلاقًا: لا ignore ولا تبريد ولا كاش ولا مفتاح بيئة', () => {
@@ -139,19 +147,20 @@ describe('إعادة بناء يوم الموظف من بصماته هو — ا�
         expect((await decisionsOf(P_DOUBLE_TAP, 'state_conflict')).length).toBe(0);
     });
 
-    test('دخول الليل ملصوق «انصرافًا»: يُحجز حضورًا ولا يُترَك اليوم يتيمًا', async () => {
-        const inRes = await punch(P_NIGHT_ENTRY, '2026-11-05T14:04:11.000Z', 1); // 17:04
-        expect(inRes.action).toBe('check_in');
+    test('دخول الليل ملصوق «انصرافًا»: صفٌّ ناقص (missing_in) يَشِفّ ببصمته التالية', async () => {
+        const inRes = await punch(P_NIGHT_ENTRY, '2026-11-05T14:04:11.000Z', 1); // 17:04 — الملصق كاذب
+        expect(inRes.action).toBe('check_out');      // الملصق حكم حيث البنية بلا سياق
+        expect(inRes.needsReview).toBe(true);
+        expect(inRes.reviewReason).toBe('missing_in');
         let r = await rowOf(P_NIGHT_ENTRY, '2026-11-05');
-        expect(r.checkIn).toBe('17:04');
-        expect(r.checkOut).toBeNull();
-        expect(r.late).toBe(true);          // بدايته 17:00 — أربع دقائق من أول دقيقة
-        expect((await decisionsOf(P_NIGHT_ENTRY, 'state_conflict')).length).toBe(0);
+        expect(r.checkIn).toBeNull();                // لا دخول متخلَّق — انصراف يتيم محجوز
+        expect(r.checkOut).toBe('17:04');
 
         const outRes = await punch(P_NIGHT_ENTRY, '2026-11-05T23:51:40.000Z', 1); // 02:51 فجر 11-06
         expect(outRes.action).toBe('check_out');
         r = await rowOf(P_NIGHT_ENTRY, '2026-11-05');
-        expect(r.checkOut).toBe('02:51');   // انصراف الوردية الليلية على صف يومها
+        expect(r.checkIn).toBe('17:04');             // شِفاء: أقدم بصمة عادت دخولًا
+        expect(r.checkOut).toBe('02:51');            // انصراف الوردية الليلية على صف يومها
         expect(await rowCount(P_NIGHT_ENTRY)).toBe(1);
     });
 
@@ -178,6 +187,30 @@ describe('إعادة بناء يوم الموظف من بصماته هو — ا�
         const r = await rowOf(P_LABEL_FLIP, '2026-11-05');
         expect(r.checkIn).toBe('04:00');
         expect(r.workMinutes).toBe(783);
+    });
+
+    test('داء عبد اللطيف 2026-11-16 معاد: نسيان بصمة الصباح لا يقلب السلسلة أبدًا', async () => {
+        // يومٌ سليم، ثم انصراف مساء بلا دخولٍ صباحي (الملصق يحمي)، ثم سلسلة تتمة صحيحة
+        await punch(P_LABEL_FLIP, '2026-11-16T08:18:05.000Z', 0); // 11:18 دخول
+        await punch(P_LABEL_FLIP, '2026-11-16T19:50:15.000Z', 1); // 22:50 انصراف
+        const lone = await punch(P_LABEL_FLIP, '2026-11-17T19:37:16.000Z', 1); // 22:37 — نسي دخوله
+        expect(lone.action).toBe('check_out');
+        expect(lone.needsReview).toBe(true);
+        const orphanRow = await rowOf(P_LABEL_FLIP, '2026-11-17');
+        expect(orphanRow.checkIn).toBeNull();      // انصراف يتيم — لا دخول متخلَّق
+        expect(orphanRow.checkOut).toBe('22:37');
+        // صباحٌ جديد: دخولٌ على يومه — لا يُلتهم انصرافًا لأمس (نقطة الانقلاب القديمة)
+        const dawn = await punch(P_LABEL_FLIP, '2026-11-18T08:14:44.000Z', 0); // 11:14 دخول
+        expect(dawn.action).toBe('check_in');
+        // ومساؤه يُغلق يومه على صفٍّ نقيّ
+        const dusk = await punch(P_LABEL_FLIP, '2026-11-18T20:07:28.000Z', 1); // 23:07 انصراف
+        expect(dusk.action).toBe('check_out');
+        const full = await rowOf(P_LABEL_FLIP, '2026-11-18');
+        expect(full.checkIn).toBe('11:14');
+        expect(full.checkOut).toBe('23:07');
+        const still = await rowOf(P_LABEL_FLIP, '2026-11-17');
+        expect(still.checkIn).toBeNull();          // اليوم الناقص بقي ناقصًا بصدق
+        expect(still.checkOut).toBe('22:37');
     });
 });
 

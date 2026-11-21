@@ -4,29 +4,25 @@ import { useMemo, useState } from 'react';
 import { StateError, StateLoading, TableScroll } from '../components/TableState';
 import { useAuthState, getAccessToken } from '../lib/auth';
 import { ATT_STATE, fetchAttendanceReport, rangeReportRows } from '../lib/employee-card';
-import { fetchEmployeeLeaves, fetchEmployeeSuite, fetchQrCard } from '../lib/employee-profile';
+import { fetchEmployeeLeaves, fetchEmployeeSuite } from '../lib/employee-profile';
 import { fetchEmployees, fetchHrDepartments } from '../lib/employees';
 import { employeeWriteVisible, updateEmployeeProfile } from '../lib/employees-write';
 import { formatMoney } from '../lib/format';
+import { PRINT_COMPANY_EN, usePrintBrand } from '../lib/print';
 import { printSmart } from '../lib/print-viewer';
 import { errorMessage, intOf, presetRange } from '../lib/reporting';
-import { PRINT_COMPANY_EN, usePrintBrand } from '../lib/print';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Drawer } from '../ui/Drawer';
 import { ScreenHero } from '../ui/ScreenHero';
 import { StatCard } from '../ui/StatCard';
-import { StatusRail } from '../ui/StatusRail';
 import { useToast } from '../ui/Toast';
 
 /**
- * بطاقة الموظف الكاملة — شاشة خارج القائمة تُفتح من شاشة الموظفين (?id=).
- * كل بيانات الموظف في صفحة واحدة مع تحرير بالأقسام (Drawers) —
- * التحرير للأدمن وHR فقط (قرار المالك 2026-11-21) والخادم هو الحاكم.
- * لغة كريم: ScreenHero بجواب الحالة + أقسام بطاقات + كشف حضور رسمي + سجلات HR.
+ * بطاقة الموظف الكاملة — ملف شخصي احترافي بصفحة واحدة (?id=، خارج القائمة).
+ * غلاف هوية الشركة باللوجو + ملف الموظف بورقة مواصفات + كشف حضور رسمي
+ * + سجلات HR. التحرير بأدراج شاملة للأدمن وHR فقط (قرار المالك 2026-11-21).
  */
-
-type SectionKey = 'identity' | 'documents' | 'bank' | 'work' | 'device';
 
 const DAY_OFF_AR = ['الأحد', 'الإثنين', 'الثلاثاء', 'الأربعاء', 'الخميس', 'الجمعة', 'السبت'];
 
@@ -48,6 +44,15 @@ function isTrue(value: unknown): boolean {
     return value === true || value === 1 || value === '1' || value === 'true';
 }
 
+function initialsOf(name: string): string {
+    return name
+        .split(/\s+/)
+        .filter(Boolean)
+        .slice(0, 2)
+        .map((word) => word[0] ?? '')
+        .join('');
+}
+
 export function EmployeeCard() {
     const [employeeId] = useState(() => {
         try {
@@ -60,6 +65,7 @@ export function EmployeeCard() {
     const auth = useAuthState();
     const { toast } = useToast();
     const queryClient = useQueryClient();
+    const brand = usePrintBrand();
     const canEdit = employeeWriteVisible(auth.user?.role);
     const isAdmin = auth.user?.role === 'admin';
     const showSalary = auth.user?.role === 'admin' || auth.user?.role === 'manager' || auth.user?.role === 'hr';
@@ -94,19 +100,30 @@ export function EmployeeCard() {
         queryFn: ({ signal }) => fetchEmployeeSuite(employeeId, signal),
         enabled: employeeId !== '',
     });
-    const qrQuery = useQuery({
-        queryKey: ['employee-card', 'qr', employeeId],
-        queryFn: ({ signal }) => fetchQrCard(employeeId, signal),
-        enabled: employeeId !== '' && Boolean(canEdit),
-        retry: 0,
-    });
-
-    const [editSection, setEditSection] = useState<SectionKey | null>(null);
-    const brand = usePrintBrand();
+    const [editOpen, setEditOpen] = useState(false);
 
     function invalidate() {
         void queryClient.invalidateQueries({ queryKey: ['employees'] });
         void queryClient.invalidateQueries({ queryKey: ['employee-card'] });
+    }
+
+    async function printLuxCard() {
+        try {
+            const token = getAccessToken();
+            const headers: Record<string, string> = { Accept: 'text/html' };
+            if (token) {
+                headers.Authorization = `Bearer ${token}`;
+            }
+            const response = await fetch(`/api/hr/employees/${encodeURIComponent(employeeId)}/lux-card`, { headers });
+            if (!response.ok) {
+                throw new Error(`HTTP ${String(response.status)}`);
+            }
+            const html = await response.text();
+            const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
+            window.open(URL.createObjectURL(blob), '_blank', 'noopener');
+        } catch {
+            toast({ title: 'تعذّر تجهيز البطاقة الفاخرة', variant: 'error' });
+        }
     }
 
     const shell = (children: React.ReactNode) => (
@@ -118,7 +135,7 @@ export function EmployeeCard() {
 
     if (employeeId === '') {
         return shell(
-            <p className="rounded-md border border-hairline bg-surface p-md text-body-md text-muted">
+            <p className="rounded-lg border border-hairline bg-surface p-md text-body-md text-muted">
                 افتح البطاقة من شاشة الموظفين — اختر الموظف ثم اضغط «فتح البطاقة الكاملة».
             </p>,
         );
@@ -141,7 +158,7 @@ export function EmployeeCard() {
 
     if (!employee) {
         return shell(
-            <p className="rounded-md border border-hairline bg-surface p-md text-body-md text-muted">
+            <p className="rounded-lg border border-hairline bg-surface p-md text-body-md text-muted">
                 الموظف غير موجود — ربما حُذف أو تغيّر الرابط.
             </p>,
         );
@@ -150,35 +167,28 @@ export function EmployeeCard() {
     const name = String(employee.name ?? '—');
     const code = String(employee.employeeId ?? '');
     const status = String(employee.status ?? 'active');
+    const position = String(employee.position ?? '');
+    const department = String(employee.department ?? '');
+    const photo = String(employee.photo ?? '');
+    const hasPhoto = photo.startsWith('data:') || photo.startsWith('http') || photo.startsWith('/');
+    const inactive = status === 'inactive';
 
-    async function printLuxCard() {
-        try {
-            const token = getAccessToken();
-            const headers: Record<string, string> = { Accept: 'text/html' };
-            if (token) {
-                headers.Authorization = `Bearer ${token}`;
-            }
-            const response = await fetch(`/api/hr/employees/${encodeURIComponent(employeeId)}/lux-card`, { headers });
-            if (!response.ok) {
-                throw new Error(`HTTP ${String(response.status)}`);
-            }
-            const html = await response.text();
-            const blob = new Blob([html], { type: 'text/html;charset=utf-8' });
-            window.open(URL.createObjectURL(blob), '_blank', 'noopener');
-        } catch {
-            toast({ title: 'تعذّر تجهيز البطاقة الفاخرة', variant: 'error' });
-        }
+    function printAttendance() {
+        printSmart(
+            '<!DOCTYPE html><html dir="rtl"><head><meta charset="utf-8"><title>كشف الحضور</title></head><body><p>استخدم «كشف الحضور والانصراف» في البطاقة لطباعة الكشف الرسمي.</p></body></html>',
+        );
     }
 
     return (
-        <div className="flex flex-col gap-lg premium-screen premium-employee-card">
+        <div className="mx-auto flex w-full max-w-5xl flex-col gap-lg premium-screen premium-employee-card">
+            {/* ─── غلاف هوية الشركة — اللوجو + الاسم + الختم الرسمي ─── */}
             <section
                 className="flex flex-wrap items-center gap-md rounded-lg bg-sidebar p-md shadow-card"
                 aria-label="هوية الشركة"
                 data-erp-print-hide
             >
-                <span className="grid size-16 shrink-0 place-items-center overflow-hidden rounded-xl bg-surface shadow-card">
-                    <img src={brand.logoSrc} alt="شعار الشركة" className="size-14 object-contain" />
+                <span className="grid size-14 shrink-0 place-items-center overflow-hidden rounded-xl bg-surface shadow-card">
+                    <img src={brand.logoSrc} alt="شعار الشركة" className="size-12 object-contain" />
                 </span>
                 <div className="flex min-w-0 flex-col gap-xxs">
                     <span className="text-heading-md text-sidebar-ink">{brand.name}</span>
@@ -186,128 +196,130 @@ export function EmployeeCard() {
                         {PRINT_COMPANY_EN}
                     </span>
                 </div>
-                <span
-                    className="ms-auto inline-flex items-center gap-xxs rounded-full border border-sidebar-accent px-md py-xxs text-caption font-medium text-sidebar-plaque-ink"
-                >
+                <span className="ms-auto inline-flex items-center gap-xxs rounded-full border border-sidebar-accent px-md py-xxs text-caption font-medium text-sidebar-plaque-ink">
                     <span aria-hidden="true" className="inline-block size-1.5 rounded-full bg-sidebar-accent" />
                     بطاقة موظف رسمية
                 </span>
             </section>
-            <ScreenHero
-                title={name}
-                english="EMPLOYEE CARD"
-                description={`كود الموظف ${code || '—'}${String(employee.position ?? '') ? ` · ${String(employee.position)}` : ''}${String(employee.department ?? '') ? ` · ${String(employee.department)}` : ''}`}
-                answer={
-                    <StatusRail
-                        steps={[
-                            { key: 'active', label: 'نشط ومسجّل', tone: 'success' },
-                            { key: 'documents', label: 'الوثائق', tone: 'info' },
-                            { key: 'suite', label: 'الرواتب والعقود', tone: 'info' },
-                        ]}
-                        current={status === 'inactive' ? 0 : 2}
-                        label={status === 'inactive' ? 'موظف موقوف — لا يظهر في قوائم الحضور' : 'موظف نشط — السجل مكتمل'}
+
+            {/* ─── رأس الملف: الصورة + الاسم + الحالة + الإجراءات ─── */}
+            <div className="flex flex-wrap items-center gap-md">
+                {hasPhoto ? (
+                    <img
+                        src={photo}
+                        alt={`صورة ${name}`}
+                        className="size-20 shrink-0 rounded-full border-2 border-primary object-cover shadow-card"
                     />
-                }
-                actions={
-                    <>
-                        <Button type="button" size="sm" variant="secondary" onClick={() => navigate({ to: '/employees' })}>
-                            عودة للموظفين
+                ) : (
+                    <span
+                        aria-hidden="true"
+                        className="grid size-20 shrink-0 place-items-center rounded-full bg-sidebar text-display-lg text-sidebar-plaque-ink shadow-card"
+                    >
+                        {initialsOf(name)}
+                    </span>
+                )}
+                <div className="flex min-w-0 flex-1 flex-col gap-xxs">
+                    <div className="flex flex-wrap items-center gap-sm">
+                        <h2 className="text-heading-lg text-ink">{name}</h2>
+                        {inactive ? <Badge variant="warning">موقوف</Badge> : <Badge variant="success" dot>نشط</Badge>}
+                    </div>
+                    <p className="text-body-sm text-muted">
+                        {[position || null, department || null, code ? `كود ${code}` : null].filter(Boolean).join(' · ') || '—'}
+                    </p>
+                </div>
+                <div className="flex flex-wrap items-center gap-xs" data-erp-print-hide>
+                    <Button type="button" size="sm" variant="secondary" onClick={() => navigate({ to: '/employees' })}>
+                        عودة
+                    </Button>
+                    <Button type="button" size="sm" variant="secondary" onClick={printAttendance}>
+                        🖨 كشف الحضور
+                    </Button>
+                    {canEdit ? (
+                        <Button type="button" size="sm" variant="secondary" onClick={() => void printLuxCard()}>
+                            🪪 البطاقة الفاخرة
                         </Button>
-                        {canEdit ? (
-                            <Button type="button" size="sm" variant="secondary" onClick={() => void printLuxCard()}>
-                                🪪 البطاقة الفاخرة
-                            </Button>
-                        ) : null}
-                    </>
-                }
-            />
-
-            <div className="grid gap-md lg:grid-cols-2">
-                <Section title="الهوية والاتصال" english="Identity" canEdit={canEdit} onEdit={() => setEditSection('identity')}>
-                    <Field label="الاسم" value={name} />
-                    <Field label="كود الموظف" value={code} mono />
-                    <Field label="الوظيفة" value={String(employee.position ?? '—')} />
-                    <Field label="القسم (HR)" value={String(employee.department ?? '—')} />
-                    <Field label="الهاتف" value={String(employee.phone ?? '—')} mono />
-                    <Field label="البريد" value={String(employee.email ?? '—')} mono />
-                    <Field label="تاريخ التعيين" value={String(employee.joinDate ?? '—')} mono />
-                    <Field label="الجنسية" value={String(employee.nationality ?? '—')} />
-                    <Field label="رقم الهوية/الإقامة" value={String(employee.iqamaNumber ?? '—')} mono />
-                    <Field
-                        label="الحالة"
-                        value={status === 'inactive' ? 'موقوف' : 'نشط'}
-                        {...(status === 'inactive' ? {} : { badge: { text: 'نشط' } })}
-                    />
-                </Section>
-
-                <Section title="الوثائق والانتهاءات" english="Documents" canEdit={canEdit} onEdit={() => setEditSection('documents')}>
-                    <ExpiryField label="انتهاء الإقامة" value={employee.iqamaExpiry} />
-                    <ExpiryField label="الشهادة الصحية" value={employee.healthCertExpiry} />
-                    <ExpiryField label="الشهادة التعليمية الصحية" value={employee.healthEduExpiry} />
-                    <Field label="رقم التأمينات (GOSI)" value={String(employee.gosi_number ?? '—')} mono />
-                </Section>
-
-                <Section title="البنك وWPS" english="Bank & WPS" canEdit={canEdit} onEdit={() => setEditSection('bank')}>
-                    <Field label="IBAN الحساب البنكي" value={String(employee.iban ?? '—')} mono />
-                    <p className="text-caption text-muted">بيانات الحساب تُستخدم في ملف WPS لأوامر حماية الأجور.</p>
-                </Section>
-
-                <Section title="العمل والوردية" english="Work & shift" canEdit={canEdit} onEdit={() => setEditSection('work')}>
-                    {showSalary ? <Field label="الراتب" value={employee.salary == null ? '—' : formatMoney(String(employee.salary))} mono /> : null}
-                    <Field label="بداية الوردية" value={String(employee.shift_start ?? '—')} mono />
-                    <Field label="مدة الوردية (ساعات)" value={employee.shift_karim == null ? '—' : String(employee.shift_karim)} mono />
-                    <Field label="الراحة الأسبوعية" value={employee.day_off == null ? '—' : DAY_OFF_AR[Number(employee.day_off) % 7] ?? '—'} />
-                    <Field label="رقم الجهاز" value={String(employee.deviceUserId ?? '—')} mono />
-                    {isAdmin ? (
-                        <>
-                            <Field label="انصراف تلقائي" value={isTrue(employee.auto_checkout) ? 'مُفعّل' : 'مُعطّل'} />
-                            <Field label="قفل اليوم التلقائي" value={isTrue(employee.auto_lock) ? 'مُفعّل' : 'مُعطّل'} />
-                        </>
                     ) : null}
-                </Section>
-
-                <Section title="البطاقة والجهاز" english="Card & QR" canEdit={false}>
-                    <Field label="رقم البطاقة" value={String(employee.cardId ?? '—')} mono />
-                    <Field
-                        label="حالة QR"
-                        value={
-                            qrQuery.data
-                                ? qrQuery.data.qrAvailable
-                                    ? 'صادرة وسارية'
-                                    : String(qrQuery.data.message ?? 'غير صادرة')
-                                : 'غير متاحة (يتطلب إعداد سر البطاقات على الخادم)'
-                        }
-                    />
-                </Section>
+                    {canEdit ? (
+                        <Button type="button" size="sm" onClick={() => setEditOpen(true)}>
+                            ✏️ تحرير البيانات
+                        </Button>
+                    ) : null}
+                </div>
             </div>
 
+            {/* ─── ورقة المواصفات — حقول بفواصل رفيعة في عمودين ─── */}
+            <div className="grid gap-md md:grid-cols-2">
+                <section className="rounded-lg border border-hairline bg-surface p-sm shadow-card" aria-label="الهوية والاتصال">
+                    <h3 className="mb-xs text-caption font-medium uppercase tracking-[0.14em] text-faint">
+                        الهوية والاتصال <span className="normal-case" dir="ltr" lang="en">Identity</span>
+                    </h3>
+                    <Fact label="الاسم الكامل" value={name} />
+                    <Fact label="كود الموظف" value={code || '—'} mono />
+                    <Fact label="الوظيفة" value={position || '—'} />
+                    <Fact label="القسم (HR)" value={department || '—'} />
+                    <Fact label="الهاتف" value={String(employee.phone ?? '—')} mono />
+                    <Fact label="البريد الإلكتروني" value={String(employee.email ?? '—')} mono />
+                    <Fact label="تاريخ التعيين" value={String(employee.joinDate ?? '—')} mono />
+                    <Fact label="الجنسية" value={String(employee.nationality ?? '—')} />
+                </section>
+
+                <section className="rounded-lg border border-hairline bg-surface p-sm shadow-card" aria-label="الوثائق والعمل">
+                    <h3 className="mb-xs text-caption font-medium uppercase tracking-[0.14em] text-faint">
+                        الوثائق والانتهاءات <span className="normal-case" dir="ltr" lang="en">Documents</span>
+                    </h3>
+                    <ExpiryFact label="انتهاء الإقامة" value={employee.iqamaExpiry} />
+                    <ExpiryFact label="الشهادة الصحية" value={employee.healthCertExpiry} />
+                    <ExpiryFact label="الشهادة التعليمية الصحية" value={employee.healthEduExpiry} />
+                    <Fact label="رقم الهوية/الإقامة" value={String(employee.iqamaNumber ?? '—')} mono />
+                    <h3 className="mb-xs mt-sm text-caption font-medium uppercase tracking-[0.14em] text-faint">
+                        البنك وWPS <span className="normal-case" dir="ltr" lang="en">Bank</span>
+                    </h3>
+                    <Fact label="IBAN الحساب البنكي" value={String(employee.iban ?? '—')} mono />
+                    <Fact label="رقم التأمينات (GOSI)" value={String(employee.gosi_number ?? '—')} mono />
+                    <h3 className="mb-xs mt-sm text-caption font-medium uppercase tracking-[0.14em] text-faint">
+                        العمل والوردية <span className="normal-case" dir="ltr" lang="en">Work</span>
+                    </h3>
+                    {showSalary ? <Fact label="الراتب" value={employee.salary == null ? '—' : formatMoney(String(employee.salary))} mono /> : null}
+                    <Fact label="بداية الوردية" value={String(employee.shift_start ?? '—')} mono />
+                    <Fact label="مدة الوردية (ساعات)" value={employee.shift_karim == null ? '—' : String(employee.shift_karim)} mono />
+                    <Fact label="الراحة الأسبوعية" value={employee.day_off == null ? '—' : DAY_OFF_AR[Number(employee.day_off) % 7] ?? '—'} />
+                    <Fact label="رقم البطاقة" value={String(employee.cardId ?? '—')} mono />
+                    <Fact label="رقم الجهاز" value={String(employee.deviceUserId ?? '—')} mono />
+                    {isAdmin ? <Fact label="الانصراف التلقائي" value={isTrue(employee.auto_checkout) ? 'مُفعّل' : 'مُعطّل'} /> : null}
+                    {isAdmin ? <Fact label="قفل اليوم التلقائي" value={isTrue(employee.auto_lock) ? 'مُفعّل' : 'مُعطّل'} /> : null}
+                </section>
+            </div>
+
+            {/* ─── كشف الحضور ─── */}
             <AttendanceRangeBlock
                 employeeId={employeeId}
                 employeeName={name}
                 employeeCode={code}
-                department={String(employee.department ?? '')}
-                position={String(employee.position ?? '')}
+                department={department}
+                position={position}
                 dayOff={employee.day_off == null ? null : Number(employee.day_off)}
             />
 
-            <LeavesSection query={leavesQuery} />
-            <SuiteSection title="سلف الرواتب" english="Salary advances" rows={suiteQuery.data?.advances ?? []} loading={suiteQuery.isPending} />
-            <SuiteSection title="تسويات الرواتب" english="Adjustments" rows={suiteQuery.data?.adjustments ?? []} loading={suiteQuery.isPending} />
-            <SuiteSection title="عقود العمل" english="Contracts" rows={suiteQuery.data?.contracts ?? []} loading={suiteQuery.isPending} />
-            <SuiteSection title="التقييمات" english="Evaluations" rows={suiteQuery.data?.evaluations ?? []} loading={suiteQuery.isPending} />
+            {/* ─── سجلات HR ─── */}
+            <div className="grid gap-md md:grid-cols-2">
+                <LeavesSection query={leavesQuery} />
+                <SuiteSection title="سلف الرواتب" english="Advances" rows={suiteQuery.data?.advances ?? []} loading={suiteQuery.isPending} />
+                <SuiteSection title="تسويات الرواتب" english="Adjustments" rows={suiteQuery.data?.adjustments ?? []} loading={suiteQuery.isPending} />
+                <SuiteSection title="عقود العمل" english="Contracts" rows={suiteQuery.data?.contracts ?? []} loading={suiteQuery.isPending} />
+                <SuiteSection title="التقييمات" english="Evaluations" rows={suiteQuery.data?.evaluations ?? []} loading={suiteQuery.isPending} />
+            </div>
 
-            {editSection !== null && employee ? (
+            {editOpen && employee ? (
                 <EmployeeEditDrawer
-                    section={editSection}
                     employee={employee}
                     employeeId={employeeId}
                     isAdmin={isAdmin}
                     departmentOptions={departmentOptions}
                     onClose={() => {
-                        setEditSection(null);
+                        setEditOpen(false);
                     }}
                     onSaved={() => {
-                        setEditSection(null);
+                        setEditOpen(false);
                         invalidate();
                         toast({ title: 'تم حفظ تعديلات الموظف', variant: 'success' });
                     }}
@@ -317,81 +329,41 @@ export function EmployeeCard() {
     );
 }
 
-/* ─── مكوّنات العرض ──────────────────────────────────────────────────────── */
+/* ─── حقول ورقة المواصفات — صف رفيع: التسمية يمين والقيمة يسار ─────────── */
 
-function Section({
-    title,
-    english,
-    canEdit,
-    onEdit,
-    children,
-}: {
-    title: string;
-    english: string;
-    canEdit: boolean;
-    onEdit?: () => void;
-    children: React.ReactNode;
-}) {
+function Fact({ label, value, mono = false }: { label: string; value: string; mono?: boolean }) {
     return (
-        <section className="rounded-lg border border-hairline bg-surface shadow-card">
-            <div className="flex items-center justify-between border-b border-hairline px-sm py-xs">
-                <h2 className="text-heading-md text-ink">
-                    {title}{' '}
-                    <span className="text-body-sm text-muted" dir="ltr" lang="en">
-                        {english}
-                    </span>
-                </h2>
-                {canEdit && onEdit ? (
-                    <Button type="button" size="sm" variant="secondary" onClick={onEdit} data-erp-print-hide>
-                        تحرير
-                    </Button>
-                ) : null}
-            </div>
-            <dl className="grid grid-cols-1 gap-xxs p-sm sm:grid-cols-2">{children}</dl>
-        </section>
-    );
-}
-
-function Field({
-    label,
-    value,
-    mono = false,
-    badge,
-}: {
-    label: string;
-    value: string;
-    mono?: boolean;
-    badge?: { text: string };
-}) {
-    return (
-        <div className="flex min-w-0 flex-col gap-xxs rounded-md bg-surface-sunken p-xs">
-            <dt className="text-caption text-muted">{label}</dt>
-            <dd className="flex items-center gap-xxs">
-                <span className={mono ? 'erp-numeric text-body-md text-ink' : 'text-body-md text-ink'}>{value}</span>
-                {badge ? <Badge variant="success">{badge.text}</Badge> : null}
-            </dd>
+        <div className="flex items-center justify-between gap-sm border-b border-hairline py-xs last:border-b-0">
+            <span className="shrink-0 text-caption text-muted">{label}</span>
+            <span
+                className={`min-w-0 truncate text-body-md text-ink ${mono ? 'erp-numeric' : ''}`}
+                dir={mono ? 'ltr' : undefined}
+                title={value}
+            >
+                {value}
+            </span>
         </div>
     );
 }
 
-function ExpiryField({ label, value }: { label: string; value: string | null | undefined }) {
+function ExpiryFact({ label, value }: { label: string; value: string | null | undefined }) {
     const tone = expiryTone(value);
     const toneClass = tone === 'danger' ? 'text-danger-text' : tone === 'warning' ? 'text-warning-text' : 'text-ink';
     return (
-        <div className="flex min-w-0 flex-col gap-xxs rounded-md bg-surface-sunken p-xs">
-            <dt className="text-caption text-muted">{label}</dt>
-            <dd className="flex items-center gap-xxs">
+        <div className="flex items-center justify-between gap-sm border-b border-hairline py-xs last:border-b-0">
+            <span className="shrink-0 text-caption text-muted">{label}</span>
+            <span className="flex items-center gap-xxs">
                 <span className={`erp-numeric text-body-md ${toneClass}`} dir="ltr">
                     {value || '—'}
                 </span>
                 {tone === 'danger' ? <Badge variant="danger">منتهية</Badge> : null}
                 {tone === 'warning' ? <Badge variant="warning">قاربت</Badge> : null}
-            </dd>
+            </span>
         </div>
     );
 }
 
-/* ─── كشف الحضور بفترة — توكنز مستقلة عن CSS شاشة الموظفين ───────────────── */
+/* ─── كشف الحضور بفترة — توكنز مستقلة ───────────────────────────────────── */
 
 function AttendanceRangeBlock({
     employeeId,
@@ -576,7 +548,7 @@ function LeavesSection({ query }: { query: LeavesQueryShape }) {
                     <ul className="flex list-none flex-col gap-xxs p-sm" role="list">
                         {query.data.map((leave) => (
                             <li key={leave.id} className="flex flex-wrap items-center justify-between gap-xs rounded-md bg-surface-sunken p-xs text-body-md">
-                                <span className="text-ink font-medium">{leave.typeName}</span>
+                                <span className="font-medium text-ink">{leave.typeName}</span>
                                 <span className="text-caption text-muted" dir="ltr">
                                     {`${leave.start} ← ${leave.end}`}
                                 </span>
@@ -619,18 +591,9 @@ function SuiteSection({ title, english, rows, loading }: { title: string; englis
     );
 }
 
-/* ─── أدراج التحرير بالأقسام — hr/الأدمن فقط ─────────────────────────────── */
-
-const SECTION_TITLES: Record<SectionKey, string> = {
-    identity: 'الهوية والاتصال',
-    documents: 'الوثائق والانتهاءات',
-    bank: 'البنك وWPS',
-    work: 'العمل والوردية',
-    device: 'البطاقة والجهاز',
-};
+/* ─── درج التحرير الشامل — كل الحقول مجموعة، حفظ واحد — hr/الأدمن فقط ───── */
 
 function EmployeeEditDrawer({
-    section,
     employee,
     employeeId,
     isAdmin,
@@ -638,7 +601,6 @@ function EmployeeEditDrawer({
     onClose,
     onSaved,
 }: {
-    section: SectionKey;
     employee: Record<string, unknown>;
     employeeId: string;
     isAdmin: boolean;
@@ -648,16 +610,16 @@ function EmployeeEditDrawer({
 }) {
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
-    const keysBySection: Record<SectionKey, string[]> = {
-        identity: ['name', 'department', 'position', 'phone', 'email', 'joinDate', 'iqamaNumber', 'nationality'],
-        documents: ['iqamaExpiry', 'healthCertExpiry', 'healthEduExpiry'],
-        bank: ['iban', 'gosi_number'],
-        work: ['salary', 'shift_start', 'day_off', 'status'],
-        device: ['cardId', 'deviceUserId', 'auto_checkout', 'auto_lock'],
-    };
+    const fieldKeys: string[] = [
+        'name', 'department', 'position', 'phone', 'email', 'joinDate', 'iqamaNumber', 'nationality',
+        'iqamaExpiry', 'healthCertExpiry', 'healthEduExpiry',
+        'iban', 'gosi_number',
+        'salary', 'shift_start', 'day_off', 'status',
+        'cardId', 'deviceUserId', 'auto_checkout', 'auto_lock',
+    ];
     const [form, setForm] = useState<Record<string, string>>(() => {
         const picked: Record<string, string> = {};
-        for (const key of keysBySection[section]) {
+        for (const key of fieldKeys) {
             const raw = employee[key];
             picked[key] = raw == null ? '' : String(raw);
         }
@@ -674,24 +636,21 @@ function EmployeeEditDrawer({
         try {
             const payload: Record<string, unknown> = {};
             for (const [key, raw] of Object.entries(form)) {
-                if (section === 'work' && key === 'salary') {
+                if (key === 'salary') {
                     const n = Number(raw);
                     payload.salary = raw === '' ? null : (Number.isFinite(n) ? n : null);
                     continue;
                 }
-                if (section === 'work' && key === 'day_off') {
+                if (key === 'day_off') {
                     const n = Number(raw);
                     payload.day_off = raw === '' ? null : (Number.isInteger(n) && n >= 0 && n <= 6 ? n : null);
                     continue;
                 }
-                if (section === 'work' && key === 'status') {
+                if (key === 'status') {
                     payload.status = raw === 'inactive' ? 'inactive' : 'active';
                     continue;
                 }
-                if (section === 'device' && (key === 'auto_checkout' || key === 'auto_lock')) {
-                    if (isAdmin) {
-                        payload[key] = raw === '1' || raw === 'true';
-                    }
+                if ((key === 'auto_checkout' || key === 'auto_lock') && !isAdmin) {
                     continue;
                 }
                 payload[key] = raw;
@@ -713,79 +672,69 @@ function EmployeeEditDrawer({
                     onClose();
                 }
             }}
-            title={`تحرير — ${SECTION_TITLES[section]}`}
-            description="الحفظ يُسجَّل في سجل التدقيق ويظهر فورًا في البطاقة."
+            title="تحرير بيانات الموظف"
+            description="كل الحقول القابلة للكتابة — الحفظ يُسجَّل في سجل التدقيق ويظهر فورًا في البطاقة."
         >
-            <div className="flex flex-col gap-sm">
-                {section === 'identity' ? (
+            <div className="flex flex-col gap-md">
+                <p className="text-caption font-medium uppercase tracking-[0.14em] text-faint">الهوية والاتصال</p>
+                <LabeledInput label="الاسم الكامل" value={form.name} onChange={(v) => set('name', v)} />
+                <LabeledSelect label="القسم (HR)" value={form.department} onChange={(v) => set('department', v)} options={departmentOptions} />
+                <LabeledInput label="الوظيفة" value={form.position} onChange={(v) => set('position', v)} />
+                <LabeledInput label="الهاتف" value={form.phone} onChange={(v) => set('phone', v)} />
+                <LabeledInput label="البريد الإلكتروني" value={form.email} onChange={(v) => set('email', v)} />
+                <LabeledInput label="تاريخ التعيين" value={form.joinDate} onChange={(v) => set('joinDate', v)} type="date" />
+                <LabeledInput label="رقم الهوية/الإقامة" value={form.iqamaNumber} onChange={(v) => set('iqamaNumber', v)} />
+                <LabeledInput label="الجنسية" value={form.nationality} onChange={(v) => set('nationality', v)} />
+
+                <p className="text-caption font-medium uppercase tracking-[0.14em] text-faint">الوثائق والانتهاءات</p>
+                <LabeledInput label="انتهاء الإقامة" value={form.iqamaExpiry} onChange={(v) => set('iqamaExpiry', v)} type="date" />
+                <LabeledInput label="انتهاء الشهادة الصحية" value={form.healthCertExpiry} onChange={(v) => set('healthCertExpiry', v)} type="date" />
+                <LabeledInput label="انتهاء الشهادة التعليمية" value={form.healthEduExpiry} onChange={(v) => set('healthEduExpiry', v)} type="date" />
+
+                <p className="text-caption font-medium uppercase tracking-[0.14em] text-faint">البنك وWPS</p>
+                <LabeledInput label="IBAN الحساب البنكي" value={form.iban} onChange={(v) => set('iban', v)} />
+                <LabeledInput label="رقم التأمينات (GOSI)" value={form.gosi_number} onChange={(v) => set('gosi_number', v)} />
+
+                <p className="text-caption font-medium uppercase tracking-[0.14em] text-faint">العمل والوردية</p>
+                <LabeledInput label="الراتب" value={form.salary} onChange={(v) => set('salary', v)} type="number" />
+                <LabeledInput label="بداية الوردية" value={form.shift_start} onChange={(v) => set('shift_start', v)} />
+                <LabeledSelect
+                    label="الراحة الأسبوعية"
+                    value={form.day_off}
+                    onChange={(v) => set('day_off', v)}
+                    options={[{ value: '', label: '— بلا راحة مسجلة —' }, ...DAY_OFF_AR.map((name, index) => ({ value: String(index), label: name }))]}
+                />
+                <LabeledSelect
+                    label="الحالة"
+                    value={form.status}
+                    onChange={(v) => set('status', v)}
+                    options={[{ value: 'active', label: 'نشط' }, { value: 'inactive', label: 'موقوف' }]}
+                />
+
+                <p className="text-caption font-medium uppercase tracking-[0.14em] text-faint">البطاقة والجهاز</p>
+                <LabeledInput label="رقم البطاقة" value={form.cardId} onChange={(v) => set('cardId', v)} />
+                <LabeledInput label="رقم الموظف على جهاز البصمة" value={form.deviceUserId} onChange={(v) => set('deviceUserId', v)} />
+                {isAdmin ? (
                     <>
-                        <LabeledInput label="الاسم الكامل" value={form.name} onChange={(v) => set('name', v)} />
-                        <LabeledSelect label="القسم (HR)" value={form.department} onChange={(v) => set('department', v)} options={departmentOptions} />
-                        <LabeledInput label="الوظيفة" value={form.position} onChange={(v) => set('position', v)} />
-                        <LabeledInput label="الهاتف" value={form.phone} onChange={(v) => set('phone', v)} />
-                        <LabeledInput label="البريد الإلكتروني" value={form.email} onChange={(v) => set('email', v)} />
-                        <LabeledInput label="تاريخ التعيين" value={form.joinDate} onChange={(v) => set('joinDate', v)} type="date" />
-                        <LabeledInput label="رقم الهوية/الإقامة" value={form.iqamaNumber} onChange={(v) => set('iqamaNumber', v)} />
-                        <LabeledInput label="الجنسية" value={form.nationality} onChange={(v) => set('nationality', v)} />
-                    </>
-                ) : null}
-                {section === 'documents' ? (
-                    <>
-                        <LabeledInput label="انتهاء الإقامة" value={form.iqamaExpiry} onChange={(v) => set('iqamaExpiry', v)} type="date" />
-                        <LabeledInput label="انتهاء الشهادة الصحية" value={form.healthCertExpiry} onChange={(v) => set('healthCertExpiry', v)} type="date" />
-                        <LabeledInput label="انتهاء الشهادة التعليمية" value={form.healthEduExpiry} onChange={(v) => set('healthEduExpiry', v)} type="date" />
-                    </>
-                ) : null}
-                {section === 'bank' ? (
-                    <>
-                        <LabeledInput label="IBAN الحساب البنكي" value={form.iban} onChange={(v) => set('iban', v)} />
-                        <LabeledInput label="رقم التأمينات (GOSI)" value={form.gosi_number} onChange={(v) => set('gosi_number', v)} />
-                    </>
-                ) : null}
-                {section === 'work' ? (
-                    <>
-                        <LabeledInput label="الراتب" value={form.salary} onChange={(v) => set('salary', v)} type="number" />
-                        <LabeledInput label="بداية الوردية" value={form.shift_start} onChange={(v) => set('shift_start', v)} />
                         <LabeledSelect
-                            label="الراحة الأسبوعية"
-                            value={form.day_off}
-                            onChange={(v) => set('day_off', v)}
-                            options={[{ value: '', label: '— بلا راحة مسجلة —' }, ...DAY_OFF_AR.map((name, index) => ({ value: String(index), label: name }))]}
+                            label="انصراف تلقائي (أدمن)"
+                            value={form.auto_checkout}
+                            onChange={(v) => set('auto_checkout', v)}
+                            options={[{ value: 'true', label: 'مُفعّل' }, { value: 'false', label: 'مُعطّل' }]}
                         />
                         <LabeledSelect
-                            label="الحالة"
-                            value={form.status}
-                            onChange={(v) => set('status', v)}
-                            options={[{ value: 'active', label: 'نشط' }, { value: 'inactive', label: 'موقوف' }]}
+                            label="قفل اليوم التلقائي (أدمن)"
+                            value={form.auto_lock}
+                            onChange={(v) => set('auto_lock', v)}
+                            options={[{ value: 'true', label: 'مُفعّل' }, { value: 'false', label: 'مُعطّل' }]}
                         />
                     </>
                 ) : null}
-                {section === 'device' ? (
-                    <>
-                        <LabeledInput label="رقم البطاقة" value={form.cardId} onChange={(v) => set('cardId', v)} />
-                        <LabeledInput label="رقم الموظف على جهاز البصمة" value={form.deviceUserId} onChange={(v) => set('deviceUserId', v)} />
-                        {isAdmin ? (
-                            <>
-                                <LabeledSelect
-                                    label="انصراف تلقائي (أدمن)"
-                                    value={form.auto_checkout}
-                                    onChange={(v) => set('auto_checkout', v)}
-                                    options={[{ value: 'true', label: 'مُفعّل' }, { value: 'false', label: 'مُعطّل' }]}
-                                />
-                                <LabeledSelect
-                                    label="قفل اليوم التلقائي (أدمن)"
-                                    value={form.auto_lock}
-                                    onChange={(v) => set('auto_lock', v)}
-                                    options={[{ value: 'true', label: 'مُفعّل' }, { value: 'false', label: 'مُعطّل' }]}
-                                />
-                            </>
-                        ) : null}
-                    </>
-                ) : null}
+
                 {error ? <p role="alert" className="text-body-sm text-danger-text">{error}</p> : null}
             </div>
             <Button type="button" onClick={() => void save()} disabled={busy} className="w-full">
-                {busy ? 'جارٍ الحفظ…' : 'حفظ التعديلات'}
+                {busy ? 'جارٍ الحفظ…' : 'حفظ كل التعديلات'}
             </Button>
         </Drawer>
     );
