@@ -2598,7 +2598,7 @@ entities.forEach(entity => {
             // بالحقول المُغيَّرة فقط — الصلاحية admin/hr (قرار المالك).
             if (entity === 'employees') {
                 await writeAuditLog({
-                    action: 'EMPLOYEE_UPDATED',
+                    action: 'UPDATE',
                     tableName: 'employees',
                     rowPk: id,
                     reason: 'تعديل بيانات موظف',
