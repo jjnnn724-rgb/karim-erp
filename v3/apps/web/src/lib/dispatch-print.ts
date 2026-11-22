@@ -18,6 +18,7 @@ import { z } from 'zod';
 import { fetchJson } from './api';
 import { getAccessToken } from './auth';
 import { COMPANY_LOGO } from './company-logo';
+import { printSmart } from './print-viewer';
 
 const escape = (value: unknown): string =>
     String(value ?? '')
@@ -463,4 +464,18 @@ table.sheet-items {
     </footer>
 </article>
 </body></html>`;
+}
+
+/**
+ * ورقة A4 الرسمية لإذن الصرف — نقطة واحدة لكل شاشة (أذون الصرف ولوحة رئيس القسم).
+ * تجلب السجل الكامل (التوقيعات الحبرية) وتسقط بهدوء إلى بيانات القائمة إن تعذّر.
+ */
+export async function printDispatchDocument(row: unknown, printedBy?: string): Promise<void> {
+    const fallback = parseDispatchPrintRecord(row);
+    try {
+        const record = (await fetchDispatchFull(fallback.id)) ?? fallback;
+        printSmart(buildDispatchPrintHtml(record, { printedBy }), { printDelayMs: 350 });
+    } catch {
+        printSmart(buildDispatchPrintHtml(fallback, { printedBy }), { printDelayMs: 350 });
+    }
 }

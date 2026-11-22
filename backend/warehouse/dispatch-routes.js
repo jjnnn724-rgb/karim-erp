@@ -70,6 +70,18 @@ router.get('/dept-panel', jwtAuth, async (req, res) => {
         let dispatchTotal = 0;
         for (const row of dispatchRows) { byStatus[row.status] = row.count; dispatchTotal += row.count; }
 
+        // أذون القسم نفسها — مصدر واحد مقفول بالنطاق لشاشة رئيس القسم (الطباعة
+        // والاستلام). الأعمدة صريحة: تواقيع الإثبات لا تُشحن في قائمة، والطباعة
+        // تجلب السجل الكامل عند الطلب فقط (كما في /api/dispatches/:id).
+        const dispatchOrders = (await client.query(
+            `SELECT id, "deptCode", "deptName", date, status, "needsChefApproval",
+                    items, "approvedItems", "receivedItems", "createdBy",
+                    "kitchenReceivedBy", "kitchenReceivedAt"
+             FROM dispatches WHERE "deptCode" = ANY($1::varchar[])
+             ORDER BY date DESC NULLS LAST, id DESC LIMIT 200`,
+            [scopeCodes],
+        )).rows;
+
         res.json({
             scope: {
                 deptCode: scope.deptCode,
@@ -81,6 +93,7 @@ router.get('/dept-panel', jwtAuth, async (req, res) => {
             subDepartments,
             expenses: expenseSummary,
             dispatches: { total: dispatchTotal, byStatus },
+            dispatchOrders,
             dispatchExpenses,
             generatedAt: new Date().toISOString(),
         });

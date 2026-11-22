@@ -197,6 +197,11 @@ describe('GET /api/warehouse/dept-panel — المسار الحي على قاع�
         expect(body.expenses.total).toBeGreaterThanOrEqual(25);
         expect(Object.keys(body.expenses.bySource)).toContain('dispatch');
         expect(body.dispatches).toHaveProperty('total');
+        // أذون القسم مقفولة بالنطاق نفسه، وبلا تواقيع الإثبات (الطباعة تجلبها وحدها).
+        expect(Array.isArray(body.dispatchOrders)).toBe(true);
+        const scopeCodes = ['salads', ...body.scope.subDepartmentCodes];
+        expect(body.dispatchOrders.every((order) => !order.deptCode || scopeCodes.includes(order.deptCode))).toBe(true);
+        expect(body.dispatchOrders.every((order) => !('requestSignatureData' in order))).toBe(true);
     }, 20000);
 
     test('رئيس قسم يطلب لوحة قسم آخر → 403 DEPT_MISMATCH (لا IDOR)', async () => {

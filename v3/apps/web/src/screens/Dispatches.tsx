@@ -70,8 +70,7 @@ import {
 } from '../lib/dispatches-write';
 import { fetchDepartments, firstOfMonth, riyadhToday } from '../lib/finance';
 import { fetchInventoryRegister } from '../lib/inventory-register';
-import { buildDispatchPrintHtml, fetchDispatchFull, parseDispatchPrintRecord } from '../lib/dispatch-print';
-import { printSmart } from '../lib/print-viewer';
+import { printDispatchDocument } from '../lib/dispatch-print';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
@@ -1247,13 +1246,7 @@ export function Dispatches() {
 
     /** ورقة A4 رسمية لإذن الصرف — تجلب السجل الكامل (التواقيع الحبرية) ثم تطبع. */
     async function printDispatch(dispatch: Dispatch): Promise<void> {
-        const printedBy = signerName || undefined;
-        try {
-            const record = (await fetchDispatchFull(String(dispatch.id))) ?? parseDispatchPrintRecord(dispatch);
-            printSmart(buildDispatchPrintHtml(record, { printedBy }), { printDelayMs: 350 });
-        } catch {
-            printSmart(buildDispatchPrintHtml(parseDispatchPrintRecord(dispatch), { printedBy }), { printDelayMs: 350 });
-        }
+        await printDispatchDocument(dispatch, signerName || undefined);
     }
 
     /** أزرار الصف — نفس شروط V2 وحالاتها وقائمة أدوارها. */

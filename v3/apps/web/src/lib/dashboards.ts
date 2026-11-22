@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ApiError, fetchJson } from './api';
 import { getAccessToken } from './auth';
-import { dispatchSchema } from './dispatches';
+import { dispatchSchema, type Dispatch } from './dispatches';
 import { fetchPnl, type PnlResponse } from './pnl';
 
 /**
@@ -237,6 +237,8 @@ const panelSchema = z
                 }).passthrough(),
             )
             .optional(),
+        /** أذون قسمه من مصدر مقفول بالنطاق على الخادم — للطباعة والاستلام. */
+        dispatchOrders: z.array(dispatchSchema).optional(),
     })
     .passthrough();
 
@@ -259,6 +261,7 @@ export interface DeptHeadView {
     subDepartments: string[];
     dispatchTotal: number;
     dispatchStatuses: { key: string; count: number }[];
+    dispatchOrders: Dispatch[];
     dispatchExpenses: DeptDispatchExpense[];
     failures: string[];
 }
@@ -302,6 +305,7 @@ export async function fetchDeptHeadSnapshot(signal?: AbortSignal): Promise<DeptH
         subDepartments: (panel?.subDepartments ?? []).map((row) => String(row.name ?? row.code ?? '')).filter(Boolean),
         dispatchTotal: numOf(panel?.dispatches?.total) || mine.length,
         dispatchStatuses: [...statusCounts.entries()].map(([key, count]) => ({ key, count })),
+        dispatchOrders: panel?.dispatchOrders ?? [],
         dispatchExpenses: (panel?.dispatchExpenses ?? []).map((row) => ({
             id: String(row.id ?? ''),
             date: String(row.date ?? ''),

@@ -1,10 +1,13 @@
 import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
+import { DeptHeadDispatchPanel } from '../components/DeptHeadDispatchPanel';
 import { SectionCard } from '../components/Reports';
 import { PrintActions } from '../components/PrintActions';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
+import { useAuthState } from '../lib/auth';
 import { fetchDeptHeadSnapshot } from '../lib/dashboards';
+import type { GateUser } from '../lib/dispatches-write';
 import { intOf, moneyOf, presetRange, rangeProblem } from '../lib/reporting';
 import { FilterBar, StatCard , ScreenHero } from '../ui';
 
@@ -44,6 +47,13 @@ export function DeptHeadDashboard() {
     const [problem, setProblem] = useState('');
     const [q, setQ] = useState('');
     const navigate = useNavigate();
+    const auth = useAuthState();
+    const role = auth.user?.role ?? '';
+    const signerName = String(auth.user?.name ?? auth.user?.username ?? '').trim();
+    const gateUser: GateUser = {
+        id: auth.user?.id ?? null,
+        deptCode: auth.user?.dept_code ?? (auth.user as (typeof auth.user & { deptCode?: string | null }) | null)?.deptCode ?? null,
+    };
 
     function applyPreset(preset: (typeof PRESETS)[number]['preset']) {
         const next = presetRange(preset);
@@ -251,6 +261,18 @@ export function DeptHeadDashboard() {
                             )}
                         </SectionCard>
                     </div>
+
+                    <DeptHeadDispatchPanel
+                        rows={data.dispatchOrders}
+                        role={role}
+                        gateUser={gateUser}
+                        signerName={signerName}
+                        query={q}
+                        loading={snapshot.isFetching && !data}
+                        error={data.failures[0]}
+                        onRetry={() => void snapshot.refetch()}
+                        onReceived={() => void snapshot.refetch()}
+                    />
 
                     <SectionCard title="مصروفات أذون الصرف — التفصيل" english="Dispatch expenses detail">
                         {filteredDispatchExpenses.length === 0 ? (

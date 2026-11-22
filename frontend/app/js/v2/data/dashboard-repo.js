@@ -34,12 +34,12 @@
  * THIS FILE NEVER WRITES.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.426';
-import { fetchPnl, fetchNewest } from './finance-repo.js?v=4.9.426';
-import { fetchInventory, stockState } from './inventory-repo.js?v=4.9.426';
-import { fetchDispatches, itemsSummary, chainStage, rowDeptMatches } from './dispatch-repo.js?v=4.9.426';
-import { fetchPurchaseRequests } from './pr-repo.js?v=4.9.426';
-import { fetchCurrency } from './reports-repo.js?v=4.9.426';
+import { apiFetch } from '../../core/api.js?v=4.9.427';
+import { fetchPnl, fetchNewest } from './finance-repo.js?v=4.9.427';
+import { fetchInventory, stockState } from './inventory-repo.js?v=4.9.427';
+import { fetchDispatches, itemsSummary, chainStage, rowDeptMatches } from './dispatch-repo.js?v=4.9.427';
+import { fetchPurchaseRequests } from './pr-repo.js?v=4.9.427';
+import { fetchCurrency } from './reports-repo.js?v=4.9.427';
 
 const n = (v) => {
     const x = Number(v);
