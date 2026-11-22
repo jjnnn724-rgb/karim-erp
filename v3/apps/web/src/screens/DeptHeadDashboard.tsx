@@ -2,6 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { SectionCard } from '../components/Reports';
+import { PrintActions } from '../components/PrintActions';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { fetchDeptHeadSnapshot } from '../lib/dashboards';
 import { intOf, moneyOf, presetRange, rangeProblem } from '../lib/reporting';
@@ -104,11 +105,12 @@ export function DeptHeadDashboard() {
                 description="قسمك ونطاقه الفرعي، ومصروفاته بحسب المصدر، وأذون الصرف بمراحلها — النطاق محسوم على الخادم."
                 actions={
                     <>
+                        <PrintActions title="لوحة رئيس القسم" />
                         <button
                             type="button"
-                            onClick={() => { () => {
-                    void snapshot.refetch();
-                } }}
+                            onClick={() => {
+                                void snapshot.refetch();
+                            }}
                             disabled={snapshot.isFetching}
                             className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
                         >

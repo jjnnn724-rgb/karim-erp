@@ -1,3 +1,4 @@
+import './EmployeeCard.premium.css';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
@@ -44,6 +45,15 @@ function isTrue(value: unknown): boolean {
     return value === true || value === 1 || value === '1' || value === 'true';
 }
 
+function escapeHtml(value: unknown): string {
+    return String(value ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;')
+        .replace(/'/g, '&#39;');
+}
+
 function initialsOf(name: string): string {
     return name
         .split(/\s+/)
@@ -56,7 +66,8 @@ function initialsOf(name: string): string {
 export function EmployeeCard() {
     const [employeeId] = useState(() => {
         try {
-            return new URLSearchParams(window.location.search).get('id') ?? '';
+            const raw = new URLSearchParams(window.location.search).get('id') ?? '';
+            return decodeURIComponent(raw).replace(/^['"]+|['"]+$/g, '').trim();
         } catch {
             return '';
         }
@@ -75,10 +86,14 @@ export function EmployeeCard() {
         queryFn: ({ signal }) => fetchEmployees(signal),
         enabled: employeeId !== '',
     });
-    const employee = useMemo(
-        () => (employeesQuery.data ?? []).find((row) => row.id === employeeId) ?? null,
-        [employeesQuery.data, employeeId],
-    );
+    const employee = useMemo(() => {
+        const lookup = employeeId.replace(/^['"]+|['"]+$/g, '').trim();
+        return (employeesQuery.data ?? []).find((row) => {
+            const id = String(row.id ?? '').replace(/^['"]+|['"]+$/g, '').trim();
+            const code = String(row.employeeId ?? '').replace(/^['"]+|['"]+$/g, '').trim();
+            return id === lookup || code === lookup;
+        }) ?? null;
+    }, [employeesQuery.data, employeeId]);
     const departmentsQuery = useQuery({
         queryKey: ['employee-card', 'departments'],
         queryFn: ({ signal }) => fetchHrDepartments(signal),
@@ -105,6 +120,28 @@ export function EmployeeCard() {
     function invalidate() {
         void queryClient.invalidateQueries({ queryKey: ['employees'] });
         void queryClient.invalidateQueries({ queryKey: ['employee-card'] });
+    }
+
+    function printEmployeeProfile() {
+        if (!employee) return;
+        const logo = brand.logoSrc
+            ? `<img src="${brand.logoSrc}" alt="" style="width:22mm;height:22mm;object-fit:contain">`
+            : '';
+        const rows = [
+            ['الاسم الكامل', name],
+            ['كود الموظف', code || '—'],
+            ['الوظيفة', position || '—'],
+            ['القسم', department || '—'],
+            ['الهاتف', String(employee.phone ?? '—')],
+            ['البريد الإلكتروني', String(employee.email ?? '—')],
+            ['تاريخ التعيين', String(employee.joinDate ?? '—')],
+            ['بداية الوردية', String(employee.shift_start ?? '—')],
+            ['مدة الوردية', employee.shift_karim == null ? '—' : `${employee.shift_karim} ساعة`],
+            ['الراحة الأسبوعية', employee.day_off == null ? '—' : (DAY_OFF_AR[Number(employee.day_off) % 7] ?? '—')],
+            ['رقم الجهاز', String(employee.deviceUserId ?? '—')],
+            ['رقم البطاقة', String(employee.cardId ?? '—')],
+        ].map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`).join('');
+        printSmart(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>بطاقة الموظف - ${escapeHtml(name)}</title></head><body><header style="display:flex;align-items:center;gap:14px;border-bottom:3px solid #b08d57;padding-bottom:10mm;margin-bottom:8mm">${logo}<div><div style="font-size:20pt;font-weight:800">${escapeHtml(brand.name)}</div><div style="font-size:9pt;letter-spacing:1.5px">${escapeHtml(PRINT_COMPANY_EN)}</div></div><div style="margin-inline-start:auto;text-align:center"><div style="font-size:11pt;font-weight:700">بطاقة موظف رسمية</div><div style="font-size:9pt">EMPLOYEE RECORD</div></div></header><main><h1 style="font-size:18pt;margin:0 0 5mm">${escapeHtml(name)}</h1><table style="width:100%;border-collapse:collapse;border:1px solid #d4dde4"><tbody>${rows}</tbody></table></main><footer style="position:fixed;bottom:0;left:0;right:0;border-top:1px solid #b8c4cc;padding-top:3mm;font-size:8pt;text-align:center">${escapeHtml(brand.name)} · صفحة <span class="pageNumber"></span></footer></body></html>`, { autoPrint: true, printDelayMs: 350 });
     }
 
     async function printLuxCard() {
@@ -230,6 +267,9 @@ export function EmployeeCard() {
                 <div className="flex flex-wrap items-center gap-xs" data-erp-print-hide>
                     <Button type="button" size="sm" variant="secondary" onClick={() => navigate({ to: '/employees' })}>
                         عودة
+                    </Button>
+                    <Button type="button" size="sm" variant="secondary" onClick={printEmployeeProfile}>
+                        🖨 بطاقة الموظف
                     </Button>
                     <Button type="button" size="sm" variant="secondary" onClick={printAttendance}>
                         🖨 كشف الحضور
@@ -614,7 +654,7 @@ function EmployeeEditDrawer({
         'name', 'department', 'position', 'phone', 'email', 'joinDate', 'iqamaNumber', 'nationality',
         'iqamaExpiry', 'healthCertExpiry', 'healthEduExpiry',
         'iban', 'gosi_number',
-        'salary', 'shift_start', 'day_off', 'status',
+        'salary', 'shift_start', 'shift_karim', 'day_off', 'status',
         'cardId', 'deviceUserId', 'auto_checkout', 'auto_lock',
     ];
     const [form, setForm] = useState<Record<string, string>>(() => {
@@ -639,6 +679,11 @@ function EmployeeEditDrawer({
                 if (key === 'salary') {
                     const n = Number(raw);
                     payload.salary = raw === '' ? null : (Number.isFinite(n) ? n : null);
+                    continue;
+                }
+                if (key === 'shift_karim') {
+                    const n = Number(raw);
+                    payload.shift_karim = raw === '' ? null : (Number.isFinite(n) && n >= 0 && n <= 24 ? n : null);
                     continue;
                 }
                 if (key === 'day_off') {
@@ -697,7 +742,8 @@ function EmployeeEditDrawer({
 
                 <p className="text-caption font-medium uppercase tracking-[0.14em] text-faint">العمل والوردية</p>
                 <LabeledInput label="الراتب" value={form.salary} onChange={(v) => set('salary', v)} type="number" />
-                <LabeledInput label="بداية الوردية" value={form.shift_start} onChange={(v) => set('shift_start', v)} />
+                <LabeledInput label="بداية الوردية" value={form.shift_start} onChange={(v) => set('shift_start', v)} type="time" />
+                <LabeledInput label="مدة الوردية بالساعات" value={form.shift_karim} onChange={(v) => set('shift_karim', v)} type="number" />
                 <LabeledSelect
                     label="الراحة الأسبوعية"
                     value={form.day_off}

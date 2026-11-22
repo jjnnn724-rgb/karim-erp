@@ -25,8 +25,8 @@ import { isWriteRole, writeAck, writeJson } from './write';
 /** أدوار البصمة الذاتية — مرآة requireRole في attendance-portal-routes.js:335 */
 export const PUNCH_ROLES = ['admin', 'hr', 'dept_head', 'cashier', 'kitchen', 'sous_chef', 'warehouse', 'employee'] as const;
 
-/** قوالب الوجه — مرآة requireRole في :880 و:901 و:922 (admin/hr فقط). */
-export const FACE_ENROLL_ROLES = ['admin', 'hr'] as const;
+/** قوالب الوجه — مرآة `requireRole` في attendance-portal-routes.js (admin/owner). */
+export const FACE_ENROLL_ROLES = ['admin', 'owner'] as const;
 
 /** رموز الرفض الأصلية المسموحة — مرآة CLIENT_REJECT_CODES في :681 */
 export const CLIENT_REJECT_CODES = ['PUNCH_LOCATION_MOCKED_CLIENT', 'PUNCH_LOCATION_UNAVAILABLE_CLIENT'] as const;

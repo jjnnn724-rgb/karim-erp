@@ -1,4 +1,5 @@
 import { createRoute } from '@tanstack/react-router';
+import { validateAccountantDashboardSearch } from '../lib/accountant-search';
 import { firstEnabledScreen, LEGACY_APP_URL } from '../lib/screens';
 import { rootRoute } from './root';
 
@@ -22,41 +23,6 @@ export const indexRoute = createRoute({
 });
 indexRoute.lazy(() => import('../screens/Home.lazy').then((module) => module.Route));
 
-/** مركز القيادة الموحّد — قراءة فقط تجمع الضريبة والرواتب ومدد ومطابقة البنك. */
-export const commandCenterRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/command-center',
-});
-commandCenterRoute.lazy(() => import('../screens/CommandCenter.lazy').then((module) => module.Route));
-
-/** مطابقة البنك — كشف البنك مقابل الدفتر والمطابقة الآلية. */
-export const bankRecRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/bank-rec',
-});
-bankRecRoute.lazy(() => import('../screens/BankReconciliation.lazy').then((module) => module.Route));
-
-/** قائمة المركز المالي — قراءة فقط من الأستاذ المرحّل. */
-export const balanceSheetRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/balance-sheet',
-});
-balanceSheetRoute.lazy(() => import('../screens/BalanceSheet.lazy').then((module) => module.Route));
-
-/** قائمة التدفقات النقدية — قراءة فقط من الأستاذ المرحّل. */
-export const cashFlowRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/cash-flow',
-});
-cashFlowRoute.lazy(() => import('../screens/CashFlow.lazy').then((module) => module.Route));
-
-/** لوحة الامتثال الشهري — قراءة فقط: رواتب، مدد، GOSI، قوى. */
-export const complianceCenterRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/compliance-center',
-});
-complianceCenterRoute.lazy(() => import('../screens/ComplianceCenter.lazy').then((module) => module.Route));
-
 /** شجرة الحسابات — للقراءة فقط. */
 export const accountsRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -71,14 +37,14 @@ export const journalRoute = createRoute({
 });
 journalRoute.lazy(() => import('../screens/JournalViewer.lazy').then((module) => module.Route));
 
-/** الإيرادات — للقراءة فقط. */
+/** الإيرادات — سجل FinanceRegister: قراءة وكتابة (إضافة/تعديل/حذف) عبر `lib/finance-register-write.ts`. */
 export const revenuesRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/revenues',
 });
 revenuesRoute.lazy(() => import('../screens/Revenues.lazy').then((module) => module.Route));
 
-/** المصروفات — للقراءة فقط. */
+/** المصروفات — سجل FinanceRegister: قراءة وكتابة (إضافة/تعديل/حذف) عبر `lib/finance-register-write.ts`. */
 export const expensesRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/expenses',
@@ -99,35 +65,35 @@ export const dailyLocksRoute = createRoute({
 });
 dailyLocksRoute.lazy(() => import('../screens/DailyLocks.lazy').then((module) => module.Route));
 
-/** بيانات Oracle المنسوخة — عرض قرائي فقط (B4). */
+/** بيانات Oracle المنسوخة — عرض قرائي وزر مزامنة النسخة عبر `lib/write.ts` (B4). */
 export const oracleDataRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/oracle-data',
 });
 oracleDataRoute.lazy(() => import('../screens/OracleData.lazy').then((module) => module.Route));
 
-/** دليل الموردين — للقراءة فقط. */
+/** دليل الموردين — قراءة وكتابة (إنشاء/تعديل/تفعيل/حذف) عبر `lib/suppliers-write.ts`. */
 export const procurementRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/procurement',
 });
 procurementRoute.lazy(() => import('../screens/Procurement.lazy').then((module) => module.Route));
 
-/** مدفوعات الموردين — للقراءة فقط. */
+/** مدفوعات الموردين — قراءة وكتابة (إنشاء/تعديل/حذف) عبر `lib/payments-write.ts`. */
 export const paymentsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/payments',
 });
 paymentsRoute.lazy(() => import('../screens/Payments.lazy').then((module) => module.Route));
 
-/** فواتير الشراء — للقراءة فقط. */
+/** فواتير الشراء — قراءة وكتابة (إنشاء/إلغاء/سداد) عبر `lib/purchase-invoices-write.ts`. */
 export const purchaseInvoicesRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/purchase-invoices',
 });
 purchaseInvoicesRoute.lazy(() => import('../screens/PurchaseInvoices.lazy').then((module) => module.Route));
 
-/** سجل الأقسام — للقراءة فقط. */
+/** سجل الأقسام — قراءة وكتابة (إنشاء/تعديل/تفعيل/حذف) عبر `lib/departments-write.ts`. */
 export const departmentsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/departments',
@@ -141,7 +107,7 @@ export const inventoryMovementsRoute = createRoute({
 });
 inventoryMovementsRoute.lazy(() => import('../screens/InventoryMovements.lazy').then((module) => module.Route));
 
-/** أذون الصرف — للقراءة فقط. */
+/** أذون الصرف — قراءة وكتابة (إنشاء/تعديل/قرار المطبخ/قرار المخزن/استلام/إعادة فتح) عبر `lib/dispatches-write.ts`. */
 export const dispatchesRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/dispatch',
@@ -155,7 +121,7 @@ export const itemPricesRoute = createRoute({
 });
 itemPricesRoute.lazy(() => import('../screens/ItemPrices.lazy').then((module) => module.Route));
 
-/** المخزون — للقراءة فقط. */
+/** المخزون — قراءة وكتابة (وارد/تعديل مباشر/حذف/دمج) عبر `lib/inventory-write.ts`. */
 export const warehouseRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/warehouse',
@@ -176,35 +142,42 @@ export const goodsScanRoute = createRoute({
 });
 goodsScanRoute.lazy(() => import('../screens/GoodsScan.lazy').then((module) => module.Route));
 
-/** مرتجعات المطبخ — للقراءة فقط. */
+/** الرفوف — قراءة وكتابة (إنشاء/تعديل/حذف) عبر `lib/write.ts` وعقود `lib/shelves.ts`. */
+export const shelvesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/shelves',
+});
+shelvesRoute.lazy(() => import('../screens/Shelves.lazy').then((module) => module.Route));
+
+/** مرتجعات المطبخ — قراءة وكتابة (إنشاء/حذف) عبر `lib/wh-returns-write.ts`. */
 export const kitchenReturnsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/wh-returns',
 });
 kitchenReturnsRoute.lazy(() => import('../screens/KitchenReturns.lazy').then((module) => module.Route));
 
-/** طلبات شراء النواقص — للقراءة فقط. */
+/** طلبات شراء النواقص — قراءة وكتابة (إنشاء/اعتماد المطبخ/اعتماد الإدارة/إلغاء) عبر `lib/purchase-requests-write.ts`. */
 export const purchaseRequestsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/wh-prs',
 });
 purchaseRequestsRoute.lazy(() => import('../screens/PurchaseRequests.lazy').then((module) => module.Route));
 
-/** التحويلات الداخلية — للقراءة فقط. */
+/** التحويلات الداخلية — قراءة وكتابة (إنشاء/اعتماد/بيع خارجي) عبر `lib/dept-transfers-write.ts`. */
 export const deptTransfersRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/dept-transfers',
 });
 deptTransfersRoute.lazy(() => import('../screens/DeptTransfers.lazy').then((module) => module.Route));
 
-/** دليل الموظفين — للقراءة فقط. */
+/** دليل الموظفين — قراءة وكتابة (إنشاء/تعديل/تفعيل/حذف) عبر `lib/employees-write.ts`. */
 export const employeesRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/employees',
 });
 employeesRoute.lazy(() => import('../screens/Employees.lazy').then((module) => module.Route));
 
-/** بطاقة الموظف الكاملة — ?id= من شاشة الموظفين (خارج القائمة، 2026-11-21). */
+/** بطاقة الموظف الكاملة — فتحها من دليل الموظفين بالمعرّف. */
 export const employeeCardRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/employee-card',
@@ -218,21 +191,21 @@ export const hrDepartmentsRoute = createRoute({
 });
 hrDepartmentsRoute.lazy(() => import('../screens/HrDepartments.lazy').then((module) => module.Route));
 
-/** سجل الحضور والانصراف — قراءة فقط. */
+/** سجل الحضور والانصراف — قراءة وكتابة (بصمات/تعديلات تدقيقية) عبر `lib/attendance-write.ts`. */
 export const attendanceRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/attendance',
 });
 attendanceRoute.lazy(() => import('../screens/Attendance.lazy').then((module) => module.Route));
 
-/** طلبات الإجازات وسلسلة الاعتماد — للقراءة فقط. */
+/** طلبات الإجازات وسلسلة الاعتماد — قراءة وكتابة (إنشاء/اعتماد/رفض) عبر `lib/leaves-write.ts`. */
 export const leavesRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/leaves',
 });
 leavesRoute.lazy(() => import('../screens/Leaves.lazy').then((module) => module.Route));
 
-/** سجل الرواتب وكشف الموظفين — قراءة فقط. */
+/** سجل الرواتب وكشف الموظفين — قراءة وكتابة (توليد/خصومات) عبر `lib/payroll-write.ts`. */
 export const payrollRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/payroll',
@@ -246,54 +219,54 @@ export const mudadRoute = createRoute({
 });
 mudadRoute.lazy(() => import('../screens/Mudad.lazy').then((module) => module.Route));
 
-/** شبكة الدوام الأسبوعية — للقراءة فقط. */
+/** شبكة الدوام الأسبوعية — قراءة وكتابة (حفظ الخلايا/طلب اعتماد/اعتماد) عبر `lib/roster-write.ts`. */
 export const rosterRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/roster',
 });
 rosterRoute.lazy(() => import('../screens/Roster.lazy').then((module) => module.Route));
 
-/** دليل حسابات الدخول — للقراءة فقط. */
+/** دليل حسابات الدخول — قراءة وكتابة (إنشاء/تعديل/تفعيل/حذف) عبر `lib/users-write.ts`. */
 export const usersRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/users',
 });
 usersRoute.lazy(() => import('../screens/Users.lazy').then((module) => module.Route));
 
-/** فروع المنشأة — للقراءة فقط. */
+/** فروع المنشأة — قراءة وكتابة (إنشاء/تعديل/تغيير حالة) عبر `lib/write.ts`. */
 export const branchesRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/branches',
 });
 branchesRoute.lazy(() => import('../screens/Branches.lazy').then((module) => module.Route));
 
-/** الصلاحيات — للقراءة فقط. */
+/** الصلاحيات — قراءة وحفظ صلاحيات المستخدمين (admin فقط) عبر `lib/permissions-write.ts`. */
 export const permissionsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/permissions',
 });
 permissionsRoute.lazy(() => import('../screens/Permissions.lazy').then((module) => module.Route));
 
-/** طلبات شراء الخضار — للقراءة فقط. */
+/** طلبات شراء الخضار — قراءة وكتابة (إنشاء/استلام/تسعير) عبر `lib/veg-requests-write.ts`. */
 export const vegRequestsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/veg-requests',
 });
 vegRequestsRoute.lazy(() => import('../screens/VegRequests.lazy').then((module) => module.Route));
 
-/** الوصفات — للقراءة فقط. */
+/** الميزان — قراءة وكتابة (إنشاء/تعديل/حذف قراءات) عبر `lib/weight-write.ts`. */
+export const weightRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/weight',
+});
+weightRoute.lazy(() => import('../screens/Weight.lazy').then((module) => module.Route));
+
+/** الوصفات — قراءة وكتابة (إنشاء/تعديل/حذف) عبر `lib/recipes-write.ts`. */
 export const recipesRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/recipes',
 });
 recipesRoute.lazy(() => import('../screens/Recipes.lazy').then((module) => module.Route));
-
-/** كوست أصناف بوفيه الشرفة العالمي — تُحسب حيًّا من أسعار المخزن. */
-export const buffetRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/buffet',
-});
-buffetRoute.lazy(() => import('../screens/Buffet.lazy').then((module) => module.Route));
 
 /** الأجهزة والجلسات النشطة — قراءة وإبطال. */
 export const sessionsRoute = createRoute({
@@ -309,7 +282,14 @@ export const whatsappRoute = createRoute({
 });
 whatsappRoute.lazy(() => import('../screens/Whatsapp.lazy').then((module) => module.Route));
 
-/** إعدادات النظام — عامة وفواتير وطابعات. */
+/** الموجز التنفيذي — لوحة متابعة للمدير. */
+export const briefingRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/briefing',
+});
+briefingRoute.lazy(() => import('../screens/Briefing.lazy').then((module) => module.Route));
+
+/** إعدادات النظام — عامة وفواتير وطابعات، وكتابة مقيّدة بالأدوار عبر `lib/settings-write.ts`. */
 export const settingsRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/settings',
@@ -337,7 +317,7 @@ export const deptEmployeesRoute = createRoute({
 });
 deptEmployeesRoute.lazy(() => import('../screens/DeptEmployees.lazy').then((module) => module.Route));
 
-/** بوابة الموظف — حالة الحضور والبصمات (قراءة فقط). */
+/** بوابة الموظف — حالة الحضور والبصمات، وبصمة ذاتية وتسجيل وجه عبر `lib/portal-write.ts`. */
 export const employeePortalRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/employee-portal',
@@ -350,13 +330,6 @@ export const zktecoRoute = createRoute({
     path: '/zkteco',
 });
 zktecoRoute.lazy(() => import('../screens/Zkteco.lazy').then((module) => module.Route));
-
-/** مركز التحكم بالبصمة — جهاز البصمة وكاميرا الموبايل معًا + استثناءات النظام بالكامل. */
-export const punchControlRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/punch-control',
-});
-punchControlRoute.lazy(() => import('../screens/PunchControl.lazy').then((module) => module.Route));
 
 /** المطبخ — نظرة عامة على الإنتاج والمخزون. */
 export const kitchenRoute = createRoute({
@@ -378,6 +351,14 @@ export const warehouseDashboardRoute = createRoute({
     path: '/warehouse-dashboard',
 });
 warehouseDashboardRoute.lazy(() => import('../screens/WarehouseDashboard.lazy').then((module) => module.Route));
+
+/** لوحة المحاسب — مؤشرات مالية وتشغيلية. */
+export const accountantDashboardRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/accountant-dashboard',
+    validateSearch: validateAccountantDashboardSearch,
+});
+accountantDashboardRoute.lazy(() => import('../screens/AccountantDashboard.lazy').then((module) => module.Route));
 
 /** لوحة رئيس القسم — أداء القسم. */
 export const deptHeadDashboardRoute = createRoute({
@@ -407,6 +388,13 @@ export const inventoryInquiryRoute = createRoute({
 });
 inventoryInquiryRoute.lazy(() => import('../screens/InventoryInquiry.lazy').then((module) => module.Route));
 
+/** البطاقة الفاخرة للصنف — قراءة فقط. */
+export const inventoryInquiryProRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/inventory-inquiry-pro',
+});
+inventoryInquiryProRoute.lazy(() => import('../screens/InventoryInquiryPro.lazy').then((module) => module.Route));
+
 /** الأرباح والخسائر — قائمة الدخل. */
 export const pnlRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -414,7 +402,7 @@ export const pnlRoute = createRoute({
 });
 pnlRoute.lazy(() => import('../screens/Pnl.lazy').then((module) => module.Route));
 
-/** المدير المالي — ملخص وميزان وقيود وفترات (قراءة فقط). */
+/** المدير المالي — ملخص وميزان وقيود وفترات، وكتابة القيود والفترات عبر `lib/cfo-write.ts`. */
 export const cfoRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/cfo',
@@ -428,12 +416,12 @@ export const monthlyComparisonRoute = createRoute({
 });
 monthlyComparisonRoute.lazy(() => import('../screens/MonthlyComparison.lazy').then((module) => module.Route));
 
-/** البيع الخارجي — مبيعات موثقة + مسحوبات أذون الصرف بفترة يختارها المستخدم. */
-export const externalSalesRoute = createRoute({
+/** التقارير — تقرير مبيعات POS وفهرس مخرجات التقارير المتاحة حسب الصلاحية. */
+export const reportsRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: '/ext-sales',
+    path: '/reports',
 });
-externalSalesRoute.lazy(() => import('../screens/ExternalSales.lazy').then((module) => module.Route));
+reportsRoute.lazy(() => import('../screens/Reports.lazy').then((module) => module.Route));
 
 /** الإقرار الضريبي — مسودة مراجعة ضريبة القيمة المضافة من القيود المرحّلة. */
 export const vatReturnRoute = createRoute({
@@ -441,6 +429,13 @@ export const vatReturnRoute = createRoute({
     path: '/vat-return',
 });
 vatReturnRoute.lazy(() => import('../screens/VatReturn.lazy').then((module) => module.Route));
+
+/** مركز الامتثال المالي — لوحة VAT/GOSI/مطابقة البنك من واجهات v3 الحية. */
+export const financialComplianceRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/financial-compliance',
+});
+financialComplianceRoute.lazy(() => import('../screens/FinancialCompliance.lazy').then((module) => module.Route));
 
 /** مبيعات الكاشير — فواتير وأصناف (مرآة YaraSoft). */
 export const cashierSalesRoute = createRoute({
@@ -455,20 +450,6 @@ export const cashierMonitorRoute = createRoute({
     path: '/cashier-monitor',
 });
 cashierMonitorRoute.lazy(() => import('../screens/CashierMonitor.lazy').then((module) => module.Route));
-
-/** مركز التقارير — تقارير رسمية قابلة للطباعة (قسم/صنف/مخزن). */
-export const posReportsRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/pos-reports',
-});
-posReportsRoute.lazy(() => import('../screens/PosReports.lazy').then((module) => module.Route));
-
-/** وضع القسم — تحليل التكلفة والأذونات الفعلية. */
-export const departmentCostRoute = createRoute({
-    getParentRoute: () => rootRoute,
-    path: '/dept-cost',
-});
-departmentCostRoute.lazy(() => import('../screens/DepartmentCost.lazy').then((module) => module.Route));
 
 /** نقطة البيع — الكاشير الحيّ: أصناف وسلة ودفع ووردية وإيصال. */
 export const posEntryRoute = createRoute({
@@ -498,6 +479,13 @@ export const salesAnalyzerRoute = createRoute({
 });
 salesAnalyzerRoute.lazy(() => import('../screens/SalesAnalyzer.lazy').then((module) => module.Route));
 
+/** استعلام المبيعات (مرآة YaraSoft). */
+export const salesInquiryRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/sales-inquiry',
+});
+salesInquiryRoute.lazy(() => import('../screens/SalesInquiry.lazy').then((module) => module.Route));
+
 /** تحليل المستلَم (مرآة YaraSoft). */
 export const receivedAnalyzerRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -526,13 +514,82 @@ export const designGalleryRoute = createRoute({
 });
 designGalleryRoute.lazy(() => import('../screens/DesignGallery.lazy').then((module) => module.Route));
 
+/* ── شاشات كانت مسجّلة في `V3_SCREENS` ووحداتها مبنية ومختبرة، لكن مساراتها
+ *    سقطت من الشجرة (انحراف التكافؤ 2026-11-22): أُعيد تسجيلها هنا بنفس نمط
+ *    باقي الشاشات — بلا أي تغيير في محتواها. ───────────────────────────────── */
+
+/** البوفيه — كروت الأصناف والتكلفة. */
+export const buffetRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/buffet',
+});
+buffetRoute.lazy(() => import('../screens/Buffet.lazy').then((module) => module.Route));
+
+/** تكلفة الأقسام — توزيع التكلفة على الأقسام ومقارنتها. */
+export const departmentCostRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/dept-cost',
+});
+departmentCostRoute.lazy(() => import('../screens/DepartmentCost.lazy').then((module) => module.Route));
+
+/** مركز التقارير — تقارير نقاط البيع. */
+export const posReportsRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/pos-reports',
+});
+posReportsRoute.lazy(() => import('../screens/PosReports.lazy').then((module) => module.Route));
+
+/** مركز القيادة الموحّد. */
+export const commandCenterRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/command-center',
+});
+commandCenterRoute.lazy(() => import('../screens/CommandCenter.lazy').then((module) => module.Route));
+
+/** مطابقة البنك. */
+export const bankReconciliationRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/bank-rec',
+});
+bankReconciliationRoute.lazy(() => import('../screens/BankReconciliation.lazy').then((module) => module.Route));
+
+/** مركز الامتثال. */
+export const complianceCenterRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/compliance-center',
+});
+complianceCenterRoute.lazy(() => import('../screens/ComplianceCenter.lazy').then((module) => module.Route));
+
+/** الميزانية العمومية. */
+export const balanceSheetRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/balance-sheet',
+});
+balanceSheetRoute.lazy(() => import('../screens/BalanceSheet.lazy').then((module) => module.Route));
+
+/** التدفق النقدي. */
+export const cashFlowRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/cash-flow',
+});
+cashFlowRoute.lazy(() => import('../screens/CashFlow.lazy').then((module) => module.Route));
+
+/** المبيعات الخارجية. */
+export const externalSalesRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/ext-sales',
+});
+externalSalesRoute.lazy(() => import('../screens/ExternalSales.lazy').then((module) => module.Route));
+
+/** ضبط البصمات — مراجعة بصمات الأجهزة. */
+export const punchControlRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/punch-control',
+});
+punchControlRoute.lazy(() => import('../screens/PunchControl.lazy').then((module) => module.Route));
+
 export const routeTree = rootRoute.addChildren([
     indexRoute,
-    commandCenterRoute,
-    bankRecRoute,
-    complianceCenterRoute,
-    balanceSheetRoute,
-    cashFlowRoute,
     accountsRoute,
     journalRoute,
     revenuesRoute,
@@ -551,6 +608,8 @@ export const routeTree = rootRoute.addChildren([
     itemPricesRoute,
     warehouseGovRoute,
     goodsScanRoute,
+    shelvesRoute,
+    weightRoute,
     kitchenReturnsRoute,
     purchaseRequestsRoute,
     deptTransfersRoute,
@@ -570,34 +629,45 @@ export const routeTree = rootRoute.addChildren([
     buffetRoute,
     sessionsRoute,
     whatsappRoute,
+    briefingRoute,
     settingsRoute,
     executiveRoute,
     hrDashboardRoute,
     deptEmployeesRoute,
     employeePortalRoute,
     zktecoRoute,
-    punchControlRoute,
     kitchenRoute,
     menuBoardRoute,
     warehouseDashboardRoute,
+    commandCenterRoute,
+    bankReconciliationRoute,
+    complianceCenterRoute,
+    balanceSheetRoute,
+    cashFlowRoute,
+    accountantDashboardRoute,
     deptHeadDashboardRoute,
     costAnalysisRoute,
     costCenterRoute,
     inventoryInquiryRoute,
+    inventoryInquiryProRoute,
     pnlRoute,
     cfoRoute,
     monthlyComparisonRoute,
-    externalSalesRoute,
+    reportsRoute,
     vatReturnRoute,
+    financialComplianceRoute,
     cashierSalesRoute,
     cashierMonitorRoute,
     posEntryRoute,
     posReportsRoute,
-    departmentCostRoute,
     cashierKioskRoute,
     legacySourceRoute,
     salesAnalyzerRoute,
+    salesInquiryRoute,
     receivedAnalyzerRoute,
     whVsPosRoute,
+    externalSalesRoute,
+    punchControlRoute,
+    departmentCostRoute,
     yarasoftRoute,
 ]);

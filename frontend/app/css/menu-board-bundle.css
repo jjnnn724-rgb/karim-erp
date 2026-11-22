@@ -1,12 +1,12 @@
 ﻿/* menu-board-bundle.css v1.0.0 — دمج حرفي: menu-board.css ثم menu-board-islamic.css بنفس الترتيب */
 /* الأصلان محفوظان كما هما للرجوع — الرجوع = سطر واحد في menu-board.html */
-/* â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
-   KARIM ERP â€” Menu Board v5.7 (طھطµظ…ظٹظ… ط¨ظˆظپظٹظ‡ ط§ظ„ط´ط±ظپط©)
-   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-   ط´ط§ط´ط© ط·ظˆظ„ظٹط© ظ‡ط§ط¯ط¦ط© ط¨ظ„ظˆظ† ط¹ط§ط¬ظٹ ظˆط´ط¹ط§ط± ط§ظ„ظ…ط·ط¹ظ…طŒ ظ…ط¹ ظ…ظ†ظٹظˆ ظˆط§ط¶ط­ ط«ظ†ط§ط¦ظٹ ط§ظ„ظ„ط؛ط©
-   ظˆط¨ظˆظپظٹظ‡ ظ…ظپطھظˆط­ ط¨ط¯ظˆظ† ط£ط³ط¹ط§ط± ط£طµظ†ط§ظپ. ط§ظ„ط¨ظٹط§ظ†ط§طھ ظ…ظ† /api/menu-board/public
-   ط¹ط¨ط± socket.io â€” ظ…ط³ط±ط­ 1080أ—1920.
-   â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ */
+/* ═══════════════════════════════════════════════════════════════════
+   KARIM ERP — Menu Board v5.7 (تصميم بوفيه الشرفة)
+   ─────────────────────────────────────────────────────────────────
+   شاشة طولية هادئة بلون عاجي وشعار المطعم، مع منيو واضح ثنائي اللغة
+   وبوفيه مفتوح بدون أسعار أصناف. البيانات من /api/menu-board/public
+   عبر socket.io — مسرح 1080×1920.
+   ═══════════════════════════════════════════════════════════════════ */
 
 * { margin: 0; padding: 0; box-sizing: border-box; }
 
@@ -44,7 +44,7 @@ html, body {
     background: var(--ivory);
 }
 
-/* â”€â”€â”€ ط§ظ„ظ…ط³ط±ط­ ط§ظ„ط·ظˆظ„ظٹ â€” ط¹ط§ط¬ظٹ ط¯ط§ظپط¦ ط¨ط¥ط·ط§ط± ط°ظ‡ط¨ظٹ â”€â”€â”€ */
+/* ─── المسرح الطولي — عاجي دافئ بإطار ذهبي ─── */
 #stage {
     position: relative;
     width: 1080px; height: 1920px;
@@ -79,7 +79,7 @@ html, body {
         linear-gradient(172deg, #fffefa 0%, #fff3df 48%, #f5e4c9 100%);
 }
 
-/* â”€â”€â”€ ظ‡ط§ظ„ط§طھ ط¯ط§ظپط¦ط© ط¹ط§ط¦ظ…ط© â”€â”€â”€ */
+/* ─── هالات دافئة عائمة ─── */
 @keyframes orbMotion1 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(90px,70px) scale(1.18); } }
 @keyframes orbMotion2 { 0%,100% { transform: translate(0,0) scale(1.1); } 50% { transform: translate(-80px,-60px) scale(.94); } }
 @keyframes orbMotion3 { 0%,100% { transform: translate(0,0) scale(1); } 50% { transform: translate(70px,-80px) scale(1.2); } }
@@ -99,14 +99,14 @@ html, body {
     background: radial-gradient(circle at 42% 42%, rgba(52, 211, 153, .45), rgba(10, 138, 77, .26) 55%, transparent 75%);
     animation: orbMotion4 20s ease-in-out infinite; }
 
-/* â”€â”€â”€ ظ†ظ‚ط´ط© ط§ظ„ط®ط§طھظ… ط§ظ„ط¥ط³ظ„ط§ظ…ظٹ: ظ†ط¬ظ…ط© ط«ظ…ط§ظ†ظٹط© ظ…طھط¯ط§ط®ظ„ط© طھط؛ط·ظٹ ط§ظ„ظ…ط³ط±ط­ â”€â”€â”€ */
+/* ─── نقشة الخاتم الإسلامي: نجمة ثمانية متداخلة تغطي المسرح ─── */
 .bg-lattice { position: absolute; inset: 0; pointer-events: none; z-index: 1; opacity: .09;
     background-image: url("data:image/svg+xml,%3Csvg xmlns='http://www.w3.org/2000/svg' width='140' height='140' viewBox='0 0 140 140'%3E%3Cg fill='none' stroke='%239a7418' stroke-width='1.4'%3E%3Crect x='35' y='35' width='70' height='70'/%3E%3Crect x='35' y='35' width='70' height='70' transform='rotate(45 70 70)'/%3E%3Ccircle cx='70' cy='70' r='11'/%3E%3Cpath d='M0 70 L35 70 M70 0 L70 35 M140 70 L105 70 M70 140 L70 105'/%3E%3Ccircle cx='0' cy='0' r='7'/%3E%3Ccircle cx='140' cy='0' r='7'/%3E%3Ccircle cx='0' cy='140' r='7'/%3E%3Ccircle cx='140' cy='140' r='7'/%3E%3C/g%3E%3C/svg%3E");
     background-size: 140px 140px;
     mask-image: radial-gradient(ellipse at center, black 30%, transparent 82%);
     -webkit-mask-image: radial-gradient(ellipse at center, black 30%, transparent 82%); }
 
-/* ط£ط±ط§ط¨ظٹط³ظƒ + ط´ط¨ظƒط© ط°ظ‡ط¨ظٹط© + ط¶ظˆط¶ط§ط، + ظپظٹظ†ظٹظٹطھ */
+/* أرابيسك + شبكة ذهبية + ضوضاء + فينييت */
 .bg-grid { position: absolute; inset: 0; pointer-events: none; opacity: .1; z-index: 1;
     background-image: radial-gradient(rgba(154, 116, 24, .5) 1.5px, transparent 1.5px);
     background-size: 46px 46px; }
@@ -120,7 +120,7 @@ html, body {
 .bg-vignette { position: absolute; inset: 0; pointer-events: none; z-index: 1;
     background: radial-gradient(ellipse 92% 80% at 50% 44%, transparent 55%, rgba(120, 85, 30, 0.12) 100%); }
 
-/* ط¥ط·ط§ط± ط¯ط§ط®ظ„ظٹ ط¨ط²ظˆط§ظٹط§ ط°ظ‡ط¨ظٹط© ظ…ط²ط¯ظˆط¬ط© */
+/* إطار داخلي بزوايا ذهبية مزدوجة */
 .bg-frame { position: absolute; inset: 22px; pointer-events: none; z-index: 6; border-radius: 24px;
     border: 1.5px solid rgba(154, 116, 24, 0.45); box-shadow: inset 0 0 50px rgba(201, 162, 39, 0.08); }
 .bg-frame .corner { position: absolute; width: 54px; height: 54px;
@@ -137,7 +137,7 @@ html, body {
 .bg-frame .c-br { bottom: -2px; left: -2px; border-right: 0; border-top: 0; border-radius: 0 0 0 22px; }
 .bg-frame .c-br::after { bottom: 12px; left: 12px; }
 
-/* ط؛ط¨ط§ط± ط°ظ‡ط¨ظٹ ط¹ط§ط¦ظ… */
+/* غبار ذهبي عائم */
 .specks { position: absolute; inset: 0; pointer-events: none; z-index: 5; }
 .specks i { position: absolute; width: 5px; height: 5px; border-radius: 50%;
     background: rgba(154, 116, 24, 0.55); box-shadow: 0 0 12px 3px rgba(201, 162, 39, 0.3);
@@ -154,7 +154,7 @@ html, body {
 .specks i:nth-child(10) { left: 35%; bottom: 18%; animation-duration: 28s; animation-delay: 24s; }
 @keyframes floatUp { 0% { transform: translateY(0) scale(1); opacity: 0; } 8% { opacity: .8; } 85% { opacity: .22; } 100% { transform: translateY(-1600px) scale(0.4); opacity: 0; } }
 
-/* â”€â”€â”€ ط´ط±ظٹط· ط§ظ„ط­ط§ظ„ط© ط§ظ„ط¹ظ„ظˆظٹ â”€â”€â”€ */
+/* ─── شريط الحالة العلوي ─── */
 .status-bar {
     position: relative; z-index: 30;
     display: flex; align-items: center; justify-content: space-between;
@@ -190,7 +190,7 @@ html, body {
 .clock-time { font-family: 'Cairo', sans-serif; font-size: 32px; font-weight: 700; color: var(--espresso); font-variant-numeric: tabular-nums; letter-spacing: 1px; }
 .clock-date { font-size: 18px; font-weight: 600; color: var(--sapphire); font-variant-numeric: tabular-nums; }
 
-/* â”€â”€â”€ ط§ظ„طھط±ظˆظٹط³ط©: ظ‚ظˆط³ ط¹ط§ط¬ظٹ ط¨ط¥ط·ط§ط± ط°ظ‡ط¨ظٹ ظ…ط²ط¯ظˆط¬ â”€â”€â”€ */
+/* ─── الترويسة: قوس عاجي بإطار ذهبي مزدوج ─── */
 .mb-header { position: relative; z-index: 20; padding: 18px 44px 0; }
 .arch {
     position: relative; margin: 0 auto; max-width: 980px;
@@ -212,7 +212,7 @@ html, body {
 @keyframes goldAura {
     0%,100% { filter: drop-shadow(0 2px 10px rgba(201, 162, 39, 0.5)); }
     50% { filter: drop-shadow(0 4px 22px rgba(201, 162, 39, 0.85)); } }
-/* â”€â”€â”€ ط§ظ„ظ‚ط¨ط© ط§ظ„ط°ظ‡ط¨ظٹط© ط¨ظ‡ظ„ط§ظ„ طھطھظˆط¬ ط§ظ„طھط±ظˆظٹط³ط© â”€â”€â”€ */
+/* ─── القبة الذهبية بهلال تتوج الترويسة ─── */
 .dome-emblem { display: flex; justify-content: center; margin-bottom: 2px; }
 .dome-emblem svg { width: 268px; height: 198px; display: block; }
 .crest { position: relative; display: inline-block; width: 130px; height: 102px; margin-bottom: 2px; }
@@ -246,7 +246,7 @@ html, body {
     filter: drop-shadow(0 1px 0 rgba(255, 255, 255, .9));
 }
 
-/* â”€â”€â”€ ظƒط¨ط³ظˆظ„ط§طھ ط§ظ„ظپطھط±ط§طھ â”€â”€â”€ */
+/* ─── كبسولات الفترات ─── */
 .period-strip {
     position: relative; z-index: 20;
     display: flex; align-items: center; justify-content: center; gap: 24px;
@@ -275,7 +275,7 @@ html, body {
 .period-strip .period-sep:first-of-type { color: var(--ruby); }
 .period-strip .period-sep:nth-of-type(2) { color: var(--sapphire); }
 
-/* â”€â”€â”€ ط§ظ„ظپط§طµظ„ ط§ظ„ط°ظ‡ط¨ظٹ ط¨ط¨ط±ظٹظ‚ ظ…طھظ†ظ‚ظ„ â”€â”€â”€ */
+/* ─── الفاصل الذهبي ببريق متنقل ─── */
 .gold-rule {
     position: relative; z-index: 7; height: 3px; margin: 22px 90px 0; overflow: hidden; border-radius: 3px;
     background: linear-gradient(90deg, transparent 0%, var(--ruby) 12%, var(--flame) 30%, var(--gold-l) 48%, var(--emerald) 66%, var(--sky) 82%, var(--sapphire) 94%, transparent 100%);
@@ -289,7 +289,7 @@ html, body {
 }
 @keyframes shimmer { 0% { right: -30%; } 55%, 100% { right: 110%; } }
 
-/* â”€â”€â”€ ظ…ظ†ط·ظ‚ط© ط§ظ„طµظپط­ط§طھ: ظƒظ„ طµظپط­ط© ط¨ط·ط§ظ‚ط© ط¹ط§ط¬ظٹط© ط¨ط¥ط·ط§ط± ط°ظ‡ط¨ظٹ â”€â”€â”€ */
+/* ─── منطقة الصفحات: كل صفحة بطاقة عاجية بإطار ذهبي ─── */
 #pageHost { position: relative; z-index: 7; flex: 1; margin: 26px 50px 10px; overflow: hidden; }
 .page {
     position: absolute; inset: 0;
@@ -386,7 +386,7 @@ html, body {
 .cat-sub-orn { margin-top: 8px; font-size: 14px; color: rgba(201, 149, 14, 0.6); letter-spacing: 8px; }
 .cat-note { margin-top: 8px; font-size: 23px; font-weight: 700; color: var(--sapphire); }
 
-/* â”€â”€â”€ طµظپظˆظپ ط§ظ„ط£طµظ†ط§ظپ ط«ظ†ط§ط¦ظٹط© ط§ظ„ظ„ط؛ط©: EN ظٹط³ط§ط± / ط¹ط±ط¨ظٹ ظٹظ…ظٹظ† â”€â”€â”€ */
+/* ─── صفوف الأصناف ثنائية اللغة: EN يسار / عربي يمين ─── */
 .items-grid {
     flex: 1;
     display: flex; flex-direction: column;
@@ -436,7 +436,7 @@ html, body {
 .page.empty { align-items: center; justify-content: center; }
 .empty-note { font-size: 34px; color: var(--bronze); font-weight: 600; letter-spacing: 3px; }
 
-/* â”€â”€â”€ ظ…ط¤ط´ط±ط§طھ ط§ظ„طµظپط­ط§طھ â”€â”€â”€ */
+/* ─── مؤشرات الصفحات ─── */
 .page-dots { position: relative; z-index: 7; display: flex; justify-content: center; gap: 16px; padding: 8px 0 16px; }
 .page-dots .dot { width: 58px; height: 6px; border-radius: 999px; background: rgba(154, 116, 24, 0.16); overflow: hidden; position: relative; cursor: none; }
 .page-dots .dot.active { background: rgba(154, 116, 24, 0.25); }
@@ -449,7 +449,7 @@ html, body {
 }
 @keyframes dotFill { from { transform: scaleX(0); } to { transform: scaleX(1); } }
 
-/* â”€â”€â”€ ط§ظ„طھط°ظٹظٹظ„: ط±ظˆط§ظ‚ ط£ظ‚ظˆط§ط³ ظپط±ط³ظٹط© + ط§ظ„ط´ط±ظٹط· ط§ظ„ط°ظ‡ط¨ظٹ ط§ظ„ط¬ط§ط±ظٹ â”€â”€â”€ */
+/* ─── التذييل: رواق أقواس فرسية + الشريط الذهبي الجاري ─── */
 .mb-footer { position: relative; z-index: 7; padding: 10px 50px 40px; }
 .arcade {
     height: 46px; margin: 0 26px 10px; opacity: .85;
@@ -1087,7 +1087,7 @@ html, body {
     #stage *, #stage *::before, #stage *::after { animation-duration: .01ms !important; transition-duration: .01ms !important; }
 }
 
-/* â”€â”€â”€ ط´ط§ط´ط© ط§ظ„ط¨ظˆظپظٹظ‡ ط§ظ„ظ…ط¬ظ…ط¹ط©: ط§ظ„ط£ظ‚ط³ط§ظ… ظƒط§ظ…ظ„ط© ظپظٹ ظ„ظˆط­ط© ط·ظˆظ„ظٹط© ظˆط§ط­ط¯ط© â”€â”€â”€ */
+/* ─── شاشة البوفيه المجمعة: الأقسام كاملة في لوحة طولية واحدة ─── */
 .buffet-page {
     position: absolute;
     inset: 12px;
@@ -1428,7 +1428,7 @@ html, body {
 }
 
 .cat-header::after {
-    content: 'âœ¦';
+    content: '✦';
     position: absolute;
     right: 50%;
     bottom: -12px;
@@ -1571,13 +1571,13 @@ html, body {
     .gold-rule::after { animation: none; }
 }
 
-/* â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
-   NOIR â€” ط§ظ„ط«ظٹظ… ط§ظ„ظ…ظ„ظƒظٹ ط§ظ„ط¯ط§ظƒظ† (ظƒط­ظ„ظٹ ط¹ظ…ظٹظ‚ + ط°ظ‡ط¨ظٹ ظ…طھظˆظ‡ط¬)
-   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-   ظ…ط³طھظˆط­ظ‰ ظ…ظ† ط´ط§ط´ط§طھ ط§ظ„ظ…ط·ط§ط¹ظ… ط§ظ„ظپط§ط®ط±ط©: ط®ظ„ظپظٹط© ظƒط­ظ„ظٹط© ط¯ط§ظƒظ†ط©طŒ ط¥ط·ط§ط±ط§طھ
-   ط°ظ‡ط¨ظٹط©طŒ ط¨ط·ط§ظ‚ط§طھ ط²ط¬ط§ط¬ظٹط© ط¯ط§ظƒظ†ط©طŒ ظ†طµظˆطµ ط°ظ‡ط¨ظٹط© ظ…طھظˆظ‡ط¬ط©. ظٹظڈظپط¹ظ‘ظ„ ط¹ط¨ط±
-   data-background="noir" ط¹ظ„ظ‰ #stage.
-   â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ */
+/* ═══════════════════════════════════════════════════════════════════
+   NOIR — الثيم الملكي الداكن (كحلي عميق + ذهبي متوهج)
+   ─────────────────────────────────────────────────────────────────
+   مستوحى من شاشات المطاعم الفاخرة: خلفية كحلية داكنة، إطارات
+   ذهبية، بطاقات زجاجية داكنة، نصوص ذهبية متوهجة. يُفعّل عبر
+   data-background="noir" على #stage.
+   ═══════════════════════════════════════════════════════════════════ */
 
 :root {
     --noir-bg: #050a14;
@@ -1615,7 +1615,7 @@ html, body {
 #letterbox[data-background="noir"],
 #stage[data-background="noir"] ~ * { background: #04070e; }
 
-/* ط§ظ„ط·ط¨ظ‚ط§طھ ط§ظ„ط®ظ„ظپظٹط©: طھط¹ط·ظٹظ„ ط§ظ„ظ†ظ‚ط´ط§طھ ط§ظ„ظپط§طھط­ط© + ط¥ط¨ظ‚ط§ط، ط§ظ„ظ‡ط§ظ„ط§طھ ط§ظ„ظ…ظ„ظˆظ†ط© */
+/* الطبقات الخلفية: تعطيل النقشات الفاتحة + إبقاء الهالات الملونة */
 #stage[data-background="noir"] .bg-grid { opacity: .05; }
 #stage[data-background="noir"] .bg-lattice { opacity: .05; }
 #stage[data-background="noir"] .bg-arabesque { opacity: .045; }
@@ -1636,7 +1636,7 @@ html, body {
     box-shadow: 0 0 12px rgba(233, 197, 96, 0.9);
 }
 
-/* â”€â”€â”€ ط´ط±ظٹط· ط§ظ„ط­ط§ظ„ط© â”€â”€â”€ */
+/* ─── شريط الحالة ─── */
 #stage[data-background="noir"] .status-bar { color: var(--noir-muted); }
 #stage[data-background="noir"] .status-brand {
     color: var(--noir-gold);
@@ -1664,7 +1664,7 @@ html, body {
     background: rgba(11, 22, 40, 0.7);
 }
 
-/* â”€â”€â”€ ط§ظ„طھط±ظˆظٹط³ط© ظˆط§ظ„ط´ط¹ط§ط± â”€â”€â”€ */
+/* ─── الترويسة والشعار ─── */
 #stage[data-background="noir"] .brand-logo {
     border-color: var(--noir-line-strong);
     box-shadow:
@@ -1674,7 +1674,7 @@ html, body {
         inset 0 2px 6px rgba(255, 255, 255, 0.14);
 }
 
-/* â”€â”€â”€ ط´ط±ظٹط· ط§ظ„ظپطھط±ط§طھ â”€â”€â”€ */
+/* ─── شريط الفترات ─── */
 #stage[data-background="noir"] .period {
     color: var(--noir-text);
     border-color: var(--noir-line);
@@ -1698,10 +1698,10 @@ html, body {
 #stage[data-background="noir"] .period.current .period-hours { color: rgba(18, 16, 10, 0.75); }
 #stage[data-background="noir"] .period-sep { color: rgba(233, 197, 96, 0.5); }
 
-/* â”€â”€â”€ ط§ظ„ظپط§طµظ„ ط§ظ„ط°ظ‡ط¨ظٹ â”€â”€â”€ */
+/* ─── الفاصل الذهبي ─── */
 #stage[data-background="noir"] .gold-rule { opacity: .6; }
 
-/* â”€â”€â”€ ط¨ط·ط§ظ‚ط§طھ ط§ظ„ط£ظ‚ط³ط§ظ… (ط§ظ„ط«ظٹظ… ط§ظ„ط¯ط§ظƒظ†) â”€â”€â”€ */
+/* ─── بطاقات الأقسام (الثيم الداكن) ─── */
 #stage[data-background="noir"] .page .cat-header { color: var(--noir-gold); }
 #stage[data-background="noir"] .page .cat-title {
     background: linear-gradient(90deg, var(--noir-gold-light), var(--noir-gold), var(--noir-gold-deep));
@@ -1737,7 +1737,7 @@ html, body {
     color: #12100a;
 }
 
-/* ط£ظ„ظˆط§ظ† ط§ظ„ط£ط­ط¬ط§ط± ظپظٹ ط§ظ„ط«ظٹظ… ط§ظ„ط¯ط§ظƒظ† */
+/* ألوان الأحجار في الثيم الداكن */
 #stage[data-background="noir"] .page.jewel-cyan .item-bullet   { background: linear-gradient(135deg, #7fe3f8, var(--noir-cyan)); box-shadow: 0 0 18px rgba(53, 201, 232, .5); }
 #stage[data-background="noir"] .page.jewel-emerald .item-bullet{ background: linear-gradient(135deg, #7ff0c4, var(--noir-green)); box-shadow: 0 0 18px rgba(52, 211, 153, .5); }
 #stage[data-background="noir"] .page.jewel-violet .item-bullet { background: linear-gradient(135deg, #d8bcff, var(--noir-violet)); box-shadow: 0 0 18px rgba(180, 140, 247, .5); }
@@ -1748,7 +1748,7 @@ html, body {
     -webkit-background-clip: text; background-clip: text; color: transparent;
 }
 
-/* â”€â”€â”€ ط§ظ„ط¨ظˆظپظٹظ‡ ط§ظ„ط¯ط§ظƒظ† (ط§ظ„ظ†ظ…ط· ط§ظ„ط±ط¦ظٹط³ظٹ ظپظٹ ط§ظ„ط´ط§ط´ط© ط§ظ„ط·ظˆظ„ظٹط©) â”€â”€â”€ */
+/* ─── البوفيه الداكن (النمط الرئيسي في الشاشة الطولية) ─── */
 #stage[data-background="noir"] .buffet-page {
     border-color: var(--noir-line-strong);
     background: linear-gradient(150deg, rgba(11, 22, 40, 0.9), rgba(6, 12, 24, 0.94));
@@ -1785,9 +1785,9 @@ html, body {
     text-shadow: 0 0 12px rgba(233, 197, 96, 0.5);
 }
 #stage[data-background="noir"] .buffet-empty { color: var(--noir-muted); }
-/* ظ„ظˆظ† ط¹ظ†ظˆط§ظ† ظƒظ„ ظ‚ط³ظ… ظٹظڈط¶ط¨ط· ظپظٹ menu-board-islamic.css (ط·ط¨ظ‚ط© ط§ظ„طھطµظ…ظٹظ… ط§ظ„ظپط®ظ…) */
+/* لون عنوان كل قسم يُضبط في menu-board-islamic.css (طبقة التصميم الفخم) */
 
-/* â”€â”€â”€ ط§ظ„طھط°ظٹظٹظ„ â”€â”€â”€ */
+/* ─── التذييل ─── */
 #stage[data-background="noir"] .ticker {
     background: linear-gradient(135deg, rgba(233, 197, 96, 0.16), rgba(11, 22, 40, 0.95) 52%, rgba(6, 12, 24, 0.98));
     border: 1px solid var(--noir-line);
@@ -1807,17 +1807,17 @@ html, body {
 }
 
 /* ─── menu-board-islamic.css (تُغلب الافتراضيات كما كانت) ─── */
-/* â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
-   KARIM ERP â€” Menu Board آ· ISLAMIC MASTERPIECE v1.0
-   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-   ط·ط¨ظ‚ط© طھطµظ…ظٹظ… آ«ظپظ† ط¥ط³ظ„ط§ظ…ظٹ / ط´ظƒظ„ ظ…ط¦ط°ظ†ط©آ» â€” ط®ط·ظˆط· ط«ظ†ط§ط¦ظٹط© ط§ظ„ظ„ط؛ط© ط¹ط§ظ„ظ…ظٹط©طŒ
-   ط£ظ„ظˆط§ظ† ط²ط§ظ‡ظٹط© ظ…ط¨ظ‡ط±ط© ظپط®ظ…ط©طŒ ط£ظ‚ظˆط§ط³ ظ…ط­ط±ط§ط¨طŒ ط²ط®ط§ط±ظپ ظ†ط¬ظ…ظٹط© ط«ظ…ط§ظ†ظٹط©طŒ
-   ظ‡ط§ظ„ط§طھ ط°ظ‡ط¨ظٹط©. طھظڈط­ظ…ظژظ‘ظ„ ط¨ط¹ط¯ menu-board.css ظپطھظڈط؛ظ„ط¨ ط§ظ„ط§ظپطھط±ط§ط¶ظٹط§طھطŒ
-   ظˆطھط¹ظ…ظ„ ظپظ‚ط· ط¹ظ†ط¯ظ…ط§ ظٹظƒظˆظ† data-background="noir" (ظٹط¹ظ†ظٹ: ط¹ظƒط³ظٹ 100%).
-   ط§ظ„ظ…ط³ط±ط­: 1080أ—1920.
-   â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ */
+/* ═══════════════════════════════════════════════════════════════════
+   KARIM ERP — Menu Board آ· ISLAMIC MASTERPIECE v1.0
+   ─────────────────────────────────────────────────────────────────
+   طبقة تصميم «فن إسلامي / شكل مئذنة» — خطوط ثنائية اللغة عالمية،
+   ألوان زاهية مبهرة فخمة، أقواس محراب، زخارف نجمية ثمانية،
+   هالات ذهبية. تُحمَّل بعد menu-board.css فتُغلب الافتراضيات،
+   وتعمل فقط عندما يكون data-background="noir" (يعني: عكسي 100%).
+   المسرح: 1080×1920.
+   ═══════════════════════════════════════════════════════════════════ */
 
-/* â”€â”€â”€ ظ„ظˆط­ط© ط§ظ„ط£ظ„ظˆط§ظ†: ط²ط§ظ‡ظٹط© ظˆظ…ط¨ظ‡ظ‘ط±ط© ط¹ظ„ظ‰ ظ‚ط§ط¹ط¯ط© ظƒط­ظ„ظٹط© ط¹ظ…ظٹظ‚ط© â”€â”€â”€ */
+/* ─── لوحة الألوان: زاهية ومبهّرة على قاعدة كحلية عميقة ─── */
 #stage[data-background="noir"] {
     --i-bg-0: #04121c;
     --i-bg-1: #072430;
@@ -1828,23 +1828,23 @@ html, body {
     --i-gold-lt: #fff1c2;
     --i-cream: #fff8e6;
     --i-muted: #a7b9c9;
-    --i-cyan: #3fd7f5;      /* ط§ظ„ط´ظˆط±ط¨ط§طھ */
-    --i-emerald: #2ee6a0;   /* ط±ظƒظ† ط§ظ„ط´ظˆط§ط، */
-    --i-amber: #ffab2e;     /* ط§ظ„ط£ط·ط¨ط§ظ‚ ط§ظ„ط±ط¦ظٹط³ظٹط© */
-    --i-rose: #ff7ab8;      /* ط§ظ„ط­ظ„ظˆظٹط§طھ */
-    --i-violet: #b98cff;    /* ط§ظ„ظ…ظ‚ط¨ظ„ط§طھ */
-    --i-lime: #b6e63c;      /* ط§ظ„ط³ظ„ط·ط§طھ */
+    --i-cyan: #3fd7f5;      /* الشوربات */
+    --i-emerald: #2ee6a0;   /* ركن الشواء */
+    --i-amber: #ffab2e;     /* الأطباق الرئيسية */
+    --i-rose: #ff7ab8;      /* الحلويات */
+    --i-violet: #b98cff;    /* المقبلات */
+    --i-lime: #b6e63c;      /* السلطات */
     --i-arch: rgba(255, 212, 105, .16);
 }
 
-/* â•گâ•گâ•گ ظ،. ط§ظ„ط®ظ„ظپظٹط©: ظ†ط¬ظˆظ… ط«ظ…ط§ظ†ظٹط© ط²ط®ط±ظپظٹط© + ظ‡ط§ظ„ط§طھ ط¬ظˆظ‡ط±ظٹط© â•گâ•گâ•گ */
+/* ═══ ظ،. الخلفية: نجوم ثمانية زخرفية + هالات جوهرية ═══ */
 #stage[data-background="noir"]::before {
     content: '';
     position: absolute;
     inset: 0;
     z-index: 1;
     pointer-events: none;
-    /* ط´ط¨ظƒط© ظ†ط¬ظ…ط© ط«ظ…ط§ظ†ظٹط© ط¥ط³ظ„ط§ظ…ظٹط© */
+    /* شبكة نجمة ثمانية إسلامية */
     background-image:
         radial-gradient(circle at 50% 50%, rgba(255, 212, 105, .16) 1.6px, transparent 1.9px),
         radial-gradient(circle at 0% 0%, rgba(63, 215, 245, .13) 1.4px, transparent 1.8px),
@@ -1856,7 +1856,7 @@ html, body {
     mask-image: radial-gradient(ellipse 96% 90% at 50% 44%, #000 32%, transparent 92%);
     -webkit-mask-image: radial-gradient(ellipse 96% 90% at 50% 44%, #000 32%, transparent 92%);
 }
-/* ظ‡ط§ظ„ط§طھ ط¬ظˆظ‡ط±ظٹط© ط²ط§ظ‡ظٹط© */
+/* هالات جوهرية زاهية */
 #stage[data-background="noir"] .bg-base {
     background:
         radial-gradient(900px 640px at 74% 4%, rgba(255, 171, 46, .2), transparent 58%),
@@ -1866,10 +1866,10 @@ html, body {
         linear-gradient(168deg, #072430 0%, #061a2a 46%, #04121c 100%);
 }
 
-/* â•گâ•گâ•گ ظ،-ط¨. طھط¨ط¯ظٹظ„ ط£ظ„ظˆط§ظ† ط§ظ„ط®ظ„ظپظٹط© طھظ„ظ‚ط§ط¦ظٹظ‹ط§ ط¨ط§ظ†طھظ‚ط§ظ„ ظ†ط§ط¹ظ… (ط·ظ„ط¨ ط§ظ„ظ…ط§ظ„ظƒ 2026-10-12) â•گâ•گâ•گ
-   ط·ط¨ظ‚طھط§ظ† ظ…طھط¹ط§ظƒط³طھط§ظ† (A/B) ظپظˆظ‚ ط§ظ„ظ‚ط§ط¹ط¯ط© ط§ظ„ظƒط­ظ„ظٹط© ط§ظ„ط«ط§ط¨طھط© â€” طھط¨ط¯ظ‘ظ„ط§ظ† ط´ظپط§ظپظٹط©
-   ط®ظ„ط§ظ„ 3 ط«ظˆط§ظ†ظچ ظپظٹط¨ط¯ظˆ ط§ظ„طھط¨ط¯ظٹظ„ ظƒطھظ†ظپظ‘ط³ ط¬ظˆظ‡ط±غŒ ظ„ط§ ظƒظ‚ط·ط¹ ظ…ظپط§ط¬ط¦.
-   ط§ظ„ط¥ط·ط§ط± ط§ظ„ط°ظ‡ط¨ظٹ ظˆط£ظ„ظˆط§ظ† ط§ظ„ط£ظ‚ط³ط§ظ… طھط¨ظ‚ظ‰ ط«ط§ط¨طھط© طھظ…ط§ظ…ظ‹ط§: طھطھط؛ظٹط± آ«ط§ظ„ط®ظ„ظپظٹط© ظپظ‚ط·آ». */
+/* ═══ ظ،-ب. تبديل ألوان الخلفية تلقائيًا بانتقال ناعم (طلب المالك 2026-10-12) ═══
+   طبقتان متعاكستان (A/B) فوق القاعدة الكحلية الثابتة — تبدّلان شفافية
+   خلال 3 ثوانٍ فيبدو التبديل كتنفّس جوهری لا كقطع مفاجئ.
+   الإطار الذهبي وألوان الأقسام تبقى ثابتة تمامًا: تتغير «الخلفية فقط». */
 #stage[data-background="noir"] .bg-base::before,
 #stage[data-background="noir"] .bg-base::after {
     content: '';
@@ -1883,7 +1883,7 @@ html, body {
 #stage[data-tint-side="a"][data-background="noir"] .bg-base::before { opacity: 1; }
 #stage[data-tint-side="b"][data-background="noir"] .bg-base::after  { opacity: 1; }
 
-/* â•گâ•گâ•گ ظ¢. ط§ظ„ط¥ط·ط§ط± ط§ظ„ظ…ط°ظ‡ظ‘ط¨ + ط²ظˆط§ظٹط§ ظ…ط¦ط°ظ†ظٹط© â•گâ•گâ•گ */
+/* ═══ ٢. الإطار المذهّب + زوايا مئذنية ═══ */
 #stage[data-background="noir"] .bg-frame {
     inset: 20px;
     border: 2px solid rgba(255, 212, 105, .5);
@@ -1909,7 +1909,7 @@ html, body {
     transform: rotate(45deg);
 }
 
-/* â•گâ•گâ•گ ظ£. ط§ظ„طھط±ظˆظٹط³ط©: ط´ط¹ط§ط± ط¨ظ‡ط§ظ„ط© + ط¹ظ†ظˆط§ظ† ط«ظ†ط§ط¦ظٹ ط§ظ„ظ„ط؛ط© â•گâ•گâ•گ */
+/* ═══ ٣. الترويسة: شعار بهالة + عنوان ثنائي اللغة ═══ */
 #stage[data-background="noir"] .brand-logo {
     width: 96px; height: 96px;
     border-radius: 50%;
@@ -1937,7 +1937,7 @@ html, body {
     color: var(--i-cyan);
     text-shadow: 0 0 18px rgba(63, 215, 245, .55);
 }
-/* ط¥ط²ط§ظ„ط© ط³ط§ط±ظٹط© ط§ظ„ظ…ط¦ط°ظ†ط©/ط§ظ„ظ†ط¬ظ…ط© ط£ط¹ظ„ظ‰ ط§ظ„ط´ط¹ط§ط± â€” ط·ظ„ط¨ ط§ظ„ظ…ط§ظ„ظƒ 2026-10-12 */
+/* إزالة سارية المئذنة/النجمة أعلى الشعار — طلب المالك 2026-10-12 */
 #stage[data-background="noir"] .mb-header::before {
     content: none;
     display: none;
@@ -1955,7 +1955,7 @@ html, body {
     50% { opacity: 1; transform: translateX(-50%) scale(1.28); }
 }
 
-/* â•گâ•گâ•گ ظ¤. ط´ط±ظٹط· ط§ظ„ط­ط§ظ„ط© (LIVE آ· ط§ظ„ط³ط§ط¹ط© آ· ط§ظ„ظ„ط؛ط©) â•گâ•گâ•گ */
+/* ═══ ٤. شريط الحالة (LIVE آ· الساعة آ· اللغة) ═══ */
 #stage[data-background="noir"] .status-bar { color: var(--i-muted); }
 #stage[data-background="noir"] .conn {
     color: #04121c;
@@ -1988,20 +1988,20 @@ html, body {
     text-shadow: 0 0 16px rgba(255, 212, 105, .45);
 }
 
-/* â•گâ•گâ•گ ظ¥. ط´ط±ظٹط· ظپطھط±ط§طھ ط§ظ„ظˆط¬ط¨ط§طھ â€” ط£ظ‚ظˆط§ط³ ظ…ط­ط±ط§ط¨ â•گâ•گâ•گ */
+/* ═══ ٥. شريط فترات الوجبات — أقواس محراب ═══ */
 #stage[data-background="noir"] .period-strip { gap: 16px; }
 #stage[data-background="noir"] .period {
     position: relative;
     color: var(--i-cream);
     border: 1.5px solid rgba(255, 212, 105, .34);
-    /* ظ‚ظˆط³ ظ…ط­ط±ط§ط¨ ط¥ط³ظ„ط§ظ…ظٹ */
+    /* قوس محراب إسلامي */
     border-radius: 44px 44px 12px 12px;
     background: linear-gradient(160deg, rgba(7, 36, 48, .95), rgba(4, 18, 28, .97));
     box-shadow: 0 10px 26px rgba(0, 0, 0, .5), inset 0 2px 5px rgba(255, 255, 255, .07);
     padding-top: 12px;
     overflow: visible;
 }
-/* ط¥ط²ط§ظ„ط© ط§ظ„ظ‡ظ„ط§ظ„/ط§ظ„ظ†ط¬ظ…ط© ط¨ط§ظ„ظƒط§ظ…ظ„ ظ…ظ† ط§ظ„طµظپط­ط© â€” ط·ظ„ط¨ ط§ظ„ظ…ط§ظ„ظƒ 2026-10-12 */
+/* إزالة الهلال/النجمة بالكامل من الصفحة — طلب المالك 2026-10-12 */
 #stage[data-background="noir"] .period::before { content: none; display: none; }
 #stage[data-background="noir"] .period-name {
     font-family: 'Aref Ruqaa', 'Amiri', serif;
@@ -2033,18 +2033,18 @@ html, body {
     text-shadow: 0 0 16px rgba(255, 212, 105, .7);
 }
 
-/* â•گâ•گâ•گ ظ¦. ط§ظ„ظپط§طµظ„ ط§ظ„ط°ظ‡ط¨ظٹ ط§ظ„ظ…ط²ط®ط±ظپ â•گâ•گâ•گ */
+/* ═══ ٦. الفاصل الذهبي المزخرف ═══ */
 #stage[data-background="noir"] .gold-rule { opacity: .9; }
 #stage[data-background="noir"] .gold-rule::after {
     background: linear-gradient(90deg, transparent, var(--i-gold) 22%, var(--i-gold-lt) 50%, var(--i-gold) 78%, transparent);
     box-shadow: 0 0 22px rgba(255, 212, 105, .65);
 }
 
-/* â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
-   ظ§. طµظپط­ط© ط§ظ„ط¨ظˆظپظٹظ‡ â€” ط§ظ„طھطµظ…ظٹظ… ط§ظ„ط¥ط³ظ„ط§ظ…ظٹ ط§ظ„ظپط®ظ… (ط§ظ„ط´ظƒظ„ ط§ظ„ظ…ط·ظ„ظˆط¨)
-   ط§ظ„طھط±طھظٹط¨: ط´ظˆط±ط¨ط§طھ â†گ ط±ظƒظ† ط§ظ„ط´ظˆط§ط، (ط§ط³ظ… ظ…طھط؛ظٹط±) â†گ 10 ط£ط·ط¨ط§ظ‚ ط±ط¦ظٹط³ظٹط© â†گ
-            ط­ظ„ظˆظٹط§طھ ط´ط±ظ‚ظٹط© ظˆط؛ط±ط¨ظٹط© âں· ظ‚ط¨ظ„ظٹط§طھ ظˆط³ظ„ط·ط§طھ ظ…ط­ظ„ظٹط© ظˆط¹ط§ظ„ظ…ظٹط©
-   â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ */
+/* ═══════════════════════════════════════════════════════════════
+   ٧. صفحة البوفيه — التصميم الإسلامي الفخم (الشكل المطلوب)
+   الترتيب: شوربات ← ركن الشواء (اسم متغير) ← 10 أطباق رئيسية ←
+            حلويات شرقية وغربية âں· قبليات وسلطات محلية وعالمية
+   ═══════════════════════════════════════════════════════════════ */
 #stage[data-background="noir"] .buffet-page {
     border: 2px solid rgba(255, 212, 105, .55);
     background:
@@ -2058,7 +2058,7 @@ html, body {
         0 0 70px rgba(255, 212, 105, .13);
 }
 
-/* â”€â”€â”€ ظ„ظˆط­ط© ظ‚ط³ظ…: ط²ط¬ط§ط¬ظٹط© ط¯ط§ظƒظ†ط© ط¨ط­ط¯ظ‘ ط°ظ‡ط¨ظٹ â”€â”€â”€ */
+/* ─── لوحة قسم: زجاجية داكنة بحدّ ذهبي ─── */
 #stage[data-background="noir"] .buffet-panel {
     position: relative;
     border: 1.5px solid rgba(255, 212, 105, .4);
@@ -2070,7 +2070,7 @@ html, body {
         0 0 26px rgba(255, 212, 105, .06);
     overflow: hidden;
 }
-/* ظ†ظ‚ط´ ظ†ط¬ظ…ظٹ ط®ظپظٹظپ ط¯ط§ط®ظ„ ظƒظ„ ظ„ظˆط­ط© */
+/* نقش نجمي خفيف داخل كل لوحة */
 #stage[data-background="noir"] .buffet-panel::after {
     content: '';
     position: absolute;
@@ -2082,7 +2082,7 @@ html, body {
     opacity: .55;
 }
 
-/* â”€â”€â”€ ط¹ظ†ظˆط§ظ† ط§ظ„ظ‚ط³ظ… ط¹ظ„ظ‰ ظ‡ظٹط¦ط© ظ‚ظˆط³ ظ…ط­ط±ط§ط¨ + ط³ط§ط±ظٹط© ظ…ط¦ط°ظ†ط© â”€â”€â”€ */
+/* ─── عنوان القسم على هيئة قوس محراب + سارية مئذنة ─── */
 #stage[data-background="noir"] .buffet-section-heading {
     position: relative;
     z-index: 2;
@@ -2095,12 +2095,12 @@ html, body {
     margin: 7px 8px 6px;
     border: 1.5px solid rgba(255, 212, 105, .5);
     border-bottom: 0;
-    /* ظ‚ظˆط³ ط§ظ„ظ…ط­ط±ط§ط¨ */
+    /* قوس المحراب */
     border-radius: 50% 50% 6px 6px / 66% 66% 6px 6px;
     background: linear-gradient(180deg, rgba(255, 212, 105, .22), rgba(255, 171, 46, .06) 72%, transparent);
     box-shadow: inset 0 3px 12px rgba(255, 212, 105, .12);
 }
-/* ط¥ط²ط§ظ„ط© ط§ظ„ظ‡ظ„ط§ظ„ ظˆط§ظ„ظ†ط¬ظ…ط© ط£ط¹ظ„ظ‰ ط§ظ„ظ‚ظˆط³ â€” ط·ظ„ط¨ ط§ظ„ظ…ط§ظ„ظƒ 2026-10-12 */
+/* إزالة الهلال والنجمة أعلى القوس — طلب المالك 2026-10-12 */
 #stage[data-background="noir"] .buffet-section-heading::before {
     content: none;
     display: none;
@@ -2117,7 +2117,7 @@ html, body {
     box-shadow: 0 0 20px rgba(255, 212, 105, .7);
     text-shadow: 0 0 12px rgba(255, 212, 105, .9);
 }
-/* ط§ظ„ط§ط³ظ… ط§ظ„ط¹ط±ط¨ظٹ â€” ط®ط· ط±ظ‚ط¹ط© ظپط®ظ… */
+/* الاسم العربي — خط رقعة فخم */
 #stage[data-background="noir"] .buffet-section-heading b {
     font-family: 'Aref Ruqaa', 'Amiri', serif;
     font-size: 38px;
@@ -2128,7 +2128,7 @@ html, body {
     color: transparent;
     filter: drop-shadow(0 2px 12px rgba(255, 212, 105, .45));
 }
-/* ط§ظ„ط§ط³ظ… ط§ظ„ط¥ظ†ط¬ظ„ظٹط²ظٹ â€” ط®ط· ط¹ط§ظ„ظ…ظٹ ظ…طھط¨ط§ط¹ط¯ */
+/* الاسم الإنجليزي — خط عالمي متباعد */
 #stage[data-background="noir"] .buffet-section-heading span {
     font: 700 15.5px 'Cinzel', serif;
     letter-spacing: 5px;
@@ -2137,7 +2137,7 @@ html, body {
     direction: ltr;
 }
 
-/* â”€â”€â”€ ط£ظ„ظˆط§ظ† ظ…ظ…ظٹظ‘ط²ط© ظ„ظƒظ„ ظ‚ط³ظ… (ط²ط§ظ‡ظٹط© ظ…ط¨ظ‡ظ‘ط±ط©) â”€â”€â”€ */
+/* ─── ألوان مميّزة لكل قسم (زاهية مبهّرة) ─── */
 #stage[data-background="noir"] .buffet-soups .buffet-section-heading span   { color: var(--i-cyan);    text-shadow: 0 0 16px rgba(63, 215, 245, .6); }
 #stage[data-background="noir"] .buffet-soups .buffet-section-heading       { border-color: rgba(63, 215, 245, .6); background: linear-gradient(180deg, rgba(63, 215, 245, .24), rgba(63, 215, 245, .05) 72%, transparent); }
 #stage[data-background="noir"] .buffet-soups .buffet-section-heading::before { box-shadow: 0 0 20px rgba(63, 215, 245, .8); border-color: rgba(63, 215, 245, .7); color: var(--i-cyan); }
@@ -2162,7 +2162,7 @@ html, body {
 #stage[data-background="noir"] .buffet-bottom-grid .buffet-panel:nth-child(2) .buffet-section-heading { border-color: rgba(182, 230, 60, .55); background: linear-gradient(180deg, rgba(182, 230, 60, .2), rgba(182, 230, 60, .04) 72%, transparent); }
 #stage[data-background="noir"] .buffet-bottom-grid .buffet-panel:nth-child(2) .buffet-section-heading::before { box-shadow: 0 0 20px rgba(182, 230, 60, .75); border-color: rgba(182, 230, 60, .65); color: var(--i-lime); }
 
-/* â”€â”€â”€ ط£طµظ†ط§ظپ ط§ظ„ط´ظˆط±ط¨ط§طھ (ظ†ظˆط¹ط§ظ†) â€” ط¨ط·ط§ظ‚ط§طھ ظ…ط¶ظٹط¦ط© â”€â”€â”€ */
+/* ─── أصناف الشوربات (نوعان) — بطاقات مضيئة ─── */
 #stage[data-background="noir"] .buffet-soup-grid { gap: 16px; }
 #stage[data-background="noir"] .buffet-soup-item {
     position: relative;
@@ -2191,7 +2191,7 @@ html, body {
     box-shadow: 0 0 18px rgba(255, 212, 105, .6);
 }
 
-/* â”€â”€â”€ ط§ظ„ط£ط·ط¨ط§ظ‚ ط§ظ„ط±ط¦ظٹط³ظٹط© (10 ط£طµظ†ط§ظپ) â€” ط°ظ‡ط¨ظٹ/ط¹ظ†ط¨ط±ظٹ â”€â”€â”€ */
+/* ─── الأطباق الرئيسية (10 أصناف) — ذهبي/عنبري ─── */
 #stage[data-background="noir"] .buffet-main-grid { column-gap: 22px; }
 #stage[data-background="noir"] .buffet-main-item {
     position: relative;
@@ -2203,7 +2203,7 @@ html, body {
 }
 #stage[data-background="noir"] .buffet-main-item:nth-last-child(-n+2) { border-bottom: 0; }
 #stage[data-background="noir"] .buffet-main-item::before {
-    content: 'â‌ٹ';
+    content: '❊';
     flex: 0 0 auto;
     font-size: 15px;
     color: var(--i-amber);
@@ -2229,7 +2229,7 @@ html, body {
     box-shadow: 0 0 24px rgba(255, 171, 46, .2);
 }
 
-/* â”€â”€â”€ ط±ظƒظ† ط§ظ„ط´ظˆط§ط، (ط§ط³ظ… ظ…طھط؛ظٹط± ط­ط³ط¨ ط§ظ„ظٹظˆظ… ظˆط§ظ„ظپطھط±ط©) â€” ط²ظ…ط±ظ‘ط¯ â”€â”€â”€ */
+/* ─── ركن الشواء (اسم متغير حسب اليوم والفترة) — زمرّد ─── */
 #stage[data-background="noir"] .buffet-carving {
     background: linear-gradient(120deg, rgba(46, 230, 160, .2), rgba(7, 36, 48, .86) 56%, rgba(5, 22, 34, .92));
     border-color: rgba(46, 230, 160, .55);
@@ -2253,7 +2253,7 @@ html, body {
     letter-spacing: .5px;
 }
 
-/* â”€â”€â”€ ط§ظ„ط­ظ„ظˆظٹط§طھ / ط§ظ„ظ…ظ‚ط¨ظ„ط§طھ / ط§ظ„ط³ظ„ط·ط§طھ â€” ط¨ط·ط§ظ‚ط§طھ طµط؛ظٹط±ط© ط²ط§ظ‡ظٹط© â”€â”€â”€ */
+/* ─── الحلويات / المقبلات / السلطات — بطاقات صغيرة زاهية ─── */
 #stage[data-background="noir"] .buffet-desserts {
     background: linear-gradient(150deg, rgba(255, 122, 184, .16), rgba(7, 36, 48, .84) 62%);
     border-color: rgba(255, 122, 184, .45);
@@ -2283,7 +2283,7 @@ html, body {
 }
 #stage[data-background="noir"] .buffet-small-item .buffet-item-name small { color: #ffb0b0; }
 
-/* â•گâ•گâ•گ ظ¨. ظˆط¶ط¹ ط§ظ„طھطµظ†ظٹظپط§طھ (ظ„ظˆ ط§ظ„ط¨ظˆظپظٹظ‡ ظ…ظ‚ظپظˆظ„) â€” ظ†ظپط³ ط§ظ„ط±ظˆط­ â•گâ•گâ•گ */
+/* ═══ ٨. وضع التصنيفات (لو البوفيه مقفول) — نفس الروح ═══ */
 #stage[data-background="noir"] .page {
     border: 2px solid rgba(255, 212, 105, .5);
     border-radius: 26px;
@@ -2367,7 +2367,7 @@ html, body {
     box-shadow: 0 6px 20px rgba(255, 212, 105, .5);
 }
 
-/* â•گâ•گâ•گ ظ©. ط§ظ„طھط°ظٹظٹظ„ â€” ط´ط±ظٹط· ط°ظ‡ط¨ظٹ ظ…طھط­ط±ظƒ â•گâ•گâ•گ */
+/* ═══ ٩. التذييل — شريط ذهبي متحرك ═══ */
 #stage[data-background="noir"] .ticker {
     border: 1.5px solid rgba(255, 212, 105, .5);
     background: linear-gradient(135deg, rgba(255, 171, 46, .2), rgba(7, 36, 48, .96) 50%, rgba(4, 18, 28, .98));
@@ -2387,7 +2387,7 @@ html, body {
 #stage[data-background="noir"] .foot-brand { color: var(--i-gold); letter-spacing: 4px; }
 #stage[data-background="noir"] .footer-meta { color: var(--i-muted); }
 
-/* â•گâ•گâ•گ ظ،ظ . ظ…ط¤ط´ط±ط§طھ ط§ظ„طµظپط­ط§طھ â•گâ•گâ•گ */
+/* ═══ ظ،٠. مؤشرات الصفحات ═══ */
 #stage[data-background="noir"] .page-dots i {
     background: rgba(255, 212, 105, .3);
     box-shadow: 0 0 8px rgba(255, 212, 105, .25);
@@ -2398,20 +2398,20 @@ html, body {
     transform: scale(1.25);
 }
 
-/* â•گâ•گâ•گ ظ،ظ،. ط§ط­طھط±ط§ظ… طھظ‚ظ„ظٹظ„ ط§ظ„ط­ط±ظƒط© â•گâ•گâ•گ */
+/* ═══ ظ،ظ،. احترام تقليل الحركة ═══ */
 @media (prefers-reduced-motion: reduce) {
     #stage[data-background="noir"] .mb-header::before { animation: none; }
 }
 
-/* â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
-   ظ،ظ¢. طھطµط­ظٹط­ط§طھ ط§ظ„طھط¯ظپظ‚ â€” ظ…ظ†ط¹ ط§ظ„طھظ‚ط·ظٹط¹ ظˆط§ظ„طھظƒط¯ظٹط³
-   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-   CSS ط§ظ„ط£ط³ط§ط³ظٹ ظٹظپط±ط¶ ط¹ظ„ظ‰ ط£ط³ظ…ط§ط، ط§ظ„ط£طµظ†ط§ظپ nowrap+ellipsisطŒ ظپطھط±ظ‰
-   آ«ط¯ط¬ط§ط¬ط© ظ…ط´ظˆظٹط© ظƒط§ظ…ظ„ط© ظ…ط¹ ط§ظ„ط£ط±ط²آ» ظ…ظ‚ط·ظˆط¹ط© ط¨ظ€ آ«â€¦â€¦آ». ظ‡ظ†ط§ ظ†ط³ظ…ط­ ط¨ط§ظ„ط§ظ„طھظپط§ظپطŒ
-   ظˆظ†ظپظƒظ‘ طھط²ط§ط­ظ… ظ„ظˆط­ط© ط±ظƒظ† ط§ظ„ط´ظˆط§ط،طŒ ظˆظ†ظ…ظ†ط­ ط§ظ„ظ…ط³ط§ط­ط© ظ„ظ„ط£ظ‚ط³ط§ظ… ط§ظ„ط­ظ‚ظٹظ‚ظٹط©.
-   â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ */
+/* ═══════════════════════════════════════════════════════════════════
+   ظ،٢. تصحيحات التدفق — منع التقطيع والتكديس
+   ─────────────────────────────────────────────────────────────────
+   CSS الأساسي يفرض على أسماء الأصناف nowrap+ellipsis، فترى
+   «دجاجة مشوية كاملة مع الأرز» مقطوعة بـ «……». هنا نسمح بالالتفاف،
+   ونفكّ تزاحم لوحة ركن الشواء، ونمنح المساحة للأقسام الحقيقية.
+   ═══════════════════════════════════════════════════════════════════ */
 
-/* â”€â”€â”€ ط§ظ„ط£ط³ظ…ط§ط، طھظ„طھظپ ط¨ط¯ظ„ ط£ظ† طھظڈظ‚ط·ظژظ‘ط¹ â”€â”€â”€ */
+/* ─── الأسماء تلتف بدل أن تُقطَّع ─── */
 #stage[data-background="noir"] .buffet-item-name,
 #stage[data-background="noir"] .buffet-main-item .buffet-item-name,
 #stage[data-background="noir"] .buffet-small-item .buffet-item-name,
@@ -2428,7 +2428,7 @@ html, body {
     line-height: 1.28;
 }
 
-/* â”€â”€â”€ ط±ظƒظ† ط§ظ„ط´ظˆط§ط،: ط§ظ„ط§ط³ظ… ظپظˆظ‚ ظˆط§ظ„ظˆطµظپ طھط­طھ (ظ„ط§ طھط±ط§ظƒط¨) â”€â”€â”€ */
+/* ─── ركن الشواء: الاسم فوق والوصف تحت (لا تراكب) ─── */
 #stage[data-background="noir"] .buffet-carving { justify-content: flex-start; }
 #stage[data-background="noir"] .buffet-carving .carving-current {
     flex-direction: column;
@@ -2442,7 +2442,7 @@ html, body {
     line-height: 1.25;
 }
 
-/* â”€â”€â”€ ط¹ظ†ظˆط§ظ† ط§ظ„ظ‚ط³ظ…: ط§ط±طھظپط§ط¹ ط£ظ‚ظ„ ظ„ظٹظ…ظ†ط­ ظ…ط³ط§ط­ط© ط£ظƒط¨ط± ظ„ظ„ظ…ط­طھظˆظ‰ â”€â”€â”€ */
+/* ─── عنوان القسم: ارتفاع أقل ليمنح مساحة أكبر للمحتوى ─── */
 #stage[data-background="noir"] .buffet-section-heading {
     min-height: 0;
     padding: 7px 14px 6px;
@@ -2451,7 +2451,7 @@ html, body {
 #stage[data-background="noir"] .buffet-section-heading b { font-size: 29px; line-height: 1.12; }
 #stage[data-background="noir"] .buffet-section-heading span { font-size: 12.5px; letter-spacing: 3.5px; }
 
-/* â”€â”€â”€ ط§ظ„ط´ظˆط±ط¨ط§طھ: ط¨ط·ط§ظ‚طھط§ظ† ط¨ط§ط±ط²طھط§ظ† ظ„ط§ ط­ط¨ظ‘ط§طھ طµط؛ظٹط±ط© â”€â”€â”€ */
+/* ─── الشوربات: بطاقتان بارزتان لا حبّات صغيرة ─── */
 #stage[data-background="noir"] .buffet-soup-grid {
     align-items: stretch;
     padding: 2px 14px 14px;
@@ -2478,7 +2478,7 @@ html, body {
     width: 42px; height: 42px;
     font-size: 17px;
 }
-/* ط³ط·ط± ط§ظ„ط³ط¹ط±/ط§ظ„ظˆطµظپ ط§ظ„طµط؛ظٹط± ط£ط³ظپظ„ ط§ط³ظ… ط§ظ„طµظ†ظپ ط¥ظ† ظˆظڈط¬ط¯ */
+/* سطر السعر/الوصف الصغير أسفل اسم الصنف إن وُجد */
 #stage[data-background="noir"] .buffet-item-name small {
     display: block;
     margin: 2px 0 0;
@@ -2488,12 +2488,12 @@ html, body {
     text-shadow: 0 0 12px rgba(63, 215, 245, .4);
 }
 
-/* â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
-   ظ،ظ¥. ط§ظ„ط³ط·ط± ط§ظ„ط¥ظ†ط¬ظ„ظٹط²ظٹ ط«ظ†ط§ط¦ظٹ ط§ظ„ظ„ط؛ط© طھط­طھ ظƒظ„ طµظ†ظپ
-   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-   ط§ظ„ط§ط³ظ… ط§ظ„ط¹ط±ط¨ظٹ ط¨ط§ظ„ط®ط· ط§ظ„ط±ظ‚ط¹ط© ط§ظ„ظپط®ظ… ظپظˆظ‚طŒ ظˆط§ظ„ط§ط³ظ… ط§ظ„ط¥ظ†ط¬ظ„ظٹط²ظٹ ط¨ط®ط·
-   Outfit ظ…طھط¨ط§ط¹ط¯ ط°ظ‡ط¨ظٹ/ط³ظ…ط§ظˆظٹ طھط­طھظ‡ â€” ظ‚ط±ط§ط،ط© ط«ظ†ط§ط¦ظٹط© ط§ظ„ظ„ط؛ط© ط£ظ†ظٹظ‚ط©.
-   â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ */
+/* ═══════════════════════════════════════════════════════════════════
+   ظ،٥. السطر الإنجليزي ثنائي اللغة تحت كل صنف
+   ─────────────────────────────────────────────────────────────────
+   الاسم العربي بالخط الرقعة الفخم فوق، والاسم الإنجليزي بخط
+   Outfit متباعد ذهبي/سماوي تحته — قراءة ثنائية اللغة أنيقة.
+   ═══════════════════════════════════════════════════════════════════ */
 #stage[data-background="noir"] .buffet-item-en {
     display: block;
     margin: 1px 0 0;
@@ -2507,26 +2507,26 @@ html, body {
     unicode-bidi: isolate;
     line-height: 1.2;
 }
-/* ظ‚ط³ظ… ط§ظ„ط´ظˆط±ط¨ط§طھ: ط§ظ„ط¥ظ†ط¬ظ„ظٹط²ظٹ ط¨ظ„ظˆظ† ط§ظ„ط³ظ…ط§ظˆظٹ ظ„طھظ†ط§ط³ظ‚ ط§ظ„ظ„ظˆط­ط© */
+/* قسم الشوربات: الإنجليزي بلون السماوي لتناسق اللوحة */
 #stage[data-background="noir"] .buffet-soup-item .buffet-item-en { color: var(--i-cyan); text-shadow: 0 0 14px rgba(63, 215, 245, .4); }
-/* ط±ظƒظ† ط§ظ„ط´ظˆط§ط،: ط¥ظ†ط¬ظ„ظٹط²ظٹ ط£ظˆط¶ط­ ظ„ط£ظ†ظ‡ ط§ظ„ط¹ظ†ظˆط§ظ† ط§ظ„ط¨ط·ظ„ */
+/* ركن الشواء: إنجليزي أوضح لأنه العنوان البطل */
 #stage[data-background="noir"] .buffet-carving .buffet-item-en {
     font-size: 20px;
     letter-spacing: 3px;
     color: var(--i-gold-lt);
     text-shadow: 0 0 18px rgba(255, 212, 105, .55);
 }
-/* ط§ظ„ط£ظ‚ط³ط§ظ… ط§ظ„طµط؛ظٹط±ط©: ط³ط·ط± ط£طµط؛ط± ظ„ظٹطھظ‘ط³ط¹ ط¯ط§ط®ظ„ ط§ظ„ط¨ط·ط§ظ‚ط© */
+/* الأقسام الصغيرة: سطر أصغر ليتّسع داخل البطاقة */
 #stage[data-background="noir"] .buffet-small-item .buffet-item-en { font-size: 14px; letter-spacing: 1.1px; }
-/* ظ†ظپط¯طھ ط§ظ„ظƒظ…ظٹط©: ظٹط¨ظ‚ظ‰ ط£ط­ظ…ط± طھط­طھ ط§ظ„ط§ط³ظ…ظٹظ† */
+/* نفدت الكمية: يبقى أحمر تحت الاسمين */
 #stage[data-background="noir"] .buffet-item-name small { color: #ff9b9b; }
 
-/* â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
-   ظ،ظ¦. ط´ط§ط±ط§طھ ط§ظ„طھط±ظ‚ظٹظ… (01 آ· 02 آ· 03 â€¦)
-   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-   ط·ظ„ط¨ ط§ظ„ظ…ط§ظ„ظƒ 2026-10-12 (ظ†ظ‡ط§ط¦ظٹ): ط£ط±ظ‚ط§ظ… ط£ظ†ظٹظ‚ط© ظ…ط¶ظٹط¦ط© ط¨ط¯ظ„ ط§ظ„ط´ط¹ط§ط±.
-   ظ‚ط§ط¹ط¯ط© ظ…ظˆط­ظ‘ط¯ط© طھظڈط؛ظ„ط¨ ط³طھط§ظٹظ„ط§طھ ط§ظ„ط£ظ‚ط³ط§ظ… ط¨ظپط¶ظ„ طھط³ظ„ط³ظ„ ط§ظ„ط¸ظ‡ظˆط±.
-   â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ */
+/* ═══════════════════════════════════════════════════════════════════
+   ظ،٦. شارات الترقيم (01 آ· 02 آ· 03 …)
+   ─────────────────────────────────────────────────────────────────
+   طلب المالك 2026-10-12 (نهائي): أرقام أنيقة مضيئة بدل الشعار.
+   قاعدة موحّدة تُغلب ستايلات الأقسام بفضل تسلسل الظهور.
+   ═══════════════════════════════════════════════════════════════════ */
 #stage[data-background="noir"] .buffet-panel .buffet-number {
     display: inline-flex;
     align-items: center;
@@ -2544,11 +2544,11 @@ html, body {
     color: #1a1204;
     overflow: hidden;
 }
-/* ظ‚ظٹط§ط³ط§طھ ط®ط§طµط© ط¨ظƒظ„ ظ‚ط³ظ… ط­ط³ط¨ ظ…ط³ط§ط­ط© ط§ظ„ط¨ط·ط§ظ‚ط© */
+/* قياسات خاصة بكل قسم حسب مساحة البطاقة */
 #stage[data-background="noir"] .buffet-soup-item .buffet-number { width: 44px; height: 44px; min-width: 44px; font-size: 16px; }
 #stage[data-background="noir"] .buffet-small-item .buffet-number { width: 28px; height: 28px; min-width: 28px; font-size: 12px; }
-/* ط±ظƒظ† ط§ظ„ط´ظˆط§ط،: ط¨ظ„ط§ ط´ط§ط±ط© â€” ظ‡ظˆ ط¹ظ†ظˆط§ظ† ط¨ط·ظ„ ط¨ظ„ط§ طھط±ظ‚ظٹظ… */
-/* ظˆط¶ط¹ ط§ظ„طھطµظ†ظٹظپط§طھ (ط§ط­طھظٹط§ط·ظٹ): طھط±ظ‚ظٹظ… ط£ظ†ظٹظ‚ */
+/* ركن الشواء: بلا شارة — هو عنوان بطل بلا ترقيم */
+/* وضع التصنيفات (احتياطي): ترقيم أنيق */
 #stage[data-background="noir"] .item-bullet {
     display: inline-flex; align-items: center; justify-content: center;
     width: 30px; height: 30px; min-width: 30px;
@@ -2559,7 +2559,7 @@ html, body {
     font: 800 13px 'Outfit', sans-serif; color: #1a1204;
 }
 
-/* â”€â”€â”€ ط§ظ„ط£ط·ط¨ط§ظ‚ ط§ظ„ط±ط¦ظٹط³ظٹط©: ظ…ط³ط§ط­ط© ط£ظˆط³ط¹ + طھط±ظ‚ظٹظ… ط£ظ†ظٹظ‚ â”€â”€â”€ */
+/* ─── الأطباق الرئيسية: مساحة أوسع + ترقيم أنيق ─── */
 #stage[data-background="noir"] .buffet-mains { overflow: hidden; }
 #stage[data-background="noir"] .buffet-main-grid {
     padding: 0 14px 12px;
@@ -2573,7 +2573,7 @@ html, body {
 }
 #stage[data-background="noir"] .buffet-main-item .buffet-item-name { font-size: 27px; }
 
-/* â”€â”€â”€ ط§ظ„ط£ظ‚ط³ط§ظ… ط§ظ„طµط؛ظٹط±ط©: طµظپظ‘ط§ظ† ظ…طھط³ط§ظˆظٹط§ظ† ظ„ط§ طµظپظˆظپ ظپط§ط±ط؛ط© â”€â”€â”€ */
+/* ─── الأقسام الصغيرة: صفّان متساويان لا صفوف فارغة ─── */
 #stage[data-background="noir"] .buffet-small-grid {
     padding: 0 12px 11px;
     grid-template-rows: repeat(2, minmax(0, 1fr));
@@ -2583,16 +2583,16 @@ html, body {
 #stage[data-background="noir"] .buffet-small-item { padding: 5px 8px; }
 #stage[data-background="noir"] .buffet-small-item .buffet-item-name { font-size: 24px; }
 
-/* â”€â”€â”€ طھظ†ط¹ظٹظ… ط§ظ„ط§ظ†ط²ظ„ط§ظ‚ ط¹ظ†ط¯ ط¸ظ‡ظˆط±/ط§ط®طھظپط§ط، ط§ظ„ط£ظ‚ط³ط§ظ… â”€â”€â”€ */
+/* ─── تنعيم الانزلاق عند ظهور/اختفاء الأقسام ─── */
 #stage[data-background="noir"] .buffet-page { transition: none; }
 
-/* â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
-   ظ،ظ¤. ط¬ظ…ظ„ط© ظ…طھط­ط±ظ‘ظƒط© ظ„ظ„ط£ظ‚ط³ط§ظ… ط§ظ„ظپط§ط±ط؛ط©
-   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-   ط¨ط¯ظ„ ظ‚ط³ظ… ظپط§ط±ط؛ ط¨ظ„ط§ ظ…ط¹ظ†ظ‰: ط´ط±ظٹط· ط¬ظ…ظ„ط© ظٹظ†ط²ظ„ظ‚ ط¨ط¨ط·ط، ظٹظˆط¶ظ‘ط­ ط£ظ† ظ‡ظ†ط§ظƒ
-   طھط´ظƒظٹظ„ط© ظ…طھظ†ظˆظ‘ط¹ط© طھظڈظ‚ط¯ظژظ‘ظ… ظٹظˆظ…ظٹظ‹ط§ (ط³ظ„ط·ط§طھ ط´ط±ظ‚ظٹط© ظˆط¹ط§ظ„ظ…ظٹط©طŒ ط­ظ„ظˆظٹط§طھ
-   ط´ط±ظ‚ظٹط© ظˆط؛ط±ط¨ظٹط©طŒ ظ‚ط¨ظ„ظٹط§طھ). طھط¸ظ‡ط± ظپظ‚ط· ط¹ظ†ط¯ظ…ط§ ظ„ط§ طھظˆط¬ط¯ ط£طµظ†ط§ظپ ظ…ظڈط³ظ†ط¯ط©.
-   â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ */
+/* ═══════════════════════════════════════════════════════════════════
+   ظ،٤. جملة متحرّكة للأقسام الفارغة
+   ─────────────────────────────────────────────────────────────────
+   بدل قسم فارط؛ بلا معنى: شريط جملة ينزلق ببطء يوضّح أن هناك
+   تشكيلة متنوّعة تُقدَّم يوميًا (سلطات شرقية وعالمية، حلويات
+   شرقية وغربية، قبليات). تظهر فقط عندما لا توجد أصناف مُسندة.
+   ═══════════════════════════════════════════════════════════════════ */
 #stage[data-background="noir"] .buffet-note {
     position: relative;
     z-index: 1;
@@ -2625,7 +2625,7 @@ html, body {
     text-shadow: 0 2px 12px rgba(0, 0, 0, .55);
 }
 #stage[data-background="noir"] .buffet-note-text::before {
-    content: 'â‌–';
+    content: '❖';
     margin-inline-end: 12px;
     color: var(--i-gold);
     font-size: 18px;
@@ -2641,7 +2641,7 @@ html, body {
     text-shadow: 0 0 14px rgba(255, 212, 105, .4);
     direction: ltr;
 }
-/* ط£ظ„ظˆط§ظ† ظ…ظ…ظٹظ‘ط²ط© ظ„ظƒظ„ ظ‚ط³ظ… */
+/* ألوان مميّزة لكل قسم */
 #stage[data-background="noir"] .buffet-desserts .buffet-note-text   { color: #ffe4f1; }
 #stage[data-background="noir"] .buffet-desserts .buffet-note-text::before { color: var(--i-rose);    text-shadow: 0 0 16px rgba(255, 122, 184, .85); }
 #stage[data-background="noir"] .buffet-desserts .buffet-note-text em { color: var(--i-rose); }
@@ -2659,17 +2659,17 @@ html, body {
     #stage[data-background="noir"] .buffet-note-track { animation: none; }
 }
 
-/* â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ
-   ظ،ظ£. طھط±ظˆظٹط³ط© ظ…ط¶ط؛ظˆط·ط© â€” ط§ط³طھط¹ط§ط¯ط© ظ…ط³ط§ط­ط© ط§ظ„ظ…ط­طھظˆظ‰
-   â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€â”€
-   ط§ظ„طھط±ظˆظٹط³ط© ط§ظ„ط£طµظ„ظٹط© طھط§ظƒظ„ ~35% ظ…ظ† ط§ظ„ط·ظˆظ„ ظˆطھظڈط®ظپظٹ ط§ظ„ط´ظˆط±ط¨ط§طھ. ظ‡ظ†ط§ ظ†ط¶ط؛ط·
-   ط§ظ„ط´ط±ظٹط· ط§ظ„ط¹ظ„ظˆظٹ ظˆط§ظ„ط´ط¹ط§ط± ظˆط´ط±ظٹط· ط§ظ„ظپطھط±ط§طھ ط¥ظ„ظ‰ ظ†طµظپ ط§ط±طھظپط§ط¹ظ‡ط§ طھظ‚ط±ظٹط¨ظ‹ط§
-   ظ…ط¹ ط§ظ„ط­ظپط§ط¸ ط¹ظ„ظ‰ ط§ظ„ظپط®ط§ظ…ط© (ظ‡ط§ظ„ط§طھ + ط°ظ‡ط¨ظٹ + ظ‚ظˆط³ ظ…ط­ط±ط§ط¨).
-   â•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گâ•گ */
+/* ═══════════════════════════════════════════════════════════════════
+   ظ،٣. ترويسة مضغوطة — استعادة مساحة المحتوى
+   ─────────────────────────────────────────────────────────────────
+   الترويسة الأصلية تاكل ~35% من الطول وتُخفي الشوربات. هنا نضغط
+   الشريط العلوي والشعار وشريط الفترات إلى نصف ارتفاعها تقريبًا
+   مع الحفاظ على الفخامة (هالات + ذهبي + قوس محراب).
+   ═══════════════════════════════════════════════════════════════════ */
 
-/* â”€â”€â”€ ط´ط±ظٹط· ط§ظ„ط­ط§ظ„ط©: ط³ط§ط¹ط© ط£طµط؛ط± + ط­ط´ظˆ ط£ط¯ظ†ظ‰ + ظ…ط±ظƒط² ظپط§ط±ط؛ ظ„ظ„ط´ط¹ط§ط± â”€â”€â”€ */
+/* ─── شريط الحالة: ساعة أصغر + حشو أدنى + مركز فارط؛ للشعار ─── */
 #stage[data-background="noir"] .status-bar { padding: 5px 42px 2px 116px; }
-/* ط¥ط®ظپط§ط، ط§ظ„ظ†طµ ط§ظ„ظ„ط§طھظٹظ†ظٹ ط§ظ„ظ…ظƒط±ط± (ظ…ظˆط¬ظˆط¯ ط£ط³ظپظ„ ط§ظ„طµظپط­ط©) â€” ظٹظپط³ط­ ظ…ط±ظƒط² ط§ظ„طµظپ ظ„ظ„ط´ط¹ط§ط± */
+/* إخفاء النص اللاتيني المكرر (موجود أسفل الصفحة) — يفسح مركز الصف للشعار */
 #stage[data-background="noir"] .status-brand { display: none; }
 #stage[data-background="noir"] .clock-time { font-size: 21px; letter-spacing: .5px; }
 #stage[data-background="noir"] .clock-date { font-size: 11px; }
@@ -2677,15 +2677,15 @@ html, body {
 #stage[data-background="noir"] .status-brand { font-size: 10.5px; letter-spacing: 1.8px; }
 #stage[data-background="noir"] .language-toggle { padding: 4px 11px; font-size: 11.5px; border-radius: 9px; }
 
-/* â”€â”€â”€ ط§ظ„طھط±ظˆظٹط³ط©: ط§ظ„ط´ط¹ط§ط± ظ…ط¶ظٹط، ظپظٹ ظ…ط±ظƒط² ط´ط±ظٹط· ط§ظ„ط­ط§ظ„ط© (ظپط¬ظˆط© Englishâ†”ط§ظ„ط³ط§ط¹ط©) â”€â”€â”€
-   ظ‚ظٹط§ط³ط§طھ ظپط¹ظ„ظٹط© 1080أ—1920: ط´ط±ظٹط· ط§ظ„ط­ط§ظ„ط© y=8..61طŒ ط²ط± ط§ظ„ظ„ط؛ط© 395..479طŒ
-   ط§ظ„ط³ط§ط¹ط© 766..1030 â†’ ط§ظ„ظ…ط±ظƒط² x=540 ظپط§ط¶ظٹ طھظ…ط§ظ…ظ‹ط§. ظ†طµظپط­ .arch ظ„ظٹط¨ظ‚ظ‰
-   ط§ظ„ط´ط¹ط§ط± ظˆط­ط¯ظ‡ ط¨ظ„ط§ ط¥ط·ط§ط±/ط®ظ„ظپظٹط© ظƒط±ظٹظ…ظٹط©طŒ ظˆظٹط³طھظ‚ط± ط¯ط§ط®ظ„ ط§ظ„ط´ط±ظٹط· ط¨ظ„ط§ طھط¯ط§ط®ظ„
-   ظ…ط¹ ط´ط±ظٹط· ط§ظ„ظپطھط±ط§طھ (y=61). â€” ط·ظ„ط¨ ط§ظ„ظ…ط§ظ„ظƒ 2026-10-12 */
-/* â”€â”€â”€ ط§ظ„طھط±ظˆظٹط³ط©: ط§ظ„ط´ط¹ط§ط± ط¨ط¬ظˆط§ط± ظ…ط¤ط´ط± آ«ظ…ط¨ط§ط´ط±آ» (ط£ظ†ظٹظ‚ ظ…ظ† ط§ظ„ظ…ظ†طھطµظپ) â”€â”€â”€
-   ظ†ظ…ظˆط¶ط¹ ط§ظ„ط´ط¹ط§ط± ظ…ط·ظ„ظ‚ظ‹ط§ ط¯ط§ط®ظ„ طھط±ظˆظٹط³ط© طھظ…طھط¯ ط¹ظ„ظ‰ ظƒط§ظ…ظ„ ط§ظ„ط¹ط±ط¶طŒ ظپظ„ط§ ظٹط¹طھظ…ط¯
-   ط¹ظ„ظ‰ ظ†طµ/ط¹ط±ط¶ .arch â†’ ط¥ط­ط¯ط§ط«ظٹط§طھ ط«ط§ط¨طھط© x=18..72 ظˆظٹط¨ط¯ط£ آ«â—ڈ ظ…ط¨ط§ط´ط±آ» ط¹ظ†ط¯
-   x=100 (padding-left 92px) â†’ ظپط¬ظˆط© 28px ط¨ظ„ط§ طھط¯ط§ط®ظ„. â”€â”€â”€ */
+/* ─── الترويسة: الشعار مضيء في مركز شريط الحالة (فجوة English↔الساعة) ───
+   قياسات فعلية 1080×1920: شريط الحالة y=8..61، زر اللغة 395..479،
+   الساعة 766..1030 → المركز x=540 فاضي تمامًا. نصفح .arch ليبقى
+   الشعار وحده بلا إطار/خلفية كريمية، ويستقر داخل الشريط بلا تداخل
+   مع شريط الفترات (y=61). — طلب المالك 2026-10-12 */
+/* ─── الترويسة: الشعار بجوار مؤشر «مباشر» (أنيق من المنتصف) ───
+   نموضع الشعار مطلقًا داخل ترويسة تمتد على كامل العرض، فلا يعتمد
+   على نص/عرض .arch → إحداثيات ثابتة x=18..72 ويبدأ «â—ڈ مباشر» عند
+   x=100 (padding-left 92px) → فجوة 28px بلا تداخل. ─── */
 #stage[data-background="noir"] .mb-header {
     position: absolute;
     top: 0;
@@ -2719,7 +2719,7 @@ html, body {
 }
 #stage[data-background="noir"] .mb-header .arch::before { content: none; display: none; }
 #stage[data-background="noir"] .mb-header .arch-flare { display: none; }
-/* ط¥ط²ط§ظ„ط© ط§ظ„ظ‡ظ„ط§ظ„/ط§ظ„ظ†ط¬ظ…ط© ظپظˆظ‚ ط§ظ„طھط±ظˆظٹط³ط© â€” ط·ظ„ط¨ ط§ظ„ظ…ط§ظ„ظƒ 2026-10-12 */
+/* إزالة الهلال/النجمة فوق الترويسة — طلب المالك 2026-10-12 */
 #stage[data-background="noir"] .mb-header::before { content: none; display: none; }
 #stage[data-background="noir"] .brand-logo {
     position: absolute;
@@ -2742,7 +2742,7 @@ html, body {
     50%      { box-shadow: 0 0 0 5px rgba(255, 212, 105, .28), 0 0 38px rgba(255, 212, 105, .95), 0 0 76px rgba(255, 171, 46, .6), 0 0 120px rgba(255, 212, 105, .34), 0 8px 20px rgba(0, 0, 0, .55), inset 0 2px 6px rgba(255, 255, 255, .28); }
 }
 
-/* â”€â”€â”€ ط´ط±ظٹط· ط§ظ„ظپطھط±ط§طھ: ط£ظ‚ظˆط§ط³ ط£طµط؛ط± ظˆط­ط´ظˆ ط£ظ‚ظ„ â”€â”€â”€ */
+/* ─── شريط الفترات: أقواس أصغر وحشو أقل ─── */
 #stage[data-background="noir"] .period-strip { gap: 10px; padding: 6px 42px 5px; }
 #stage[data-background="noir"] .period {
     padding: 9px 12px 6px;
@@ -2754,17 +2754,17 @@ html, body {
 #stage[data-background="noir"] .period-hours { font-size: 11px; letter-spacing: .3px; }
 #stage[data-background="noir"] .period-sep { font-size: 15px; }
 
-/* â”€â”€â”€ ط§ظ„ظپط§طµظ„ ط§ظ„ط°ظ‡ط¨ظٹ: ط®ط· ط±ظپظٹط¹ ط¨ظ‡ط§ظ…ط´ ط£ط¯ظ†ظ‰ â”€â”€â”€ */
+/* ─── الفاصل الذهبي: خط رفيع بهامش أدنى ─── */
 #stage[data-background="noir"] .gold-rule { margin: 0 42px 1px; height: 2px; }
 
-/* â”€â”€â”€ ظ…ظ†ط·ظ‚ط© ط§ظ„ظ…ط­طھظˆظ‰: طھط³طھط¹ظٹط¯ ظƒظ„ ط§ظ„ظ…ط³ط§ط­ط© ط§ظ„ظ…ظˆظپظژظ‘ط±ط© â”€â”€â”€ */
+/* ─── منطقة المحتوى: تستعيد كل المساحة الموفَّرة ─── */
 #stage[data-background="noir"] #pageHost { margin: 6px 36px 3px; }
 #stage[data-background="noir"] .page-dots { margin: 0 36px 1px; padding: 3px 0 6px; }
 #stage[data-background="noir"] .mb-footer { padding: 3px 40px 18px; }
 #stage[data-background="noir"] .ticker { padding: 6px 16px; }
 #stage[data-background="noir"] .ticker-text { font-size: 23px; }
 
-/* ط®ط· ط¹ط±ط¨ظٹ ط£ظˆط¶ط­ ظ„ظ„ط£ط·ط¨ط§ظ‚ ظ…ط¹ ط²ظٹط§ط¯ط© ط®ظپظٹظپط© طھظ†ط§ط³ط¨ ط§ظ„ط´ط§ط´ط© ط§ظ„ط·ظˆظ„ظٹط© */
+/* خط عربي أوضح للأطباق مع زيادة خفيفة تناسب الشاشة الطولية */
 #stage[data-background="noir"] .buffet-item-name,
 #stage[data-background="noir"] .buffet-main-item .buffet-item-name,
 #stage[data-background="noir"] .buffet-small-item .buffet-item-name,

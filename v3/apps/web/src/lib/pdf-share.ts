@@ -91,7 +91,11 @@ export function slicePages(canvasW: number, canvasH: number, pageW: number, page
 /** هل يسمح المتصفح بمشاركة الملفات (جوال/أندرويد غالبًا)؟ */
 export function canShareFiles(): boolean {
     try {
-        return typeof navigator !== 'undefined' && typeof navigator.share === 'function' && typeof navigator.canShare === 'function';
+        return (
+            typeof navigator !== 'undefined' &&
+            typeof navigator.share === 'function' &&
+            typeof navigator.canShare === 'function'
+        );
     } catch {
         return false;
     }
@@ -132,7 +136,10 @@ export function ensurePdfLibs(): Promise<boolean> {
 export type PdfBuildResult = { ok: true; blob: Blob } | { ok: false; error: string };
 
 /** بناء PDF من عنصر حيّ (صفحة/بطاقة/تقرير) — نفس منطق V2 بلا iframe. */
-export async function buildPdfFromElement(element: HTMLElement | null, options: { scale?: number } = {}): Promise<PdfBuildResult> {
+export async function buildPdfFromElement(
+    element: HTMLElement | null,
+    options: { scale?: number } = {},
+): Promise<PdfBuildResult> {
     try {
         if (!element) {
             return { ok: false, error: 'لا يوجد مستند معروض للتصدير' };

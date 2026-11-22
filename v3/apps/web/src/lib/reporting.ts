@@ -54,6 +54,17 @@ export function presetRange(preset: Preset, now: Date = new Date()): { from: str
     if (preset === 'month') {
         return { from: `${today.slice(0, 8)}01`, to: today, label: 'هذا الشهر' };
     }
+    if (preset === 'quarter') {
+        // آخر ربع سنة ميلادي مكتمل — الربع الحالي لم ينتهِ بعد فلا يُحتسب.
+        const currentQuarterStart = Math.floor(now.getMonth() / 3) * 3;
+        const end = new Date(now.getFullYear(), currentQuarterStart, 0);
+        const start = new Date(end.getFullYear(), Math.floor(end.getMonth() / 3) * 3, 1);
+        return {
+            from: `${String(start.getFullYear())}-${pad(start.getMonth() + 1)}-01`,
+            to: `${String(end.getFullYear())}-${pad(end.getMonth() + 1)}-${pad(end.getDate())}`,
+            label: 'آخر ربع مكتمل',
+        };
+    }
     return { from: `${today.slice(0, 4)}-01-01`, to: today, label: 'هذا العام' };
 }
 
@@ -168,6 +179,7 @@ export const PRESETS: { key: Preset; label: string }[] = [
     { key: 'today', label: 'اليوم' },
     { key: 'week', label: '٧ أيام' },
     { key: 'month', label: 'هذا الشهر' },
+    { key: 'quarter', label: 'آخر ربع مكتمل' },
     { key: 'year', label: 'هذا العام' },
 ];
 

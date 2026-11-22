@@ -639,7 +639,7 @@ function EmployeeCard({
                     <button
                         type="button"
                         onClick={() => {
-                            void navigate({ to: '/employee-card', search: { id: String(row.id ?? '') } });
+                            void navigate({ to: '/employee-card', search: { id: String(row.id ?? '').replace(/^['"]+|['"]+$/g, '').trim() } });
                         }}
                         className="rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-button-md text-ink hover:bg-surface-hover"
                     >

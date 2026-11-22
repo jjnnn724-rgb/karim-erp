@@ -17,12 +17,15 @@ import { getAppKey } from './auth';
 export class ApiError extends Error {
     readonly status: number;
     readonly code: string;
+    /** جسم الخطأ الخام كما أعاده الخادم — يقرأه من يحتاج تفاصيل 422. */
+    readonly payload?: unknown;
 
-    constructor(status: number, code: string, message: string) {
+    constructor(status: number, code: string, message: string, payload?: unknown) {
         super(message);
         this.name = 'ApiError';
         this.status = status;
         this.code = code;
+        this.payload = payload;
     }
 
     /** 401/403 = المستخدم يحتاج صلاحية أو جلسة؛ غيرهما خطأ خادم. */
@@ -59,9 +62,10 @@ function buildHeaders(token: string | null, withBody: boolean, extra?: Record<st
 async function parseError(response: Response): Promise<ApiError> {
     let code = `HTTP_${response.status}`;
     let message = `تعذّر الاتصال بالخادم (${response.status})`;
+    let payload: unknown;
     try {
-        const body: unknown = await response.json();
-        const parsed = v3ErrorSchema.safeParse(body);
+        payload = await response.json();
+        const parsed = v3ErrorSchema.safeParse(payload);
         if (parsed.success) {
             code = parsed.data.error;
             message = parsed.data.message;
@@ -69,7 +73,7 @@ async function parseError(response: Response): Promise<ApiError> {
     } catch {
         // جسم غير JSON — تبقى الرسالة الافتراضية.
     }
-    return new ApiError(response.status, code, message);
+    return new ApiError(response.status, code, message, payload);
 }
 
 /**

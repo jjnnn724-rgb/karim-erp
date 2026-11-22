@@ -1,4 +1,5 @@
 import type { ReactNode } from 'react';
+import { useAuthState } from '../lib/auth';
 import { useAllowedMenus } from '../lib/my-menus';
 import { isScreenEnabled, LEGACY_APP_URL, type V3Screen } from '../lib/screens';
 
@@ -10,6 +11,7 @@ import { isScreenEnabled, LEGACY_APP_URL, type V3Screen } from '../lib/screens';
  * فالـ sous_chef مثلًا لا يرى شاشات المالية في القائمة أصلًا (V2).
  */
 export function ScreenGate({ screen, children }: { screen: V3Screen; children: ReactNode }) {
+    const auth = useAuthState();
     const allowedMenusSet = useAllowedMenus();
     if (!isScreenEnabled(screen)) {
         return (
@@ -23,7 +25,8 @@ export function ScreenGate({ screen, children }: { screen: V3Screen; children: R
         );
     }
     // null = لا دور/لا جلسة ⇒ لا حظر هنا (الخادم يحكم أيضًا).
-    if (allowedMenusSet && !allowedMenusSet.includes(screen)) {
+    const privilegedCardRole = screen === 'employee-card' && ['admin', 'hr'].includes(String(auth.user?.role ?? ''));
+    if (!privilegedCardRole && allowedMenusSet && !allowedMenusSet.includes(screen)) {
         return (
             <section className="mx-auto max-w-xl rounded-lg border border-line bg-surface p-lg text-ink">
                 <h1 className="text-heading-md">لا تملك صلاحية الوصول إلى هذه الشاشة</h1>

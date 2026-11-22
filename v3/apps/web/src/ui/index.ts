@@ -38,6 +38,7 @@ export { PageHeader, type PageHeaderProps } from './PageHeader';
 export { Pagination, type PaginationLabels, type PaginationProps } from './Pagination';
 export { Radio, RadioGroup, type RadioGroupProps, type RadioOption, type RadioProps } from './Radio';
 export { RegisterShell, type RegisterShellProps } from './RegisterShell';
+export { RowActions, type RowAction, type RowActionsProps } from './RowActions';
 export { ScreenHero, type ScreenHeroProps } from './ScreenHero';
 export { SearchInput, type SearchInputProps } from './SearchInput';
 export { SegmentedControl, type SegmentedControlProps, type SegmentedOption, type SegmentedSize } from './SegmentedControl';

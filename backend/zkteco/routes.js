@@ -2,19 +2,19 @@
  * zkteco/routes.js — واجهة REST لمزامنة البصمة داخل ERP
  * ────────────────────────────────────────────────────────────────────────────
  * /api/zkteco
- *   GET  /status                ملخص حي للمحرك والأجهزة          (admin/hr/manager)
- *   GET  /devices               قائمة الأجهزة + حالتها           (admin/hr/manager)
- *   POST /devices               إضافة جهاز                        (admin/hr)
- *   PUT  /devices/:id           تعديل جهاز                        (admin/hr)
- *   DELETE /devices/:id         حذف جهاز                          (admin/hr)
- *   POST /devices/:id/test      فحص اتصال حقيقي (مصافحة + هوية)  (admin/hr)
- *   POST /devices/:id/sync      مزامنة الآن                       (admin/hr)
- *   GET  /devices/:id/users     مستخدمو الجهاز من الذاكرة نفسها  (admin/hr)
- *   POST /devices/:id/import-users استيراد مستخدمي الجهاز كموظفين (admin/hr)
- *   GET  /mappings              ربط الموظفين بالأرقام             (admin/hr/manager)
- *   PUT  /mappings/:employeeId  تعيين رقم بصمة لموظف              (admin/hr)
- *   POST /mappings/auto         ربط تلقائي بالرقم الوظيفي         (admin/hr)
- *   GET  /logs                  سجل البصمات الخام                 (admin/hr/manager)
+ *   GET  /status                ملخص حي للمحرك والأجهزة          (admin/owner/hr/sous_chef)
+ *   GET  /devices               قائمة الأجهزة + حالتها           (admin/owner/hr/sous_chef)
+ *   POST /devices               إضافة جهاز                        (admin/owner)
+ *   PUT  /devices/:id           تعديل جهاز                        (admin/owner)
+ *   DELETE /devices/:id         حذف جهاز                          (admin/owner)
+ *   POST /devices/:id/test      فحص اتصال حقيقي (مصافحة + هوية)  (admin/owner)
+ *   POST /devices/:id/sync      مزامنة الآن                       (admin/owner)
+ *   GET  /devices/:id/users     مستخدمو الجهاز من الذاكرة نفسها  (admin/owner)
+ *   POST /devices/:id/import-users استيراد مستخدمي الجهاز كموظفين (admin/owner)
+ *   GET  /mappings              ربط الموظفين بالأرقام             (admin/owner/hr/sous_chef)
+ *   PUT  /mappings/:employeeId  تعيين رقم بصمة لموظف              (admin/owner)
+ *   POST /mappings/auto         ربط تلقائي بالرقم الوظيفي         (admin/owner)
+ *   GET  /logs                  سجل البصمات الخام                 (admin/owner/hr/sous_chef)
  *   GET  /my-punches            بصماتي اليوم (بوابة الموظف)       (أي مستخدم)
  */
 

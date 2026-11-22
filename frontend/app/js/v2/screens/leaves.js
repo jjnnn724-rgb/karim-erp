@@ -37,17 +37,17 @@
  *   handlers) and refuses to send an empty reason.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.413';
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.413';
-import { openInAppReport } from '../report-viewer.js?v=4.9.413';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.426';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.426';
+import { openInAppReport } from '../report-viewer.js?v=4.9.426';
 import {
     fetchLeaveWorkflow, fetchLeaveTypes, leaveToRow, leaveStateOf, leaveTypeMap,
     summarizeLeaves, buildLeavesKpis, topRequesters, flattenEvents, typeToRow,
     doorScopeNote, canActOnStage, decideLeave, approveOutcome, STAGE_LABELS_AR,
     LEAVES_TYPE_PAGE, LEAVES_TYPE_PAGES, createLeaveRequest, isPrivilegedLeaveRole,
-} from '../data/leaves-repo.js?v=4.9.413';
-import { fetchEmployees } from '../data/employees-repo.js?v=4.9.413';
-import { ROLES } from '../../core/config.js?v=4.9.413';
+} from '../data/leaves-repo.js?v=4.9.426';
+import { fetchEmployees } from '../data/employees-repo.js?v=4.9.426';
+import { ROLES } from '../../core/config.js?v=4.9.426';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')

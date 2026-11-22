@@ -249,9 +249,38 @@ export function roleMenus(role: string | null | undefined): readonly string[] {
     return isKnownRole(role) ? ROLES[role] : [];
 }
 
+/**
+ * مرادفات مفاتيح V2 القديمة → شاشات V3 — نفس خريطة الـShell والـScreenGate.
+ * المفتاح القديم يبقى في النتيجة (كما يمنحه الخادم) وتُضاف الشاشة المقابلة له،
+ * فلا يرى المستخدم «لا تملك صلاحية» رغم أن المنح موجود في الخادم.
+ */
+const MENU_ALIASES: Readonly<Record<string, readonly string[]>> = {
+    query: ['inventory-inquiry'],
+    professional: ['inventory-inquiry-pro'],
+    procurement: ['purchase-invoices'],
+    'wh-invoices': ['purchase-invoices'],
+    'yara-daily-locks': ['daily-locks'],
+};
+
+/** يوسّع مفاتيح V2 إلى شاشات V3 بلا تكرار ويحفظ الترتيب؛ المجهول يمرّ كما هو. */
+export function expandMenuKeys(keys: readonly string[]): string[] {
+    const out: string[] = [];
+    const seen = new Set<string>();
+    for (const raw of keys) {
+        const key = String(raw);
+        for (const expanded of [key, ...(MENU_ALIASES[key] ?? [])]) {
+            if (!seen.has(expanded)) {
+                seen.add(expanded);
+                out.push(expanded);
+            }
+        }
+    }
+    return out;
+}
+
 /** الإشهار: admin بلا سحب (مرآة `if (role === 'admin') {denied.clear();}`). */
 export function allowedMenus(role: string | null | undefined, granted: readonly string[], denied: readonly string[]): readonly string[] {
     const base = roleMenus(role);
-    const deniedSet = new Set(role === 'admin' ? [] : denied.map((m) => String(m)));
-    return [...new Set([...base, ...granted.map((m) => String(m))])].filter((m) => !deniedSet.has(m));
+    const deniedSet = new Set(role === 'admin' ? [] : expandMenuKeys(denied.map((m) => String(m))));
+    return expandMenuKeys([...base, ...granted.map((m) => String(m))]).filter((m) => !deniedSet.has(m));
 }

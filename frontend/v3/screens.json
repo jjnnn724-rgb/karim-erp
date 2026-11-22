@@ -63,5 +63,17 @@
   "bank-rec",
   "compliance-center",
   "balance-sheet",
-  "cash-flow"
+  "cash-flow",
+  "buffet",
+  "ext-sales",
+  "punch-control",
+  "item-prices",
+  "shelves",
+  "weight",
+  "briefing",
+  "reports",
+  "sales-inquiry",
+  "inventory-inquiry-pro",
+  "accountant-dashboard",
+  "financial-compliance"
 ]

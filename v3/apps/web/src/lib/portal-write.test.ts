@@ -67,9 +67,10 @@ describe('أدوار بوابة الموظف', () => {
         expect(canPunchPortal(null)).toBe(false);
     });
 
-    it('قوالب الوجه لـ admin و hr فقط — كما في الخادم', () => {
+    it('قوالب الوجه لـ admin و owner فقط — مرآة requireRole في الخادم', () => {
         expect(canEnrollFace('admin')).toBe(true);
-        expect(canEnrollFace('hr')).toBe(true);
+        expect(canEnrollFace('owner')).toBe(true);
+        expect(canEnrollFace('hr')).toBe(false);
         expect(canEnrollFace('manager')).toBe(false);
         expect(canEnrollFace('employee')).toBe(false);
     });

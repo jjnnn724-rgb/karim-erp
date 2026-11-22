@@ -1,4 +1,4 @@
-﻿// طھط­ظ‚ظ‚ V1 ظ†ظ‡ط§ط¦ظٹ ط¨ط¹ط¯ ط¥طµظ„ط§ط­ ط¥ط´ط§ط±ط© COGS: ط¨ظٹط¹ ط¬ط¯ظٹط¯ â†’ ظ‚ظٹط¯ ظٹط­ظˆظٹ 5000/1200 ظ…طھظˆط§ط²ظ†
+﻿// تحقق V1 نهائي بعد إصلاح إشارة COGS: بيع جديد → قيد يحوي 5000/1200 متوازن
 'use strict';
 const https = require('https');
 const { Client } = require('pg');
@@ -30,7 +30,7 @@ async function q(sql, params = []) {
     const sale = await req('POST', '/api/sales/complete', { token,
         body: { department_id: 99901, items: [{ product_id: 999001, quantity: 2, unit_price: 115, discount: 0 }], payments: [{ method: 'cash', amount: 264.50 }] },
         headers: { 'Idempotency-Key': 'v1fix-' + Date.now(), 'x-shift-session-id': '999001' } });
-    await new Promise(r => setTimeout(r, 2500)); // ط§ظ†طھط¸ط§ط± ط§ظ„طھط±ط­ظٹظ„ post-commit
+    await new Promise(r => setTimeout(r, 2500)); // انتظار الترحيل post-commit
     const after = (await q(`SELECT count(*)::int AS n FROM journal_entries WHERE source_type='pos_sale'`))[0].n;
     const je = (await q(
         `SELECT e.entry_no, SUM(l.debit) dr, SUM(l.credit) cr,

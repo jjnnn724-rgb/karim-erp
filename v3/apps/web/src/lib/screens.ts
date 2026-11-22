@@ -77,6 +77,16 @@ export const V3_SCREENS = [
     'ext-sales',
     'punch-control',
     'item-prices',
+    // شاشات WIP مسجّلة بمساراتها واختباراتها — تُفتح برابط مباشر حتى تُعتمد
+    // في القوائم والأدوار بقرار المالك (لا تغيير في صلاحيات اليوم).
+    'shelves',
+    'weight',
+    'briefing',
+    'reports',
+    'sales-inquiry',
+    'inventory-inquiry-pro',
+    'accountant-dashboard',
+    'financial-compliance',
 ] as const;
 export type V3Screen = (typeof V3_SCREENS)[number];
 
@@ -85,8 +95,24 @@ export type V3Screen = (typeof V3_SCREENS)[number];
  * الأم، لا من السايدبار (تنظيف 2026-11-20 «النظام الأنظف»).
  * حاليًا: `warehouse-gov` زر داخل صفحة المخزن، و`employee-card` بطاقة الموظف
  * الكاملة تُفتح من بطاقات شاشة الموظفين (2026-11-21).
+ *
+ * شاشات WIP (2026-11-22): `shelves`/`weight`/`briefing`/`reports`/
+ * `sales-inquiry`/`inventory-inquiry-pro`/`accountant-dashboard`/
+ * `financial-compliance` مسجّلة بمساراتها لكنها خارج السايدبار حتى يُعتمد
+ * ظهورها وقواعدها في `role-menus` بقرار المالك.
  */
-export const OFF_NAV_SCREENS = ['warehouse-gov', 'employee-card'] as const;
+export const OFF_NAV_SCREENS = [
+    'warehouse-gov',
+    'employee-card',
+    'shelves',
+    'weight',
+    'briefing',
+    'reports',
+    'sales-inquiry',
+    'inventory-inquiry-pro',
+    'accountant-dashboard',
+    'financial-compliance',
+] as const;
 
 export const LEGACY_APP_URL = '/app/v2.html?live=1';
 
