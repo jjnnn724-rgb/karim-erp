@@ -104,7 +104,10 @@ function Kpi({
                 </span>
             </div>
             {loading ? (
-                <span className="erp-mv-kpi__skeleton" role="status" aria-label={`جارٍ تحميل ${label}`} />
+                <>
+                    <span className="sr-only">جارٍ تحميل {label}</span>
+                    <span className="erp-mv-kpi__skeleton" aria-hidden="true" />
+                </>
             ) : (
                 <p className="erp-numeric erp-mv-kpi__value">{value}</p>
             )}
@@ -443,7 +446,7 @@ export function InventoryMovements() {
                     >
                         عرض الكل
                     </button>
-                    <span className="text-body-sm text-muted">{formatInt(rows.length)} حركة</span>
+                    <span className="erp-numeric text-body-sm text-muted">{formatInt(rows.length)} حركة</span>
                 </div>
 
                 {hasChips ? (
@@ -493,7 +496,9 @@ export function InventoryMovements() {
                 <div className="erp-mv-tablebar">
                     <div className="flex items-center gap-sm">
                         <h2 className="text-heading-md text-ink">سجل الحركات</h2>
-                        <Badge variant="neutral">{formatInt(rows.length)}</Badge>
+                        <Badge variant="neutral" className="erp-numeric">
+                            {formatInt(rows.length)}
+                        </Badge>
                     </div>
                     <ul className="erp-mv-legend" aria-label="دليل أنواع الحركات">
                         <li>

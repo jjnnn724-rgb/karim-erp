@@ -1101,7 +1101,7 @@ export function VegRequests() {
                         />
                     </ul>
                 ) : null}
-                <p className="mt-sm text-body-sm text-muted" role="status">
+                <p className="mt-sm text-body-sm text-muted">
                     {filtered ? `${formatInt(sorted.length)} طلبًا مطابقًا` : `${formatInt(counts.total)} طلبًا محمّلًا`}
                     {counts.priced ? ` · ${formatInt(counts.priced)} مسعّر` : ''}
                     {counts.cancelled ? ` · ${formatInt(counts.cancelled)} ملغي` : ''}
