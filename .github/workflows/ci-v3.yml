@@ -98,6 +98,12 @@ jobs:
         working-directory: v3/apps/web
         run: pnpm e2e:budget
 
+      # Lighthouse على الحزمة العامة: يبدأ خادما الثابت تلقائيًا إن لم يكن قائمًا.
+      # الحدود في e2e/lighthouse-budget.json — أي تجاوز يُفشل البوابة.
+      - name: Lighthouse gate (performance/a11y/best-practices/SEO)
+        working-directory: v3/apps/web
+        run: pnpm perf:lighthouse
+
       - name: Upload Playwright report
         if: failure()
         continue-on-error: true # تشخيص فقط (حصة اللقطات)
