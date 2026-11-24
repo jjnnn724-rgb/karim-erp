@@ -10,6 +10,7 @@ const {
     slugFromHost,
     resolveTenant,
     PUBLIC_PREFIXES,
+    assertTenantIsolationReady,
 } = require('../backend/saas/tenant-context');
 
 const TENANT_ID = '11111111-1111-4111-8111-111111111111';
@@ -76,9 +77,9 @@ describe('tenant-context / resolveTenant', () => {
     test('يرفض.slug غير مسجّل', () => {
         expect(resolveTenant(fakeReq({ headers: { host: 'attacker.karim-erp.com' } }), map)).toBeNull();
     });
-    test('X-Forwarded-Host له الأولوية على Host', () => {
+    test('لا يثق بـX-Forwarded-Host القابل للتزوير من العميل', () => {
         const req = fakeReq({ headers: { host: 'attacker.example', 'x-forwarded-host': 'shorfa.karim-erp.com' } });
-        expect(resolveTenant(req, map).id).toBe(TENANT_ID);
+        expect(resolveTenant(req, map)).toBeNull();
     });
 });
 
@@ -136,5 +137,23 @@ describe('tenant-context / middleware', () => {
         tenantContext({ enabled: true, map, verifyToken: () => { throw new Error('expired'); } })(req, res, next);
         expect(next).toHaveBeenCalledTimes(1);
         expect(res.statusCode).toBe(200);
+    });
+});
+
+describe('tenant-context / حارس الإقلاع', () => {
+    const previous = process.env.SAAS_TENANT_ENABLED;
+    afterEach(() => {
+        if (previous === undefined) {delete process.env.SAAS_TENANT_ENABLED;}
+        else {process.env.SAAS_TENANT_ENABLED = previous;}
+    });
+
+    test('مطفأ: لا يمنع الإقلاع', () => {
+        process.env.SAAS_TENANT_ENABLED = 'false';
+        expect(() => assertTenantIsolationReady()).not.toThrow();
+    });
+
+    test('مفعّل: يمنع الإقلاع قبل اكتمال العزل (fail-closed)', () => {
+        process.env.SAAS_TENANT_ENABLED = 'true';
+        expect(() => assertTenantIsolationReady()).toThrow(/SAAS_TENANT_ISOLATION_INCOMPLETE/);
     });
 });

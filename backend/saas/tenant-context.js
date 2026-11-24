@@ -61,7 +61,8 @@ function slugFromHost(host) {
  * @param {Map<string,string>} map
  */
 function resolveTenant(req, map) {
-    const host = req.headers?.['x-forwarded-host'] || req.headers?.host;
+    // X-Forwarded-Host قابل للتزوير من العميل؛ Host الحقيقي يضبطه الـreverse proxy.
+    const host = req.headers?.host;
     const slug = slugFromHost(host) || (Array.isArray(req.subdomains) ? req.subdomains[0] : null);
     if (!slug) {return null;}
     const id = map.get(slug.toLowerCase());
@@ -76,7 +77,24 @@ const PUBLIC_PREFIXES = [
     // يُحلّ المستأجر من subdomain دون مصادقة، فيبقى متاحاً قبل الدخول.
     '/api/security/csp-report',
     '/api/rt/version',
+    // التسجيل الذاتي يسبق وجود جلسة/مستأجر؛ يُغلق بعلم SAAS_SIGNUP_ENABLED وحده.
+    '/api/saas/signup',
 ];
+
+/**
+ * حارس إقلاع fail-closed: تفعيل SaaS قبل اكتمال عزل الاستعلامات يعني أن كل
+ * المسارات عدا إتمام البيع سترى بيانات كل المستأجرين (RLS متساهل عند غياب GUC).
+ * لا يُسمح بالتشغيل في هذه الحالة — الخطأ يمنع الإقلاع بدل تسريب بيانات.
+ * يُرفع هذا الحارس فقط بعد تنفيذ runWithTenant على كل مسارات الكتابة واختبار
+ * عزل سلبي بين مستأجرين، وتحديث ADR-SaaS-Tenancy من PROPOSED إلى ACCEPTED.
+ */
+function assertTenantIsolationReady() {
+    if (!isEnabled(process.env.SAAS_TENANT_ENABLED)) {return;}
+    throw new Error(
+        'SAAS_TENANT_ISOLATION_INCOMPLETE: عزل الاستعلامات غير مكتمل — ' +
+        'لا يُسمح بتشغيل SAAS_TENANT_ENABLED=true قبل تعميم app.tenant_id على كل المسارات واختبار العزل.',
+    );
+}
 
 /** @param {{enabled?:boolean, map?:Map<string,string>, resolver?:any, verifyToken?:(t:string)=>any}} [options] */
 function tenantContext(options = {}) {
@@ -107,7 +125,8 @@ function tenantContext(options = {}) {
             // حل المستأجر: من DB (عبر resolver) إن وُجد، وإلا من الخريطة المتزامنة.
             let tenant = null;
             if (resolver) {
-                const host = req.headers?.['x-forwarded-host'] || req.headers?.host;
+                // X-Forwarded-Host قابل للتزوير من العميل؛ Host الحقيقي يضبطه الـreverse proxy.
+    const host = req.headers?.host;
                 const slug = slugFromHost(host);
                 if (slug) {tenant = await resolver.resolve(slug);}
             } else {
@@ -144,4 +163,12 @@ function tenantContext(options = {}) {
     };
 }
 
-module.exports = { tenantContext, isEnabled, parseTenantMap, slugFromHost, resolveTenant, PUBLIC_PREFIXES };
+module.exports = {
+    tenantContext,
+    isEnabled,
+    parseTenantMap,
+    slugFromHost,
+    resolveTenant,
+    PUBLIC_PREFIXES,
+    assertTenantIsolationReady,
+};

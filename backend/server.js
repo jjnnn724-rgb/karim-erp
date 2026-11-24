@@ -18,7 +18,7 @@ const { spawn } = require('child_process');
 
 // ─── Enterprise Foundation Layers ──────────────────────────
 const { correlationMiddleware } = require('./middleware/correlation');
-const { tenantContext } = require('./saas/tenant-context');
+const { tenantContext, assertTenantIsolationReady } = require('./saas/tenant-context');
 const { register: registerSaasOnboarding } = require('./saas/onboarding-routes');
 const { createBrotliStatic } = require('./middleware/brotli-static');
 const { createBrotliMetrics } = require('./middleware/brotli-metrics');
@@ -584,6 +584,8 @@ function apiKeyMiddleware(req, res, next) {
 app.use('/api', apiKeyMiddleware);
 // SaaS (مطفأ افتراضياً): سياق المستأجر يُحقن هنا قبل apiCache (س602)،
 // فيغطي كل الـrouters والـCRUD الديناميكي دفعة واحدة. SAAS_TENANT_ENABLED=false ⇒ no-op.
+// حارس الإقلاع: تفعيل SaaS قبل اكتمال العزل يمنع البدء بدل تسريب بيانات بين المستأجرين.
+assertTenantIsolationReady();
 app.use('/api', tenantContext());
 // SaaS signup — مسار غير موجود (404) ما لم يُفعّل SAAS_SIGNUP_ENABLED صراحةً.
 registerSaasOnboarding(app);
