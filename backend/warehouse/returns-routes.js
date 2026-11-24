@@ -448,7 +448,7 @@ router.post('/inventory/:id/receipt', jwtAuth, requireRole('admin', 'manager', '
     } finally { client.release(); }
 });
 
-router.post('/inventory/bulk-receipt', jwtAuth, requireRole('admin', 'manager', 'warehouse'), async (req, res) => {
+router.post('/inventory/bulk-receipt', jwtAuth, requireRole('admin', 'manager', 'warehouse'), async (/** @type {any} */ req, /** @type {any} */ res) => {
     const client = await pool.connect();
     try {
         const rawItems = Array.isArray(req.body?.items) ? req.body.items : [];

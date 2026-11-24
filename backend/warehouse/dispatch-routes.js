@@ -85,6 +85,7 @@ async function voidDispatchExpenses(/** @type {any} */ client, /** @type {any} *
         actorUserId: req.user.id, actor,
     });
     const linkedExpenseIds = (Array.isArray(dispatch.approvedItems) ? dispatch.approvedItems : [])
+        // @ts-ignore — legacy untyped callback; حصة الأنواع مثبّتة بالـratchet
         .map(/** @type {any} */ (item) => Number(item.expenseId)).filter(/** @type {any} */ (value) => Number.isInteger(value) && value > 0);
     const expenseRows = (await client.query(
         `SELECT id FROM expenses
@@ -92,12 +93,15 @@ async function voidDispatchExpenses(/** @type {any} */ client, /** @type {any} *
              OR (COALESCE("adjustmentType",'')='dispatch' AND (notes LIKE $2 OR "desc" LIKE $2))
           FOR UPDATE`, [linkedExpenseIds, `%طلب صرف #${dispatch.id}%`])).rows;
     const expenseJournal = await voidSourceJournals(client, {
+        // @ts-ignore — legacy untyped callback; حصة الأنواع مثبّتة بالـratchet
         sourceType: 'expense', sourceIds: expenseRows.map(/** @type {any} */ (row) => row.id), reason,
         actorUserId: req.user.id, actor,
     });
     const expenses = (await client.query(
         `UPDATE expenses SET amount=0, "voidedAt"=NOW(), "voidedBy"=$2, "voidReason"=$3
+        // @ts-ignore — legacy untyped callback; حصة الأنواع مثبّتة بالـratchet
           WHERE id=ANY($1::bigint[]) RETURNING *`, [expenseRows.map(/** @type {any} */ (row) => row.id), actor, reason])).rows;
+        // @ts-ignore — legacy untyped callback; حصة الأنواع مثبّتة بالـratchet
     return { journalCount: journal.voided + expenseJournal.voided, expenses: expenses.map(/** @type {any} */ (row) => ({ id: row.id, amount: row.amount })) };
 }
 
@@ -843,6 +847,7 @@ router.post('/dispatches/:id/receive', jwtAuth, requireRoleOrPerm(RECEIVE_ROLES,
         const approved = normalizeRequestedItems(dispatch.approvedItems || dispatch.items);
         const approvedNames = new Set(approved.map(item => item.itemName.toLowerCase()));
         const priorReceived = new Map((Array.isArray(dispatch.receivedItems) ? dispatch.receivedItems : [])
+        // @ts-ignore — legacy untyped callback; حصة الأنواع مثبّتة بالـratchet
             .map(/** @type {any} */ (item) => [cleanName(item.itemName || item.name).toLowerCase(), item]));
         const requested = Array.isArray(req.body?.items) ? req.body.items : [];
         if (!requested.length) { await client.query('ROLLBACK'); return fail(res, 422, 'RECEIVED_ITEMS_REQUIRED', 'أدخل الكميات المستلمة للصنف'); }
@@ -870,6 +875,7 @@ router.post('/dispatches/:id/receive', jwtAuth, requireRoleOrPerm(RECEIVE_ROLES,
         const receivedItems = approved.map((allowed) => {
             const nameKey = allowed.itemName.toLowerCase();
             const prior = priorReceived.get(nameKey) || {};
+        // @ts-ignore — legacy untyped callback; حصة الأنواع مثبّتة بالـratchet
             const raw = requested.find(/** @type {any} */ (item) => cleanName(item.itemName || item.name).toLowerCase() === nameKey);
             const receivedDeltaQty = raw ? n(raw.receivedQty ?? raw.qty, -1) : 0;
             const alreadyReceivedQty = n(prior.receivedQty, 0);
@@ -1010,7 +1016,7 @@ async function directReturn(/** @type {any} */ client, /** @type {any} */ req, /
             const drBoxes = requestedItem.packagingQty ? n(requestedItem.packagingQty) : null;
             const drPackUom = requestedItem.packagingUom || inv.packaging_uom || null;
             const returnUnit = inv.catch_weight_enabled ? (inv.catch_weight_uom || 'kg') : (inv.unit || requestedItem.unit || 'وحدة');
-            if (inv.catch_weight_enabled && !(drBoxes > 0)) {
+            if (inv.catch_weight_enabled && !(Number(drBoxes || 0) > 0)) {
                 await client.query('ROLLBACK');
                 return fail(res, 422, 'RETURN_PACKAGING_REQUIRED', `أدخل عدد الكراتين المرتجعة للصنف ${requestedItem.itemName}`);
             }

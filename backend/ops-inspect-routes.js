@@ -6,7 +6,11 @@ const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { pool } = require('./shared-pool');
 const saasMetrics = require('./saas/saas-metrics');
 
-const asyncHandler = /** @type {any} */ (fn) => (/** @type {any} */ (req), /** @type {any} */ (res), /** @type {any} */ (next)) => Promise.resolve(fn(req, res, next)).catch(next);
+/**
+ * @param {any} fn
+ * @returns {(req:any, res:any, next:any) => Promise<any>}
+ */
+const asyncHandler = (fn) => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
 function register(app, opts = {}) {
     const { metrics } = opts;
