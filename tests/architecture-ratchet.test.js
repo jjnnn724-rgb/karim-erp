@@ -21,12 +21,16 @@ describe('architecture / ratchet الدين المعماري', () => {
       for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
         const full = path.join(dir, entry.name);
         if (entry.isDirectory()) {
-          if (entry.name !== 'node_modules') walk(full);
+          if (entry.name !== 'node_modules') {
+            walk(full);
+          }
         } else if (entry.name.endsWith('.js')) {
           const src = fs.readFileSync(full, 'utf8');
           const count = (src.match(/\b(?:CREATE\s+(?:TABLE|INDEX)|ALTER\s+TABLE)\b/gi) || []).length;
           const rel = path.relative(ROOT, full).replace(/\\/g, '/');
-          if (count > (BASE.ddlFiles[rel] ?? 0)) offenders.push(`${rel}: ${count} > ${BASE.ddlFiles[rel] ?? 0}`);
+          if (count > (BASE.ddlFiles[rel] ?? 0)) {
+            offenders.push(`${rel}: ${count} > ${BASE.ddlFiles[rel] ?? 0}`);
+          }
         }
       }
     };

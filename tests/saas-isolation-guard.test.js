@@ -21,7 +21,9 @@ function scan() {
       } else if (entry.name.endsWith('.js')) {
         const src = fs.readFileSync(full, 'utf8');
         const count = (src.match(/pool\.connect\(/g) || []).length;
-        if (count) out.set(path.relative(ROOT, full).replace(/\\/g, '/'), count);
+        if (count) {
+          out.set(path.relative(ROOT, full).replace(/\\/g, '/'), count);
+        }
       }
     }
   };
@@ -35,7 +37,9 @@ describe('SaaS isolation / ratchet اتصالات PG المباشرة', () => {
     const offenders = [];
     for (const [file, count] of current) {
       const allowed = BASELINE.files[file] ?? 0;
-      if (count > allowed) offenders.push(`${file}: ${count} > ${allowed}`);
+      if (count > allowed) {
+        offenders.push(`${file}: ${count} > ${allowed}`);
+      }
     }
     expect(offenders).toEqual([]);
   });
