@@ -26,10 +26,9 @@ const { createCachePolicy, resolveCacheLimits } = require('./middleware/brotli-c
 const { securityHeaders, hppGuard, buildV2Csp, buildStrictCsp, createCspReportCollector } = require('./middleware/security');
 const { createCspViolationLog } = require('./csp-violation-log');
 const { posChannelMeter, getMeter: getPosChannelMeter } = require('./middleware/pos-channel-meter');
-const { createHealthRouter, markBootComplete, registerCheck } = require('./middleware/health');
+const { markBootComplete } = require('./middleware/health');
 const { isCurrentAssetVersion } = require('./asset-version');
 const { idempotency, ensureIdempotencySchema } = require('./middleware/idempotency');
-const { registerWithHealthChecks: circuitRegisterHealth } = require('./middleware/circuit');
 const startup = require('./startup');
 const {
     attachSafeHelpers,
@@ -85,7 +84,7 @@ const { parsePaginationParams, buildPaginatedQuery } = require('./pagination');
 const { generalLimiter, stateLimiter, crudLimiter } = require('./rate-limiter');
 
 // ─── Graceful Shutdown Handler ──────────────────────
-const { initGracefulShutdown, rejectDuringShutdown, getShutdownStatus } = require('./graceful-shutdown');
+const { initGracefulShutdown, rejectDuringShutdown } = require('./graceful-shutdown');
 // مسارات التقارير والإحاطة نُقلت إلى reports-routes.js — بقي هنا مجدول التقرير اليومي فقط
 const { startDailyReportScheduler } = require('./daily-report-service');
 
@@ -959,100 +958,7 @@ require('./internal-chat-routes').register(app, { io, connectedClients });
 // -------------------------------------------------------
 require('./menu-legacy-routes').register(app, { io });
 
-// ─── Enterprise-grade Health Router (live / ready / startup / verbose) ───
-// Mounted BEFORE apiKeyMiddleware + rejectDuringShutdown — LB probes
-// must always succeed (otherwise the service is removed from rotation when
-// it's just the key missing). Mounted at both /api/health and /health.
-{
-    const healthRouter = createHealthRouter({
-        pool,
-        redis: null,
-        dataDir: path.resolve(__dirname, '..', 'database', 'data'),
-    });
-    // Extra readiness check: socket.io attached clients
-    registerCheck(() => ({
-        component: 'realtime',
-        status: 'ok',
-        details: {
-            connectedClients: connectedClients.size,
-            clients: Array.from(connectedClients.values()).map(c => ({
-                deviceName: c.deviceName,
-                ip: c.ip,
-                joinedAt: c.joinedAt,
-            })),
-        },
-    }));
-    // TASK 8: outbox publisher stall + lag gate the /ready endpoint.
-    // ok = flowing; warn = lag/dead-letters; fail = loop stalled (>30s) → 503.
-    registerCheck(async () => {
-        try {
-            const { outboxStats } = require('./realtime/publisher');
-            const st = outboxStats();
-            let lagSec = 0;
-            try {
-                const r = await pool.query(
-                    `SELECT COALESCE(EXTRACT(EPOCH FROM (NOW() - MIN(created_at)))::int, 0) AS lag
-                      FROM event_outbox WHERE published_at IS NULL`);
-                lagSec = Number(r.rows[0]?.lag || 0);
-            } catch (_) {return { component: 'outbox', status: 'warn', details: { reason: 'table_unchecked' } };}
-            const lastCycleMs = st.lastCycleAt ? Date.now() - new Date(st.lastCycleAt).getTime() : null;
-            const details = { ...st, lagSec };
-            if (st.cycles > 0 && lastCycleMs != null && lastCycleMs > 30000) {
-                return { component: 'outbox', status: 'fail', details };
-            }
-            if (lagSec > 60 || (st.deadLettered || 0) > 0) {
-                return { component: 'outbox', status: lagSec > 60 ? 'fail' : 'warn', details };
-            }
-            return { component: 'outbox', status: 'ok', details };
-        } catch (/** @type {any} */ e) {
-            return { component: 'outbox', status: 'warn', error: e.message };
-        }
-    });
-    // TASK 8: websocket accepting gate — fail when the listener is down.
-    registerCheck(() => {
-        try {
-            const listening = Boolean(httpServer?.listening);
-            const clients = io?.engine ? Number(io.engine.clientsCount || 0) : 0;
-            return { component: 'websocket', status: listening ? 'ok' : 'fail', details: { listening, clients } };
-        } catch (/** @type {any} */ e) {
-            return { component: 'websocket', status: 'fail', error: e.message };
-        }
-    });
-    // Extra: shutdown probe (k8s-aware)
-    registerCheck(() => {
-        const s = getShutdownStatus();
-        return {
-            component: 'shutdown',
-            status: /** @type {any} */ (s)?.shuttingDown ? 'warn' : 'ok',
-            details: s,
-        };
-    });
-    circuitRegisterHealth();
-    app.use('/api/health', healthRouter);
-    app.use('/health',      healthRouter);
-
-    // ─── هوية الخادم + قناة تحديث العملاء عبر الشبكة (EXE عميل/سيرفر) ───
-    // العميل يكتشف السيرفر عبر UDP (common/lan-discovery) ثم يتحقق من هنا،
-    // وملف latest.yml + حزمة التثبيت داخل مجلد updates يكفيان لتحديث كل
-    // أجهزة الشبكة من السيرفر نفسه — بلا إنترنت ولا GitHub.
-    const SERVER_PKG_VERSION = (() => { try { return require('../package.json').version || ''; } catch (_) { return ''; } })();
-    const UPDATES_DIR = process.env.KARIM_UPDATES_DIR
-        || (/** @type {any} */ (process).resourcesPath ? path.join(/** @type {any} */ (process).resourcesPath, 'updates')
-            : path.join(__dirname, '..', 'updates'));
-    try { require('fs').mkdirSync(UPDATES_DIR, { recursive: true }); } catch (_) {}
-    app.use('/updates', express.static(UPDATES_DIR, { index: false, dotfiles: 'deny', fallthrough: true }));
-    app.get('/api/server/info', (/** @type {any} */ req, /** @type {any} */ res) => {
-        res.json({
-            ok: true,
-            app: 'karim-erp',
-            version: SERVER_PKG_VERSION,
-            serverName: process.env.KARIM_SERVER_NAME || require('os').hostname(),
-            scheme: LAN_SCHEME,
-            serverTime: new Date().toISOString(),
-            uptimeSeconds: Math.round(process.uptime()),
-        });
-    });
-}
+require('./health-probe-routes').register(app, { pool, io, httpServer, connectedClients, lanScheme: LAN_SCHEME });
 
 // ─── Idempotency Middleware (write-safe by default on /api) ───
 // Clients send X-Idempotency-Key header. Replayed keys with identical

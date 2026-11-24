@@ -1,6 +1,6 @@
 {
   "_note": "حصة تعقيد معماري: لا تُرفع. تفكيك server.js وتوحيد DDL في migrations عمل مستقل.",
-  "serverJsLines": 3380,
+  "serverJsLines": 3285,
   "ddlFiles": {
     "backend/attendance-governance.js": 4,
     "backend/attendance-portal-routes.js": 5,
