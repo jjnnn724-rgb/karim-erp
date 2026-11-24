@@ -1,0 +1,33 @@
+{
+  "_note": "حصة تعقيد معماري: لا تُرفع. تفكيك server.js وتوحيد DDL في migrations عمل مستقل.",
+  "serverJsLines": 3380,
+  "ddlFiles": {
+    "backend/attendance-governance.js": 4,
+    "backend/attendance-portal-routes.js": 5,
+    "backend/audit-engine/checks/database.js": 1,
+    "backend/callout-escalation.js": 3,
+    "backend/cashier-module/jwt-middleware.js": 5,
+    "backend/cashier-module/kot-routes.js": 1,
+    "backend/cashier-module/mfa-store.js": 5,
+    "backend/cashier-module/webauthn-store.js": 5,
+    "backend/cashier-module/zatca-settings-routes.js": 1,
+    "backend/dispatch-notifier.js": 2,
+    "backend/hr-routes.js": 3,
+    "backend/internal-chat-routes.js": 4,
+    "backend/inventory-control-routes.js": 10,
+    "backend/kitchen-production-routes.js": 29,
+    "backend/leave-workflow-routes.js": 4,
+    "backend/menu-board-routes.js": 5,
+    "backend/middleware/idempotency.js": 2,
+    "backend/notification-service.js": 13,
+    "backend/procurement-routes.js": 34,
+    "backend/server.js": 1,
+    "backend/stocktaking-routes.js": 9,
+    "backend/veg-requests-routes.js": 11,
+    "backend/warehouse/pr-routes.js": 35,
+    "backend/whatsapp-engine/connection.js": 2,
+    "backend/yarasoft/oracle-full-import.js": 2,
+    "backend/yarasoft/schema.js": 14,
+    "backend/zkteco/schema.js": 26
+  }
+}

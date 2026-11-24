@@ -116,12 +116,15 @@ describe('lib — بوابات التصنيف والإعادة', () => {
   });
 
   test('فصل المهام: كل زوج متعارض مرفوض', () => {
-    expect(SOD_CONFLICTS).toHaveLength(3);
+    expect(SOD_CONFLICTS).toHaveLength(5);
     expect(sodConflict(['compliance.configure', 'compliance.submit'])).toEqual([
       'compliance.configure',
       'compliance.submit',
     ]);
     expect(sodConflict(['compliance.submit', 'compliance.review'])).toBeTruthy();
+    // فصل مهام أذون الصرف (اعتماد الشيف ⊥ اعتماد المخازن ⊥ الاستلام)
+    expect(sodConflict(['dispatch.chef_approve', 'dispatch.approve'])).toBeTruthy();
+    expect(sodConflict(['dispatch.approve', 'dispatch.receive'])).toBeTruthy();
     expect(sodConflict(['compliance.view', 'compliance.submit'])).toBeNull();
     expect(sodConflict([])).toBeNull();
   });
