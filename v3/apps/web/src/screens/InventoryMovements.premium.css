@@ -42,22 +42,6 @@
     inset-block-start: 0;
     z-index: 1;
 }
-
-/* ── بطاقات المؤشرات ───────────────────────────────────────────────────── */
-.erp-mv-kpi {
-    container-type: inline-size;
-    position: relative;
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    gap: 0.5rem;
-    overflow: hidden;
-    border: 1px solid var(--erp-hairline);
-    border-radius: 0.75rem;
-    background: var(--erp-surface);
-    padding: 1rem;
-    box-shadow: var(--erp-shadow-card);
-}
 .erp-mv-kpi::before {
     content: "";
     position: absolute;
@@ -72,23 +56,6 @@
 .erp-mv-kpi--danger::before {
     background: var(--erp-danger);
 }
-.erp-mv-kpi__top {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 0.75rem;
-}
-.erp-mv-kpi__icon {
-    display: grid;
-    flex: none;
-    place-items: center;
-    width: 2.25rem;
-    height: 2.25rem;
-    border: 1px solid var(--erp-hairline);
-    border-radius: 0.5rem;
-    background: var(--erp-surface-sunken);
-    color: var(--erp-muted);
-}
 .erp-mv-kpi--success .erp-mv-kpi__icon {
     border-color: var(--erp-success);
     background: var(--erp-success-soft);
@@ -98,43 +65,6 @@
     border-color: var(--erp-danger);
     background: var(--erp-danger-soft);
     color: var(--erp-danger-text);
-}
-.erp-mv-kpi__value {
-    min-width: 0;
-    font-size: clamp(1.125rem, 7cqw, 1.875rem);
-    font-variant-numeric: tabular-nums;
-    font-weight: 600;
-    line-height: 1.2;
-    color: var(--erp-ink);
-}
-.erp-mv-kpi__hint {
-    font-size: var(--text-caption);
-    color: var(--erp-muted);
-}
-.erp-mv-kpi__skeleton {
-    display: block;
-    width: 70%;
-    height: 2.25rem;
-    border-radius: 0.375rem;
-    background: var(--erp-surface-hover);
-    animation: erp-mv-pulse 1.2s ease-in-out infinite;
-}
-
-/* ── شريط التصفية ──────────────────────────────────────────────────────── */
-.erp-mv-filters {
-    display: flex;
-    flex-direction: column;
-    gap: 0.875rem;
-    padding: 1rem;
-}
-.erp-mv-filters__head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding-block-end: 0.75rem;
-    border-block-end: 1px solid var(--erp-hairline);
 }
 .erp-mv-presets {
     display: inline-flex;
@@ -168,36 +98,6 @@
     font-weight: 600;
     box-shadow: var(--erp-shadow-card);
 }
-.erp-mv-chips {
-    display: flex;
-    flex-wrap: wrap;
-    gap: 0.375rem;
-    margin: 0;
-    padding: 0;
-    list-style: none;
-}
-.erp-mv-chip {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.375rem;
-    border: 1px dashed var(--erp-hairline-strong);
-    border-radius: 999px;
-    background: var(--erp-surface-sunken);
-    padding: 0.2rem 0.6rem;
-    font-size: var(--text-body-sm);
-}
-.erp-mv-chip button {
-    display: grid;
-    place-items: center;
-    width: 1.25rem;
-    height: 1.25rem;
-    border-radius: 999px;
-    color: var(--erp-muted);
-}
-.erp-mv-chip button:hover {
-    background: var(--erp-surface-hover);
-    color: var(--erp-danger-text);
-}
 
 /* ── شريط الجدول ودليل الألوان ─────────────────────────────────────────── */
 .erp-mv-tablewrap {
@@ -205,14 +105,6 @@
     min-width: 0;
     flex-direction: column;
     gap: 0.75rem;
-}
-.erp-mv-tablebar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding-inline: 0.25rem;
 }
 .erp-mv-legend {
     display: flex;
@@ -293,9 +185,6 @@
     .erp-premium-InventoryMovements :is(table) {
         min-width: 36rem;
     }
-    .erp-mv-filters__head {
-        align-items: flex-start;
-    }
     .erp-mv-presets {
         inline-size: 100%;
     }
@@ -308,8 +197,5 @@
     .erp-premium-InventoryMovements :is(tbody tr),
     .erp-mv-preset {
         transition: none;
-    }
-    .erp-mv-kpi__skeleton {
-        animation: none;
     }
 }

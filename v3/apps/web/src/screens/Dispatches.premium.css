@@ -161,32 +161,6 @@
 .dark .erp-premium-screen > header {
     border-color: var(--hairline, #29404f);
 }
-
-/* ── صقل أذون الصرف: رموز فقط وخصائص منطقية RTL ─────────────────────────── */
-.erp-dispatch-kpi {
-    container-type: inline-size;
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    gap: 0.5rem;
-}
-.erp-dispatch-kpi__top {
-    display: flex;
-    align-items: flex-start;
-    justify-content: space-between;
-    gap: 0.5rem;
-}
-.erp-dispatch-kpi__icon {
-    display: grid;
-    flex: none;
-    place-items: center;
-    width: 2.25rem;
-    height: 2.25rem;
-    border: 1px solid var(--erp-hairline);
-    border-radius: 0.5rem;
-    background: var(--erp-surface-sunken);
-    color: var(--erp-muted);
-}
 .erp-dispatch-kpi--warning::before {
     background: var(--erp-warning);
 }
@@ -211,52 +185,11 @@
     background: var(--erp-success-soft);
     color: var(--erp-success-text);
 }
-.erp-dispatch-kpi__value {
-    min-width: 0;
-    font-size: clamp(1.125rem, 7cqw, 1.875rem);
-    font-variant-numeric: tabular-nums;
-    font-weight: 600;
-    line-height: 1.2;
-    color: var(--erp-ink);
-}
-.erp-dispatch-kpi__skeleton {
-    display: block;
-    width: 70%;
-    height: 2.25rem;
-    border-radius: 0.375rem;
-    background: var(--erp-surface-hover);
-    animation: erp-dispatch-pulse 1.2s ease-in-out infinite;
-}
-
-.erp-dispatch-filters {
-    display: flex;
-    flex-direction: column;
-    gap: 0.875rem;
-    padding: 1rem;
-}
-.erp-dispatch-filters__head {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding-block-end: 0.75rem;
-    border-block-end: 1px solid var(--erp-hairline);
-}
 .erp-dispatch-tablewrap {
     display: flex;
     min-width: 0;
     flex-direction: column;
     gap: 0.75rem;
-}
-.erp-dispatch-tablebar {
-    display: flex;
-    flex-wrap: wrap;
-    align-items: center;
-    justify-content: space-between;
-    gap: 0.75rem;
-    padding: 0.75rem 1rem;
-    border-block-end: 1px solid var(--erp-hairline);
 }
 
 @keyframes erp-dispatch-pulse {
@@ -266,7 +199,4 @@
 }
 
 @media (prefers-reduced-motion: reduce) {
-    .erp-dispatch-kpi__skeleton {
-        animation: none;
-    }
 }

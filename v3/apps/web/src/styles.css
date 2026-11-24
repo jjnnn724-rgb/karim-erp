@@ -17,6 +17,7 @@
  */
 
 @layer theme, base, components, utilities;
+@import "./screens/_polish-shared.css" layer(components);
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "@heroui/styles/base" layer(base);
