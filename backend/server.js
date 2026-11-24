@@ -14,7 +14,6 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 require('./otel');
 const { logger, httpLogger } = require("./logger");
 const { MEDIA_ROOT, ensureMediaDirs } = require('./media-storage');
-const { spawn } = require('child_process');
 
 // ─── Enterprise Foundation Layers ──────────────────────────
 const { correlationMiddleware } = require('./middleware/correlation');
@@ -91,47 +90,11 @@ const { startDailyReportScheduler } = require('./daily-report-service');
 // ─── API Response Cache (10s TTL for heavy GET endpoints) ──
 // Extracted to backend/api-cache.js (session-scoped key + invalidation).
 const { apiCacheMiddleware, apiCacheInvalidator } = require('./api-cache');
-// ─── حماية من طوفان النسخ الاحتياطية (backup throttling) ─────────
-let lastBackupAt = 0;
-/** @type {any} */
-let pendingBackupTimer = null;
+const { createBackupThrottle } = require('./backup-throttle');
+const scheduleBackup = createBackupThrottle({ logger }).scheduleBackup;
 let stopDailyReportScheduler = () => {};
 /** @type {any} */
 let stopComplianceAutomation = () => {};
-const BACKUP_MIN_INTERVAL_MS = 15_000; // نسخة احتياطية كل 15 ثانية كحد أقصى
-
-function scheduleBackup() {
-    const now = Date.now();
-    const elapsed = now - lastBackupAt;
-    if (elapsed < BACKUP_MIN_INTERVAL_MS) {
-        // اجدولها للتنفيذ لاحقاً — بدون فتح عمليات متعددة
-        if (pendingBackupTimer) {return;}
-        pendingBackupTimer = setTimeout(() => {
-            pendingBackupTimer = null;
-            runBackup();
-        }, BACKUP_MIN_INTERVAL_MS - elapsed);
-        return;
-    }
-    runBackup();
-}
-
-function runBackup() {
-    lastBackupAt = Date.now();
-    try {
-        const backupScript = path.join(__dirname, '..', 'database', 'scripts', 'backup.js');
-        const backupProcess = spawn(process.execPath, [backupScript], {
-            detached: true,
-            stdio: 'ignore',
-            windowsHide: true, // ⭐ منع ظهور نافذة CMD السوداء على ويندوز
-        });
-        backupProcess.unref();
-        backupProcess.on('error', (e) => {
-            logger.error('[backup-spawn] error:', e.message);
-        });
-    } catch (/** @type {any} */ e) {
-        logger.error('Failed to trigger backup (non-critical):', e.message);
-    }
-}
 
 const app = express();
 
