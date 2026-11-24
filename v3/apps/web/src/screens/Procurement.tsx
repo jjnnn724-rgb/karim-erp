@@ -12,7 +12,9 @@ import {
     fetchSuppliers,
     isSupplierActive,
     moneyOf,
+    normalizeTaxStatus,
     type Supplier,
+    type TaxStatus,
     supplierStatusLabel,
     TAX_STATUS_LABEL,
 } from '../lib/procurement';
@@ -27,6 +29,7 @@ import {
     supplierDeactivateConfirm,
     supplierDeleteConfirm,
     supplierDeleteVisible,
+    supplierTaxError,
     supplierWriteVisible,
     updateSupplier,
 } from '../lib/suppliers-write';
@@ -50,7 +53,7 @@ import { PageHeader } from '../ui';
 const PAGE_SIZE = 20;
 
 type SortKey = 'name' | 'purchasesTotal' | 'paymentsTotal' | 'dueTotal' | 'lastPurchaseDate';
-type TaxFilter = 'ALL' | 'REGISTERED' | 'NOT_REGISTERED';
+type TaxFilter = 'ALL' | TaxStatus;
 type StatusFilter = 'ALL' | 'active' | 'inactive';
 
 function formatInt(value: number): string {
@@ -102,7 +105,9 @@ function SupplierFormDialog({ open, onClose, pending, editing, onSave }: Supplie
         nameEn: string;
         phone: string;
         address: string;
-        taxNumber: string;
+        taxStatus: TaxStatus;
+        vatNumber: string;
+        commercialRegister: string;
         category: string;
         active: boolean;
     }>({
@@ -110,7 +115,9 @@ function SupplierFormDialog({ open, onClose, pending, editing, onSave }: Supplie
         nameEn: '',
         phone: '',
         address: '',
-        taxNumber: '',
+        taxStatus: 'NOT_REGISTERED',
+        vatNumber: '',
+        commercialRegister: '',
         category: '',
         active: true,
     });
@@ -126,12 +133,18 @@ function SupplierFormDialog({ open, onClose, pending, editing, onSave }: Supplie
                 nameEn: String(editing.name_en ?? ''),
                 phone: String(editing.phone ?? ''),
                 address: String(editing.address ?? ''),
-                taxNumber: String(editing.tax_number ?? ''),
+                taxStatus: normalizeTaxStatus(editing.tax_registration_status),
+                vatNumber: String(editing.vat_number ?? ''),
+                commercialRegister: String(editing.commercial_register ?? ''),
                 category: String(editing.category ?? ''),
                 active: isSupplierActive(editing),
             });
         } else {
-            setForm({ name: '', nameEn: '', phone: '', address: '', taxNumber: '', category: '', active: true });
+            setForm({
+                name: '', nameEn: '', phone: '', address: '',
+                taxStatus: 'NOT_REGISTERED', vatNumber: '', commercialRegister: '',
+                category: '', active: true,
+            });
         }
         setFormError('');
     }, [open, editing]);
@@ -148,13 +161,22 @@ function SupplierFormDialog({ open, onClose, pending, editing, onSave }: Supplie
             return;
         }
 
+        const vatNumber = form.vatNumber.trim() || null;
+        const taxMessage = supplierTaxError({ tax_registration_status: form.taxStatus, vat_number: vatNumber });
+        if (taxMessage) {
+            setFormError(taxMessage);
+            return;
+        }
         const input: SupplierCreateInput | SupplierUpdateInput = {
             name: form.name.trim(),
             phone: form.phone.trim(),
             address: form.address.trim() || null,
-            tax_number: form.taxNumber.trim() || null,
-            ...(form.category ? { category: form.category.trim() } : {}),
-            active: form.active,
+            name_en: form.nameEn.trim() || null,
+            category: form.category.trim() || null,
+            tax_registration_status: form.taxStatus,
+            vat_number: vatNumber,
+            commercial_register: form.commercialRegister.trim() || null,
+            is_active: form.active,
         };
 
         try {
@@ -216,12 +238,38 @@ function SupplierFormDialog({ open, onClose, pending, editing, onSave }: Supplie
                         onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
                         placeholder="القاهرة، مصر"
                     />
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary">
+                        الحالة الضريبية
+                        <select
+                            name="taxStatus"
+                            value={form.taxStatus}
+                            onChange={(e) =>
+                                setForm((prev) => ({ ...prev, taxStatus: normalizeTaxStatus(e.target.value) }))}
+                            className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
+                        >
+                            {Object.entries(TAX_STATUS_LABEL).map(([value, label]) => (
+                                <option key={value} value={value}>
+                                    {label}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
                     <Input
-                        label="الرقم الضريبي (اختياري)"
-                        name="taxNumber"
-                        value={form.taxNumber}
-                        onChange={(e) => setForm((prev) => ({ ...prev, taxNumber: e.target.value }))}
-                        placeholder="123456789"
+                        label={form.taxStatus === 'NOT_REGISTERED' ? 'الرقم الضريبي (اتركه فارغًا)' : 'الرقم الضريبي (15 رقمًا)'}
+                        name="vatNumber"
+                        value={form.vatNumber}
+                        onChange={(e) => setForm((prev) => ({ ...prev, vatNumber: e.target.value }))}
+                        placeholder="302212427200003"
+                        dir="ltr"
+                        maxLength={20}
+                    />
+                    <Input
+                        label="السجل التجاري (اختياري)"
+                        name="commercialRegister"
+                        value={form.commercialRegister}
+                        onChange={(e) => setForm((prev) => ({ ...prev, commercialRegister: e.target.value }))}
+                        placeholder="7051115819"
+                        dir="ltr"
                     />
                     <Input
                         label="الفئة (اختياري)"
@@ -588,6 +636,7 @@ export function Procurement() {
                             <option value="ALL">كل الحالات</option>
                             <option value="REGISTERED">{TAX_STATUS_LABEL.REGISTERED}</option>
                             <option value="NOT_REGISTERED">{TAX_STATUS_LABEL.NOT_REGISTERED}</option>
+                            <option value="EXEMPT">{TAX_STATUS_LABEL.EXEMPT}</option>
                         </select>
                     </label>
                     <label

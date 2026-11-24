@@ -82,7 +82,16 @@ const paymentListSchema = z
 export const TAX_STATUS_LABEL = {
     REGISTERED: 'مسجل ضريبيًا',
     NOT_REGISTERED: 'غير مسجل',
+    EXEMPT: 'معفى',
 } as const;
+
+export type TaxStatus = keyof typeof TAX_STATUS_LABEL;
+
+/** قيمة آمنة للحالة الضريبية القادمة من الخادم (أو من صف قديم). */
+export function normalizeTaxStatus(value: string | null | undefined): TaxStatus {
+    const status = String(value ?? '').toUpperCase();
+    return status === 'REGISTERED' || status === 'EXEMPT' ? status : 'NOT_REGISTERED';
+}
 
 /** كلمات طرق الدفع من قاموس التطبيق نفسه (`PCMT_PAY_LABELS`). */
 export const PAYMENT_METHOD_AR: Record<string, string> = {
