@@ -43,6 +43,23 @@ function sameSecond(a, b) {
     return Math.floor(new Date(a).getTime() / 1000) === Math.floor(new Date(b).getTime() / 1000);
 }
 
+/**
+ * بصمة انصراف مكرّرة بعد منتصف الليل: الجهاز أحيانًا يرسل انصرافين متقاربين،
+ * فيُقرأ الثاني «دخول يوم جديد» ويقلب سجل اليوم بين دخول/انصراف. الحارس هنا
+ * لا يغيّر اتجاه أي بصمة ولا يضيف نافذة تبريد عامة — يمنع فقط أن تُبنى وردية
+ * جديدة من بصمة تقع بعد انصراف اليوم السابق بدقائق قليلة (حالة أحمد سعد 2026-11-23).
+ * @param {any} prevRow صف اليوم السابق (بعد قراءة قاعدة البيانات داخل المعاملة)
+ * @param {string} day يوم الوردية المرشّح للبصمة الجديدة
+ * @param {any} instant لحظة البصمة
+ * @param {number} [windowMinutes]
+ */
+const NIGHT_DUPLICATE_WINDOW_MIN = Math.max(0, Number(process.env.ATTENDANCE_NIGHT_DUP_WINDOW_MIN || 10));
+function isDuplicateNightCheckout(prevRow, day, instant, windowMinutes = NIGHT_DUPLICATE_WINDOW_MIN) {
+    if (!prevRow || !prevRow.checkOutAt || prevRow.date !== prevDay(day)) {return false;}
+    const gapMin = (new Date(instant).getTime() - new Date(prevRow.checkOutAt).getTime()) / 60000;
+    return gapMin >= 0 && gapMin <= windowMinutes;
+}
+
 function toMin(hhmm) {
     const m = String(hhmm || '').match(/^(\d{1,2}):(\d{2})$/);
     if (!m) {return null;}
@@ -209,6 +226,16 @@ class AttendanceEngine {
                 return { action: dup.checkOut ? 'check_out' : 'check_in', record: dup, changed: false, day: dup.date };
             }
 
+            // انصرافٌ مكرّر بعد منتصف الليل لا يفتح وردية جديدة — يُسجَّل كتكرار
+            // فقط (السجل الخام في attendance_logs يبقى شاهدًا، بلا لمس للبيانات).
+            if (isDuplicateNightCheckout(prevRow, day, instant)) {
+                await client.query('COMMIT');
+                return {
+                    action: 'check_out', record: prevRow, changed: false, day: prevRow.date,
+                    status: 'duplicate_night_checkout', needsReview: false,
+                };
+            }
+
             // الإجازة المعتمدة تُعلَّم على يومها — وصف، لا بصمة ولا استكمال
             const onLeave = await this.isOnLeave(employeeId, day);
 
@@ -343,5 +370,7 @@ module.exports = {
     toMin,
     minutesBetween,
     matchUserToEmployee,
+    isDuplicateNightCheckout,
+    NIGHT_DUPLICATE_WINDOW_MIN,
     BUSINESS_TZ_OFFSET_MS,
 };
