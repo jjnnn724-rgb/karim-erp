@@ -161,42 +161,5 @@
 .dark .erp-premium-screen > header {
     border-color: var(--hairline, #29404f);
 }
-.erp-dispatch-kpi--warning::before {
-    background: var(--erp-warning);
-}
-.erp-dispatch-kpi--info::before {
-    background: var(--erp-info);
-}
-.erp-dispatch-kpi--success::before {
-    background: var(--erp-success);
-}
-.erp-dispatch-kpi--warning .erp-dispatch-kpi__icon {
-    border-color: var(--erp-warning);
-    background: var(--erp-warning-soft);
-    color: var(--erp-warning-text);
-}
-.erp-dispatch-kpi--info .erp-dispatch-kpi__icon {
-    border-color: var(--erp-info);
-    background: var(--erp-info-soft);
-    color: var(--erp-info-text);
-}
-.erp-dispatch-kpi--success .erp-dispatch-kpi__icon {
-    border-color: var(--erp-success);
-    background: var(--erp-success-soft);
-    color: var(--erp-success-text);
-}
-.erp-dispatch-tablewrap {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    gap: 0.75rem;
-}
 
-@keyframes erp-dispatch-pulse {
-    50% {
-        opacity: 0.5;
-    }
-}
 
-@media (prefers-reduced-motion: reduce) {
-}

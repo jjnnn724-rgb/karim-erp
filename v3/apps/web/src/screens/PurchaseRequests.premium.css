@@ -4,16 +4,6 @@
     background: var(--erp-warning-soft);
     color: var(--erp-warning-text);
 }
-.erp-pr-kpi--info .erp-pr-kpi__icon {
-    border-color: var(--erp-info);
-    background: var(--erp-info-soft);
-    color: var(--erp-info-text);
-}
-.erp-pr-kpi--success .erp-pr-kpi__icon {
-    border-color: var(--erp-success);
-    background: var(--erp-success-soft);
-    color: var(--erp-success-text);
-}
 .erp-pr-status-filters {
     display: flex;
     flex-wrap: wrap;
@@ -31,24 +21,10 @@
     box-shadow: var(--erp-shadow-card);
 }
 
-.erp-pr-tablewrap {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    gap: 0.75rem;
-}
-
-@keyframes erp-pr-pulse {
-    50% {
-        opacity: 0.5;
-    }
-}
-
 @media (max-width: 640px) {
     .erp-pr-status-filters {
         gap: 0.3rem;
     }
 }
 
-@media (prefers-reduced-motion: reduce) {
-}
+

@@ -4,21 +4,6 @@
     background: var(--erp-success-soft);
     color: var(--erp-success-text);
 }
-.erp-veg-kpi--warning .erp-veg-kpi__icon {
-    border-color: var(--erp-warning);
-    background: var(--erp-warning-soft);
-    color: var(--erp-warning-text);
-}
-.erp-veg-kpi--danger .erp-veg-kpi__icon {
-    border-color: var(--erp-danger);
-    background: var(--erp-danger-soft);
-    color: var(--erp-danger-text);
-}
-.erp-veg-kpi--info .erp-veg-kpi__icon {
-    border-color: var(--erp-info);
-    background: var(--erp-info-soft);
-    color: var(--erp-info-text);
-}
 .erp-veg-status[aria-pressed="true"] {
     border-color: var(--erp-primary);
     background: var(--erp-surface);
@@ -27,18 +12,4 @@
     box-shadow: var(--erp-shadow-card);
 }
 
-.erp-veg-tablewrap {
-    display: flex;
-    min-width: 0;
-    flex-direction: column;
-    gap: 0.75rem;
-}
 
-@keyframes erp-veg-pulse {
-    50% {
-        opacity: 0.5;
-    }
-}
-
-@media (prefers-reduced-motion: reduce) {
-}
