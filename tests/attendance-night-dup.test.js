@@ -30,4 +30,9 @@ describe('isDuplicateNightCheckout', () => {
     test('بلا صف سابق ⇒ ليس تكرارًا', () => {
         expect(isDuplicateNightCheckout(null, '2026-11-24', new Date('2026-11-23T22:12:00.000Z'))).toBe(false);
     });
+
+    test('دخول حقيقي بعد انصراف الأمس بثوانٍ ⇒ وردية جديدة، ليس تكرارًا', () => {
+        expect(isDuplicateNightCheckout(PREV, '2026-11-24', new Date('2026-11-23T22:12:00.000Z'), 10, 'check_in')).toBe(false);
+        expect(isDuplicateNightCheckout(PREV, '2026-11-24', new Date('2026-11-23T22:12:00.000Z'), 10, 'check_out')).toBe(true);
+    });
 });

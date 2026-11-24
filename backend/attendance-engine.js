@@ -53,11 +53,52 @@ function sameSecond(a, b) {
  * @param {any} instant لحظة البصمة
  * @param {number} [windowMinutes]
  */
-const NIGHT_DUPLICATE_WINDOW_MIN = Math.max(0, Number(process.env.ATTENDANCE_NIGHT_DUP_WINDOW_MIN || 10));
-function isDuplicateNightCheckout(prevRow, day, instant, windowMinutes = NIGHT_DUPLICATE_WINDOW_MIN) {
+const NIGHT_DUPLICATE_WINDOW_MIN = 10;
+/**
+ * @param {string|null} dir اتجاه البصمة ('check_in' | 'check_out' | null).
+ *  الدخول بعد انصراف الأمس بدقائق وردية جديدة حقيقية — لا يُمنع أبدًا.
+ */
+function isDuplicateNightCheckout(prevRow, day, instant, windowMinutes = NIGHT_DUPLICATE_WINDOW_MIN, dir = null) {
     if (!prevRow || !prevRow.checkOutAt || prevRow.date !== prevDay(day)) {return false;}
+    if (dir === 'check_in') {return false;}
     const gapMin = (new Date(instant).getTime() - new Date(prevRow.checkOutAt).getTime()) / 60000;
     return gapMin >= 0 && gapMin <= windowMinutes;
+}
+
+/**
+ * حارس التكرار العام — لكل الموظفين وفي أي وقت من اليوم (ليس فقط نص الليل).
+ * القاعدة الواحدة: بصمتان متقاربتان في **الاتجاه نفسه** هما ضغطة واحدة زايدة؛
+ * أمّا الاتجاه المعاكس فيُنفَّذ دائمًا مهما قربت المسافة — فلا نافذة تبريد
+ * تبتلع انصرافًا أو دخولًا حقيقيًا (قرار المالك 2026-11-05 محفوظ).
+ *
+ * يُقرأ الاتجاه من `punchState` في السجل الخام (0 دخول / 1 انصراف) حين يوجد،
+ * ومن طرف الصف المحجوز للبوابة (اللي بلا زر) حين لا يوجد. البصمة الخام نفسها
+ * تبقى في `attendance_logs` شاهدًا — المنع لا يمحو دليلًا ولا يعدّل صفًا.
+ * @param {{lastLog:any, instant:any, action:string, punchState:any, row:any, windowMinutes?:number}} input
+ */
+const PUNCH_DEDUP_WINDOW_MIN = 10;
+function directionOf(state) {
+    return state === 1 ? 'check_out' : state === 0 ? 'check_in' : null;
+}
+function isRapidDuplicatePunch({ lastLog, instant, action, punchState, row, windowMinutes = PUNCH_DEDUP_WINDOW_MIN }) {
+    if (!lastLog || !lastLog.attendanceTime) {return false;}
+    const gapMin = (new Date(instant).getTime() - new Date(lastLog.attendanceTime).getTime()) / 60000;
+    if (!Number.isFinite(gapMin) || gapMin < 0 || gapMin > windowMinutes) {return false;}
+    const lastDir = directionOf(Number(lastLog.punchState));
+    if (!lastDir) {return false;} // حالة مجهولة في السجل الخام ⇒ لا حكم، لا منع
+
+    // الجهاز يعلن الاتجاه صراحةً ⇒ حاسم للتكرار (وليس لتحديد الاتجاه).
+    const declaredDir = directionOf(punchState);
+    if (declaredDir) {return declaredDir === lastDir;}
+
+    // بوابة الجوال بلا زر: الباني يشتق أن «آخر بصمة = انصراف». إن حُسبت
+    // البصمة انصرافًا بعد دقائق من نفس طرف الصف المحجوز فهي ضغطة مكررة.
+    // أمّا «دخول» (عودة بعد انصراف) فيُنفَّذ دائمًا بلا استثناء.
+    if (action !== 'check_out' || !row) {return false;}
+    if (lastDir === 'check_out') {
+        return Boolean(row.checkOutAt && sameSecond(row.checkOutAt, lastLog.attendanceTime));
+    }
+    return Boolean(row.checkInAt && sameSecond(row.checkInAt, lastLog.attendanceTime) && !row.checkOutAt);
 }
 
 function toMin(hhmm) {
@@ -150,10 +191,13 @@ class AttendanceEngine {
      *     لبطاقةٍ ساعاتُها لا تبلغ منتصف الليل يُغلِق يومَها المفتوح).
      *   • بلا بصمة ⇒ بلا صف: لا انصراف يُختلق ولا حضور يُشتق — والصف المفتوح
      *     يبقى مفتوحًا ويظهر «بلا انصراف» حتى تأتي بصمته الحقيقية.
-     *   • لا حراس: إعادة تطبيق نفس البصمة لا تغيّر شيئًا (المعادلة لا ترتبط
-     *     بترتيب الورود)، ولا نافذة زمنية ولا كاش ولا ملصق جهاز — بلا استثناء.
+     *   • لا حراس على الاتجاه: ترتيب الورود لا يغيّر الأطراف، والاتجاه المعاكس
+     *     يُنفَّذ دائمًا. ملصق الجهاز لا يحدّد دخولًا ولا انصرافًا.
+     *   • استثناء واحد فقط: ضغطة مكررة في نفس الاتجاه خلال دقائق تُهمَل —
+     *     البصمة الخام تبقى شاهدًا، ولا يمسّ ذلك اتجاه أي بصمة حقيقية.
      */
-    // ملاحظة: punchState ليست في قائمة الوسائط — ملصق حالة الجهاز لا يُقرأ إطلاقًا.
+    // ملصق الجهاز لا يُمرَّر للمحرك ولا يحدّد اتجاهًا (قرار 2026-11-05). يُقرأ
+    // من السجل الخام **للتكرار فقط**: بصمتان في نفس الاتجاه خلال دقائق ضغطة واحدة.
     // بلا مصدرٍ معتمد أو هوية جهاز لا بصمة: الرفض قبل أي قراءة/كتابة (قرار 2026-11-07).
     async processPunch({ employeeId, instant, wall, device, source, forDate = null }) {
         const deviceId = device && (device.id ?? device.deviceId);
@@ -177,6 +221,19 @@ class AttendanceEngine {
             // قفل لكل موظف (hashtext لا غير: معرّفات سبعة تجاوزت int4 ⇒ 22003 ⇒ البصمة تضيع).
             // قفل واحد لكل البصمة — لا ازدواج ولا طرق موت، والصفوف تُقرأ بعده مباشرة.
             await client.query('SELECT pg_advisory_xact_lock(hashtext($1::text))', [String(employeeId)]);
+
+            // السجل الخام يُكتب قبل المحرك في مزامنة الجهاز (فيكون صفُّنا الحالي
+            // موجودًا بملصقه)، وبعده في بوابة الجوال (فلا يوجد بعد). صفّان على
+            // الأكثر يكفيان: الحالي للاتجاه، والسابق للحكم على التكرار.
+            // الفهرس (employeeId, attendanceTime) يخدم الاستعلام.
+            const logsRes = await client.query(
+                `SELECT "attendanceTime", "punchState" FROM attendance_logs
+                  WHERE "employeeId" = $1 AND "attendanceTime" <= $2::timestamptz
+                  ORDER BY "attendanceTime" DESC LIMIT 2`,
+                [employeeId, instant]);
+            const currentLog = logsRes.rows.find(
+                (r) => new Date(r.attendanceTime).getTime() === instant.getTime()) || null;
+            const lastLog = logsRes.rows.find((r) => r !== currentLog) || null;
 
             let day = shiftDateForEmployee(wall.date, wall.hour,
                 { shift_start: shiftStart, shift_karim: shiftKarim });
@@ -226,16 +283,6 @@ class AttendanceEngine {
                 return { action: dup.checkOut ? 'check_out' : 'check_in', record: dup, changed: false, day: dup.date };
             }
 
-            // انصرافٌ مكرّر بعد منتصف الليل لا يفتح وردية جديدة — يُسجَّل كتكرار
-            // فقط (السجل الخام في attendance_logs يبقى شاهدًا، بلا لمس للبيانات).
-            if (isDuplicateNightCheckout(prevRow, day, instant)) {
-                await client.query('COMMIT');
-                return {
-                    action: 'check_out', record: prevRow, changed: false, day: prevRow.date,
-                    status: 'duplicate_night_checkout', needsReview: false,
-                };
-            }
-
             // الإجازة المعتمدة تُعلَّم على يومها — وصف، لا بصمة ولا استكمال
             const onLeave = await this.isOnLeave(employeeId, day);
 
@@ -265,6 +312,36 @@ class AttendanceEngine {
             const lateFlag = isLate(inWall.hour, inWall.minute, shiftStart, 9);
             const early = outWall ? isEarlyLeave(outWall.hour, outWall.minute, shiftStart, shiftKarim) : false;
             const minutes = exitAt ? Math.max(0, Math.round((exitAt - entryAt) / 60000)) : null;
+
+            // القرار يصف ما فعلته هذه البصمة بالتحديد: صارت دخول اليوم أم انصرافه
+            const action = sameSecond(entryAt, instant) ? 'check_in' : 'check_out';
+
+            // حارس التكرار العام لكل الموظفين: ضغطة مكرّرة في نفس الاتجاه خلال
+            // دقائق لا تكتب صفًا ولا تُقلب أطرافه. السجل الخام يبقى شاهدًا،
+            // والاتجاه المعاكس يُنفَّذ دائمًا — لا نافذة تبريد تبتلع بصمة حقيقية.
+            if (isRapidDuplicatePunch({ lastLog, instant, action, punchState: currentLog?.punchState, row })) {
+                await client.query('COMMIT');
+                return {
+                    // الملصق (حين وُجد) يصف البصمة المكرّرة نفسها، لا اليوم
+                    // المُشتقّ — حارس القطع أحيانًا يحسبها «دخول يوم جديد».
+                    action: directionOf(currentLog?.punchState) || action,
+                    record: row || prevRow || null, changed: false,
+                    day: row ? day : (prevRow ? prevRow.date : day),
+                    status: 'duplicate_punch', needsReview: false,
+                };
+            }
+
+            // انصرافٌ مكرّر بعد منتصف الليل لا يفتح وردية جديدة — خط دفاع ثانٍ
+            // للحارس العام (يغطي حالة غياب السجل الخام). الدخول بعد انصراف الأمس
+            // وردية جديدة حقيقية، فلا يُمنع حتى لو جاء بعد ثوانٍ.
+            const punchDir = directionOf(currentLog?.punchState) || action;
+            if (isDuplicateNightCheckout(prevRow, day, instant, NIGHT_DUPLICATE_WINDOW_MIN, punchDir)) {
+                await client.query('COMMIT');
+                return {
+                    action: 'check_out', record: prevRow, changed: false, day: prevRow.date,
+                    status: 'duplicate_night_checkout', needsReview: false,
+                };
+            }
 
             // الباني لا يمحو طرفًا محفوظًا: لو صار انصراف الصف «تكرارًا» لبصمة
             // جديدة فالحفظ كما هو وطلب المراجعة، لا تحويل اليوم إلى بصمة واحدة.
@@ -303,9 +380,6 @@ class AttendanceEngine {
                         minutes, lateFlag, early, note, source, onLeave]
                 )).rows[0];
             }
-            // القرار يصف ما فعلته هذه البصمة بالتحديد: صارت دخول اليوم أم انصرافه
-            const action = sameSecond(entryAt, instant) ? 'check_in' : 'check_out';
-
             try {
                 const { emitDomainEvent } = require('./realtime/producers');
                 await emitDomainEvent(pool, client, 'HR', {
@@ -372,5 +446,8 @@ module.exports = {
     matchUserToEmployee,
     isDuplicateNightCheckout,
     NIGHT_DUPLICATE_WINDOW_MIN,
+    isRapidDuplicatePunch,
+    directionOf,
+    PUNCH_DEDUP_WINDOW_MIN,
     BUSINESS_TZ_OFFSET_MS,
 };
