@@ -20,6 +20,10 @@ const dispatchItemSchema = z
         qty: z.union([z.string(), z.number()]).nullable().optional(),
         approvedQty: z.union([z.string(), z.number()]).nullable().optional(),
         receivedQty: z.union([z.string(), z.number()]).nullable().optional(),
+        receivedPackagingQty: z.union([z.string(), z.number()]).nullable().optional(),
+        actualWeight: z.union([z.string(), z.number()]).nullable().optional(),
+        packagingQty: z.union([z.string(), z.number()]).nullable().optional(),
+        packagingUom: z.string().nullable().optional(),
         unit: z.string().nullable().optional(),
     })
     .passthrough();
@@ -30,6 +34,7 @@ export const dispatchSchema = z
         deptCode: z.string().nullable().optional(),
         deptName: z.string().nullable().optional(),
         items: z.array(dispatchItemSchema).nullable().optional(),
+        approvedItems: z.array(dispatchItemSchema).nullable().optional(),
         status: z.string().nullable().optional(),
         date: z.string().nullable().optional(),
         createdBy: z.string().nullable().optional(),
@@ -96,6 +101,8 @@ export const DISPATCH_STATUS = {
     partially_received: { label: 'مستلم جزئيًا', tone: 'warning' },
     received: { label: 'مستلم ومغلق', tone: 'success' },
     rejected: { label: 'مرفوض من الإدارة', tone: 'danger' },
+    cancelled: { label: 'ملغي قبل الصرف', tone: 'neutral' },
+    voided: { label: 'مبطل — محفوظ بالسجل', tone: 'danger' },
 } as const;
 
 export type DispatchStatusTone = (typeof DISPATCH_STATUS)[keyof typeof DISPATCH_STATUS]['tone'] | 'neutral';

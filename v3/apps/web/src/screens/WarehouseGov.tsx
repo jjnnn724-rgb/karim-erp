@@ -26,6 +26,7 @@ import {
     validateFiscalYearForm,
 } from '../lib/warehouse-gov';
 
+import { PageHeader } from '../ui';
 function hasRole(role: string, roles: readonly string[]): boolean {
     return roles.includes(role);
 }
@@ -170,31 +171,27 @@ export function WarehouseGov() {
 
     return (
         <div className="flex flex-col gap-md erp-premium-WarehouseGov">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        حوكمة المخزن{' '}
-                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
-                            Warehouse Governance
-                        </span>
-                    </h1>
-                    <p className="text-body-sm text-muted">
-                        دورة السنوات المالية وتقارير الأرصدة وفحص اتساق النظام — الصلاحية النهائية للخادم.
-                    </p>
-                </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                    <PrintActions title="حوكمة المخزن" />
-                    <button
-                        type="button"
-                        onClick={() => {
-                            void queryClient.invalidateQueries({ queryKey: ['warehouse-gov'] });
-                        }}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                </div>
-            </header>
+            <PageHeader
+                title="حوكمة المخزن"
+                english="Warehouse Governance"
+                description="دورة السنوات المالية وتقارير الأرصدة وفحص اتساق النظام — الصلاحية النهائية للخادم."
+                actions={
+                    <>
+                        <div className="flex items-center gap-xs" data-erp-print-hide>
+                            <PrintActions title="حوكمة المخزن" />
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    void queryClient.invalidateQueries({ queryKey: ['warehouse-gov'] });
+                                }}
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                            >
+                                تحديث
+                            </button>
+                        </div>
+                    </>
+                }
+            />
 
             {status ? (
                 <p role="status" aria-live="polite" className="text-body-sm text-muted">

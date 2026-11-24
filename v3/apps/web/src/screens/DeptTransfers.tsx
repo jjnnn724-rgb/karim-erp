@@ -47,6 +47,7 @@ import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 
+import { PageHeader } from '../ui';
 /**
  * التحويلات الداخلية — قراءة فقط من `/api/warehouse/dept-transfers` بنفس
  * نافذة القديم (أحدث 200 إذن) ونفس شرائح الحالة وأعمدة السجل، مع لوحة
@@ -417,43 +418,43 @@ export function DeptTransfers() {
 
     return (
         <div className="flex flex-col gap-md">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        التحويلات الداخلية{' '}
-                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
-                            Internal Transfers
-                        </span>
-                    </h1>
-                    <p className="text-body-sm text-muted">
-                        تحويل البضاعة بين الأقسام ومنافذ البيع الخارجية — طلبٌ واعتماد الشيف وتنفيذٌ فوري بالتكلفة
-                        الفعلية، وتحويل مباشر للبيع الخارجي.
-                    </p>
-                </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                    {mayCreate ? (
-                        <Button type="button" size="sm" onClick={() => setCreateMode('internal')}>
-                            طلب تحويل جديد
-                        </Button>
-                    ) : null}
-                    {mayExternal ? (
-                        <Button type="button" size="sm" variant="secondary" onClick={() => setCreateMode('external')}>
-                            تحويل للبيع الخارجي
-                        </Button>
-                    ) : null}
-                    <button
-                        type="button"
-                        onClick={() => {
-                            void transfersQuery.refetch();
-                            void summaryQuery.refetch();
-                        }}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                    <PrintActions title="التحويلات الداخلية" />
-                </div>
-            </header>
+            <PageHeader
+                title="التحويلات الداخلية"
+                english="Internal Transfers"
+                description="تحويل البضاعة بين الأقسام ومنافذ البيع الخارجية — طلبٌ واعتماد الشيف وتنفيذٌ فوري بالتكلفة الفعلية، وتحويل مباشر للبيع الخارجي."
+                actions={
+                    <>
+                        <div className="flex items-center gap-xs" data-erp-print-hide>
+                            {mayCreate ? (
+                                <Button type="button" size="sm" onClick={() => setCreateMode('internal')}>
+                                    طلب تحويل جديد
+                                </Button>
+                            ) : null}
+                            {mayExternal ? (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={() => setCreateMode('external')}
+                                >
+                                    تحويل للبيع الخارجي
+                                </Button>
+                            ) : null}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    void transfersQuery.refetch();
+                                    void summaryQuery.refetch();
+                                }}
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                            >
+                                تحديث
+                            </button>
+                            <PrintActions title="التحويلات الداخلية" />
+                        </div>
+                    </>
+                }
+            />
             {pageError ? (
                 <p role="alert" className="text-body-sm text-danger-text">
                     {pageError}

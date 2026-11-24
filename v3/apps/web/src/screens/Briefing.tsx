@@ -14,6 +14,7 @@ import {
 import { formatCurrency, formatInt } from '../lib/format';
 import { StatCard } from '../ui/StatCard';
 
+import { PageHeader } from '../ui';
 function Kpi({ label, english, value, hint }: { label: string; english: string; value: string; hint: string }) {
     return <StatCard label={label} english={english} value={value} hint={hint} />;
 }
@@ -59,32 +60,28 @@ export function Briefing() {
 
     return (
         <div className="flex flex-col gap-md premium-screen premium-briefing">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        الموجز التنفيذي{' '}
-                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
-                            Executive Briefing
-                        </span>
-                    </h1>
-                    <p className="text-body-sm text-muted">
-                        لوحة المتابعة اللحظية للمدير: مبيعات اليوم، المصروفات، متوسط الفاتورة، وحالة المخزون والأقسام.
-                    </p>
-                </div>
-                <div className="flex items-center gap-xs">
-                    <PrintActions title="الموجز التنفيذي" />
-                    <button
-                        type="button"
-                        onClick={() => {
-                            void briefingQuery.refetch();
-                            void posStatsQuery.refetch();
-                        }}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                </div>
-            </header>
+            <PageHeader
+                title="الموجز التنفيذي"
+                english="Executive Briefing"
+                description="لوحة المتابعة اللحظية للمدير: مبيعات اليوم، المصروفات، متوسط الفاتورة، وحالة المخزون والأقسام."
+                actions={
+                    <>
+                        <div className="flex items-center gap-xs">
+                            <PrintActions title="الموجز التنفيذي" />
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    void briefingQuery.refetch();
+                                    void posStatsQuery.refetch();
+                                }}
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                            >
+                                تحديث
+                            </button>
+                        </div>
+                    </>
+                }
+            />
 
             {isPending ? (
                 <StateLoading label="جارٍ جمع بيانات الموجز التنفيذي…" />

@@ -1,5 +1,6 @@
+import './VegRequests.premium.css';
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useMemo, useState } from 'react';
+import { type ReactNode, useEffect, useMemo, useState } from 'react';
 import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
@@ -19,6 +20,7 @@ import {
     vegStatusCounts,
 } from '../lib/veg-requests';
 import {
+    adminEditVegItems,
     cancelVegRequest,
     createVegRequest,
     editVegItems,
@@ -29,6 +31,8 @@ import {
     VEG_TEXT,
     type VegCatalog,
     type VegItemInput,
+    vegAdminEditSuccess,
+    vegAdminVisible,
     vegCancelConfirm,
     vegCreateVisible,
     vegPriceVisible,
@@ -36,9 +40,12 @@ import {
     vegReceiveVisible,
 } from '../lib/veg-requests-write';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
+import { PageHeader } from '../ui';
+import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
+import { AlertCircleIcon, AlertTriangleIcon, InfoIcon, ListTreeIcon, XIcon } from '../ui/icons';
 import { Select } from '../ui/Select';
 import { useToast } from '../ui/Toast';
 
@@ -48,6 +55,7 @@ import { useToast } from '../ui/Toast';
  *  • استلام (POST /api/veg-requests/:id/receive — sous_chef|admin|owner)
  *  • تسعير (POST /api/veg-requests/:id/price — warehouse|admin|owner|manager)
  *  • تعديل الكميات (PUT /api/veg-requests/:id/items — sous_chef|admin|owner)
+ *  • إضافة أصناف نسيها الشيف (POST /api/veg-requests/:id/admin/items — admin فقط)
  *  • إلغاء (POST /api/veg-requests/:id/cancel — صاحب الطلب أو الإدارة)
  *  • طباعة الطلب (ورقة A4 من صفّه + POST /api/veg-requests/:id/printed) وطباعة الشاشة (PrintActions)
  *
@@ -58,24 +66,77 @@ const PAGE_SIZE = 25;
 
 type SortKey = 'number' | 'itemsCount' | 'priority' | 'total' | 'by' | 'created' | 'status';
 
+const SORT_LABELS: Record<SortKey, string> = {
+    number: 'رقم الطلب',
+    itemsCount: 'الأصناف',
+    priority: 'الأولوية',
+    total: 'الإجمالي',
+    by: 'أنشأها',
+    created: 'التاريخ',
+    status: 'الحالة',
+};
+
 function formatInt(value: number): string {
     return value.toLocaleString('en-US');
 }
 
-function Kpi({ label, english, value, hint }: { label: string; english: string; value: string; hint: string }) {
+type KpiTone = 'neutral' | 'success' | 'warning' | 'danger' | 'info';
+
+function Kpi({
+    label,
+    english,
+    value,
+    hint,
+    tone = 'neutral',
+    icon,
+    loading = false,
+}: {
+    label: string;
+    english: string;
+    value: string;
+    hint: string;
+    tone?: KpiTone;
+    icon: ReactNode;
+    loading?: boolean;
+}) {
     return (
-        <div className="rounded-lg border border-hairline bg-surface p-md shadow-card">
-            <p className="text-label-md text-muted">
-                {label}{' '}
-                <span className="text-caption text-faint" dir="ltr" lang="en">
-                    {english}
+        <div className={`erp-veg-kpi erp-veg-kpi--${tone}`} aria-busy={loading}>
+            <div className="erp-veg-kpi__top">
+                <p className="text-label-md text-muted">
+                    {label}{' '}
+                    <span className="text-caption text-faint" dir="ltr" lang="en">
+                        {english}
+                    </span>
+                </p>
+                <span className="erp-veg-kpi__icon" aria-hidden="true">
+                    {icon}
                 </span>
-            </p>
-            <p className="erp-numeric mt-xs text-heading-lg text-ink" dir="ltr">
-                {value}
-            </p>
+            </div>
+            {loading ? (
+                <>
+                    <span className="sr-only">جارٍ تحميل {label}</span>
+                    <span className="erp-veg-kpi__skeleton" aria-hidden="true" />
+                </>
+            ) : (
+                <p className="erp-numeric erp-veg-kpi__value" dir="ltr">
+                    {value}
+                </p>
+            )}
             <p className="mt-xxs text-caption text-muted">{hint}</p>
         </div>
+    );
+}
+
+/** شارة مرشّح الترتيب — إزالة بضغطة واحدة. */
+function SortChip({ label, onRemove }: { label: string; onRemove: () => void }) {
+    return (
+        <li className="erp-veg-chip">
+            <span className="text-faint">الترتيب</span>
+            <span className="font-medium text-ink">{label}</span>
+            <button type="button" className="erp-veg-chip__remove" onClick={onRemove} aria-label="إزالة مرشّح الترتيب">
+                <XIcon className="size-3" />
+            </button>
+        </li>
     );
 }
 
@@ -101,18 +162,11 @@ function SortableTh({
 }
 
 /** نبرة الحالة من `v2/status.js:172-175` — النص نفسه من السجل. */
-function statusTone(status: string): string {
-    if (status === 'received') {
-        return 'text-success-text';
-    }
-    if (status === 'priced') {
-        return 'text-info-text';
-    }
-    if (status === 'pending') {
-        return 'text-warning-text';
-    }
-    return 'text-muted';
-}
+const STATUS_VARIANT: Record<string, 'success' | 'info' | 'warning' | 'neutral'> = {
+    received: 'success',
+    priced: 'info',
+    pending: 'warning',
+};
 
 function compare(a: VegRequestRow, b: VegRequestRow, key: SortKey): number {
     if (key === 'number') {
@@ -323,16 +377,35 @@ interface EditItemsDialogProps {
     open: boolean;
     row: VegRequestRow | null;
     items: ReadonlyArray<{ name: string; qty: number; unit?: string | undefined }>;
+    catalog: VegCatalog | null;
+    canAddItems: boolean;
     pending: boolean;
     onClose: () => void;
     onSubmit: (items: VegItemInput[]) => Promise<void>;
+    onAdminSubmit: (items: VegItemInput[]) => Promise<void>;
 }
 
 const EDIT_FORM_ID = 'erp-veg-edit-form';
 
-function EditItemsDialog({ open, row, items, pending, onClose, onSubmit }: EditItemsDialogProps) {
+function EditItemsDialog({
+    open,
+    row,
+    items,
+    catalog,
+    canAddItems,
+    pending,
+    onClose,
+    onSubmit,
+    onAdminSubmit,
+}: EditItemsDialogProps) {
     const [qtys, setQtys] = useState<Record<string, string>>({});
+    const [added, setAdded] = useState<VegItemInput[]>([]);
+    const [newName, setNewName] = useState('');
+    const [newQty, setNewQty] = useState('1');
+    const [newUnit, setNewUnit] = useState('كجم');
     const [error, setError] = useState('');
+
+    const units = useMemo(() => (catalog?.units?.length ? catalog.units : ['كجم']), [catalog]);
 
     useEffect(() => {
         if (open) {
@@ -341,9 +414,34 @@ function EditItemsDialog({ open, row, items, pending, onClose, onSubmit }: EditI
                 next[item.name] = String(item.qty);
             }
             setQtys(next);
+            setAdded([]);
+            setNewName('');
+            setNewQty('1');
+            setNewUnit(units[0] ?? 'كجم');
             setError('');
         }
-    }, [open, items]);
+    }, [open, items, units]);
+
+    function addNew(): void {
+        setError('');
+        const name = newName.trim();
+        const q = Number(newQty);
+        if (!name) {
+            setError('اكتب اسم الصنف');
+            return;
+        }
+        if (!Number.isFinite(q) || q <= 0) {
+            setError('أدخل كمية صحيحة أكبر من صفر');
+            return;
+        }
+        if (items.some((it) => it.name === name) || added.some((it) => it.name === name)) {
+            setError('الصنف موجود بالفعل في الطلب');
+            return;
+        }
+        setAdded((previous) => [...previous, { name, qty: q, unit: newUnit.trim() || 'كجم' }]);
+        setNewName('');
+        setNewQty('1');
+    }
 
     async function save(event: React.FormEvent<HTMLFormElement>): Promise<void> {
         event.preventDefault();
@@ -358,10 +456,14 @@ function EditItemsDialog({ open, row, items, pending, onClose, onSubmit }: EditI
             payload.push({ name: item.name, qty: q, unit: item.unit });
         }
         try {
-            await onSubmit(payload);
+            if (canAddItems) {
+                await onAdminSubmit([...payload, ...added]);
+            } else {
+                await onSubmit(payload);
+            }
             onClose();
         } catch (cause) {
-            setError(writeErrorMessage(cause, VEG_TEXT.editFailed));
+            setError(writeErrorMessage(cause, canAddItems ? VEG_TEXT.adminEditFailed : VEG_TEXT.editFailed));
         }
     }
 
@@ -371,7 +473,7 @@ function EditItemsDialog({ open, row, items, pending, onClose, onSubmit }: EditI
             onOpenChange={(next) => {
                 if (!next) onClose();
             }}
-            title={row ? `تعديل كميات ${row.number}` : 'تعديل كميات'}
+            title={row ? `${canAddItems ? 'تعديل الطلب (أدمن) ' : 'تعديل كميات '}${row.number}` : 'تعديل كميات'}
             size="lg"
             footer={
                 <>
@@ -379,14 +481,16 @@ function EditItemsDialog({ open, row, items, pending, onClose, onSubmit }: EditI
                         {VEG_TEXT.cancel}
                     </Button>
                     <Button type="submit" form={EDIT_FORM_ID} size="sm" loading={pending}>
-                        حفظ الكميات
+                        {canAddItems ? 'حفظ التعديلات' : 'حفظ الكميات'}
                     </Button>
                 </>
             }
         >
             <form id={EDIT_FORM_ID} onSubmit={(event) => void save(event)} className="flex flex-col gap-sm">
                 <p className="rounded-md border border-warning/40 bg-warning-soft p-sm text-body-sm text-ink-secondary">
-                    إضافة أصناف جديدة مرفوضة — احتاج طلبًا جديدًا. الكميات تُوثَّق في سجل الطلب.
+                    {canAddItems
+                        ? 'تقدر تضيف أصناف نسيتها وتعدّل الكميات قبل التسعير — كل كمية تُوثَّق في سجل الطلب باسمك.'
+                        : 'تعديل الكميات قبل الاعتماد النهائي فقط، ويُوثَّق في سجل الطلب. إضافة الأصناف الجديدة للمدير فقط.'}
                 </p>
                 <ul className="flex flex-col gap-sm">
                     {items.map((item) => (
@@ -404,6 +508,77 @@ function EditItemsDialog({ open, row, items, pending, onClose, onSubmit }: EditI
                         </li>
                     ))}
                 </ul>
+
+                {canAddItems ? (
+                    <div className="flex flex-col gap-sm rounded-md border border-hairline bg-surface-sunken p-sm">
+                        <p className="text-body-sm font-medium text-ink">إضافة صنف نسيته (أدمن فقط)</p>
+                        <div className="grid gap-sm sm:grid-cols-[1fr_110px_100px_auto]">
+                            <Input
+                                label="الصنف"
+                                name="admin-item-name"
+                                value={newName}
+                                onChange={(e) => setNewName(e.target.value)}
+                                placeholder="اسم الصنف أو اختر من الكتالوج"
+                                list="erp-veg-catalog-names"
+                            />
+                            <datalist id="erp-veg-catalog-names">
+                                {catalog
+                                    ? Object.values(catalog.categories)
+                                          .flat()
+                                          .map((name) => <option key={name} value={name} />)
+                                    : null}
+                            </datalist>
+                            <Input
+                                label="الكمية"
+                                name="admin-item-qty"
+                                type="number"
+                                min={0.001}
+                                step={0.001}
+                                value={newQty}
+                                onChange={(e) => setNewQty(e.target.value)}
+                            />
+                            <Select
+                                label="الوحدة"
+                                name="admin-item-unit"
+                                value={newUnit}
+                                onValueChange={(value) => setNewUnit(String(value ?? ''))}
+                                options={units.map((u) => ({ label: u, value: u }))}
+                            />
+                        </div>
+                        <div>
+                            <Button type="button" variant="secondary" size="sm" onClick={addNew}>
+                                إضافة الصنف
+                            </Button>
+                        </div>
+                        {added.length ? (
+                            <ul className="flex flex-col gap-xxs">
+                                {added.map((item) => (
+                                    <li
+                                        key={item.name}
+                                        className="flex items-center justify-between gap-sm rounded-md bg-surface px-sm py-xxs text-body-sm"
+                                    >
+                                        <span className="text-ink">{item.name}</span>
+                                        <span className="erp-numeric text-muted" dir="ltr">
+                                            {item.qty} {item.unit}
+                                        </span>
+                                        <button
+                                            type="button"
+                                            onClick={() =>
+                                                setAdded((previous) =>
+                                                    previous.filter((entry) => entry.name !== item.name),
+                                                )
+                                            }
+                                            className="text-danger-text"
+                                        >
+                                            إزالة
+                                        </button>
+                                    </li>
+                                ))}
+                            </ul>
+                        ) : null}
+                    </div>
+                ) : null}
+
                 {error ? (
                     <p role="alert" className="text-body-sm text-danger-text">
                         {error}
@@ -558,6 +733,7 @@ export function VegRequests() {
     const canCreate = vegCreateVisible(auth.user?.role);
     const canReceive = vegReceiveVisible(auth.user?.role);
     const canPrice = vegPriceVisible(auth.user?.role);
+    const isAdmin = vegAdminVisible(auth.user?.role);
 
     const [query, setQuery] = useState('');
     const [status, setStatus] = useState<VegStatusFilter>('all');
@@ -679,6 +855,17 @@ export function VegRequests() {
         },
     });
 
+    const adminEditMutation = useWriteMutation<VegItemInput[], void>({
+        mutationFn: (items) => adminEditVegItems(editRow?.id ?? '', { items }).then(() => undefined),
+        successTitle: () => vegAdminEditSuccess(String(editRow?.number ?? '')),
+        invalidate: [['veg-requests']],
+        silentError: true,
+        onSuccess: () => {
+            setEditOpen(false);
+            setEditRow(null);
+        },
+    });
+
     const cancelMutation = useWriteMutation<string, void>({
         mutationFn: (id) => cancelVegRequest(id).then(() => undefined),
         successTitle: () => VEG_TEXT.cancelSuccess,
@@ -786,61 +973,76 @@ export function VegRequests() {
 
     return (
         <div className="mx-auto flex w-full min-w-0 flex-col gap-lg">
-            <header className="flex flex-wrap items-end justify-between gap-md border-b border-hairline pb-md">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        طلبات شراء الخضار{' '}
-                        <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted" dir="ltr" lang="en">
-                            Vegetable Requests
-                        </span>
-                    </h1>
-                    <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        طلبات المطبخ إلى المخازن — الإنشاء والاستلام والتسعير وتعديل الكميات والإلغاء مثل الشاشة
-                        القديمة. الخادم يقرّر أدوار الكتابة ويُعرض رفضه كما هو.
-                    </p>
-                </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                    {canCreate ? (
-                        <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
-                            طلب جديد
-                        </Button>
-                    ) : null}
-                    <PrintActions title="طلبات شراء الخضار" />
-                    <button
-                        type="button"
-                        onClick={() => {
-                            void vegQuery.refetch();
-                        }}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                </div>
-            </header>
+            <PageHeader
+                title="طلبات شراء الخضار"
+                english="Vegetable Requests"
+                description="طلبات المطبخ إلى المخازن — الإنشاء والاستلام والتسعير وتعديل الكميات والإلغاء مثل الشاشة القديمة. الخادم يقرّر أدوار الكتابة ويُعرض رفضه كما هو."
+                actions={
+                    <div className="flex items-center gap-xs" data-erp-print-hide>
+                        {canCreate ? (
+                            <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
+                                طلب جديد
+                            </Button>
+                        ) : null}
+                        <PrintActions title="طلبات شراء الخضار" />
+                        <button
+                            type="button"
+                            onClick={() => {
+                                void vegQuery.refetch();
+                            }}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                        >
+                            تحديث
+                        </button>
+                    </div>
+                }
+            />
 
             <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
-                <Kpi label="معلقة" english="Pending" value={formatInt(summary.pending)} hint="عدّاد الخادم لكل السجل" />
+                <Kpi
+                    label="معلقة"
+                    english="Pending"
+                    value={formatInt(summary.pending)}
+                    hint="عدّاد الخادم لكل السجل"
+                    tone="warning"
+                    icon={<AlertCircleIcon className="size-4" />}
+                    loading={vegQuery.isPending}
+                />
                 <Kpi
                     label="معلقة اليوم"
                     english="Pending today"
                     value={formatInt(summary.pendingToday)}
                     hint="بانتظار المعالجة ومُنشأة اليوم"
+                    tone="info"
+                    icon={<InfoIcon className="size-4" />}
+                    loading={vegQuery.isPending}
                 />
                 <Kpi
                     label="طلبات اليوم"
                     english="Today"
                     value={formatInt(summary.today)}
                     hint="كل الحالات المُنشأة اليوم"
+                    icon={<ListTreeIcon className="size-4" />}
+                    loading={vegQuery.isPending}
                 />
                 <Kpi
                     label="عاجل في العرض"
                     english="Urgent"
                     value={formatInt(counts.urgent)}
                     hint={`من ${formatInt(counts.total)} طلبًا محمّلًا`}
+                    tone="danger"
+                    icon={<AlertTriangleIcon className="size-4" />}
+                    loading={vegQuery.isPending}
                 />
             </div>
 
-            <Card className="p-sm">
+            <Card className="erp-veg-filters">
+                <div className="erp-veg-filters__head">
+                    <div>
+                        <p className="text-label-md font-medium text-ink">تصفية الطلبات</p>
+                        <p className="text-caption text-muted">ابحث أو اختر حالة — والترتيب يتغيّر من رأس العمود.</p>
+                    </div>
+                </div>
                 <div className="flex flex-wrap items-end gap-sm">
                     <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-veg-q">
                         بحث
@@ -869,8 +1071,8 @@ export function VegRequests() {
                                 }}
                                 className={
                                     status === value
-                                        ? 'rounded-md border border-hairline-strong bg-surface-sunken px-sm py-xxs text-body-sm text-ink'
-                                        : 'rounded-md border border-transparent px-sm py-xxs text-body-sm text-muted hover:bg-surface-hover'
+                                        ? 'erp-veg-status rounded-md border border-hairline-strong bg-surface-sunken px-sm py-xxs text-body-sm text-ink'
+                                        : 'erp-veg-status rounded-md border border-transparent px-sm py-xxs text-body-sm text-muted hover:bg-surface-hover'
                                 }
                             >
                                 {VEG_FILTER_LABELS[value]}
@@ -888,6 +1090,17 @@ export function VegRequests() {
                         {`معلقة ${formatInt(summary.pending)} · معلقة اليوم ${formatInt(summary.pendingToday)} · طلبات اليوم ${formatInt(summary.today)}`}
                     </span>
                 </div>
+                {sort ? (
+                    <ul className="erp-veg-chips" aria-label="المرشّحات النشطة">
+                        <SortChip
+                            label={`${SORT_LABELS[sort.key]} (${sort.dir === 'asc' ? 'تصاعدي' : 'تنازلي'})`}
+                            onRemove={() => {
+                                setSort(null);
+                                setPage(1);
+                            }}
+                        />
+                    </ul>
+                ) : null}
                 <p className="mt-sm text-body-sm text-muted" role="status">
                     {filtered ? `${formatInt(sorted.length)} طلبًا مطابقًا` : `${formatInt(counts.total)} طلبًا محمّلًا`}
                     {counts.priced ? ` · ${formatInt(counts.priced)} مسعّر` : ''}
@@ -900,7 +1113,14 @@ export function VegRequests() {
                 ) : null}
             </Card>
 
-            <Card>
+            <Card className="erp-veg-tablewrap">
+                <div className="erp-veg-tablebar">
+                    <div className="flex items-center gap-sm">
+                        <h2 className="text-heading-md text-ink">سجل طلبات الخضار</h2>
+                        <Badge variant="neutral">{formatInt(sorted.length)}</Badge>
+                    </div>
+                    <p className="text-caption text-muted">الأولوية والحالة ظاهرتان كشارات بجانب النص.</p>
+                </div>
                 {vegQuery.isPending ? (
                     <div aria-busy="true">
                         <StateLoading label="جارٍ تحميل طلبات الخضار" />
@@ -981,11 +1201,9 @@ export function VegRequests() {
                                                 {formatInt(row.itemsCount)}
                                             </td>
                                             <td className="px-sm py-xxs text-body-sm">
-                                                {row.urgent ? (
-                                                    <span className="text-danger-text">{priorityLabel(row)}</span>
-                                                ) : (
-                                                    <span className="text-muted">{priorityLabel(row)}</span>
-                                                )}
+                                                <Badge variant={row.urgent ? 'danger' : 'neutral'} dot>
+                                                    <span>{priorityLabel(row)}</span>
+                                                </Badge>
                                             </td>
                                             <td className="erp-numeric px-sm py-xxs text-end text-ink" dir="ltr">
                                                 {row.total === null ? (
@@ -1004,9 +1222,9 @@ export function VegRequests() {
                                                 {row.created || '—'}
                                             </td>
                                             <td className="px-sm py-xxs">
-                                                <span className={`text-body-sm ${statusTone(row.status)}`}>
-                                                    {row.statusLabel}
-                                                </span>
+                                                <Badge variant={STATUS_VARIANT[row.status] ?? 'neutral'} dot>
+                                                    <span>{row.statusLabel}</span>
+                                                </Badge>
                                             </td>
                                             <td className="px-sm py-xxs" data-erp-print-hide>
                                                 <div className="flex flex-wrap items-center gap-xs">
@@ -1019,19 +1237,24 @@ export function VegRequests() {
                                                     >
                                                         طباعة
                                                     </Button>
+                                                    {(row.status === 'pending' && canCreate) ||
+                                                    (row.status === 'received' && isAdmin) ? (
+                                                        <Button
+                                                            type="button"
+                                                            size="sm"
+                                                            variant="secondary"
+                                                            title={
+                                                                row.status === 'received'
+                                                                    ? 'إضافة أصناف أو تعديل الكميات (أدمن)'
+                                                                    : 'تعديل الكميات'
+                                                            }
+                                                            onClick={() => void openEdit(row)}
+                                                        >
+                                                            {row.status === 'received' ? 'إضافة أصناف' : 'تعديل'}
+                                                        </Button>
+                                                    ) : null}
                                                     {row.status === 'pending' && (
                                                         <>
-                                                            {canCreate ? (
-                                                                <Button
-                                                                    type="button"
-                                                                    size="sm"
-                                                                    variant="secondary"
-                                                                    title="تعديل الكميات"
-                                                                    onClick={() => void openEdit(row)}
-                                                                >
-                                                                    تعديل
-                                                                </Button>
-                                                            ) : null}
                                                             {canReceive ? (
                                                                 <Button
                                                                     type="button"
@@ -1119,13 +1342,18 @@ export function VegRequests() {
                 open={editOpen}
                 row={editRow}
                 items={editItems}
-                pending={editMutation.isPending}
+                catalog={catalogQuery.data ?? null}
+                canAddItems={isAdmin}
+                pending={editMutation.isPending || adminEditMutation.isPending}
                 onClose={() => {
                     setEditOpen(false);
                     setEditRow(null);
                 }}
                 onSubmit={async (items) => {
                     await editMutation.mutateAsync(items);
+                }}
+                onAdminSubmit={async (items) => {
+                    await adminEditMutation.mutateAsync(items);
                 }}
             />
             <PriceDialog

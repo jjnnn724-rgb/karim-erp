@@ -34,6 +34,7 @@ import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 
+import { PageHeader } from '../ui';
 /**
  * الإجازات — شاشة قراءةٍ كاملة لسلسلة الاعتماد.
  *
@@ -387,37 +388,32 @@ export function Leaves() {
 
     return (
         <div className="flex flex-col gap-md leaves-premium">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        الإجازات{' '}
-                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
-                            Leave Requests
-                        </span>
-                    </h1>
-                    <p className="text-body-sm text-muted">
-                        سلسلة اعتماد الطلبات في نطاق صلاحيتك: إنشاء طلب، واعتماد/رفض/إعادة داخل السلسلة مثل الشاشة
-                        القديمة، والخادم هو صاحب القرار في كل الحالات.
-                    </p>
-                </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                    <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
-                        طلب إجازة جديد
-                    </Button>
-                    <PrintActions title="الإجازات" />
-                    <button
-                        type="button"
-                        onClick={() => {
-                            void workflowQuery.refetch();
-                            void typesQuery.refetch();
-                        }}
-                        data-erp-print-hide
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                </div>
-            </header>
+            <PageHeader
+                title="الإجازات"
+                english="Leave Requests"
+                description="سلسلة اعتماد الطلبات في نطاق صلاحيتك: إنشاء طلب، واعتماد/رفض/إعادة داخل السلسلة مثل الشاشة القديمة، والخادم هو صاحب القرار في كل الحالات."
+                actions={
+                    <>
+                        <div className="flex items-center gap-xs" data-erp-print-hide>
+                            <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
+                                طلب إجازة جديد
+                            </Button>
+                            <PrintActions title="الإجازات" />
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    void workflowQuery.refetch();
+                                    void typesQuery.refetch();
+                                }}
+                                data-erp-print-hide
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                            >
+                                تحديث
+                            </button>
+                        </div>
+                    </>
+                }
+            />
 
             <p className="text-body-sm text-muted" role="status" aria-live="polite">
                 {scopeLine}

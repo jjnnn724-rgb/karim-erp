@@ -24,6 +24,7 @@ import {
     weekOf,
 } from '../lib/roster';
 
+import { PageHeader } from '../ui';
 /**
  * الدوام — شبكة الدوام الأسبوعية، قراءة فقط من `/api/hr/dept-roster-week`.
  *
@@ -206,28 +207,26 @@ export function Roster() {
 
     return (
         <div className="flex flex-col gap-md roster-premium">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        الدوام{' '}
-                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
-                            Dept Roster
-                        </span>
-                    </h1>
-                    <p className="text-body-sm text-muted">شبكة دوام الأسبوع.</p>
-                </div>
-                <PrintActions title="الدوام" />
-                <button
-                    type="button"
-                    onClick={() => {
-                        void weekQuery.refetch();
-                    }}
-                    data-erp-print-hide
-                    className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                >
-                    تحديث
-                </button>
-            </header>
+            <PageHeader
+                title="الدوام"
+                english="Dept Roster"
+                description="شبكة دوام الأسبوع."
+                actions={
+                    <>
+                        <PrintActions title="الدوام" />
+                        <button
+                            type="button"
+                            onClick={() => {
+                                void weekQuery.refetch();
+                            }}
+                            data-erp-print-hide
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                        >
+                            تحديث
+                        </button>
+                    </>
+                }
+            />
 
             {data ? (
                 <RosterWorkbench

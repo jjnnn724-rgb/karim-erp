@@ -8,6 +8,7 @@ import { formatMoney, statusLabel, totalCredit, totalDebit } from '../lib/format
 import { fetchJournal } from '../lib/queries';
 import { queryKeys } from '../lib/queryKeys';
 
+import { PageHeader } from '../ui';
 /**
  * عارض القيود — قراءة فقط (`/api/v3/accounting/journal`).
  *
@@ -30,38 +31,38 @@ export function JournalViewer() {
 
     return (
         <div className="journal-premium flex flex-col gap-md">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">القيود اليومية</h1>
-                    <p className="text-body-sm text-muted">
-                        {query.isSuccess ? `${String(entries.length)} قيدًا معروضًا` : 'دفتر القيود'}
-                    </p>
-                </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                    <PrintActions title="القيود اليومية" />
-                    <label
-                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-v3-journal-limit"
-                    >
-                        عدد القيود
-                        <select
-                            id="erp-v3-journal-limit"
-                            value={limit}
-                            onChange={(event) => {
-                                setLimit(Number(event.target.value));
-                                setOpenEntry(null);
-                            }}
-                            className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
-                        >
-                            {LIMITS.map((option) => (
-                                <option key={option} value={option}>
-                                    {option}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-                </div>
-            </header>
+            <PageHeader
+                title="القيود اليومية"
+                description={query.isSuccess ? `${String(entries.length)} قيدًا معروضًا` : 'دفتر القيود'}
+                actions={
+                    <>
+                        <div className="flex items-center gap-xs" data-erp-print-hide>
+                            <PrintActions title="القيود اليومية" />
+                            <label
+                                className="flex flex-col gap-xxs text-label-md text-ink-secondary"
+                                htmlFor="erp-v3-journal-limit"
+                            >
+                                عدد القيود
+                                <select
+                                    id="erp-v3-journal-limit"
+                                    value={limit}
+                                    onChange={(event) => {
+                                        setLimit(Number(event.target.value));
+                                        setOpenEntry(null);
+                                    }}
+                                    className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
+                                >
+                                    {LIMITS.map((option) => (
+                                        <option key={option} value={option}>
+                                            {option}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                        </div>
+                    </>
+                }
+            />
 
             <Card>
                 {query.isPending ? (

@@ -34,6 +34,7 @@ import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 
+import { PageHeader } from '../ui';
 /**
  * مدفوعات الموردين — CRUD كامل مثل V2:
  *  • إنشاء دفعة (POST /api/payments — admin|manager|accountant)
@@ -423,38 +424,33 @@ export function Payments() {
 
     return (
         <div className="erp-premium-screen flex flex-col gap-md">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        مدفوعات الموردين{' '}
-                        <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted" dir="ltr" lang="en">
-                            Supplier Payments
-                        </span>
-                    </h1>
-                    <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        دفعات الموردين في الفترة المختارة — تسجيل وتعديل وحذف. القراءة من `/api/procurement/payments`،
-                        والكتابة لـ admin|manager|accountant والحذف للأدمن فقط.
-                    </p>
-                </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                    {canWrite ? (
-                        <Button type="button" size="sm" onClick={() => openForm()}>
-                            تسجيل دفعة
-                        </Button>
-                    ) : null}
-                    <PrintActions title="مدفوعات الموردين" />
-                    <button
-                        type="button"
-                        onClick={() => {
-                            void paymentsQuery.refetch();
-                            void suppliersQuery.refetch();
-                        }}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                </div>
-            </header>
+            <PageHeader
+                title="مدفوعات الموردين"
+                english="Supplier Payments"
+                description="دفعات الموردين في الفترة المختارة — تسجيل وتعديل وحذف. القراءة من `/api/procurement/payments`، والكتابة لـ admin|manager|accountant والحذف للأدمن فقط."
+                actions={
+                    <>
+                        <div className="flex items-center gap-xs" data-erp-print-hide>
+                            {canWrite ? (
+                                <Button type="button" size="sm" onClick={() => openForm()}>
+                                    تسجيل دفعة
+                                </Button>
+                            ) : null}
+                            <PrintActions title="مدفوعات الموردين" />
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    void paymentsQuery.refetch();
+                                    void suppliersQuery.refetch();
+                                }}
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                            >
+                                تحديث
+                            </button>
+                        </div>
+                    </>
+                }
+            />
 
             <Card className="p-sm">
                 <div className="flex flex-wrap items-end gap-sm">

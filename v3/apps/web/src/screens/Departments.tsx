@@ -29,6 +29,7 @@ import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
 
+import { PageHeader } from '../ui';
 /**
  * سجل الأقسام — CRUD كامل مثل V2:
  *  • إنشاء قسم (POST /api/departments — admin|manager)
@@ -398,39 +399,34 @@ export function Departments() {
 
     return (
         <div className="erp-premium-screen flex flex-col gap-md">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        الأقسام{' '}
-                        <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted" dir="ltr" lang="en">
-                            Departments
-                        </span>
-                    </h1>
-                    <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        سجل الأقسام وإيراد ومصروف {monthLabel()} — إضافة وتعديل وحذف. القراءة من `/api/departments`،
-                        والكتابة لـ admin|manager والحذف للأدمن فقط.
-                    </p>
-                </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                    {canWrite ? (
-                        <Button type="button" size="sm" onClick={() => openForm()}>
-                            إضافة قسم
-                        </Button>
-                    ) : null}
-                    <PrintActions title="الأقسام" />
-                    <button
-                        type="button"
-                        onClick={() => {
-                            void departmentsQuery.refetch();
-                            void revenuesQuery.refetch();
-                            void expensesQuery.refetch();
-                        }}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                </div>
-            </header>
+            <PageHeader
+                title="الأقسام"
+                english="Departments"
+                description="سجل الأقسام وإيراد ومصروف {monthLabel()} — إضافة وتعديل وحذف. القراءة من `/api/departments`، والكتابة لـ admin|manager والحذف للأدمن فقط."
+                actions={
+                    <>
+                        <div className="flex items-center gap-xs" data-erp-print-hide>
+                            {canWrite ? (
+                                <Button type="button" size="sm" onClick={() => openForm()}>
+                                    إضافة قسم
+                                </Button>
+                            ) : null}
+                            <PrintActions title="الأقسام" />
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    void departmentsQuery.refetch();
+                                    void revenuesQuery.refetch();
+                                    void expensesQuery.refetch();
+                                }}
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                            >
+                                تحديث
+                            </button>
+                        </div>
+                    </>
+                }
+            />
 
             <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
                 <Kpi

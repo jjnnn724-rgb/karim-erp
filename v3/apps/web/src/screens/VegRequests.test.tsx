@@ -1,5 +1,5 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ToastProvider } from '../ui/Toast';
 import { VegRequests } from './VegRequests';
@@ -165,5 +165,18 @@ describe('طلبات شراء الخضار', () => {
         expect(screen.getByText('تعذّر جلب البيانات')).toBeTruthy();
         expect(screen.getByText('تعذّر جلب طلبات الخضار')).toBeTruthy();
         expect(screen.getByRole('button', { name: 'إعادة المحاولة' })).toBeTruthy();
+    });
+
+    it('يعرض مرشّح الترتيب كشريحة قابلة للإزالة', async () => {
+        stubFetch();
+        renderScreen();
+        await screen.findByText('VR-20261025-17905');
+
+        fireEvent.click(screen.getByRole('button', { name: 'رقم الطلب' }));
+        const chips = screen.getByRole('list', { name: 'المرشّحات النشطة' });
+        expect(within(chips).getByText(/رقم الطلب \(تصاعدي\)/)).toBeTruthy();
+
+        fireEvent.click(within(chips).getByRole('button', { name: 'إزالة مرشّح الترتيب' }));
+        expect(screen.queryByRole('list', { name: 'المرشّحات النشطة' })).toBeNull();
     });
 });

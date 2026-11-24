@@ -397,8 +397,10 @@ export function FaceCaptureDialog({
                     }
                     engineRef.current = engine;
                     optionsRef.current = new engine.TinyFaceDetectorOptions({
-                        inputSize: 320,
-                        scoreThreshold: 0.35,
+                        // 416 أدق في الوجوه الصغيرة/البعيدة، و0.5 يقلّل
+                        // الوجوه الوهمية في الخلفية التي كانت تلوّث اللقطة.
+                        inputSize: 416,
+                        scoreThreshold: 0.5,
                     });
                     if (streamRef.current) {
                         setMessage(

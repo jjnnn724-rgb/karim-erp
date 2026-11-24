@@ -36,7 +36,7 @@ import { useAuthState } from '../lib/auth';
 import { fetchEmployees, fetchHrDepartments } from '../lib/employees';
 import { formatInt } from '../lib/inventory-register';
 import { downloadBlob } from '../lib/pdf-share';
-import { DataTable, type DataTableColumn, type DataTableSorting } from '../ui';
+import { PageHeader, DataTable, type DataTableColumn, type DataTableSorting } from '../ui';
 import { StatCard } from '../ui/StatCard';
 
 const STATE_KEYS = Object.keys(ATTENDANCE_STATE_AR) as AttendanceState[];
@@ -338,48 +338,46 @@ export function Attendance() {
 
     return (
         <div className="flex flex-col gap-md attendance-premium">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        الحضور والانصراف{' '}
-                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
-                            Attendance
-                        </span>
-                    </h1>
-                    <p className="text-body-sm text-muted">سجل البصمات ومؤشرات الفترة.</p>
-                </div>
-                <PrintActions title="الحضور والانصراف" />
-                <AttendanceWorkbench employees={employeesQuery.data ?? []} todayStr={today} />
-                <button
-                    type="button"
-                    data-erp-print-hide
-                    disabled={visibleRows.length === 0}
-                    onClick={() => {
-                        const csv = attendanceCsv(sortedRows);
-                        downloadBlob(
-                            new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }),
-                            `attendance_${range.from}_${range.to}.csv`,
-                        );
-                    }}
-                    className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
-                >
-                    تصدير CSV
-                </button>
-                <button
-                    type="button"
-                    onClick={() => {
-                        void attendanceQuery.refetch();
-                        void todayQuery.refetch();
-                        void employeesQuery.refetch();
-                        void departmentsQuery.refetch();
-                        void leavesQuery.refetch();
-                    }}
-                    data-erp-print-hide
-                    className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                >
-                    تحديث
-                </button>
-            </header>
+            <PageHeader
+                title="الحضور والانصراف"
+                english="Attendance"
+                description="سجل البصمات ومؤشرات الفترة."
+                actions={
+                    <>
+                        <PrintActions title="الحضور والانصراف" />
+                        <AttendanceWorkbench employees={employeesQuery.data ?? []} todayStr={today} />
+                        <button
+                            type="button"
+                            data-erp-print-hide
+                            disabled={visibleRows.length === 0}
+                            onClick={() => {
+                                const csv = attendanceCsv(sortedRows);
+                                downloadBlob(
+                                    new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }),
+                                    `attendance_${range.from}_${range.to}.csv`,
+                                );
+                            }}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                        >
+                            تصدير CSV
+                        </button>
+                        <button
+                            type="button"
+                            onClick={() => {
+                                void attendanceQuery.refetch();
+                                void todayQuery.refetch();
+                                void employeesQuery.refetch();
+                                void departmentsQuery.refetch();
+                                void leavesQuery.refetch();
+                            }}
+                            data-erp-print-hide
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                        >
+                            تحديث
+                        </button>
+                    </>
+                }
+            />
 
             <Card className="p-sm">
                 <div className="flex flex-wrap items-end gap-sm">

@@ -8,7 +8,7 @@ import { mockAccountChartPageService } from '../lib/account-chart';
 import { accountTypeLabel, formatInt } from '../lib/format';
 import { queryKeys } from '../lib/queryKeys';
 import type { DataTableColumn, DataTableTreeRow } from '../ui';
-import { DataTable, useToast } from '../ui';
+import { PageHeader, DataTable, useToast } from '../ui';
 
 const PAGE_SIZE = 4;
 const EMPTY_PAGE_ITEMS: AccountChartNode[] = [];
@@ -135,19 +135,21 @@ export function AccountsTree() {
 
     return (
         <div className="flex flex-col gap-md">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">شجرة الحسابات</h1>
-                    <p className="text-body-sm text-muted" aria-live="polite">
-                        {query.isSuccess
-                            ? `${formatInt(query.data.matchedAccounts)} حساب مطابق · ${formatInt(query.data.total)} مجموعة حساب رئيسية`
-                            : 'عرض شجري للحسابات مع البحث والمرشّحات'}
-                    </p>
-                </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                    <PrintActions title="شجرة الحسابات" />
-                </div>
-            </header>
+            <PageHeader
+                title="شجرة الحسابات"
+                description={
+                    query.isSuccess
+                        ? `${formatInt(query.data.matchedAccounts)} حساب مطابق · ${formatInt(query.data.total)} مجموعة حساب رئيسية`
+                        : 'عرض شجري للحسابات مع البحث والمرشّحات'
+                }
+                actions={
+                    <>
+                        <div className="flex items-center gap-xs" data-erp-print-hide>
+                            <PrintActions title="شجرة الحسابات" />
+                        </div>
+                    </>
+                }
+            />
 
             <SearchToolbar
                 value={draft}

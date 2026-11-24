@@ -57,6 +57,7 @@ import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
 import { useToast } from '../ui/Toast';
 
+import { PageHeader } from '../ui';
 /**
  * سجل مالي للقراءة — الإيرادات والمصروفات على سجلٍ واحد.
  *
@@ -726,40 +727,38 @@ export function FinanceRegister({ config }: { config: RegisterConfig }) {
 
     return (
         <div className="finance-register-premium flex flex-col gap-md">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        {config.title}{' '}
-                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
-                            {config.english}
-                        </span>
-                    </h1>
-                    <p className="text-body-sm text-muted">{config.subtitle}</p>
-                </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                    {writable ? (
-                        <Button
-                            type="button"
-                            size="sm"
-                            onClick={() => {
-                                setPageError('');
-                                setCreateOpen(true);
-                            }}
-                        >
-                            {config.entity === 'revenues' ? 'إضافة إيراد' : 'إضافة مصروف'}
-                        </Button>
-                    ) : null}
-                    <PrintActions title={config.title} />
-                    <button
-                        type="button"
-                        onClick={resetFilters}
-                        disabled={!filtered}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
-                    >
-                        عرض الكل
-                    </button>
-                </div>
-            </header>
+            <PageHeader
+                title={config.title}
+                english={config.english}
+                description={config.subtitle}
+                actions={
+                    <>
+                        <div className="flex items-center gap-xs" data-erp-print-hide>
+                            {writable ? (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={() => {
+                                        setPageError('');
+                                        setCreateOpen(true);
+                                    }}
+                                >
+                                    {config.entity === 'revenues' ? 'إضافة إيراد' : 'إضافة مصروف'}
+                                </Button>
+                            ) : null}
+                            <PrintActions title={config.title} />
+                            <button
+                                type="button"
+                                onClick={resetFilters}
+                                disabled={!filtered}
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                            >
+                                عرض الكل
+                            </button>
+                        </div>
+                    </>
+                }
+            />
 
             {pageError ? (
                 <p role="alert" className="text-body-sm text-danger-text">

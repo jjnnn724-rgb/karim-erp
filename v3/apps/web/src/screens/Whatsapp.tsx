@@ -18,6 +18,7 @@ import {
     fetchWhatsappTemplates,
 } from '../lib/whatsapp-write';
 
+import { PageHeader } from '../ui';
 function Kpi({ label, english, value, hint }: { label: string; english: string; value: string; hint: string }) {
     return (
         <li className="rounded-lg border border-hairline bg-surface p-md shadow-card">
@@ -71,47 +72,43 @@ export function Whatsapp() {
 
     return (
         <div className="flex flex-col gap-lg">
-            <header className="flex flex-wrap items-end justify-between gap-md border-b border-hairline pb-md">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        واتساب والتنبيهات{' '}
-                        <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted" dir="ltr" lang="en">
-                            WhatsApp
-                        </span>
-                    </h1>
-                    <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        حالة اتصال محرك واتساب، سجل الرسائل الواردة، صندوق الصادر، وقوالب الإشعارات التلقائية.
-                    </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-xs">
-                    <PrintActions title="واتساب والتنبيهات" />
-                    <span
-                        className={`rounded-full px-sm py-xs text-label-md font-medium ${
-                            stateDisplay.tone === 'success'
-                                ? 'bg-success/15 text-success'
-                                : stateDisplay.tone === 'warn'
-                                  ? 'bg-warn/15 text-warn'
-                                  : stateDisplay.tone === 'danger'
-                                    ? 'bg-danger/15 text-danger'
-                                    : 'bg-surface-sunken text-muted'
-                        }`}
-                    >
-                        {stateDisplay.label}
-                    </span>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            void statusQuery.refetch();
-                            void messagesQuery.refetch();
-                            void outboxQuery.refetch();
-                            void templatesQuery.refetch();
-                        }}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                </div>
-            </header>
+            <PageHeader
+                title="واتساب والتنبيهات"
+                english="WhatsApp"
+                description="حالة اتصال محرك واتساب، سجل الرسائل الواردة، صندوق الصادر، وقوالب الإشعارات التلقائية."
+                actions={
+                    <>
+                        <div className="flex flex-wrap items-center gap-xs">
+                            <PrintActions title="واتساب والتنبيهات" />
+                            <span
+                                className={`rounded-full px-sm py-xs text-label-md font-medium ${
+                                    stateDisplay.tone === 'success'
+                                        ? 'bg-success/15 text-success'
+                                        : stateDisplay.tone === 'warn'
+                                          ? 'bg-warn/15 text-warn'
+                                          : stateDisplay.tone === 'danger'
+                                            ? 'bg-danger/15 text-danger'
+                                            : 'bg-surface-sunken text-muted'
+                                }`}
+                            >
+                                {stateDisplay.label}
+                            </span>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    void statusQuery.refetch();
+                                    void messagesQuery.refetch();
+                                    void outboxQuery.refetch();
+                                    void templatesQuery.refetch();
+                                }}
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                            >
+                                تحديث
+                            </button>
+                        </div>
+                    </>
+                }
+            />
 
             <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4" aria-label="مؤشرات واتساب">
                 <Kpi

@@ -1,0 +1,162 @@
+/* طلبات شراء النواقص — طبقة صقل بصرية فوق نظام الرموز.
+   رموز --erp-* فقط، خصائص منطقية RTL، بلا ألوان خام (عقد CSS ratchet). */
+
+.erp-pr-kpi {
+    container-type: inline-size;
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.5rem;
+    border: 1px solid var(--erp-hairline);
+    border-radius: 0.75rem;
+    background: var(--erp-surface);
+    padding: 1rem;
+    box-shadow: var(--erp-shadow-card);
+}
+.erp-pr-kpi__top {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+.erp-pr-kpi__icon {
+    display: grid;
+    flex: none;
+    place-items: center;
+    width: 2.25rem;
+    height: 2.25rem;
+    border: 1px solid var(--erp-hairline);
+    border-radius: 0.5rem;
+    background: var(--erp-surface-sunken);
+    color: var(--erp-muted);
+}
+.erp-pr-kpi--warning .erp-pr-kpi__icon {
+    border-color: var(--erp-warning);
+    background: var(--erp-warning-soft);
+    color: var(--erp-warning-text);
+}
+.erp-pr-kpi--info .erp-pr-kpi__icon {
+    border-color: var(--erp-info);
+    background: var(--erp-info-soft);
+    color: var(--erp-info-text);
+}
+.erp-pr-kpi--success .erp-pr-kpi__icon {
+    border-color: var(--erp-success);
+    background: var(--erp-success-soft);
+    color: var(--erp-success-text);
+}
+.erp-pr-kpi__value {
+    min-width: 0;
+    font-size: clamp(1.125rem, 7cqw, 1.875rem);
+    font-variant-numeric: tabular-nums;
+    font-weight: 600;
+    line-height: 1.2;
+    color: var(--erp-ink);
+}
+.erp-pr-kpi__skeleton {
+    display: block;
+    width: 70%;
+    height: 2.25rem;
+    border-radius: 0.375rem;
+    background: var(--erp-surface-hover);
+    animation: erp-pr-pulse 1.2s ease-in-out infinite;
+}
+
+.erp-pr-filters {
+    display: flex;
+    flex-direction: column;
+    gap: 0.875rem;
+    padding: 1rem;
+}
+.erp-pr-filters__head {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding-block-end: 0.75rem;
+    border-block-end: 1px solid var(--erp-hairline);
+}
+.erp-pr-status-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+.erp-pr-status[aria-pressed="true"] {
+    border-color: var(--erp-primary);
+    background: var(--erp-surface-sunken);
+    color: var(--erp-ink);
+    font-weight: 600;
+    box-shadow: var(--erp-shadow-card);
+}
+.erp-pr-chips {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.375rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+}
+.erp-pr-chip {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    border: 1px dashed var(--erp-hairline-strong);
+    border-radius: 999px;
+    background: var(--erp-surface-sunken);
+    padding: 0.2rem 0.6rem;
+    font-size: var(--text-body-sm);
+}
+.erp-pr-chip .erp-pr-chip__remove {
+    display: grid;
+    place-items: center;
+    width: 1.25rem;
+    height: 1.25rem;
+    border-radius: 999px;
+    color: var(--erp-muted);
+}
+.erp-pr-chip .erp-pr-chip__remove:hover {
+    background: var(--erp-surface-hover);
+    color: var(--erp-danger-text);
+}
+
+.erp-pr-tablewrap {
+    display: flex;
+    min-width: 0;
+    flex-direction: column;
+    gap: 0.75rem;
+}
+.erp-pr-tablebar {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.75rem;
+    padding: 0.75rem 1rem;
+    border-block-end: 1px solid var(--erp-hairline);
+}
+
+@keyframes erp-pr-pulse {
+    50% {
+        opacity: 0.5;
+    }
+}
+
+@media (max-width: 640px) {
+    .erp-pr-status-filters {
+        gap: 0.3rem;
+    }
+    .erp-pr-tablebar {
+        align-items: flex-start;
+    }
+}
+
+@media (prefers-reduced-motion: reduce) {
+    .erp-pr-kpi__skeleton {
+        animation: none;
+    }
+}

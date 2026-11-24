@@ -12,7 +12,7 @@ import {
     type SessionsResponse,
     sessionsResponseSchema,
 } from '../lib/sessions';
-import { DataTable, type DataTableColumn } from '../ui';
+import { PageHeader, DataTable, type DataTableColumn } from '../ui';
 
 function Kpi({ label, english, value, hint }: { label: string; english: string; value: string; hint: string }) {
     return (
@@ -192,39 +192,35 @@ export function Sessions() {
 
     return (
         <div className="flex flex-col gap-lg">
-            <header className="flex flex-wrap items-end justify-between gap-md border-b border-hairline pb-md">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        الأجهزة والجلسات{' '}
-                        <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted" dir="ltr" lang="en">
-                            Sessions
-                        </span>
-                    </h1>
-                    <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        عرض الجلسات النشطة والأجهزة المتصلة بحسابك، وإبطال أي جهاز غير موثوق به فورًا.
-                    </p>
-                </div>
-                <div className="flex flex-wrap gap-xs">
-                    <button
-                        type="button"
-                        onClick={() => void sessionsQuery.refetch()}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                    {summary.otherSessionsCount > 0 && (
-                        <button
-                            type="button"
-                            onClick={handleRevokeOthers}
-                            disabled={revokeOthersMutation.isPending}
-                            className="rounded-md border border-warn bg-warn/10 px-md py-xs text-button-md text-warn hover:bg-warn/20"
-                        >
-                            {revokeOthersMutation.isPending ? 'جارٍ الإبطال…' : 'إبطال الجلسات الأخرى'}
-                        </button>
-                    )}
-                    <PrintActions title="الجلسات" />
-                </div>
-            </header>
+            <PageHeader
+                title="الأجهزة والجلسات"
+                english="Sessions"
+                description="عرض الجلسات النشطة والأجهزة المتصلة بحسابك، وإبطال أي جهاز غير موثوق به فورًا."
+                actions={
+                    <>
+                        <div className="flex flex-wrap gap-xs">
+                            <button
+                                type="button"
+                                onClick={() => void sessionsQuery.refetch()}
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                            >
+                                تحديث
+                            </button>
+                            {summary.otherSessionsCount > 0 && (
+                                <button
+                                    type="button"
+                                    onClick={handleRevokeOthers}
+                                    disabled={revokeOthersMutation.isPending}
+                                    className="rounded-md border border-warn bg-warn/10 px-md py-xs text-button-md text-warn hover:bg-warn/20"
+                                >
+                                    {revokeOthersMutation.isPending ? 'جارٍ الإبطال…' : 'إبطال الجلسات الأخرى'}
+                                </button>
+                            )}
+                            <PrintActions title="الجلسات" />
+                        </div>
+                    </>
+                }
+            />
 
             {actionMsg && (
                 <div className="rounded-md bg-surface-sunken p-sm text-body-sm text-ink" role="status">

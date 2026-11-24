@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+    ALL_SCREENS_TITLE,
+    DAILY_KEYS,
+    DAILY_TITLE,
     DEFAULT_NAV_PREFS,
     documentTitle,
     groupForPath,
@@ -120,6 +123,34 @@ describe('التنقّل — العنوان والمسار', () => {
         for (const entry of MOBILE_PRIMARY.slice(1)) {
             expect(entry.key).not.toBeNull();
             expect(titleForPath(`/${String(entry.key)}`)).toBeTruthy();
+        }
+    });
+});
+
+describe('التنقّل — شاشاتي اليومية أوّلًا ثم كل الشاشات', () => {
+    it('القائمة اليومية فرعية من الـ64 وبلا تكرار', () => {
+        expect(DAILY_KEYS.length).toBeGreaterThan(4);
+        expect(new Set(DAILY_KEYS).size).toBe(DAILY_KEYS.length);
+        const allKeys = new Set(NAV_GROUPS.flatMap((group) => group.keys));
+        for (const key of DAILY_KEYS) {
+            expect(allKeys.has(key)).toBe(true);
+        }
+    });
+
+    it('اليومية + الباقي = الـ64 بلا تكرار ولا نقص', () => {
+        const grouped = NAV_GROUPS.flatMap((group) => group.keys);
+        const rest = grouped.filter((key) => !DAILY_KEYS.includes(key));
+        const shown = [...DAILY_KEYS, ...rest];
+        expect(shown).toHaveLength(V3_SCREENS.length);
+        expect(new Set(shown).size).toBe(V3_SCREENS.length);
+        expect([...shown].sort()).toEqual([...V3_SCREENS].sort());
+    });
+
+    it('عنوانا القسمين معرّفان ولكل شاشة يومية عنوان', () => {
+        expect(DAILY_TITLE).toBe('شاشاتي اليومية');
+        expect(ALL_SCREENS_TITLE).toBe('كل الشاشات');
+        for (const key of DAILY_KEYS) {
+            expect(titleForPath(`/${key}`)).toBeTruthy();
         }
     });
 });

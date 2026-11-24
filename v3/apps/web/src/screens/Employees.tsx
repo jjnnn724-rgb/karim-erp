@@ -2,7 +2,7 @@ import './Employees.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { PrintActions } from '../components/PrintActions';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
+import { Card, StateEmpty, StateError, StateLoading, TableSkeleton } from '../components/TableState';
 import { attendanceMinutes, fetchAttendanceRange, todayIso, weekdayAr } from '../lib/attendance';
 import { useAuthState } from '../lib/auth';
 import {
@@ -53,6 +53,7 @@ import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 
+import { DataTable, type DataTableColumn, FilterBar, PageHeader } from '../ui';
 /**
  * دليل الموظفين — CRUD كامل مثل V2 (عرض بطاقات/جدول):
  *  • إنشاء موظف (POST /api/employees — admin|manager|hr)
@@ -89,6 +90,9 @@ function readRosterView(): RosterView {
 
 type SortKey = 'code' | 'name' | 'dept' | 'status';
 
+/** صفّ يوم واحد من كشف الحضور — نفس نوع `rangeReportRows`. */
+type AttendanceDayRow = RangeModel['rows'][number];
+
 function formatInt(value: number): string {
     return value.toLocaleString('en-US');
 }
@@ -107,27 +111,6 @@ function Kpi({ label, english, value, hint }: { label: string; english: string; 
             </p>
             <p className="mt-xxs text-caption text-muted">{hint}</p>
         </div>
-    );
-}
-
-function SortableTh({
-    label,
-    sortKey,
-    sort,
-    onToggle,
-}: {
-    label: string;
-    sortKey: SortKey;
-    sort: { key: SortKey; dir: 'asc' | 'desc' } | null;
-    onToggle: (key: SortKey) => void;
-}) {
-    const ariaSort = sort?.key !== sortKey ? 'none' : sort.dir === 'asc' ? 'ascending' : 'descending';
-    return (
-        <th scope="col" aria-sort={ariaSort} className="px-sm py-xs text-start font-medium">
-            <button type="button" onClick={() => onToggle(sortKey)}>
-                {label}
-            </button>
-        </th>
     );
 }
 
@@ -776,6 +759,75 @@ function AttendanceRangeSection({
         );
     };
 
+    // أعمدة كشف الحضور — نفس بيانات الجدول السابق، بعقد DataTable الموحّد.
+    // biome-ignore lint/correctness/useExhaustiveDependencies: delayCell دالة عرض نقية تُقرأ من إغلاق ثابت.
+    const attendanceColumns = useMemo<DataTableColumn<AttendanceDayRow>[]>(
+        () => [
+            {
+                key: 'date',
+                header: 'التاريخ',
+                numeric: true,
+                sortValue: (day) => day.date,
+                cell: (day) => (
+                    <span className="erp-numeric" dir="ltr">
+                        {day.date}
+                    </span>
+                ),
+            },
+            {
+                key: 'weekday',
+                header: 'اليوم',
+                hideOnMobile: true,
+                cell: (day) => <span className="text-muted">{weekdayAr(day.date)}</span>,
+            },
+            {
+                key: 'check-in',
+                header: 'الحضور',
+                numeric: true,
+                cell: (day) => (
+                    <span className="erp-numeric" dir="ltr">
+                        {day.checkIn || '—'}
+                    </span>
+                ),
+            },
+            {
+                key: 'check-out',
+                header: 'الانصراف',
+                numeric: true,
+                cell: (day) => (
+                    <span className="erp-numeric" dir="ltr">
+                        {day.checkOut || '—'}
+                    </span>
+                ),
+            },
+            {
+                key: 'minutes',
+                header: 'الساعات',
+                numeric: true,
+                sortValue: (day) => day.minutes,
+                cell: (day) => (
+                    <span className="erp-numeric" dir="ltr">
+                        {minutesToHM(day.minutes)}
+                    </span>
+                ),
+            },
+            { key: 'delay', header: 'التأخير', cell: (day) => delayCell(day) },
+            {
+                key: 'state',
+                header: 'الحالة',
+                cell: (day) => {
+                    const state = ATT_STATE[day.state] ?? ATT_STATE.review;
+                    return (
+                        <span className="erp-badge" data-tone={state.tone}>
+                            {state.label}
+                        </span>
+                    );
+                },
+            },
+        ],
+        [],
+    );
+
     return (
         <section className="erp-emp-sec-block" aria-label="أيام الحضور والانصراف">
             <h4 className="erp-emp-sec">
@@ -860,66 +912,15 @@ function AttendanceRangeSection({
                     {model.truncated ? (
                         <p className="text-body-sm text-muted">الكشف مقترب على 62 يومًا كحدّ أعلى.</p>
                     ) : null}
-                    {/* biome-ignore lint/a11y/noNoninteractiveTabindex: the attendance table scroll region must remain keyboard reachable. */}
-                    <div className="erp-table__scroll erp-emp-att__scroll" tabIndex={0}>
-                        <table className="erp-table__grid">
-                            <thead>
-                                <tr>
-                                    <th scope="col">التاريخ</th>
-                                    <th scope="col">اليوم</th>
-                                    <th scope="col">الحضور</th>
-                                    <th scope="col">الانصراف</th>
-                                    <th scope="col">الساعات</th>
-                                    <th scope="col">التأخير</th>
-                                    <th scope="col">الحالة</th>
-                                </tr>
-                            </thead>
-                            <tbody>
-                                {model.rows.length ? (
-                                    model.rows.map((r) => {
-                                        const st = ATT_STATE[r.state] ?? ATT_STATE.review;
-                                        return (
-                                            <tr key={r.date}>
-                                                <td>
-                                                    <span className="erp-numeric" dir="ltr">
-                                                        {r.date}
-                                                    </span>
-                                                </td>
-                                                <td className="text-muted">{weekdayAr(r.date)}</td>
-                                                <td>
-                                                    <span className="erp-numeric" dir="ltr">
-                                                        {r.checkIn || '—'}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <span className="erp-numeric" dir="ltr">
-                                                        {r.checkOut || '—'}
-                                                    </span>
-                                                </td>
-                                                <td>
-                                                    <span className="erp-numeric" dir="ltr">
-                                                        {minutesToHM(r.minutes)}
-                                                    </span>
-                                                </td>
-                                                <td>{delayCell(r)}</td>
-                                                <td>
-                                                    <span className="erp-badge" data-tone={st.tone}>
-                                                        {st.label}
-                                                    </span>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })
-                                ) : (
-                                    <tr>
-                                        <td colSpan={7} className="text-muted">
-                                            لا أيام في هذه الفترة
-                                        </td>
-                                    </tr>
-                                )}
-                            </tbody>
-                        </table>
-                    </div>
+                    <DataTable<AttendanceDayRow>
+                        caption={`كشف حضور ${employeeName} — ${s.from} إلى ${s.to}`}
+                        columns={attendanceColumns}
+                        rows={model.rows}
+                        rowKey={(day) => day.date}
+                        maxHeight={320}
+                        emptyTitle="لا أيام في هذه الفترة"
+                        emptyDescription="غيّر الفترة لعرض أيام أخرى."
+                    />
                     {loaded && model.rows.length > 0 ? (
                         <p className="text-caption text-muted" hidden>
                             كشف {s.from} — {s.to}
@@ -1204,13 +1205,6 @@ export function Employees() {
     const capped = (employeesQuery.data?.length ?? 0) >= SERVER_PAGE_SIZE * MAX_PAGES;
     const filtered = Boolean(query || dept || status);
 
-    function toggleSort(key: SortKey) {
-        setPage(1);
-        setSort((previous) =>
-            previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' },
-        );
-    }
-
     function resetFilters() {
         setQuery('');
         setDept('');
@@ -1220,6 +1214,127 @@ export function Employees() {
     }
 
     const activeCount = statuses.find((entry) => entry.value === 'active')?.count ?? 0;
+
+    // أعمدة جدول الدليل — نفس بيانات الجدول السابق، بعقد DataTable الموحّد.
+    const employeeColumns: DataTableColumn<EmployeeRow>[] = [
+        {
+            key: 'code',
+            header: 'الكود',
+            numeric: true,
+            sortValue: (employee) => employee.code,
+            cell: (employee) => (
+                <span className="erp-numeric" dir="ltr">
+                    {employee.code || '—'}
+                </span>
+            ),
+        },
+        {
+            key: 'name',
+            header: 'الاسم',
+            sortValue: (employee) => employee.name,
+            cell: (employee) => employee.name,
+        },
+        {
+            key: 'dept',
+            header: 'القسم',
+            cell: (employee) => <span className="text-muted">{employee.deptCode || '—'}</span>,
+        },
+        {
+            key: 'position',
+            header: 'الوظيفة',
+            cell: (employee) => <span className="text-muted">{employee.position || '—'}</span>,
+        },
+        {
+            key: 'phone',
+            header: 'الهاتف',
+            numeric: true,
+            cell: (employee) => (
+                <span className="erp-numeric" dir="ltr">
+                    {employee.phone || '—'}
+                </span>
+            ),
+        },
+        {
+            key: 'status',
+            header: 'الحالة',
+            sortValue: (employee) => employee.statusLabel,
+            cell: (employee) => (
+                <span className={employee.status === 'active' ? 'text-success-text' : 'text-muted'}>
+                    {employee.statusLabel}
+                </span>
+            ),
+        },
+        {
+            key: 'profile',
+            header: 'كشف الموظف',
+            cell: (employee) => (
+                <Button
+                    type="button"
+                    size="sm"
+                    variant="secondary"
+                    aria-label={`فتح البطاقة الكاملة — ${employee.name}`}
+                    onClick={() => setProfileRow(employee)}
+                >
+                    فتح البطاقة
+                </Button>
+            ),
+        },
+    ];
+    if (canWrite || canDelete) {
+        employeeColumns.push({
+            key: 'actions',
+            header: 'إجراءات',
+            cell: (employee) => (
+                <div className="flex flex-wrap items-center gap-xs" data-erp-print-hide>
+                    {canWrite ? (
+                        <>
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                title="تعديل البيانات"
+                                onClick={() => openForm(employee)}
+                            >
+                                تعديل
+                            </Button>
+                            {employee.status === 'active' ? (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="secondary"
+                                    title="إيقاف الموظف"
+                                    onClick={() => handleChangeStatus(employee, false)}
+                                >
+                                    إيقاف
+                                </Button>
+                            ) : (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="secondary"
+                                    title="تفعيل الموظف"
+                                    onClick={() => handleChangeStatus(employee, true)}
+                                >
+                                    تفعيل
+                                </Button>
+                            )}
+                        </>
+                    ) : null}
+                    {canDelete ? (
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="danger"
+                            title="حذف الموظف"
+                            onClick={() => handleDelete(employee)}
+                        >
+                            حذف
+                        </Button>
+                    ) : null}
+                </div>
+            ),
+        });
+    }
 
     /* ── الكتبات عبر useWriteMutation ────────────────────────────────── */
 
@@ -1312,39 +1427,33 @@ export function Employees() {
 
     return (
         <div className="flex flex-col gap-lg erp-premium erp-premium-employees">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        دليل الموظفين{' '}
-                        <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted" dir="ltr" lang="en">
-                            Employees
-                        </span>
-                    </h1>
-                    <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        من في الدليل، وفي أي قسم، وبأي حالة — الإضافة والتعديل والإيقاف والتفعيل والحذف مثل الشاشة
-                        القديمة. الراتب والإقامة والبصمة لا تُعرض في أي صفّ. القراءة محجوزة في الخادم للأدوار الإدارية،
-                        والكتابة لـ admin|manager|hr والحذف للأدمن فقط.
-                    </p>
-                </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                    {canWrite ? (
-                        <Button type="button" size="sm" onClick={() => openForm()}>
-                            إضافة موظف
-                        </Button>
-                    ) : null}
-                    <PrintActions title="دليل الموظفين" />
-                    <button
-                        type="button"
-                        onClick={() => {
-                            void employeesQuery.refetch();
-                            void departmentsQuery.refetch();
-                        }}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                </div>
-            </header>
+            <PageHeader
+                title="دليل الموظفين"
+                english="Employees"
+                description="من في الدليل، وفي أي قسم، وبأي حالة — الإضافة والتعديل والإيقاف والتفعيل والحذف مثل الشاشة القديمة. الراتب والإقامة والبصمة لا تُعرض في أي صفّ. القراءة محجوزة في الخادم للأدوار الإدارية، والكتابة لـ admin|manager|hr والحذف للأدمن فقط."
+                actions={
+                    <>
+                        <div className="flex items-center gap-xs" data-erp-print-hide>
+                            {canWrite ? (
+                                <Button type="button" size="sm" onClick={() => openForm()}>
+                                    إضافة موظف
+                                </Button>
+                            ) : null}
+                            <PrintActions title="دليل الموظفين" />
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    void employeesQuery.refetch();
+                                    void departmentsQuery.refetch();
+                                }}
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                            >
+                                تحديث
+                            </button>
+                        </div>
+                    </>
+                }
+            />
 
             <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
                 <Kpi
@@ -1378,98 +1487,93 @@ export function Employees() {
             </div>
 
             <Card className="p-sm">
-                <div className="flex flex-wrap items-end gap-sm">
-                    <div className="flex flex-col gap-xxs text-label-md text-ink-secondary">
-                        <span>طريقة العرض</span>
-                        <fieldset className="m-0 flex min-w-0 gap-xxs border-0 p-0" aria-label="طريقة العرض">
-                            <button
-                                type="button"
-                                aria-pressed={view === 'cards'}
-                                onClick={() => setView('cards')}
-                                className={`rounded-md border border-hairline-strong px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover ${
-                                    view === 'cards' ? 'bg-surface-sunken font-medium' : 'bg-surface'
-                                }`}
+                <FilterBar
+                    bare
+                    searchLabel="بحث"
+                    searchPlaceholder="اسم، كود، وظيفة، قسم، هاتف"
+                    searchValue={query}
+                    onSearchChange={(value) => {
+                        setQuery(value);
+                        setPage(1);
+                    }}
+                    onReset={resetFilters}
+                    resetDisabled={!filtered}
+                    advancedFilters={
+                        <>
+                            <div className="flex flex-col gap-xxs text-label-md text-ink-secondary">
+                                <span>طريقة العرض</span>
+                                <fieldset className="m-0 flex min-w-0 gap-xxs border-0 p-0" aria-label="طريقة العرض">
+                                    <button
+                                        type="button"
+                                        aria-pressed={view === 'cards'}
+                                        onClick={() => setView('cards')}
+                                        className={`rounded-md border border-hairline-strong px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover ${
+                                            view === 'cards' ? 'bg-surface-sunken font-medium' : 'bg-surface'
+                                        }`}
+                                    >
+                                        بطاقات
+                                    </button>
+                                    <button
+                                        type="button"
+                                        aria-pressed={view === 'table'}
+                                        onClick={() => setView('table')}
+                                        className={`rounded-md border border-hairline-strong px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover ${
+                                            view === 'table' ? 'bg-surface-sunken font-medium' : 'bg-surface'
+                                        }`}
+                                    >
+                                        جدول
+                                    </button>
+                                </fieldset>
+                            </div>
+                            <label
+                                className="flex flex-col gap-xxs text-label-md text-ink-secondary"
+                                htmlFor="erp-employees-dept"
                             >
-                                بطاقات
-                            </button>
-                            <button
-                                type="button"
-                                aria-pressed={view === 'table'}
-                                onClick={() => setView('table')}
-                                className={`rounded-md border border-hairline-strong px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover ${
-                                    view === 'table' ? 'bg-surface-sunken font-medium' : 'bg-surface'
-                                }`}
+                                القسم
+                                <select
+                                    id="erp-employees-dept"
+                                    value={dept}
+                                    onChange={(event) => {
+                                        setDept(event.target.value);
+                                        setPage(1);
+                                    }}
+                                    className="h-10 w-full min-w-0 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:w-auto"
+                                >
+                                    <option value="">كل الأقسام</option>
+                                    {departments.map((entry) => (
+                                        <option key={entry.code || '—'} value={entry.code || '—'}>
+                                            {entry.code ? entry.label : 'بلا قسم'}
+                                        </option>
+                                    ))}
+                                </select>
+                            </label>
+                            <label
+                                className="flex flex-col gap-xxs text-label-md text-ink-secondary"
+                                htmlFor="erp-employees-status"
                             >
-                                جدول
-                            </button>
-                        </fieldset>
-                    </div>
-                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-employees-q">
-                        بحث
-                        <input
-                            id="erp-employees-q"
-                            type="search"
-                            value={query}
-                            onChange={(event) => {
-                                setQuery(event.target.value);
-                                setPage(1);
-                            }}
-                            placeholder="اسم، كود، وظيفة، قسم، هاتف"
-                            className="h-10 w-full min-w-0 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:w-64"
-                        />
-                    </label>
-                    <label
-                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-employees-dept"
-                    >
-                        القسم
-                        <select
-                            id="erp-employees-dept"
-                            value={dept}
-                            onChange={(event) => {
-                                setDept(event.target.value);
-                                setPage(1);
-                            }}
-                            className="h-10 w-full min-w-0 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:w-auto"
-                        >
-                            <option value="">كل الأقسام</option>
-                            {departments.map((entry) => (
-                                <option key={entry.code || '—'} value={entry.code || '—'}>
-                                    {entry.code ? entry.label : 'بلا قسم'}
-                                </option>
-                            ))}
-                        </select>
-                    </label>
-                    <label
-                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-employees-status"
-                    >
-                        الحالة
-                        <select
-                            id="erp-employees-status"
-                            value={status}
-                            onChange={(event) => {
-                                setStatus(event.target.value);
-                                setPage(1);
-                            }}
-                            className="h-10 w-full min-w-0 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:w-auto"
-                        >
-                            <option value="">كل الحالات</option>
-                            <option value="active">نشط</option>
-                            <option value="inactive">موقوف</option>
-                        </select>
-                    </label>
-                    <button
-                        type="button"
-                        onClick={resetFilters}
-                        className="rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover"
-                    >
-                        مسح المرشّحات
-                    </button>
-                    <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted" role="status">
-                        {formatInt(sorted.length)} موظفًا معروضًا من {formatInt(totals.total)}
-                    </span>
-                </div>
+                                الحالة
+                                <select
+                                    id="erp-employees-status"
+                                    value={status}
+                                    onChange={(event) => {
+                                        setStatus(event.target.value);
+                                        setPage(1);
+                                    }}
+                                    className="h-10 w-full min-w-0 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:w-auto"
+                                >
+                                    <option value="">كل الحالات</option>
+                                    <option value="active">نشط</option>
+                                    <option value="inactive">موقوف</option>
+                                </select>
+                            </label>
+                        </>
+                    }
+                    footer={
+                        <span className="text-body-sm text-muted" role="status">
+                            {formatInt(sorted.length)} موظفًا معروضًا من {formatInt(totals.total)}
+                        </span>
+                    }
+                />
                 {search.folded ? (
                     <p className="mt-sm text-body-sm text-muted">
                         بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.
@@ -1654,167 +1758,23 @@ export function Employees() {
                                     ? ` · الخادم أعاد أول ${formatInt(SERVER_PAGE_SIZE * MAX_PAGES)} موظفًا فقط`
                                     : ''}
                             </p>
-                            <TableScroll label="جدول دليل الموظفين">
-                                <table className="w-full min-w-[760px] border-collapse text-body-md">
-                                    <thead>
-                                        <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                            <SortableTh
-                                                label="الكود"
-                                                sortKey="code"
-                                                sort={sort}
-                                                onToggle={toggleSort}
-                                            />
-                                            <SortableTh
-                                                label="الاسم"
-                                                sortKey="name"
-                                                sort={sort}
-                                                onToggle={toggleSort}
-                                            />
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">
-                                                القسم
-                                            </th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">
-                                                الوظيفة
-                                            </th>
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">
-                                                الهاتف
-                                            </th>
-                                            <SortableTh
-                                                label="الحالة"
-                                                sortKey="status"
-                                                sort={sort}
-                                                onToggle={toggleSort}
-                                            />
-                                            {(canWrite || canDelete) && (
-                                                <th
-                                                    scope="col"
-                                                    className="px-sm py-xs text-start font-medium"
-                                                    data-erp-print-hide
-                                                >
-                                                    إجراءات
-                                                </th>
-                                            )}
-                                        </tr>
-                                    </thead>
-                                    <tbody>
-                                        {pageRows.map((row) => (
-                                            <tr
-                                                key={row.id}
-                                                className="border-b border-hairline hover:bg-surface-hover"
-                                            >
-                                                <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">
-                                                    {row.code || '—'}
-                                                </td>
-                                                <td className="px-sm py-xxs text-ink">{row.name}</td>
-                                                <td className="px-sm py-xxs text-body-sm text-muted">
-                                                    {row.deptCode || '—'}
-                                                </td>
-                                                <td className="px-sm py-xxs text-body-sm text-muted">
-                                                    {row.position || '—'}
-                                                </td>
-                                                <td
-                                                    className="erp-numeric px-sm py-xxs text-body-sm text-muted"
-                                                    dir="ltr"
-                                                >
-                                                    {row.phone || '—'}
-                                                </td>
-                                                <td className="px-sm py-xxs text-body-sm">
-                                                    <span
-                                                        className={
-                                                            row.status === 'active' ? 'text-success-text' : 'text-muted'
-                                                        }
-                                                    >
-                                                        {row.statusLabel}
-                                                    </span>
-                                                </td>
-                                                {(canWrite || canDelete) && (
-                                                    <td className="px-sm py-xxs" data-erp-print-hide>
-                                                        <div className="flex flex-wrap items-center gap-xs">
-                                                            {canWrite ? (
-                                                                <>
-                                                                    <Button
-                                                                        type="button"
-                                                                        size="sm"
-                                                                        variant="secondary"
-                                                                        title="تعديل البيانات"
-                                                                        onClick={() => openForm(row)}
-                                                                    >
-                                                                        تعديل
-                                                                    </Button>
-                                                                    {row.status === 'active' ? (
-                                                                        <Button
-                                                                            type="button"
-                                                                            size="sm"
-                                                                            variant="secondary"
-                                                                            title="إيقاف الموظف"
-                                                                            onClick={() =>
-                                                                                handleChangeStatus(row, false)
-                                                                            }
-                                                                        >
-                                                                            إيقاف
-                                                                        </Button>
-                                                                    ) : (
-                                                                        <Button
-                                                                            type="button"
-                                                                            size="sm"
-                                                                            variant="secondary"
-                                                                            title="تفعيل الموظف"
-                                                                            onClick={() =>
-                                                                                handleChangeStatus(row, true)
-                                                                            }
-                                                                        >
-                                                                            تفعيل
-                                                                        </Button>
-                                                                    )}
-                                                                </>
-                                                            ) : null}
-                                                            {canDelete ? (
-                                                                <Button
-                                                                    type="button"
-                                                                    size="sm"
-                                                                    variant="danger"
-                                                                    title="حذف الموظف"
-                                                                    onClick={() => handleDelete(row)}
-                                                                >
-                                                                    حذف
-                                                                </Button>
-                                                            ) : null}
-                                                        </div>
-                                                    </td>
-                                                )}
-                                            </tr>
-                                        ))}
-                                    </tbody>
-                                </table>
-                            </TableScroll>
-
-                            <div className="flex items-center justify-between gap-sm border-t border-hairline px-sm py-xs">
-                                <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                                    صفحة {formatInt(safePage)} من {formatInt(pageCount)}
-                                </span>
-                                <div className="flex gap-xs">
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setPage(safePage - 1);
-                                        }}
-                                        disabled={safePage <= 1}
-                                        className="rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover disabled:opacity-50"
-                                    >
-                                        السابق
-                                    </button>
-                                    <button
-                                        type="button"
-                                        onClick={() => {
-                                            setPage(safePage + 1);
-                                        }}
-                                        disabled={safePage >= pageCount}
-                                        className="rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover disabled:opacity-50"
-                                    >
-                                        التالي
-                                    </button>
-                                </div>
-                            </div>
+                            <DataTable<EmployeeRow>
+                                caption="جدول دليل الموظفين"
+                                columns={employeeColumns}
+                                rows={pageRows}
+                                rowKey={(employee) => employee.id}
+                                sorting={sort ? { key: sort.key, direction: sort.dir } : null}
+                                onSortingChange={(next) => {
+                                    setPage(1);
+                                    setSort(next ? { key: next.key as SortKey, dir: next.direction } : null);
+                                }}
+                                pagination={{
+                                    page: safePage,
+                                    pageSize: PAGE_SIZE_LOCAL,
+                                    total: sorted.length,
+                                    onPageChange: setPage,
+                                }}
+                            />
                         </>
                     ) : null}
                 </Card>

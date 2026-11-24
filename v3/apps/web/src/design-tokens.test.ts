@@ -374,6 +374,12 @@ describe('نظام التصميم — الدلالات والربط', () => {
     it('حلقة التركيز على لون الإجراء لا على لون قديم', () => {
         expect(css).toMatch(/--erp-focus-ring:\s*2px solid var\(--erp-c-primary\)/);
     });
+
+    it('جسر الرموز موحّد ويستخدم توكن الشريط الجانبي المعرّف', () => {
+        expect(css.match(/^\s*--background:\s*var\(--erp-canvas\);$/gm)).toHaveLength(2);
+        expect(css.match(/^\s*--sidebar-accent:\s*var\(--accent-soft\);$/gm)).toHaveLength(1);
+        expect(css).not.toContain('--erp-accent-soft');
+    });
 });
 
 /** مزج oklab كما يفعله `color-mix(in oklab, ...)` — يُحسب لا يُفترض. */

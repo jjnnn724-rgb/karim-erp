@@ -38,6 +38,7 @@ import {
 } from '../lib/goods-scan';
 import { formatQty, stockState } from '../lib/inventory-register';
 
+import { PageHeader } from '../ui';
 const MODES = [
     { key: 'bind', label: 'ربط كود بصنف', english: 'Bind' },
     { key: 'in', label: 'وارد بالمسح', english: 'Goods IN' },
@@ -660,29 +661,25 @@ export function GoodsScan() {
 
     return (
         <div className="flex flex-col gap-md erp-premium-GoodsScan">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        مسح البضاعة{' '}
-                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
-                            Barcode Scan
-                        </span>
-                    </h1>
-                    <p className="text-body-sm text-muted">
-                        ربط الباركود ثم تسجيل الوارد أو إنشاء أذون صرف معلّق — عبر أبواب المخزون وسلسلة الاعتماد القائمة.
-                    </p>
-                </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                    <PrintActions title="مسح البضاعة" />
-                    <button
-                        type="button"
-                        onClick={() => void campaignQuery.refetch()}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                </div>
-            </header>
+            <PageHeader
+                title="مسح البضاعة"
+                english="Barcode Scan"
+                description="ربط الباركود ثم تسجيل الوارد أو إنشاء أذون صرف معلّق — عبر أبواب المخزون وسلسلة الاعتماد القائمة."
+                actions={
+                    <>
+                        <div className="flex items-center gap-xs" data-erp-print-hide>
+                            <PrintActions title="مسح البضاعة" />
+                            <button
+                                type="button"
+                                onClick={() => void campaignQuery.refetch()}
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                            >
+                                تحديث
+                            </button>
+                        </div>
+                    </>
+                }
+            />
 
             <Card className="flex flex-col gap-md p-md">
                 <div className="flex flex-wrap gap-xs" role="tablist" aria-label="أوضاع مسح البضاعة">

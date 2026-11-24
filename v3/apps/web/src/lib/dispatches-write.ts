@@ -1,28 +1,12 @@
 import { z } from 'zod';
-import { statusOf } from './dispatches';
 import { formatQty } from './inventory-register';
 import { isWriteRole, writeAck, writeErrorMessage, writeJson } from './write';
 
 /**
- * كتابة أذون الصرف — البوابات الثماني منقولة حرفيًّا من V2
- * (`frontend/app/js/v2/data/dispatch-repo.js` سطور 159-400 وسطور W1، و
- * `frontend/app/js/v2/screens/dispatch.js` 625-1293) ومطابقة للخادم:
- *
- *  1) إنشاء طلب        POST   /api/dispatches                          (server.js:1892-2009)
- *  2) تعديل قبل الاعتماد PUT    /api/warehouse/dispatches/:id/edit     (dispatch-routes.js:400)
- *  3) حذف              DELETE /api/dispatches/:id                      (server.js:2743-2860)
- *  4) اعتماد الشيف     POST   /api/warehouse/dispatches/:id/chef-approve (dispatch-routes.js:295)
- *  5) رفض الشيف        POST   /api/warehouse/dispatches/:id/chef-reject  (dispatch-routes.js:353)
- *  6) اعتماد المخازن   POST   /api/warehouse/dispatches/:id/approve      (dispatch-routes.js:80)
- *  7) رفض المخازن      POST   /api/warehouse/dispatches/:id/reject       (dispatch-routes.js:507)
- *  8) استلام القسم     POST   /api/warehouse/dispatches/:id/receive      (dispatch-routes.js:548)
- *
- * الأدوار هنا قوائم V2 الصريحة (مرآة `dispatch-repo.js:159-174`) — لا
- * `admin` ضمنيًّا: زرٌّ لا يظهر لدورٍ لن يقبله الخادم، والخادم يبقى الحاكم.
- *
- * كل قرار (4-8) يوقع إلكترونيًّا: الخادم يرفض بلا `signatureData` بصيغة
- * `data:image/(png|jpeg);base64,…` وبلا `signerName` مطابق لاسم الحساب
- * (`requireSignature` في warehouse-routes.js:374-391). النصوص منقولة حرفيًّا.
+ * كتابة أذون الصرف — إنشاء وتعديل وقرارات الشيف والمخازن والاستلام،
+ * مع الإلغاء قبل الصرف والإرجاع للمراجعة والإبطال بعد الصرف. لا حذف مباشر.
+ * القرارات الموقّعة وكتابات دورة الحياة تحمل مفتاح idempotency، والخادم
+ * يبقى الحاكم على الدور والمنشئ والكميات والحالة.
  */
 
 /* ── أدوار V2 حرفيًّا (dispatch-repo.js:159-174) ─────────────────────────── */
@@ -53,6 +37,7 @@ export interface DispatchGateRow {
     deptCode: string;
     creatorUserId: string;
     hasReceipt: boolean;
+    hasRemaining: boolean;
 }
 
 export interface GateUser {
@@ -71,7 +56,33 @@ export function dispatchGate(source: {
     kitchenReceivedAt?: unknown;
     kitchenReceivedBy?: unknown;
     receivedItems?: unknown;
+    approvedItems?: unknown;
+    items?: unknown;
 }): DispatchGateRow {
+    const receivedItems = Array.isArray(source.receivedItems) ? source.receivedItems : [];
+    const approvedItems = Array.isArray(source.approvedItems) && source.approvedItems.length > 0
+        ? source.approvedItems
+        : (Array.isArray(source.items) ? source.items : []);
+    const receivedByName = new Map<string, number>();
+    for (const raw of receivedItems) {
+        const item = recordOf(raw);
+        const name = String(item.itemName ?? item.name ?? '').trim().toLowerCase();
+        if (name) {receivedByName.set(name, (receivedByName.get(name) ?? 0) + Number(item.receivedQty ?? item.qty ?? 0));}
+    }
+    const hasRemaining = approvedItems.some((raw) => {
+        const item = recordOf(raw);
+        const name = String(item.itemName ?? item.name ?? '').trim().toLowerCase();
+        const approved = Number(item.approvedQty ?? item.qty ?? 0);
+        const received = receivedByName.get(name) ?? 0;
+        const approvedBoxes = Number(item.packagingQty ?? 0);
+        const receivedBoxes = receivedItems.reduce((sum, raw) => {
+            const row = recordOf(raw);
+            return String(row.itemName ?? row.name ?? '').trim().toLowerCase() === name
+                ? sum + Number(row.receivedPackagingQty ?? 0)
+                : sum;
+        }, 0);
+        return approved - received > 1e-6 || (approvedBoxes > 0 && approvedBoxes - receivedBoxes > 1e-6);
+    });
     return {
         id: source.id === null || source.id === undefined ? '' : String(source.id),
         status: source.status === null || source.status === undefined ? '' : String(source.status),
@@ -84,6 +95,7 @@ export function dispatchGate(source: {
                 source.kitchenReceivedBy ||
                 (Array.isArray(source.receivedItems) && source.receivedItems.length > 0),
         ),
+        hasRemaining,
     };
 }
 
@@ -95,10 +107,47 @@ export function deptCodesOf(user: GateUser | null | undefined): string[] {
         .filter(Boolean);
 }
 
-/** هل الإذن يخص قسم صاحب الحساب؟ — مرآة deptsMatch في V2. */
+/**
+ * مرادفات أكواد الأقسام — مرآة حرفيّة لـ `DEPT_CODE_ALIASES` في
+ * `backend/warehouse-routes.js`. قاعدة الأذون تُسجّل القسم التشغيلي
+ * (`hot_hall`) بينما حسابات الموارد البشرية قد تحمل اسم القسم الآخر
+ * (`SERVICE`)، فرئيس القسم كان يرى «غير مّطابق» فلا يظهر زر الاستلام.
+ * لا بديل عن التوحيد هنا: الواجهة والخادم يجب أن يتطابقا على المقارنة.
+ */
+const DEPT_CODE_ALIASES: Readonly<Record<string, string>> = Object.freeze({
+    shop: 'CAF',
+    caf: 'CAF',
+    ca1: 'NAS',
+    nas: 'NAS',
+    juice: 'G',
+    g: 'G',
+    service: 'hot_hall',
+    hot_hall: 'hot_hall',
+    kitchen: 'kitchen',
+    storeroom: 'storeroom',
+    external_sales: 'external_sales',
+    salads: 'salads',
+    sweets: 'sweets',
+    bakery: 'bakery',
+    hot_kitchen: 'hot_kitchen',
+    butcher: 'butcher',
+    fnb: 'fnb',
+    open_buffet: 'open_buffet',
+    kstore: 'kstore',
+});
+
+/** الكود الموحّد لقسم — بلا تغيير إن لم تكن له مرادفة معروفة. */
+export function canonicalDeptCode(code: string | null | undefined): string {
+    const clean = String(code ?? '').trim().toLowerCase();
+    if (!clean) {return '';}
+    return DEPT_CODE_ALIASES[clean] || String(code ?? '').trim();
+}
+
+/** هل الإذن يخص قسم صاحب الحساب؟ — مرآة deptsMatch في الخادم (مع المرادفات). */
 export function rowDeptMatches(user: GateUser | null | undefined, row: DispatchGateRow): boolean {
     const codes = deptCodesOf(user);
-    return codes.length > 0 && codes.includes(row.deptCode.trim().toLowerCase());
+    const target = canonicalDeptCode(row.deptCode).toLowerCase();
+    return codes.length > 0 && codes.some((code) => canonicalDeptCode(code).toLowerCase() === target);
 }
 
 /* ── بوابات ظهور الأزرار — حرفيًّا من dispatch-repo.js:210-250 ───────────── */
@@ -108,22 +157,34 @@ export function canCreateDispatch(role: string | null | undefined): boolean {
 }
 
 /** أزرار الشيف: pending && needsChefApproval (kitchen.js:294). */
-export function chefActionsVisible(role: string | null | undefined, row: DispatchGateRow): boolean {
+export function chefActionsVisible(
+    role: string | null | undefined,
+    row: DispatchGateRow,
+    user?: GateUser | null,
+): boolean {
+    if (row.creatorUserId !== '' && row.creatorUserId === String(user?.id ?? '')) {return false;}
     return row.status === 'pending' && row.needsChefApproval && isWriteRole(role, CHEF_DECIDE_ROLES);
 }
 
 /** أزرار المخازن: (pending && !needsChefApproval) || chef_approved (kitchen.js:294). */
-export function warehouseActionsVisible(role: string | null | undefined, row: DispatchGateRow): boolean {
+export function warehouseActionsVisible(
+    role: string | null | undefined,
+    row: DispatchGateRow,
+    user?: GateUser | null,
+): boolean {
+    if (row.creatorUserId !== '' && row.creatorUserId === String(user?.id ?? '')) {return false;}
     const warehouseStep = (row.status === 'pending' && !row.needsChefApproval) || row.status === 'chef_approved';
     return warehouseStep && isWriteRole(role, WAREHOUSE_DECIDE_ROLES);
 }
 
-/** الحذف: معلّق للمخازن والمدير، وأي حالة للأدمن — نهائي موثّق (kitchen.js:294). */
-export function deleteVisible(role: string | null | undefined, row: DispatchGateRow): boolean {
-    if (role === 'admin') {
-        return true;
-    }
-    return row.status === 'pending' && isWriteRole(role, WAREHOUSE_DECIDE_ROLES);
+export function cancelVisible(role: string | null | undefined, row: DispatchGateRow, user?: GateUser | null): boolean {
+    if (!['pending', 'chef_approved', 'rejected'].includes(row.status)) {return false;}
+    if (isWriteRole(role, ['admin', 'manager', 'warehouse'])) {return true;}
+    return isWriteRole(role, CREATE_ROLES) && row.creatorUserId !== '' && row.creatorUserId === String(user?.id ?? '');
+}
+
+export function voidVisible(role: string | null | undefined, row: DispatchGateRow): boolean {
+    return ['approved', 'partially_received', 'received'].includes(row.status) && isWriteRole(role, ['admin', 'manager']);
 }
 
 /** الاستلام: approved && (canReceive أو رئيس القسم المخوّل صاحب الإذن). */
@@ -132,9 +193,10 @@ export function receiveVisible(
     row: DispatchGateRow,
     user: GateUser | null | undefined,
 ): boolean {
-    if (row.status !== 'approved') {
+    if (!['approved', 'partially_received'].includes(row.status) || !row.hasRemaining) {
         return false;
     }
+    if (row.creatorUserId !== '' && row.creatorUserId === String(user?.id ?? '')) {return false;}
     if (isWriteRole(role, RECEIVE_ROLES)) {
         return true;
     }
@@ -173,10 +235,11 @@ export function anyActionVisible(
     return (
         editVisible(role, row, user) ||
         reopenVisible(role, row) ||
-        chefActionsVisible(role, row) ||
-        warehouseActionsVisible(role, row) ||
+        chefActionsVisible(role, row, user) ||
+        warehouseActionsVisible(role, row, user) ||
         receiveVisible(role, row, user) ||
-        deleteVisible(role, row)
+        cancelVisible(role, row, user) ||
+        voidVisible(role, row)
     );
 }
 
@@ -217,12 +280,12 @@ export const DISPATCH_TEXT = {
     received: 'تم تسجيل استلام المطبخ بالتوقيع',
     receiveFailed: 'تعذر تسجيل استلام المطبخ',
     receiveQtyInvalid: 'تحقق من كميات الاستلام؛ لا تتجاوز الكمية المعتمدة',
-    /* الحذف — dispatch.js:1076-1086 */
-    deletePendingConfirm:
-        'حذف طلب الصرف المعلق نهائيًا؟ (المعتمد/المستلم لا يُحذف إلا بواسطة مدير النظام — حذف نهائي موثّق)',
-    deletePendingSuccess: 'حُذف طلب الصرف المعلق',
-    deleteFinalSuccess: 'حُذف إذن الصرف نهائيًا (موثّق باسم مدير النظام)',
-    deleteFailed: 'تعذر حذف الإذن',
+    cancelReasonRequired: 'أدخل سبب إلغاء إذن الصرف',
+    cancelSuccess: 'تم إلغاء إذن الصرف مع حفظ سجله',
+    cancelFailed: 'تعذر إلغاء إذن الصرف',
+    voidReasonRequired: 'أدخل سبب إبطال إذن الصرف',
+    voidSuccess: 'تم إبطال الإذن وعكس أثره المخزني والمحاسبي مع حفظ السجل',
+    voidFailed: 'تعذر إبطال إذن الصرف',
     /* التواقيع — dispatch.js:84-91,1005,1119 */
     signerMissing: 'اسم حسابك غير متاح في الجلسة — أعد تسجيل الدخول لتنفيذ قرار موقّع',
     signNoInk: 'تعذر رسم التوقيع — راجع خانة التوقيع',
@@ -310,8 +373,9 @@ export interface CreateDispatchPayload {
 /**
  * حمولة الإنشاء — نفس شكل V2 (dispatch.js:717):
  * `{deptCode, deptName, items, notes, status:'pending', date}`.
- * رئيس القسم: V3 لا يحمل `dept_code` في الجلسة، فتُحذف `deptCode` ويحسمها
- * الخادم من الحساب (`resolveDeptHeadDispatch` في warehouse-routes.js:152).
+ * رئيس القسم: القسم يُحسم من الحساب في الخادم (`resolveDeptHeadDispatch` في
+ * warehouse-routes.js:152) حتى لا يستطيع إرسال طلب باسم قسم آخر — لذلك
+ * تُحذف `deptCode` من الحمولة لهذا الدور.
  */
 export function createDispatchPayload(input: {
     role: string | null | undefined;
@@ -546,9 +610,13 @@ export function approveItemsPayload(rows: readonly ApproveDraft[]): ApproveItemP
 export interface ReceiveDraft {
     name: string;
     approvedQty: number;
+    previouslyReceivedQty?: number;
+    remainingQty?: number;
     receivedQty?: unknown;
     catchWeight: boolean;
     approvedPackagingQty?: unknown;
+    previouslyReceivedPackagingQty?: number;
+    remainingPackagingQty?: number;
     receivedPackagingQty?: unknown;
 }
 
@@ -562,15 +630,16 @@ export interface ReceivedItemPayload {
 /** تحقق كميات الاستلام — نص V2 نفسه (dispatch.js:1242,1252). */
 export function receiveDraftError(rows: readonly ReceiveDraft[]): string {
     for (const row of rows) {
+        const limit = Math.max(0, Number(row.remainingQty ?? row.approvedQty));
         const received = Number(row.receivedQty);
-        if (!Number.isFinite(received) || received < 0 || received > row.approvedQty) {
+        if (!Number.isFinite(received) || received < 0 || received > limit + 1e-6) {
             return DISPATCH_TEXT.receiveQtyInvalid;
         }
         if (row.catchWeight) {
-            const approvedBoxes = Number(row.approvedPackagingQty) || 0;
+            const boxesLimit = Math.max(0, Number(row.remainingPackagingQty ?? row.approvedPackagingQty ?? 0));
             const raw = row.receivedPackagingQty;
-            const boxes = raw === '' || raw === null || raw === undefined ? approvedBoxes : Number(raw);
-            if (!Number.isFinite(boxes) || boxes < 0 || boxes > approvedBoxes) {
+            const boxes = raw === '' || raw === null || raw === undefined ? boxesLimit : Number(raw);
+            if (!Number.isFinite(boxes) || boxes < 0 || boxes > boxesLimit + 1e-6) {
                 return DISPATCH_TEXT.receiveQtyInvalid;
             }
         }
@@ -580,15 +649,46 @@ export function receiveDraftError(rows: readonly ReceiveDraft[]): string {
 
 /** حمولة الاستلام (dispatch.js:1256-1261). */
 export function receivedItemsPayload(rows: readonly ReceiveDraft[]): ReceivedItemPayload[] {
-    return rows.map((row) => {
+    return rows.flatMap((row) => {
         const received = Number(row.receivedQty) || 0;
+        if (!(received > 0)) {return [];}
         if (!row.catchWeight) {
-            return { itemName: row.name, receivedQty: received, notes: '' };
+            return [{ itemName: row.name, receivedQty: received, notes: '' }];
         }
-        const approvedBoxes = Number(row.approvedPackagingQty) || 0;
+        const remainingBoxes = Number(row.remainingPackagingQty ?? row.approvedPackagingQty) || 0;
         const raw = row.receivedPackagingQty;
-        const boxes = raw === '' || raw === null || raw === undefined ? approvedBoxes : Number(raw) || 0;
-        return { itemName: row.name, receivedQty: received, receivedPackagingQty: boxes, notes: '' };
+        const boxes = raw === '' || raw === null || raw === undefined ? remainingBoxes : Number(raw) || 0;
+        return [{ itemName: row.name, receivedQty: received, receivedPackagingQty: boxes, notes: '' }];
+    });
+}
+
+export function receiveDrafts(dispatch: { approvedItems?: unknown; items?: unknown; receivedItems?: unknown }): ReceiveDraft[] {
+    const prior = new Map<string, { qty: number; boxes: number }>();
+    for (const raw of Array.isArray(dispatch.receivedItems) ? dispatch.receivedItems : []) {
+        const item = recordOf(raw);
+        const name = String(item.itemName ?? item.name ?? '').trim().toLowerCase();
+        if (!name) {continue;}
+        const current = prior.get(name) ?? { qty: 0, boxes: 0 };
+        current.qty += Number(item.receivedQty ?? item.qty ?? 0);
+        current.boxes += Number(item.receivedPackagingQty ?? 0);
+        prior.set(name, current);
+    }
+    return dispatchItemLines(receiveSourceItems(dispatch), { approved: true }).map((line) => {
+        const received = prior.get(line.name.toLowerCase()) ?? { qty: 0, boxes: 0 };
+        const remainingQty = Math.max(0, line.qty - received.qty);
+        const remainingBoxes = Math.max(0, line.packagingQty - received.boxes);
+        return {
+            name: line.name,
+            approvedQty: line.qty,
+            previouslyReceivedQty: received.qty,
+            remainingQty,
+            receivedQty: String(remainingQty),
+            catchWeight: line.catchWeight,
+            approvedPackagingQty: line.packagingQty,
+            previouslyReceivedPackagingQty: received.boxes,
+            remainingPackagingQty: remainingBoxes,
+            receivedPackagingQty: line.catchWeight ? String(remainingBoxes) : '',
+        };
     });
 }
 
@@ -616,25 +716,6 @@ export function createSuccessText(role: string | null | undefined): string {
 /** نص نجاح التعديل بحسب `chefApprovalReset` من الخادم (dispatch.js:750-752). */
 export function editSuccessText(chefApprovalReset: boolean): string {
     return chefApprovalReset ? DISPATCH_TEXT.editChefReset : DISPATCH_TEXT.editSuccess;
-}
-
-/** هل هذا حذف نهائي موثّق؟ (أدمن وحالة غير معلّقة — dispatch.js:1074). */
-export function isFinalDelete(role: string | null | undefined, status: string): boolean {
-    return role === 'admin' && status !== 'pending';
-}
-
-/** تأكيد الحذف بنصّي V2 (dispatch.js:1076-1077). */
-export function deleteConfirmText(role: string | null | undefined, status: string, statusLabel?: string): string {
-    if (isFinalDelete(role, status)) {
-        const label = statusLabel ?? statusOf(status).label;
-        return `⚠️ حذف نهائي لإذن صرف (${label})؟\nهذا مستند مالي موقّع — سيُحذف نهائيًا ويُوثّق باسمك في سجل مدير النظام.\nهل أنت متأكد؟`;
-    }
-    return DISPATCH_TEXT.deletePendingConfirm;
-}
-
-/** نص نجاح الحذف (dispatch.js:1083). */
-export function deleteSuccessText(role: string | null | undefined, status: string): string {
-    return isFinalDelete(role, status) ? DISPATCH_TEXT.deleteFinalSuccess : DISPATCH_TEXT.deletePendingSuccess;
 }
 
 /** نص نجاح اعتماد المخازن مع القيمة (dispatch.js:1193). */
@@ -670,6 +751,11 @@ export function approveErrorText(error: unknown): string {
 
 const encoded = (id: string | number): string => encodeURIComponent(String(id));
 
+function operationKey(action: string, id: string | number): Record<string, string> {
+    const unique = globalThis.crypto?.randomUUID?.() ?? `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return { 'X-Idempotency-Key': `dispatch-${action}:${id}:${unique}` };
+}
+
 /** 1) إنشاء طلب صرف — POST /api/dispatches (server.js:1892). */
 export async function createDispatch(payload: CreateDispatchPayload): Promise<void> {
     await writeAck('/api/dispatches', 'POST', payload);
@@ -688,22 +774,37 @@ export interface EditDispatchResult {
 
 /** 2) تعديل قبل اعتماد المخازن — PUT /api/warehouse/dispatches/:id/edit (dispatch-routes.js:400). */
 export async function editDispatch(id: string | number, payload: EditDispatchPayload): Promise<EditDispatchResult> {
-    const body = await writeJson(editResponseSchema, `/api/warehouse/dispatches/${encoded(id)}/edit`, 'PUT', payload);
+    const body = await writeJson(editResponseSchema, `/api/warehouse/dispatches/${encoded(id)}/edit`, 'PUT', payload, operationKey('edit', id));
     return { chefApprovalReset: Boolean(body.chefApprovalReset) };
 }
 
 /** إرجاع إذن معتمد قبل الاستلام وعكس أثره — POST /api/warehouse/dispatches/:id/reopen. */
-export async function reopenDispatch(id: string | number, reason: string): Promise<void> {
-    const cleanReason = String(reason ?? '').trim();
+export async function reopenDispatch(id: string | number, body: SignedDecision & { reason: string }): Promise<void> {
+    const cleanReason = String(body.reason ?? '').trim();
     if (!cleanReason) {
         throw new Error(DISPATCH_TEXT.reopenReasonRequired);
     }
-    await writeAck(`/api/warehouse/dispatches/${encoded(id)}/reopen`, 'POST', { reason: cleanReason });
+    await writeAck(`/api/warehouse/dispatches/${encoded(id)}/reopen`, 'POST', {
+        reason: cleanReason,
+        signatureData: String(body.signatureData ?? ''),
+        signerName: String(body.signerName ?? ''),
+    }, operationKey('reopen', id));
 }
 
-/** 3) حذف — DELETE /api/dispatches/:id (server.js:2747؛ النهائي للأدمن موثّق). */
-export async function deleteDispatch(id: string | number): Promise<void> {
-    await writeAck(`/api/dispatches/${encoded(id)}`, 'DELETE');
+export async function cancelDispatch(id: string | number, reason: string): Promise<void> {
+    const cleanReason = String(reason ?? '').trim();
+    if (!cleanReason) {throw new Error(DISPATCH_TEXT.cancelReasonRequired);}
+    await writeAck(`/api/warehouse/dispatches/${encoded(id)}/cancel`, 'POST', { reason: cleanReason }, operationKey('cancel', id));
+}
+
+export async function voidDispatch(id: string | number, body: SignedDecision & { reason: string }): Promise<void> {
+    const cleanReason = String(body.reason ?? '').trim();
+    if (!cleanReason) {throw new Error(DISPATCH_TEXT.voidReasonRequired);}
+    await writeAck(`/api/warehouse/dispatches/${encoded(id)}/void`, 'POST', {
+        reason: cleanReason,
+        signatureData: String(body.signatureData ?? ''),
+        signerName: String(body.signerName ?? ''),
+    }, operationKey('void', id));
 }
 
 export interface ChefApproveBody extends SignedDecision {
@@ -720,7 +821,7 @@ export async function chefApproveDispatch(id: string | number, body: ChefApprove
         notes: String(body.notes ?? ''),
         signatureData: String(body.signatureData ?? ''),
         signerName: String(body.signerName ?? ''),
-    });
+    }, operationKey('chef-approve', id));
 }
 
 /** 5) رفض الشيف — POST /api/warehouse/dispatches/:id/chef-reject (dispatch-routes.js:353). */
@@ -729,7 +830,7 @@ export async function chefRejectDispatch(id: string | number, body: ChefRejectBo
         reason: String(body.reason ?? ''),
         signatureData: String(body.signatureData ?? ''),
         signerName: String(body.signerName ?? ''),
-    });
+    }, operationKey('chef-reject', id));
 }
 
 export interface ApproveBody extends SignedDecision {
@@ -759,6 +860,7 @@ export async function approveDispatch(id: string | number, body: ApproveBody): P
             signatureData: String(body.signatureData ?? ''),
             signerName: String(body.signerName ?? ''),
         },
+        operationKey('approve', id),
     );
     return { totalValue: Number(response.totalValue) || 0 };
 }
@@ -773,7 +875,7 @@ export async function rejectDispatch(id: string | number, body: RejectBody): Pro
         reason: String(body.reason ?? ''),
         signatureData: String(body.signatureData ?? ''),
         signerName: String(body.signerName ?? ''),
-    });
+    }, operationKey('reject', id));
 }
 
 export interface ReceiveBody extends SignedDecision {
@@ -788,5 +890,5 @@ export async function receiveDispatch(id: string | number, body: ReceiveBody): P
         notes: String(body.notes ?? ''),
         signatureData: String(body.signatureData ?? ''),
         signerName: String(body.signerName ?? ''),
-    });
+    }, operationKey('receive', id));
 }

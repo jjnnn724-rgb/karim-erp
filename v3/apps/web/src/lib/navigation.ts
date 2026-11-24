@@ -145,6 +145,28 @@ export const NAV_GROUPS: readonly NavGroup[] = [
     },
 ];
 
+/**
+ * «شاشاتي اليومية» — قائمة عرض أعلى التنقّل، لا مجموعة ثامنة.
+ *
+ * المفاتيح تبقى ضمن `NAV_GROUPS` كما هي، فتبقى التغطية الكاملة للـ64
+ * محفوظة ويظل التجميع مصدرًا واحدًا. `Shell` يعرض هذه القائمة أولًا ثم
+ * يستبعدها من «كل الشاشات» — كل شاشة تظهر مرة واحدة في القائمة.
+ */
+export const DAILY_TITLE = 'شاشاتي اليومية';
+export const ALL_SCREENS_TITLE = 'كل الشاشات';
+
+/** ما يُفتح في أول الوردية: بيع، كاشير، مطبخ، مخزن، موظفون، حضور، مدد، تقارير. */
+export const DAILY_KEYS: readonly string[] = [
+    'pos-entry',
+    'cashier-monitor',
+    'kitchen',
+    'warehouse',
+    'employees',
+    'attendance',
+    'mudad',
+    'reports',
+];
+
 /** المسار الرئيسي والعنوان المعروض. */
 export const HOME_PATH = '/';
 export const HOME_TITLE = 'الرئيسية';

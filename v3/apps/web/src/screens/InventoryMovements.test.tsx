@@ -288,4 +288,38 @@ describe('حركات المخزون', () => {
         expect(within(cards).getAllByText('لحم بقري')).toHaveLength(2);
         expect(within(cards).getByText('مرتجع مطبخ')).toBeTruthy();
     });
+
+    it('يطبّق الفترات السريعة بنقرة واحدة', async () => {
+        stubFetch();
+        renderScreen();
+        await screen.findAllByText('لحم بقري');
+
+        const from = screen.getByLabelText('من') as HTMLInputElement;
+        const preset = screen.getByRole('button', { name: 'هذا الشهر' });
+        expect(preset.getAttribute('aria-pressed')).toBe('true');
+
+        fireEvent.click(screen.getByRole('button', { name: 'كل الفترات' }));
+        expect(from.value).toBe('');
+        expect(screen.getByRole('button', { name: 'كل الفترات' }).getAttribute('aria-pressed')).toBe('true');
+
+        fireEvent.click(screen.getByRole('button', { name: 'اليوم' }));
+        expect(from.value).toMatch(/^\d{4}-\d{2}-\d{2}$/);
+        expect((screen.getByLabelText('إلى') as HTMLInputElement).value).toBe(from.value);
+    });
+
+    it('يعرض المرشّحات النشطة كشرائح قابلة للإزالة', async () => {
+        stubFetch();
+        renderScreen();
+        await screen.findAllByText('لحم بقري');
+
+        fireEvent.change(screen.getByLabelText('النوع'), { target: { value: 'in' } });
+        const chips = screen.getByRole('list', { name: 'المرشّحات النشطة' });
+        expect(within(chips).getByText('وارد')).toBeTruthy();
+
+        fireEvent.click(within(chips).getByRole('button', { name: 'إزالة مرشّح النوع' }));
+        expect((screen.getByLabelText('النوع') as HTMLSelectElement).value).toBe('ALL');
+        await waitFor(() => {
+            expect(dataRows()).toHaveLength(4);
+        });
+    });
 });

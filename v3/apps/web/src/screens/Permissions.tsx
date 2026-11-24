@@ -22,6 +22,7 @@ import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 
+import { PageHeader } from '../ui';
 /**
  * الصلاحيات — كاملة مثل V2:
  *  • عرض الكتالوج ووضع كل صلاحية لمستخدم مختار: منح فردي أو سحب أو وراثة الدور
@@ -175,30 +176,25 @@ export function Permissions() {
 
     return (
         <div className="flex flex-col gap-lg">
-            <header className="flex flex-wrap items-end justify-between gap-md border-b border-hairline pb-md">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        الصلاحيات{' '}
-                        <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted" dir="ltr" lang="en">
-                            Permissions
-                        </span>
-                    </h1>
-                    <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        منح فردية فوق الدور مع كتابة كاملة (admin فقط). السحب يغلب المنح، والمنح يغلب وراثة الدور، ودور
-                        admin يملك كل الصلاحيات ضمنيًا.
-                    </p>
-                </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                    <PrintActions title="الصلاحيات" />
-                    <button
-                        type="button"
-                        onClick={refetchAll}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                </div>
-            </header>
+            <PageHeader
+                title="الصلاحيات"
+                english="Permissions"
+                description="منح فردية فوق الدور مع كتابة كاملة (admin فقط). السحب يغلب المنح، والمنح يغلب وراثة الدور، ودور admin يملك كل الصلاحيات ضمنيًا."
+                actions={
+                    <>
+                        <div className="flex items-center gap-xs" data-erp-print-hide>
+                            <PrintActions title="الصلاحيات" />
+                            <button
+                                type="button"
+                                onClick={refetchAll}
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                            >
+                                تحديث
+                            </button>
+                        </div>
+                    </>
+                }
+            />
 
             <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
                 <Kpi

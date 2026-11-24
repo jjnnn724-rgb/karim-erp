@@ -39,6 +39,7 @@ import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 
+import { PageHeader } from '../ui';
 /**
  * دليل حسابات الدخول — CRUD كامل مثل V2:
  *  • إنشاء مستخدم (POST /api/users)
@@ -655,39 +656,33 @@ export function Users() {
 
     return (
         <div className="flex flex-col gap-lg">
-            <header className="flex flex-wrap items-end justify-between gap-md border-b border-hairline pb-md">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        المستخدمون{' '}
-                        <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted" dir="ltr" lang="en">
-                            Users
-                        </span>
-                    </h1>
-                    <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        من يدخل النظام وبأي دور، ومن هو موظفه المرتبط. إنشاء الحسابات وتعديل بياناتهم وإيقاف/ تفعيل
-                        الحساب وحذفه. كلمة المرور لا تُعرض في أي صفّ. القراءة محجوزة في الخادم للأدوار الإدارية، والكتابة
-                        لـ admin|manager|hr والحذف للأدمن فقط.
-                    </p>
-                </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                    {canWrite ? (
-                        <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
-                            إضافة مستخدم
-                        </Button>
-                    ) : null}
-                    <button
-                        type="button"
-                        onClick={() => {
-                            void usersQuery.refetch();
-                            void employeesQuery.refetch();
-                        }}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                    <PrintActions title="المستخدمون" />
-                </div>
-            </header>
+            <PageHeader
+                title="المستخدمون"
+                english="Users"
+                description="من يدخل النظام وبأي دور، ومن هو موظفه المرتبط. إنشاء الحسابات وتعديل بياناتهم وإيقاف/ تفعيل الحساب وحذفه. كلمة المرور لا تُعرض في أي صفّ. القراءة محجوزة في الخادم للأدوار الإدارية، والكتابة لـ admin|manager|hr والحذف للأدمن فقط."
+                actions={
+                    <>
+                        <div className="flex items-center gap-xs" data-erp-print-hide>
+                            {canWrite ? (
+                                <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
+                                    إضافة مستخدم
+                                </Button>
+                            ) : null}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    void usersQuery.refetch();
+                                    void employeesQuery.refetch();
+                                }}
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                            >
+                                تحديث
+                            </button>
+                            <PrintActions title="المستخدمون" />
+                        </div>
+                    </>
+                }
+            />
 
             <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
                 <Kpi

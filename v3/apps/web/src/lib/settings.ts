@@ -323,11 +323,40 @@ export const kotSettingsSchema = z.unknown().transform((body): KotSettings => {
 export interface HrCardSettings {
     verifyBase: string;
     emergencyPhone: string;
+    orgNameAr: string;
+    orgNameEn: string;
+    cardTitle: string;
+    slogan: string;
+    footerNote: string;
+    badgeText: string;
+    accent: string;
+    showBlood: boolean;
+    showMrz: boolean;
 }
+
+export const CARD_ACCENTS = [
+    { value: 'gold', label: 'ذهبي سيادي' },
+    { value: 'emerald', label: 'زمردي' },
+    { value: 'sapphire', label: 'ياقوت أزرق' },
+    { value: 'burgundy', label: 'عنابي' },
+    { value: 'platinum', label: 'بلاتيني' },
+] as const;
 
 export const hrCardSettingsSchema = z.unknown().transform((body): HrCardSettings => {
     const row = (body && typeof body === 'object' ? body : {}) as Record<string, unknown>;
-    return { verifyBase: text(row.verifyBase), emergencyPhone: text(row.emergencyPhone) };
+    return {
+        verifyBase: text(row.verifyBase),
+        emergencyPhone: text(row.emergencyPhone),
+        orgNameAr: text(row.orgNameAr),
+        orgNameEn: text(row.orgNameEn),
+        cardTitle: text(row.cardTitle),
+        slogan: text(row.slogan),
+        footerNote: text(row.footerNote),
+        badgeText: text(row.badgeText),
+        accent: text(row.accent) || 'gold',
+        showBlood: flag(row.showBlood, true),
+        showMrz: flag(row.showMrz, true),
+    };
 });
 
 export interface PunchSettingRow {

@@ -39,6 +39,7 @@ import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
 import { useToast } from '../ui/Toast';
 
+import { PageHeader } from '../ui';
 /**
  * الرفوف — قراءة من `/api/shelves` و`/api/inventory`، وكتابة مطابقة لـV2:
  * إضافة/تعديل/حذف بنفس البوابة (POST/PUT/DELETE `/api/shelves`)، ونفس أدوار
@@ -435,34 +436,30 @@ export function Shelves() {
 
     return (
         <div className="flex flex-col gap-md erp-premium-Shelves">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        الرفوف{' '}
-                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
-                            Shelves
-                        </span>
-                    </h1>
-                    <p className="text-body-sm text-muted">
-                        كل صنف يُعيَّن لرفٍ واحد من شاشة المخزن. إضافة وتعديل وحذف الرفوف.
-                    </p>
-                </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                    {writable ? (
-                        <Button type="button" size="sm" onClick={openAdd}>
-                            إضافة رف
-                        </Button>
-                    ) : null}
-                    <PrintActions title="الرفوف" />
-                    <button
-                        type="button"
-                        onClick={refresh}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                </div>
-            </header>
+            <PageHeader
+                title="الرفوف"
+                english="Shelves"
+                description="كل صنف يُعيَّن لرفٍ واحد من شاشة المخزن. إضافة وتعديل وحذف الرفوف."
+                actions={
+                    <>
+                        <div className="flex items-center gap-xs" data-erp-print-hide>
+                            {writable ? (
+                                <Button type="button" size="sm" onClick={openAdd}>
+                                    إضافة رف
+                                </Button>
+                            ) : null}
+                            <PrintActions title="الرفوف" />
+                            <button
+                                type="button"
+                                onClick={refresh}
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                            >
+                                تحديث
+                            </button>
+                        </div>
+                    </>
+                }
+            />
 
             <p className="text-body-sm text-muted">حذف الرف لا يحذف أصنافه — يزيل تعيينها فقط وتبقى في السجل.</p>
 

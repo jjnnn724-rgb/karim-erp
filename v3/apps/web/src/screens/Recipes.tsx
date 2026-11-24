@@ -34,6 +34,7 @@ import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 
+import { PageHeader } from '../ui';
 /**
  * الوصفات — CRUD كامل على جدول `recipes`:
  *  • إنشاء وصفة (POST /api/recipes — admin|manager)
@@ -468,36 +469,32 @@ export function Recipes() {
 
     return (
         <div className="erp-premium-screen erp-premium-screen--recipes flex flex-col gap-md">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        الوصفات{' '}
-                        <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted" dir="ltr" lang="en">
-                            Recipes
-                        </span>
-                    </h1>
-                    <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        سجل الوصفات وأسعارها وتكاليفها — إضافة وتعديل وحذف.
-                    </p>
-                </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                    {canWrite ? (
-                        <Button type="button" size="sm" onClick={() => openForm()}>
-                            إضافة وصفة
-                        </Button>
-                    ) : null}
-                    <PrintActions title="الوصفات" />
-                    <button
-                        type="button"
-                        onClick={() => {
-                            void recipesQuery.refetch();
-                        }}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                </div>
-            </header>
+            <PageHeader
+                title="الوصفات"
+                english="Recipes"
+                description="سجل الوصفات وأسعارها وتكاليفها — إضافة وتعديل وحذف."
+                actions={
+                    <>
+                        <div className="flex items-center gap-xs" data-erp-print-hide>
+                            {canWrite ? (
+                                <Button type="button" size="sm" onClick={() => openForm()}>
+                                    إضافة وصفة
+                                </Button>
+                            ) : null}
+                            <PrintActions title="الوصفات" />
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    void recipesQuery.refetch();
+                                }}
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                            >
+                                تحديث
+                            </button>
+                        </div>
+                    </>
+                }
+            />
 
             <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
                 <Kpi

@@ -23,6 +23,7 @@ import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
 import { StatCard } from '../ui/StatCard';
 
+import { PageHeader } from '../ui';
 /**
  * فروع المنشأة — CRUD كامل مثل V2:
  *  • إنشاء فرع (POST /api/branches — admin)
@@ -443,37 +444,32 @@ export function Branches() {
 
     return (
         <div className="flex flex-col gap-lg erp-premium erp-premium-branches">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        فروع المنشأة{' '}
-                        <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted" dir="ltr" lang="en">
-                            Branches
-                        </span>
-                    </h1>
-                    <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        الفروع وأكوادها وعملاتها ومناطقها الزمنية — إضافة وتعديل وإيقاف وتفعيل. القراءة متاحة لأي حساب
-                        مصادق، والكتابة والإدارة محجوزة للأدمن. الفرع الرئيسي لا يُوقف.
-                    </p>
-                </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                    {canManage ? (
-                        <Button type="button" size="sm" onClick={() => openForm()}>
-                            إضافة فرع
-                        </Button>
-                    ) : null}
-                    <button
-                        type="button"
-                        onClick={() => {
-                            void branchesQuery.refetch();
-                        }}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                    <PrintActions title="فروع المنشأة" />
-                </div>
-            </header>
+            <PageHeader
+                title="فروع المنشأة"
+                english="Branches"
+                description="الفروع وأكوادها وعملاتها ومناطقها الزمنية — إضافة وتعديل وإيقاف وتفعيل. القراءة متاحة لأي حساب مصادق، والكتابة والإدارة محجوزة للأدمن. الفرع الرئيسي لا يُوقف."
+                actions={
+                    <>
+                        <div className="flex items-center gap-xs" data-erp-print-hide>
+                            {canManage ? (
+                                <Button type="button" size="sm" onClick={() => openForm()}>
+                                    إضافة فرع
+                                </Button>
+                            ) : null}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    void branchesQuery.refetch();
+                                }}
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                            >
+                                تحديث
+                            </button>
+                            <PrintActions title="فروع المنشأة" />
+                        </div>
+                    </>
+                }
+            />
 
             <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4" aria-label="مؤشرات الفروع">
                 <Kpi

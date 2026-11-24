@@ -654,4 +654,23 @@ describe('فواتير الشراء — إلغاء void وحذف الكل (أد�
         fireEvent.click(screen.getByRole('button', { name: 'إلغاء' }));
         expect(mocks.clearAllPurchaseInvoices).not.toHaveBeenCalled();
     });
+
+    it('يُظهر الفترة النشطة ويتيح إزالة مرشّح الترتيب وحده', async () => {
+        stubFetch();
+        renderScreen();
+        await waitFor(() => {
+            expect(dataRows()).toHaveLength(3);
+        });
+
+        const last30 = screen.getByRole('button', { name: 'آخر 30 يومًا' });
+        expect(last30.getAttribute('aria-pressed')).toBe('true');
+
+        fireEvent.click(screen.getByRole('button', { name: 'الإجمالي' }));
+        const chips = screen.getByRole('list', { name: 'المرشّحات النشطة' });
+        expect(within(chips).getByText(/الإجمالي \(تصاعدي\)/)).toBeTruthy();
+
+        fireEvent.click(within(chips).getByRole('button', { name: 'إزالة مرشّح الترتيب' }));
+        expect(within(chips).queryByText(/الإجمالي \(تصاعدي\)/)).toBeNull();
+        expect(within(chips).getByText('الفترة')).toBeTruthy();
+    });
 });

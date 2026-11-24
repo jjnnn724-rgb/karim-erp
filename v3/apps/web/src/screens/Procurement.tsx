@@ -35,6 +35,7 @@ import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
 
+import { PageHeader } from '../ui';
 /**
  * دليل الموردين — CRUD كامل مثل V2:
  *  • إنشاء مورد (POST /api/procurement/suppliers — admin|manager|accountant)
@@ -490,38 +491,33 @@ export function Procurement() {
 
     return (
         <div className="erp-premium-screen flex flex-col gap-md">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        الموردون{' '}
-                        <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted" dir="ltr" lang="en">
-                            Suppliers
-                        </span>
-                    </h1>
-                    <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        دليل الموردين وملخص المشتريات — إضافة وتعديل وإيقاف وتفعيل وحذف. القراءة من
-                        `/api/procurement/suppliers`، والكتابة لـ admin|manager|accountant والحذف للأدمن فقط.
-                    </p>
-                </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                    {canWrite ? (
-                        <Button type="button" size="sm" onClick={() => openForm()}>
-                            إضافة مورد
-                        </Button>
-                    ) : null}
-                    <PrintActions title="الموردون" />
-                    <button
-                        type="button"
-                        onClick={() => {
-                            void summaryQuery.refetch();
-                            void suppliersQuery.refetch();
-                        }}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                </div>
-            </header>
+            <PageHeader
+                title="الموردون"
+                english="Suppliers"
+                description="دليل الموردين وملخص المشتريات — إضافة وتعديل وإيقاف وتفعيل وحذف. القراءة من `/api/procurement/suppliers`، والكتابة لـ admin|manager|accountant والحذف للأدمن فقط."
+                actions={
+                    <>
+                        <div className="flex items-center gap-xs" data-erp-print-hide>
+                            {canWrite ? (
+                                <Button type="button" size="sm" onClick={() => openForm()}>
+                                    إضافة مورد
+                                </Button>
+                            ) : null}
+                            <PrintActions title="الموردون" />
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    void summaryQuery.refetch();
+                                    void suppliersQuery.refetch();
+                                }}
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                            >
+                                تحديث
+                            </button>
+                        </div>
+                    </>
+                }
+            />
 
             <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
                 <Kpi

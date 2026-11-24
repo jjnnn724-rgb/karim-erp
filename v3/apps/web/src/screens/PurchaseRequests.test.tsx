@@ -565,4 +565,20 @@ describe('طلبات شراء النواقص — لوحة الإنشاء', () =>
         expect(payload.signerName).toBe('مستخدم اختبار');
         expect(await screen.findByText('أُنشئ طلب الشراء PR-2000 موقّعًا منك — نهائي ولدى المخزن مباشرة')).toBeTruthy();
     });
+
+    it('يعرض مرشّح الترتيب كشريحة قابلة للإزالة', async () => {
+        mocks.role = 'admin';
+        stubFetch();
+        renderScreen();
+        await waitFor(() => {
+            expect(requestRows()).toHaveLength(4);
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'الطلب' }));
+        const chips = screen.getByRole('list', { name: 'المرشّحات النشطة' });
+        expect(within(chips).getByText(/الطلب \(تصاعدي\)/)).toBeTruthy();
+
+        fireEvent.click(within(chips).getByRole('button', { name: 'إزالة مرشّح الترتيب' }));
+        expect(screen.queryByRole('list', { name: 'المرشّحات النشطة' })).toBeNull();
+    });
 });

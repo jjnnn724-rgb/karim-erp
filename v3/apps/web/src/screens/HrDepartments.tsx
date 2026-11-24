@@ -19,6 +19,7 @@ import {
 } from '../lib/hr-departments';
 import { formatInt } from '../lib/inventory-register';
 
+import { PageHeader } from '../ui';
 type FormState = { id: string | null; name: string; code: string; manager: string };
 const EMPTY_FORM: FormState = { id: null, name: '', code: '', manager: '' };
 
@@ -142,40 +143,36 @@ export function HrDepartments() {
 
     return (
         <div className="flex flex-col gap-md erp-premium erp-premium-hr-departments">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        أقسام الموظفين{' '}
-                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
-                            HR Departments
-                        </span>
-                    </h1>
-                    <p className="text-body-sm text-muted">
-                        دليل أقسام الموارد البشرية وعدد الموظفين المرتبطين بكل قسم.
-                    </p>
-                </div>
-                <div className="flex flex-wrap gap-xs">
-                    <PrintActions title="أقسام الموظفين" />
-                    <button
-                        type="button"
-                        onClick={() => {
-                            void queryClient.invalidateQueries({ queryKey: ['hr-departments'] });
-                        }}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink"
-                    >
-                        تحديث
-                    </button>
-                    {canManage ? (
-                        <button
-                            type="button"
-                            onClick={openCreateForm}
-                            className="rounded-md bg-primary px-md py-xs text-button-md text-on-primary"
-                        >
-                            إضافة قسم
-                        </button>
-                    ) : null}
-                </div>
-            </header>
+            <PageHeader
+                title="أقسام الموظفين"
+                english="HR Departments"
+                description="دليل أقسام الموارد البشرية وعدد الموظفين المرتبطين بكل قسم."
+                actions={
+                    <>
+                        <div className="flex flex-wrap gap-xs">
+                            <PrintActions title="أقسام الموظفين" />
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    void queryClient.invalidateQueries({ queryKey: ['hr-departments'] });
+                                }}
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink"
+                            >
+                                تحديث
+                            </button>
+                            {canManage ? (
+                                <button
+                                    type="button"
+                                    onClick={openCreateForm}
+                                    className="rounded-md bg-primary px-md py-xs text-button-md text-on-primary"
+                                >
+                                    إضافة قسم
+                                </button>
+                            ) : null}
+                        </div>
+                    </>
+                }
+            />
 
             {notice ? (
                 <p role="status" aria-live="polite" className="text-body-sm text-muted">

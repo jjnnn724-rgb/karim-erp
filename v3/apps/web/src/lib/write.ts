@@ -42,8 +42,13 @@ export async function writeJson<T>(
 }
 
 /** كتابة لا يهمّ شكل مردودها بعد التحقق (POST/PUT/DELETE عام في القديم). */
-export async function writeAck(url: string, method: WriteMethod, body?: unknown): Promise<WriteAck> {
-    return writeJson(writeAckSchema, url, method, body);
+export async function writeAck(
+    url: string,
+    method: WriteMethod,
+    body?: unknown,
+    headers?: Record<string, string>,
+): Promise<WriteAck> {
+    return writeJson(writeAckSchema, url, method, body, headers);
 }
 
 /**

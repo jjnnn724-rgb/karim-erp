@@ -1,7 +1,6 @@
 import './Dispatches.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { type FormEvent, type ReactNode, useMemo, useState } from 'react';
-import { useConfirm } from '../components/ConfirmProvider';
 import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
@@ -33,6 +32,8 @@ import {
     type ChefApproveBody,
     type CreateDispatchPayload,
     canCreateDispatch,
+    cancelDispatch,
+    cancelVisible,
     chefActionsVisible,
     chefApproveDispatch,
     chefRejectDispatch,
@@ -44,10 +45,6 @@ import {
     DISPATCH_TEXT,
     type DispatchGateRow,
     decisionSignatureError,
-    deleteConfirmText,
-    deleteDispatch,
-    deleteSuccessText,
-    deleteVisible,
     dispatchGate,
     dispatchItemLines,
     type EditDispatchPayload,
@@ -60,21 +57,26 @@ import {
     type RejectBody,
     receiveDispatch,
     receiveDraftError,
+    receiveDrafts,
     receivedItemsPayload,
-    receiveSourceItems,
     receiveVisible,
     rejectDispatch,
     reopenDispatch,
     reopenVisible,
     type SignedDecision,
+    voidDispatch,
+    voidVisible,
     warehouseActionsVisible,
 } from '../lib/dispatches-write';
 import { fetchDepartments, firstOfMonth, riyadhToday } from '../lib/finance';
 import { fetchInventoryRegister } from '../lib/inventory-register';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
+import { PageHeader } from '../ui';
+import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
+import { AlertCircleIcon, CheckCircleIcon, InfoIcon, ListTreeIcon } from '../ui/icons';
 import { SignaturePad } from '../ui/SignaturePad';
 import { Textarea } from '../ui/Textarea';
 import { useToast } from '../ui/Toast';
@@ -84,9 +86,8 @@ import { useToast } from '../ui/Toast';
  * افتراضيًا، وكل السجل عند الطلب) وبنفس سقفيه المعلنين، ودورة القرار كاملة
  * كما في V2 (`frontend/app/js/v2/screens/dispatch.js`):
  *
- *   إنشاء طلب صرف · تعديل قبل الاعتماد · إرجاع المعتمد قبل الاستلام للتعديل ·
- *   حذف (نهائي للأدمن موثّق) ·
- *   اعتماد/رفض الشيف العمومي · اعتماد/رفض المخازن · استلام القسم بالتوقيع.
+ *   إنشاء طلب صرف · تعديل قبل الاعتماد · إلغاء قبل الصرف · إرجاع المعتمد قبل الاستلام ·
+ *   إبطال المرحّل بعكس أثره · اعتماد/رفض الشيف العمومي · اعتماد/رفض المخازن · استلام جزئي بالتوقيع.
  *
  * الأزرار تظهر بقوائم أدوار V2 نفسها وبحالة الإذن وحدها (lib/dispatches-write)،
  * والقرارات الخمسة توقيعها إلكتروني مقفل على اسم الحساب كما يفرضه الخادم
@@ -103,6 +104,14 @@ const TONE_CLASS: Record<string, string> = {
     neutral: 'text-muted',
 };
 
+const TONE_VARIANT: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
+    warning: 'warning',
+    info: 'info',
+    success: 'success',
+    danger: 'danger',
+    neutral: 'neutral',
+};
+
 function formatInt(value: number): string {
     return value.toLocaleString('en-US');
 }
@@ -111,16 +120,46 @@ function formatQty(value: number): string {
     return value.toLocaleString('en-US', { maximumFractionDigits: 3 });
 }
 
-function Kpi({ label, english, value, hint }: { label: string; english: string; value: string; hint: string }) {
+type KpiTone = 'neutral' | 'success' | 'warning' | 'info';
+
+function Kpi({
+    label,
+    english,
+    value,
+    hint,
+    tone = 'neutral',
+    icon,
+    loading = false,
+}: {
+    label: string;
+    english: string;
+    value: string;
+    hint: string;
+    tone?: KpiTone;
+    icon: ReactNode;
+    loading?: boolean;
+}) {
     return (
-        <div className="rounded-lg border border-hairline bg-surface p-md shadow-card">
-            <p className="text-label-md text-muted">
-                {label}{' '}
-                <span className="text-caption text-faint" dir="ltr" lang="en">
-                    {english}
+        <div className={`erp-dispatch-kpi erp-dispatch-kpi--${tone}`} aria-busy={loading}>
+            <div className="erp-dispatch-kpi__top">
+                <p className="text-label-md text-muted">
+                    {label}{' '}
+                    <span className="text-caption text-faint" dir="ltr" lang="en">
+                        {english}
+                    </span>
+                </p>
+                <span className="erp-dispatch-kpi__icon" aria-hidden="true">
+                    {icon}
                 </span>
-            </p>
-            <p className="erp-numeric mt-xs text-heading-lg text-ink">{value}</p>
+            </div>
+            {loading ? (
+                <>
+                    <span className="sr-only">جارٍ تحميل {label}</span>
+                    <span className="erp-dispatch-kpi__skeleton" aria-hidden="true" />
+                </>
+            ) : (
+                <p className="erp-numeric erp-dispatch-kpi__value">{value}</p>
+            )}
             <p className="mt-xxs text-caption text-muted">{hint}</p>
         </div>
     );
@@ -829,8 +868,12 @@ function ApproveDialog({
 interface ReceiveRow {
     name: string;
     approvedQty: number;
+    previouslyReceivedQty: number;
+    remainingQty: number;
     catchWeight: boolean;
     approvedPackagingQty: number;
+    previouslyReceivedPackagingQty: number;
+    remainingPackagingQty: number;
     receivedQty: string;
     receivedPackagingQty: string;
 }
@@ -850,15 +893,18 @@ function ReceiveDialog({
         body: { items: ReturnType<typeof receivedItemsPayload>; notes: string } & SignedDecision,
     ) => Promise<unknown>;
 }) {
-    const lines = dispatchItemLines(receiveSourceItems(dispatch), { approved: true });
     const [rows, setRows] = useState<ReceiveRow[]>(() =>
-        lines.map((line) => ({
+        receiveDrafts(dispatch).map((line) => ({
             name: line.name,
-            approvedQty: line.qty,
+            approvedQty: line.approvedQty,
+            previouslyReceivedQty: Number(line.previouslyReceivedQty ?? 0),
+            remainingQty: Number(line.remainingQty ?? line.approvedQty),
             catchWeight: line.catchWeight,
-            approvedPackagingQty: line.packagingQty,
-            receivedQty: String(line.qty),
-            receivedPackagingQty: line.catchWeight ? String(line.packagingQty) : '',
+            approvedPackagingQty: Number(line.approvedPackagingQty ?? 0),
+            previouslyReceivedPackagingQty: Number(line.previouslyReceivedPackagingQty ?? 0),
+            remainingPackagingQty: Number(line.remainingPackagingQty ?? line.approvedPackagingQty ?? 0),
+            receivedQty: String(line.receivedQty ?? ''),
+            receivedPackagingQty: String(line.receivedPackagingQty ?? ''),
         })),
     );
     const [notes, setNotes] = useState('');
@@ -873,9 +919,13 @@ function ReceiveDialog({
     const drafts = rows.map((row) => ({
         name: row.name,
         approvedQty: row.approvedQty,
+        previouslyReceivedQty: row.previouslyReceivedQty,
+        remainingQty: row.remainingQty,
         receivedQty: row.receivedQty,
         catchWeight: row.catchWeight,
         approvedPackagingQty: row.approvedPackagingQty,
+        previouslyReceivedPackagingQty: row.previouslyReceivedPackagingQty,
+        remainingPackagingQty: row.remainingPackagingQty,
         receivedPackagingQty: row.receivedPackagingQty,
     }));
 
@@ -929,9 +979,11 @@ function ReceiveDialog({
                         <div className="flex min-w-40 flex-1 flex-col gap-xxs">
                             <span className="text-body-sm text-ink">{row.name}</span>
                             <span className="text-caption text-muted">
-                                المعتمد: {formatQty(row.approvedQty)}
+                                المعتمد: {formatQty(row.approvedQty)} · المستلم سابقًا:{' '}
+                                {formatQty(row.previouslyReceivedQty)} · المتبقي:{' '}
+                                <strong>{formatQty(row.remainingQty)}</strong>
                                 {row.catchWeight && row.approvedPackagingQty > 0
-                                    ? ` (${formatQty(row.approvedPackagingQty)} كرتون)`
+                                    ? ` (المتبقي ${formatQty(row.remainingPackagingQty)} كرتون)`
                                     : ''}
                             </span>
                         </div>
@@ -940,7 +992,7 @@ function ReceiveDialog({
                             name={`received-${String(index)}`}
                             type="number"
                             min={0}
-                            max={row.approvedQty}
+                            max={row.remainingQty}
                             step={0.001}
                             containerClassName="w-40"
                             value={row.receivedQty}
@@ -954,6 +1006,7 @@ function ReceiveDialog({
                                 name={`received-boxes-${String(index)}`}
                                 type="number"
                                 min={0}
+                                max={row.remainingPackagingQty}
                                 step={1}
                                 containerClassName="w-40"
                                 value={row.receivedPackagingQty}
@@ -996,9 +1049,90 @@ type ActiveDialog =
     | { kind: 'approve'; dispatch: Dispatch }
     | { kind: 'reject'; dispatch: Dispatch }
     | { kind: 'receive'; dispatch: Dispatch }
-    | { kind: 'reopen'; dispatch: Dispatch };
+    | { kind: 'cancel'; dispatch: Dispatch }
+    | { kind: 'reopen'; dispatch: Dispatch }
+    | { kind: 'void'; dispatch: Dispatch };
 
-function ReopenDialog({
+function LifecycleDialog({
+    dispatch,
+    mode,
+    signerName,
+    pending,
+    onClose,
+    onSubmit,
+}: {
+    dispatch: Dispatch;
+    mode: 'reopen' | 'void';
+    signerName: string;
+    pending: boolean;
+    onClose: () => void;
+    onSubmit: (body: SignedDecision & { reason: string }) => Promise<unknown>;
+}) {
+    const [reason, setReason] = useState('');
+    const [signature, setSignature] = useState<string | null>(null);
+    const [error, setError] = useState('');
+    const formId = `erp-dispatch-${mode}-form`;
+    const isReopen = mode === 'reopen';
+
+    async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
+        event.preventDefault();
+        if (pending) {
+            return;
+        }
+        const cleanReason = reason.trim();
+        if (!cleanReason) {
+            setError(isReopen ? DISPATCH_TEXT.reopenReasonRequired : DISPATCH_TEXT.voidReasonRequired);
+            return;
+        }
+        const signatureMessage = decisionSignatureError(signature, signerName);
+        if (signatureMessage) {
+            setError(signatureMessage);
+            return;
+        }
+        setError('');
+        try {
+            await onSubmit({ reason: cleanReason, signatureData: signature ?? '', signerName });
+        } catch (cause) {
+            setError(writeErrorMessage(cause, isReopen ? DISPATCH_TEXT.reopenFailed : DISPATCH_TEXT.voidFailed));
+        }
+    }
+
+    return (
+        <ActionsDialog
+            title={isReopen ? `إرجاع الإذن للمخازن للتعديل — #${dispatch.id}` : `إبطال إذن الصرف — #${dispatch.id}`}
+            formId={formId}
+            submitLabel={isReopen ? 'إرجاع للمخازن' : 'إبطال وعكس الأثر'}
+            pending={pending}
+            onClose={onClose}
+            onSubmit={(event) => void submit(event)}
+        >
+            <p className="rounded-md border border-warning/40 bg-warning-soft p-sm text-body-sm text-ink">
+                {isReopen
+                    ? 'سيُعكس خصم المخزون وتكلفة القسم ويُلغى اعتماد المخازن وتوقيعه. بعد الإرجاع يمكن تعديل الإذن وإعادة إرساله في دورة الاعتماد من جديد. لا يمكن تنفيذ ذلك بعد تسجيل أي استلام.'
+                    : 'سيُعكس أثر الصرف والاستلام المخزني والمحاسبي ويبقى المستند والحركات الأصلية محفوظين. لا يمكن الإبطال مع مرتجع نشط أو إذا كانت المواد المستلمة قد استُهلكت أو رصيد الموقع غير كافٍ.'}
+            </p>
+            <Textarea
+                label={isReopen ? 'سبب الإرجاع (إلزامي)' : 'سبب الإبطال (إلزامي)'}
+                name={`${mode}-reason`}
+                rows={3}
+                maxLength={500}
+                value={reason}
+                onChange={(event) => {
+                    setReason(event.target.value);
+                }}
+            />
+            <SignaturePad
+                label={`توقيع المسؤول — ${signerName || '—'}`}
+                name={signerName}
+                testId="dispatch-signature"
+                onChange={setSignature}
+            />
+            <FormMessage message={error} />
+        </ActionsDialog>
+    );
+}
+
+function CancelDialog({
     dispatch,
     pending,
     onClose,
@@ -1011,48 +1145,42 @@ function ReopenDialog({
 }) {
     const [reason, setReason] = useState('');
     const [error, setError] = useState('');
-    const formId = 'erp-dispatch-reopen-form';
-
+    const formId = 'erp-dispatch-cancel-form';
     async function submit(event: FormEvent<HTMLFormElement>): Promise<void> {
         event.preventDefault();
         if (pending) {
             return;
         }
-        const cleanReason = reason.trim();
-        if (!cleanReason) {
-            setError(DISPATCH_TEXT.reopenReasonRequired);
+        if (!reason.trim()) {
+            setError(DISPATCH_TEXT.cancelReasonRequired);
             return;
         }
         setError('');
         try {
-            await onSubmit(cleanReason);
+            await onSubmit(reason.trim());
         } catch (cause) {
-            setError(writeErrorMessage(cause, DISPATCH_TEXT.reopenFailed));
+            setError(writeErrorMessage(cause, DISPATCH_TEXT.cancelFailed));
         }
     }
-
     return (
         <ActionsDialog
-            title={`إرجاع الإذن للمخازن للتعديل — #${dispatch.id}`}
+            title={`إلغاء إذن الصرف — #${dispatch.id}`}
             formId={formId}
-            submitLabel="إرجاع للمخازن"
+            submitLabel="تأكيد الإلغاء"
             pending={pending}
             onClose={onClose}
             onSubmit={(event) => void submit(event)}
         >
             <p className="rounded-md border border-warning/40 bg-warning-soft p-sm text-body-sm text-ink">
-                سيُعكس خصم المخزون وتكلفة القسم ويُلغى اعتماد المخازن وتوقيعه. بعد الإرجاع يمكن تعديل الإذن وإعادة إرساله
-                في دورة الاعتماد من جديد. لا يمكن تنفيذ ذلك بعد تسجيل أي استلام.
+                الإلغاء متاح قبل صرف المخزون، ويحفظ الإذن وسبب الإلغاء في السجل بدل حذفه.
             </p>
             <Textarea
-                label="سبب الإرجاع (إلزامي)"
-                name="reopen-reason"
+                label="سبب الإلغاء (إلزامي)"
+                name="cancel-reason"
                 rows={3}
                 maxLength={500}
                 value={reason}
-                onChange={(event) => {
-                    setReason(event.target.value);
-                }}
+                onChange={(event) => setReason(event.target.value)}
             />
             <FormMessage message={error} />
         </ActionsDialog>
@@ -1074,10 +1202,11 @@ export function Dispatches() {
     const signerName = String(auth.user?.name ?? auth.user?.username ?? '').trim();
     const gateUser: GateUser = {
         id: auth.user?.id ?? null,
-        deptCode: (auth.user as (typeof auth.user & { deptCode?: string | null }) | null)?.deptCode ?? null,
+        // الجلسة تحمل `dept_code` (snake_case) من `publicUserOf`؛ قراءة
+        // `deptCode` كانت تُرجع undefined فتُفشل بوابة الاستلام لرئيس القسم.
+        deptCode: auth.user?.dept_code ?? null,
     };
     const canCreate = canCreateDispatch(role);
-    const confirm = useConfirm();
     const { toast } = useToast();
 
     const dispatchesQuery = useQuery({
@@ -1166,18 +1295,24 @@ export function Dispatches() {
         },
     });
 
-    const deleteMutation = useWriteMutation<Dispatch, void>({
-        mutationFn: (dispatch) => deleteDispatch(dispatch.id),
-        successTitle: (dispatch) => deleteSuccessText(role, String(dispatch.status ?? '')),
-        invalidate: [['dispatches'], ['inventory']],
+    const cancelMutation = useWriteMutation<{ dispatch: Dispatch; reason: string }, void>({
+        mutationFn: ({ dispatch, reason }) => cancelDispatch(dispatch.id, reason),
+        successTitle: DISPATCH_TEXT.cancelSuccess,
+        invalidate: [['dispatches']],
         silentError: true,
-        onError: (cause) => {
-            setPageError(writeErrorMessage(cause, DISPATCH_TEXT.deleteFailed));
-        },
+        onSuccess: () => setActive(null),
     });
 
-    const reopenMutation = useWriteMutation<{ dispatch: Dispatch; reason: string }, void>({
-        mutationFn: ({ dispatch, reason }) => reopenDispatch(dispatch.id, reason),
+    const voidMutation = useWriteMutation<{ dispatch: Dispatch; body: SignedDecision & { reason: string } }, void>({
+        mutationFn: ({ dispatch, body }) => voidDispatch(dispatch.id, body),
+        successTitle: DISPATCH_TEXT.voidSuccess,
+        invalidate: [['dispatches'], ['inventory'], ['expenses']],
+        silentError: true,
+        onSuccess: () => setActive(null),
+    });
+
+    const reopenMutation = useWriteMutation<{ dispatch: Dispatch; body: SignedDecision & { reason: string } }, void>({
+        mutationFn: ({ dispatch, body }) => reopenDispatch(dispatch.id, body),
         successTitle: DISPATCH_TEXT.reopenSuccess,
         invalidate: [['dispatches'], ['inventory'], ['expenses']],
         silentError: true,
@@ -1212,6 +1347,7 @@ export function Dispatches() {
     }, [allRows, from, to, search, status, rangeInvalid]);
 
     const counts = useMemo(() => summarizeDispatches(rows), [rows]);
+    const countsAll = useMemo(() => summarizeDispatches(allRows), [allRows]);
     const withdrawal = useMemo(() => summarizeProductWithdrawal(rows, search), [rows, search]);
 
     const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
@@ -1278,7 +1414,7 @@ export function Dispatches() {
                 </Button>,
             );
         }
-        if (chefActionsVisible(role, row)) {
+        if (chefActionsVisible(role, row, gateUser)) {
             buttons.push(
                 <Button
                     key="chef-approve"
@@ -1305,7 +1441,7 @@ export function Dispatches() {
                 </Button>,
             );
         }
-        if (warehouseActionsVisible(role, row)) {
+        if (warehouseActionsVisible(role, row, gateUser)) {
             buttons.push(
                 <Button
                     key="approve"
@@ -1347,79 +1483,72 @@ export function Dispatches() {
                 </Button>,
             );
         }
-        if (deleteVisible(role, row)) {
+        if (cancelVisible(role, row, gateUser)) {
             buttons.push(
                 <Button
-                    key="delete"
+                    key="cancel"
                     type="button"
                     size="sm"
                     variant="danger"
-                    disabled={deleteMutation.isPending}
-                    aria-label={`حذف — إذن #${id}`}
-                    onClick={() => {
-                        void handleDelete(dispatch);
-                    }}
+                    disabled={cancelMutation.isPending}
+                    aria-label={`إلغاء — إذن #${id}`}
+                    onClick={() => setActive({ kind: 'cancel', dispatch })}
                 >
-                    حذف
+                    إلغاء
+                </Button>,
+            );
+        }
+        if (voidVisible(role, row)) {
+            buttons.push(
+                <Button
+                    key="void"
+                    type="button"
+                    size="sm"
+                    variant="danger"
+                    disabled={voidMutation.isPending}
+                    aria-label={`إبطال — إذن #${id}`}
+                    onClick={() => setActive({ kind: 'void', dispatch })}
+                >
+                    إبطال
                 </Button>,
             );
         }
         return buttons;
     }
 
-    async function handleDelete(dispatch: Dispatch): Promise<void> {
-        if (deleteMutation.isPending) {
-            return;
-        }
-        setPageError('');
-        const row = dispatchGate(dispatch);
-        const confirmed = await confirm(deleteConfirmText(role, row.status, statusOf(row.status).label));
-        if (!confirmed) {
-            return;
-        }
-        deleteMutation.mutate(dispatch);
-    }
-
     return (
         <div className="erp-premium-screen flex flex-col gap-md">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        أذون الصرف{' '}
-                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
-                            Dispatch Orders
-                        </span>
-                    </h1>
-                    <p className="text-body-sm text-muted">
-                        سجل أذون الصرف ودورة قرارها كاملة (إنشاء · اعتماد الشيف · اعتماد المخازن · استلام بالتوقيع ·
-                        تعديل · إرجاع المعتمد قبل الاستلام للتعديل · حذف).
-                    </p>
-                </div>
-                <div className="flex flex-wrap items-center gap-xs" data-erp-print-hide>
-                    {canCreate ? (
-                        <Button
+            <PageHeader
+                title="أذون الصرف"
+                english="Dispatch Orders"
+                description="سجل أذون الصرف ودورة قرارها كاملة (إنشاء · اعتماد الشيف · اعتماد المخازن · استلام بالتوقيع · تعديل · إرجاع المعتمد قبل الاستلام للتعديل · حذف)."
+                actions={
+                    <div className="flex flex-wrap items-center gap-xs" data-erp-print-hide>
+                        {canCreate ? (
+                            <Button
+                                type="button"
+                                size="sm"
+                                onClick={() => {
+                                    setPageError('');
+                                    setActive({ kind: 'create' });
+                                }}
+                            >
+                                طلب صرف جديد
+                            </Button>
+                        ) : null}
+                        <PrintActions title="أذون الصرف" />
+                        <button
                             type="button"
-                            size="sm"
                             onClick={() => {
-                                setPageError('');
-                                setActive({ kind: 'create' });
+                                void dispatchesQuery.refetch();
                             }}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
                         >
-                            طلب صرف جديد
-                        </Button>
-                    ) : null}
-                    <PrintActions title="أذون الصرف" />
-                    <button
-                        type="button"
-                        onClick={() => {
-                            void dispatchesQuery.refetch();
-                        }}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                </div>
-            </header>
+                            تحديث
+                        </button>
+                    </div>
+                }
+            />
 
             {pageError ? (
                 <p role="alert" className="text-body-sm text-danger-text">
@@ -1428,28 +1557,50 @@ export function Dispatches() {
             ) : null}
 
             <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
-                <Kpi label="الأذون المعروضة" english="Dispatches" value={formatInt(rows.length)} hint="بعد المرشّحات" />
+                <Kpi
+                    label="الأذون المعروضة"
+                    english="Dispatches"
+                    value={formatInt(rows.length)}
+                    hint="بعد المرشّحات"
+                    icon={<ListTreeIcon className="size-4" />}
+                    loading={dispatchesQuery.isPending}
+                />
                 <Kpi
                     label="بانتظار الاعتماد"
                     english="Pending"
                     value={formatInt(counts.pending ?? 0)}
                     hint={DISPATCH_STATUS.pending.label}
+                    tone="warning"
+                    icon={<AlertCircleIcon className="size-4" />}
+                    loading={dispatchesQuery.isPending}
                 />
                 <Kpi
                     label="معتمد بانتظار الاستلام"
                     english="Approved"
                     value={formatInt(counts.approved ?? 0)}
                     hint={DISPATCH_STATUS.approved.label}
+                    tone="info"
+                    icon={<InfoIcon className="size-4" />}
+                    loading={dispatchesQuery.isPending}
                 />
                 <Kpi
                     label="مستلم ومغلق"
                     english="Received"
                     value={formatInt(counts.received ?? 0)}
                     hint={DISPATCH_STATUS.received.label}
+                    tone="success"
+                    icon={<CheckCircleIcon className="size-4" />}
+                    loading={dispatchesQuery.isPending}
                 />
             </div>
 
-            <Card className="p-sm">
+            <Card className="erp-dispatch-filters">
+                <div className="erp-dispatch-filters__head">
+                    <div>
+                        <p className="text-label-md font-medium text-ink">تصفية الأذون</p>
+                        <p className="text-caption text-muted">نطاق وفترة وحالة — والشرائح أدناه تبدّل الحالة بضغطة.</p>
+                    </div>
+                </div>
                 <div className="flex flex-wrap items-end gap-sm">
                     <label
                         className="flex flex-col gap-xxs text-label-md text-ink-secondary"
@@ -1548,6 +1699,36 @@ export function Dispatches() {
                     </button>
                     <span className="text-body-sm text-muted">{formatInt(rows.length)} إذنًا</span>
                 </div>
+                <fieldset className="erp-dispatch-status-chips mt-sm flex flex-wrap gap-xs">
+                    <legend className="sr-only">تصفية سريعة حسب حالة الإذن</legend>
+                    <button
+                        type="button"
+                        className={status === 'ALL' ? 'erp-dispatch-status-chip is-active' : 'erp-dispatch-status-chip'}
+                        aria-pressed={status === 'ALL'}
+                        onClick={() => {
+                            setStatus('ALL');
+                            setPage(1);
+                        }}
+                    >
+                        الكل <span>{formatInt(rows.length)}</span>
+                    </button>
+                    {Object.entries(DISPATCH_STATUS).map(([key, entry]) => (
+                        <button
+                            key={key}
+                            type="button"
+                            className={
+                                status === key ? 'erp-dispatch-status-chip is-active' : 'erp-dispatch-status-chip'
+                            }
+                            aria-pressed={status === key}
+                            onClick={() => {
+                                setStatus(key);
+                                setPage(1);
+                            }}
+                        >
+                            {entry.label} <span>{formatInt(countsAll[key] ?? 0)}</span>
+                        </button>
+                    ))}
+                </fieldset>
                 {rangeInvalid ? (
                     <p role="alert" className="mt-sm text-body-sm text-danger-text">
                         بداية الفترة بعد نهايتها — صحّح التاريخين قبل العرض.
@@ -1555,7 +1736,14 @@ export function Dispatches() {
                 ) : null}
             </Card>
 
-            <Card>
+            <Card className="erp-dispatch-tablewrap">
+                <div className="erp-dispatch-tablebar">
+                    <div className="flex items-center gap-sm">
+                        <h2 className="text-heading-md text-ink">سجل الأذون</h2>
+                        <Badge variant="neutral">{formatInt(rows.length)}</Badge>
+                    </div>
+                    <p className="text-caption text-muted">كل تغيير حالة موثّق بتوقيع صاحب الحساب.</p>
+                </div>
                 {dispatchesQuery.isPending ? (
                     <div aria-busy="true">
                         <StateLoading label="جارٍ تحميل أذون الصرف" />
@@ -1647,17 +1835,22 @@ export function Dispatches() {
                                                     {row.date || '—'}
                                                 </td>
                                                 <td className="px-sm py-xxs text-body-sm">
-                                                    <span className={TONE_CLASS[row.statusTone]}>
-                                                        {row.statusLabel}
-                                                        {row.status && !row.statusKnown ? (
-                                                            <span className="text-caption text-faint" dir="ltr">
-                                                                {' '}
-                                                                ({row.status})
-                                                            </span>
-                                                        ) : null}
-                                                    </span>
+                                                    <Badge
+                                                        variant={TONE_VARIANT[row.statusTone] ?? 'neutral'}
+                                                        dot
+                                                        unknown={!row.statusKnown}
+                                                    >
+                                                        <span className={TONE_CLASS[row.statusTone]}>
+                                                            {row.statusLabel}
+                                                            {row.status && !row.statusKnown ? (
+                                                                <span className="text-caption text-faint" dir="ltr">
+                                                                    ({row.status})
+                                                                </span>
+                                                            ) : null}
+                                                        </span>
+                                                    </Badge>
                                                     {row.stage ? (
-                                                        <span className="block text-caption text-muted">
+                                                        <span className="mt-xxs block text-caption text-muted">
                                                             {row.stage}
                                                         </span>
                                                     ) : null}
@@ -1802,14 +1995,34 @@ export function Dispatches() {
                 />
             ) : null}
 
-            {active?.kind === 'reopen' ? (
-                <ReopenDialog
+            {active?.kind === 'cancel' ? (
+                <CancelDialog
                     dispatch={active.dispatch}
+                    pending={cancelMutation.isPending}
+                    onClose={() => setActive(null)}
+                    onSubmit={(reason) => cancelMutation.mutateAsync({ dispatch: active.dispatch, reason })}
+                />
+            ) : null}
+
+            {active?.kind === 'reopen' ? (
+                <LifecycleDialog
+                    dispatch={active.dispatch}
+                    mode="reopen"
+                    signerName={signerName}
                     pending={reopenMutation.isPending}
-                    onClose={() => {
-                        setActive(null);
-                    }}
-                    onSubmit={(reason) => reopenMutation.mutateAsync({ dispatch: active.dispatch, reason })}
+                    onClose={() => setActive(null)}
+                    onSubmit={(body) => reopenMutation.mutateAsync({ dispatch: active.dispatch, body })}
+                />
+            ) : null}
+
+            {active?.kind === 'void' ? (
+                <LifecycleDialog
+                    dispatch={active.dispatch}
+                    mode="void"
+                    signerName={signerName}
+                    pending={voidMutation.isPending}
+                    onClose={() => setActive(null)}
+                    onSubmit={(body) => voidMutation.mutateAsync({ dispatch: active.dispatch, body })}
                 />
             ) : null}
         </div>

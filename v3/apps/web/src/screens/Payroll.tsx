@@ -21,7 +21,7 @@ import {
 } from '../lib/payroll';
 import { payrollSheetCsv } from '../lib/payroll-suite';
 import { downloadBlob } from '../lib/pdf-share';
-import { DataTable, type DataTableColumn } from '../ui';
+import { PageHeader, DataTable, type DataTableColumn } from '../ui';
 
 type PayrollView = 'all' | 'approved' | 'other';
 
@@ -214,32 +214,30 @@ export function Payroll() {
 
     return (
         <div className="flex flex-col gap-md payroll-premium">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        الرواتب{' '}
-                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
-                            Payroll
-                        </span>
-                    </h1>
-                    <p className="text-body-sm text-muted">سجل المسيرات وكشف الموظفين.</p>
-                </div>
-                <div className="flex items-center gap-xs">
-                    <PayrollWorkbench month={month} />
-                    <PrintActions title="الرواتب" />
-                    <button
-                        type="button"
-                        onClick={() => {
-                            void runsQuery.refetch();
-                            void sheetQuery.refetch();
-                            void departmentsQuery.refetch();
-                        }}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                </div>
-            </header>
+            <PageHeader
+                title="الرواتب"
+                english="Payroll"
+                description="سجل المسيرات وكشف الموظفين."
+                actions={
+                    <>
+                        <div className="flex items-center gap-xs">
+                            <PayrollWorkbench month={month} />
+                            <PrintActions title="الرواتب" />
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    void runsQuery.refetch();
+                                    void sheetQuery.refetch();
+                                    void departmentsQuery.refetch();
+                                }}
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                            >
+                                تحديث
+                            </button>
+                        </div>
+                    </>
+                }
+            />
 
             <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4" aria-label="مؤشرات مسيرات الرواتب">
                 <Kpi

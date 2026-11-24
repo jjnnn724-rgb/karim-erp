@@ -99,7 +99,7 @@
     background: var(--erp-surface);
     padding: 0 16px 16px;
     overflow: hidden;
-    box-shadow: 0 1px 2px rgb(0 0 0 / 0.07);
+    box-shadow: var(--erp-shadow-card);
     animation: erp-card-in 420ms ease-out both;
     transition:
         transform 200ms ease,
@@ -118,7 +118,7 @@
 }
 .erp-person:hover {
     transform: translateY(-4px);
-    box-shadow: 0 18px 40px -12px rgb(0 0 0 / 0.22);
+    box-shadow: var(--erp-shadow-pop);
     border-color: color-mix(in srgb, var(--erp-brass) 55%, var(--erp-hairline));
 }
 .erp-person__head {
@@ -270,9 +270,9 @@
     background: color-mix(in srgb, var(--erp-danger-text) 8%, var(--erp-surface-sunken));
 }
 .erp-person__chip--warning {
-    color: var(--erp-warning-text, #8f4308);
-    border-color: color-mix(in srgb, var(--erp-warning-text, #8f4308) 40%, var(--erp-hairline));
-    background: color-mix(in srgb, var(--erp-warning-text, #8f4308) 8%, var(--erp-surface-sunken));
+    color: var(--erp-warning-text);
+    border-color: color-mix(in srgb, var(--erp-warning-text) 40%, var(--erp-hairline));
+    background: color-mix(in srgb, var(--erp-warning-text) 8%, var(--erp-surface-sunken));
 }
 .erp-person__att {
     border: 1px solid var(--erp-hairline);
@@ -288,7 +288,7 @@
     border-block-start-color: var(--erp-success-text);
 }
 .erp-person__att[data-tone="warning"] {
-    border-block-start-color: var(--erp-warning, #b45309);
+    border-block-start-color: var(--erp-warning);
 }
 .erp-person__att[data-tone="neutral"] {
     border-block-start-color: var(--erp-muted);
@@ -312,7 +312,7 @@
     color: var(--erp-success-text);
 }
 .erp-person__att[data-tone="warning"] .erp-person__att-chip {
-    color: var(--erp-warning-text, #8f4308);
+    color: var(--erp-warning-text);
 }
 .erp-person__att[data-tone="neutral"] .erp-person__att-chip {
     color: var(--erp-muted);
@@ -415,12 +415,12 @@
     color: var(--erp-danger-text);
 }
 .erp-badge[data-tone="warning"] {
-    background: color-mix(in srgb, var(--erp-warning-text, #8f4308) 14%, transparent);
-    color: var(--erp-warning-text, #8f4308);
+    background: color-mix(in srgb, var(--erp-warning-text) 14%, transparent);
+    color: var(--erp-warning-text);
 }
 .erp-badge[data-tone="info"] {
-    background: color-mix(in srgb, #1a3fbf 12%, transparent);
-    color: #1a3fbf;
+    background: color-mix(in srgb, var(--erp-info) 12%, transparent);
+    color: var(--erp-info-text);
 }
 .erp-badge[data-tone="neutral"] {
     background: color-mix(in srgb, var(--erp-muted) 14%, transparent);
@@ -450,7 +450,7 @@
     background: var(--erp-success-text);
 }
 .erp-dot--warning {
-    background: var(--erp-warning, #b45309);
+    background: var(--erp-warning);
 }
 @media (prefers-reduced-motion: reduce) {
     .erp-person {

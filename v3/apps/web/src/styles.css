@@ -96,44 +96,6 @@
     --erp-focus-ring: 2px solid var(--erp-c-primary);
 
     /*
-     * جسر رموز shadcn/ui — جسر يستند إلى الدلالات (`--erp-*`) فتنعكس في الوضع
-     * الداكن تلقائيًا (قاعدة DESIGN.md: الداكن يبدّل البدائيات فقط).
-     */
-    --background: var(--erp-canvas);
-    --foreground: var(--erp-ink);
-    --card: var(--erp-surface);
-    --card-foreground: var(--erp-ink);
-    --popover: var(--erp-surface-raised);
-    --popover-foreground: var(--erp-ink);
-    --primary: var(--erp-primary);
-    --primary-foreground: var(--erp-on-primary);
-    --secondary: var(--erp-surface-sunken);
-    --secondary-foreground: var(--erp-ink);
-    --muted: var(--erp-surface-sunken);
-    --muted-foreground: var(--erp-muted);
-    --accent: var(--erp-surface-hover);
-    --accent-foreground: var(--erp-ink);
-    --destructive: var(--erp-danger);
-    --destructive-foreground: var(--erp-on-primary);
-    --border: var(--erp-hairline);
-    --input: var(--erp-field-border);
-    --ring: var(--erp-primary);
-    --radius: 0.625rem;
-    --chart-1: var(--erp-chart-1);
-    --chart-2: var(--erp-chart-2);
-    --chart-3: var(--erp-chart-3);
-    --chart-4: var(--erp-chart-4);
-    --chart-5: var(--erp-chart-5);
-    --sidebar: var(--erp-sidebar);
-    --sidebar-foreground: var(--erp-sidebar-ink);
-    --sidebar-primary: var(--erp-sidebar-accent);
-    --sidebar-primary-foreground: var(--erp-sidebar-plaque-ink);
-    --sidebar-accent: var(--erp-accent-soft);
-    --sidebar-accent-foreground: var(--erp-sidebar-ink);
-    --sidebar-border: var(--erp-hairline);
-    --sidebar-ring: var(--erp-sidebar-accent);
-
-    /*
      * الحركة والتراصف — رموز لا تعتمد على الوضع (لا تكرار في `.dark`).
      * المدد من DESIGN.md (Motion): فوري 80 / سريع 120 / أساسي 180 / بطيء 260.
      */
@@ -403,43 +365,6 @@ body.pos-cashier-fullscreen {
     --spacing-page: 64px;
 
     --radius: 0.625rem;
-
-    /*
-     * جسر رموز shadcn/ui — جسر يستند إلى الدلالات (`--erp-*`) فتنعكس في الوضع
-     * الداكن تلقائيًا (قاعدة DESIGN.md: الداكن يبدّل البدائيات فقط).
-     */
-    --background: var(--erp-canvas);
-    --foreground: var(--erp-ink);
-    --card: var(--erp-surface);
-    --card-foreground: var(--erp-ink);
-    --popover: var(--erp-surface-raised);
-    --popover-foreground: var(--erp-ink);
-    --primary: var(--erp-primary);
-    --primary-foreground: var(--erp-on-primary);
-    --secondary: var(--erp-surface-sunken);
-    --secondary-foreground: var(--erp-ink);
-    --muted: var(--erp-surface-sunken);
-    --muted-foreground: var(--erp-muted);
-    --accent: var(--erp-surface-hover);
-    --accent-foreground: var(--erp-ink);
-    --destructive: var(--erp-danger);
-    --destructive-foreground: var(--erp-on-primary);
-    --border: var(--erp-hairline);
-    --input: var(--erp-field-border);
-    --ring: var(--erp-primary);
-    --chart-1: var(--erp-chart-1);
-    --chart-2: var(--erp-chart-2);
-    --chart-3: var(--erp-chart-3);
-    --chart-4: var(--erp-chart-4);
-    --chart-5: var(--erp-chart-5);
-    --sidebar: var(--erp-sidebar);
-    --sidebar-foreground: var(--erp-sidebar-ink);
-    --sidebar-primary: var(--erp-sidebar-accent);
-    --sidebar-primary-foreground: var(--erp-sidebar-plaque-ink);
-    --sidebar-accent: var(--erp-accent-soft);
-    --sidebar-accent-foreground: var(--erp-sidebar-ink);
-    --sidebar-border: var(--erp-hairline);
-    --sidebar-ring: var(--erp-sidebar-accent);
 
     /*
      * منحنيات الحركة — تولّد أدوات `ease-standard` / `ease-enter`.
@@ -943,8 +868,8 @@ body.pos-cashier-fullscreen {
     }
 }
 
-/* HeroUI v3: bridge the library to ERP tokens, including nested dark previews.
- * Selective imports above avoid shipping styles for components not yet adopted.
+/* HeroUI v3 and shadcn/ui share one bridge to ERP tokens, including nested dark
+ * previews. Selective imports above avoid shipping unused HeroUI component styles.
  */
 :root,
 .dark {
@@ -977,7 +902,7 @@ body.pos-cashier-fullscreen {
     --sidebar-foreground: var(--erp-sidebar-ink);
     --sidebar-primary: var(--erp-sidebar-accent);
     --sidebar-primary-foreground: var(--erp-sidebar-plaque-ink);
-    --sidebar-accent: var(--erp-accent-soft, var(--erp-surface-hover));
+    --sidebar-accent: var(--accent-soft);
     --sidebar-accent-foreground: var(--erp-sidebar-ink);
     --sidebar-border: var(--erp-hairline);
     --sidebar-ring: var(--erp-sidebar-accent);

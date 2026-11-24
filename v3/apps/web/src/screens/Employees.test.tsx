@@ -1,8 +1,22 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ToastProvider } from '../ui/Toast';
 import { Employees } from './Employees';
+
+const authMocks = vi.hoisted(() => ({ role: 'employee' }));
+
+vi.mock('../lib/auth', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../lib/auth')>();
+    return {
+        ...actual,
+        useAuthState: () => ({
+            status: 'authenticated' as const,
+            token: 'test-token',
+            user: { id: '1', name: 'مستخدم اختبار', username: 'test', role: authMocks.role },
+        }),
+    };
+});
 
 /**
  * دليل الموظفين يقرأ `/api/employees` و`/api/hrDepartments`، يحلّ اسم
@@ -93,6 +107,7 @@ function bodyRows(): HTMLElement[] {
 }
 
 afterEach(() => {
+    authMocks.role = 'employee';
     vi.unstubAllGlobals();
     try {
         localStorage.removeItem('erp-employees-view');
@@ -176,6 +191,20 @@ describe('دليل الموظفين', () => {
         expect(print).toHaveBeenCalledOnce();
     });
 
+    it('يفتح البطاقة الكاملة للأدمن من الجدول', async () => {
+        authMocks.role = 'admin';
+        stubFetch();
+        renderScreen();
+        await screen.findByText('أحمد علي');
+        switchToTable();
+
+        const table = screen.getByRole('table', { name: 'جدول دليل الموظفين' });
+        fireEvent.click(within(table).getByRole('button', { name: 'فتح البطاقة الكاملة — أحمد علي' }));
+
+        expect(await screen.findByRole('dialog', { name: 'كشف الموظف — أحمد علي' })).toBeTruthy();
+        expect(screen.getByText('الراتب')).toBeTruthy();
+    });
+
     it('البطاقات افتراضية والمبدّل يتحول للجدول', async () => {
         stubFetch();
         renderScreen();
@@ -233,11 +262,13 @@ describe('دليل الموظفين', () => {
         await screen.findByText('أحمد علي');
         switchToTable();
 
-        fireEvent.click(screen.getByRole('button', { name: 'الكود' }));
+        // DataTable الموحّد يسمّي زر الفرز «فرز حسب {العمود}».
+        fireEvent.click(screen.getByRole('button', { name: 'فرز حسب الكود' }));
         await waitFor(() => {
             expect(bodyRows()[0]?.textContent).toContain('EMP-001');
         });
-        fireEvent.click(screen.getByRole('button', { name: 'الكود' }));
+        // DataTable الموحّد يسمّي زر الفرز «فرز حسب {العمود}».
+        fireEvent.click(screen.getByRole('button', { name: 'فرز حسب الكود' }));
         await waitFor(() => {
             expect(bodyRows()[0]?.textContent).toContain('EMP-003');
         });

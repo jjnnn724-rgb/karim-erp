@@ -1,5 +1,5 @@
 {
-    "_generated": "2026-11-19T01:28:46.850Z",
+    "_generated": "2026-11-21T19:46:23.214Z",
     "files": {
         "components/auth-premium.css": 1,
         "mobile.css": 2,
@@ -10,9 +10,7 @@
         "screens/CashierSales.premium.css": 1,
         "screens/Departments.premium.css": 3,
         "screens/Dispatches.premium.css": 3,
-        "screens/Employees.premium.css": 12,
         "screens/Executive.premium.css": 1,
-        "screens/Mudad.premium.css": 36,
         "screens/Payments.premium.css": 3,
         "screens/PosEntry.premium.css": 1,
         "screens/Procurement.premium.css": 3,

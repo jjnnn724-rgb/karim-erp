@@ -61,6 +61,7 @@ import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
 import { useToast } from '../ui/Toast';
 
+import { PageHeader } from '../ui';
 /**
  * المخزون — القراءة من `/api/warehouse/inventory/search`، والكتابة كما في V2:
  * أربعة أبواب ظاهرة حسب الدور (وارد سريع، تعديل مباشر، حذف، حذف نهائي داخل
@@ -688,68 +689,64 @@ export function Warehouse() {
 
     return (
         <div className="flex flex-col gap-md erp-premium-Warehouse">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        المخزون{' '}
-                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
-                            Inventory
-                        </span>
-                    </h1>
-                    <p className="text-body-sm text-muted">
-                        سجل الأصناف وأرصدتها — وارد سريع وتعديل مباشر وحذف ودمج للمكرر وصلاحياتها.
-                    </p>
-                </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                    {canWrite ? (
-                        <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => {
-                                setBulkOpen(true);
-                            }}
-                        >
-                            استلام مجمّع
-                        </Button>
-                    ) : null}
-                    {canAudit ? (
-                        <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => {
-                                setAuditsOpen(true);
-                            }}
-                        >
-                            الجرد الفعلي
-                        </Button>
-                    ) : null}
-                    {canMerge ? (
-                        <Button
-                            type="button"
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => {
-                                setPageError('');
-                                setMergeOpen(true);
-                            }}
-                        >
-                            دمج أصناف مكررة
-                        </Button>
-                    ) : null}
-                    <button
-                        type="button"
-                        onClick={() => {
-                            void inventoryQuery.refetch();
-                        }}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                    <PrintActions title="المخزون" />
-                </div>
-            </header>
+            <PageHeader
+                title="المخزون"
+                english="Inventory"
+                description="سجل الأصناف وأرصدتها — وارد سريع وتعديل مباشر وحذف ودمج للمكرر وصلاحياتها."
+                actions={
+                    <>
+                        <div className="flex items-center gap-xs" data-erp-print-hide>
+                            {canWrite ? (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={() => {
+                                        setBulkOpen(true);
+                                    }}
+                                >
+                                    استلام مجمّع
+                                </Button>
+                            ) : null}
+                            {canAudit ? (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={() => {
+                                        setAuditsOpen(true);
+                                    }}
+                                >
+                                    الجرد الفعلي
+                                </Button>
+                            ) : null}
+                            {canMerge ? (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={() => {
+                                        setPageError('');
+                                        setMergeOpen(true);
+                                    }}
+                                >
+                                    دمج أصناف مكررة
+                                </Button>
+                            ) : null}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    void inventoryQuery.refetch();
+                                }}
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                            >
+                                تحديث
+                            </button>
+                            <PrintActions title="المخزون" />
+                        </div>
+                    </>
+                }
+            />
 
             {pageError ? (
                 <p role="alert" className="text-body-sm text-danger-text">

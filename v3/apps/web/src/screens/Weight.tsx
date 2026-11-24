@@ -29,6 +29,7 @@ import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 
+import { PageHeader } from '../ui';
 /**
  * الميزان — سجل قراءات الوزن، قراءة فقط من `/api/weightReadings`.
  *
@@ -208,37 +209,32 @@ export function Weight() {
 
     return (
         <div className="erp-premium-screen erp-premium-screen--weight flex flex-col gap-md">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        الميزان{' '}
-                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
-                            Scale
-                        </span>
-                    </h1>
-                    <p className="text-body-sm text-muted">
-                        سجل قراءات الوزن بوحداتها وبالكيلوجرام — تسجيل وتعديل وحذف. المجاميع تُحوَّل للكيلوجرام أولًا،
-                        والقراءة بوحدة غير معروفة تُستبعد وتُعدّ ولا تُخمَّن.
-                    </p>
-                </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                    {canWrite ? (
-                        <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
-                            تسجيل قراءة جديدة
-                        </Button>
-                    ) : null}
-                    <button
-                        type="button"
-                        onClick={() => {
-                            void readingsQuery.refetch();
-                        }}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                    <PrintActions title="الميزان" />
-                </div>
-            </header>
+            <PageHeader
+                title="الميزان"
+                english="Scale"
+                description="سجل قراءات الوزن بوحداتها وبالكيلوجرام — تسجيل وتعديل وحذف. المجاميع تُحوَّل للكيلوجرام أولًا، والقراءة بوحدة غير معروفة تُستبعد وتُعدّ ولا تُخمَّن."
+                actions={
+                    <>
+                        <div className="flex items-center gap-xs" data-erp-print-hide>
+                            {canWrite ? (
+                                <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
+                                    تسجيل قراءة جديدة
+                                </Button>
+                            ) : null}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    void readingsQuery.refetch();
+                                }}
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                            >
+                                تحديث
+                            </button>
+                            <PrintActions title="الميزان" />
+                        </div>
+                    </>
+                }
+            />
             {pageError ? (
                 <p role="alert" className="text-body-sm text-danger-text">
                     {pageError}

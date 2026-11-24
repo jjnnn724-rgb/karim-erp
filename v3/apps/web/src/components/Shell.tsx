@@ -5,7 +5,10 @@ import { getAccessToken, logout, useAuthState } from '../lib/auth';
 import { useHiddenNavKeys } from '../lib/hidden-nav';
 import { useAllowedMenus } from '../lib/my-menus';
 import {
+    ALL_SCREENS_TITLE,
     APP_NAME,
+    DAILY_KEYS,
+    DAILY_TITLE,
     groupForPath,
     HOME_PATH,
     HOME_TITLE,
@@ -375,10 +378,47 @@ function ShellLayout() {
         return allowedMenusSet.includes(item.to.slice(1));
     });
 
+    const renderNavLink = (item: NavItem, compact: boolean) => (
+        <li key={item.to}>
+            <Link
+                to={item.to}
+                activeOptions={{ exact: false }}
+                title={compact ? item.label : undefined}
+                aria-label={compact ? item.label : undefined}
+                onClick={() => {
+                    setDrawerOpen(false);
+                }}
+                className="erp-nav-item erp-shell__nav-link"
+            >
+                <ShellIcon name={shellIconForPath(item.to)} />
+                <span className={compact ? 'sr-only' : 'erp-shell__nav-label'}>{item.label}</span>
+            </Link>
+        </li>
+    );
+
+    // «شاشاتي اليومية» أولًا: نفس الـ64 شاشة، لكن ما يُفتح كل يوم قبل الباقي.
+    const renderDaily = (compact: boolean, suffix: string) => {
+        const items = DAILY_KEYS.map((key) => navItems.find((item) => item.to === `/${key}`)).filter(
+            (item): item is NavItem => Boolean(item),
+        );
+        if (items.length === 0) return null;
+        const labelId = `erp-nav-daily-${suffix}`;
+        return (
+            <nav aria-labelledby={labelId} className="erp-shell__nav erp-shell__nav-daily">
+                <p id={labelId} className={compact ? 'sr-only' : 'erp-shell__section-label'}>
+                    {DAILY_TITLE}
+                </p>
+                <ul className="erp-shell__nav-list">{items.map((item) => renderNavLink(item, compact))}</ul>
+            </nav>
+        );
+    };
+
     const renderNav = (compact: boolean, suffix: string) => (
         <nav aria-label="أقسام النظام" className="erp-shell__nav">
+            <p className={compact ? 'sr-only' : 'erp-shell__section-label'}>{ALL_SCREENS_TITLE}</p>
             {NAV_GROUPS.map((group) => {
                 const items = group.keys
+                    .filter((key) => !DAILY_KEYS.includes(key))
                     .map((key) => navItems.find((item) => item.to === `/${key}`))
                     .filter((item): item is NavItem => Boolean(item));
                 if (items.length === 0) return null;
@@ -408,25 +448,7 @@ function ShellLayout() {
                         </button>
                         {isCollapsed ? null : (
                             <ul id={listId} className="erp-shell__nav-list">
-                                {items.map((item) => (
-                                    <li key={item.to}>
-                                        <Link
-                                            to={item.to}
-                                            activeOptions={{ exact: false }}
-                                            title={compact ? item.label : undefined}
-                                            aria-label={compact ? item.label : undefined}
-                                            onClick={() => {
-                                                setDrawerOpen(false);
-                                            }}
-                                            className="erp-nav-item erp-shell__nav-link"
-                                        >
-                                            <ShellIcon name={shellIconForPath(item.to)} />
-                                            <span className={compact ? 'sr-only' : 'erp-shell__nav-label'}>
-                                                {item.label}
-                                            </span>
-                                        </Link>
-                                    </li>
-                                ))}
+                                {items.map((item) => renderNavLink(item, compact))}
                             </ul>
                         )}
                     </div>
@@ -503,6 +525,7 @@ function ShellLayout() {
                     <div className="erp-shell__sidebar-head">{renderBrand(prefs.compact)}</div>
                     <div className="erp-shell__nav-scroll">
                         {homeLink(prefs.compact)}
+                        {renderDaily(prefs.compact, 'aside')}
                         {renderNav(prefs.compact, 'aside')}
                     </div>
                     <div className="erp-shell__sidebar-foot">
@@ -566,6 +589,7 @@ function ShellLayout() {
                     </div>
                     <div className="erp-shell__nav-scroll">
                         {homeLink(false)}
+                        {renderDaily(false, 'drawer')}
                         {renderNav(false, 'drawer')}
                     </div>
                     <div className="erp-shell__sidebar-foot">

@@ -10,6 +10,8 @@ import { isWriteRole, writeJson } from './write';
  *  • استلام    POST /api/veg-requests/:id/receive  (sous_chef|admin|owner)
  *  • تسعير     POST /api/veg-requests/:id/price    (warehouse|admin|owner|manager)
  *  • تعديل     PUT  /api/veg-requests/:id/items    (sous_chef|admin|owner)
+ *  • إضافة أصناف (أدمن فقط) POST /api/veg-requests/:id/admin/items
+ *                                                  (admin — قبل التسعير)
  *  • إلغاء     POST /api/veg-requests/:id/cancel   (READ_ROLES — gate server-side)
  *  • طباعة     POST /api/veg-requests/:id/printed  (READ_ROLES — عدّاد فقط)
  *
@@ -19,6 +21,11 @@ import { isWriteRole, writeJson } from './write';
 export const VEG_CREATE_ROLES = ['sous_chef', 'admin', 'owner'] as const;
 export const VEG_RECEIVE_ROLES = ['sous_chef', 'admin', 'owner'] as const;
 export const VEG_PRICE_ROLES = ['warehouse', 'admin', 'owner', 'manager'] as const;
+export const VEG_ADMIN_ROLES = ['admin'] as const;
+
+export function vegAdminVisible(role: string | null | undefined): boolean {
+    return isWriteRole(role, VEG_ADMIN_ROLES);
+}
 
 export function vegCreateVisible(role: string | null | undefined): boolean {
     return isWriteRole(role, VEG_CREATE_ROLES);
@@ -42,11 +49,13 @@ export const VEG_TEXT = {
     receiveFailed: 'فشل استلام الطلب',
     priceFailed: 'فشل تسعير الطلب',
     editFailed: 'فشل تعديل الكميات',
+    adminEditFailed: 'فشل إضافة/تعديل الأصناف',
     cancelFailed: 'فشل إلغاء الطلب',
     createSuccess: 'تم إنشاء طلب الخضار بنجاح',
     receiveSuccess: 'تم استلام الطلب',
     priceSuccess: 'تم تسعير الطلب',
     editSuccess: 'تم تعديل الكميات',
+    adminEditSuccess: 'تمت إضافة/تعديل الأصناف',
     cancelSuccess: 'تم إلغاء الطلب',
     cancel: 'إلغاء',
     confirmCancel: 'إلغاء طلب الخضار «%s»؟',
@@ -104,6 +113,13 @@ export async function priceVegRequest(
 
 export async function editVegItems(id: string | number, input: VegEditItemsInput): Promise<VegResult> {
     return writeJson(vegResultSchema, `/api/veg-requests/${encodeURIComponent(String(id))}/items`, 'PUT', {
+        items: input.items.map((item) => ({ name: item.name, qty: Number(item.qty), unit: item.unit ?? '' })),
+    });
+}
+
+/** إضافة أصناف نسيها الشيف + تعديل الكميات — الأدمن فقط، قبل التسعير. */
+export async function adminEditVegItems(id: string | number, input: VegEditItemsInput): Promise<VegResult> {
+    return writeJson(vegResultSchema, `/api/veg-requests/${encodeURIComponent(String(id))}/admin/items`, 'POST', {
         items: input.items.map((item) => ({ name: item.name, qty: Number(item.qty), unit: item.unit ?? '' })),
     });
 }
@@ -178,6 +194,10 @@ export function vegPriceSuccess(no: string): string {
 
 export function vegEditSuccess(no: string): string {
     return `${VEG_TEXT.editSuccess} — «${String(no ?? '')}»`;
+}
+
+export function vegAdminEditSuccess(no: string): string {
+    return `${VEG_TEXT.adminEditSuccess} — «${String(no ?? '')}»`;
 }
 
 export function vegCancelSuccess(no: string): string {
