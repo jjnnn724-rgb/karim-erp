@@ -19,7 +19,7 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 // then falls back to reading .env file directly for values that were
 // persisted to disk but not yet in process.env (e.g., DB_PORT auto-fixed
 // by setup scripts during the same boot cycle).
-function dbEnv(key, fallback) {
+function dbEnv(/** @type {any} */ key, /** @type {any} */ fallback) {
   if (process.env[key] !== undefined && process.env[key] !== '') {
     return process.env[key];
   }

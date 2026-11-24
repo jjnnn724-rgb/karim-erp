@@ -15,11 +15,11 @@ const { pool } = require('../shared-pool');
 const SLUG_RE = /^[a-z0-9](?:[a-z0-9-]{0,61}[a-z0-9])$/;
 const EMAIL_RE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-function fail(code, status = 422) {
+function fail(/** @type {any} */ code, status = 422) {
     return Object.assign(new Error(code), { code, status });
 }
 
-function validate(input) {
+function validate(/** @type {any} */ input) {
     const slug = String(input.slug || '').trim().toLowerCase();
     if (!SLUG_RE.test(slug)) { throw fail('INVALID_SLUG'); }
     const name = String(input.name || '').trim();

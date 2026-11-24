@@ -17,7 +17,7 @@ function createTenantResolver(opts) {
     const log = opts.logger || null;
     const cache = new Map(); // slug -> { tenant, expiresAt }
 
-    function fromEnv(slug) {
+    function fromEnv(/** @type {any} */ slug) {
         const id = envMap.get(slug);
         return id ? { id, slug, source: 'env' } : null;
     }

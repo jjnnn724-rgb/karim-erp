@@ -16,12 +16,12 @@ const WINDOW_MS = 60 * 60 * 1000;
 const MAX_PER_IP = 5;
 const attempts = new Map();
 
-function isEnabled(v) {
+function isEnabled(/** @type {any} */ v) {
     if (v === undefined || v === null) { return false; }
     return !FALSEY.has(String(v).trim().toLowerCase());
 }
 
-function allow(ip) {
+function allow(/** @type {any} */ ip) {
     const now = Date.now();
     const rec = attempts.get(ip);
     if (!rec || rec.until <= now) {
@@ -33,8 +33,8 @@ function allow(ip) {
     return true;
 }
 
-function register(app) {
-    app.post('/api/saas/signup', async (req, res) => {
+function register(/** @type {any} */ app) {
+    app.post('/api/saas/signup', async (/** @type {any} */ req, /** @type {any} */ res) => {
         if (!isEnabled(process.env.SAAS_SIGNUP_ENABLED)) {
             return res.status(404).json({ error: 'NOT_FOUND' });
         }

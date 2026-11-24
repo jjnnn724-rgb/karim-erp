@@ -113,7 +113,7 @@ function tenantContext(options = {}) {
         });
     }
 
-    return async function tenantContextMiddleware(req, res, next) {
+    return async function tenantContextMiddleware(/** @type {any} */ req, /** @type {any} */ res, /** @type {any} */ next) {
         try {
             if (!enabled) {return next();}
 

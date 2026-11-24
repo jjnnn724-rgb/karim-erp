@@ -87,7 +87,7 @@ function ensureSchema() {
 
 // ─── كتالوج الخضار ───────────────────────────────────────────────────────────
 
-router.get('/catalog', jwtAuth, requireRole(...READ_ROLES), async (req, res, next) => {
+router.get('/catalog', jwtAuth, requireRole(...READ_ROLES), async (/** @type {any} */ req, /** @type {any} */ res, /** @type {any} */ next) => {
     try {
         res.json({ ok: true, categories: VEG_CATALOG, units: UNITS });
     } catch (e) { next(e); }
@@ -95,7 +95,7 @@ router.get('/catalog', jwtAuth, requireRole(...READ_ROLES), async (req, res, nex
 
 // ─── إنشاء طلب ───────────────────────────────────────────────────────────────
 
-router.post('/', jwtAuth, requireRole(...CREATE_ROLES), async (req, res, next) => {
+router.post('/', jwtAuth, requireRole(...CREATE_ROLES), async (/** @type {any} */ req, /** @type {any} */ res, next) => {
     try {
         await ensureSchema();
         const checked = validateItems(req.body?.items);

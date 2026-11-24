@@ -24,7 +24,7 @@ const store = new AsyncLocalStorage();
 
 // ─── ID generation (CUID-like / ULID-inspired, zero dependencies) ──
 const BASE36 = '0123456789abcdefghijklmnopqrstuvwxyz';
-function b36(len) {
+function b36(/** @type {any} */ len) {
     const bytes = crypto.randomBytes(Math.ceil(len * 0.6));
     let out = '';
     for (const b of bytes) {out += BASE36[b % 36];}

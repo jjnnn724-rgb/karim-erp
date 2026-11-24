@@ -6,7 +6,7 @@ const { __scope } = require('../warehouse-routes');
 const { router, RETURN_ROLES, pool, jwtAuth, requireRole, requireRoleOrPerm, idempotency, logger, postInventoryLedgerEntry, emitDomainEvent, ensureDispatchCreatorSchema, notifyChainEvent, normalizeExpiryDate, readExpiryField, checkExpiryOnLines, latestExpiryFor, id, normItemName, n, round, dateOnly, cleanName, json, emit, fail, normalizeRequestedItems, getWarehouseLocation, getDispatchTargetLocation, ensureLocationBalance } = __scope;
 const { directReturn } = require('./dispatch-routes');
 
-router.post('/returns', jwtAuth, requireRoleOrPerm(RETURN_ROLES, 'dispatch.return'), idempotency({ requireKey: true }), async (req, res) => {
+router.post('/returns', jwtAuth, requireRoleOrPerm(RETURN_ROLES, 'dispatch.return'), idempotency({ requireKey: true }), async (/** @type {any} */ req, /** @type {any} */ res) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -235,7 +235,7 @@ router.post('/returns', jwtAuth, requireRoleOrPerm(RETURN_ROLES, 'dispatch.retur
 
 
 // ─── POST /api/warehouse/returns/:id/void — إبطال المرتجع مع عكس أثره ───
-router.post('/returns/:id/void', jwtAuth, requireRoleOrPerm(['admin', 'manager', 'warehouse'], 'dispatch.void'), idempotency({ requireKey: true }), async (req, res) => {
+router.post('/returns/:id/void', jwtAuth, requireRoleOrPerm(['admin', 'manager', 'warehouse'], 'dispatch.void'), idempotency({ requireKey: true }), async (/** @type {any} */ req, /** @type {any} */ res) => {
     const reason = String(req.body?.reason || '').trim();
     if (!reason) {return fail(res, 422, 'RETURN_VOID_REASON_REQUIRED', 'أدخل سبب إبطال المرتجع');}
     const client = await pool.connect();
@@ -352,7 +352,7 @@ router.post('/returns/:id/void', jwtAuth, requireRoleOrPerm(['admin', 'manager',
             actorUserId: req.user.id, actor,
         });
         const expenseJournal = await voidSourceJournals(client, {
-            sourceType: 'expense', sourceIds: items.map(item => item.expenseId), reason,
+            sourceType: 'expense', sourceIds: items.map(/** @type {any} */ item => item.expenseId), reason,
             actorUserId: req.user.id, actor,
         });
         const updated = (await client.query(
@@ -383,11 +383,11 @@ router.post('/returns/:id/void', jwtAuth, requireRoleOrPerm(['admin', 'manager',
     }
 });
 
-router.delete('/returns/:id', jwtAuth, requireRole('admin', 'manager', 'warehouse'), async (req, res) => {
+router.delete('/returns/:id', jwtAuth, requireRole('admin', 'manager', 'warehouse'), async (/** @type {any} */ req, /** @type {any} */ res) => {
     return fail(res, 405, 'RETURN_DELETE_DISABLED', 'لا يُحذف المرتجع — استخدم الإبطال لعكس أثره مع حفظ السجل');
 });
 
-router.post('/inventory/:id/receipt', jwtAuth, requireRole('admin', 'manager', 'warehouse'), async (req, res) => {
+router.post('/inventory/:id/receipt', jwtAuth, requireRole('admin', 'manager', 'warehouse'), async (/** @type {any} */ req, res) => {
     const client = await pool.connect();
     try {
         const inventoryId = Number(req.params.id);

@@ -15,9 +15,9 @@ function getTenantSettingsStore() {
     return tenantSettingsStore;
 }
 
-function register(app) {
+function register(/** @type {any} */ app) {
 
-    app.get('/api/i18n/config', asyncHandler(async (req, res) => {
+    app.get('/api/i18n/config', asyncHandler(async (/** @type {any} */ req, /** @type {any} */ res) => {
         const cfg = {
             lang: process.env.DEFAULT_LANGUAGE === 'en' ? 'en' : 'ar',
             currency: String(process.env.CURRENCY_DEFAULT || 'SAR').toUpperCase(),
@@ -64,7 +64,7 @@ function register(app) {
     }));
 }
 
-function asyncHandler(fn) {
+function asyncHandler(/** @type {any} */ fn) {
     return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 }
 

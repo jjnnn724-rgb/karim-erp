@@ -6,19 +6,19 @@ const { __scope } = require('../warehouse-routes');
 const crypto = require('crypto');
 const { router, CREATE_ROLES, APPROVAL_ROLES, RECEIVE_ROLES, CHEF_APPROVAL_ROLES, pool, jwtAuth, requireRoleOrPerm, idempotency, logger, postInventoryLedgerEntry, emitDomainEvent, ensureDispatchCreatorSchema, notifyChainEvent, latestExpiryFor, beginDispatchOp, endDispatchOp, canReceiveDispatch, canWarehouseApprove, canChefDecide, dispatchSelfDecisionGuard, deptsMatch, resolveDeptHeadDispatch, canAccessDeptPanel, resolvePanelDept, aggregatePanelExpenses, id, n, round, dateOnly, cleanName, json, emit, fail, signatureHash, appendDispatchEvent, requireSignature, normalizeRequestedItems, dispatchStockGate, getWarehouseLocation, getDispatchTargetLocation, ensureLocationBalance, ensureLegacyKitchenReceiptLedger } = __scope;
 
-router.use(async (req, res, next) => {
+router.use(async (/** @type {any} */ req, /** @type {any} */ res, /** @type {any} */ next) => {
     try { await ensureLegacyKitchenReceiptLedger(); } catch (error) { logger.error('[dispatch_kitchen_receipt_backfill]', error); }
     next();
 });
 
-async function dispatchRevision(client, dispatchId) {
+async function dispatchRevision(/** @type {any} */ client, /** @type {any} */ dispatchId) {
     const result = await client.query(
         `SELECT COUNT(*)::int AS revision FROM dispatch_workflow_events
           WHERE dispatch_id=$1 AND event_type='reopened'`, [dispatchId]);
     return Number(result.rows[0]?.revision || 0);
 }
 
-async function reverseDispatchStock(client, dispatch, req, action) {
+async function reverseDispatchStock(/** @type {any} */ client, /** @type {any} */ dispatch, /** @type {any} */ req, /** @type {any} */ action) {
     const includeReceipts = action === 'void';
     const revision = await dispatchRevision(client, dispatch.id);
     const result = await client.query(
@@ -77,7 +77,7 @@ async function reverseDispatchStock(client, dispatch, req, action) {
     return movements;
 }
 
-async function voidDispatchExpenses(client, dispatch, req, reason) {
+async function voidDispatchExpenses(/** @type {any} */ client, /** @type {any} */ dispatch, /** @type {any} */ req, /** @type {any} */ reason) {
     const { voidSourceJournals } = require('../journal-void');
     const actor = req.user.name || req.user.username || String(req.user.id);
     const journal = await voidSourceJournals(client, {
@@ -85,23 +85,23 @@ async function voidDispatchExpenses(client, dispatch, req, reason) {
         actorUserId: req.user.id, actor,
     });
     const linkedExpenseIds = (Array.isArray(dispatch.approvedItems) ? dispatch.approvedItems : [])
-        .map(item => Number(item.expenseId)).filter(value => Number.isInteger(value) && value > 0);
+        .map(/** @type {any} */ item => Number(item.expenseId)).filter(/** @type {any} */ value => Number.isInteger(value) && value > 0);
     const expenseRows = (await client.query(
         `SELECT id FROM expenses
           WHERE id=ANY($1::bigint[])
              OR (COALESCE("adjustmentType",'')='dispatch' AND (notes LIKE $2 OR "desc" LIKE $2))
           FOR UPDATE`, [linkedExpenseIds, `%طلب صرف #${dispatch.id}%`])).rows;
     const expenseJournal = await voidSourceJournals(client, {
-        sourceType: 'expense', sourceIds: expenseRows.map(row => row.id), reason,
+        sourceType: 'expense', sourceIds: expenseRows.map(/** @type {any} */ row => row.id), reason,
         actorUserId: req.user.id, actor,
     });
     const expenses = (await client.query(
         `UPDATE expenses SET amount=0, "voidedAt"=NOW(), "voidedBy"=$2, "voidReason"=$3
-          WHERE id=ANY($1::bigint[]) RETURNING *`, [expenseRows.map(row => row.id), actor, reason])).rows;
-    return { journalCount: journal.voided + expenseJournal.voided, expenses: expenses.map(row => ({ id: row.id, amount: row.amount })) };
+          WHERE id=ANY($1::bigint[]) RETURNING *`, [expenseRows.map(/** @type {any} */ row => row.id), actor, reason])).rows;
+    return { journalCount: journal.voided + expenseJournal.voided, expenses: expenses.map(/** @type {any} */ row => ({ id: row.id, amount: row.amount })) };
 }
 
-router.post('/dispatches/:id/cancel', jwtAuth, requireRoleOrPerm(CREATE_ROLES, 'dispatch.cancel'), idempotency({ requireKey: true }), async (req, res) => {
+router.post('/dispatches/:id/cancel', jwtAuth, requireRoleOrPerm(CREATE_ROLES, 'dispatch.cancel'), idempotency({ requireKey: true }), async (/** @type {any} */ req, /** @type {any} */ res) => {
     const reason = String(req.body?.reason || '').trim();
     if (!reason) {return fail(res, 422, 'DISPATCH_REASON_REQUIRED', 'أدخل سبب إلغاء إذن الصرف');}
     if (!beginDispatchOp(req.params.id, 'cancel')) {return fail(res, 409, 'DISPATCH_CANCEL_IN_PROGRESS', 'إلغاء هذا الإذن قيد التنفيذ الآن');}
@@ -135,7 +135,7 @@ router.post('/dispatches/:id/cancel', jwtAuth, requireRoleOrPerm(CREATE_ROLES, '
     } finally {endDispatchOp(req.params.id, 'cancel'); client.release();}
 });
 
-router.post('/dispatches/:id/reopen', jwtAuth, requireRoleOrPerm(['admin', 'manager'], 'dispatch.void'), idempotency({ requireKey: true }), async (req, res) => {
+router.post('/dispatches/:id/reopen', jwtAuth, requireRoleOrPerm(['admin', 'manager'], 'dispatch.void'), idempotency({ requireKey: true }), async (/** @type {any} */ req, /** @type {any} */ res) => {
     const signature = requireSignature(req, res);
     if (!signature) {return;}
     const reason = String(req.body?.reason || '').trim();
@@ -188,7 +188,7 @@ router.post('/dispatches/:id/reopen', jwtAuth, requireRoleOrPerm(['admin', 'mana
     } finally {endDispatchOp(req.params.id, 'reopen'); client.release();}
 });
 
-router.post('/dispatches/:id/void', jwtAuth, requireRoleOrPerm(['admin', 'manager'], 'dispatch.void'), idempotency({ requireKey: true }), async (req, res) => {
+router.post('/dispatches/:id/void', jwtAuth, requireRoleOrPerm(['admin', 'manager'], 'dispatch.void'), idempotency({ requireKey: true }), async (/** @type {any} */ req, /** @type {any} */ res) => {
     const signature = requireSignature(req, res);
     if (!signature) {return;}
     const reason = String(req.body?.reason || '').trim();
@@ -236,7 +236,7 @@ router.post('/dispatches/:id/void', jwtAuth, requireRoleOrPerm(['admin', 'manage
  * Task 28: لوحة رئيس القسم — مصروفات القسم حسب المصدر + أذونات الصرف + الأقسام الفرعية.
  * رئيس القسم محبوس في قسمه، والشيف يرى المطبخ وأقسامه، وadmin/manager أي قسم.
  */
-router.get('/dept-panel', jwtAuth, async (req, res) => {
+router.get('/dept-panel', jwtAuth, async (/** @type {any} */ req, /** @type {any} */ res) => {
     const gate = canAccessDeptPanel(req.user);
     if (!gate.ok) {
         const status = gate.code === 'IDENTITY_REQUIRED' ? 401 : 403;
@@ -299,7 +299,7 @@ router.get('/dept-panel', jwtAuth, async (req, res) => {
     }
 });
 
-router.post('/dispatches/:id/approve', jwtAuth, requireRoleOrPerm(APPROVAL_ROLES, 'dispatch.approve'), idempotency({ requireKey: true }), async (req, res) => {
+router.post('/dispatches/:id/approve', jwtAuth, requireRoleOrPerm(APPROVAL_ROLES, 'dispatch.approve'), idempotency({ requireKey: true }), async (/** @type {any} */ req, /** @type {any} */ res) => {
     const approvalSignature = requireSignature(req, res);
     if (!approvalSignature) {return;}
     if (!beginDispatchOp(req.params.id, 'approve')) {
@@ -530,7 +530,7 @@ let totalValue = 0;
 
 // ═══ Task 19: اعتماد الشيف العمومي لطلب رئيس القسم ═══
 // pending → chef_approved (بدون أي خصم مخزني — الخصم عند اعتماد المخازن فقط)
-router.post('/dispatches/:id/chef-approve', jwtAuth, requireRoleOrPerm(CHEF_APPROVAL_ROLES, 'dispatch.chef_approve'), idempotency({ requireKey: true }), async (req, res) => {
+router.post('/dispatches/:id/chef-approve', jwtAuth, requireRoleOrPerm(CHEF_APPROVAL_ROLES, 'dispatch.chef_approve'), idempotency({ requireKey: true }), async (/** @type {any} */ req, /** @type {any} */ res) => {
     const chefSignature = requireSignature(req, res);
     if (!chefSignature) {return;}
     if (!beginDispatchOp(req.params.id, 'chef-approve')) {
@@ -591,7 +591,7 @@ router.post('/dispatches/:id/chef-approve', jwtAuth, requireRoleOrPerm(CHEF_APPR
 
 // ═══ Task 19: رفض الشيف العمومي لطلب رئيس القسم ═══
 // pending → rejected مع توثيق سبب الرفض وتوقيع الشيف
-router.post('/dispatches/:id/chef-reject', jwtAuth, requireRoleOrPerm(CHEF_APPROVAL_ROLES, 'dispatch.chef_approve'), idempotency({ requireKey: true }), async (req, res) => {
+router.post('/dispatches/:id/chef-reject', jwtAuth, requireRoleOrPerm(CHEF_APPROVAL_ROLES, 'dispatch.chef_approve'), idempotency({ requireKey: true }), async (/** @type {any} */ req, /** @type {any} */ res) => {
     const chefSignature = requireSignature(req, res);
     if (!chefSignature) {return;}
     const reason = String(req.body?.reason || '').trim();
@@ -644,7 +644,7 @@ router.post('/dispatches/:id/chef-reject', jwtAuth, requireRoleOrPerm(CHEF_APPRO
 // متى: فقط وهو 'pending' أو 'chef_approved' (قبل اعتماد المخازن).
 // الأثر: لو كان معتمدًا من الشيف يُلغى اعتماده وتُمسح تواقيعه ويرجع «قيد الانتظار»
 // ليُعتمد من جديد على الأرقام الجديدة. كل تعديل يُوثَّق في سلسلة أحداث الإذن.
-router.put('/dispatches/:id/edit', jwtAuth, requireRoleOrPerm(CREATE_ROLES, 'dispatch.edit'), idempotency({ requireKey: true }), async (req, res) => {
+router.put('/dispatches/:id/edit', jwtAuth, requireRoleOrPerm(CREATE_ROLES, 'dispatch.edit'), idempotency({ requireKey: true }), async (/** @type {any} */ req, /** @type {any} */ res) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -667,7 +667,7 @@ router.put('/dispatches/:id/edit', jwtAuth, requireRoleOrPerm(CREATE_ROLES, 'dis
         // نفس تحققات بناء الطلب: أصناف صالحة فقط
         const rawItems = Array.isArray(req.body?.items) ? req.body.items : [];
         const items = rawItems
-            .map((r) => ({
+            .map((/** @type {any} */ r) => ({
                 itemName: cleanName(r.itemName || r.name).slice(0, 200),
                 qty: n(r.qty),
                 unit: (cleanName(r.unit) || 'وحدة').slice(0, 50),
@@ -679,7 +679,7 @@ router.put('/dispatches/:id/edit', jwtAuth, requireRoleOrPerm(CREATE_ROLES, 'dis
                 ...(r.requestedUom ? { requestedUom: cleanName(r.requestedUom).slice(0, 50) } : {}),
                 ...(r.estWeightKg != null && r.estWeightKg !== '' ? { estWeightKg: n(r.estWeightKg) } : {}),
             }))
-            .filter((i) => i.itemName && i.qty > 0 && i.qty <= 999999999);
+            .filter((/** @type {any} */ i) => i.itemName && i.qty > 0 && i.qty <= 999999999);
         if (!items.length) {
             await client.query('ROLLBACK');
             return fail(res, 422, 'NO_VALID_ITEMS', 'لا توجد أصناف صالحة — كل صنف يحتاج اسمًا وكمية أكبر من صفر');
@@ -758,7 +758,7 @@ router.put('/dispatches/:id/edit', jwtAuth, requireRoleOrPerm(CREATE_ROLES, 'dis
     } finally { client.release(); }
 });
 
-router.post('/dispatches/:id/reject', jwtAuth, requireRoleOrPerm(APPROVAL_ROLES, 'dispatch.approve'), idempotency({ requireKey: true }), async (req, res) => {
+router.post('/dispatches/:id/reject', jwtAuth, requireRoleOrPerm(APPROVAL_ROLES, 'dispatch.approve'), idempotency({ requireKey: true }), async (/** @type {any} */ req, /** @type {any} */ res) => {
     const rejectionSignature = requireSignature(req, res);
     if (!rejectionSignature) {return;}
     const reason = String(req.body?.reason || '').trim();
@@ -808,7 +808,7 @@ router.post('/dispatches/:id/reject', jwtAuth, requireRoleOrPerm(APPROVAL_ROLES,
     } finally { endDispatchOp(req.params.id, 'reject'); client.release(); }
 });
 
-router.post('/dispatches/:id/receive', jwtAuth, requireRoleOrPerm(RECEIVE_ROLES, 'dispatch.receive'), idempotency({ requireKey: true }), async (req, res) => {
+router.post('/dispatches/:id/receive', jwtAuth, requireRoleOrPerm(RECEIVE_ROLES, 'dispatch.receive'), idempotency({ requireKey: true }), async (/** @type {any} */ req, /** @type {any} */ res) => {
     const receiptSignature = requireSignature(req, res);
     if (!receiptSignature) {return;}
     if (!beginDispatchOp(req.params.id, 'receive')) {
@@ -843,7 +843,7 @@ router.post('/dispatches/:id/receive', jwtAuth, requireRoleOrPerm(RECEIVE_ROLES,
         const approved = normalizeRequestedItems(dispatch.approvedItems || dispatch.items);
         const approvedNames = new Set(approved.map(item => item.itemName.toLowerCase()));
         const priorReceived = new Map((Array.isArray(dispatch.receivedItems) ? dispatch.receivedItems : [])
-            .map(item => [cleanName(item.itemName || item.name).toLowerCase(), item]));
+            .map(/** @type {any} */ item => [cleanName(item.itemName || item.name).toLowerCase(), item]));
         const requested = Array.isArray(req.body?.items) ? req.body.items : [];
         if (!requested.length) { await client.query('ROLLBACK'); return fail(res, 422, 'RECEIVED_ITEMS_REQUIRED', 'أدخل الكميات المستلمة للصنف'); }
         const requestedNames = new Set();
@@ -870,7 +870,7 @@ router.post('/dispatches/:id/receive', jwtAuth, requireRoleOrPerm(RECEIVE_ROLES,
         const receivedItems = approved.map((allowed) => {
             const nameKey = allowed.itemName.toLowerCase();
             const prior = priorReceived.get(nameKey) || {};
-            const raw = requested.find(item => cleanName(item.itemName || item.name).toLowerCase() === nameKey);
+            const raw = requested.find(/** @type {any} */ item => cleanName(item.itemName || item.name).toLowerCase() === nameKey);
             const receivedDeltaQty = raw ? n(raw.receivedQty ?? raw.qty, -1) : 0;
             const alreadyReceivedQty = n(prior.receivedQty, 0);
             const receivedQty = round(alreadyReceivedQty + receivedDeltaQty);
@@ -969,7 +969,7 @@ router.post('/dispatches/:id/receive', jwtAuth, requireRoleOrPerm(RECEIVE_ROLES,
  * يزيد الرصيد عبر الدفتر، ويسجل حركة + عكس مصروف القسم. لا سقف كميات
  * (لا إذن مرجعي) — الاعتماد على مطابقة الاسم والكمية الموجبة فقط.
  */
-async function directReturn(client, req, res) {
+async function directReturn(/** @type {any} */ client, /** @type {any} */ req, /** @type {any} */ res) {
     try {
         const deptCode = String(req.body?.deptCode || '').trim();
         if (!deptCode) {
