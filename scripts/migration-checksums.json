@@ -184,6 +184,7 @@
     "160_dispatch_lifecycle.sql": "6f60002f9892f1cd2a20a9c7059f73d87635645087bf634988d4c6e16786fefd",
     "161_child_tenant_columns.sql": "66d52ca4c36892938c7d041b09205d162977c4a94e56fa77431bf2bb597f9dbf",
     "162_tenant_settings.sql": "3662a056fc91b40d7e9028606fb18ff5161559c8efef73bc17371f3f823214b8",
-    "163_saas_billing.sql": "8615bc27b546e8c6c433bc309a334d9be1b18402acaabd2ad42488df9eee677c"
+    "163_saas_billing.sql": "8615bc27b546e8c6c433bc309a334d9be1b18402acaabd2ad42488df9eee677c",
+    "164_tenant_rls_legacy_compat.sql": "48f835c33b2efef4b0ce180802975cfb4f99a7a36c9c15b151e0cd1c2ab9ee28"
   }
 }
