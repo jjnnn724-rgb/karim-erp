@@ -19,7 +19,7 @@
  *     لا كاميرا تعمل بعد الإغلاق.
  */
 
-import { trapFocus } from './focus-trap.js?v=4.9.319';
+import { trapFocus } from './focus-trap.js?v=4.9.323';
 
 const FACE_API_SRC = 'vendor/face-api.js?v=4.9.77';
 const FACE_MODELS_URI = 'vendor/face-models';
@@ -381,7 +381,7 @@ export function captureFace(opts = {}) {
             enginePromise = withTimeout(loadFaceApi(), 12000)
                 .then((api) => {
                     fapi = api;
-                    detectorOptions = new api.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.35 });
+                    detectorOptions = new api.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 });
                     if (!disposed && stream) { say(max > 1 ? `محرك الوجه جاهز — سنلتقط ${max} لقطات` : '✅ محرك الوجه جاهز — اضغط «التقاط»'); }
                     return api;
                 })

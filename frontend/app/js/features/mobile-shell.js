@@ -450,10 +450,10 @@ async function openFaceCameraAndGetDescriptor(title, target = 1) {
                 new Promise((_, rej) => setTimeout(() => rej(new Error('timeout')), 12000)),
             ]); } catch (_) { mpDetector = null; }
             if (!mpDetector) {
-                try { fapi = await loadFaceApiLib(); fapiOpts = new fapi.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.35 }); }
+                try { fapi = await loadFaceApiLib(); fapiOpts = new fapi.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 }); }
                 catch (_) { fapi = null; }
             } else { // BlazeFace جاهز — حمّل face-api أيضًا بالخلفية للـ descriptor الاختياري
-                loadFaceApiLib().then((f) => { fapi = f; fapiOpts = new f.TinyFaceDetectorOptions({ inputSize: 320, scoreThreshold: 0.35 }); }).catch(() => {});
+                loadFaceApiLib().then((f) => { fapi = f; fapiOpts = new f.TinyFaceDetectorOptions({ inputSize: 416, scoreThreshold: 0.5 }); }).catch(() => {});
             }
             if (!mpDetector && !fapi && !stream) {
                 say('تعذر تشغيل الكاميرا والمحركات — ارفع صورة واضحة للوجه بالزر بالأسفل');

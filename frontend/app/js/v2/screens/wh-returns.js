@@ -1,38 +1,18 @@
 /**
- * V2 — Wh-returns screen: مرتجعات المطبخ — الدورة كاملة (W1-5)
- * ═══════════════════════════════════════════════════════════════════════
- * LEGACY (features/kitchen.js): renderKitchenReturnsSection :646-680 ·
- * showKitchenReturnModal :1255-1308 (إذن معتمد إن وُجد وإلا إرجاع مباشر) ·
- * refreshReturnItems/addReturnItemField/addDirectReturnItemField :1309-1346 ·
- * submitDirectReturn :1347-1368 · submitKitchenReturn :1369-1394 ·
- * deleteKitchenReturn :682-692.
- *
- * قواعد لم تُخترع:
- *   • الباب الواحد للشبكة: js/v2/data/warehouse-repo.js — لا fetch/ apiFetch هنا.
- *   • نصوص اللوحات والحمولات منسوخة حرفًا: قايمة الأسباب :1270-1274، بنر
- *     الإرجاع المباشر :1266، تحقق 'اختر طلب صرف'/'اختر القسم المُرجِع'/
- *     'أضف صنفًا واحدًا على الأقل' :1351/:1358/:1374/:1383، نجاح
- *     :1366/:1391، حذف :683/:689، فشل 'تعذر تنفيذ الإرجاع'/'تعذر الحذف'.
- *   • وضع اللوحة كما عند القديم: لا إذونات approved ⇒ إرجاع مباشر
- *     (قسم + أصناف المخزون)، وإلا ⇒ مرتبط بإذن صرف معتمد :1256-1257.
- *   • الفلتر النقي لأقسام الإرجاع المباشر :1259 في البوابة.
- *   • انحرافات معلنة: (أ) dept_head متعدد الأقسام يختار من قايمة أقسامه بدل
- *     الحقل الخام 'CAF,SERVICE' الذي يرفضه الخادم 422 حتمًا (سابقة إصلاح
- *     :702-706)؛ (ب) رسائل النجاح/الحذف من رد الخادم مع سقوط نص القديم؛
- *     (ج) window.confirm ممنوع (CSP + عقد V2) — الحذف يمر بـ confirmFn،
- *     وترميز المعرّف في البوابة.
- *   • قارئ عمود «حذف» كما :657 — يظهر لحامله فقط ووظيفته عكس الأثر كاملًا.
+ * مرتجعات المطبخ — إنشاء مباشر أو مرتبط بإذن، وإبطال بسبب موثّق.
+ * الشبكة كلها عبر warehouse-repo؛ الإبطال يعكس الأثر ويحفظ السجل،
+ * ولا يوجد حذف مباشر أو window.confirm.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.319';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.323';
 import {
     fetchKitchenReturns, kitchenReturnToRow,
-    returnCreateVisible, returnDeleteVisible,
+    returnCreateVisible, returnVoidVisible,
     fetchReturnDispatches, fetchReturnDepartments, fetchReturnInventory,
     directReturnDepartments, deptLabelOf, returnDeptCodesOf,
-    returnCreatePayload, createKitchenReturn, deleteKitchenReturn,
-} from '../data/warehouse-repo.js?v=4.9.319';
-import { fetchCurrency, formatMoney, formatInt, formatQty } from '../data/reports-repo.js?v=4.9.319';
+    returnCreatePayload, createKitchenReturn, voidKitchenReturn,
+} from '../data/warehouse-repo.js?v=4.9.323';
+import { fetchCurrency, formatMoney, formatInt, formatQty } from '../data/reports-repo.js?v=4.9.323';
 
 const esc = (v) => String(v ?? '').replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;').replace(/'/g,'&#39;');
 const money = (v, c) => { const m = formatMoney(v, c); return `<span class="erp-num" dir="ltr">${m.amount}</span>` + (m.hasUnit ? ` <span class="erp-text-sm erp-text-muted">${esc(m.unit)}</span>` : ''); };
@@ -65,9 +45,6 @@ function template(canCreate) {
 
 export function mountWhReturnsScreen(host, ctx = {}) {
     const notify = typeof ctx.notify === 'function' ? ctx.notify : (m) => console.info('[V2 wh-returns]', m);
-    const confirmFn = typeof ctx.confirmFn === 'function'
-        ? ctx.confirmFn
-        : (message) => Promise.resolve(window.confirm(message));
     const role = ctx.role ? String(ctx.role) : '';
     const deptCode = String(ctx.deptCode || '');
     let rawRows = [], currency = '', loading = false, readSeq = 0;
@@ -98,6 +75,12 @@ export function mountWhReturnsScreen(host, ctx = {}) {
             render: (r) => (r.reason ? esc(r.reason) : `<span class="erp-text-muted">—</span>`),
         },
         {
+            key: 'status', header: 'الحالة', width: '90px', align: 'center',
+            render: (r) => r.voided
+                ? '<span class="erp-text-danger">مبطل</span>'
+                : `<span class="${r.status === 'pending' ? 'erp-text-muted' : 'erp-text-success'}">${r.status === 'pending' ? 'قيد المراجعة' : 'معتمد'}</span>`,
+        },
+        {
             key: 'date', header: 'التاريخ', sortable: true, width: '120px', align: 'center', className: 'erp-tnum',
             render: (r) => (r.date ? `<span class="erp-num" dir="ltr">${esc(r.date)}</span>` : `<span class="erp-text-muted">—</span>`),
         },
@@ -107,11 +90,12 @@ export function mountWhReturnsScreen(host, ctx = {}) {
             render: (r) => `<span class="erp-num" dir="ltr">${formatInt(r.itemsCount)}</span>`,
         },
     ];
-    /* عمود الحذف كما :657 — لحامله فقط، والحذف يعكس الأثر عند الخادم. */
-    if (returnDeleteVisible(role)) {
+    if (returnVoidVisible(role)) {
         columns.push({
-            key: 'actions', header: 'حذف', width: '110px', className: 'erp-v2-wh-returns-actions',
-            render: (r) => `<button type="button" class="erp-btn erp-btn--sm erp-btn--danger" data-v2-act="del" data-id="${esc(String(r.id))}" title="حذف المرتجع"><i class="ji" data-i="trash" aria-hidden="true"></i><span>حذف</span></button>`,
+            key: 'actions', header: 'إجراءات', width: '110px', className: 'erp-v2-wh-returns-actions',
+            render: (r) => r.voided
+                ? '<span class="erp-text-muted">محفوظ</span>'
+                : `<button type="button" class="erp-btn erp-btn--sm erp-btn--danger" data-v2-act="void" data-id="${esc(String(r.id))}" title="إبطال المرتجع وعكس أثره مع حفظ السجل"><i class="ji" data-i="undo" aria-hidden="true"></i><span>إبطال</span></button>`,
         });
     }
     const table = createDataTable({
@@ -168,6 +152,7 @@ export function mountWhReturnsScreen(host, ctx = {}) {
     function setPanel(html) {
         panelEl.innerHTML = html;
         panelEl.hidden = false;
+        for (const row of panelEl.querySelectorAll('[data-v2-row]')) {syncPackaging(row);}
         panelEl.scrollIntoView({ block: 'nearest' });
     }
 
@@ -223,17 +208,30 @@ export function mountWhReturnsScreen(host, ctx = {}) {
     }
 
     const directOptionsHtml = () => ((panelData && panelData.inv) || [])
-        .map((i) => `<option value="${esc(i.name)}">${esc(i.name)} (رصيد ${esc(formatQty(i.qty))} ${esc(i.unit)})</option>`)
+        .map((i) => `<option value="${esc(i.name)}" data-v2-catch="${i.catchWeight ? '1' : '0'}" data-v2-pack-uom="${esc(i.packagingUom)}">${esc(i.name)} (رصيد ${esc(formatQty(i.qty))} ${esc(i.unit)})</option>`)
         .join('') || '<option value="">لا أصناف بالمخزن</option>';
 
-    const dispatchOptionsHtml = (d) => (d ? d.items.map((it) => `<option value="${esc(it.name)}" data-unit="${esc(it.unit)}" data-v2-max="${esc(String(it.qty))}">${esc(it.name)} (${esc(formatQty(it.qty))} ${esc(it.unit)})</option>`).join('') : '');
+    const dispatchOptionsHtml = (d) => (d ? d.items.map((it) => `<option value="${esc(it.name)}" data-unit="${esc(it.unit)}" data-v2-max="${esc(String(it.qty))}" data-v2-catch="${it.packagingQty > 0 ? '1' : '0'}" data-v2-packaging="${it.packagingQty > 0 ? esc(String(it.packagingQty)) : ''}" data-v2-pack-uom="${esc(it.packagingUom || 'كرتون')}">${esc(it.name)} (${esc(formatQty(it.qty))} ${esc(it.unit)})</option>`).join('') : '');
 
     function rowHtmlFromOptions(optionsHtml) {
         return `<div class="erp-returns-row" data-v2-row>
           <select class="erp-input" data-v2-item aria-label="الصنف">${optionsHtml}</select>
           <input class="erp-input" type="number" min="0.01" step="0.01" placeholder="الكمية" data-v2-qty aria-label="الكمية">
+          <input class="erp-input" type="number" min="0.001" step="0.001" placeholder="كراتين" data-v2-packaging aria-label="عدد الكراتين">
           <button type="button" class="erp-btn erp-btn--sm erp-btn--danger" data-v2-remove-row aria-label="حذف الصف"><i class="ji" data-i="x" aria-hidden="true"></i></button>
         </div>`;
+    }
+
+    function syncPackaging(row) {
+        const option = row.querySelector('[data-v2-item]')?.selectedOptions?.[0];
+        const input = row.querySelector('[data-v2-packaging]');
+        if (!option || !input) {return;}
+        const max = Number(option.getAttribute('data-v2-packaging'));
+        const required = option.getAttribute('data-v2-catch') === '1' || max > 0;
+        input.required = required;
+        input.max = max > 0 ? String(max) : '';
+        input.placeholder = required ? 'مطلوب' : 'اختياري';
+        input.setAttribute('data-v2-pack-uom', option.getAttribute('data-v2-pack-uom') || 'كرتون');
     }
 
     function directCreateHtml() {
@@ -307,6 +305,7 @@ export function mountWhReturnsScreen(host, ctx = {}) {
 
     async function submitPanel() {
         if (panelKind === 'create') {await submitCreate();}
+        if (panelKind === 'void') {await submitVoid();}
     }
 
     async function submitCreate() {
@@ -326,10 +325,15 @@ export function mountWhReturnsScreen(host, ctx = {}) {
                 if (!dept) {notify('اختر القسم المُرجِع'); return;}
                 target = { deptCode: dept };
             }
-            const items = [...panelEl.querySelectorAll('[data-v2-row]')].map((row) => ({
-                name: row.querySelector('[data-v2-item]')?.value || '',
-                qty: Number(row.querySelector('[data-v2-qty]')?.value),
-            })).filter((r) => r.name && Number.isFinite(r.qty) && r.qty > 0);
+            const items = [...panelEl.querySelectorAll('[data-v2-row]')].map((row) => {
+                const packaging = row.querySelector('[data-v2-packaging]');
+                return {
+                    name: row.querySelector('[data-v2-item]')?.value || '',
+                    qty: Number(row.querySelector('[data-v2-qty]')?.value),
+                    packagingQty: packaging?.value || '',
+                    packagingUom: packaging?.getAttribute('data-v2-pack-uom') || 'كرتون',
+                };
+            }).filter((r) => r.name && Number.isFinite(r.qty) && r.qty > 0);
             if (!items.length) {notify('أضف صنفًا واحدًا على الأقل'); return;}
             const res = await createKitchenReturn(returnCreatePayload({ ...target, reason, notes, items }));
             closePanel();
@@ -344,17 +348,34 @@ export function mountWhReturnsScreen(host, ctx = {}) {
         }
     }
 
-    async function deleteRow(id) {
+    function openVoidPanel(row) {
         if (busy) {notify('جارٍ تنفيذ عملية — انتظر النتيجة'); return;}
+        if (!returnVoidVisible(role)) {notify('إبطال المرتجعات للمخزن والإدارة فقط'); return;}
+        if (!row || row.voided) {return;}
+        panelKind = 'void';
+        panelData = { row };
+        retryState = null;
+        setPanel(panelShell(`إبطال المرتجع #${esc(String(row.id))}`, 'undo',
+            `<p class="erp-flow-note" data-tone="warning">سيُعكس أثر المرتجع على المخزون والمحاسبة ويُفتح سقف الإرجاع، مع الاحتفاظ بالسجل كمرتجع مبطل.</p>
+             <label class="erp-field"><span class="erp-label">سبب الإبطال</span>
+               <textarea class="erp-input" rows="3" required data-v2-void-reason></textarea></label>
+             ${panelActions('تأكيد الإبطال', 'undo')}`));
+    }
+
+    async function submitVoid() {
+        if (busy) {notify('جارٍ تنفيذ عملية — انتظر النتيجة'); return;}
+        const row = panelData && panelData.row;
+        if (!row) {return;}
+        const reason = panelEl.querySelector('[data-v2-void-reason]')?.value || '';
+        if (!reason.trim()) {panelMsg('أدخل سبب إبطال المرتجع'); return;}
         busy = true;
         try {
-            const ok = await confirmFn('تأكيد حذف سجل المرتجع؟ لا يمكن التراجع.');
-            if (!ok) {return;}
-            const res = await deleteKitchenReturn(id);
-            notify((res && res.message) || 'تم حذف سجل المرتجع');
+            const res = await voidKitchenReturn(row.id, reason);
+            closePanel();
+            notify((res && res.message) || 'تم إبطال المرتجع وعكس أثره مع حفظ السجل');
             await reload();
         } catch (e) {
-            notify((e && e.message) || 'تعذر الحذف');
+            panelMsg((e && e.message) || 'تعذر إبطال المرتجع');
         } finally {
             busy = false;
         }
@@ -364,9 +385,10 @@ export function mountWhReturnsScreen(host, ctx = {}) {
 
     function viewRows() { return rawRows; }
     function paint() {
-        const total = rawRows.reduce((s, r) => s + (r.totalValue || 0), 0);
+        const activeRows = rawRows.filter((r) => !r.voided);
+        const total = activeRows.reduce((s, r) => s + (r.totalValue || 0), 0);
         const m = formatMoney(total, currency);
-        summaryEl.textContent = `${formatInt(rawRows.length)} مرتجعًا · إجمالي ${m.amount}${currency ? ` ${currency}` : ''} (أصل 8,000 الأحدث)`;
+        summaryEl.textContent = `${formatInt(rawRows.length)} مرتجعًا · قيمة نشطة ${m.amount}${currency ? ` ${currency}` : ''} (أصل 8,000 الأحدث)`;
         countEl.textContent = rawRows.length ? `(${formatInt(rawRows.length)})` : '';
         table.setRows(rawRows);
     }
@@ -400,7 +422,11 @@ export function mountWhReturnsScreen(host, ctx = {}) {
 
     el.addEventListener('click', (event) => {
         const actBtn = event.target.closest('[data-v2-act]');
-        if (actBtn) {deleteRow(actBtn.getAttribute('data-id')); return;}
+        if (actBtn) {
+            const row = rawRows.find((entry) => String(entry.id) === String(actBtn.getAttribute('data-id')));
+            openVoidPanel(row);
+            return;
+        }
         if (event.target.closest('[data-v2-new]')) {openPanel('create'); return;}
         if (event.target.closest('[data-v2-print]')) {window.print(); return;}
         if (event.target.closest('[data-v2-reload]') || event.target.closest('[data-erp-retry]')) {reload(); return;}
@@ -412,7 +438,10 @@ export function mountWhReturnsScreen(host, ctx = {}) {
         }
         if (event.target.closest('[data-v2-add-row]')) {
             const box = panelEl.querySelector('[data-v2-rows]');
-            if (box) {box.insertAdjacentHTML('beforeend', currentRowHtml());}
+            if (box) {
+                box.insertAdjacentHTML('beforeend', currentRowHtml());
+                syncPackaging(box.lastElementChild);
+            }
             return;
         }
         const removeRow = event.target.closest('[data-v2-remove-row]');
@@ -420,9 +449,15 @@ export function mountWhReturnsScreen(host, ctx = {}) {
     });
 
     el.addEventListener('change', (event) => {
+        if (event.target.matches('[data-v2-item]')) {
+            syncPackaging(event.target.closest('[data-v2-row]'));
+        }
         if (event.target.matches('[data-v2-dispatch]')) {
             const box = panelEl.querySelector('[data-v2-rows]');
-            if (box) {box.innerHTML = currentRowHtml();}
+            if (box) {
+                box.innerHTML = currentRowHtml();
+                syncPackaging(box.firstElementChild);
+            }
         }
     });
 

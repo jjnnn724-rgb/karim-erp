@@ -12,15 +12,15 @@
  * dialogs become inline panels · no inline handlers (CSP contract).
  */
 
-import { canWrite } from '../session.js?v=4.9.319';
-import { formatInt } from '../data/reports-repo.js?v=4.9.319';
-import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.319';
-import { setV2PrintLogo } from '../print-branding.js?v=4.9.319';
-import { readMenuLabels } from '../layout/nav-model.js?v=4.9.319';
-import { captureFace } from '../portal-face.js?v=4.9.319';
-import { enrollFaceV1, enrollFaceV2 } from '../data/portal-repo.js?v=4.9.319';
-import { bindAdjacentLabels } from '../form-errors.js?v=4.9.319';
-import { fetchEmployees } from '../data/employees-repo.js?v=4.9.319';
+import { canWrite } from '../session.js?v=4.9.323';
+import { formatInt } from '../data/reports-repo.js?v=4.9.323';
+import { fetchLocalBundle } from '../data/reports-extra.js?v=4.9.323';
+import { setV2PrintLogo } from '../print-branding.js?v=4.9.323';
+import { readMenuLabels } from '../layout/nav-model.js?v=4.9.323';
+import { captureFace } from '../portal-face.js?v=4.9.323';
+import { enrollFaceV1, enrollFaceV2 } from '../data/portal-repo.js?v=4.9.323';
+import { bindAdjacentLabels } from '../form-errors.js?v=4.9.323';
+import { fetchEmployees } from '../data/employees-repo.js?v=4.9.323';
 import {
     ZATCA_WRITE_ROLES, KOT_WRITE_ROLES,
     fetchMainSettingsFull, updateMainSettings,
@@ -32,10 +32,10 @@ import {
     fetchBackups, doBackup, uploadBackup, restoreBackup, backupStepUp,
     resetAllData, operationalReset,
     fetchServerControl, serverControlAction,
-} from '../data/settings-repo.js?v=4.9.319';
+} from '../data/settings-repo.js?v=4.9.323';
 // safeImgSrc: حارس <img src> ضد javascript: المخزَّن — الشاشة وحدة نظيفة
 // (no-undef: error) فلا تصلها globals، فتُستورد من المصدر الوحيد.
-import { safeImgSrc } from '../../core/utils.js?v=4.9.319';
+import { safeImgSrc } from '../../core/utils.js?v=4.9.323';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -346,13 +346,34 @@ export function mountSettingsScreen(host, ctx = {}) {
         try {
             const s = await fetchCardSettings();
             if (!el.isConnected) {return;}
+            const accentOpts = [
+                ['gold', 'ذهبي سيادي'], ['emerald', 'زمردي'], ['sapphire', 'ياقوت أزرق'],
+                ['burgundy', 'عنابي'], ['platinum', 'بلاتيني'],
+            ].map(([v, t]) => `<option value="${v}"${String(s.accent || 'gold') === v ? ' selected' : ''}>${t}</option>`).join('');
             box.innerHTML = `<div class="erp-dash-controls">`
+                + `<label class="erp-text-sm erp-text-muted">اسم المنشأة (عربي)</label>`
+                + `<input class="erp-input" data-v2-card="orgNameAr" value="${esc(s.orgNameAr || '')}" maxlength="80" placeholder="مطاعم الشرفه العالمي">`
+                + `<label class="erp-text-sm erp-text-muted">اسم المنشأة (إنجليزي)</label>`
+                + `<input class="erp-input erp-input--ltr" data-v2-card="orgNameEn" dir="ltr" value="${esc(s.orgNameEn || '')}" maxlength="80" placeholder="AL SHURFA AL ALAMI RESTAURANTS">`
+                + `<label class="erp-text-sm erp-text-muted">عنوان البطاقة</label>`
+                + `<input class="erp-input" data-v2-card="cardTitle" value="${esc(s.cardTitle || '')}" maxlength="60" placeholder="بطاقة هوية رسمية">`
+                + `<label class="erp-text-sm erp-text-muted">السطر التعريفي</label>`
+                + `<input class="erp-input" data-v2-card="slogan" value="${esc(s.slogan || '')}" maxlength="60" placeholder="مجمع برج الساعة">`
+                + `<label class="erp-text-sm erp-text-muted">شارة الصورة</label>`
+                + `<input class="erp-input erp-input--ltr" data-v2-card="badgeText" dir="ltr" value="${esc(s.badgeText || '')}" maxlength="30" placeholder="OFFICIAL EXECUTIVE">`
+                + `<label class="erp-text-sm erp-text-muted">لوحة الألوان</label>`
+                + `<select class="erp-select" data-v2-card="accent">${accentOpts}</select>`
+                + `<label class="erp-text-sm erp-text-muted">الملاحظة القانونية</label>`
+                + `<input class="erp-input" data-v2-card="footerNote" value="${esc(s.footerNote || '')}" maxlength="160" placeholder="يتحمل حاملها المسؤولية القانونية كاملة عن استخدامها.">`
+                + `<label class="erp-text-sm"><input type="checkbox" data-v2-card-check="showBlood"${s.showBlood !== false ? ' checked' : ''}> <b>إظهار فصيلة الدم</b></label>`
+                + `<label class="erp-text-sm"><input type="checkbox" data-v2-card-check="showMrz"${s.showMrz !== false ? ' checked' : ''}> <b>إظهار رمز MRZ</b></label>`
+                + `</div><div class="erp-dash-controls">`
                 + `<label class="erp-text-sm erp-text-muted">رابط التحقق (QR)</label>`
                 + `<input class="erp-input erp-input--ltr" data-v2-card="verifyBase" dir="ltr" value="${esc(s.verifyBase || '')}" placeholder="https://192.168.1.165:5000">`
                 + `<label class="erp-text-sm erp-text-muted">طوارئ البطاقة</label>`
                 + `<input class="erp-input erp-input--ltr" data-v2-card="emergencyPhone" dir="ltr" value="${esc(s.emergencyPhone || '')}" placeholder="+966-5X-XXX-XXXX">`
                 + `<button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-card-save><i class="ji" data-i="save" aria-hidden="true"></i><span>حفظ</span></button>`
-                + `</div><small class="erp-text-sm erp-text-muted">البطاقات الجديدة تستخدم الرابط المحفوظ تلقائيًا.</small>`;
+                + `</div><small class="erp-text-sm erp-text-muted">كل ما يُحفظ هنا يظهر في البطاقة المطبوعة الجديدة مباشرة.</small>`;
         } catch (e) {
             if (!el.isConnected) {return;}
             box.innerHTML = `<p class="erp-text-sm erp-text-muted">تعذر تحميل إعدادات البطاقات: ${esc((e && e.message) || '')}</p>`;
@@ -1164,10 +1185,21 @@ export function mountSettingsScreen(host, ctx = {}) {
         }
 
         if (event.target.closest('[data-v2-card-save]')) {
+            const cardVal = (n) => el.querySelector(`[data-v2-card="${n}"]`)?.value ?? '';
+            const cardChk = (n) => el.querySelector(`[data-v2-card-check="${n}"]`)?.checked !== false;
             try {
                 await saveCardSettings({
-                    verifyBase: el.querySelector('[data-v2-card="verifyBase"]')?.value || '',
-                    emergencyPhone: el.querySelector('[data-v2-card="emergencyPhone"]')?.value || '',
+                    verifyBase: cardVal('verifyBase'),
+                    emergencyPhone: cardVal('emergencyPhone'),
+                    orgNameAr: cardVal('orgNameAr'),
+                    orgNameEn: cardVal('orgNameEn'),
+                    cardTitle: cardVal('cardTitle'),
+                    slogan: cardVal('slogan'),
+                    footerNote: cardVal('footerNote'),
+                    badgeText: cardVal('badgeText'),
+                    accent: cardVal('accent') || 'gold',
+                    showBlood: cardChk('showBlood'),
+                    showMrz: cardChk('showMrz'),
                 });
                 say('تم حفظ إعدادات البطاقات');
             } catch (e) {say((e && e.message) || 'تعذر الحفظ');}

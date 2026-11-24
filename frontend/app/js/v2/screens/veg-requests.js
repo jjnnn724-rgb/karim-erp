@@ -22,17 +22,17 @@
  *   • الأخطاء تُطبع من ردّ الخادم (e.message) لا من نصوص مخترعة.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.319';
-import { openInAppReport } from '../report-viewer.js?v=4.9.319';
-import { statusBadge } from '../status.js?v=4.9.319';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.323';
+import { openInAppReport } from '../report-viewer.js?v=4.9.323';
+import { statusBadge } from '../status.js?v=4.9.323';
 import {
     fetchVegRequests, fetchVegCatalog, fetchVegRequestById, vegRequestToRow, vegItemsOf,
     VEG_STATUS_FILTERS,
-    vegCreateVisible, vegReceiveVisible, vegPriceVisible, vegEditVisible, vegCancelVisible,
+    vegCreateVisible, vegReceiveVisible, vegPriceVisible, vegEditVisible, vegCancelVisible, vegAdminVisible,
     collectVegItems, vegCreatePayload, vegReceivePayload, vegEditPayload,
-    createVegRequest, receiveVegRequest, priceVegRequest, editVegItems, cancelVegRequest, markVegPrinted,
-} from '../data/veg-repo.js?v=4.9.319';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.319';
+    createVegRequest, receiveVegRequest, priceVegRequest, editVegItems, adminEditVegItems, cancelVegRequest, markVegPrinted,
+} from '../data/veg-repo.js?v=4.9.323';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.323';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -198,6 +198,7 @@ export function mountVegScreen(host, ctx = {}) {
     const role = ctx.role ? String(ctx.role) : '';
     const userId = ctx.userId != null ? Number(ctx.userId) : null;
     const userName = String(ctx.userName || '');
+    const canAdmin = vegAdminVisible(role);
 
     let rawRows = [];                       // آخر قراءة خام من الخادم
     let rawById = new Map();
@@ -574,7 +575,19 @@ export function mountVegScreen(host, ctx = {}) {
              ${panelActions('تأكيد التسعير', 'coins', '', !priced.length)}`);
     }
 
-    /* ── لوحة تعديل الكميات ─────────────────────────────────────────────── */
+    /* ── لوحة تعديل الكميات (+ إضافة أصناف للأدمن فقط) ──────────────────── */
+
+    function adminAddedRowHtml(name, qty, unit) {
+        return `<div class="erp-veg-line" data-v2-admin-added-row>
+          <div class="erp-veg-line__row">
+            <span class="erp-veg-line__name">${esc(name)} <small class="erp-text-muted">(${esc(qty)} ${esc(unit)})</small></span>
+            <button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-remove-admin-item aria-label="إزالة الصنف">إزالة</button>
+          </div>
+          <input type="hidden" data-v2-admin-added-name value="${esc(name)}">
+          <input type="hidden" data-v2-admin-added-qty value="${esc(qty)}">
+          <input type="hidden" data-v2-admin-added-unit value="${esc(unit)}">
+        </div>`;
+    }
 
     function editHtml(raw) {
         const items = vegItemsOf(raw);
@@ -587,10 +600,22 @@ export function mountVegScreen(host, ctx = {}) {
                 aria-label="كمية ${esc(it.name)}">
             </div>
           </div>`).join('');
-        return panelShell(`تعديل كميات الطلب ${esc(raw.request_no || ('#' + raw.id))}`, 'pencil',
-            `<div class="erp-flow-note" data-tone="warning">التعديل قبل الاعتماد النهائي فقط — أي تغيير يُوثَّق باسمك. إضافة أصناف جديدة مرفوضة — طلب جديد لها.</div>
+        const adminBox = canAdmin ? `
+          <div class="erp-flow-note" data-tone="info">👤 الأدمن فقط: أضف أصناف نسيها الشيف وقت الاستلام — تُوثَّق الكميات في سجل الطلب (قبل التسعير).</div>
+          <div class="erp-veg-line__row">
+            <input class="erp-input" type="text" data-v2-admin-name placeholder="اسم الصنف" aria-label="اسم الصنف الجديد">
+            <input class="erp-input" type="number" min="0.001" step="0.001" value="1" data-v2-admin-qty aria-label="كمية الصنف الجديد">
+            <input class="erp-input" type="text" value="كجم" data-v2-admin-unit aria-label="وحدة الصنف الجديد">
+            <button type="button" class="erp-btn erp-btn--sm" data-v2-add-admin-item>إضافة صنف</button>
+          </div>
+          <div class="erp-stack" data-v2-admin-added></div>` : '';
+        return panelShell(`${canAdmin ? 'تعديل الطلب (أدمن) ' : 'تعديل كميات الطلب '}${esc(raw.request_no || ('#' + raw.id))}`, 'pencil',
+            `<div class="erp-flow-note" data-tone="warning">${canAdmin
+                ? 'تقدر تضيف أصناف وتعدّل الكميات قبل التسعير — أي تغيير يُوثَّق باسمك في سجل الطلب.'
+                : 'التعديل قبل الاعتماد النهائي فقط — أي تغيير يُوثَّق باسمك. إضافة الأصناف الجديدة للمدير فقط.'}</div>
              <div class="erp-stack">${rows || '<span class="erp-text-muted">لا أصناف</span>'}</div>
-             ${panelActions('حفظ الكميات', 'check')}`);
+             ${adminBox}
+             ${panelActions(canAdmin ? 'حفظ التعديلات' : 'حفظ الكميات', 'check')}`);
     }
 
     /* ── لوحة الإلغاء: سبب اختياري (بديل window.prompt الممنوع) ─────────── */
@@ -742,9 +767,18 @@ export function mountVegScreen(host, ctx = {}) {
                 qty: Number(inp.value),
                 unit: inp.getAttribute('data-v2-edit-unit') || '',
             }));
-            await editVegItems(panelRaw.id, vegEditPayload(rows));
+            const added = [...panelEl.querySelectorAll('[data-v2-admin-added-row]')].map((row) => ({
+                name: row.querySelector('[data-v2-admin-added-name]')?.value || '',
+                qty: Number(row.querySelector('[data-v2-admin-added-qty]')?.value),
+                unit: row.querySelector('[data-v2-admin-added-unit]')?.value || '',
+            }));
+            if (canAdmin) {
+                await adminEditVegItems(panelRaw.id, vegEditPayload([...rows, ...added]));
+            } else {
+                await editVegItems(panelRaw.id, vegEditPayload(rows));
+            }
             closePanel();
-            notify('تم تعديل الكميات');
+            notify(canAdmin ? 'تمت إضافة/تعديل الأصناف' : 'تم تعديل الكميات');
             await reload();
         } catch (e) {
             panelMsg((e && e.message) || 'تعذر التعديل');
@@ -881,6 +915,30 @@ export function mountVegScreen(host, ctx = {}) {
         if (removeCustom) {
             removeCustom.closest('[data-v2-custom]')?.remove();
             updateCreateCount();
+            return;
+        }
+        if (event.target.closest('[data-v2-add-admin-item]')) {
+            const nameIn = panelEl.querySelector('[data-v2-admin-name]');
+            const qtyIn = panelEl.querySelector('[data-v2-admin-qty]');
+            const unitIn = panelEl.querySelector('[data-v2-admin-unit]');
+            const name = String(nameIn?.value || '').trim();
+            const qty = Number(qtyIn?.value);
+            if (!name) {notify('اكتب اسم الصنف'); return;}
+            if (!Number.isFinite(qty) || qty <= 0) {notify('أدخل كمية صحيحة أكبر من صفر'); return;}
+            const key = name.toLowerCase();
+            const box = panelEl.querySelector('[data-v2-admin-added]');
+            const exists = [...(box?.querySelectorAll('[data-v2-admin-added-name]') || [])]
+                .some((el) => String(el.value).toLowerCase() === key)
+                || [...panelEl.querySelectorAll('[data-v2-edit-name]')]
+                .some((el) => String(el.getAttribute('data-v2-edit-name') || '').toLowerCase() === key);
+            if (exists) {notify('الصنف موجود بالفعل في الطلب'); return;}
+            box?.insertAdjacentHTML('beforeend', adminAddedRowHtml(name, qty, unitIn?.value || 'وحدة'));
+            if (nameIn) {nameIn.value = '';}
+            return;
+        }
+        const removeAdmin = event.target.closest('[data-v2-remove-admin-item]');
+        if (removeAdmin) {
+            removeAdmin.closest('[data-v2-admin-added-row]')?.remove();
             return;
         }
         const pr = event.target.closest('[data-v2-priority]');

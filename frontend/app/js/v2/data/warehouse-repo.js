@@ -28,8 +28,8 @@
  *  C) W1-5 (screen 20): the returns cycle —
  *       POST   /warehouse/returns        warehouse-routes.js:1318
  *              (dispatchId غائب ⇒ إرجاع مباشر :1207-1327؛ وإلا مرتبط بإذن)
- *       DELETE /warehouse/returns/:id    warehouse-routes.js:1506
- *              (عكس الأثر المخزني كاملًا؛ والقديم بلا ربط يُرفض 409)
+ *       POST   /warehouse/returns/:id/void
+ *              (إبطال موثّق بعكس الأثر المخزني والمحاسبي مع حفظ السجل)
  *     plus the create panel's reads: approved dispatches (legacy pit :1256),
  *     departments (legacy filter :1259) and inventory names (:1263).
  *     The write doors exist for screen 20's cycle only.
@@ -39,15 +39,14 @@
  *   backend/warehouse-routes.js:735,...): in | out | return | adjustment;
  *   any other stored value renders as the legacy "افتتاحي" badge — never
  *   relabelled here.
- *   kitchenReturns.status is stored as 'approved' exactly on insert
- *   (warehouse-routes.js:1460); the legacy section renders it via
- *   deleteKitchenReturn gates only.
+ *   kitchenReturns.status is 'approved' on insert and 'voided' after
+ *   reversal; voided rows remain visible but are excluded from active totals.
  *   Receipts' e-signature/signature data, purchase-request shima-
  *   exclusive fields (chefApprovedBy, warehouseReceivedBy…) are status/
  *   approval data we keep as RAW read-only facts.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.319';
+import { apiFetch } from '../../core/api.js?v=4.9.323';
 
 export function isoDay(offsetDays = 0, base = new Date()) {
     const d = new Date(base);
@@ -131,6 +130,7 @@ export function kitchenReturnToRow(r = {}) {
         totalValue: num(r.totalValue),
         date: r.date ? String(r.date).slice(0, 10) : '',
         status: r.status ? String(r.status) : '',
+        voided: Boolean(r.voidedAt || r.status === 'voided'),
     };
 }
 
@@ -140,15 +140,15 @@ export function kitchenReturnToRow(r = {}) {
 
 /** من يُنشئ مرتجعًا — مرآة RETURN_ROLES (warehouse-routes.js:16). */
 export const RETURN_ROLES = ['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'dept_head'];
-/** من يحذف سجل مرتجع بعكس أثره — مرآة requireRole في :1506. */
-export const RETURN_DELETE_ROLES = ['admin', 'manager', 'warehouse'];
+/** من يبطل مرتجعًا ويعكس أثره — مرآة صلاحية dispatch.void. */
+export const RETURN_VOID_ROLES = ['admin', 'manager', 'warehouse'];
 
 export function returnCreateVisible(role) {
     return RETURN_ROLES.includes(String(role || ''));
 }
 
-export function returnDeleteVisible(role) {
-    return RETURN_DELETE_ROLES.includes(String(role || ''));
+export function returnVoidVisible(role) {
+    return RETURN_VOID_ROLES.includes(String(role || ''));
 }
 
 /** إذونات الصرف المعتمدة للاختيار — عين القديم :1256 (status==='approved'). */
@@ -173,6 +173,8 @@ export function returnDispatchOption(d = {}) {
             name: String((it && (it.itemName || it.name)) || ''),
             unit: String((it && it.unit) || ''),
             qty: num(it && (it.approvedQty ?? it.qty)),
+            packagingQty: it && it.packagingQty != null ? num(it.packagingQty) : null,
+            packagingUom: String((it && it.packagingUom) || ''),
         })).filter((it) => it.name),
     };
 }
@@ -215,6 +217,8 @@ export function returnInventoryOption(raw = {}) {
         name: String(raw.name || ''),
         unit: String(raw.unit || ''),
         qty: num(raw.qty),
+        catchWeight: Boolean(raw.catch_weight_enabled),
+        packagingUom: String(raw.packaging_uom || 'كرتون'),
     };
 }
 
@@ -230,10 +234,20 @@ export function returnCreatePayload({ deptCode = '', dispatchId = null, reason =
     const body = {
         reason: String(reason || ''),
         notes: String(notes || '').trim(),
-        items: (Array.isArray(items) ? items : []).map((r) => ({
-            name: String((r && r.name) || '').trim(),
-            qty: Number(r && r.qty),
-        })).filter((r) => r.name && Number.isFinite(r.qty) && r.qty > 0),
+        items: (Array.isArray(items) ? items : []).map((r) => {
+            const packagingQty = r && r.packagingQty !== '' && r.packagingQty != null ? Number(r.packagingQty) : null;
+            return {
+                name: String((r && r.name) || '').trim(),
+                qty: Number(r && r.qty),
+                ...(packagingQty !== null && Number.isFinite(packagingQty) && packagingQty > 0
+                    ? {
+                          packagingQty,
+                          packagingUom: String((r && r.packagingUom) || 'كرتون'),
+                          ...(r.actualWeight != null ? { actualWeight: Number(r.actualWeight) } : {}),
+                      }
+                    : {}),
+            };
+        }).filter((r) => r.name && Number.isFinite(r.qty) && r.qty > 0),
     };
     if (dispatchId !== null && dispatchId !== undefined && String(dispatchId).trim() !== '') {
         body.dispatchId = dispatchId;
@@ -243,13 +257,27 @@ export function returnCreatePayload({ deptCode = '', dispatchId = null, reason =
     return body;
 }
 
-/** إرجاع جديد — POST /warehouse/returns (:1318، والمباشر :1326-1327): المخزون
- *  يُحرَّك والمصروف يُعكس عند الخادم، والرد يحمل totalValue. */
-export async function createKitchenReturn(body) {
-    return apiFetch('/warehouse/returns', { method: 'POST', body: JSON.stringify(body) });
+function returnOperationKey(action, id) {
+    const unique = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return `return-${action}:${id}:${unique}`;
 }
 
-/** حذف سجل مرتجع مع عكس أثره المخزني — DELETE /warehouse/returns/:id (:1506). */
-export async function deleteKitchenReturn(id) {
-    return apiFetch(`/warehouse/returns/${encodeURIComponent(id)}`, { method: 'DELETE' });
+/** إرجاع جديد — المخزون والمصروف يُعكسان ذريًا عند الخادم. */
+export async function createKitchenReturn(body) {
+    return apiFetch('/warehouse/returns', {
+        method: 'POST',
+        body: JSON.stringify(body),
+        headers: { 'X-Idempotency-Key': returnOperationKey('create', body.dispatchId || 'direct') },
+    });
+}
+
+/** إبطال موثّق بعكس الأثر مع حفظ السجل — POST /warehouse/returns/:id/void. */
+export async function voidKitchenReturn(id, reason) {
+    const cleanReason = String(reason || '').trim();
+    if (!cleanReason) {throw new Error('أدخل سبب إبطال المرتجع');}
+    return apiFetch(`/warehouse/returns/${encodeURIComponent(id)}/void`, {
+        method: 'POST',
+        body: JSON.stringify({ reason: cleanReason }),
+        headers: { 'X-Idempotency-Key': returnOperationKey('void', id) },
+    });
 }
