@@ -14,6 +14,7 @@ const fs = require('fs');
 const path = require('path');
 const multer = require('multer');
 const { logger } = require("../logger");
+const { makeEmitScoped } = require('../realtime/guard');
 const { MENU_IMAGE_ROOT, ensureMediaDirs, safeProductImageName, removeMenuImageByUrl } = require('../media-storage');
 const { pool, withTransaction } = require('./db-pool');
 const { jwtAuth, requireRole } = require('./jwt-middleware');
@@ -114,8 +115,7 @@ function emitCatalogChanged(req, action, data) {
             changedAt: new Date().toISOString(),
         };
         const sender = req.headers?.['x-socket-id'];
-        if (sender && typeof req.io.except === 'function') {req.io.except(sender).emit('entity_changed', payload);}
-        else {req.io.emit('entity_changed', payload);}
+        makeEmitScoped(req.io)('entity_changed', payload, sender || undefined);
     } catch (_) { /* البث غير حرج */ }
 }
 

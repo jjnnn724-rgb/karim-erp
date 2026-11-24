@@ -126,10 +126,10 @@ describe('متابعة الكاشير — عقد الشاشة من المصدر'
 
     test('المضيف يربط المفتاح: استيراد + متغير + تفكيك + رسم + توجيه', () => {
         const h = read(HOST);
-        expect(h).toMatch(/import \{ mountCashierMonitorScreen \} from '\.\/screens\/cashier-monitor\.js\?v=/);
+        expect(h).toMatch(/module: 'cashier-monitor'/);
         expect(h).toMatch(/let cashierMonitorScreen = null;/);
         expect(h).toMatch(/function teardownCashierMonitorScreen\(\)/);
-        expect(h).toMatch(/key: 'cashier-monitor', title: 'متابعة الكاشير', mount: mountCashierMonitorScreen/);
+        expect(h).toMatch(/key: 'cashier-monitor', title: 'متابعة الكاشير', module: 'cashier-monitor'/);
         expect(h).toMatch(/if \(key === 'cashier-monitor'\)/);
     });
 });

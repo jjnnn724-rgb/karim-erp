@@ -22,6 +22,18 @@ function liveConsume() {
     return ['1', 'true', 'yes', 'on'].includes(String(process.env.YARASOFT_ORACLE_LIVE || 'false').trim().toLowerCase());
 }
 
+/**
+ * قاعدة «فاتورة قابلة للتسجيل» — مصدر وحيد للحقيقة يشاركه عدّاد التغطية في
+ * sync-doctor (`COALESCE(NET_VAL, TOTAL_VAL, 0) > 0`). اختلاف الصيغتين هو ما جعل
+ * كل نافذة تبدو «ناقصة» للأبد، فيعيد اللحاق سحبها كاملة كل دورة (130 جيجا مخلفات).
+ * @param {any} total
+ */
+function isPostableTotal(total) {
+    const v = Number(total);
+    return Number.isFinite(v) && v > 0;
+}
+
+/** @param {any} v */
 function isoDay(v) {
     // يوم الرياض المحلي — toISOString (UTC) كان يزيح فواتير منتصف الليل يومًا كاملًا للخلف
     try {
@@ -33,7 +45,7 @@ function isoDay(v) {
     }
 }
 
-/** تجميع سطور staging إلى فواتير {(SRC,DOC_NO) → header + lines} */
+/** تجميع سطور staging إلى فواتير {(SRC,DOC_NO) → header + lines} @param {any} rows */
 function groupStaged(rows) {
     const map = new Map();
     const skipped = [];
@@ -69,6 +81,7 @@ function groupStaged(rows) {
     return { invoices: [...map.values()], skipped };
 }
 
+/** @param {any} filePath @param {{io?:any}} [opts] */
 async function consumeStagingFile(filePath, { io = null } = {}) {
     const base = loadConfig();
     const config = liveConsume() ? { ...base, dryRun: false } : base;
@@ -76,7 +89,7 @@ async function consumeStagingFile(filePath, { io = null } = {}) {
     let bundle;
     try {
         bundle = JSON.parse(fs.readFileSync(filePath, 'utf8'));
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
         return { ok: false, error: 'ملف staging غير صالح: ' + e.message };
     }
     const { invoices, skipped } = groupStaged(bundle.rows);
@@ -84,7 +97,7 @@ async function consumeStagingFile(filePath, { io = null } = {}) {
     for (const inv of invoices) {
         // مبلغ غير صالح (صفر/سالب) لا يدخل الدفاتر — يُسجَّل سببًا ويُتخطى
         const invTotal = Number(inv.totals?.total);
-        if (!Number.isFinite(invTotal) || invTotal <= 0) {
+        if (!isPostableTotal(invTotal)) {
             out.skipped++;
             out.errors.push(`${inv.key}: مبلغ غير صالح (${inv.totals?.total}) — تُخطي`);
             continue;
@@ -124,8 +137,8 @@ async function consumeStagingFile(filePath, { io = null } = {}) {
             if (res.status === STATUS.COMPLETED) {out.completed++;}
             else if (res.status === STATUS.DUPLICATE) {out.duplicates++;}
             else if (res.status === STATUS.DRY_RUN) {out.dryRuns++;}
-            else { out.failed++; out.errors.push(`${inv.key}: ${res.reason || res.status}`); }
-        } catch (e) {
+            else { out.failed++; out.errors.push(`${inv.key}: ${/** @type {any} */ (res).reason || res.status}`); }
+        } catch (/** @type {any} */ e) {
             out.failed++;
             out.errors.push(`${inv.key}: ${String(e.message).slice(0, 160)}`);
             logger.error('[yarasoft_oracle_consume]', e.message);
@@ -151,4 +164,21 @@ async function consumeAllPending(opts = {}) {
     return { ok: true, files: files.length, results };
 }
 
-module.exports = { consumeStagingFile, consumeAllPending, liveConsume };
+/** حذف نسخ staging المستهلكة (.done) الأقدم من N ساعة — لا يقرأها أحد بعد الاستهلاك @param {any} maxAgeHours */
+function pruneConsumed(maxAgeHours) {
+    const { loadOracleConfig } = require('./oracle-link');
+    const dir = loadOracleConfig().stagingDir;
+    const hours = Math.max(1, Number(maxAgeHours) || Number(process.env.YARASOFT_STAGING_DONE_HOURS) || 48);
+    if (!dir || !fs.existsSync(dir)) {return { removed: 0, hours };}
+    const cutoff = Date.now() - hours * 3600 * 1000;
+    let removed = 0;
+    for (const f of fs.readdirSync(dir)) {
+        if (!f.endsWith('.json.done')) {continue;}
+        const p = path.join(dir, f);
+        try { if (fs.statSync(p).mtimeMs < cutoff) { fs.unlinkSync(p); removed++; } } catch (_) {}
+    }
+    if (removed) {logger.info(`[yarasoft_oracle_consume] pruned ${removed} consumed staging files (>${hours}h)`);}
+    return { removed, hours };
+}
+
+module.exports = { consumeStagingFile, consumeAllPending, liveConsume, pruneConsumed, isPostableTotal };

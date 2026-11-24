@@ -5,26 +5,19 @@
  * apiFetch مزيفة، والشاشة تُقرأ كعقد مصدر (testEnvironment:'node').
  *
  * المثبَّت هنا:
- *   • الباب الواحد لشبكة الشاشة: js/v2/data/warehouse-repo.js — قراءات لوحة
- *     الإنشاء (إذونات معتمدة :1256، أقسام الإرجاع المباشر :1259، المخزون
- *     :1263) وحمولة الإنشاء (:1360/:1385) وحارسا الحذف :1356/:683
- *   • ثوابت الأدوار مرايا سطرٍ بسطر: RETURN_ROLES :16 وحارس الحذف :1506،
- *     وقائمتا الواجهة من القديم :650-651 بمسافاتهما المضغوطة
- *   • الانحرافان المعلنان: قائمة أقسام dept_head المتعددة بدل الحقل الخام
- *     الذي يرفضه الخادم 422 (سابقة إصلاح :704)، ورسالة نجاح الحذف من رد
- *     الخادم (:1570) بسقوط نص القديم :689
- *   • لا توقيع إلكتروني ولا window.confirm في الشاشة (confirmFn المضيف)؛
- *     window.confirm واحدة فقط كسقوط احتياطي
- *   • كلمات اللوحة والتحقق والنجاح منسوخة من features/kitchen.js حرفيًا
- *     (:1266 البنر، :1270-1274 الأسباب، :1351/:1358/:1374/:1383 التحقق،
- *     :1366/:1391 النجاح، :683 التحذير)
- *   • الشاشة: لا fetch/apiFetch، لا معالج سطري إطلاقًا، حارس أحدث قراءة +
- *     isConnected (هدفان) + busy قرار واحد + destroy() يُتلف الجدول، وثلاثة
- *     حراس panelAlive لتجهيز اللوحة
- *   • المضيف: تمرير deptCode الجديد (u.dept_code) لفصل الدورة، والركوب على
- *     مضيف السجلات المشترك renderLiveRegisterScreen
- *   • الطبقة: كل قيم erp-ops.css رموز --erp-* بلا hex ولا px خام، ووسائط
- *     الشاشة ممتدة داخل آخر كتلتي الوسيط عمدًا (عدد الكتل يبقى 2 و2)
+ *   • الباب الواحد لشبكة الشاشة: warehouse-repo.js — قراءات لوحة الإنشاء،
+ *     وحمولة الإنشاء، وبابا POST للإنشاء والإبطال مع X-Idempotency-Key
+ *   • فصل الأدوار: RETURN_ROLES للإنشاء وRETURN_VOID_ROLES للإبطال، ورفض
+ *     سبب الإبطال الفارغ قبل أي اتصال، وتشفير معرّف الإبطال في المسار
+ *   • عقود الوزن المتغير: packagingQty/packagingUom وcatchWeight، وحفظ
+ *     actualWeight مع التعبئة الموجبة في حمولة الإنشاء
+ *   • kitchenReturnToRow يعرّض voided؛ الإجمالي النشط يستبعد المبطل والعدّ
+ *     يشمل كل السجلات، مع اختبار سلوكي للشاشة المركّبة
+ *   • الشاشة بلا fetch/apiFetch أو window.confirm: لوحة سبب إبطال وحالة
+ *     «مبطل» وإجراء «إبطال»، مع حراس القراءة والقرار وdestroy()
+ *   • الخادم: مسار الإبطال يرفض السبب الفارغ ويحفظ السجل، والحذف القديم
+ *     والكتابة العامة على kitchenReturns محجوبان بـ405، وحارس الإذن النشط
+ *   • المضيف والطبقة: هوية السجلات المشتركة، مراجعة الأصول، ورموز CSS فقط
  */
 const { warehouseSource } = require('./helpers/warehouse-source');
 const fs = require('fs');
@@ -42,14 +35,13 @@ const HOST = path.join(V2, 'preview.js');
 const ICONS = path.join(APP, 'js', 'icons.js');
 const VR = warehouseSource();
 const LEGACY = path.join(APP, 'js', 'features', 'kitchen.js');
+const SERVER = path.join(__dirname, '..', 'backend', 'server.js');
 // REV مشتق من الوسم الحيّ في v2.html (نفس نمط v2-kitchen/wh-prs/veg).
 const REV = (fs.readFileSync(V2_HTML, 'utf8').match(/js\/v2\/preview\.js\?v=([0-9.]+)/) || [])[1];
 
 function loadEsm(file, injections = {}, collect = []) {
     const stripped = fs.readFileSync(file, 'utf8')
-        .split('\n')
-        .filter((line) => !/^\s*import\b|^\s*from\s*'[^']*';?\s*$/.test(line))
-        .join('\n')
+        .replace(/^[ \t]*import[\s\S]*?from\s*['"][^'"]+['"];[ \t]*$/gm, '')
         .replace(/^export\s+/gm, '');
     const src = collect.length
         ? `${stripped}\n;Object.assign(globalThis, {${collect.join(', ')}});`
@@ -67,24 +59,74 @@ function loadEsm(file, injections = {}, collect = []) {
 const EXPORTS = ['isoDay', 'firstOfMonth', 'WALK_PAGES',
     'fetchInventoryTx', 'fetchKitchenReturns', 'INV_TYPE_AR', 'INV_TYPE_TONE',
     'invTxToRow', 'kitchenReturnToRow',
-    'RETURN_ROLES', 'RETURN_DELETE_ROLES', 'returnCreateVisible', 'returnDeleteVisible',
+    'RETURN_ROLES', 'RETURN_VOID_ROLES', 'returnCreateVisible', 'returnVoidVisible',
     'fetchReturnDispatches', 'returnDispatchOption', 'fetchReturnDepartments',
     'directReturnDepartments', 'deptLabelOf', 'fetchReturnInventory', 'returnInventoryOption',
-    'returnDeptCodesOf', 'returnCreatePayload', 'createKitchenReturn', 'deleteKitchenReturn'];
+    'returnDeptCodesOf', 'returnCreatePayload', 'createKitchenReturn', 'voidKitchenReturn'];
 
-function repoStub(impl) {
+function repoStub(impl, injections = {}) {
     const calls = [];
     const bodies = [];
     const methods = [];
-    const apiFetch = jest.fn(async (p, opts) => {
+    const requests = [];
+    const apiFetch = jest.fn(async (p, opts = {}) => {
         calls.push(p);
-        methods.push(opts && opts.method);
-        if (opts && opts.body) {bodies.push({ path: p, body: opts.body, method: opts.method });}
+        methods.push(opts.method);
+        requests.push({ path: p, ...opts });
+        if (opts.body) {bodies.push({ path: p, body: opts.body, method: opts.method });}
         return typeof impl === 'function' ? impl(p, opts) : impl;
     });
-    const repo = loadEsm(REPO, { apiFetch }, EXPORTS);
-    return { calls, bodies, methods, repo };
+    const repo = loadEsm(REPO, { apiFetch, ...injections }, EXPORTS);
+    return { calls, bodies, methods, requests, repo, apiFetch };
 }
+
+function returnsScreenStub(rows, role = 'admin') {
+    const gateway = repoStub({ data: rows });
+    const repoFns = Object.fromEntries(EXPORTS.map((name) => [name, gateway.repo[name]]));
+    const countEl = { textContent: '' };
+    const summaryEl = { textContent: '' };
+    const panelEl = {
+        innerHTML: '', hidden: true,
+        querySelectorAll: () => [],
+        querySelector: () => null,
+        scrollIntoView: jest.fn(),
+    };
+    const tableHost = { appendChild: jest.fn() };
+    const nodes = {
+        '[data-v2-count]': countEl,
+        '[data-v2-summary]': summaryEl,
+        '[data-v2-panel]': panelEl,
+        '[data-v2-table]': tableHost,
+    };
+    const listeners = {};
+    const el = {
+        isConnected: true,
+        querySelector: (selector) => nodes[selector] || null,
+        addEventListener: jest.fn((type, handler) => { listeners[type] = handler; }),
+        remove: jest.fn(),
+    };
+    const host = { insertAdjacentHTML: jest.fn(), lastElementChild: el };
+    const table = {
+        el: {}, rows: [], setLoading: jest.fn(), setError: jest.fn(), destroy: jest.fn(),
+    };
+    table.setRows = jest.fn((next) => { table.rows = next; });
+    let tableOptions;
+    const notify = jest.fn();
+    const confirm = jest.fn();
+    const context = loadEsm(SCREEN, {
+        ...repoFns,
+        createDataTable: jest.fn((options) => { tableOptions = options; return table; }),
+        fetchCurrency: async () => 'SAR',
+        formatMoney: (value, currency) => ({ amount: String(value), unit: currency, hasUnit: Boolean(currency) }),
+        formatInt: (value) => String(value),
+        formatQty: (value) => String(value),
+        window: { confirm, print: jest.fn() },
+    });
+    const screen = context.mountWhReturnsScreen(host, { role, notify });
+    return { screen, gateway, context, host, el, panelEl, countEl, summaryEl, table, tableOptions, listeners, notify, confirm };
+}
+
+const flushAsync = () => new Promise((resolve) => setImmediate(resolve));
 
 const source = (f) => fs.readFileSync(f, 'utf8');
 const legacyOf = () => source(LEGACY);
@@ -114,7 +156,7 @@ describe('warehouse-repo — الباب الواحد: قراءات لوحة ال
         expect(calls).toEqual(['/dispatches?page=1&limit=1000&sort=id&order=desc']);
         expect(out).toHaveLength(1);   // المعلّق يسقط — الاختيار للـapproved وحده
         expect(out[0]).toMatchObject({ id: 1, deptName: 'المطبخ', date: '2026-10-15' });
-        expect(out[0].items).toEqual([{ name: 'خيار', unit: 'كجم', qty: 3 }]);
+        expect(out[0].items).toEqual([{ name: 'خيار', unit: 'كجم', qty: 3, packagingQty: null, packagingUom: '' }]);
     });
 
     test('مشي الصفحات: الصفحة القصيرة تقصر — وtotalPages يقفل', async () => {
@@ -128,18 +170,22 @@ describe('warehouse-repo — الباب الواحد: قراءات لوحة ال
         expect(repo.WALK_PAGES).toBe(8);
     });
 
-    test('صف الإذن: الكمية approvedQty ?? qty — بلا تخمين، والاسم من itemName ثم name', () => {
+    test('صف الإذن: approvedQty ?? qty والتعبئة محفوظة — بلا تخمين', () => {
         const { repo } = repoStub({});
         const full = repo.returnDispatchOption({
             id: 5, deptName: 'كافتيريا', date: '2026-10-15T08:00:00Z',
             approvedItems: [{ itemName: 'طماطم', unit: 'كجم', approvedQty: 0, qty: 9 }],
         });
-        expect(full.items).toEqual([{ name: 'طماطم', unit: 'كجم', qty: 0 }]);   // 0 قيمة لا سقوط
+        expect(full.items).toEqual([{ name: 'طماطم', unit: 'كجم', qty: 0, packagingQty: null, packagingUom: '' }]);   // 0 قيمة لا سقوط
         const fallback = repo.returnDispatchOption({
             id: 6, deptCode: 'caf', items: [{ name: 'بصل', qty: '2.5' }],
         });
         expect(fallback).toMatchObject({ id: 6, deptName: 'caf', date: '' });
-        expect(fallback.items).toEqual([{ name: 'بصل', unit: '', qty: 2.5 }]);
+        expect(fallback.items).toEqual([{ name: 'بصل', unit: '', qty: 2.5, packagingQty: null, packagingUom: '' }]);
+        const packed = repo.returnDispatchOption({
+            id: 8, approvedItems: [{ itemName: 'دجاج', approvedQty: 12.5, packagingQty: '3', packagingUom: 'صندوق' }],
+        });
+        expect(packed.items).toEqual([{ name: 'دجاج', unit: '', qty: 12.5, packagingQty: 3, packagingUom: 'صندوق' }]);
         const bad = repo.returnDispatchOption({ id: 7, approvedItems: [{ itemName: '', qty: 1 }] });
         expect(bad.items).toEqual([]);
     });
@@ -178,13 +224,20 @@ describe('warehouse-repo — الباب الواحد: قراءات لوحة ال
         expect(repo.returnDeptCodesOf(', ,')).toEqual([]);
     });
 
-    test('أسماء المخزون: بلا بوابة رصيد — والفراغ يسقط', async () => {
+    test('أسماء المخزون: بلا بوابة رصيد — والفراغ يسقط وعقود الوزن المتغير تبقى', async () => {
         const { calls, repo } = repoStub({
-            data: [{ id: 1, name: 'طماطم', unit: 'كجم', qty: '2.5' }, { id: 2, name: '' }],
+            data: [
+                { id: 1, name: 'طماطم', unit: 'كجم', qty: '2.5' },
+                { id: 3, name: 'دجاج', catch_weight_enabled: 1, packaging_uom: 'صندوق' },
+                { id: 2, name: '' },
+            ],
         });
         const out = await repo.fetchReturnInventory();
         expect(calls).toEqual(['/inventory?page=1&limit=1000&sort=id&order=desc']);
-        expect(out).toEqual([{ id: 1, name: 'طماطم', unit: 'كجم', qty: 2.5 }]);
+        expect(out).toEqual([
+            { id: 1, name: 'طماطم', unit: 'كجم', qty: 2.5, catchWeight: false, packagingUom: 'كرتون' },
+            { id: 3, name: 'دجاج', unit: '', qty: 0, catchWeight: true, packagingUom: 'صندوق' },
+        ]);
     });
 
     test('حمولة الإنشاء: الفرعان كما يرسلهما القديم :1360/:1385 — والصفوف الفارغة تسقط :1356', () => {
@@ -193,6 +246,7 @@ describe('warehouse-repo — الباب الواحد: قراءات لوحة ال
             deptCode: ' caf ', reason: 'فائض إنتاج', notes: '  قبل ٩  ',
             items: [
                 { name: '  طماطم  ', qty: '2.5' },
+                { name: 'دجاج', qty: '12.5', packagingQty: '3', packagingUom: 'صندوق', actualWeight: '11.75' },
                 { name: 'خيار', qty: 0 },
                 { name: '', qty: 3 },
                 { name: 'بصل', qty: 'abc' },
@@ -201,8 +255,14 @@ describe('warehouse-repo — الباب الواحد: قراءات لوحة ال
         });
         expect(direct).toEqual({
             reason: 'فائض إنتاج', notes: 'قبل ٩',
-            items: [{ name: 'طماطم', qty: 2.5 }], deptCode: 'caf',
+            items: [
+                { name: 'طماطم', qty: 2.5 },
+                { name: 'دجاج', qty: 12.5, packagingQty: 3, packagingUom: 'صندوق', actualWeight: 11.75 },
+            ], deptCode: 'caf',
         });
+        expect(repo.returnCreatePayload({
+            items: [{ name: 'دجاج', qty: 1, packagingQty: 2, actualWeight: 1.5 }],
+        }).items[0].packagingUom).toBe('كرتون');
         const linked = repo.returnCreatePayload({
             deptCode: 'caf', dispatchId: 9, reason: 'أخرى', notes: '',
             items: [{ name: 'طماطم', qty: 1 }],
@@ -214,57 +274,91 @@ describe('warehouse-repo — الباب الواحد: قراءات لوحة ال
         expect(empty.deptCode).toBe('caf');
     });
 
-    test('بابا الكتابة: POST /warehouse/returns وDELETE بالمعرّف مُشفَّرًا', async () => {
-        const create = repoStub({});
-        const payload = { deptCode: 'caf', reason: 'x', notes: '', items: [{ name: 'طماطم', qty: 2 }] };
-        await create.repo.createKitchenReturn(payload);
+    test('الإنشاء POST مع مفتاح عدم التكرار والرد كما هو', async () => {
+        const response = { return: { id: 11 }, totalValue: 20 };
+        const create = repoStub(response, { crypto: { randomUUID: () => 'uuid-create' } });
+        const payload = { dispatchId: 9, reason: 'x', notes: '', items: [{ name: 'طماطم', qty: 2 }] };
+        await expect(create.repo.createKitchenReturn(payload)).resolves.toBe(response);
         expect(create.calls).toEqual(['/warehouse/returns']);
         expect(create.methods).toEqual(['POST']);
         expect(JSON.parse(create.bodies[0].body)).toEqual(payload);
+        expect(create.requests[0].headers).toEqual({ 'X-Idempotency-Key': 'return-create:9:uuid-create' });
 
-        const del = repoStub({});
-        await del.repo.deleteKitchenReturn('7/8');
-        expect(del.calls).toEqual(['/warehouse/returns/7%2F8']);
-        expect(del.methods).toEqual(['DELETE']);
-        expect(del.bodies).toHaveLength(0);   // الحذف بلا حمولة — المعرّف في المسار وحده
+        const direct = repoStub({}, { crypto: { randomUUID: () => 'uuid-direct' } });
+        await direct.repo.createKitchenReturn({ deptCode: 'caf', items: [] });
+        expect(direct.requests[0].headers).toEqual({ 'X-Idempotency-Key': 'return-create:direct:uuid-direct' });
+    });
+
+    test('الإبطال POST بالمعرّف المُشفَّر وسبب منظّف ومفتاح عدم التكرار', async () => {
+        const response = { return: { id: '7/8', status: 'voided' } };
+        const voided = repoStub(response, { crypto: { randomUUID: () => 'uuid-void' } });
+        await expect(voided.repo.voidKitchenReturn('7/8', '  تلف موثّق  ')).resolves.toBe(response);
+        expect(voided.calls).toEqual(['/warehouse/returns/7%2F8/void']);
+        expect(voided.methods).toEqual(['POST']);
+        expect(JSON.parse(voided.bodies[0].body)).toEqual({ reason: 'تلف موثّق' });
+        expect(voided.requests[0].headers).toEqual({ 'X-Idempotency-Key': 'return-void:7/8:uuid-void' });
+    });
+
+    test('سبب الإبطال الفارغ مرفوض قبل الشبكة', async () => {
+        const voided = repoStub({});
+        for (const reason of ['', '   ', null, undefined]) {
+            await expect(voided.repo.voidKitchenReturn(7, reason)).rejects.toThrow('أدخل سبب إبطال المرتجع');
+        }
+        expect(voided.apiFetch).not.toHaveBeenCalled();
+        expect(voided.calls).toEqual([]);
     });
 });
 
 describe('warehouse-repo — الثوابت مرايا الخادم والقديم بمسافاتهما', () => {
-    test('قائمتا الأدوار حرفًا بسطر الخادم :16 وحارس الحذف :1506', () => {
+    test('قائمتا الأدوار ومسارا الكتابة: إنشاء أوسع من الإبطال', () => {
         const { repo } = repoStub({});
         const wr = VR;
         const list = (a) => `[${a.map((r) => `'${r}'`).join(', ')}]`;   // مسافات الخادم
         expect(wr).toContain(`const RETURN_ROLES = ${list(repo.RETURN_ROLES)};`);
         expect(repo.RETURN_ROLES).toEqual(['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'dept_head']);
-        expect(repo.RETURN_DELETE_ROLES).toEqual(['admin', 'manager', 'warehouse']);
-        expect(wr).toContain("router.post('/returns', jwtAuth, requireRole(...RETURN_ROLES)");
-        expect(wr).toContain("router.delete('/returns/:id', jwtAuth, requireRole('admin', 'manager', 'warehouse')");
+        expect(repo.RETURN_VOID_ROLES).toEqual(['admin', 'manager', 'warehouse']);
+        expect(wr).toContain("router.post('/returns', jwtAuth, requireRoleOrPerm(RETURN_ROLES, 'dispatch.return'), idempotency({ requireKey: true })");
+        expect(wr).toContain("router.post('/returns/:id/void', jwtAuth, requireRoleOrPerm(['admin', 'manager', 'warehouse'], 'dispatch.void'), idempotency({ requireKey: true })");
     });
 
-    test('قائمتا الواجهة من القديم :650-651 حرفيًا بمسافاتهما المضغوطة', () => {
+    test('قائمتا الواجهة القديمتان: canReturn للإنشاء وcanVoid للإبطال', () => {
         const { repo } = repoStub({});
         const legacy = source(LEGACY);
         expect(legacy).toContain("const canReturn=['admin','manager','warehouse','kitchen','sous_chef','dept_head'].includes(STATE.currentUser?.role);");
-        expect(legacy).toContain("const canDelete=['admin','manager','warehouse'].includes(STATE.currentUser?.role);");
-        // القائمتان المصدَّرتان تطابقان سطرَي القديم عنصرًا عنصرًا
+        expect(legacy).toContain("const canVoid=['admin','manager','warehouse'].includes(STATE.currentUser?.role);");
         expect(repo.RETURN_ROLES.join()).toBe('admin,manager,warehouse,kitchen,sous_chef,dept_head');
-        expect(repo.RETURN_DELETE_ROLES.join()).toBe('admin,manager,warehouse');
+        expect(repo.RETURN_VOID_ROLES.join()).toBe('admin,manager,warehouse');
     });
 
-    test('وضعا الخادم وأسقفُ الرفض — مصدر كلمات الشاشة حين يرد', () => {
+    test('الخادم: السقف والتعبئة والمرتجعات المبطلة لا تستهلك حق الإرجاع', () => {
         const wr = VR;
-        // الوضع المباشر: غياب dispatchId يفتح فرع الإرجاع المباشر
         expect(wr).toContain("if (dispatchId === undefined || dispatchId === null || String(dispatchId).trim() === '')");
-        // نافذة حالات الإذن المقبول للإرجاع
         expect(wr).toContain("['approved', 'partially_received', 'received']");
         expect(wr).toContain("return fail(res, 409, 'DISPATCH_NOT_APPROVED', 'لا يمكن إرجاع طلب غير معتمد');");
         expect(wr).toContain("return fail(res, 422, 'DEPT_REQUIRED', 'اختر القسم المُرجِع');");
         expect(wr).toContain("return fail(res, 422, 'EMPTY_RETURN_ITEMS', 'يجب تحديد صنف وكمية للإرجاع');");
-        expect(wr).toContain('كمية الإرجاع أكبر من الكمية المتبقية للصنف');
-        // نجاح الحذف من الخادم :1570 — الشاشة تنطقه بسقوط نص القديم :689
-        expect(wr).toContain("res.json({ ok: true, message: 'تم حذف سجل المرتجع وعكس أثره المخزني بالكامل' });");
-        expect(source(LEGACY)).toContain("toast('تم حذف سجل المرتجع','success');");
+        expect(wr).toContain('SELECT items FROM "kitchenReturns" WHERE "dispatchId" = $1 AND "voidedAt" IS NULL FOR UPDATE');
+        expect(wr).toContain("return fail(res, 409, 'RETURN_QTY_EXCEEDED'");
+        expect(wr).toContain("return fail(res, 422, 'RETURN_PACKAGING_REQUIRED'");
+        expect(wr).toContain("return fail(res, 409, 'RETURN_PACKAGING_EXCEEDED'");
+    });
+
+    test('الإبطال يحفظ السجل والحذف محجوب — وإبطال الإذن ينتظر المرتجع النشط', () => {
+        const wr = VR;
+        expect(wr).toContain("if (!reason) {return fail(res, 422, 'RETURN_VOID_REASON_REQUIRED', 'أدخل سبب إبطال المرتجع');}");
+        expect(wr).toContain("return res.status(409).json({ error: 'RETURN_ALREADY_VOIDED', message: 'تم إبطال المرتجع مسبقًا' });");
+        expect(wr).toContain(`UPDATE "kitchenReturns" SET status='voided', "voidedAt"=NOW(), "voidedBy"=$2, "voidReason"=$3 WHERE id=$1 RETURNING *`);
+        expect(wr).toContain("message: 'تم إبطال المرتجع وعكس أثره مع حفظ السجل'");
+        expect(wr).toContain("return fail(res, 405, 'RETURN_DELETE_DISABLED', 'لا يُحذف المرتجع — استخدم الإبطال لعكس أثره مع حفظ السجل');");
+        expect(wr).toContain('SELECT id FROM "kitchenReturns" WHERE "dispatchId"=$1 AND "voidedAt" IS NULL LIMIT 1');
+        expect(wr).toContain("return fail(res, 409, 'DISPATCH_ACTIVE_RETURN', 'أبطل المرتجع المرتبط أولًا قبل إبطال إذن الصرف');");
+    });
+
+    test('الكتابة العامة على kitchenReturns محجوبة في كل الفروع', () => {
+        const server = source(SERVER);
+        expect(server.match(/استخدم \/api\/warehouse\/returns لتنفيذ العكس المخزني والمحاسبي مع حفظ السجل/g)).toHaveLength(2);
+        expect(server.match(/لا يُعدّل المرتجع مباشرة — استخدم مسار الإبطال لعكس أثره مع حفظ السجل/g)).toHaveLength(2);
+        expect(server).toContain("return res.status(405).json({ error: 'RETURN_DELETE_DISABLED', message: 'لا يُحذف المرتجع — استخدم /api/warehouse/returns/:id/void لعكس أثره مع حفظ السجل' });");
     });
 });
 
@@ -278,22 +372,32 @@ describe('warehouse-repo — الصف والبوابات', () => {
         });
         expect(row).toMatchObject({
             id: 5, deptName: 'كافتيريا', itemsSummary: 'طماطم (2)، خيار (1)', itemsCount: 2,
-            reason: 'فائض إنتاج', totalValue: 40, date: '2026-10-15', status: 'approved',
+            reason: 'فائض إنتاج', totalValue: 40, date: '2026-10-15', status: 'approved', voided: false,
         });
         const sparse = repo.kitchenReturnToRow({ id: 6, notes: 'ملاحظة' });
-        expect(sparse).toMatchObject({ deptName: '—', reason: 'ملاحظة', itemsSummary: '—', itemsCount: 0 });
+        expect(sparse).toMatchObject({ deptName: '—', reason: 'ملاحظة', itemsSummary: '—', itemsCount: 0, voided: false });
     });
 
-    test('بوابتا الأزرار بالحدّية — قائمتا الخادم نفساهما بلا توسيع', () => {
+    test('الصف المبطل يبقى ظاهرًا: status=voided أو voidedAt كلاهما يرفع voided', () => {
+        const { repo } = repoStub({});
+        expect(repo.kitchenReturnToRow({ id: 7, status: 'voided', totalValue: '99' }))
+            .toMatchObject({ id: 7, status: 'voided', totalValue: 99, voided: true });
+        expect(repo.kitchenReturnToRow({ id: 8, status: 'approved', voidedAt: '2026-11-24T10:00:00Z' }).voided).toBe(true);
+        expect(repo.kitchenReturnToRow({ id: 9, status: 'approved' }).voided).toBe(false);
+    });
+
+    test('بوابتا الأزرار بالحدّية — فصل أدوار الإنشاء عن الإبطال', () => {
         const { repo } = repoStub({});
         for (const r of repo.RETURN_ROLES) {expect(repo.returnCreateVisible(r)).toBe(true);}
-        expect(repo.returnCreateVisible('owner')).toBe(false);   // ليست في قائمة الخادم :16
+        expect(repo.returnCreateVisible('owner')).toBe(false);
         expect(repo.returnCreateVisible('cashier')).toBe(false);
         expect(repo.returnCreateVisible('')).toBe(false);
-        for (const r of repo.RETURN_DELETE_ROLES) {expect(repo.returnDeleteVisible(r)).toBe(true);}
-        expect(repo.returnDeleteVisible('kitchen')).toBe(false);
-        expect(repo.returnDeleteVisible('sous_chef')).toBe(false);
-        expect(repo.returnDeleteVisible('dept_head')).toBe(false);
+        for (const r of repo.RETURN_VOID_ROLES) {expect(repo.returnVoidVisible(r)).toBe(true);}
+        expect(repo.returnVoidVisible('kitchen')).toBe(false);
+        expect(repo.returnVoidVisible('sous_chef')).toBe(false);
+        expect(repo.returnVoidVisible('dept_head')).toBe(false);
+        expect(repo.returnVoidVisible('')).toBe(false);
+        expect(repo.RETURN_ROLES).toEqual(expect.arrayContaining(repo.RETURN_VOID_ROLES));
     });
 });
 
@@ -309,38 +413,42 @@ describe('شاشة 20 — العقد المصدَّر من المصدر', () => 
         expect(s).not.toMatch(/['"`]\/api\//);
     });
 
-    test('لا معالج سطري إطلاقًا — والادعاء القديم «قراءة فقط» أُزيل', () => {
+    test('لا معالج سطري ولا confirm — الإبطال بلوحة سبب وحالة وإجراء محفوظ', () => {
         const s = src();
         const handlers = s.match(/\son[a-z]+=/g) || [];
         expect(handlers).toHaveLength(0);
-        expect(s).not.toMatch(/window\.(prompt|alert)\(/);
-        expect(s).not.toMatch(/قراءة فقط|موجة كتابة/);   // الشاشة تكتب الآن — لا ادعاء زائف
-        // 2026-10-23: شرح الدورة أُزيل؛ يُقاس الأثر نفسه: الحذف يظهر لمن يملكه
-        // ويمرّ عبر بوابة الحذف التي تعكس المخزون في الخادم.
-        expect(s).toContain("if (returnDeleteVisible(role)) {");
-        expect(s).toContain('deleteKitchenReturn');
-        expect(s).toContain("key: 'actions', header: 'حذف'");
+        expect(s).not.toMatch(/window\.(prompt|alert|confirm)\(/);
+        expect(s).not.toMatch(/\bconfirmFn\b/);
+        expect(s).not.toMatch(/قراءة فقط|موجة كتابة/);
+        expect(s).not.toMatch(/\b(deleteKitchenReturn|returnDeleteVisible)\b/);
+        expect(s).toContain("if (returnVoidVisible(role)) {");
+        expect(s).toContain('voidKitchenReturn');
+        expect(s).toContain("key: 'actions', header: 'إجراءات'");
+        expect(s).toContain('>مبطل</span>');
+        expect(s).toContain('<span>إبطال</span>');
+        expect(s).toContain('data-v2-void-reason');
+        expect(s).toContain("panelActions('تأكيد الإبطال', 'undo')");
     });
 
-    test('الأبواب الثلاثة عشر كلها مستدعاة: قراءات وحمولة وبابا كتابة', () => {
+    test('الأبواب الثلاثة عشر كلها مستدعاة: قراءات وحمولة والإنشاء والإبطال', () => {
         // الشطب للاستيراد فقط: الاسم يكفي مرجعًا (rets.map(kitchenReturnToRow)) أو نداءً.
         const s = src().replace(/import[\s\S]*?from '[^']+';/g, '');
         for (const fn of ['fetchKitchenReturns', 'kitchenReturnToRow',
-            'returnCreateVisible', 'returnDeleteVisible',
+            'returnCreateVisible', 'returnVoidVisible',
             'fetchReturnDispatches', 'fetchReturnDepartments', 'fetchReturnInventory',
             'directReturnDepartments', 'deptLabelOf', 'returnDeptCodesOf',
-            'returnCreatePayload', 'createKitchenReturn', 'deleteKitchenReturn']) {
+            'returnCreatePayload', 'createKitchenReturn', 'voidKitchenReturn']) {
             expect(s).toMatch(new RegExp(`\\b${fn}\\b`));
         }
     });
 
-    test('الحمولات من دوال البوابة النقية — والحذف بالمعرّف وحده', () => {
+    test('الحمولات من دوال البوابة النقية — والإبطال بالمعرّف والسبب', () => {
         const s = src();
         expect(s).toContain('await createKitchenReturn(returnCreatePayload({ ...target, reason, notes, items }));');
-        expect(s).toContain('await deleteKitchenReturn(id);');
+        expect(s).toContain('await voidKitchenReturn(row.id, reason);');
     });
 
-    test('كلمات التحقق والتحذير منسوخة من القديم حرفًا', () => {
+    test('كلمات التحقق والتحذير المشتركة مع القديم', () => {
         const s = src();
         const legacy = legacyOf();
         for (const phrase of [
@@ -348,8 +456,8 @@ describe('شاشة 20 — العقد المصدَّر من المصدر', () => 
             'اختر القسم المُرجِع',
             'أضف صنفًا واحدًا على الأقل',
             'تعذر تنفيذ الإرجاع',
-            'تعذر الحذف',
-            'تأكيد حذف سجل المرتجع؟ لا يمكن التراجع.',
+            'تعذر إبطال المرتجع',
+            'أدخل سبب إبطال المرتجع',
         ]) {
             expect(s).toContain(phrase);
             expect(legacy).toContain(phrase);
@@ -363,24 +471,24 @@ describe('شاشة 20 — العقد المصدَّر من المصدر', () => 
         expect(s).toContain('تم الإرجاع المباشر وإعادة ${moneyPlain((res && res.totalValue) || 0)} للمخزن');
         expect(legacy).toContain('تم الإرجاع وإعادة ${fC(result.totalValue||0)} للمخزن وعكس مصروف القسم');
         expect(legacy).toContain('تم الإرجاع المباشر وإعادة ${fC(result.totalValue||0)} للمخزن');
-        expect(s).toContain("(res && res.message) || 'تم حذف سجل المرتجع'");
+        expect(s).toContain("notify((res && res.message) || 'تم إبطال المرتجع وعكس أثره مع حفظ السجل');");
+        expect(legacy).toContain("toast(result.message||'تم إبطال المرتجع وعكس أثره مع حفظ السجل','success');");
         expect(s).toContain('moneyPlain');
     });
 
-    test('قايمة الأسباب الخمسة من القديم :1270-1274 — والوضعان كما :1256-1257', () => {
+    test('قايمة الأسباب الخمسة من القديم — والوضعان وبند الإذن', () => {
         const s = src();
         const legacy = legacyOf();
         expect(s).toContain("const RETURN_REASONS = ['فائض إنتاج', 'تغيير قائمة', 'انتهاء الوردية', 'خطأ في الصرف', 'أخرى'];");
         for (const r of ['فائض إنتاج', 'تغيير قائمة', 'انتهاء الوردية', 'خطأ في الصرف', 'أخرى']) {
             expect(legacy).toContain(`<option value="${r}">${r}</option>`);
         }
-        // القديم يقرر الإرجاع المباشر بغياب إذونات approved — الشاشة نفس القرار
-        expect(legacy).toContain("const approvedDispatches = STATE.dispatches.filter(d=>d.status==='approved');");
+        // القديم يعرض حالات الإذن الثلاث، وV2 يختار approved فقط كما يثبت اختبار المستودع
+        expect(legacy).toContain("const approvedDispatches = STATE.dispatches.filter(d=>['approved','partially_received','received'].includes(d.status));");
         expect(s).toContain('لا توجد طلبات صرف معتمدة — سيُسجَّل إرجاعًا مباشرًا من القسم إلى المخزن الرئيسي مع عكس مصروف القسم.');
-        expect(legacy).toContain('لا توجد طلبات صرف معتمدة — سيُسجَّل إرجاعًا مباشرًا من القسم إلى المخزن الرئيسي مع عكس مصروف القسم.');
+        expect(legacy).toContain('لا توجد طلبات صرف قابلة للإرجاع — سيُسجَّل إرجاعًا مباشرًا من القسم إلى المخزن الرئيسي مع عكس مصروف القسم.');
         expect(s).toContain("panelData = { mode: 'dispatch', dispatches };");
         expect(s).toContain("panelData = { mode: 'direct', depts: directReturnDepartments(deptRows), inv };");
-        // بند الإذن المعتمد بلابل القديم نفسه :1291
         expect(s).toContain('#${esc(String(d.id))} - ${esc(d.deptName)} - ${esc(d.date)}');
         expect(legacy).toContain('#${d.id} - ${esc(d.deptName)} - ${fD(d.date)}');
     });
@@ -402,15 +510,15 @@ describe('شاشة 20 — العقد المصدَّر من المصدر', () => 
         expect(s.match(/if \(!el\.isConnected \|\| seq !== readSeq\) \{return;\}/g)).toHaveLength(2);
         expect(s).toMatch(/const panelAlive = \(seq\) => el\.isConnected && seq === panelSeq;/);
         expect(s.match(/if \(!panelAlive\(seq\)\) \{return;\}/g)).toHaveLength(3);   // قراءتان + شبكة الفشل
-        expect(s.match(/if \(busy\) \{notify\('جارٍ تنفيذ عملية — انتظر النتيجة'\); return;\}/g)).toHaveLength(3);
+        expect(s.match(/if \(busy\) \{notify\('جارٍ تنفيذ عملية — انتظر النتيجة'\); return;\}/g)).toHaveLength(4);
         expect(s.match(/^\s+busy = true;/gm)).toHaveLength(2);
         expect(s.match(/^\s+busy = false;/gm)).toHaveLength(2);
         expect(s.match(/panelSeq \+= 1;/g)).toHaveLength(2);   // closePanel + destroy
         expect(s).toMatch(/table\.destroy\(\);/);
         expect(s).toMatch(/el\.remove\(\);/);
-        // لا window.confirm في المنطق — واحدة فقط كسقوط احتياطي، والمنطق بـconfirmFn
-        expect(src().match(/window\.confirm\(/g)).toHaveLength(1);
-        expect(s).toMatch(/await confirmFn\('تأكيد حذف سجل المرتجع؟ لا يمكن التراجع\.'\)/);
+        expect(s).toContain("if (!returnVoidVisible(role)) {notify('إبطال المرتجعات للمخزن والإدارة فقط'); return;}");
+        expect(s).toContain("if (!reason.trim()) {panelMsg('أدخل سبب إبطال المرتجع'); return;}");
+        expect(src().match(/window\.confirm\(/g) || []).toHaveLength(0);
     });
 
     test('بوابات openPanel بكلماتها — والبوابة قبل أي تغيير حالة', () => {
@@ -428,7 +536,7 @@ describe('شاشة 20 — العقد المصدَّر من المصدر', () => 
         expect(s).toContain('لا صلاحية لعرض المرتجعات بهذا الحساب — القرار للخادم وحده.');
         expect(s).toMatch(/تعذّر تحميل المرتجعات: \$\{\(e && e\.message\) \|\| 'خطأ'\}/);
         expect(s).toMatch(/panelMsg\(\(e && e\.message\) \|\| 'تعذر تنفيذ الإرجاع'\)/);
-        expect(s).toMatch(/notify\(\(e && e\.message\) \|\| 'تعذر الحذف'\)/);
+        expect(s).toMatch(/panelMsg\(\(e && e\.message\) \|\| 'تعذر إبطال المرتجع'\)/);
         expect(s).toMatch(/تعذر تجهيز اللوحة: \$\{\(e && e\.message\) \|\| 'خطأ في القراءة'\}/);
     });
 
@@ -453,14 +561,70 @@ describe('شاشة 20 — العقد المصدَّر من المصدر', () => 
     });
 });
 
+describe('شاشة 20 — سلوك الإجماليات والإبطال عند بوابة apiFetch', () => {
+    test('المبطل يبقى في الجدول والعدّ ولا يدخل القيمة النشطة', async () => {
+        const mounted = returnsScreenStub([
+            { id: 1, status: 'approved', totalValue: 100 },
+            { id: 2, status: 'pending', totalValue: '50' },
+            { id: 3, status: 'voided', totalValue: 900 },
+            { id: 4, status: 'approved', voidedAt: '2026-11-24T10:00:00Z', totalValue: 800 },
+        ]);
+        await flushAsync();
+
+        const rows = mounted.screen.getRows();
+        expect(rows.map((row) => row.id)).toEqual([1, 2, 3, 4]);
+        expect(rows.map((row) => row.voided)).toEqual([false, false, true, true]);
+        expect(mounted.table.rows).toBe(rows);
+        expect(mounted.countEl.textContent).toBe('(4)');
+        expect(mounted.summaryEl.textContent).toBe('4 مرتجعًا · قيمة نشطة 150 SAR (أصل 8,000 الأحدث)');
+
+        const actions = mounted.tableOptions.columns.find((column) => column.key === 'actions');
+        expect(actions.header).toBe('إجراءات');
+        expect(actions.render(rows[0])).toContain('<span>إبطال</span>');
+        expect(actions.render(rows[2])).toContain('محفوظ');
+        expect(actions.render(rows[2])).not.toContain('data-v2-act');
+    });
+
+    test('لوحة الإبطال تمنع الفراغ ثم ترسل POST بسببًا منظّفًا بلا confirm', async () => {
+        const mounted = returnsScreenStub([{ id: 1, status: 'approved', totalValue: 10 }], 'warehouse');
+        await flushAsync();
+        mounted.listeners.click({ target: { closest: (selector) => selector === '[data-v2-act]'
+            ? { getAttribute: () => '1' } : null } });
+        expect(mounted.panelEl.innerHTML).toContain('إبطال المرتجع #1');
+        expect(mounted.panelEl.innerHTML).toContain('data-v2-void-reason');
+        expect(mounted.confirm).not.toHaveBeenCalled();
+
+        const reason = { value: '   ' };
+        const message = { textContent: '' };
+        mounted.panelEl.querySelector = (selector) => selector === '[data-v2-void-reason]'
+            ? reason : (selector === '[data-v2-panel-msg]' ? message : null);
+        const submit = () => mounted.listeners.click({ target: { closest: (selector) => selector === '[data-v2-submit]' ? {} : null } });
+        submit();
+        await flushAsync();
+        expect(message.textContent).toBe('أدخل سبب إبطال المرتجع');
+        expect(mounted.gateway.requests.filter((request) => request.path.includes('/void'))).toHaveLength(0);
+
+        reason.value = '  تصحيح موثّق  ';
+        submit();
+        await flushAsync();
+        const writes = mounted.gateway.requests.filter((request) => request.path.includes('/void'));
+        expect(writes).toHaveLength(1);
+        expect(writes[0]).toMatchObject({ path: '/warehouse/returns/1/void', method: 'POST' });
+        expect(JSON.parse(writes[0].body)).toEqual({ reason: 'تصحيح موثّق' });
+        expect(writes[0].headers['X-Idempotency-Key']).toMatch(/^return-void:1:/);
+        expect(mounted.panelEl.hidden).toBe(true);
+        expect(mounted.notify).toHaveBeenCalledWith('تم إبطال المرتجع وعكس أثره مع حفظ السجل');
+        expect(mounted.confirm).not.toHaveBeenCalled();
+    });
+});
+
 describe('شاشة 20 — المضيف والطبقة', () => {
     test('المضيف يمرر deptCode الجديد مع الهوية — الركوب على مضيف السجلات المشترك', () => {
         const h = source(HOST);
-        expect(h).toMatch(/import \{ mountWhReturnsScreen \} from '\.\/screens\/wh-returns\.js\?v=/);
-        expect(h).toMatch(/renderLiveRegisterScreen\(\{ key: 'wh-returns', title: 'مرتجعات المطبخ', mount: mountWhReturnsScreen, assign: \(s\) => \{ whReturnsScreen = s; \} \}\);/);
+        expect(h).toMatch(/renderLiveRegisterScreen\(\{ key: 'wh-returns', title: 'مرتجعات المطبخ', module: 'wh-returns', assign: \(s\) => \{ whReturnsScreen = s; \} \}\);/);
         expect(h).toMatch(/deptCode: String\(u\.dept_code \|\| ''\),/);
         expect(h).toMatch(/role: session\.role,/);
-        expect(h).toMatch(/confirmFn: \(message\) => window\.confirm\(message\),/);
+        expect(h).toMatch(/confirmFn: confirmAction,/);
         expect(h).toMatch(/notify: notifyTo\(note\),/);
     });
 
@@ -473,7 +637,7 @@ describe('شاشة 20 — المضيف والطبقة', () => {
 
     test('الشاشة تُستورد بمراجعة الصفحة نفسها', () => {
         const rev = source(V2_HTML).match(/js\/v2\/preview\.js\?v=([0-9.]+)/)[1];
-        expect(source(HOST)).toContain(`./screens/wh-returns.js?v=${rev}`);
+        expect(source(path.join(V2, 'screens', 'registry.js'))).toContain(`./wh-returns.js?v=${rev}`);
         expect(source(V2_HTML)).toContain(`js/v2/preview.js?v=${rev}`);
         expect(source(V2_HTML)).toContain(`css/v2/erp-ops.css?v=${rev}`);
     });
@@ -506,7 +670,7 @@ describe('شاشة 20 — المضيف والطبقة', () => {
         expect(d).not.toMatch(/\.erp-v2-wh-returns [^,{]*\.erp-input\s*\{[^}]*min-block-size/);
     });
 
-    test('الطباعة تخفي اللوحة وعمود الحذف — ولا تخفي أساس الأرقام', () => {
+    test('الطباعة تخفي اللوحة وعمود الإجراءات — ولا تخفي أساس الأرقام', () => {
         const prints = source(OPS_CSS).match(/@media print\s*\{[\s\S]*?\n\}/g);
         expect(prints).toHaveLength(2);   // كتلتان فقط، والممتدة آخر كتلة عمدًا
         const p = prints[prints.length - 1];

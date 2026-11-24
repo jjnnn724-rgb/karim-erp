@@ -112,9 +112,9 @@
             '.smart-search-dd .ss-name mark { background:#fde68a; color:inherit; border-radius:3px; padding:0 1px; }',
             '.smart-search-dd .ss-meta { font-size:10px; color:#9ca3af; background:var(--bg3,#f3f4f6);',
             '  border-radius:999px; padding:2px 8px; white-space:nowrap; }',
-            '.smart-search-dd .ss-price { font-size:13px; font-weight:800; color:#b45309; white-space:nowrap; }',
+            '.smart-search-dd .ss-price { font-size:13px; font-weight:800; color:#0f5b46; white-space:nowrap; }',
             '.smart-search-dd .ss-stock { font-size:10px; font-weight:700; border-radius:6px; padding:2px 6px; white-space:nowrap; }',
-            '.smart-search-dd .ss-stock.low { background:#fffbeb; color:#b45309; }',
+            '.smart-search-dd .ss-stock.low { background:#f2f8f4; color:#0f5b46; }',
             '.smart-search-dd .ss-stock.out { background:#fef2f2; color:#b91c1c; }',
             '.smart-search-dd .ss-empty { padding:18px; text-align:center; color:#9ca3af; font-size:13px; }'
         ].join('\n');

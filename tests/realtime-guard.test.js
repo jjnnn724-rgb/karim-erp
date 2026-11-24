@@ -10,17 +10,17 @@ const {
     SOCKET_EVENT_BUDGETS,
 } = require('../backend/realtime/guard');
 
-describe('isRtAuthRequired — default off (coexistence)', () => {
+describe('isRtAuthRequired — default ON (secure-by-default, 2026-11)', () => {
     const prev = process.env.RT_REQUIRE_AUTH;
     afterEach(() => {
         if (prev === undefined) {delete process.env.RT_REQUIRE_AUTH;}
         else {process.env.RT_REQUIRE_AUTH = prev;}
     });
-    test('unset → false', () => {
+    test('unset → true (البث الحساس للمصادَقين فقط افتراضيًا)', () => {
         delete process.env.RT_REQUIRE_AUTH;
-        expect(isRtAuthRequired()).toBe(false);
+        expect(isRtAuthRequired()).toBe(true);
     });
-    test.each([['true', true], ['TRUE', true], ['1', false], ['yes', false], ['', false]])('%s → %s', (v, expected) => {
+    test.each([['true', true], ['TRUE', true], ['1', true], ['yes', true], ['', true], ['false', false], ['FALSE', false], ['0', false], ['off', false], ['no', false]])('%s → %s', (v, expected) => {
         process.env.RT_REQUIRE_AUTH = v;
         expect(isRtAuthRequired()).toBe(expected);
     });
@@ -52,6 +52,22 @@ describe('resolveHandshakeUser — never trusts client claims', () => {
     });
     test('no verify fn → anonymous', () => {
         expect(resolveHandshakeUser(null, { auth: { token: 'good' } })).toBeNull();
+    });
+    test('تذكرة ما-قبل-MFA لا تُعدّ هوية', () => {
+        const v = () => ({ sub: '7', role: 'admin', purpose: 'mfa' });
+        expect(resolveHandshakeUser(v, { auth: { token: 'ticket' } })).toBeNull();
+    });
+    test('تذكرة تسجيل MFA لا تُعدّ هوية', () => {
+        const v = () => ({ sub: '7', role: 'admin', purpose: 'mfa_enroll' });
+        expect(resolveHandshakeUser(v, { auth: { token: 'ticket' } })).toBeNull();
+    });
+    test('توكن access صريح يمرّ', () => {
+        const v = () => ({ sub: '7', role: 'cashier', purpose: 'access' });
+        expect(resolveHandshakeUser(v, { auth: { token: 't' } }).id).toBe(7);
+    });
+    test('توكن قديم بلا purpose يبقى صالحًا', () => {
+        const v = () => ({ sub: '7', role: 'cashier' });
+        expect(resolveHandshakeUser(v, { auth: { token: 't' } }).id).toBe(7);
     });
 });
 

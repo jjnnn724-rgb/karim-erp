@@ -1,0 +1,8 @@
+#!/bin/sh
+# 🏰 بوابة ما قبل الدفع — كل البوابات السريعة/المتوسطة + النقية قبل أي push.
+# الكامل (Jest حي + v3) يعمل في CI على العدّاد؛ هنا ما يثبت الصحة والتوافق محليًا.
+set -e
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+echo "🏰 pre-push: fortress القياسي (لا دفع فوق فشل)"
+node scripts/fortress.js

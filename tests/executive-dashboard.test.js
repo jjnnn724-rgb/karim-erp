@@ -42,8 +42,8 @@ describe('موجز المدير — العقد', () => {
         expect(route).not.toMatch(/INSERT\s+INTO|UPDATE\s+\w|DELETE\s+FROM/i);
     });
 
-    test('الأدمن فقط (بيانات الإدارة كاملة)', () => {
-        expect(route).toMatch(/requireRole\('admin'\)/);
+    test('الأدمن والمالك (بيانات الإدارة كاملة — موافقة المالك 2026-11-03)', () => {
+        expect(route).toMatch(/requireRole\('admin', 'owner'\)/);
         expect(route).toMatch(/jwtAuth/);
         expect(server).toMatch(/app\.use\('\/api\/executive', executiveRouter\)/);
     });

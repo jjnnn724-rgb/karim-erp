@@ -1,0 +1,99 @@
+# deploy/saas/docker-compose.staging.yml
+# بيئة staging متعددة المستأجرين — ملف جاهز، لم يُشغَّل بعد.
+# الاستخدام: انسخ deploy/saas/.env.staging.example إلى .env.staging ثم:
+#   docker compose -f deploy/saas/docker-compose.staging.yml --env-file deploy/saas/.env.staging up -d
+#
+# ⚠️ الترتيب إلزامي: طبّق الترحيلات 155..163 على قاعدة staging قبل ضبط
+#    SAAS_TENANT_ENABLED=true — وإلا كل الطلبات هترجع 403/503 (fail-closed).
+
+services:
+  db:
+    image: postgres:18-alpine
+    container_name: karim-saas-staging-db
+    restart: unless-stopped
+    environment:
+      POSTGRES_DB: ${DB_NAME:-karim_erp_staging}
+      POSTGRES_USER: ${DB_USER:?set in .env.staging}
+      POSTGRES_PASSWORD: ${DB_PASSWORD:?set in .env.staging}
+    volumes:
+      - pgdata:/var/lib/postgresql
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U ${DB_USER} -d ${DB_NAME}"]
+      interval: 10s
+      timeout: 5s
+      retries: 10
+    networks: [saas-net]
+
+  redis:
+    image: redis:7-alpine
+    container_name: karim-saas-staging-redis
+    restart: unless-stopped
+    command: ["redis-server", "--appendonly", "yes"]
+    volumes: [redisdata:/data]
+    networks: [saas-net]
+
+  app:
+    build:
+      context: ../..
+      dockerfile: Dockerfile
+    container_name: karim-saas-staging-app
+    restart: unless-stopped
+    depends_on:
+      db: { condition: service_healthy }
+      redis: { condition: service_started }
+    environment:
+      NODE_ENV: production
+      PORT: 5000
+      HOST: 0.0.0.0
+      DB_HOST: db
+      DB_PORT: 5432
+      DB_NAME: ${DB_NAME:-karim_erp_staging}
+      DB_USER: ${DB_USER}
+      DB_PASSWORD: ${DB_PASSWORD}
+      DB_POOL_MAX: ${DB_POOL_MAX:-20}
+      JWT_ACCESS_SECRET: ${JWT_ACCESS_SECRET:?required}
+      JWT_REFRESH_SECRET: ${JWT_REFRESH_SECRET:?required}
+      EMPLOYEE_QR_SECRET: ${EMPLOYEE_QR_SECRET:?required}
+      # SaaS — لا تُفعّل إلا بعد الترحيلات + خط الأساس الرقمي
+      SAAS_TENANT_ENABLED: ${SAAS_TENANT_ENABLED:-false}
+      SAAS_SIGNUP_ENABLED: ${SAAS_SIGNUP_ENABLED:-false}
+      SAAS_TENANT_MAP: ${SAAS_TENANT_MAP:-}
+      SKIP_BULLMQ: "false"
+      REDIS_URL: redis://redis:6379
+      ALLOWED_ORIGINS: ${ALLOWED_ORIGINS:-https://staging.karimeg.online}
+      LOG_LEVEL: info
+    ports: ["127.0.0.1:5200:5000"]
+    volumes:
+      - app_logs:/app/logs
+      - app_uploads:/app/uploads
+    networks: [saas-net]
+
+  # المراقبة — بياناتها على الشبكة الداخلة فقط، لا منفذ للعالم.
+  prometheus:
+    image: prom/prometheus:latest
+    container_name: karim-saas-staging-prom
+    restart: unless-stopped
+    volumes:
+      - ./prometheus.yml:/etc/prometheus/prometheus.yml:ro
+      - ./alerts.yml:/etc/prometheus/alerts.yml:ro
+      - promdata:/prometheus
+    networks: [saas-net]
+
+  alertmanager:
+    image: prom/alertmanager:latest
+    container_name: karim-saas-staging-am
+    restart: unless-stopped
+    volumes:
+      - ./alertmanager.yml:/etc/alertmanager/alertmanager.yml:ro
+    networks: [saas-net]
+
+volumes:
+  pgdata:
+  redisdata:
+  promdata:
+  app_logs:
+  app_uploads:
+
+networks:
+  saas-net:
+    driver: bridge

@@ -274,7 +274,7 @@ async function run() {
     // (ج) الأصناف
     await step('قراءة أصناف نقطة البيع', async () => {
         const res = await api('GET', `/api/pos/products?department_id=${DEPT_ID}`, { token: tokens.cashier, appKey: state.appKey });
-        assert(res.status === 200, `فشل读取 الأصناف (${res.status})`);
+        assert(res.status === 200, `فشل قراءة الأصناف (${res.status})`);
         const rows = Array.isArray(res.body) ? res.body : (res.body.products || []);
         assert(rows.length > 0, 'لا أصناف');
         // نبيع الصنف الاختباري (له وصفة ومخزون) — الأصناف الأخرى بلا وصفة
@@ -377,7 +377,7 @@ async function run() {
         });
         assert(res.status === 201, `فشل البيع (${res.status}) ${JSON.stringify(res.body).slice(0, 200)}`);
         const outs = await db.query(`SELECT method, amount FROM pos_invoice_payments WHERE order_id=$1 AND direction='out'`, [res.body.order_id]);
-        assert(outs.rows.length === 0, `وُجد صف خروج نقدي ${JSON.stringify(outs.rows)} — خطأ في حس�� الدرج`);
+        assert(outs.rows.length === 0, `وُجد صف خروج نقدي ${JSON.stringify(outs.rows)} — خطأ في حساب الدرج`);
         assert(Number(res.body.change) === 0, `change=${res.body.change} بدل 0`);
         assert(Number(res.body.non_cash_overpayment) === 25, `non_cash_overpayment=${res.body.non_cash_overpayment} بدل 25`);
         return `order=${res.body.order_id} change=0 overpayment=25 بلا صف cash/out`;

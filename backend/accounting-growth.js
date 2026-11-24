@@ -17,7 +17,11 @@ const path = require('path');
 const { pool } = require('./shared-pool');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { logger } = require('./logger');
+const { makeEmitScoped } = require('./realtime/guard');
 const { riyadhToday, riyadhMonth } = require('./riyadh-date');
+// Phase 3 (2026-11-06): الحساب البنكي الافتراضي من account_mapping؛
+// الافتراضي الممرَّر هو الثابت القديم (1010) قبل ضبط الجدول.
+const { resolveAccounts } = require('./coa-mapping');
 
 const router = express.Router();
 const READ_ROLES = ['admin', 'accountant', 'manager', 'auditor'];
@@ -123,9 +127,15 @@ router.get('/ap-aging', jwtAuth, requireRole(...READ_ROLES), async (req, res, ne
 });
 
 // ─── كشوف البنك والمطابقة ───────────────────────────────────────────────────
+// الحساب الصريح في الطلب يغلب الخريطة؛ الخريطة تغذي الافتراضي فقط.
+async function defaultBankAccount() {
+    const a = await resolveAccounts(pool, 'reports', 'bank_reconciliation', { bank_account: '1010' });
+    return String(a.bank_account || '1010').slice(0, 20);
+}
+
 router.get('/bank-statements', jwtAuth, requireRole(...READ_ROLES), async (req, res, next) => {
     try {
-        const account = String(req.query.account || '1010').slice(0, 20);
+        const account = String(req.query.account || await defaultBankAccount()).slice(0, 20);
         const { rows } = await pool.query(
             `SELECT * FROM bank_statements WHERE account_code = $1 ORDER BY stmt_date DESC LIMIT 200`, [account]);
         res.json({ ok: true, statements: rows });
@@ -135,6 +145,7 @@ router.get('/bank-statements', jwtAuth, requireRole(...READ_ROLES), async (req, 
 router.post('/bank-statements', jwtAuth, requireRole(...WRITE_ROLES), async (req, res, next) => {
     try {
         const rows = Array.isArray(req.body?.rows) ? req.body.rows : [req.body];
+        const fallbackAccount = await defaultBankAccount();
         let inserted = 0;
         for (const r of rows.slice(0, 500)) {
             const d = okD(r.stmt_date);
@@ -145,7 +156,7 @@ router.post('/bank-statements', jwtAuth, requireRole(...WRITE_ROLES), async (req
             await pool.query(
                 `INSERT INTO bank_statements (account_code, stmt_date, description, amount, created_by)
                  VALUES ($1,$2,COALESCE(NULLIF($3,'') , ''),$4,$5) ON CONFLICT DO NOTHING`,
-                [String(r.account_code || '1010').slice(0, 20), d,
+                [String(r.account_code || fallbackAccount).slice(0, 20), d,
                  String(r.description || '').slice(0, 255).trim(), r2(amt), req.user?.id || null]
             );
             inserted++;
@@ -156,7 +167,7 @@ router.post('/bank-statements', jwtAuth, requireRole(...WRITE_ROLES), async (req
 
 router.get('/bank-rec', jwtAuth, requireRole(...READ_ROLES), async (req, res, next) => {
     try {
-        const account = String(req.query.account || '1010').slice(0, 20);
+        const account = String(req.query.account || await defaultBankAccount()).slice(0, 20);
         const to = okD(req.query.to) || riyadhToday();
         const from = okD(req.query.from) || `${to.slice(0, 7)}-01`;
         const book = await pool.query(
@@ -188,7 +199,7 @@ router.get('/bank-rec', jwtAuth, requireRole(...READ_ROLES), async (req, res, ne
 router.post('/bank-rec/auto-match', jwtAuth, requireRole(...WRITE_ROLES), async (req, res, next) => {
     const client = await pool.connect();
     try {
-        const account = String(req.body?.account || '1010').slice(0, 20);
+        const account = String(req.body?.account || await defaultBankAccount()).slice(0, 20);
         // قفل استشاري يمنع سباق تشغيلين متوازيين من ربط نفس القيد بكشفيين.
         await client.query('BEGIN');
         await client.query(`SELECT pg_advisory_xact_lock(hashtext('bank-rec-auto-match'))`);
@@ -262,7 +273,7 @@ router.post('/cash-custody', jwtAuth, requireRole('admin', 'manager', 'cashier')
             [req.user.id, to, r2(amount),
              Number(req.body?.session_id) || null, String(req.body?.note || '').slice(0, 255) || null]
         );
-        if (req.io) {req.io.emit('entity_changed', { entity: 'cash_custody', action: 'hand', data: rows[0] });}
+        if (req.io) {makeEmitScoped(req.io)('entity_changed', { entity: 'cash_custody', action: 'hand', data: rows[0] });}
         res.status(201).json({ ok: true, custody: rows[0] });
     } catch (e) { next(e); }
 });
@@ -334,7 +345,8 @@ router.post('/fixed-assets/:id/dispose', jwtAuth, requireRole(...WRITE_ROLES), a
     } catch (e) { next(e); }
 });
 
-// تشغيل الإهلاك الشهري: قيد واحد مجمع (6600 / 1520) + تحديث كل أصل. Idempotent بالشهر.
+// تشغيل الإهلاك الشهري: قيد واحد مجمع (6600 / 1520 افتراضيًا — يُقرأ من
+// account_mapping عبر coa-mapping مع رجوع آمن) + تحديث كل أصل. Idempotent بالشهر.
 // CORRECTNESS: كل شيء داخل معاملة واحدة — تحديث الأصول وقيد GL يُرفعان معًا أو
 // لا يُرفعان (كان القيد بعد COMMIT فيتباعد دفتر الأصول عن دفتر الأستاذ عند فشله).
 // FOR UPDATE يمنع سباق تشغيلين متوازيين من مضاعفة الإهلاك المتراكم.
@@ -378,13 +390,16 @@ router.post('/depreciation/run', jwtAuth, requireRole(...WRITE_ROLES), async (re
             }
             if (total > 0) {
                 const { postJournal } = require('./accounting-routes');
+                const { getMappedAccount } = require('./coa-mapping');
+                const expenseAcct = (await getMappedAccount(client, 'assets', 'depreciation_run', 'expense_account')) || '6600';
+                const accumAcct = (await getMappedAccount(client, 'assets', 'depreciation_run', 'accumulated_account')) || '1520';
                 const out = await postJournal(client, {
                     date: `${month}-28`,
                     memo: `إهلاك شهري ${month} (${lines.length} أصل)`,
                     source_type: 'depreciation', source_id: month,
                     lines: [
-                        { account_code: '6600', debit: total, credit: 0 },
-                        { account_code: '1520', debit: 0, credit: total },
+                        { account_code: expenseAcct, debit: total, credit: 0 },
+                        { account_code: accumAcct, debit: 0, credit: total },
                     ],
                     created_by: req.user?.id || null,
                 });

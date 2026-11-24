@@ -3,14 +3,17 @@
 /**
  * realtime/guard.js — socket handshake auth + per-socket rate limits (TASK 4).
  * ────────────────────────────────────────────────────────────────────────────
- * Coexistence design (zero regression): anonymous sockets still connect
- * (legacy clients, pre-login screens). An `erp:authed` room marks sockets
- * whose JWT verified. With RT_REQUIRE_AUTH=true, sensitive broadcasts go
- * only to that room; otherwise legacy global behavior is byte-identical.
+ * Secure-by-default (2026-11 hardening): sensitive broadcasts go ONLY to the
+ * `erp:authed` room (sockets whose JWT verified). Anonymous sockets still
+ * connect (public menu boards keep their raw `menu_board_changed` signals
+ * plus their documented polling fallback), but they no longer receive
+ * business/HR data. Explicit opt-out for legacy coexistence:
+ * RT_REQUIRE_AUTH=false|0|off|no → byte-identical legacy global behavior.
  */
 
 function isRtAuthRequired() {
-    return String(process.env.RT_REQUIRE_AUTH || '').trim().toLowerCase() === 'true';
+    const v = String(process.env.RT_REQUIRE_AUTH ?? '').trim().toLowerCase();
+    return !(v === 'false' || v === '0' || v === 'off' || v === 'no');
 }
 
 /**
@@ -23,6 +26,9 @@ function resolveHandshakeUser(verifyFn, handshake = {}) {
         const token = handshake.auth?.token || handshake.query?.token || null;
         if (!token || typeof verifyFn !== 'function') {return null;}
         const p = verifyFn(token);
+        // تذكرة ما-قبل-MFA تحمل نفس التوقيع لكن غرضها ليس جلسة: REST يرفضها
+        // (jwtAuth) وهذا المسار كان يقبلها. التوكنات القديمة بلا purpose تبقى.
+        if (p?.purpose && p.purpose !== 'access') {return null;}
         const id = parseInt(p?.sub, 10);
         if (!Number.isInteger(id) || id <= 0 || !p?.role) {return null;}
         return { id, role: p.role, name: p.name || null, dept_code: p.dept_code || null };
@@ -67,4 +73,27 @@ const SOCKET_EVENT_BUDGETS = {
     request_sync: 10,
 };
 
-module.exports = { isRtAuthRequired, resolveHandshakeUser, createSocketLimiter, SOCKET_EVENT_BUDGETS };
+/**
+ * بثّ أحداث حسّاسة (حضور/بصمات/موظفين) عبر غرفة `erp:authed` عند
+ * RT_REQUIRE_AUTH=true، وإلا السلوك الإرثي (بثّ عام) — byte-identical.
+ * النسخة المشتركة التي يستخدمها server.js والمحركات بدل `io.emit` الخام
+ * (مراجعة 2026-11: بيانات حضور وموظفين كانت تصل لكل socket متصل).
+ * مُعاد توجيهها هنا (Anti-echo: exceptSocketId يبقى في الوضعين).
+ * @param {import('socket.io').Server|null|undefined} io
+ * @returns {(event: string, data: any, exceptSocketId?: string) => void}
+ */
+function makeEmitScoped(io) {
+    if (!io) {return () => {};}
+    return function emitScoped(event, data, exceptSocketId) {
+        if (isRtAuthRequired()) {
+            const target = io.to('erp:authed');
+            if (exceptSocketId) {target.except(exceptSocketId).emit(event, data); return;}
+            target.emit(event, data);
+            return;
+        }
+        if (exceptSocketId) {io.except(exceptSocketId).emit(event, data); return;}
+        io.emit(event, data);
+    };
+}
+
+module.exports = { isRtAuthRequired, resolveHandshakeUser, createSocketLimiter, SOCKET_EVENT_BUDGETS, makeEmitScoped };

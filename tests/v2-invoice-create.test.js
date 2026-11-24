@@ -7,7 +7,8 @@
  *   • الحمولة نفس حقول نموذج القديم وقواعده (features/warehouse.js:1738-1763):
  *     السطور الناقصة تُسقط، الوزن الفارغ صفر، والمسدد يُحذف ما لم يلمسه
  *     المستخدم (undefined في القديم = غياب المفتاح هنا).
- *   • قفل التعديل حرفيًا: paidAmount > 0 ممنوع، والخادم يبقى الحاكم.
+ *   • قرار المالك 2026-10-31: التعديل متاح حتى للفواتير المدفوعة — الأصناف
+ *     فقط، والخادم يجمّد الترويسة والدفعات (وضع items_only).
  *   • البحث الذكي منقول عن features/smart-item-search.js: التطبيع العربي،
  *     ترتيب 120/100/80/60، كل الكلمات شرط، والسقف 30.
  *   • الشاشة لا شبكة فيها، والمحرر لا يكتب إلا عبر مستودع الكتابة.
@@ -56,7 +57,7 @@ function loadModule(file, exports, injections = {}) {
 }
 
 const repo = loadModule(WRITE_REPO, [
-    'INVOICE_CREATE_ROLES', 'TAX_CATEGORIES', 'EDIT_LOCKED_MESSAGE',
+    'INVOICE_CREATE_ROLES', 'TAX_CATEGORIES', 'PAID_ITEMS_ONLY_NOTICE',
     'invoiceItemsFromRow', 'invoiceFormFromRow', 'invoiceEditable',
     'purchaseInvoicePayload', 'isDuplicateInvoiceError',
     'createPurchaseInvoice', 'updatePurchaseInvoice',
@@ -87,14 +88,15 @@ describe('مستودع الكتابة — الأدوار والحقول', () => 
         expect(repo.TAX_CATEGORIES).toEqual(['STANDARD', 'ZERO_RATED', 'EXEMPT', 'OUT_OF_SCOPE']);
     });
 
-    test('قفل التعديل: paidAmount > 0 ممنوع، والصفر مسموح', () => {
+    test('بوابة التعديل: المدفوعة تُفتح للأصناف فقط (قرار المالك 2026-10-31)', () => {
         expect(repo.invoiceEditable({ paidAmount: 0 })).toBe(true);
-        expect(repo.invoiceEditable({ paidAmount: '0' })).toBe(true);
-        expect(repo.invoiceEditable({ paidAmount: 0.01 })).toBe(false);
-        expect(repo.invoiceEditable({ paidAmount: 100 })).toBe(false);
-        expect(repo.EDIT_LOCKED_MESSAGE).toBe('لا يمكن تعديل فاتورة عليها دفعة مسجلة؛ اعكس الدفعة رسميًا أولًا');
+        expect(repo.invoiceEditable({ paidAmount: 100 })).toBe(true);
+        expect(repo.PAID_ITEMS_ONLY_NOTICE).toBe('فاتورة مدفوعة — يمكن تعديل الأصناف فقط؛ الترويسة والدفعات ثابتة');
+        // المحرر يعرض التنبيه عبر الثابت، والخادم يجمد الترويسة في وضع items_only
+        expect(editorSrc).toContain('PAID_ITEMS_ONLY_NOTICE');
+        expect(editorSrc).toContain('⚠ ${esc(PAID_ITEMS_ONLY_NOTICE)}');
         expect(warehouseSource())
-            .toContain('لا يمكن تعديل فاتورة عليها دفعة مسجلة؛ اعكس الدفعة رسميًا أولًا');
+            .toContain('const itemsOnly = Number(oldInvoice.paidAmount || 0) > 0 || paymentCount > 0;');
     });
 });
 
@@ -342,10 +344,11 @@ describe('شاشة 08 — البوابة والتركيب', () => {
         expect(screenSrc).toMatch(/if \(event\.target\.closest\('\[data-v2-new\]'\)\) \{openEditor\(null\); return;\}/);
     });
 
-    test('التعديل يُعرض لصف غير مسدد فقط، وحارس paidAmount > 0', () => {
-        expect(screenSrc).toMatch(/canCreate && row\.paid <= 0/);
+    test('التعديل متاح حتى للصفوف المدفوعة — بلا حارس paidAmount (قرار المالك 2026-10-31)', () => {
+        expect(screenSrc).toMatch(/if \(canCreate\) \{\s*\/\/ قرار المالك 2026-10-31/);
         expect(screenSrc).toMatch(/data-v2-act="edit"/);
-        expect(screenSrc).toMatch(/if \(!invoiceEditable\(raw\)\) \{\s*notify\(EDIT_LOCKED_MESSAGE, 'error'\);/);
+        expect(screenSrc).not.toMatch(/invoiceEditable\(raw\)/);
+        expect(screenSrc).not.toMatch(/EDIT_LOCKED_MESSAGE/);
         expect(screenSrc).toContain("notify('الفاتورة غير موجودة', 'error')");
     });
 

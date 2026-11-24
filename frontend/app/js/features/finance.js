@@ -291,7 +291,8 @@ const totalExp=totMat+totCnt+totOps;
 const avgCost = totalRev>0?(totalExp/totalRev*100):0;
 const categories = {};
 periodExp.forEach(e=>{const cat=e.category||'أخرى';categories[cat]=(categories[cat]||0)+Number(e.amount||0);});
-setTimeout(()=>{
+setTimeout(async()=>{
+if(typeof Chart==='undefined'){ try { await window.ensureChart(); } catch (_) { return; } }
 const ctx1=document.getElementById('costBarChart');
 if(ctx1 && typeof Chart!=='undefined'){
 if(STATE.charts.costBar){STATE.charts.costBar.destroy();}
@@ -300,7 +301,7 @@ STATE.charts.costBar = new Chart(ctx1,{type:'bar',data:{labels:details.map(d=>d.
 const ctx2=document.getElementById('costPieChart');
 if(ctx2 && Object.keys(categories).length && typeof Chart!=='undefined'){
 if(STATE.charts.costPie){STATE.charts.costPie.destroy();}
-STATE.charts.costPie = new Chart(ctx2,{type:'pie',data:{labels:Object.keys(categories),datasets:[{data:Object.values(categories),backgroundColor:['#d4a843','#e74c3c','#2ecc71','#3498db','#9b59b6']}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#9aa0b4'}}}}});
+STATE.charts.costPie = new Chart(ctx2,{type:'pie',data:{labels:Object.keys(categories),datasets:[{data:Object.values(categories),backgroundColor:['#14735b','#e74c3c','#2ecc71','#3498db','#9b59b6']}]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#9aa0b4'}}}}});
 }
 },100);
 return `<div class="u-row-between u-mb12"><div class="fr" style="align-items:end"><div class="fg"><label>من تاريخ</label><div class="fr"><input id="costAnalysisFromInput" type="date" value="${esc(window.costAnalysisFrom)}"><button type="button" class="btn btn-sm" aria-label="فتح تقويم تاريخ البداية" data-karim-action="openCostAnalysisDatePicker" data-karim-arg0="costAnalysisFromInput"><i class=ji data-i=calendar></i></button></div></div><div class="fg"><label>إلى تاريخ</label><div class="fr"><input id="costAnalysisToInput" type="date" value="${esc(window.costAnalysisTo)}"><button type="button" class="btn btn-sm" aria-label="فتح تقويم تاريخ النهاية" data-karim-action="openCostAnalysisDatePicker" data-karim-arg0="costAnalysisToInput"><i class=ji data-i=calendar></i></button></div></div><button class="btn btn-sm btn-gold" data-karim-action="applyCostAnalysisPeriod"><i class=ji data-i=filter></i> تطبيق الفترة</button><button class="btn btn-sm" data-karim-action="resetCostAnalysisPeriod"><i class=ji data-i=rotate-ccw></i> كل الفترة</button></div></div><div class="metrics-grid"><div class="mcard"><div class="mcard-label"><i class=ji data-i=banknote></i> إجمالي الإيرادات</div><div class="mcard-val c-gold">${fC(totalRev)}</div></div><div class="mcard"><div class="mcard-label"><i class=ji data-i=wallet></i> إجمالي التكاليف</div><div class="mcard-val c-red">${fC(totalExp)}</div></div><div class="mcard"><div class="mcard-label"><i class=ji data-i=chart></i> متوسط نسبة التكلفة</div><div class="mcard-val ${avgCost<50?'c-green':avgCost<75?'c-orange':'c-red'}">${fN(avgCost.toFixed(1))}%</div></div></div><div class="metrics-grid"><div class="mcard"><div class="mcard-label"><i class=ji data-i=package></i> صرف مخزون (صافي المرتجعات)</div><div class="mcard-val c-blue">${fC(totMat)}</div></div><div class="mcard"><div class="mcard-label"><i class=ji data-i=clipboard-list></i> عجز / زيادة الجرد</div><div class="mcard-val ${totCnt>0?'c-red':totCnt<0?'c-green':''}">${fC(totCnt)}</div></div><div class="mcard"><div class="mcard-label"><i class=ji data-i=pen-tool></i> مصروفات تشغيلية</div><div class="mcard-val c-orange">${fC(totOps)}</div></div></div><div class="charts-grid"><div class="chart-card"><div class="chart-title"><i class=ji data-i=chart></i> الإيرادات مقابل التكلفة حسب القسم</div><div class="chart-box"><canvas id="costBarChart"></canvas></div></div><div class="chart-card"><div class="chart-title"><i class=ji data-i=pie></i> توزيع بنود التكلفة بالتصنيف</div><div class="chart-box"><canvas id="costPieChart"></canvas></div></div></div><div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=clipboard-list></i> تفاصيل كلفة الأقسام</h3></div><div class="tbl-scroll"><table><thead><tr><th>القسم</th><th>الإيرادات</th><th>صرف مخزون</th><th>فرق جرد</th><th>تشغيلية</th><th>التكلفة الإجمالية</th><th>نسبة التكلفة</th><th>التقييم</th></tr></thead><tbody>${details.map(d=>`<tr><td class="fw-bold">${deptIcon(d)} ${esc(d.name)}</td><td class="c-gold">${fC(d.rev)}</td><td class="c-blue">${fC(d.bd.materials)}</td><td class="${d.bd.countAdj>0?'c-red':d.bd.countAdj<0?'c-green':'text-muted'}">${fC(d.bd.countAdj)}</td><td class="c-orange">${fC(d.bd.operating)}</td><td class="c-red fw-bold">${fC(d.exp)}</td><td class="c-orange">${fN(d.costRatio.toFixed(1))}%</td><td class="${d.costRatio<30?'c-green':d.costRatio<50?'c-orange':'c-red'} fw-bold">${d.costRatio<30?'ممتاز':d.costRatio<50?'جيد':d.costRatio<70?'متوسط':'مرتفع'}</td></tr>`).join('')}</tbody></table></div></div>`;
@@ -445,8 +446,9 @@ function pnlApplyPreset(kind){
   const [f,t]=pnlPresetRange(kind);
   window.pnlFrom=f; window.pnlTo=t; pnlRefresh();
 }
-function pnlInitCharts(){
-  if(!PNL_DATA||STATE.page!=='pnl'||typeof Chart==='undefined') {return;}
+async function pnlInitCharts(){
+  if(!PNL_DATA||STATE.page!=='pnl') {return;}
+  if(typeof Chart==='undefined'){ try { await window.ensureChart(); } catch (_) { return; } }
   const st=PNL_DATA.statement;
   const daily=st.daily_series||[];
   const c1=document.getElementById('pnlTrendChart');
@@ -473,6 +475,13 @@ function pnlInitCharts(){
       ]},options:{responsive:true,maintainAspectRatio:false,plugins:{legend:{labels:{color:'#9aa0b4'}}},scales:{x:{ticks:{color:'#9aa0b4'}},y:{ticks:{color:'#9aa0b4'}}}}});
   }
 }
+/* طبقة الطباعة الموحدة (سكربت كلاسيكي: تحميل ديناميكي) —
+   إن تعذّر تحميلها تُطبع الوثيقة كما هي بدل تعطيل الطباعة. */
+function applyPrintLayer(doc, title){
+  return import(new URL('js/core/print-system.js', document.baseURI).href)
+    .then((mod)=>mod.applyPrintSystem(doc, {title}))
+    .catch(()=>false);
+}
 async function pnlPrint(){
   try{
     const p=new URLSearchParams();
@@ -485,10 +494,12 @@ async function pnlPrint(){
     frame.style.cssText='position:fixed;right:0;bottom:0;width:0;height:0;border:0;';
     document.body.appendChild(frame);
     frame.contentDocument.open(); frame.contentDocument.write(html); frame.contentDocument.close();
-    setTimeout(()=>{ try{ frame.contentWindow.focus(); frame.contentWindow.print(); }catch(_){} setTimeout(()=>frame.remove(),2000); },500);
+    await applyPrintLayer(frame.contentDocument, 'قائمة الأرباح والخسائر');
+    setTimeout(()=>{ try{ frame.contentWindow.focus(); frame.contentWindow.print(); }catch(_){} setTimeout(()=>frame.remove(),2000); },300);
   }catch(e){ toast(e.message||'تعذر الطباعة','error'); }
 }
-function pnlExportExcel(){
+async function pnlExportExcel(){
+try { if (!window.XLSX) { await window.ensureXLSX(); } } catch (_) { toast('تعذر تحميل مُصدِّر Excel — تحقق من الاتصال ثم أعد المحاولة','error'); return; }
   if(!PNL_DATA){ toast('لا بيانات للتصدير','warning'); return; }
   const st=PNL_DATA.statement, cmp=PNL_DATA.comparison||{};
   const cur=(k)=>{const v=cmp[k];return v&&v.previous!=null?[v.current,v.previous,v.delta??'',v.pct??'']:['','','',''];};

@@ -1,0 +1,6 @@
+{
+  "rootDir": "..",
+  "testEnvironment": "node",
+  "setupFiles": ["<rootDir>/tests/setup-env.js"],
+  "testRegex": "tests/(realtime-(guard|scoped-emit)|restore-stepup|rate-limiter-failclosed|login-lockout-store|v2-settings)\\.test\\.js$"
+}

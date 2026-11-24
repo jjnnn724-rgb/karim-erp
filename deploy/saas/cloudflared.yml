@@ -1,0 +1,17 @@
+# deploy/saas/cloudflared.yml — قالب نفق Cloudflare للنطاق karimeg.online
+# يُستخدم على الجهاز/الخادم الذي يشغّل المحلي (طريقة النفق الحالية في المشروع).
+# لا يُفعّل من هذه الجلسة.
+tunnel: karim-saas-staging
+credentials-file: /etc/cloudflared/karim-saas-staging.json
+
+ingress:
+  - hostname: staging.karimeg.online
+    service: http://127.0.0.1:5300
+  - hostname: "*.staging.karimeg.online"
+    service: http://127.0.0.1:5300
+  - hostname: karimeg.online
+    service: http://127.0.0.1:5300
+  - service: http_status:404
+
+# ملاحظة: الخادم يستخرج المستأجر من Host (slug = أول تسمية)،
+# فلا يلزم إعداد توجيه مختلف لكل عميل. تأكد من match wildcard في DNS.

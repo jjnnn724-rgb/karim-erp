@@ -78,7 +78,7 @@ async function loadRosterWeek(){
         // رأس الأعمدة
         let thead = '<thead><tr><th style="min-width:190px;position:sticky;right:0;background:#0f172a;z-index:2">الموظف</th>';
         for (const day of d.days) {
-            thead += '<th style="text-align:center;' + (day.isToday ? 'color:#f5d76e;' : day.isPast ? 'color:#94a3b8;' : '') + '">'
+            thead += '<th style="text-align:center;' + (day.isToday ? 'color:#dcede4;' : day.isPast ? 'color:#94a3b8;' : '') + '">'
                 + ROSTER_DAYS[day.weekday] + '<br><small style="font-weight:400">' + rosterFmtDate(day.date)
                 + (day.isToday ? ' • اليوم' : '') + (day.isPast ? ' • مقفل' : '') + '</small></th>';
         }
@@ -96,7 +96,7 @@ async function loadRosterWeek(){
                 const onLeave = Boolean(cell.onLeave);
                 tbody += '<td class="rs-cell" data-date="' + esc(day.date) + '" style="text-align:center;' + (day.isToday ? 'background:rgba(212,168,67,.08);' : '') + (onLeave ? 'background:rgba(245,158,11,.15);' : off ? 'background:rgba(148,163,184,.12);' : '') + '">';
                 if (onLeave) {
-                    tbody += '<div style="font-size:11px;color:#b45309;font-weight:800">🏖 إجازة</div><div style="font-size:10px;color:#b45309">' + esc(cell.leaveType || '') + '</div>';
+                    tbody += '<div style="font-size:11px;color:#0f5b46;font-weight:800">🏖 إجازة</div><div style="font-size:10px;color:#0f5b46">' + esc(cell.leaveType || '') + '</div>';
                 } else if (!cell.editable) {
                     tbody += '<div style="font-size:11px;color:' + (off ? 'var(--text3)' : 'var(--text)') + '">' + (off ? 'راحة' : esc(cell.shift_start) + '<br><small>' + esc(String(cell.shift_hours)) + 'س</small>') + '</div>';
                 } else {
@@ -344,7 +344,7 @@ async function printRoster(){
             + '@page{size:A4 landscape;margin:10mm}'
             + 'body{font-family:\'Cairo\',\'Segoe UI\',Tahoma,sans-serif;margin:0;color:#1a1a2e;background:#fff}'
             + '.hdr{background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;padding:14px 22px;display:flex;align-items:center;justify-content:space-between}'
-            + '.hdr h1{margin:0;font-size:19px;color:#f5d76e}.hdr .sub{margin:3px 0 0;font-size:11px;color:#cbd5e1}'
+            + '.hdr h1{margin:0;font-size:19px;color:#dcede4}.hdr .sub{margin:3px 0 0;font-size:11px;color:#cbd5e1}'
             + '.hdr .meta{text-align:left;font-size:11px;color:#cbd5e1;line-height:1.7}'
             + '.wrap{padding:12px 18px}'
             + 'table{width:100%;border-collapse:collapse;font-size:12px}'
@@ -355,8 +355,8 @@ async function printRoster(){
             + 'td.emp{background:#eef2f7 !important;text-align:right;border-right:2.5px solid #0f172a;font-weight:700}'
             + 'td small{color:#64748b;display:block;font-size:10px}'
             + 'td.off{background:#f1f5f9}td.off .rest{color:#94a3b8;font-weight:800;font-size:11px}'
-            + 'td.leave{background:#fef3c7}td.leave .lv{color:#b45309;font-weight:900;font-size:11.5px}td.leave .lvtype{color:#b45309;font-weight:700;font-size:10px}'
-            + 'td.today{outline:2.5px solid #d4a843;outline-offset:-2.5px}'
+            + 'td.leave{background:#fef3c7}td.leave .lv{color:#0f5b46;font-weight:900;font-size:11.5px}td.leave .lvtype{color:#0f5b46;font-weight:700;font-size:10px}'
+            + 'td.today{outline:2.5px solid #14735b;outline-offset:-2.5px}'
             + '.legend{display:flex;gap:18px;align-items:center;margin-top:10px;font-size:11px;color:#334155;font-weight:600}'
             + '.legend .k{display:inline-block;width:14px;height:14px;border:1.5px solid #334155;vertical-align:-2px;margin-left:5px}'
             + '.foot{margin-top:12px;display:flex;justify-content:space-between;font-size:11px;color:#334155;border-top:2px solid #0f172a;padding-top:8px}'
@@ -366,7 +366,7 @@ async function printRoster(){
             + '<div class="wrap"><table><thead><tr><th class="emp">الموظف</th>'
             + d.days.map((day) => '<th>' + ROSTER_DAYS[day.weekday] + '<br><small style="font-weight:400">' + rosterFmtDate(day.date) + (day.isToday ? ' • اليوم' : '') + '</small></th>').join('')
             + '</tr></thead>' + tbody + '</table>'
-            + '<div class="legend"><span><span class="k" style="background:#fef3c7"></span> إجازة معتمدة</span><span><span class="k" style="background:#f1f5f9"></span> راحة أسبوعية</span><span><span class="k" style="background:#fff;outline:2px solid #d4a843;outline-offset:-2px"></span> اليوم</span><span><span class="k" style="background:#fff"></span> دوام — يظهر وقت البداية</span></div>'
+            + '<div class="legend"><span><span class="k" style="background:#fef3c7"></span> إجازة معتمدة</span><span><span class="k" style="background:#f1f5f9"></span> راحة أسبوعية</span><span><span class="k" style="background:#fff;outline:2px solid #14735b;outline-offset:-2px"></span> اليوم</span><span><span class="k" style="background:#fff"></span> دوام — يظهر وقت البداية</span></div>'
             + '<div class="foot"><span>توقيع مسؤول القسم: ........................</span>' + hrSig + '<span>اعتماد المدير: ........................</span></div></div>'
             + '<script>window.onload=function(){setTimeout(function(){window.print()},350)}<\/script>'
             + '</body></html>');

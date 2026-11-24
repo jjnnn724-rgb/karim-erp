@@ -67,33 +67,41 @@ async function main() {
   const QRCode = require(path.join(ROOT, 'node_modules', 'qrcode'));
   const empNo = String(emp.employeeId || emp.deviceUserId || fp).padStart(6, '0');
   const nameEn = translit(emp.name);
-  // تجهيز بطاقة QR موقعة + رابط تحقق عام (أعلى معايير الجودة)
+  // بطاقة QR موقعة + رابط تحقق عام — بنفس اتصال القراءة (لا pool ثانٍ
+  // بقاعدة/مستخدم مختلفين قد يفشل في الإنتاج).
   const { provisionCard } = require(path.join(ROOT, 'backend', 'hr-routes'));
-  const pgc = await new (require(path.join(ROOT, 'node_modules', 'pg')).Pool)({
-    user: process.env.DB_USER || 'postgres', host: process.env.DB_HOST || 'localhost',
-    database: process.env.DB_NAME || 'karim_erp', password: process.env.DB_PASSWORD || '',
-    port: Number(process.env.DB_PORT || 5432),
-  }).connect();
-  let card;
-  try { card = await provisionCard(pgc, { ...emp, id: Number(emp.id) }); }
-  finally { try { pgc.release(); } catch (_) {} }
+  const card = await provisionCard(pool, { ...emp, id: Number(emp.id) });
   const crypto = require('crypto');
   const qrs = process.env.EMPLOYEE_QR_SECRET || process.env.JWT_SECRET || '';
   const payload = { eid: String(card.employee.employeeId), cid: card.employee.cardId, v: card.qrPayload.qrVersion, t: card.qrPayload.token };
   const sig = crypto.createHmac('sha256', qrs).update(`${payload.eid}|${payload.cid}|${payload.v}|${payload.t}`, 'utf8').digest('hex');
   // توقيع مختصر مربوط بمعرف البطاقة فقط — يجب أن يطابق السيرفر (/card/v/:code)
   const shortSig = crypto.createHmac('sha256', qrs).update(String(payload.cid), 'utf8').digest('hex').slice(0, 16);
-  // رابط التحقق: جدول الإعدادات أولًا (تحكم الواجهة) ثم البيئة ثم الافتراضي
-  let base = process.env.CARD_VERIFY_BASE || '';
+  // إعدادات البطاقة من الواجهة (جدول hr_card_settings) ثم البيئة ثم الافتراضي.
+  const cardCfg = {
+    verify_base: process.env.CARD_VERIFY_BASE || '',
+    emergency_phone: process.env.EMERGENCY_PHONE || '',
+    org_name_ar: 'مطاعم الشرفه العالمي',
+    org_name_en: 'AL SHURFA AL ALAMI RESTAURANTS',
+    card_title_ar: 'بطاقة هوية رسمية',
+    card_slogan_ar: 'مجمع برج الساعة',
+    card_footer_ar: 'يتحمل حاملها المسؤولية القانونية كاملة عن استخدامها.',
+    badge_text: 'OFFICIAL EXECUTIVE',
+    accent: 'gold',
+    show_blood: 'true',
+    show_mrz: 'true',
+  };
   try {
-    const r = await pool.query(`SELECT key, value FROM hr_card_settings WHERE key IN ('verify_base','emergency_phone')`);
+    const r = await pool.query(`SELECT key, value FROM hr_card_settings`);
     for (const row of r.rows) {
-      if (row.key === 'verify_base' && row.value) base = row.value;
-      if (row.key === 'emergency_phone' && row.value) process.env.EMERGENCY_PHONE = row.value;
+      if (row.value !== null && row.value !== undefined && row.value !== '' && row.key in cardCfg) {
+        cardCfg[row.key] = row.value;
+      }
     }
   } catch (_) {}
-  if (!base) base = process.env.CARD_VERIFY_BASE || 'https://karimeg.online';
-  base = base.replace(/\/$/, '');
+  if (!cardCfg.verify_base) {cardCfg.verify_base = process.env.CARD_VERIFY_BASE || 'https://karimeg.online';}
+  if (cardCfg.emergency_phone) {process.env.EMERGENCY_PHONE = cardCfg.emergency_phone;}
+  const base = String(cardCfg.verify_base).replace(/\/$/, '');
   const verifyUrl = `${base}/api/hr/card/v/${payload.cid}.${shortSig}`;
   // رابط مختصر (~70 حرف بدل ~300): نفس الأمان (HMAC مقتطع 16 hex = 64-bit)
   // والتحقق الكامل يتم server-side من قاعدة البيانات — QR خفيف يمسح فورًا.
@@ -149,7 +157,7 @@ async function main() {
     await oc.close();
   } catch (_) {}
   const position = emp.position || yaraJob || 'موظف';
-  const dept = emp.dept_name || emp.department || 'مطاعم الشرفه العالمي';
+  const dept = emp.dept_name || emp.department || cardCfg.org_name_ar;
   const docNo = 'E' + empNo;
   // MRZ-TD1 (3×30) بأرقام تدقيق صحيحة
   const clean = (s) => String(s || '').toUpperCase().replace(/[^A-Z0-9]/g, '<');
@@ -179,17 +187,40 @@ async function main() {
   const slash = (s) => String(s || '').replace(/-/g, '/');
   const positionEn = translit(position).toUpperCase().slice(0, 40) || 'STAFF';
   const blood = emp.blood_type || emp.blood || emp.blood_group || '—';
+  // لوحات ألوان البطاقة — تُختار من إعدادات الواجهة وتُحقن كمتغيرات CSS.
+  const ACCENTS = {
+    gold: { main: '#D4AF37', bright: '#FFF3D6', dark: '#82611A', deep: '#101929', glow: 'rgba(212,175,55,0.40)', metallic: 'linear-gradient(135deg,#FFF3D6 0%,#D4AF37 45%,#967223 75%,#FFF3D6 100%)' },
+    emerald: { main: '#1FA37A', bright: '#D7FBEC', dark: '#0C5B44', deep: '#071B16', glow: 'rgba(31,163,122,0.40)', metallic: 'linear-gradient(135deg,#E7FFF6 0%,#1FA37A 45%,#0C5B44 75%,#E7FFF6 100%)' },
+    sapphire: { main: '#2F7DD1', bright: '#DCEBFF', dark: '#123F70', deep: '#07101F', glow: 'rgba(47,125,209,0.40)', metallic: 'linear-gradient(135deg,#EAF3FF 0%,#2F7DD1 45%,#123F70 75%,#EAF3FF 100%)' },
+    burgundy: { main: '#B33A4A', bright: '#FFE3E7', dark: '#6B1B27', deep: '#1A080C', glow: 'rgba(179,58,74,0.40)', metallic: 'linear-gradient(135deg,#FFEDF0 0%,#B33A4A 45%,#6B1B27 75%,#FFEDF0 100%)' },
+    platinum: { main: '#B8C0CC', bright: '#F4F7FB', dark: '#5E6672', deep: '#0E1116', glow: 'rgba(184,192,204,0.38)', metallic: 'linear-gradient(135deg,#FFFFFF 0%,#B8C0CC 45%,#6B7480 75%,#FFFFFF 100%)' },
+  };
+  const accent = ACCENTS[String(cardCfg.accent || 'gold').toLowerCase()] || ACCENTS.gold;
+  const accentCss = `:root{--gold-main:${accent.main};--gold-bright:${accent.bright};--gold-dark:${accent.dark};--bg-dark-blue:${accent.deep};--gold-glow:${accent.glow};--gold-metallic:${accent.metallic};}`;
+  const showBlood = String(cardCfg.show_blood).toLowerCase() !== 'false';
+  const showMrz = String(cardCfg.show_mrz).toLowerCase() !== 'false';
+  const bloodCell = showBlood
+    ? `<div class="meta-col"><div class="meta-head">فصيلة الدم</div><div class="meta-val">${escH(blood)}</div></div>`
+    : '';
+  const mrzBlock = showMrz ? `<div class="mrz-sovereign" dir="ltr">${f1}<br>${f2}</div>` : '';
   const fill = (tpl) => tpl
     .replace('<link rel="stylesheet" href="../card.css">', `<style>${cssInline}</style>`)
+    .replaceAll('{{ACCENT_CSS}}', accentCss)
     .replaceAll('{{LOGO}}', logoUri).replaceAll('{{TOWER}}', towerUri)
     .replaceAll('{{PHOTO}}', photoUri).replaceAll('{{QR}}', qr)
     .replaceAll('{{NAME_AR}}', escH(emp.name || '')).replaceAll('{{NAME_EN}}', escH(nameEn))
     .replaceAll('{{POSITION}}', escH(position)).replaceAll('{{POSITION_EN}}', escH(positionEn))
     .replaceAll('{{DEPT}}', escH(dept))
     .replaceAll('{{EMP_NO}}', empNo)
-    .replaceAll('{{BLOOD}}', escH(blood))
-    .replaceAll('{{MRZ1}}', f1).replaceAll('{{MRZ2}}', f2)
-    .replaceAll('{{EMERGENCY}}', process.env.EMERGENCY_PHONE || '+966 56 022 9281')
+    .replaceAll('{{BLOOD}}', escH(blood)).replaceAll('{{BLOOD_CELL}}', bloodCell)
+    .replaceAll('{{MRZ1}}', f1).replaceAll('{{MRZ2}}', f2).replaceAll('{{MRZ_BLOCK}}', mrzBlock)
+    .replaceAll('{{ORG_AR}}', escH(cardCfg.org_name_ar))
+    .replaceAll('{{ORG_EN}}', escH(cardCfg.org_name_en))
+    .replaceAll('{{CARD_TITLE}}', escH(cardCfg.card_title_ar))
+    .replaceAll('{{SLOGAN}}', escH(cardCfg.card_slogan_ar))
+    .replaceAll('{{FOOTER_NOTE}}', escH(cardCfg.card_footer_ar))
+    .replaceAll('{{BADGE_TEXT}}', escH(cardCfg.badge_text))
+    .replaceAll('{{EMERGENCY}}', escH(cardCfg.emergency_phone || process.env.EMERGENCY_PHONE || '+966 56 022 9281'))
     .replaceAll('{{ISSUE}}', slash(issue)).replaceAll('{{EXPIRY}}', slash(exp));
   fs.mkdirSync(OUT, { recursive: true });
   const html = fill(fs.readFileSync(path.join(CARDIR, 'card.html'), 'utf8'));
@@ -201,8 +232,8 @@ async function main() {
 <linearGradient id="goldm" x1="0" y1="0" x2="1" y2="0"><stop offset="0" stop-color="#FFF3D6"/><stop offset=".3" stop-color="#E2BE5A"/><stop offset=".7" stop-color="#9E7A28"/><stop offset="1" stop-color="#FFF3D6"/></linearGradient></defs>
 <g clip-path="url(#rc)"><rect width="204" height="322" fill="url(#metal)"/>
 <text x="102" y="52" text-anchor="middle" font-size="38" font-weight="900" fill="url(#goldm)" font-family="Cairo,Arial">𓁫</text>
-<text x="102" y="72" text-anchor="middle" font-size="11" font-weight="800" fill="#DFBA57" font-family="Cairo,Arial">مطاعم الشرفه العالمي</text>
-<text x="102" y="84" text-anchor="middle" font-size="7" fill="#DFBA57" font-family="Inter,Arial">AL SHURFA AL ALAMI RESTAURANTS</text>
+<text x="102" y="72" text-anchor="middle" font-size="11" font-weight="800" fill="#DFBA57" font-family="Cairo,Arial">${escH(cardCfg.org_name_ar)}</text>
+<text x="102" y="84" text-anchor="middle" font-size="7" fill="#DFBA57" font-family="Inter,Arial">${escH(cardCfg.org_name_en)}</text>
 <rect x="55" y="94" width="94" height="108" fill="#111317" stroke="#DFBA57" stroke-width="2"/>
 <image href="${photoUri}" x="56" y="95" width="92" height="106" preserveAspectRatio="xMidYMid slice"/>
 <rect x="62" y="204" width="80" height="12" rx="2" fill="url(#goldm)"/>

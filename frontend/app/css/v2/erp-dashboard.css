@@ -2,7 +2,7 @@
    KARIM ERP — V2 Dashboard ("المكس الساحر") · v1.0.0
    ─────────────────────────────────────────────────────────────────────
    Design language: Fiori shell discipline + Odoo pipeline/statusbar spirit
-   + NetSuite KPI density (6 tiles, deltas) + command palette. Emerald brand
+   + NetSuite KPI density (6 tiles, deltas) + command palette. Amethyst brand
    stays — "global" is in the system, not the colour.
 
    SCOPING: every rule below lives under .erp-v2, except .erp-pal-* (the
@@ -44,6 +44,15 @@
   margin-block-end: var(--erp-space-4);
 }
 .erp-v2 .erp-dash-grid:last-child { margin-block-end: 0; }
+
+/* سطر مصدر/حدود أسفل قرصٍ في بطاقة (نسبة تكلفة البضاعة الحية) — يوسّط نفسه
+   تحت الرسم ولا يمدّ البطاقة عند نقص البيانات. */
+.erp-v2 .erp-dash-note {
+  margin: var(--erp-space-2) 0 0;
+  font-size: var(--erp-text-xs);
+  line-height: 1.7;
+  text-align: center;
+}
 
 /* ── Sales bars (hand SVG-free: pure divs, RTL flows right→left) ───────── */
 .erp-v2 .erp-bars { display: flex; align-items: flex-end; gap: var(--erp-space-2); block-size: 168px; padding-block-start: var(--erp-space-3); }

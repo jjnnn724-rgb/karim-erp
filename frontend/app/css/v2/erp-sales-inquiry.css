@@ -172,6 +172,56 @@
   animation: erp-screen-in var(--erp-duration-base) var(--erp-ease-out) both;
 }
 
+/* ── نطاق الصنف داخل التفاصيل ─────────────────────────────────────────── */
+/* بطاقة الصنف المطلوب تسبق الفاتورة، فتقرأ «أتباع كام» قبل إجماليها. */
+.salesinq__itemscope {
+  border-color: var(--erp-brand);
+}
+
+.salesinq__group-title {
+  margin: 0;
+  font-size: var(--erp-text-sm);
+  font-weight: var(--erp-fw-semibold);
+  color: var(--erp-text-muted);
+}
+
+/* السطر التابع للصنف المطلوب داخل جدول سطور الفاتورة */
+.salesinq__line--hit {
+  background: var(--erp-brand-soft);
+}
+
+/* بطاقات الأرقام داخل اللوحة: .erp-emp-stats مُعرَّف في شاشات الموارد
+   البشرية وحدها، وهنا يحتاج تخطيطَه نفسه حتى لا تتكوّم الأرقام عمودًا. */
+.salesinq__stack .erp-emp-stats {
+  display: flex;
+  flex-wrap: wrap;
+  gap: var(--erp-space-2);
+}
+
+.salesinq__stack .erp-emp-stat {
+  display: flex;
+  flex: 1 1 13ch;
+  flex-direction: column;
+  align-items: center;
+  gap: var(--erp-space-1);
+  min-inline-size: 13ch;
+  padding: var(--erp-space-2) var(--erp-space-3);
+  border: thin solid var(--erp-border);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface-sunken);
+}
+
+.salesinq__stack .erp-emp-stat__v {
+  font-size: var(--erp-text-lg);
+  font-weight: var(--erp-fw-semibold);
+}
+
+.salesinq__stack .erp-emp-stat__l {
+  font-size: var(--erp-text-xs);
+  color: var(--erp-text-muted);
+  text-align: center;
+}
+
 /* ── الطباعة: الشاشة ورقةٌ نظيفة، والأدوات تختفي ──────────────────────── */
 @media print {
   .salesinq__head,

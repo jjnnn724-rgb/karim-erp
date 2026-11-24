@@ -44,7 +44,7 @@ router.get('/', async (req, res) => {
         // PERF-6: list + unread count are independent → run in parallel
         const [listRes, unreadRes] = await Promise.all([
             pool.query(
-                `SELECT n.id, n.title, n.message, n.type, n.date, n.user_id, n.entity, n.entity_id, n.link, n.created_at,
+                `SELECT n.id, n.title, n.message, n.type, n.date, n.user_id, n.entity, n.entity_id, n.link, n.category, n.created_at,
                         (n.read = true OR (n.user_id IS NULL AND EXISTS (
                             SELECT 1 FROM notification_reads nr WHERE nr.notification_id = n.id AND nr.user_id = $1
                         ))) AS read

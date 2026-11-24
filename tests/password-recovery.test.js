@@ -45,11 +45,34 @@ function makeReq(overrides = {}) {
 
 let adminUserId = null;
 
+/**
+ * حسابٌ له أثرٌ في سلسلة التدقيق (pos_audit_logs append-only) لا يُحذف:
+ * حذفه يُطلق ON DELETE SET NULL فيُحدِّث السجل المحمي ويُرفض. البديل هو
+ * تقاعده باسمٍ ثابت 'MARK-retired-<id>' وتعطيله — قابلة لإعادة التنفيذ
+ * بلا تضخّم في الاسم. (قاعدة تنظيف قاعدة الاختبار المشتركة.)
+ */
+async function retireMarkedUsers() {
+    await pool.query(
+        `UPDATE users
+            SET username = '${MARK}-retired-' || id, active = false, name = name || ' [retired]'
+          WHERE username LIKE '${MARK}-%' AND username <> '${MARK}-retired-' || id`
+    );
+}
+
+async function deleteOrRetireUsers(names) {
+    try {
+        await pool.query('DELETE FROM users WHERE username = ANY($1::text[])', [names]);
+    } catch (e) {
+        if (!/append-only|pos_audit_logs/i.test(e.message || '')) { throw e; }
+        await retireMarkedUsers();
+    }
+}
+
 async function createTestUser() {
     // بقايا تشغيل سابق فاشل؟ أزلها أولًا حتى تبقى الدورة قابلة لإعادة التشغيل
-    await pool.query(`DELETE FROM pos_password_reset_codes WHERE user_id IN (SELECT id FROM users WHERE username = '${MARK}-user');`);
-    await pool.query(`DELETE FROM pos_refresh_tokens WHERE user_id IN (SELECT id FROM users WHERE username = '${MARK}-user');`);
-    await pool.query(`DELETE FROM users WHERE username = '${MARK}-user';`);
+    await pool.query(`DELETE FROM pos_password_reset_codes WHERE user_id IN (SELECT id FROM users WHERE username LIKE '${MARK}-%');`);
+    await pool.query(`DELETE FROM pos_refresh_tokens WHERE user_id IN (SELECT id FROM users WHERE username LIKE '${MARK}-%');`);
+    await deleteOrRetireUsers([`${MARK}-user`, `${MARK}-admin`]);
     const hash = await bcrypt.hash('OriginalPass123', 12);
     const r = await pool.query(
         `INSERT INTO users (id, username, password, role, name, active)
@@ -98,13 +121,8 @@ afterAll(async () => {
     try {
         await pool.query(`DELETE FROM users WHERE username LIKE '${MARK}-%';`);
     } catch (e) {
-        if (/append-only|pos_audit_logs/i.test(e.message || '')) {
-            await pool.query(
-                `UPDATE users SET username = username || '-retired-' || id, active = false, name = name || ' [retired]' WHERE username LIKE '${MARK}-%';`
-            ).catch(() => {});
-        } else {
-            throw e;
-        }
+        if (!/append-only|pos_audit_logs/i.test(e.message || '')) { throw e; }
+        await retireMarkedUsers().catch(() => {});
     }
     await pool.end().catch(() => {});
 });
@@ -225,6 +243,37 @@ describe('request-code + reset — دورة الحياة على قاعدة ال�
         );
         expect(rows.rows).toHaveLength(1); // القديم حُذف
         expect(rows.rows[0].code_hash).toBe(hashCode(res.body.code)); // مخزن مجزأً لا خامًا
+    });
+
+    test('مدير لا يحصل على رمز لحساب مسؤول عام — منع الاستيلاء العمودي', async () => {
+        const adminId = await getAdminUser();
+        const before = await pool.query(
+            `SELECT COUNT(*)::int AS c FROM pos_password_reset_codes WHERE user_id = $1 AND used_at IS NULL;`,
+            [adminId]
+        );
+        const res = mockRes();
+        await requestCodeHandler(
+            makeReq({ body: { username: MARK + '-admin' }, user: { id: userId, role: 'manager', name: 'mgr' } }),
+            res
+        );
+        expect(res.statusCode).toBe(403);
+        expect(res.body.error).toBe('RESET_TARGET_OUT_OF_SCOPE');
+        const after = await pool.query(
+            `SELECT COUNT(*)::int AS c FROM pos_password_reset_codes WHERE user_id = $1 AND used_at IS NULL;`,
+            [adminId]
+        );
+        expect(after.rows[0].c).toBe(before.rows[0].c);
+    });
+
+    test('مدير يصدر رمزًا لحساب أدنى (كاشير) — المسار المشروع يبقى عاملًا', async () => {
+        const adminId = await getAdminUser();
+        const res = mockRes();
+        await requestCodeHandler(
+            makeReq({ body: { username: MARK + '-user' }, user: { id: adminId, role: 'manager', name: 'mgr' } }),
+            res
+        );
+        expect(res.statusCode).toBe(200);
+        expect(res.body.code).toMatch(/^\d{6}$/);
     });
 
     test('إصدار لحساب غير موجود/موقوف → 404 بدون رمز', async () => {

@@ -6,9 +6,13 @@
  *
  *   1) جدول أصناف الفترة (من أول الشهر افتراضيًا): كود، كمية، فواتير،
  *      صافي، ضريبة، متوسط سعر الوحدة.
- *   2) نقر الصنف → جدول فواتيره: كل فاتورة بكمية الصنف وسعره وإجماليه
- *      وإجمالي الفاتورة وكاشيرها ووقتها، مع ترقيم من الخادم (LIMIT/OFFSET).
- *   3) نقر الفاتورة → تفاصيلها كاملة (سطور، خصم، ضريبة، مدفوع، دفع مقسّم).
+ *   2) نقر الصنف → جدول فواتيره: كل فاتورة بكمية الصنف وسعره وقبل ضريبته
+ *      وضريبته وشامله، وإجمالي الفاتورة وكاشيرها ووقتها، مع ترقيم من
+ *      الخادم (LIMIT/OFFSET).
+ *   3) نقر الفاتورة → تفاصيلها كاملة (سطور، خصم، ضريبة، مدفوع، دفع مقسّم)،
+ *      وأولها بطاقة «الصنف المطلوب في هذه الفاتورة»: كميته وسعر وحدته
+ *      وقبل ضريبته وضريبته وشامله وحصته من إجمالي الفاتورة — لأن سؤال
+ *      المالك: «أعرف اتباع كام» لا يُجاب بإجمالي فاتورةٍ فيها أصناف أخرى.
  *   4) «طباعة الإيصال» → HTML الإيصال من /pos/orders/ys/:docNo/receipt-html
  *      يُجلب بـ fetch خام برؤوس المصادقة ثم يُكتب في عارض التطبيق
  *      (report-viewer) — لأن فتحه في تبويب جديد يسقط 401 بلا هيدر.
@@ -24,13 +28,13 @@
  * لا كتابة، ولا مساس بالمخزن، ولا معالجات inline، والرموز --erp-* فقط.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.180';
-import { formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.180';
-import { openInAppReport } from '../report-viewer.js?v=4.9.180';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.323';
+import { formatInt, formatMoney, formatQty } from '../data/reports-repo.js?v=4.9.323';
+import { openInAppReport } from '../report-viewer.js?v=4.9.323';
 import {
     fetchItemSales, fetchItemInvoices, fetchOrderDetail, fetchReceiptHtml,
     fetchItemSalesSheetHtml, rangeError, YARA_MAX_SPAN_DAYS,
-} from '../data/yara-reports-repo.js?v=4.9.180';
+} from '../data/yara-reports-repo.js?v=4.9.323';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -67,14 +71,12 @@ function dayTime(r) {
 function template() {
     return `
       <div class="salesinq">
-        <div class="salesinq__head">
+        <div class="erp-dash-head erp-screen-in" style="--erp-dash-eyebrow:'SALES INQUIRY'">
           <div>
-            <h2 class="salesinq__title">استعلام المبيعات
-              <span class="erp-eyebrow" dir="ltr" lang="en">Sales Inquiry</span>
-            </h2>
-            <p class="salesinq__sub"><span data-v2-scope-line></span></p>
+            <h2 class="erp-dash-title">استعلام المبيعات</h2>
+            <p class="erp-dash-sub"><span data-v2-scope-line></span></p>
           </div>
-          <div class="salesinq__presets erp-no-print" role="group" aria-label="فترات سريعة">
+          <div class="erp-dash-controls erp-no-print salesinq__presets" role="group" aria-label="فترات سريعة">
             <button type="button" class="erp-btn erp-btn--ghost erp-btn--xs" data-v2-preset="today">اليوم</button>
             <button type="button" class="erp-btn erp-btn--ghost erp-btn--xs" data-v2-preset="week">آخر 7 أيام</button>
             <button type="button" class="erp-btn erp-btn--ghost erp-btn--xs is-active" data-v2-preset="month">من أول الشهر</button>
@@ -132,12 +134,13 @@ function template() {
             </button>
           </div>
           <div class="erp-card__body salesinq__stack">
+            <p class="erp-text-sm erp-text-muted" data-v2-inv-scope>المؤشرات وأعمدة «كمية الصنف / سعر الوحدة / قبل الضريبة للصنف / ضريبة الصنف / شامل الضريبة للصنف» أرقامُ هذا الصنف وحده — مطابقةٌ بالكود والاسم لا بعائلة «شاورما»، فلا تدخل أصنافٌ أخرى في العدّ. وعمود «المحصَّل للفاتورة» هو إجمالي الفاتورة كاملة للمعلومة فقط.</p>
             <div data-v2-inv-kpis></div>
             <div data-v2-invoices></div>
             <div class="salesinq__more erp-no-print" data-v2-more hidden>
               <button type="button" class="erp-btn erp-btn--subtle erp-btn--sm" data-v2-more-btn>تحميل المزيد</button>
             </div>
-            <div data-v2-detail></div>
+            <div data-v2-detail-host></div>
           </div>
         </section>
       </div>`;
@@ -152,7 +155,7 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
     const state = {
         from: monthStart(), to: isoDay(new Date()), cashier: '', item: '',
         rows: [], totals: { invoices: 0, qty: 0, net: 0, vat: 0 },
-        selected: '', selectedCode: '', selectedKey: '',
+        selected: '', selectedCode: '',
         invoices: [], invTotals: { invoices: 0, qty: 0, net: 0, vat: 0 },
         offset: 0, invLoading: false, loading: false, detailDoc: '',
     };
@@ -164,7 +167,7 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
     const itemsTable = createDataTable({
         caption: 'الأصناف المباعة', mode: 'client', pageSize: 25, stickyHeader: true,
         emptyMessage: 'لا مبيعات في هذا المدى', emptyHint: 'وسّع المدى أو امسح فلتر الصنف.',
-        rowKey: (r, i) => `${r.item_code || r.item_name || i}`,
+        rowKey: (r, i) => `${r.item_code || ''}|${r.item_name || ''}|${i}`,
         columns: [
             { key: 'item_name', header: 'الصنف', sortable: true, filterable: true,
                 render: (r) => `<button type="button" class="erp-link-btn salesinq__name" data-v2-item-open="${esc(r.item_name || '')}" data-v2-item-code="${esc(r.item_code || '')}">${esc(r.item_name || '—')}</button>`
@@ -195,6 +198,10 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
                 render: (r) => `<span class="erp-num" dir="ltr">${formatQty(r.item_qty)}</span>` },
             { key: 'item_price', header: 'سعر الوحدة', type: 'number', width: '130px', align: 'end', value: (r) => Number(r.item_price || 0), render: (r) => money(r.item_price) },
             { key: 'item_net', header: 'قبل الضريبة للصنف', type: 'number', width: '150px', align: 'end', value: (r) => Number(r.item_net || 0), render: (r) => money(r.item_net) },
+            { key: 'item_vat', header: 'ضريبة الصنف', type: 'number', width: '130px', align: 'end', value: (r) => Number(r.item_vat || 0), render: (r) => money(r.item_vat) },
+            { key: 'item_gross', header: 'شامل الضريبة للصنف', type: 'number', width: '160px', align: 'end',
+                value: (r) => Number(r.item_net || 0) + Number(r.item_vat || 0),
+                render: (r) => money(Number(r.item_net || 0) + Number(r.item_vat || 0)) },
             { key: 'net', header: 'المحصَّل للفاتورة', type: 'number', width: '150px', align: 'end', value: (r) => Number(r.net || 0), render: (r) => money(r.net) },
             { key: 'actions', header: 'إجراءات', width: '130px', align: 'center', className: 'erp-no-print',
                 render: (r) => `<span class="erp-row-wrap">`
@@ -229,6 +236,42 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
     }
 
     /* ── جدول الأصناف ───────────────────────────────────────────────── */
+    /** نطاق العرض: بعد اختيار صنف تُفلتر القائمة والمؤشرات العليا عليه
+     *  وحده — طلب المالك 2026-11-02: «استعلام عن الصنف يفلتر الصنف فقط
+     *  بشكل دقيق جدًا». الهوية = (الكود + الاسم) معًا: الكود 010102 يسمّي
+     *  صنفين («صحن شاورما قطع» و«صحن شاورما»)، والاسم «صحن شاورما عربي»
+     *  يغطّي كودين — فالزوج وحده يميّز المنتج. */
+    function scopedRows() {
+        if (!state.selected) { return state.rows; }
+        const code = String(state.selectedCode || '').trim();
+        const name = String(state.selected || '').trim();
+        return state.rows.filter((r) => {
+            const rc = String(r.item_code || '').trim();
+            const rn = String(r.item_name || '').trim();
+            if (code && name) { return rc === code && rn === name; }
+            if (code) { return rc === code; }
+            return rn === name;
+        });
+    }
+
+    /** رسم القائمة + مؤشراتها على النطاق الحالي (المحدد أو الكل). */
+    function paintItemsScope() {
+        const rows = scopedRows();
+        itemsTable.setRows(rows);
+        const t = rows.reduce((s, r) => ({
+            invoices: s.invoices + Number(r.invoices || 0),
+            qty: s.qty + Number(r.qty || 0),
+            net: s.net + Number(r.net || 0),
+            vat: s.vat + Number(r.vat || 0),
+        }), { invoices: 0, qty: 0, net: 0, vat: 0 });
+        t.net = Math.round(t.net * 100) / 100;
+        t.vat = Math.round(t.vat * 100) / 100;
+        paintKpis(q('[data-v2-kpis]'), t, state.selected ? 'مؤشرات الصنف المحدد' : 'مؤشرات الأصناف المعروضة');
+        q('[data-v2-count]').textContent = !rows.length ? ''
+            : state.selected ? '(صنف واحد)'
+                : `(${formatInt(rows.length)} صنفًا)`;
+    }
+
     async function loadItems() {
         const guard = rangeError(state.from, state.to);
         if (guard && guard.ok === false) { itemsTable.setError(guard.message); return; }
@@ -243,9 +286,7 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
             if (!alive || mySeq !== seqItems) { return; }
             state.rows = Array.isArray(data.rows) ? data.rows : [];
             state.totals = data.totals || { invoices: 0, qty: 0, net: 0, vat: 0 };
-            itemsTable.setRows(state.rows);
-            paintKpis(q('[data-v2-kpis]'), state.totals, 'مؤشرات المبيعات');
-            q('[data-v2-count]').textContent = state.rows.length ? `(${formatInt(state.rows.length)} صنفًا)` : '';
+            paintItemsScope();
             scopeLine();
             paintCashierOptions();
         } catch (e) {
@@ -285,7 +326,8 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
         q('[data-v2-more]').hidden = true;
         try {
             const data = await fetchItemInvoices({
-                from: state.from, to: state.to, item: state.selectedKey || state.selected,
+                from: state.from, to: state.to,
+                item: state.selected, code: state.selectedCode, exact: 1,
                 cashier: state.cashier, limit: PAGE, offset,
             });
             if (!alive || mySeq !== seqInv) { return; }
@@ -299,7 +341,7 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
             q('[data-v2-more]').hidden = batch.length < PAGE;
             q('[data-v2-panel]').hidden = false;
             if (!append) {
-                q('[data-v2-detail]').innerHTML = '';
+                q('[data-v2-detail-host]').innerHTML = '';
                 state.detailDoc = '';
             }
             paintCashierOptions();
@@ -315,9 +357,6 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
     function openItem(name, code = '') {
         state.selected = String(name || '').trim();
         state.selectedCode = String(code || '').trim();
-        // الكود أدقّ من الاسم: صنفان قد يحملان الاسم نفسه بسعرين مختلفين،
-        // فالفواتير تُجلب بالكود حين يتوفر (وإلا بالاسم كما كتبه المستخدم).
-        state.selectedKey = state.selectedCode || state.selected;
         if (!state.selected) { return; }
         q('[data-v2-item-name]').textContent = state.selected
             + (state.selectedCode ? ` · ${state.selectedCode}` : '');
@@ -327,13 +366,29 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
         q('[data-v2-inv-kpis]').innerHTML = '';
         invTable.setRows([]);
         state.invoices = [];
+        paintItemsScope();
         loadInvoices();
         q('[data-v2-panel]').scrollIntoView({ block: 'nearest', behavior: 'smooth' });
     }
 
     /* ── تفاصيل فاتورة ──────────────────────────────────────────────── */
+    /** سطور الفاتورة التابعة للصنف المفتوح — بالزوج (كود + اسم) نفسه الذي
+     *  فلتر به الخادم، فلا يُنسب سطرُ صنفٍ آخر إلى المطلوب. */
+    function hitLines(lines) {
+        const code = String(state.selectedCode || '').trim();
+        const name = String(state.selected || '').trim();
+        if (!code && !name) { return []; }
+        return (Array.isArray(lines) ? lines : []).filter((l) => {
+            const lc = String((l && l.code) || '').trim();
+            const ln = String((l && l.name) || '').trim();
+            if (code && name) { return lc === code && ln === name; }
+            if (code) { return lc === code; }
+            return ln === name;
+        });
+    }
+
     async function openDetail(docNo) {
-        const detailHost = q('[data-v2-detail]');
+        const detailHost = q('[data-v2-detail-host]');
         state.detailDoc = docNo;
         detailHost.innerHTML = '<div class="erp-card erp-card--subtle"><div class="erp-card__body erp-text-center">'
             + '<span class="erp-spinner" aria-hidden="true"></span> جارٍ جلب تفاصيل الفاتورة…</div></div>';
@@ -354,13 +409,52 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
                         ? 'خصمٌ أو تسويةُ كسورٍ لم يسجّلها المصدر في عمود مستقل — وبه تنطبق المعادلة: المحصَّل + التسوية = قبل الضريبة + الضريبة.'
                         : 'زيادةٌ في المحصَّل عن المسعَّر — تُراجع مع سجل الكاشير.'}</p>`
                 : '';
-            const rowsHtml = lines.map((l, i) => `<tr>
+            const hits = hitLines(lines);
+            const sumBy = (arr, k) => Math.round(arr.reduce((s, l) => s + (Number(l && l[k]) || 0), 0) * 100) / 100;
+            const hitQty = Math.round(hits.reduce((s, l) => s + (Number(l && l.qty) || 0), 0) * 1000) / 1000;
+            const hitNet = sumBy(hits, 'total');
+            const hitVat = sumBy(hits, 'vat');
+            const hitGross = Math.round((hitNet + hitVat) * 100) / 100;
+            const hitUnit = hitQty > 0 ? Math.round((hitNet / hitQty) * 100) / 100 : 0;
+            const hitShare = gross > 0 ? Math.round((hitGross / gross) * 1000) / 10 : 0;
+            /* بطاقة الصنف تسبق بطاقة الفاتورة: جواب «أتباع كام» يُقرأ أولًا،
+               وإجمالي الفاتورة يبقى للمقارنة لا للخلط. */
+            const itemScope = state.selected
+                ? `<div class="erp-card erp-card--subtle salesinq__itemscope" data-v2-itemscope>
+                    <div class="erp-card__head">
+                      <h5 class="erp-card__title">
+                        <i class="ji" data-i="package" aria-hidden="true"></i>
+                        الصنف المطلوب في هذه الفاتورة: ${esc(state.selected)}
+                        ${state.selectedCode ? `<span class="erp-mini__sub erp-mono" dir="ltr">${esc(state.selectedCode)}</span>` : ''}
+                      </h5>
+                    </div>
+                    <div class="erp-card__body salesinq__stack">
+                      ${hits.length ? `<div class="erp-emp-stats">
+                        <div class="erp-emp-stat"><span class="erp-emp-stat__l">الكمية</span><span class="erp-emp-stat__v"><span class="erp-num" dir="ltr">${formatQty(hitQty)}</span></span></div>
+                        <div class="erp-emp-stat"><span class="erp-emp-stat__l">سعر الوحدة</span><span class="erp-emp-stat__v">${money(hitUnit)}</span></div>
+                        <div class="erp-emp-stat"><span class="erp-emp-stat__l">قبل الضريبة</span><span class="erp-emp-stat__v">${money(hitNet)}</span></div>
+                        <div class="erp-emp-stat"><span class="erp-emp-stat__l">الضريبة</span><span class="erp-emp-stat__v">${money(hitVat)}</span></div>
+                        <div class="erp-emp-stat"><span class="erp-emp-stat__l">شامل الضريبة</span><span class="erp-emp-stat__v">${money(hitGross)}</span></div>
+                        <div class="erp-emp-stat"><span class="erp-emp-stat__l">حصة الصنف من إجمالي الفاتورة</span><span class="erp-emp-stat__v"><span class="erp-num" dir="ltr">${formatQty(hitShare)}%</span></span></div>
+                      </div>
+                      <p class="erp-text-sm erp-text-muted">سطورٌ مطابقة بالكود والاسم: <span class="erp-num" dir="ltr">${formatInt(hits.length)}</span> من <span class="erp-num" dir="ltr">${formatInt(lines.length)}</span> سطرًا في الفاتورة؛ وباقي أصناف الفاتورة ${money(Math.round((gross - hitGross) * 100) / 100)}.</p>`
+                      : `<p class="erp-text-sm erp-text-danger">لا سطر في هذه الفاتورة يطابق (${esc(state.selected)}${state.selectedCode ? ` · ${esc(state.selectedCode)}` : ''}) بالكود والاسم — راجع هوية الصنف قبل الاعتماد على الرقم.</p>`}
+                    </div>
+                  </div>`
+                : '';
+            const rowsHtml = lines.map((l, i) => {
+                const hit = hits.includes(l);
+                const lineGross = Math.round(((Number(l && l.total) || 0) + (Number(l && l.vat) || 0)) * 100) / 100;
+                return `<tr${hit ? ' class="salesinq__line--hit"' : ''}>
                 <td>${i + 1}</td>
-                <td class="salesinq__start">${esc(l.name || '—')}${l.code ? ` <span class="erp-mini__sub erp-mono" dir="ltr">${esc(l.code)}</span>` : ''}</td>
+                <td class="salesinq__start">${esc(l.name || '—')}${l.code ? ` <span class="erp-mini__sub erp-mono" dir="ltr">${esc(l.code)}</span>` : ''}${hit ? ' <span class="erp-badge" data-tone="brand">الصنف المطلوب</span>' : ''}</td>
                 <td><span class="erp-num" dir="ltr">${formatQty(l.qty)}</span></td>
                 <td>${money(l.price)}</td>
                 <td>${money(l.total)}</td>
-              </tr>`).join('');
+                <td>${money(l.vat)}</td>
+                <td>${money(lineGross)}</td>
+              </tr>`;
+            }).join('');
             detailHost.innerHTML = `
               <div class="erp-card erp-card--subtle salesinq__detail">
                 <div class="erp-card__head">
@@ -379,6 +473,8 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
                   </button>
                 </div>
                 <div class="erp-card__body salesinq__stack">
+                  ${itemScope}
+                  <h5 class="salesinq__group-title">الفاتورة كاملة</h5>
                   <div class="erp-emp-stats">
                     <div class="erp-emp-stat"><span class="erp-emp-stat__l">الوردية</span><span class="erp-emp-stat__v">${esc(o.shift_no || '—')}</span></div>
                     <div class="erp-emp-stat"><span class="erp-emp-stat__l">المنطقة / الطاولة</span><span class="erp-emp-stat__v">${esc(o.zone_name || o.table_name || '—')}</span></div>
@@ -395,8 +491,8 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
                   ${recon}
                   <div class="erp-tbl-wrap salesinq__scroll">
                     <table class="erp-tbl">
-                      <thead><tr><th>#</th><th>الصنف</th><th>الكمية</th><th>السعر</th><th>قبل الضريبة</th></tr></thead>
-                      <tbody>${rowsHtml || '<tr><td colspan="5" class="erp-text-muted erp-text-center">لا سطور مفصلة لهذه الفاتورة</td></tr>'}</tbody>
+                      <thead><tr><th>#</th><th>الصنف</th><th>الكمية</th><th>السعر</th><th>قبل الضريبة</th><th>الضريبة</th><th>شامل الضريبة</th></tr></thead>
+                      <tbody>${rowsHtml || '<tr><td colspan="7" class="erp-text-muted erp-text-center">لا سطور مفصلة لهذه الفاتورة</td></tr>'}</tbody>
                     </table>
                   </div>
                 </div>
@@ -430,7 +526,10 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
         try {
             const html = await fetchItemSalesSheetHtml({
                 from: state.from, to: state.to,
-                cashier: state.cashier, item: state.item,
+                cashier: state.cashier,
+                item: state.selected || state.item,
+                code: state.selectedCode,
+                exact: state.selected ? 1 : 0,
             });
             if (!alive) { return; }
             const w = openInAppReport('طباعة استعلام المبيعات');
@@ -446,6 +545,89 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
 
     /* ── اقتراحات الصنف (من المبيعات نفسها) ─────────────────────────── */
     let suggestTimer = 0;
+
+    /** مفتاح مطابقة عربي متسامح — «البيبسي» = «بيبسي»، «شاورما» ≠ «شاورم». */
+    function arKey(s) {
+        return String(s || '').toLowerCase()
+            .replace(/[\u064B-\u065F\u0640]/g, '')
+            .replace(/[أإآٱ]/g, 'ا').replace(/ة/g, 'ه')
+            .replace(/[ىئی]/g, 'ي').replace(/ؤ/g, 'و')
+            .replace(/[ذز]/g, 'ز').replace(/[ضص]/g, 'ص')
+            .replace(/[ظط]/g, 'ط').replace(/[شس]/g, 'س')
+            .replace(/[ثت]/g, 'ت').replace(/[خج]/g, 'ح')
+            .replace(/[قف]/g, 'ف').replace(/[غع]/g, 'ع')
+            .replace(/\s+/g, ' ').trim();
+    }
+
+    /**
+     * ترتيب المرشّحين بدقّة: التطابق التام أولًا، ثم البادئة، ثم الاحتواء.
+     * بلا هذا الترتيب كانت «شاورما» تتقدّم على «شاورما عربي» فتُفتح لوحةُ
+     * منتجٍ خطأ — وهذا عين ما اشتكى منه المالك (2026-11-02).
+     */
+    function rankCandidates(rows, term) {
+        const t = arKey(term);
+        const scored = (Array.isArray(rows) ? rows : []).map((r) => {
+            const name = arKey(r && r.item_name);
+            const code = arKey(r && r.item_code);
+            let rank = 3;
+            if (t && (name === t || code === t)) { rank = 0; }
+            else if (t && (name.startsWith(t) || code.startsWith(t))) { rank = 1; }
+            else if (t && (name.includes(t) || code.includes(t))) { rank = 2; }
+            return { r, rank };
+        });
+        scored.sort((a, b) => a.rank - b.rank
+            || Number(b.r && b.r.invoices || 0) - Number(a.r && a.r.invoices || 0));
+        return scored.map((s) => s.r);
+    }
+
+    /** رسم قائمة الاقتراحات — بابٌ واحد تمرّ عبره من البحث الآلي ومن Enter. */
+    function renderSuggest(rows) {
+        const box = q('[data-v2-suggest]');
+        box.innerHTML = rows.length
+            ? rows.map((r) => `<button type="button" class="salesinq__suggest-row" role="option"
+                data-v2-pick="${esc(r.item_name || '')}" data-v2-suggest-code="${esc(r.item_code || '')}">
+                <span class="salesinq__suggest-name">${esc(r.item_name || '—')}${r.item_code ? ` <span class="erp-mini__sub erp-mono" dir="ltr">${esc(r.item_code)}</span>` : ''}</span>
+                <span class="salesinq__suggest-meta"><span class="erp-num" dir="ltr">${formatQty(r.qty)}</span> وحدة ·
+                <span class="erp-num" dir="ltr">${formatInt(r.invoices)}</span> فاتورة</span>
+              </button>`).join('')
+            : '<div class="salesinq__suggest-empty">لا أصناف مطابقة في هذا المدى</div>';
+        box.hidden = false;
+    }
+
+    /* Enter لا يفتح لوحةً تجمع أصنافًا متعددة: كلمةٌ واحدة مثل «شاورما»
+       تطابق ٧ أصناف (عربی/دبل/ديناميت/مع الأرز/قطع...)، فتُجمع أرقامها
+       في مؤشراتٍ واحدة وهي النتيجة المضلِّلة في البلاغ (2026-11-02):
+       «لما ابحث عن مبيعات منتج يظهر المنتج فقط». */
+    async function openFromSearch() {
+        const term = String(state.item || '').trim();
+        if (!term) { await loadItems(); return; }
+        try {
+            const data = await fetchItemSales({
+                from: state.from, to: state.to, group: 'item',
+                cashier: state.cashier, item: term,
+            });
+            if (!alive) { return; }
+            const t = arKey(term);
+            const ranked = rankCandidates(data.rows, term);
+            /* الدقة أولًا: التطابق التام للاسم أو الكود يُقدَّم على التطابق
+               الجزئي — «صحن شاورما عربي» لا يفتح لوحةً تضم «…دبل». */
+            const exact = ranked.filter((r) => t && (arKey(r.item_code) === t || arKey(r.item_name) === t));
+            const pick = exact.length ? exact : ranked;
+            if (pick.length === 1) {
+                openItem(pick[0].item_name || term, pick[0].item_code || '');
+                return;
+            }
+            if (pick.length > 1) {
+                renderSuggest(pick.slice(0, 8));
+                notify(`${formatInt(pick.length)} أصناف مطابقة لـ «${term}» — اختر صنفًا واحدًا من القائمة حتى تخرج الأرقام لمنتجٍ واحد`);
+                return;
+            }
+        } catch (_) { /* فشل الجلب ⇒ نعود لسلوك آمن: قائمة الأصناف */ }
+        q('[data-v2-suggest]').hidden = true;
+        notify(`لا يوجد صنف مطابق لـ «${term}» في هذا المدى`);
+        await loadItems();
+    }
+
     function suggest(term) {
         clearTimeout(suggestTimer);
         const box = q('[data-v2-suggest]');
@@ -457,16 +639,7 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
                     cashier: state.cashier, item: String(term).trim(),
                 });
                 if (!alive || q('#v2sq-item').value.trim() !== String(term).trim()) { return; }
-                const rows = (Array.isArray(data.rows) ? data.rows : []).slice(0, 8);
-                box.innerHTML = rows.length
-                    ? rows.map((r) => `<button type="button" class="salesinq__suggest-row" role="option"
-                        data-v2-pick="${esc(r.item_name || '')}" data-v2-suggest-code="${esc(r.item_code || '')}">
-                        <span class="salesinq__suggest-name">${esc(r.item_name || '—')}</span>
-                        <span class="salesinq__suggest-meta"><span class="erp-num" dir="ltr">${formatQty(r.qty)}</span> وحدة ·
-                        <span class="erp-num" dir="ltr">${formatInt(r.invoices)}</span> فاتورة</span>
-                      </button>`).join('')
-                    : '<div class="salesinq__suggest-empty">لا أصناف مطابقة في هذا المدى</div>';
-                box.hidden = false;
+                renderSuggest(rankCandidates(data.rows, term).slice(0, 8));
             } catch (_) {
                 box.hidden = true;
             }
@@ -505,8 +678,12 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
 
     /** تحديث متسلسل: الأصناف أولًا ثم فواتير الصنف المفتوح — لا سباق seq. */
     async function refresh() {
-        await loadItems();
-        if (state.selected) { await loadInvoices(); }
+        /* القراءتان مستقلّتان: فواتير الصنف تُطلب بمعرّفٍ اختاره الموظف
+           بالفعل، لا بما يجيبه جدولُ الأصناف. بالتتابع كان الهاتف ينتظر
+           رحلةً كاملة ثم يبدأ الأخرى — وكل رحلةٍ على النفق ثانيةٌ صاعدة. */
+        const jobs = [loadItems()];
+        if (state.selected) {jobs.push(loadInvoices());}
+        await Promise.all(jobs);
     }
 
     el.addEventListener('click', (event) => {
@@ -518,10 +695,11 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
         if (event.target.closest('[data-v2-print-sheet]')) { readFilters(); printSheet(); return; }
 
         if (event.target.closest('[data-v2-clear]')) {
-            q('#v2sq-item').value = ''; q('[data-v2-suggest]').hidden = true;
-            state.item = ''; state.selected = ''; state.selectedCode = ''; state.selectedKey = '';
+            q('#v2sq-item').value = '';
+            q('[data-v2-suggest]').hidden = true;
+            state.item = ''; state.selected = ''; state.selectedCode = '';
             q('[data-v2-panel]').hidden = true;
-            q('[data-v2-detail]').innerHTML = '';
+            q('[data-v2-detail-host]').innerHTML = '';
             loadItems();
             return;
         }
@@ -539,15 +717,16 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
         if (printBtn) { printReceipt(printBtn.dataset.v2Print); return; }
 
         if (event.target.closest('[data-v2-detail-close]')) {
-            q('[data-v2-detail]').innerHTML = '';
+            q('[data-v2-detail-host]').innerHTML = '';
             state.detailDoc = '';
             return;
         }
 
         if (event.target.closest('[data-v2-panel-close]')) {
             q('[data-v2-panel]').hidden = true;
-            q('[data-v2-detail]').innerHTML = '';
-            state.selected = ''; state.selectedKey = ''; state.detailDoc = '';
+            q('[data-v2-detail-host]').innerHTML = '';
+            state.selected = ''; state.selectedCode = ''; state.detailDoc = '';
+            paintItemsScope();
             scopeLine();
             return;
         }
@@ -564,7 +743,7 @@ export function mountSalesInquiryScreen(host, ctx = {}) {
             event.preventDefault();
             readFilters();
             q('[data-v2-suggest]').hidden = true;
-            if (state.item) { openItem(state.item); } else { loadItems(); }
+            openFromSearch();
         }
         if (event.key === 'Escape') { q('[data-v2-suggest]').hidden = true; }
     });

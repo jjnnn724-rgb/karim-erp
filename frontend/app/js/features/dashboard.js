@@ -20,8 +20,10 @@ function renderDashboardAnalytics(){
  const deptOptions=STATE.departments.map(d=>`<option value="${esc(d.code)}" ${dashboardChartDept===d.code?'selected':''}>${esc(d.name)}</option>`).join('');
  return `<section class="dashboard-analytics" style="margin-top:30px"><div class="section-header"><div><div class="section-title"><i class=ji data-i=chart></i> التحليلات التفاعلية</div><div class="text-muted" style="font-size:12px;margin-top:4px">بيانات مباشرة من النظام — اضغط على عناصر الرسم للتفاصيل</div></div><div style="display:flex;gap:8px;flex-wrap:wrap"><select id="dashboardChartDays" class="form-control" data-karim-action="kdRenderPage" data-karim-event="change" data-karim-pass="value"><option value="7" ${dashboardChartDays==='7'?'selected':''}>آخر 7 أيام</option><option value="30" ${String(dashboardChartDays)==='30'?'selected':''}>آخر 30 يومًا</option><option value="90" ${String(dashboardChartDays)==='90'?'selected':''}>آخر 90 يومًا</option><option value="all" ${dashboardChartDays==='all'?'selected':''}>كل الفترة</option></select><select id="dashboardChartDept" class="form-control" data-karim-action="kdRenderPage7" data-karim-event="change" data-karim-pass="value"><option value="all">كل الأقسام</option>${deptOptions}</select></div></div><div class="dashboard-chart-grid"><div class="mcard chart-panel"><div class="chart-panel-title">الإيرادات والمصروفات حسب القسم</div><div class="chart-canvas-wrap"><canvas id="dashboardDeptChart"></canvas></div></div><div class="mcard chart-panel"><div class="chart-panel-title">اتجاه الإيرادات والنتيجة</div><div class="chart-canvas-wrap"><canvas id="dashboardTrendChart"></canvas></div></div><div class="mcard chart-panel"><div class="chart-panel-title">توزيع المصروفات التشغيلية</div><div class="chart-canvas-wrap chart-doughnut"><canvas id="dashboardExpenseChart"></canvas></div></div></div></section>`;
 }
-function initDashboardCharts(){
- if(STATE.page!=='dashboard'||typeof Chart==='undefined') {return;}
+async function initDashboardCharts(){
+ if(STATE.page!=='dashboard') {return;}
+ // Chart صار يُحمَّل عند الحاجة (vendor-lazy) — ننتظره بدل رسم لوحة بلا رسوم.
+ if(typeof Chart==='undefined'){ try { await window.ensureChart(); } catch (_) { return; } }
  // لوحات بلا رسوم بيانية (لوحة رئيس القسم مثلًا) — لا تنشئ رسمًا على كانفس غير موجود
  if(!document.getElementById('dashboardDeptChart')) {return;}
  // ROOT FIX (2026-09-30): تهيئة مكررة (تنقل سريع) كانت تسقط بـ
@@ -326,23 +328,18 @@ function renderEmployeeDashboard(){
 const emp = STATE.employees.find(e=>e.userId===STATE.currentUser.id);
 if(!emp) {return '<div class="mcard"><i class=ji data-i=circle-x></i> لم يتم ربط حسابك بملف موظف. تواصل مع HR.</div>';}
 const todayRecord = STATE.attendance.find(a=>a.employeeId===emp.id && a.date===today());
+// زرٌ واحد بلا اختيار (2026-11-02): المحرك يقرر بالتسلسل — أول بصمة حضور، الثانية انصراف.
+const ps = punchBtnState(todayRecord);
 return `
 <div id="smartCardContainer"></div>
 <div class="hero-panel">
-<h3 style="color:var(--gold);margin-bottom:20px"><i class=ji data-i=timer></i> تسجيل الحضور والانصراف</h3>
+<h3 style="color:var(--gold);margin-bottom:20px"><i class=ji data-i=timer></i> البصمة الذاتية</h3>
 <div style="display:flex;gap:20px;justify-content:center;flex-wrap:wrap">
-<button class="attendance-btn check-in" data-karim-action="kdCheckIn" ${todayRecord?.checkIn?'disabled':''}>
-<span class="u-f28"><i class=ji data-i=inbox></i></span>
+<button class="attendance-btn ${ps.done?'check-out':'check-in'}" data-karim-action="kdPunch" ${ps.done?'disabled':''}>
+<span class="u-f28"><i class=ji data-i=clock></i></span>
 <div>
-<div class="u-t16-bold">تسجيل حضور</div>
-<div class="u-faint-80">${todayRecord?.checkIn?`تم: ${todayRecord.checkIn}`:'اضغط للتسجيل'}</div>
-</div>
-</button>
-<button class="attendance-btn check-out" data-karim-action="kdCheckOut" ${!todayRecord?.checkIn||todayRecord?.checkOut?'disabled':''}>
-<span class="u-f28"><i class=ji data-i=upload></i></span>
-<div>
-<div class="u-t16-bold">تسجيل انصراف</div>
-<div class="u-faint-80">${todayRecord?.checkOut?`تم: ${todayRecord.checkOut}`:'اضغط للتسجيل'}</div>
+<div class="u-t16-bold">${ps.label}</div>
+<div class="u-faint-80">${ps.hint}</div>
 </div>
 </button>
 </div>
@@ -392,14 +389,10 @@ function kdRenderPage7(p0) {
     renderPage();
 }
 
-function kdCheckIn() {
-    checkIn();
-}
-
-function kdCheckOut() {
-    checkOut();
+function kdPunch() {
+    checkPunch();
 }
 
 
 
-export {dashboardChartDays, dashboardChartDept, dashboardDateKey, dashboardFilteredRows, renderDashboardAnalytics, initDashboardCharts, loadZkDashboardStatus, renderDashboard, renderEmployeeDashboard, renderExpiryAlertBanner, kdRenderPage, kdRenderPage7, kdCheckIn, kdCheckOut };;
+export {dashboardChartDays, dashboardChartDept, dashboardDateKey, dashboardFilteredRows, renderDashboardAnalytics, initDashboardCharts, loadZkDashboardStatus, renderDashboard, renderEmployeeDashboard, renderExpiryAlertBanner, kdRenderPage, kdRenderPage7, kdPunch };;

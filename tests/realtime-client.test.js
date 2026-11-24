@@ -127,3 +127,39 @@ describe('TASK 6 client — durable channel', () => {
         expect(socketStub.auth).toEqual({ token: 'jwt-rotated' });
     });
 });
+
+describe('إلغاء إشعارات «جهاز دخل/جهاز خرج» (قرار المالك 2026-10-31)', () => {
+    const ROOT = path.join(__dirname, '..');
+    const SERVER = path.join(ROOT, 'backend', 'server.js');
+    const LEGACY_RT = path.join(ROOT, 'frontend', 'app', 'js', 'realtime.js');
+    const read = (p) => fs.readFileSync(p, 'utf8');
+    /* ملاحظة: لا strip هنا — التعليقات التوضيحية المضافة لا تحوي أي نمط
+       مُفحوص، وstrip الساذج يبتلع كودًا حقيقيًا في server.js (يوجد «/*»
+       داخل سترينج فيفوق عدد الغواقِ الفواتح). */
+
+    test('السيرفر لا يبثّ device_connected ولا device_disconnected بعد اليوم', () => {
+        const src = read(SERVER);
+        expect(src).not.toMatch(/emitScoped\(\s*'device_connected'/);
+        expect(src).not.toMatch(/emitScoped\(\s*'device_disconnected'/);
+        // قائمة الأجهزة الحيّة ما زالت تصل عند الاتصال — البديل المشروع
+        expect(src).toMatch(/socket\.emit\('clients_list'/);
+    });
+
+    test('الشاشة القديمة لا تستمع لهذين الحدثين ولا تصوّت انضمام/مغادرة', () => {
+        const src = read(LEGACY_RT);
+        expect(src).not.toMatch(/socket\.on\(\s*'device_connected'/);
+        expect(src).not.toMatch(/socket\.on\(\s*'device_disconnected'/);
+        expect(src).not.toMatch(/`انضم: /);
+        expect(src).not.toMatch(/`غادر: /);
+    });
+
+    test('المناداة الصوتية بالاسم حاضرة في الشاشة القديمة (بكتم لكل جهاز)', () => {
+        const src = read(LEGACY_RT);
+        expect(src).toMatch(/function speakNameCall/);
+        expect(src).toMatch(/karim_legacy_voice/);
+        // صوت عربي فقط — غيابه يعني صمتًا لا بلكنة لاتينية
+        expect(src).toMatch(/\^ar\\b\/i/);
+        // النغمة أولًا ثم المناداة مؤجلة 400ms
+        expect(src).toMatch(/setTimeout\(\(\) => \{speakNameCall\(data\);\}, 400\)/);
+    });
+});

@@ -58,7 +58,7 @@ describe('منفذ مشغول (EADDRINUSE) — إعادة محاولة لا سق
         expect(SERVER).toContain("err.code === 'EADDRINUSE'");
         expect(SERVER).toContain('MAX_LISTEN_ATTEMPTS');
         expect(SERVER).toContain('listen_retry');
-        expect(SERVER).toMatch(/setTimeout\(\(\) => httpServer\.listen\(PORT, '0\.0\.0\.0'\), waitMs\)/);
+        expect(SERVER).toMatch(/setTimeout\(\(\) => httpServer\.listen\((?:\/\*\*[^)]*?\*\/\s*)?\(?PORT\)?, '0\.0\.0\.0'\), waitMs\)/);
     });
 
     test('الإقلاع الكامل انتقل إلى مستمع listening واحد (لا يُشغَّل مرتين)', () => {

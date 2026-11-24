@@ -333,7 +333,8 @@ if(namesInput) {namesInput.value = '';}
 // الكاشير بالكامل (المتصفح يجمّد) — والقراءة تتم في المتصفح.
 const BULK_IMPORT_MAX_BYTES = 20 * 1024 * 1024;   // 20MB
 const BULK_IMPORT_MAX_ROWS = 20000;
-function bulkReadFile(file){
+async function bulkReadFile(file){
+try { if (!window.XLSX) { await window.ensureXLSX(); } } catch (_) { toast('تعذر تحميل مُصدِّر Excel — تحقق من الاتصال ثم أعد المحاولة','error'); return; }
 if(!file) {return;}
 if(typeof file.size === 'number' && file.size > BULK_IMPORT_MAX_BYTES){
 toast(`حجم الملف يتجاوز الحد (${Math.round(BULK_IMPORT_MAX_BYTES/1024/1024)}MB) — اختر ملفًا أصغر`,'error');
@@ -453,7 +454,8 @@ ${BULK_IMPORT_ROWS.map((u,i) => `
 `,'modal-wide');
 }, 300);
 }
-function bulkExportExcel(){
+async function bulkExportExcel(){
+try { if (!window.XLSX) { await window.ensureXLSX(); } } catch (_) { toast('تعذر تحميل مُصدِّر Excel — تحقق من الاتصال ثم أعد المحاولة','error'); return; }
 const data = [['#','الاسم','اسم المستخدم','كلمة المرور','رقم البصمة','الدور']];
 BULK_IMPORT_ROWS.forEach((u,i) => data.push([i+1, u.name, u.username, u.password, u.fp || '', ROLES[u.role]?.name || u.role]));
 const ws = XLSX.utils.aoa_to_sheet(data);
@@ -518,11 +520,11 @@ printWin.document.write(`<!DOCTYPE html><html dir="rtl"><head><meta charset="UTF
 <link href="https://fonts.googleapis.com/css2?family=Cairo:wght@400;700;900&display=swap" rel="stylesheet">
 <style>
 body{font-family:'Cairo',sans-serif;padding:20px;direction:rtl}
-h1{text-align:center;color:#d4a843;margin-bottom:10px}
+h1{text-align:center;color:#14735b;margin-bottom:10px}
 .meta{text-align:center;color:#666;margin-bottom:20px;font-size:12px}
 table{width:100%;border-collapse:collapse;margin-top:20px}
 th,td{border:1px solid #000;padding:8px;text-align:center}
-th{background:#d4a843;color:#000;font-weight:900}
+th{background:#14735b;color:#000;font-weight:900}
 .pass{font-family:monospace;font-size:16px;font-weight:900;letter-spacing:3px;color:#2ecc71}
 .controls{text-align:center;margin-bottom:20px}
 .controls button{padding:10px 25px;margin:0 10px;border:none;border-radius:6px;font-size:14px;font-weight:700;cursor:pointer;font-family:'Cairo',sans-serif}
@@ -534,7 +536,7 @@ th{background:#d4a843;color:#000;font-weight:900}
 <button class="btn-print" data-karim-action="print"><i class=ji data-i=printer></i> طباعة</button>
 <button class="btn-close" data-karim-action="closeWindow"><i class=ji data-i=circle-x></i> إغلاق</button>
 </div>
-<div style="text-align:center;margin-bottom:12px"><img src="${esc(getAbsoluteLogoSrc())}" style="width:64px;height:64px;object-fit:contain;background:#fff;border:2px solid #d4a843;border-radius:12px;padding:5px" alt="مطاعم الشرفه العالمي"></div>
+<div style="text-align:center;margin-bottom:12px"><img src="${esc(getAbsoluteLogoSrc())}" style="width:64px;height:64px;object-fit:contain;background:#fff;border:2px solid #14735b;border-radius:12px;padding:5px" alt="مطاعم الشرفه العالمي"></div>
 <h1><i class=ji data-i=lock></i> بيانات دخول المستخدمين</h1>
 <div class="meta">${STATE.settings.name} | تم الإنشاء: ${fDT(new Date().toISOString())}</div>
 <table>

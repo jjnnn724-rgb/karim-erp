@@ -134,19 +134,8 @@ function normalizeAr(s){
     .replace(/[أإآٱ]/g, 'ا').replace(/ؤ/g, 'و').replace(/ئ/g, 'ي')
     .replace(/ة/g, 'ه').replace(/ى/g, 'ي');
 }
-// إلغاء جماعي للاستكمال التلقائي (مدير فقط) — يعيد كل الصفوف المفتوحة
-async function revertAllInferred(){
-  if(STATE.currentUser?.role!=='admin'){ toast('غير مصرح — المدير فقط', 'error'); return; }
-  if(!confirm('إلغاء كل الاستكمال التلقائي؟ ستُمسح القيم المستنتَجة ويُعاد فتح الصفوف. القيم الحقيقية لن تُمس.')) {return;}
-  showLoad();
-  try{
-    const r = await apiFetch('/hr/attendance/revert-inferred', { method: 'POST', body: JSON.stringify({}) });
-    await window.loadData().catch(() => {});
-    renderPage();
-    toast(`تم: مسح خروج ${r.clearedCheckouts} — مسح دخول ${r.clearedCheckins} — حذف فارغ ${r.deletedEmpty}`, 'warning');
-  }catch(e){ toast(e.message || 'تعذر الإلغاء الجماعي', 'error'); }
-  finally{ hideLoad(); }
-}
+// إلغاء الاستكمال التلقائي — لصف واحد (مسار PUT عام مع تدقيق).
+// (أُزيل «إلغاء الاستكمال للكل» — كان يعتمد على مسار حُذف.)
 // إلغاء الاستكمال التلقائي: يعيد القيمة المستنتَجة فارغة ويفتح الصف للبصمات
 async function revertInference(id){  if(STATE.currentUser?.role!=='admin'){ toast('غير مصرح — المدير فقط', 'error'); return; }
   const rec = STATE.attendance.find(a => String(a.id) === String(id));
@@ -449,7 +438,8 @@ showModal(`
 const container = document.getElementById('modalSmartCardView');
 if(container){ container.innerHTML = await renderSmartCard(emp, { canUpload }); }
 }
-function exportEmployeesExcel(){
+async function exportEmployeesExcel(){
+try { if (!window.XLSX) { await window.ensureXLSX(); } } catch (_) { toast('تعذر تحميل مُصدِّر Excel — تحقق من الاتصال ثم أعد المحاولة','error'); return; }
 const data=[['الرقم الوظيفي','الاسم','القسم','المنصب','الهاتف','البريد','تاريخ الالتحاق','الراتب','الحالة','البصمة الرقمية','رقم البطاقة']];
 STATE.employees.forEach(emp=>{
 const dept=STATE.hrDepartments.find(d=>d.code===emp.department);
@@ -472,7 +462,8 @@ let m=s.match(/^(\d{4})[-\/.](\d{1,2})[-\/.](\d{1,2})/); if(m) {return `${m[1]}-
 m=s.match(/^(\d{1,2})[-\/.](\d{1,2})[-\/.](\d{4})/); if(m) {return `${m[3]}-${m[2].padStart(2,'0')}-${m[1].padStart(2,'0')}`;}
 return s ? 'INVALID' : '';
 }
-function downloadEmpSheetTemplate(){
+async function downloadEmpSheetTemplate(){
+try { if (!window.XLSX) { await window.ensureXLSX(); } } catch (_) { toast('تعذر تحميل مُصدِّر Excel — تحقق من الاتصال ثم أعد المحاولة','error'); return; }
 const wb=XLSX.utils.book_new();
 const ws=XLSX.utils.aoa_to_sheet([EMP_SHEET_COLS,
 ['EMP-201','أحمد محمد','الإنتاج','عامل','0500000001','a@x.com','2024-01-15',4500,'نشط','2027-01-01','2027-06-01','2027-06-01'],
@@ -494,7 +485,8 @@ showModal(`
 <div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" data-karim-action="importEmpSheet"><i class=ji data-i=inbox></i> استيراد المعتمد</button></div>`);
 document.getElementById('empSheetFile').addEventListener('change',previewEmpSheetFile);
 }
-function previewEmpSheetFile(){
+async function previewEmpSheetFile(){
+try { if (!window.XLSX) { await window.ensureXLSX(); } } catch (_) { toast('تعذر تحميل مُصدِّر Excel — تحقق من الاتصال ثم أعد المحاولة','error'); return; }
 const file=document.getElementById('empSheetFile')?.files[0];
 const prev=document.getElementById('empSheetPreview');
 if(!file||!prev) {return;}
@@ -555,4 +547,4 @@ if(errs.length) {console.warn('EmpSheet errors:', errs);}
 }catch(e){ toast(e.message||'فشل الاستيراد','error'); }finally{ hideLoad(); }
 }
 
-export { renderEmployeesPage, empShiftChip, shiftEndText, renderEmployeesCards, searchEmployeeById, normalizeAr, revertAllInferred, revertInference, filterEmployees, showAddEmployeeModal, addEmployee, editEmployee, updateEmployee, deleteEmployee, viewEmployeeDetails, showSmartCardModal, exportEmployeesExcel, EMP_SHEET_COLS, empNormAr, empSheetNormDate, downloadEmpSheetTemplate, showEmpSheetImportModal, previewEmpSheetFile, importEmpSheet };
+export { renderEmployeesPage, empShiftChip, shiftEndText, renderEmployeesCards, searchEmployeeById, normalizeAr, revertInference, filterEmployees, showAddEmployeeModal, addEmployee, editEmployee, updateEmployee, deleteEmployee, viewEmployeeDetails, showSmartCardModal, exportEmployeesExcel, EMP_SHEET_COLS, empNormAr, empSheetNormDate, downloadEmpSheetTemplate, showEmpSheetImportModal, previewEmpSheetFile, importEmpSheet };

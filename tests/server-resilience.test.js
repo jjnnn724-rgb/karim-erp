@@ -11,7 +11,7 @@ describe('server crash recovery policy', () => {
     test('fatal process errors default to a controlled exit and service restart', () => {
         expect(SHIELDS).toContain("exitOnFatal = String(process.env.SHIELD_EXIT_ON_FATAL || 'true').toLowerCase() !== 'false'");
         expect(SHIELDS).toMatch(/if \(exitOnFatal\) \{triggerFatalShutdown\(1, (?:err|appErr), onFatal, shutdownTimeoutMs\);\}/);
-        expect(SERVER).toMatch(/installProcessShields\(\{\s*exitOnFatal: true,/);
+        expect(SERVER).toMatch(/installProcessShields\((?:\/\*\*[\s\S]*?\*\/\s*)?\(\{\s*exitOnFatal: true,/);
     });
 
     test('graceful signal handling does not suppress uncaught process failures', () => {

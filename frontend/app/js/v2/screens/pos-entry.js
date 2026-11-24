@@ -3,23 +3,23 @@
  * Embedded checkout follows the host feature flag. The standalone POS stays
  * available as the fallback at all times.
  */
-import { dayCloseStatus, execDayClose, fetchOpenShifts } from '../data/cfo-repo.js?v=4.9.180';
-import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.180';
+import { dayCloseStatus, execDayClose, fetchOpenShifts } from '../data/cfo-repo.js?v=4.9.323';
+import { formatInt, formatMoney, fetchCurrency } from '../data/reports-repo.js?v=4.9.323';
 import {
     closePosShift, completePosSale, deletePosHeldOrder, exportPosOrders, fetchActivePosShift, fetchPosDepartments,
     fetchPosHeldOrders, fetchPosKotPage, fetchPosOrderDetails, fetchPosOrders, fetchPosProducts, fetchPosShiftSummary,
     holdPosOrder, openPosShift, recallPosHeldOrder, reprintPosOrder, voidPosOrder,
-} from '../data/pos-v2-repo.js?v=4.9.180';
+} from '../data/pos-v2-repo.js?v=4.9.323';
 import {
     addBuffetTier, buffetTierProducts, disableBuffetTier, fetchBuffetConfig, fetchBuffetInvoices, fetchBuffetLive,
     fetchBuffetReport, isBuffetDepartment, renameBuffetTier, saveBuffetPrices, setBuffetTierActive, BUFFET_ADMIN_ROLES,
-} from '../data/pos-buffet-repo.js?v=4.9.180';
-import { matchPosBarcode } from '../data/pos-barcode.js?v=4.9.180';
-import { buildPosSaleItems, calculatePosTotals } from '../data/pos-pricing.js?v=4.9.180';
-import { uploadProductImage } from '../data/recipes-edit-repo.js?v=4.9.180';
-import { ensureRealtimeSocket } from '../realtime.js?v=4.9.180';
-import { openInAppReport } from '../report-viewer.js?v=4.9.180';
-import { ensureQrCode } from '../vendor.js?v=4.9.180';
+} from '../data/pos-buffet-repo.js?v=4.9.323';
+import { matchPosBarcode } from '../data/pos-barcode.js?v=4.9.323';
+import { buildPosSaleItems, calculatePosTotals } from '../data/pos-pricing.js?v=4.9.323';
+import { uploadProductImage } from '../data/recipes-edit-repo.js?v=4.9.323';
+import { ensureRealtimeSocket } from '../realtime.js?v=4.9.323';
+import { openInAppReport } from '../report-viewer.js?v=4.9.323';
+import { ensureQrCode } from '../vendor.js?v=4.9.323';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -38,9 +38,16 @@ const PAYMENT_FIELDS = [
     { key: 'bank_transfer', label: 'تحويل بنكي' },
 ];
 
-function safeProductImageUrl(value) {
+function safeProductImageUrl(value, productId) {
     const url = String(value || '').trim();
-    return url.startsWith('/uploads/menu/') || /^https:\/\//i.test(url) ? url : '';
+    if (url.startsWith('/uploads/menu/')) {
+        const id = String(productId == null ? '' : productId).trim();
+        if (!/^[0-9]+$/.test(id)) {return '';}
+        const name = url.slice('/uploads/menu/'.length).split(/[?#]/)[0] || '';
+        // اسم الرفع يخص هذا الصنف فقط — لا تعرض صورة صنف آخر أبدًا.
+        return new RegExp('(^|[^0-9])' + id + '([^0-9]|$)').test(name) ? url : '';
+    }
+    return /^https:\/\//i.test(url) ? url : '';
 }
 
 function template(allowed, embedded, historyAllowed, salesEnabled) {
@@ -666,7 +673,7 @@ export function mountPosEntryScreen(host, ctx = {}) {
             return `<tr><td>#${esc(invoice.invoice_counter ?? invoice.id)}</td><td dir="ltr">${esc(invoice.created_at || '—')}</td><td>${formatInt(invoice.covers?.covers_total || 0)}</td><td>${esc(covers)}</td><td>${amount(invoice.total_amount)}</td><td>${esc(orderStatusLabel(invoice.status))}</td><td>${esc(invoice.cashier_name || '—')}</td></tr>`;
         }).join('') || '<tr><td colspan="7">لا فواتير</td></tr>';
         return `<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>تقرير البوفيه — ${esc(report.date)}</title><style>
-          body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;padding:18px;color:#1a1a1a}
+          body{font-family:'IBM Plex Sans Arabic','Tajawal',Tahoma,Arial,sans-serif;padding:18px;color:#1a1a1a}
           h1{font-size:20px;margin:0 0 4px}h2{font-size:13px;color:#666;margin:0 0 14px;font-weight:normal}h4{margin:14px 0 6px;font-size:14px}
           .cards{display:flex;flex-wrap:wrap;gap:8px;margin-bottom:14px}
           .card{border:1px solid #ddd;border-radius:8px;padding:8px 12px;min-width:130px}
@@ -717,7 +724,7 @@ export function mountPosEntryScreen(host, ctx = {}) {
         }).join('') || '<tr><td colspan="10">لا فواتير مطابقة.</td></tr>';
         const range = [historyFilters.dateFrom, historyFilters.dateTo].filter(Boolean).join(' → ') || 'كل الفترات';
         return `<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>سجل فواتير الكاشير</title><style>
-          body{font-family:'Segoe UI',Tahoma,Arial,sans-serif;padding:18px;color:#1a1a1a}
+          body{font-family:'IBM Plex Sans Arabic','Tajawal',Tahoma,Arial,sans-serif;padding:18px;color:#1a1a1a}
           h1{font-size:20px;margin:0 0 4px}h2{font-size:13px;color:#666;margin:0 0 14px;font-weight:normal}
           table{width:100%;border-collapse:collapse;margin-top:10px}
           th,td{border:1px solid #e2e2e2;padding:5px 8px;font-size:11px;text-align:right}
@@ -834,7 +841,7 @@ export function mountPosEntryScreen(host, ctx = {}) {
     }
 
     function productCard(p) {
-        const image = safeProductImageUrl(p.image_url);
+        const image = safeProductImageUrl(p.image_url, p.id);
         const imageContent = image
             ? `<img src="${esc(image)}" alt="${esc(p.name_ar || p.name_en || 'صنف')}" loading="lazy" decoding="async">`
             : '<span class="erp-pos-v2-product-placeholder" aria-hidden="true"><i class="ji" data-i="image"></i></span>';

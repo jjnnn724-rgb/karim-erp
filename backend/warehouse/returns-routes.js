@@ -3,10 +3,10 @@
 // الترتيب نفسه ونهايات الأسطر نفسها (CRLF/LF كما وردت) — انظر scripts/_warehouse-split.js
 // للحدود المختارة: كل زوج علامات تقطعه اختبارات العقد يبقى داخل نطاق واحد.
 const { __scope } = require('../warehouse-routes');
-const { router, RETURN_ROLES, pool, jwtAuth, requireRole, logger, postInventoryLedgerEntry, emitDomainEvent, ensureDispatchCreatorSchema, notifyChainEvent, normalizeExpiryDate, readExpiryField, checkExpiryOnLines, latestExpiryFor, id, normItemName, n, round, dateOnly, cleanName, json, emit, fail, normalizeRequestedItems, getWarehouseLocation, getDispatchTargetLocation, ensureLocationBalance } = __scope;
+const { router, RETURN_ROLES, pool, jwtAuth, requireRole, requireRoleOrPerm, idempotency, logger, postInventoryLedgerEntry, emitDomainEvent, ensureDispatchCreatorSchema, notifyChainEvent, normalizeExpiryDate, readExpiryField, checkExpiryOnLines, latestExpiryFor, id, normItemName, n, round, dateOnly, cleanName, json, emit, fail, normalizeRequestedItems, getWarehouseLocation, getDispatchTargetLocation, ensureLocationBalance } = __scope;
 const { directReturn } = require('./dispatch-routes');
 
-router.post('/returns', jwtAuth, requireRole(...RETURN_ROLES), async (req, res) => {
+router.post('/returns', jwtAuth, requireRoleOrPerm(RETURN_ROLES, 'dispatch.return'), idempotency({ requireKey: true }), async (/** @type {any} */ req, /** @type {any} */ res) => {
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -31,16 +31,28 @@ router.post('/returns', jwtAuth, requireRole(...RETURN_ROLES), async (req, res) 
         // Once the kitchen has received (partially or fully), the returnable amount
         // for each item is capped by what was actually received
         const receivedRows = Array.isArray(dispatch.receivedItems) ? dispatch.receivedItems : [];
-        const receivedByName = new Map(receivedRows.map(raw => [cleanName(raw.itemName || raw.name).toLowerCase(), n(raw.receivedQty ?? raw.qty)]));
+        const receivedByName = new Map();
+        const receivedPackagingByName = new Map();
+        for (const raw of receivedRows) {
+            const name = cleanName(raw.itemName || raw.name).toLowerCase();
+            receivedByName.set(name, (receivedByName.get(name) || 0) + n(raw.receivedQty ?? raw.qty));
+            receivedPackagingByName.set(
+                name,
+                (receivedPackagingByName.get(name) || 0) + n(raw.receivedPackagingQty ?? raw.packagingQty),
+            );
+        }
+        const hasReceipt = Boolean(dispatch.kitchenReceivedAt) || receivedByName.size > 0;
 
         const approvedItems = normalizeRequestedItems(dispatch.approvedItems || dispatch.items);
         const alreadyReturned = new Map();
+        const alreadyReturnedPackaging = new Map();
         const oldReturns = await client.query(
-            'SELECT items FROM "kitchenReturns" WHERE "dispatchId" = $1 FOR UPDATE', [String(dispatch.id)]);
+            'SELECT items FROM "kitchenReturns" WHERE "dispatchId" = $1 AND "voidedAt" IS NULL FOR UPDATE', [String(dispatch.id)]);
         for (const oldReturn of oldReturns.rows) {
             for (const raw of (oldReturn.items || [])) {
                 const name = cleanName(raw.itemName || raw.name).toLowerCase();
                 alreadyReturned.set(name, (alreadyReturned.get(name) || 0) + n(raw.qty));
+                alreadyReturnedPackaging.set(name, (alreadyReturnedPackaging.get(name) || 0) + n(raw.packagingQty));
             }
         }
 
@@ -64,10 +76,8 @@ router.post('/returns', jwtAuth, requireRole(...RETURN_ROLES), async (req, res) 
             const approved = approvedByName.get(requestedItem.itemName.toLowerCase());
             const previouslyReturned = alreadyReturned.get(requestedItem.itemName.toLowerCase()) || 0;
             const approvedQty = n(approved?.qty);
-            const receivedQty = receivedByName.has(requestedItem.itemName.toLowerCase())
-                ? receivedByName.get(requestedItem.itemName.toLowerCase())
-                : approvedQty;
-            const returnableBase = receivedByName.size ? Math.min(approvedQty, receivedQty) : approvedQty;
+            const receivedQty = receivedByName.get(requestedItem.itemName.toLowerCase()) || 0;
+            const returnableBase = hasReceipt ? Math.min(approvedQty, receivedQty) : approvedQty;
             const remaining = round(returnableBase - previouslyReturned);
             if (!approved || requestedItem.qty > remaining) {
                 await client.query('ROLLBACK');
@@ -82,6 +92,28 @@ router.post('/returns', jwtAuth, requireRole(...RETURN_ROLES), async (req, res) 
                 await client.query('ROLLBACK');
                 return fail(res, 422, 'INVENTORY_ITEM_NOT_FOUND', `الصنف غير موجود في المخزن: ${requestedItem.itemName}`);
             }
+            const approvedPackaging = n(approved.packagingQty);
+            const requestedPackaging = requestedItem.packagingQty == null ? null : n(requestedItem.packagingQty);
+            if (approvedPackaging > 0 || inv.catch_weight_enabled) {
+                if (requestedPackaging === null || requestedPackaging <= 0) {
+                    await client.query('ROLLBACK');
+                    return fail(res, 422, 'RETURN_PACKAGING_REQUIRED', `أدخل عدد الكراتين المرتجعة للصنف ${requestedItem.itemName}`);
+                }
+                const receivedPackaging = receivedPackagingByName.get(requestedItem.itemName.toLowerCase()) || 0;
+                const returnablePackaging = hasReceipt
+                    ? Math.min(approvedPackaging, receivedPackaging)
+                    : approvedPackaging;
+                const returnedPackaging = alreadyReturnedPackaging.get(requestedItem.itemName.toLowerCase()) || 0;
+                const remainingPackaging = round(returnablePackaging - returnedPackaging);
+                if (requestedPackaging > remainingPackaging) {
+                    await client.query('ROLLBACK');
+                    return fail(res, 409, 'RETURN_PACKAGING_EXCEEDED', `عدد الكراتين المرتجعة أكبر من المتبقي للصنف ${requestedItem.itemName}`, {
+                        itemName: requestedItem.itemName,
+                        requestedPackaging,
+                        remainingPackaging,
+                    });
+                }
+            }
             const cost = n(approved.avgCost, n(inv.avgCost));
             const value = round(requestedItem.qty * cost, 2);
             // Post the return through the inventory ledger so it persists across
@@ -91,16 +123,19 @@ router.post('/returns', jwtAuth, requireRole(...RETURN_ROLES), async (req, res) 
             // فيجب خصمها من مخزن القسم أولاً وإلا بقيت محتسبة هناك ومُضافة للمخزن الرئيسي
             // معًا (ازدواج عالمي في المخزون). إذن لم يُستلم بعد، فالبضاعة لم تغادر المخزن
             // الرئيسي فعليًا — يكفي إرجاعها لرصيده مباشرة.
-            const retBoxes = requestedItem.packagingQty ? n(requestedItem.packagingQty) : null;
+            const retBoxes = requestedItem.packagingQty !== undefined && requestedItem.packagingQty !== null && requestedItem.packagingQty !== ''
+                ? n(requestedItem.packagingQty) : null;
             const retPackUom = requestedItem.packagingUom || inv.packaging_uom || null;
+            const returnUnit = inv.catch_weight_enabled ? (inv.catch_weight_uom || 'kg') : (inv.unit || requestedItem.unit || 'وحدة');
+            const hasDeptReceipt = hasReceipt && receivedQty > 0;
             // حركة داخلية: الصنف دخل النظام من قبل — يُحمل تاريخ دُفعته المسجل في
             // الدفتر. لا تاريخ يُخترع ولا إرجاع يُرفض: الرفض هنا كان يعطّل المرتجعات
             // بلا فائدة، والتاريخ الأصلي يبقى مقيَّدًا في كل قيد.
             const carriedExpiry = await latestExpiryFor(client, inv.id);
-            if (receivedByName.size) {
+            if (hasDeptReceipt) {
                 await postInventoryLedgerEntry(client, {
                     transactionType: 'transfer_out', inventoryId: Number(inv.id), locationId: deptLocation.id,
-                    quantityDelta: -requestedItem.qty, unit: inv.unit || requestedItem.unit || 'وحدة', unitCost: cost,
+                    quantityDelta: -requestedItem.qty, unit: returnUnit, unitCost: cost,
                     sourceLocationId: deptLocation.id, destinationLocationId: mainLocation.id,
                     referenceType: 'kitchen_return', referenceId: String(dispatch.id), userId: req.user.id,
                     idempotencyKey: `dispatch-return:${returnId}:${inv.id}:out`,
@@ -112,7 +147,7 @@ router.post('/returns', jwtAuth, requireRole(...RETURN_ROLES), async (req, res) 
             }
             await postInventoryLedgerEntry(client, {
                 transactionType: 'return', inventoryId: Number(inv.id), locationId: mainLocation.id,
-                quantityDelta: requestedItem.qty, unit: inv.unit || requestedItem.unit || 'وحدة', unitCost: cost,
+                quantityDelta: requestedItem.qty, unit: returnUnit, unitCost: cost,
                 sourceLocationId: deptLocation.id, destinationLocationId: mainLocation.id,
                 referenceType: 'kitchen_return', referenceId: String(dispatch.id), userId: req.user.id,
                 idempotencyKey: `dispatch-return:${returnId}:${inv.id}`,
@@ -122,10 +157,10 @@ router.post('/returns', jwtAuth, requireRole(...RETURN_ROLES), async (req, res) 
                 catchWeightQty: retBoxes, catchWeightUnit: retBoxes !== null ? retPackUom : null,
             });
             const globalAfter = (await client.query('SELECT qty FROM inventory WHERE id=$1', [inv.id])).rows[0]?.qty;
-            // المتوسط المرجح يشمل الكمية المرجعة بسعرها — وإلا انحرف متوسط التكلفة
+            // النقل الداخلي بعد الاستلام لا يغيّر الكمية أو وزن التكلفة.
             const retOldQty = n(inv.qty);
-            const retNewQty = round(retOldQty + requestedItem.qty);
-            if (retNewQty > 0) {
+            const retNewQty = round(retOldQty + (hasDeptReceipt ? 0 : requestedItem.qty));
+            if (!hasDeptReceipt && retNewQty > 0) {
                 const retNewAvg = round(((retOldQty * n(inv.avgCost)) + (requestedItem.qty * cost)) / retNewQty, 2);
                 await client.query('UPDATE inventory SET "avgCost"=$2 WHERE id=$1', [inv.id, retNewAvg]);
             }
@@ -142,14 +177,18 @@ router.post('/returns', jwtAuth, requireRole(...RETURN_ROLES), async (req, res) 
                 [id(), dispatch.deptCode, `عكس صرف - ${inv.name} (${requestedItem.qty} ${inv.unit || requestedItem.unit})`, -value,
                     dateOnly(new Date()), `إرجاع طلب صرف #${dispatch.id} — حركة مخزون ${tx.id}`]
             )).rows[0];
-            returnItems.push({ name: inv.name, itemName: inv.name, itemId: Number(inv.id), unit: inv.unit || requestedItem.unit || 'وحدة', qty: requestedItem.qty, avgCost: cost, totalValue: value,
-                txId: tx.id, expenseId: expense.id,
-                ...(requestedItem.actualWeight ? { actualWeight: requestedItem.actualWeight, packagingQty: requestedItem.packagingQty || null, packagingUom: requestedItem.packagingUom || inv.packaging_uom || null } : {}) });
+            returnItems.push({ name: inv.name, itemName: inv.name, itemId: Number(inv.id), unit: returnUnit, qty: requestedItem.qty, avgCost: cost, totalValue: value,
+                txId: tx.id, expenseId: expense.id, departmentStockAdjusted: hasDeptReceipt,
+                ...(retBoxes !== null ? { actualWeight: requestedItem.actualWeight ?? null, packagingQty: retBoxes, packagingUom: retPackUom } : {}) });
             stockChanges.push({ ...inv, qty: globalAfter });
             transactions.push(tx);
             expenses.push(expense);
             totalValue += value;
             alreadyReturned.set(requestedItem.itemName.toLowerCase(), previouslyReturned + requestedItem.qty);
+            if (retBoxes !== null) {
+                const name = requestedItem.itemName.toLowerCase();
+                alreadyReturnedPackaging.set(name, (alreadyReturnedPackaging.get(name) || 0) + retBoxes);
+            }
         }
 
         const returnRow = (await client.query(
@@ -164,16 +203,10 @@ router.post('/returns', jwtAuth, requireRole(...RETURN_ROLES), async (req, res) 
             deptCode: dispatch.deptCode,
             payload: { return_id: returnId, dispatch_id: dispatch.id, dept: dispatch.deptCode, total: round(totalValue, 2) },
         });
+        await require('../accounting-routes').postReturnToLedger(returnRow.id, {
+            totalValue, date: returnRow.date, deptCode: returnRow.deptCode, db: client,
+        });
         await client.query('COMMIT');
-
-        // عكس محاسبي متماثل best-effort: Dr مخزون / Cr COGS
-        try {
-            await require('../accounting-routes').postReturnToLedger(returnRow.id, {
-                totalValue, date: returnRow.date, deptCode: returnRow.deptCode,
-            });
-        } catch (ledgerErr) {
-            logger.error(`[return_ledger] FAILED return=${returnRow.id} dept=${returnRow.deptCode || '?'} value=${round(totalValue, 2)} :: ${(ledgerErr && (ledgerErr.message || ledgerErr.code)) || String(ledgerErr)}`);
-        }
 
         emit(req, 'kitchenReturns', 'create', returnRow);
         // Task 20: إشعار فوري — إرجاع أصناف للقسم: المخازن والشيف يعرفان بالعكس
@@ -190,6 +223,9 @@ router.post('/returns', jwtAuth, requireRole(...RETURN_ROLES), async (req, res) 
         if (error.code === 'INSUFFICIENT_STOCK') {
             return res.status(409).json({ error: 'INSUFFICIENT_STOCK', message: 'رصيد مخزن القسم لا يكفي لإرجاع هذه الكمية — قد تكون المواد مستهلكة بالفعل', available: error.available, requested: error.requested });
         }
+        if (error.statusCode) {
+            return res.status(error.statusCode).json({ error: error.statusCode === 423 ? 'ACCOUNTING_PERIOD_CLOSED' : 'RETURN_ACCOUNTING_INVALID', message: error.message });
+        }
         res.status(500).json({ error: 'KITCHEN_RETURN_FAILED', message: 'تعذر تنفيذ الإرجاع العكسي بشكل ذري' });
     } finally {
         client.release();
@@ -198,11 +234,10 @@ router.post('/returns', jwtAuth, requireRole(...RETURN_ROLES), async (req, res) 
 
 
 
-// ─── DELETE /api/warehouse/returns/:id — حذف سجل مرتجع مع عكس أثره المخزني ───
-// الحذف الصامت كان يُبقي المخزون متضخمًا (+qty بلا عكس). الآن: قيدان تعويضيان
-// (عكس كل حركة) + حذف حركات Tx والمصاريف المرتبطة + حذف السجل — كله ذريًا.
-// السجلات القديمة بلا ربط (txId) تُرفض بـ 409 لحمايتها من العكس الأعمى.
-router.delete('/returns/:id', jwtAuth, requireRole('admin', 'manager', 'warehouse'), async (req, res) => {
+// ─── POST /api/warehouse/returns/:id/void — إبطال المرتجع مع عكس أثره ───
+router.post('/returns/:id/void', jwtAuth, requireRoleOrPerm(['admin', 'manager', 'warehouse'], 'dispatch.void'), idempotency({ requireKey: true }), async (/** @type {any} */ req, /** @type {any} */ res) => {
+    const reason = String(req.body?.reason || '').trim();
+    if (!reason) {return fail(res, 422, 'RETURN_VOID_REASON_REQUIRED', 'أدخل سبب إبطال المرتجع');}
     const client = await pool.connect();
     try {
         await client.query('BEGIN');
@@ -212,17 +247,17 @@ router.delete('/returns/:id', jwtAuth, requireRole('admin', 'manager', 'warehous
             await client.query('ROLLBACK');
             return res.status(404).json({ error: 'NOT_FOUND', message: 'سجل المرتجع غير موجود' });
         }
-        const items = Array.isArray(existing.items) ? existing.items : [];
-        const mainLocation = await getWarehouseLocation(client, 'MAIN-WAREHOUSE', 'المخزن الرئيسي', 'warehouse');
-        let deptLocation = mainLocation;
-        if (existing.dispatchId) {
-            const dispatchRow = (await client.query('SELECT "deptCode" FROM dispatches WHERE id = $1', [existing.dispatchId])).rows[0];
-            if (!dispatchRow) {
-                await client.query('ROLLBACK');
-                return res.status(409).json({ error: 'RETURN_DEPT_UNKNOWN', message: 'إذن الصرف الأصلي محذوف — تعذر تحديد مخزن القسم للعكس، عالجه يدويًا بقيد تسوية' });
-            }
-            deptLocation = await getDispatchTargetLocation(client, dispatchRow.deptCode);
+        if (existing.status === 'voided' || existing.voidedAt) {
+            await client.query('ROLLBACK');
+            return res.status(409).json({ error: 'RETURN_ALREADY_VOIDED', message: 'تم إبطال المرتجع مسبقًا' });
         }
+        await require('../accounting-periods').assertPeriodOpenInTx(client, existing.date);
+        const items = Array.isArray(existing.items) ? existing.items : [];
+        const movements = [];
+        const expenses = [];
+        const changedInventoryIds = new Set();
+        const mainLocation = await getWarehouseLocation(client, 'MAIN-WAREHOUSE', 'المخزن الرئيسي', 'warehouse');
+        let deptLocation = null;
         for (const raw of items) {
             const itemId = Number(raw.itemId || raw.item_id);
             const qty = n(raw.qty);
@@ -230,7 +265,37 @@ router.delete('/returns/:id', jwtAuth, requireRole('admin', 'manager', 'warehous
                 await client.query('ROLLBACK');
                 return res.status(409).json({ error: 'RETURN_NOT_REVERSIBLE', message: `سجل قديم بلا بيانات ربط كافية للصنف ${raw.itemName || raw.name || '؟'} — عالجه يدويًا بقيد تسوية` });
             }
-            const hasLinkage = raw.txId != null;
+            const hasLinkage = raw.txId != null && raw.expenseId != null;
+            if (!hasLinkage) {
+                await client.query('ROLLBACK');
+                return res.status(409).json({ error: 'RETURN_NOT_REVERSIBLE', message: `المرتجع #${returnId} قديم بلا ربط حركات — عالجه يدويًا بقيد تسوية موثق` });
+            }
+            const inv = (await client.query('SELECT id,qty,"avgCost" FROM inventory WHERE id=$1 FOR UPDATE', [itemId])).rows[0];
+            if (!inv) {
+                await client.query('ROLLBACK');
+                return res.status(409).json({ error: 'RETURN_NOT_REVERSIBLE', message: `صنف المرتجع #${returnId} غير موجود — عالجه يدويًا بقيد تسوية` });
+            }
+            changedInventoryIds.add(itemId);
+            let departmentStockAdjusted = false;
+            if (existing.dispatchId) {
+                if (typeof raw.departmentStockAdjusted === 'boolean') {
+                    departmentStockAdjusted = raw.departmentStockAdjusted;
+                } else {
+                    const originalTransfer = (await client.query(
+                        `SELECT id FROM inventory_ledger
+                          WHERE idempotency_key=$1 AND transaction_type='transfer_out' LIMIT 1`,
+                        [`dispatch-return:${returnId}:${itemId}:out`])).rows[0];
+                    departmentStockAdjusted = Boolean(originalTransfer);
+                }
+                if (departmentStockAdjusted && !deptLocation) {
+                    const dispatchRow = (await client.query('SELECT "deptCode" FROM dispatches WHERE id = $1', [existing.dispatchId])).rows[0];
+                    if (!dispatchRow) {
+                        await client.query('ROLLBACK');
+                        return res.status(409).json({ error: 'RETURN_DEPT_UNKNOWN', message: 'إذن الصرف الأصلي محذوف — تعذر تحديد مخزن القسم للعكس، عالجه يدويًا بقيد تسوية' });
+                    }
+                    deptLocation = await getDispatchTargetLocation(client, dispatchRow.deptCode);
+                }
+            }
             // حركة داخلية: تاريخ الدُفعة المسجل يُحمل ولا يُخترع (سياسة الصلاحية)
             const voidExpiry = await latestExpiryFor(client, itemId);
             // عكس أثر المرتجع: سحب ما أُضيف للمخزن الرئيسي، وإعادة ما خُصم من مخزن القسم
@@ -242,10 +307,10 @@ router.delete('/returns/:id', jwtAuth, requireRole('admin', 'manager', 'warehous
                 expiryDate: voidExpiry,
                 reason: `إلغاء مرتجع #${returnId} — عكس الإضافة للمخزن الرئيسي`,
                 metadata: { return_id: returnId },
-                catchWeightQty: raw.packagingQty != null ? n(raw.packagingQty) : null,
+                catchWeightQty: raw.packagingQty != null ? -n(raw.packagingQty) : null,
                 catchWeightUnit: raw.packagingQty != null ? (raw.packagingUom || 'كرتون') : null,
             });
-            if (existing.dispatchId) {
+            if (departmentStockAdjusted) {
                 await postInventoryLedgerEntry(client, {
                     transactionType: 'transfer_in', inventoryId: itemId, locationId: deptLocation.id,
                     quantityDelta: qty, unit: raw.unit || 'وحدة', unitCost: n(raw.avgCost),
@@ -255,36 +320,74 @@ router.delete('/returns/:id', jwtAuth, requireRole('admin', 'manager', 'warehous
                     expiryDate: voidExpiry,
                     reason: `إلغاء مرتجع #${returnId} — إعادة الكمية لمخزن القسم`,
                     metadata: { return_id: returnId },
-                    catchWeightQty: raw.packagingQty != null ? n(raw.packagingQty) : null,
+                    catchWeightQty: raw.packagingQty != null ? -n(raw.packagingQty) : null,
                     catchWeightUnit: raw.packagingQty != null ? (raw.packagingUom || 'كرتون') : null,
                 });
             }
-            if (hasLinkage) {
-                await client.query('DELETE FROM "inventoryTx" WHERE id = $1', [raw.txId]);
-                await client.query('DELETE FROM expenses WHERE id = $1 AND "adjustmentType" IN (\'dispatch_return\', \'direct_return\')', [raw.expenseId]);
-            } else {
-                await client.query('ROLLBACK');
-                return res.status(409).json({ error: 'RETURN_NOT_REVERSIBLE', message: `المرتجع #${returnId} قديم بلا ربط حركات — احذفه يدويًا بقيد تسوية موثق` });
+            if (!departmentStockAdjusted) {
+                const nextQty = round(n(inv.qty) - qty);
+                const nextCost = nextQty > 0
+                    ? round(((n(inv.qty) * n(inv.avgCost)) - (qty * n(raw.avgCost))) / nextQty, 2)
+                    : n(raw.avgCost);
+                await client.query('UPDATE inventory SET "avgCost"=$2 WHERE id=$1', [itemId, nextCost]);
             }
+            const correctionTx = (await client.query(
+                `INSERT INTO "inventoryTx" (id, "itemId", "itemName", qty, type, date, cost, "totalValue", notes, "dispatchId", catch_weight_qty, catch_weight_unit)
+                 VALUES ($1,$2,$3,$4,'reversal',$5,$6,$7,$8,$9,$10,$11) RETURNING *`,
+                [id(), itemId, raw.itemName || raw.name, -qty, dateOnly(new Date()), n(raw.avgCost), -round(qty * n(raw.avgCost), 2),
+                    `إبطال مرتجع #${returnId} — ${reason}`, existing.dispatchId || null,
+                    raw.packagingQty != null ? -n(raw.packagingQty) : null,
+                    raw.packagingQty != null ? (raw.packagingUom || 'كرتون') : null]
+            )).rows[0];
+            const voidedExpense = (await client.query(
+                `UPDATE expenses SET amount=0, "voidedAt"=NOW(), "voidedBy"=$2, "voidReason"=$3 WHERE id=$1 RETURNING *`,
+                [raw.expenseId, req.user.name || req.user.username || String(req.user.id), reason])).rows[0];
+            if (voidedExpense) {expenses.push(voidedExpense);}
+            movements.push(correctionTx);
         }
-        await client.query('DELETE FROM "kitchenReturns" WHERE id = $1', [returnId]);
+        const actor = req.user.name || req.user.username || String(req.user.id);
+        const { voidSourceJournals } = require('../journal-void');
+        const journal = await voidSourceJournals(client, {
+            sourceType: 'kitchen_return', sourceIds: String(returnId), reason,
+            actorUserId: req.user.id, actor,
+        });
+        const expenseJournal = await voidSourceJournals(client, {
+            sourceType: 'expense', sourceIds: items.map(/** @type {any} */ (item) => item.expenseId), reason,
+            actorUserId: req.user.id, actor,
+        });
+        const updated = (await client.query(
+            `UPDATE "kitchenReturns" SET status='voided', "voidedAt"=NOW(), "voidedBy"=$2, "voidReason"=$3 WHERE id=$1 RETURNING *`,
+            [returnId, actor, reason])).rows[0];
+        const stockChanges = (await client.query(
+            'SELECT * FROM inventory WHERE id=ANY($1::bigint[]) ORDER BY id',
+            [[...changedInventoryIds]])).rows;
         await client.query('COMMIT');
-        emit(req, 'kitchenReturns', 'delete', { id: returnId });
-        res.json({ ok: true, message: 'تم حذف سجل المرتجع وعكس أثره المخزني بالكامل' });
+        emit(req, 'kitchenReturns', 'update', updated);
+        for (const item of stockChanges) {emit(req, 'inventory', 'update', item);}
+        for (const tx of movements) {emit(req, 'inventoryTx', 'create', tx);}
+        for (const expense of expenses) {emit(req, 'expenses', 'update', expense);}
+        res.json({ return: updated, stockChanges, movements, expenses, journalCount: journal.voided + expenseJournal.voided, message: 'تم إبطال المرتجع وعكس أثره مع حفظ السجل' });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
         logger.error('[pr_create]', error);
-        logger.error('[warehouse_return_delete]', error);
+        logger.error('[warehouse_return_void]', error);
         if (error.code === 'INSUFFICIENT_STOCK') {
             return res.status(409).json({ error: 'INSUFFICIENT_STOCK', message: 'رصيد المخزن الرئيسي لا يكفي لعكس المرتجع — راجع الحركات اللاحقة' });
         }
-        res.status(500).json({ error: 'KITCHEN_RETURN_DELETE_FAILED', message: 'تعذر حذف سجل المرتجع' });
+        if (error.statusCode) {
+            return res.status(error.statusCode).json({ error: error.statusCode === 423 ? 'ACCOUNTING_PERIOD_CLOSED' : 'RETURN_VOID_FAILED', message: error.message });
+        }
+        res.status(500).json({ error: 'RETURN_VOID_FAILED', message: 'تعذر إبطال المرتجع وعكس أثره بشكل ذري' });
     } finally {
         client.release();
     }
 });
 
-router.post('/inventory/:id/receipt', jwtAuth, requireRole('admin', 'manager', 'warehouse'), async (req, res) => {
+router.delete('/returns/:id', jwtAuth, requireRole('admin', 'manager', 'warehouse'), async (/** @type {any} */ req, /** @type {any} */ res) => {
+    return fail(res, 405, 'RETURN_DELETE_DISABLED', 'لا يُحذف المرتجع — استخدم الإبطال لعكس أثره مع حفظ السجل');
+});
+
+router.post('/inventory/:id/receipt', jwtAuth, requireRole('admin', 'manager', 'warehouse'), async (/** @type {any} */ req, res) => {
     const client = await pool.connect();
     try {
         const inventoryId = Number(req.params.id);
@@ -345,7 +448,7 @@ router.post('/inventory/:id/receipt', jwtAuth, requireRole('admin', 'manager', '
     } finally { client.release(); }
 });
 
-router.post('/inventory/bulk-receipt', jwtAuth, requireRole('admin', 'manager', 'warehouse'), async (req, res) => {
+router.post('/inventory/bulk-receipt', jwtAuth, requireRole('admin', 'manager', 'warehouse'), async (/** @type {any} */ req, /** @type {any} */ res) => {
     const client = await pool.connect();
     try {
         const rawItems = Array.isArray(req.body?.items) ? req.body.items : [];
@@ -436,7 +539,7 @@ const { arFuzzyPattern } = require('../ar-search');
 
 // q → name (partial, trgm) OR barcode OR category · category exact · stock
 // filter (all|low|out|ok) server-side · always paginated · parameterized.
-router.get('/inventory/search', jwtAuth, requireRole('admin', 'manager', 'warehouse', 'accountant'), async (req, res) => {
+router.get('/inventory/search', jwtAuth, requireRole('admin', 'manager', 'warehouse', 'accountant', 'sous_chef'), async (req, res) => {
     try {
         const q = String(req.query.q ?? '').trim().slice(0, 100);
         const category = String(req.query.category ?? 'all').trim().slice(0, 100);
@@ -493,21 +596,26 @@ router.get('/inventory/search', jwtAuth, requireRole('admin', 'manager', 'wareho
 
         // 2026-10-05 (طلب المالك): «إذن صرف 4 يعني الباقي 4» — العمود الأساسي يعرض
         // رصيد المخزن الرئيسي، وما ذهب لمخازن الأقسام في عمود مستقل، والإجمالي كما هو
-        const rows = (await pool.query(
-            `SELECT i.id, i.name, i.category, i.unit, i.qty, i."avgCost", i."minQty",
-                    i.weight, i.barcode, i."shelfId",
-                    COALESCE(mb.on_hand, 0) AS "mainQty"
-             FROM inventory i
-             LEFT JOIN inventory_location_balances mb
-                    ON mb.inventory_id = i.id
-                   AND mb.location_id = (SELECT id FROM inventory_locations WHERE code='MAIN-WAREHOUSE' AND active=true LIMIT 1)
-             ${where}
-             ORDER BY i.category NULLS LAST, i.name ASC
-             LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
-            [...params, limit, offset])).rows;
-        const categories = (await pool.query(
-            `SELECT DISTINCT category FROM inventory WHERE category IS NOT NULL AND category <> '' ORDER BY category`)).rows
-            .map(r => r.category);
+        // PERF 2026-10-29: قائمة الأصناف وقائمة الفئات مستقلتان تمامًا — تُنفَّذان
+        // معًا بدل انتظار جولة كاملة بينهما (بحث المخزن يعمل مع كل إدخال).
+        const [inventoryResult, categoriesResult] = await Promise.all([
+            pool.query(
+                `SELECT i.id, i.name, i.category, i.unit, i.qty, i."avgCost", i."minQty",
+                        i.weight, i.barcode, i."shelfId",
+                        COALESCE(mb.on_hand, 0) AS "mainQty"
+                 FROM inventory i
+                 LEFT JOIN inventory_location_balances mb
+                        ON mb.inventory_id = i.id
+                       AND mb.location_id = (SELECT id FROM inventory_locations WHERE code='MAIN-WAREHOUSE' AND active=true LIMIT 1)
+                 ${where}
+                 ORDER BY i.category NULLS LAST, i.name ASC
+                 LIMIT $${params.length + 1} OFFSET $${params.length + 2}`,
+                [...params, limit, offset]),
+            pool.query(
+                `SELECT DISTINCT category FROM inventory WHERE category IS NOT NULL AND category <> '' ORDER BY category`),
+        ]);
+        const rows = inventoryResult.rows;
+        const categories = categoriesResult.rows.map(r => r.category);
         const pages = total === 0 ? 0 : Math.ceil(total / limit);
         res.json({ data: rows, pagination: { page, limit, total, pages }, categories, fuzzy: fuzzyUsed });
     } catch (error) {

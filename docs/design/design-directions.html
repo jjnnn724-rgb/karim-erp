@@ -1,0 +1,680 @@
+<!DOCTYPE html>
+<html lang="ar" dir="rtl" data-dir="workshop">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>اتجاهات التصميم — Karim ERP</title>
+<style>
+/* ══════════════════════════════════════════════════════════════════
+   لوحة اتجاه بصري — مستند تصميم، ليس كود إنتاج
+   الفكرة: نفس الهيكل (markup) + ثلاث مجموعات توكنز = ثلاث هويات
+   ══════════════════════════════════════════════════════════════════ */
+
+/* ── الخطوط (مستضافة محليًا) ───────────────────────────────────── */
+@font-face{font-family:'PlexAr';src:url(../../frontend/app/fonts/v2/ibmplexsansarabic-normal-400-arabic.woff2) format('woff2');font-weight:400;font-display:swap}
+@font-face{font-family:'PlexAr';src:url(../../frontend/app/fonts/v2/ibmplexsansarabic-normal-500-arabic.woff2) format('woff2');font-weight:500;font-display:swap}
+@font-face{font-family:'PlexAr';src:url(../../frontend/app/fonts/v2/ibmplexsansarabic-normal-600-arabic.woff2) format('woff2');font-weight:600;font-display:swap}
+@font-face{font-family:'PlexAr';src:url(../../frontend/app/fonts/v2/ibmplexsansarabic-normal-700-arabic.woff2) format('woff2');font-weight:700;font-display:swap}
+@font-face{font-family:'PlexAr';src:url(../../frontend/app/fonts/v2/ibmplexsansarabic-normal-400-latin.woff2) format('woff2');font-weight:400;font-display:swap;unicode-range:U+0000-00FF}
+@font-face{font-family:'PlexAr';src:url(../../frontend/app/fonts/v2/ibmplexsansarabic-normal-600-latin.woff2) format('woff2');font-weight:600;font-display:swap;unicode-range:U+0000-00FF}
+@font-face{font-family:'PlexAr';src:url(../../frontend/app/fonts/v2/ibmplexsansarabic-normal-700-latin.woff2) format('woff2');font-weight:700;font-display:swap;unicode-range:U+0000-00FF}
+@font-face{font-family:'AmiriAr';src:url(../../frontend/app/fonts/menu/amiri-normal-400-arabic.woff2) format('woff2');font-weight:400;font-display:swap}
+@font-face{font-family:'AmiriAr';src:url(../../frontend/app/fonts/menu/amiri-normal-700-arabic.woff2) format('woff2');font-weight:700;font-display:swap}
+@font-face{font-family:'TajawalAr';src:url(../../frontend/app/fonts/menu/tajawal-normal-700-arabic.woff2) format('woff2');font-weight:700;font-display:swap}
+@font-face{font-family:'TajawalAr';src:url(../../frontend/app/fonts/menu/tajawal-normal-800-arabic.woff2) format('woff2');font-weight:800;font-display:swap}
+
+/* ══════════════════════════════════════════════════════════════════
+   الاتجاه ١ — «المتحف»  Editorial Museum
+   ══════════════════════════════════════════════════════════════════ */
+[data-dir="museum"]{
+  --bg:#F7F4ED; --surface:#FFFDF8; --raised:#FFFFFF; --sunken:#EFEAE0;
+  --text:#1B1813; --text-2:#4A443A; --muted:#6F675A; --faint:#9A9184;
+  --border:#E3DACA; --border-strong:#CBBFA9;
+  --accent:#8A6A3B; --accent-ink:#6B5129; --accent-soft:rgba(138,106,59,.10);
+  --ok:#2F6B4F; --warn:#A8621B; --bad:#9B2C2C;
+  --radius:2px; --ctl:34px; --pad:18px; --gap:14px;
+  --f-display:'AmiriAr','Times New Roman',serif;
+  --disp-weight:700; --disp-track:0;
+  --elev:none;
+  --label-track:.14em;
+}
+/* ══════════════════════════════════════════════════════════════════
+   الاتجاه ٢ — «الورشة الدقيقة»  Precision Workshop   ★ موصى به
+   ══════════════════════════════════════════════════════════════════ */
+[data-dir="workshop"]{
+  --bg:#F5F7FA; --surface:#FFFFFF; --raised:#FFFFFF; --sunken:#EBEEF3;
+  --text:#0E1520; --text-2:#33404F; --muted:#55636F; --faint:#7C8894;
+  --border:#E1E6ED; --border-strong:#C6CFDA;
+  --accent:#B45309; --accent-ink:#8A3F07; --accent-soft:rgba(180,83,9,.10);
+  --ok:#0B7A4B; --warn:#B54708; --bad:#B42318;
+  --radius:6px; --ctl:32px; --pad:12px; --gap:10px;
+  --f-display:'PlexAr',sans-serif;
+  --disp-weight:600; --disp-track:-.01em;
+  --elev:0 1px 2px rgba(14,21,32,.05);
+  --label-track:.06em;
+}
+/* ══════════════════════════════════════════════════════════════════
+   الاتجاه ٣ — «ليل نحاسي»  Nocturnal Copper
+   ══════════════════════════════════════════════════════════════════ */
+[data-dir="copper"]{
+  --bg:#0B0F14; --surface:#12171E; --raised:#171E27; --sunken:#070A0E;
+  --text:#F1F5F9; --text-2:#C3CCD6; --muted:#94A0AC; --faint:#6E7A87;
+  --border:#222B36; --border-strong:#35414F;
+  --accent:#E08A3C; --accent-ink:#F2A860; --accent-soft:rgba(224,138,60,.14);
+  --ok:#34D399; --warn:#FBBF24; --bad:#F87171;
+  --radius:10px; --ctl:36px; --pad:14px; --gap:12px;
+  --f-display:'TajawalAr',sans-serif;
+  --disp-weight:800; --disp-track:0;
+  --elev:0 1px 0 rgba(255,255,255,.03) inset;
+  --label-track:.08em;
+}
+
+/* ── الأساس ─────────────────────────────────────────────────────── */
+*,*::before,*::after{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--bg); color:var(--text);
+  font-family:'PlexAr',system-ui,sans-serif; font-size:14px; line-height:1.6;
+  -webkit-font-smoothing:antialiased;
+  transition:background-color .35s ease,color .35s ease;
+  font-variant-numeric:tabular-nums;
+}
+.num{font-variant-numeric:tabular-nums;font-feature-settings:"tnum" 1}
+h1,h2,h3,h4{margin:0;font-family:var(--f-display);font-weight:var(--disp-weight);letter-spacing:var(--disp-track);line-height:1.25}
+p{margin:0}
+button{font:inherit;color:inherit;background:none;border:0;cursor:pointer}
+
+/* ── شريط التحكم ───────────────────────────────────────────────── */
+.bar{
+  position:sticky;top:0;z-index:50;
+  display:flex;align-items:center;gap:20px;
+  padding:12px 28px;
+  background:color-mix(in srgb,var(--surface) 88%,transparent);
+  backdrop-filter:blur(12px);
+  border-bottom:1px solid var(--border);
+}
+.bar__mark{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.18em;font-size:11px;color:var(--muted)}
+.bar__dot{width:9px;height:9px;border-radius:50%;background:var(--accent);box-shadow:0 0 0 3px var(--accent-soft)}
+.tabs{display:flex;gap:4px;margin-inline-start:auto;background:var(--sunken);padding:4px;border-radius:calc(var(--radius) + 2px);border:1px solid var(--border)}
+.tab{
+  padding:7px 18px;border-radius:var(--radius);font-size:13px;font-weight:600;color:var(--muted);
+  transition:background-color .18s,color .18s,box-shadow .18s;
+}
+.tab:hover{color:var(--text)}
+.tab[aria-selected="true"]{background:var(--raised);color:var(--text);box-shadow:var(--elev)}
+.tab small{display:block;font-size:9px;font-weight:400;letter-spacing:.06em;color:var(--faint);margin-top:-1px}
+
+/* ── الحاوية ───────────────────────────────────────────────────── */
+.wrap{max-width:1240px;margin:0 auto;padding:34px 28px 80px;display:flex;flex-direction:column;gap:34px}
+
+/* ── ترويسة الاتجاه ────────────────────────────────────────────── */
+.head{display:flex;align-items:flex-end;gap:28px;flex-wrap:wrap;padding-bottom:22px;border-bottom:1px solid var(--border)}
+.head__idx{font-family:var(--f-display);font-size:13px;font-weight:var(--disp-weight);color:var(--accent);letter-spacing:.2em;text-transform:uppercase}
+.head__title{font-size:clamp(30px,4vw,46px);margin-top:2px}
+.head__sub{color:var(--muted);font-size:14px;max-width:44ch;margin-top:8px}
+.head__scores{margin-inline-start:auto;display:flex;gap:22px}
+.score{text-align:center}
+.score__v{font-family:var(--f-display);font-size:26px;font-weight:var(--disp-weight);line-height:1}
+.score__k{font-size:10px;letter-spacing:var(--label-track);color:var(--faint);text-transform:uppercase;margin-top:6px}
+
+/* ── عنوان قسم ─────────────────────────────────────────────────── */
+.sec{display:flex;align-items:baseline;gap:12px;margin-bottom:14px}
+.sec__n{font-size:10px;letter-spacing:.2em;color:var(--accent);font-weight:700}
+.sec__t{font-size:13px;font-weight:600;letter-spacing:var(--label-track);text-transform:uppercase;color:var(--muted)}
+.sec__r{margin-inline-start:auto;font-size:12px;color:var(--faint)}
+
+/* ── لوحة الأساسات ─────────────────────────────────────────────── */
+.found{display:grid;grid-template-columns:1.35fr 1fr 1fr;gap:18px}
+.panel{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:var(--pad);box-shadow:var(--elev)}
+.panel__t{font-size:10px;letter-spacing:var(--label-track);text-transform:uppercase;color:var(--faint);margin-bottom:12px;font-weight:600}
+.sw{display:grid;grid-template-columns:repeat(6,1fr);gap:6px}
+.sw__i{height:44px;border-radius:calc(var(--radius) - 1px);border:1px solid var(--border);position:relative}
+.sw__i span{position:absolute;inset-inline-start:5px;bottom:4px;font-size:8px;letter-spacing:.02em;font-weight:600;mix-blend-mode:normal;opacity:.85}
+.type-row{display:flex;align-items:baseline;gap:10px;padding:5px 0;border-bottom:1px dashed var(--border)}
+.type-row:last-child{border:0}
+.type-row b{font-family:var(--f-display);font-weight:var(--disp-weight);letter-spacing:var(--disp-track)}
+.type-row i{font-style:normal;font-size:9px;color:var(--faint);margin-inline-start:auto;letter-spacing:.04em}
+.rhythm{display:flex;align-items:flex-end;gap:3px;height:56px;margin-top:4px}
+.rhythm i{flex:1;background:var(--accent);opacity:.85;border-radius:1px}
+.kv{display:flex;justify-content:space-between;gap:8px;padding:5px 0;font-size:12px;border-bottom:1px dashed var(--border)}
+.kv:last-child{border:0}
+.kv span:first-child{color:var(--muted)}
+.kv b{font-weight:600}
+
+/* ══════════════════════════════════════════════════════════════════
+   الشاشة ١ — الكاشير
+   ══════════════════════════════════════════════════════════════════ */
+.mock{
+  background:var(--bg);border:1px solid var(--border-strong);border-radius:calc(var(--radius) + 4px);
+  overflow:hidden;box-shadow:0 18px 50px -30px rgba(0,0,0,.45);
+}
+.mock__chrome{display:flex;align-items:center;gap:8px;padding:8px 12px;background:var(--sunken);border-bottom:1px solid var(--border)}
+.mock__chrome i{width:8px;height:8px;border-radius:50%;background:var(--border-strong);opacity:.7}
+.mock__chrome em{font-style:normal;font-size:10px;color:var(--faint);margin-inline-start:auto;letter-spacing:.08em}
+
+.pos{display:flex;flex-direction:column;height:520px;background:var(--bg);font-size:12px}
+.pos__top{display:flex;align-items:center;gap:10px;padding:0 14px;height:44px;background:var(--surface);border-bottom:1px solid var(--border)}
+.pos__brand{font-family:var(--f-display);font-weight:var(--disp-weight);font-size:14px;letter-spacing:.04em}
+.pos__sep{width:1px;height:16px;background:var(--border)}
+.pos__meta{color:var(--muted);font-size:11px}
+.pos__right{margin-inline-start:auto;display:flex;align-items:center;gap:10px;color:var(--muted);font-size:11px}
+.pos__live{display:inline-flex;align-items:center;gap:5px;color:var(--ok);font-weight:600}
+.pos__live::before{content:"";width:6px;height:6px;border-radius:50%;background:var(--ok);box-shadow:0 0 0 3px color-mix(in srgb,var(--ok) 18%,transparent)}
+.pos__body{display:grid;grid-template-columns:1fr 336px;min-height:0;flex:1}
+
+/* الكتالوج */
+.cat{display:flex;flex-direction:column;min-height:0;padding:12px 14px 10px;gap:10px}
+.chips{display:flex;gap:6px;flex-wrap:nowrap;overflow:hidden}
+.chip{
+  padding:5px 12px;border-radius:calc(var(--radius) + 6px);font-size:11px;font-weight:500;
+  background:var(--surface);border:1px solid var(--border);color:var(--muted);white-space:nowrap;
+}
+.chip[aria-current="true"]{background:var(--accent);border-color:var(--accent);color:#fff;font-weight:600}
+[data-dir="copper"] .chip[aria-current="true"]{color:#1A1206}
+.prods{display:grid;grid-template-columns:repeat(4,1fr);grid-auto-rows:1fr;gap:var(--gap);flex:1;min-height:0}
+.prod{
+  background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);
+  padding:10px;display:flex;flex-direction:column;justify-content:space-between;
+  box-shadow:var(--elev);position:relative;overflow:hidden;
+}
+.prod__n{font-size:12px;font-weight:600;line-height:1.35}
+.prod__p{font-size:13px;font-weight:700;color:var(--accent-ink);margin-top:6px;font-variant-numeric:tabular-nums}
+.prod__p small{font-size:9px;font-weight:500;color:var(--faint);margin-inline-start:2px}
+.prod__q{position:absolute;inset-inline-end:7px;top:7px;min-width:18px;height:18px;border-radius:9px;background:var(--accent);color:#fff;font-size:10px;font-weight:700;display:grid;place-items:center;padding:0 5px}
+[data-dir="copper"] .prod__q{color:#1A1206}
+/* بصمة المتحف: علامة زاوية */
+[data-dir="museum"] .prod::before{
+  content:"";position:absolute;inset-inline-start:0;top:0;width:16px;height:16px;
+  border-inline-start:1px solid var(--accent);border-top:1px solid var(--accent);opacity:.65;
+}
+[data-dir="copper"] .prod{background:linear-gradient(160deg,var(--raised),var(--surface))}
+[data-dir="copper"] .bar-c i{opacity:1;background:color-mix(in srgb,var(--accent) 62%,var(--surface))}
+[data-dir="copper"] .bar-c:last-child i{background:var(--accent)}
+[data-dir="copper"] .tbl th{background:var(--raised)}
+.pager{display:flex;align-items:center;justify-content:center;gap:12px;font-size:11px;color:var(--muted);padding-top:2px}
+.pager b{color:var(--text);font-weight:600}
+.pager u{text-decoration:none;width:24px;height:24px;display:grid;place-items:center;border:1px solid var(--border);border-radius:calc(var(--radius) - 2px);background:var(--surface);color:var(--text-2)}
+
+/* الطلب */
+.order{background:var(--surface);border-inline-start:1px solid var(--border);display:flex;flex-direction:column;min-height:0}
+[data-dir="workshop"] .order{border-inline-start:2px solid var(--accent)}
+[data-dir="museum"] .order{border-inline-start:1px solid var(--border-strong)}
+.order__h{display:flex;align-items:center;gap:8px;padding:11px 14px;border-bottom:1px solid var(--border)}
+.order__t{font-weight:700;font-size:12px}
+.order__tag{font-size:10px;padding:2px 8px;border-radius:calc(var(--radius) - 2px);background:var(--accent-soft);color:var(--accent-ink);font-weight:600}
+.order__x{margin-inline-start:auto;width:22px;height:22px;display:grid;place-items:center;border-radius:calc(var(--radius) - 2px);color:var(--faint);border:1px solid transparent}
+.lines{flex:1;min-height:0;overflow:hidden;padding:6px 8px}
+.line{display:grid;grid-template-columns:1fr auto auto;gap:8px;align-items:center;padding:7px 6px;border-radius:calc(var(--radius) - 3px)}
+.line+.line{border-top:1px dashed var(--border)}
+.line__n{font-size:11.5px;font-weight:500}
+.line__n em{font-style:normal;display:block;font-size:9.5px;color:var(--faint);margin-top:1px}
+.line__q{font-size:10px;color:var(--muted);background:var(--sunken);border-radius:4px;padding:1px 6px;font-weight:600}
+.line__p{font-size:11.5px;font-weight:600;font-variant-numeric:tabular-nums;min-width:52px;text-align:end}
+.totals{padding:8px 14px;border-top:1px solid var(--border);display:flex;flex-direction:column;gap:3px}
+.totals div{display:flex;justify-content:space-between;font-size:11px;color:var(--muted)}
+.totals div b{color:var(--text-2);font-weight:600}
+.totals .grand{margin-top:5px;padding-top:7px;border-top:1px solid var(--border-strong);color:var(--text);font-size:12px;font-weight:700}
+.totals .grand b{font-size:17px;color:var(--accent-ink);font-weight:700}
+.pays{display:grid;grid-template-columns:repeat(3,1fr);gap:6px;padding:0 14px 8px}
+.pay{
+  padding:7px 0;text-align:center;font-size:11px;font-weight:600;color:var(--text-2);
+  background:var(--surface);border:1px solid var(--border-strong);border-radius:calc(var(--radius) - 2px);
+}
+.pay[aria-pressed="true"]{background:var(--accent-soft);border-color:var(--accent);color:var(--accent-ink)}
+.cta{
+  margin:0 14px 14px;padding:12px;border-radius:calc(var(--radius) - 1px);
+  background:var(--accent);color:#fff;font-weight:700;font-size:13px;
+  display:flex;align-items:center;justify-content:center;gap:8px;
+  box-shadow:var(--elev);
+}
+[data-dir="copper"] .cta{color:#1A1206;box-shadow:0 10px 30px -14px var(--accent)}
+[data-dir="workshop"] .cta{box-shadow:0 2px 0 var(--accent-ink)}
+
+/* ══════════════════════════════════════════════════════════════════
+   الشاشة ٢ — التقرير
+   ══════════════════════════════════════════════════════════════════ */
+.rpt{height:580px;background:var(--bg);padding:16px;display:flex;flex-direction:column;gap:12px;font-size:12px;overflow:hidden}
+.rpt__h{display:flex;align-items:flex-end;gap:12px;flex:none}
+.rpt__t{font-size:20px}
+.rpt__s{font-size:11px;color:var(--faint);margin-top:2px}
+.rpt__f{margin-inline-start:auto;display:flex;gap:4px;background:var(--sunken);padding:3px;border-radius:calc(var(--radius));border:1px solid var(--border)}
+.rpt__f span{padding:4px 11px;font-size:10.5px;border-radius:calc(var(--radius) - 2px);color:var(--muted);font-weight:500}
+.rpt__f span[aria-current="true"]{background:var(--surface);color:var(--text);font-weight:600;box-shadow:var(--elev)}
+.kpis{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;flex:none}
+.kpi{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:11px 12px;box-shadow:var(--elev);position:relative;overflow:hidden}
+[data-dir="workshop"] .kpi::before{content:"";position:absolute;inset-block:0;inset-inline-start:0;width:2px;background:var(--accent);opacity:.55}
+.kpi__k{font-size:9.5px;letter-spacing:var(--label-track);text-transform:uppercase;color:var(--faint);font-weight:600}
+.kpi__v{font-size:22px;font-weight:700;margin-top:5px;line-height:1.1;letter-spacing:-.01em}
+.kpi__v small{font-size:10px;font-weight:500;color:var(--faint);margin-inline-start:3px}
+.kpi__d{font-size:10px;margin-top:5px;color:var(--ok);font-weight:600}
+.kpi__d.dn{color:var(--bad)}
+.rpt__mid{display:grid;grid-template-columns:1.45fr 1fr;gap:10px;height:232px;flex:none}
+.card{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);padding:12px;box-shadow:var(--elev);display:flex;flex-direction:column;min-height:0;overflow:hidden}
+.card__t{font-size:10px;letter-spacing:var(--label-track);text-transform:uppercase;color:var(--faint);font-weight:600;margin-bottom:8px;flex:none}
+.chart{display:flex;align-items:flex-end;gap:10px;height:158px;flex:none}
+.bar-c{flex:1;display:flex;flex-direction:column;justify-content:flex-end;align-items:center;gap:6px;height:100%}
+.bar-c i{width:100%;max-width:34px;background:var(--accent);opacity:.28;border-radius:calc(var(--radius) - 3px) calc(var(--radius) - 3px) 1px 1px;display:block}
+.bar-c:last-child i{opacity:1}
+.bar-c em{font-style:normal;font-size:9px;color:var(--faint)}
+.top{display:flex;flex-direction:column;min-height:0}
+.top__r{display:grid;grid-template-columns:1fr auto;gap:8px;align-items:center;padding:6px 0;border-bottom:1px dashed var(--border);font-size:11px}
+.top__r:last-child{border:0}
+.top__r b{font-weight:600}
+.top__r span{font-size:9.5px;color:var(--faint);display:block;line-height:1.3}
+.top__r u{text-decoration:none;font-weight:700;font-variant-numeric:tabular-nums;font-size:11px}
+.tbl{background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden;box-shadow:var(--elev);flex:none}
+.tbl table{width:100%;border-collapse:collapse;font-size:11px}
+.tbl th{text-align:start;font-size:9px;letter-spacing:var(--label-track);text-transform:uppercase;color:var(--faint);font-weight:600;padding:8px 12px;background:var(--sunken);border-bottom:1px solid var(--border)}
+.tbl td{padding:8px 12px;border-bottom:1px solid var(--border)}
+.tbl tr:last-child td{border:0}
+.tbl td.n{font-variant-numeric:tabular-nums;font-weight:600}
+.tbl td.up{color:var(--ok);font-weight:600}
+
+/* ── بصمات ─────────────────────────────────────────────────────── */
+.sig{display:grid;grid-template-columns:1fr 1fr;gap:18px}
+.sig ul{margin:0;padding:0;list-style:none;display:flex;flex-direction:column;gap:9px}
+.sig li{display:flex;gap:9px;font-size:12.5px;color:var(--text-2);line-height:1.5}
+.sig li::before{content:"";flex:none;width:6px;height:6px;margin-top:7px;background:var(--accent);border-radius:1px}
+.verdict{display:grid;gap:8px}
+.verdict div{display:flex;justify-content:space-between;align-items:center;gap:10px;font-size:12px;padding:6px 0;border-bottom:1px dashed var(--border)}
+.verdict div:last-child{border:0}
+.verdict b{font-weight:700}
+.meter{display:flex;gap:3px}
+.meter i{width:14px;height:5px;background:var(--border-strong);border-radius:1px}
+.meter i.on{background:var(--accent)}
+
+/* ── جدول المقارنة ─────────────────────────────────────────────── */
+.cmp{width:100%;border-collapse:collapse;font-size:12.5px;background:var(--surface);border:1px solid var(--border);border-radius:var(--radius);overflow:hidden}
+.cmp th,.cmp td{padding:11px 14px;border-bottom:1px solid var(--border);text-align:start}
+.cmp thead th{font-size:10px;letter-spacing:.08em;text-transform:uppercase;color:var(--faint);background:var(--sunken);font-weight:600}
+.cmp td:first-child{font-weight:600;color:var(--text-2)}
+.cmp tbody tr:last-child td{border:0}
+.cmp .star{color:var(--accent-ink);font-weight:700}
+
+.note{font-size:11.5px;color:var(--faint);line-height:1.7}
+@media (max-width:1000px){
+  .found{grid-template-columns:1fr}
+  .sig{grid-template-columns:1fr}
+  .pos__body{grid-template-columns:1fr 260px}
+  .kpis{grid-template-columns:repeat(2,1fr)}
+  .rpt__mid{grid-template-columns:1fr}
+}
+</style>
+</head>
+<body>
+
+<div class="bar">
+  <div class="bar__mark"><span class="bar__dot"></span> KARIM · DESIGN DIRECTIONS</div>
+  <div class="tabs" role="tablist" aria-label="اتجاهات التصميم">
+    <button class="tab" role="tab" data-go="museum" aria-selected="false">المتحف<small>Editorial Museum</small></button>
+    <button class="tab" role="tab" data-go="workshop" aria-selected="true">الورشة الدقيقة<small>Precision Workshop</small></button>
+    <button class="tab" role="tab" data-go="copper" aria-selected="false">ليل نحاسي<small>Nocturnal Copper</small></button>
+  </div>
+</div>
+
+<div class="wrap">
+
+  <!-- ═══ ترويسة ═══ -->
+  <header class="head">
+    <div>
+      <div class="head__idx" id="idx">اتجاه ٠٢</div>
+      <h1 class="head__title" id="title">الورشة الدقيقة</h1>
+      <p class="head__sub" id="sub">العمارة مش زينة: شبكة صارمة، خط نحاسي واحد، وارتفاع بالضوء لا بالظل. الجمال هنا من الانضباط.</p>
+    </div>
+    <div class="head__scores">
+      <div class="score"><div class="score__v" id="s1">٩/١٠</div><div class="score__k">تشغيلي</div></div>
+      <div class="score"><div class="score__v" id="s2">٨/١٠</div><div class="score__k">جمالي</div></div>
+      <div class="score"><div class="score__v" id="s3">٩/١٠</div><div class="score__k">تماسك</div></div>
+    </div>
+  </header>
+
+  <!-- ═══ الأساسات ═══ -->
+  <section>
+    <div class="sec"><span class="sec__n">01</span><span class="sec__t">الأساسات</span><span class="sec__r">لون دلالي · سلّم نوع · إيقاع ٤px · ارتفاع</span></div>
+    <div class="found">
+
+      <div class="panel">
+        <div class="panel__t">اللون الدلالي — ١٠ أدوار، مش ١٠ ألوان</div>
+        <div class="sw">
+          <div class="sw__i" style="background:var(--bg)"><span style="color:var(--muted)">bg</span></div>
+          <div class="sw__i" style="background:var(--surface)"><span style="color:var(--muted)">surface</span></div>
+          <div class="sw__i" style="background:var(--sunken)"><span style="color:var(--muted)">sunken</span></div>
+          <div class="sw__i" style="background:var(--text)"><span style="color:var(--surface)">text</span></div>
+          <div class="sw__i" style="background:var(--border-strong)"><span style="color:var(--text)">border</span></div>
+          <div class="sw__i" style="background:var(--accent)"><span style="color:#fff">accent</span></div>
+        </div>
+        <div class="sw" style="margin-top:6px">
+          <div class="sw__i" style="background:var(--ok)"><span style="color:#fff">ok</span></div>
+          <div class="sw__i" style="background:var(--warn)"><span style="color:#fff">warn</span></div>
+          <div class="sw__i" style="background:var(--bad)"><span style="color:#fff">bad</span></div>
+          <div class="sw__i" style="background:var(--accent-soft)"><span style="color:var(--accent-ink)">soft</span></div>
+          <div class="sw__i" style="background:var(--raised)"><span style="color:var(--muted)">raised</span></div>
+          <div class="sw__i" style="background:var(--text-2)"><span style="color:var(--surface)">text-2</span></div>
+        </div>
+        <div class="kv" style="margin-top:12px"><span>نصف القطر</span><b id="kv-r">6px</b></div>
+        <div class="kv"><span>ارتفاع الكنترول</span><b id="kv-c">32px</b></div>
+        <div class="kv"><span>المصدر البصري</span><b id="kv-src">Carbon + Stripe</b></div>
+      </div>
+
+      <div class="panel">
+        <div class="panel__t">سلّم النوع — ٦ أحجام فقط</div>
+        <div class="type-row"><b style="font-size:25px">مبيعات اليوم</b><i>25</i></div>
+        <div class="type-row"><b style="font-size:20px">أفضل الأصناف</b><i>20</i></div>
+        <div class="type-row"><b style="font-size:16px">إتمام البيع</b><i>16</i></div>
+        <div class="type-row"><span style="font-size:14px">نص أساسي للقراءة الطويلة</span><i>14</i></div>
+        <div class="type-row"><span style="font-size:12px">بيانات ثانوية داخل الجدول</span><i>12</i></div>
+        <div class="type-row"><span style="font-size:10px;letter-spacing:.12em;text-transform:uppercase;color:var(--faint)">LABEL / TINY</span><i>10</i></div>
+        <div style="margin-top:12px;font-size:11px;color:var(--faint);line-height:1.7">
+          كل رقم مالي بـ <b style="color:var(--text-2)">tabular-nums</b> — الأعمدة تتراصف كأنها معمار.
+        </div>
+      </div>
+
+      <div class="panel">
+        <div class="panel__t">الإيقاع — ٤ / ٨ / ١٢ / ١٦ / ٢٤ / ٣٢</div>
+        <div class="rhythm">
+          <i style="height:4px"></i><i style="height:8px"></i><i style="height:12px"></i>
+          <i style="height:16px"></i><i style="height:20px"></i><i style="height:24px"></i>
+          <i style="height:32px"></i><i style="height:40px"></i><i style="height:48px"></i>
+          <i style="height:56px"></i>
+        </div>
+        <div class="kv" style="margin-top:10px"><span>مستويات الارتفاع</span><b>٤</b></div>
+        <div class="kv"><span>الظل المستخدم</span><b id="kv-sh">٢ (خفيف جدًا)</b></div>
+        <div class="kv"><span>الزجاج / blur</span><b id="kv-bl">ممنوع</b></div>
+        <div class="kv"><span>لون جسور</span><b>١ (النحاس)</b></div>
+      </div>
+
+    </div>
+  </section>
+
+  <!-- ═══ الكاشير ═══ -->
+  <section>
+    <div class="sec"><span class="sec__n">02</span><span class="sec__t">شاشة الكاشير</span><span class="sec__r">شاشة واحدة · بلا تمرير · ٤×٣ أصناف</span></div>
+    <div class="mock">
+      <div class="mock__chrome"><i></i><i></i><i></i><em>1920 × 1080</em></div>
+      <div class="pos">
+        <div class="pos__top">
+          <div class="pos__brand">كريم</div>
+          <div class="pos__sep"></div>
+          <div class="pos__meta">فرع المهندسين</div>
+          <div class="pos__sep"></div>
+          <div class="pos__meta">كاشير ١ · وردية صباحي</div>
+          <div class="pos__right">
+            <span class="pos__live">متصل</span>
+            <span class="num">12:42</span>
+          </div>
+        </div>
+        <div class="pos__body">
+          <div class="cat">
+            <div class="chips">
+              <span class="chip" aria-current="true">الكل</span>
+              <span class="chip">مشويات</span>
+              <span class="chip">وجبات سريعة</span>
+              <span class="chip">مشروبات</span>
+              <span class="chip">حلويات</span>
+              <span class="chip">إضافات</span>
+            </div>
+            <div class="prods">
+              <div class="prod"><div class="prod__n">كباب مشوي</div><div class="prod__p num">65.00<small>ر.س</small></div></div>
+              <div class="prod"><div class="prod__n">شاورما دجاج</div><div class="prod__p num">28.50<small>ر.س</small></div><span class="prod__q num">2</span></div>
+              <div class="prod"><div class="prod__n">برجر كلاسيك</div><div class="prod__p num">42.00<small>ر.س</small></div></div>
+              <div class="prod"><div class="prod__n">بيتزا مارغريتا</div><div class="prod__p num">48.00<small>ر.س</small></div></div>
+              <div class="prod"><div class="prod__n">سمك مشوي</div><div class="prod__p num">78.00<small>ر.س</small></div></div>
+              <div class="prod"><div class="prod__n">ريزوتو بالمشروم</div><div class="prod__p num">55.00<small>ر.س</small></div></div>
+              <div class="prod"><div class="prod__n">سلطة سيزر</div><div class="prod__p num">32.00<small>ر.س</small></div></div>
+              <div class="prod"><div class="prod__n">حمص بالطحينة</div><div class="prod__p num">15.00<small>ر.س</small></div></div>
+              <div class="prod"><div class="prod__n">عصير برتقال</div><div class="prod__p num">18.00<small>ر.س</small></div><span class="prod__q num">1</span></div>
+              <div class="prod"><div class="prod__n">كنافة بالقشطة</div><div class="prod__p num">26.00<small>ر.س</small></div><span class="prod__q num">1</span></div>
+              <div class="prod"><div class="prod__n">قهوة تركي</div><div class="prod__p num">12.00<small>ر.س</small></div></div>
+              <div class="prod"><div class="prod__n">شاي بالنعناع</div><div class="prod__p num">8.00<small>ر.س</small></div></div>
+            </div>
+            <div class="pager"><u>‹</u><span>صفحة <b class="num">1</b> من <b class="num">3</b></span><u>›</u></div>
+          </div>
+          <aside class="order">
+            <div class="order__h">
+              <div class="order__t">طلب <span class="num">#A-1042</span></div>
+              <div class="order__tag">طاولة ٧</div>
+              <div class="order__x">✕</div>
+            </div>
+            <div class="lines">
+              <div class="line"><div class="line__n">شاورما دجاج<em>بدون بصل</em></div><div class="line__q num">×2</div><div class="line__p num">57.00</div></div>
+              <div class="line"><div class="line__n">كباب مشوي<em>مستوي جيدًا</em></div><div class="line__q num">×1</div><div class="line__p num">65.00</div></div>
+              <div class="line"><div class="line__n">عصير برتقال</div><div class="line__q num">×1</div><div class="line__p num">18.00</div></div>
+              <div class="line"><div class="line__n">كنافة بالقشطة</div><div class="line__q num">×1</div><div class="line__p num">26.00</div></div>
+            </div>
+            <div class="totals">
+              <div><span>المجموع</span><b class="num">166.00</b></div>
+              <div><span>خدمة ٥٪</span><b class="num">8.30</b></div>
+              <div><span>ضريبة ١٥٪</span><b class="num">26.15</b></div>
+              <div class="grand"><span>الإجمالي</span><b class="num">200.45</b></div>
+            </div>
+            <div class="pays">
+              <div class="pay" aria-pressed="true">نقدي</div>
+              <div class="pay">شبكة</div>
+              <div class="pay">آجل</div>
+            </div>
+            <div class="cta">إتمام البيع · <span class="num">200.45</span> ر.س</div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ التقرير ═══ -->
+  <section>
+    <div class="sec"><span class="sec__n">03</span><span class="sec__t">شاشة التقرير</span><span class="sec__r">نفس التوكنز · مساحة أكبر · بلا زينة</span></div>
+    <div class="mock">
+      <div class="mock__chrome"><i></i><i></i><i></i><em>1440 × 900</em></div>
+      <div class="rpt">
+        <div class="rpt__h">
+          <div>
+            <h3 class="rpt__t">ملخص المبيعات</h3>
+            <div class="rpt__s">١ – ٣٠ أكتوبر · الرياض · مقارنة بالفترة السابقة</div>
+          </div>
+          <div class="rpt__f"><span>اليوم</span><span aria-current="true">٧ أيام</span><span>٣٠ يوم</span><span>مخصص</span></div>
+        </div>
+        <div class="kpis">
+          <div class="kpi"><div class="kpi__k">صافي المبيعات</div><div class="kpi__v num">282,757<small>.56</small></div><div class="kpi__d">▲ 12.4٪ عن الأسبوع الماضي</div></div>
+          <div class="kpi"><div class="kpi__k">عدد الفواتير</div><div class="kpi__v num">412</div><div class="kpi__d">▲ 4.1٪</div></div>
+          <div class="kpi"><div class="kpi__k">متوسط الفاتورة</div><div class="kpi__v num">686<small>.30</small></div><div class="kpi__d">▲ 7.9٪</div></div>
+          <div class="kpi"><div class="kpi__k">هامش الربح</div><div class="kpi__v num">32<small>.4٪</small></div><div class="kpi__d dn">▼ 1.2٪ — تكلفة أعلى</div></div>
+        </div>
+        <div class="rpt__mid">
+          <div class="card">
+            <div class="card__t">المبيعات — آخر ٧ أيام</div>
+            <div class="chart">
+              <div class="bar-c"><i style="height:96px"></i><em>السبت</em></div>
+              <div class="bar-c"><i style="height:110px"></i><em>الأحد</em></div>
+              <div class="bar-c"><i style="height:88px"></i><em>الاثنين</em></div>
+              <div class="bar-c"><i style="height:122px"></i><em>الثلاثاء</em></div>
+              <div class="bar-c"><i style="height:134px"></i><em>الأربعاء</em></div>
+              <div class="bar-c"><i style="height:147px"></i><em>الخميس</em></div>
+              <div class="bar-c"><i style="height:128px"></i><em>الجمعة</em></div>
+            </div>
+          </div>
+          <div class="card">
+            <div class="card__t">أفضل الأصناف</div>
+            <div class="top">
+              <div class="top__r"><div><b>برجر كلاسيك</b><span class="num">2,140 وحدة · 38.5٪ هامش</span></div><u class="num">89,880.00</u></div>
+              <div class="top__r"><div><b>كباب مشوي</b><span class="num">1,284 وحدة · 41.2٪ هامش</span></div><u class="num">83,460.00</u></div>
+              <div class="top__r"><div><b>شاورما دجاج</b><span class="num">1,962 وحدة · 44.8٪ هامش</span></div><u class="num">55,917.00</u></div>
+              <div class="top__r"><div><b>بيتزا مارغريتا</b><span class="num">1,105 وحدة · 35.1٪ هامش</span></div><u class="num">53,040.00</u></div>
+            </div>
+          </div>
+        </div>
+        <div class="tbl">
+          <table>
+            <thead><tr><th>مركز التكلفة</th><th>الفواتير</th><th>المبيعات</th><th>التكلفة</th><th>الهامش</th></tr></thead>
+            <tbody>
+              <tr><td>المطبخ الرئيسي</td><td class="n num">186</td><td class="n num">128,940.00</td><td class="n num">88,110.20</td><td class="up num">31.7٪</td></tr>
+              <tr><td>المشويات</td><td class="n num">94</td><td class="n num">76,420.50</td><td class="n num">44,940.10</td><td class="up num">41.2٪</td></tr>
+              <tr><td>المشروبات</td><td class="n num">132</td><td class="n num">51,397.06</td><td class="n num">16,240.00</td><td class="up num">68.4٪</td></tr>
+            </tbody>
+          </table>
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ البصمات ═══ -->
+  <section>
+    <div class="sec"><span class="sec__n">04</span><span class="sec__t">البصمة والحكم</span><span class="sec__r">ما يجعل النظام يُعرَف من غير لوجو</span></div>
+    <div class="sig">
+      <div class="panel">
+        <div class="panel__t">الحركات التوقيعية</div>
+        <ul id="sig">
+          <li>خط نحاسي ١px يظهر فقط عند التركيز — خيط النحاس في البورسلين.</li>
+          <li>ارتفاع بالفرق اللوني (٢–٣٪) لا بالظل: لا كروت طايرة.</li>
+          <li>كل رقم مالي جدولي العرض — الأعمدة تتراصف كمعمار.</li>
+          <li>حدود شعرية مزدوجة: فاصل داخلي رقيق، صفر ظل خارجي.</li>
+          <li>إيقاع ٤px بلا استثناء — العين تحس بالوزن قبل أن تعرف السبب.</li>
+        </ul>
+      </div>
+      <div class="panel">
+        <div class="panel__t">أين ينجح · وأين يتعب</div>
+        <div class="verdict" id="verd">
+          <div><span>شاشة الكاشير (كثافة عالية)</span><span class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span></div>
+          <div><span>التقارير واللوحات</span><span class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span></div>
+          <div><span>التوتم ومينيو بورد</span><span class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i></i><i></i></span></div>
+          <div><span>أجهزة POS ضعيفة</span><span class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i></span></div>
+          <div><span>الإحساس «الفخم»</span><span class="meter"><i class="on"></i><i class="on"></i><i class="on"></i><i class="on"></i><i></i></span></div>
+        </div>
+        <div class="note" style="margin-top:12px" id="note">
+          الخطر: قد يبدو «هادئًا جدًا» في العرض التقديمي. قوّته الحقيقية تظهر في الاستخدام اليومي — ٨ ساعات وردية بلا إجهاد بصري.
+        </div>
+      </div>
+    </div>
+  </section>
+
+  <!-- ═══ المقارنة ═══ -->
+  <section>
+    <div class="sec"><span class="sec__n">05</span><span class="sec__t">المقارنة النهائية</span><span class="sec__r">نفس الشاشتين، ثلاث هويات</span></div>
+    <table class="cmp">
+      <thead>
+        <tr><th>المعيار</th><th>المتحف</th><th>الورشة الدقيقة</th><th>ليل نحاسي</th></tr>
+      </thead>
+      <tbody>
+        <tr><td>كثافة معلومات ERP</td><td>٢/٥</td><td class="star">٥/٥</td><td>٤/٥</td></tr>
+        <tr><td>وضوح في مطبخ مضيء</td><td>٥/٥</td><td class="star">٥/٥</td><td>٢/٥</td></tr>
+        <tr><td>أداء على تيرمنال ضعيف</td><td>٥/٥</td><td class="star">٥/٥</td><td>٣/٥</td></tr>
+        <tr><td>الإحساس بالفخامة</td><td class="star">٥/٥</td><td>٤/٥</td><td class="star">٥/٥</td></tr>
+        <tr><td>التماسك عبر ١٤٤ شاشة</td><td>٣/٥</td><td class="star">٥/٥</td><td>٣/٥</td></tr>
+        <tr><td>مناسب للتوتم وشاشات العملاء</td><td>٤/٥</td><td>٣/٥</td><td class="star">٥/٥</td></tr>
+        <tr><td>سهولة التطبيق على نظامنا الحالي</td><td>٣/٥</td><td class="star">٥/٥</td><td>٢/٥</td></tr>
+        <tr><td>الاستخدام المقترح</td><td>تقارير · طباعة · عرض مستثمر</td><td class="star">الأساس: ERP · كاشير · مخازن</td><td>توتم · مينيو بورد</td></tr>
+      </tbody>
+    </table>
+    <p class="note" style="margin-top:14px">
+      التوصية: <b style="color:var(--text-2)">الورشة الدقيقة كأساس</b>، والمتحف وليل نحاسي <b style="color:var(--text-2)">مزاجين</b> فوق نفس التوكنز — نظام واحد، ثلاث حالات، لا ثلاث أنظمة.
+    </p>
+  </section>
+
+</div>
+
+<script>
+(function () {
+  var DATA = {
+    museum: {
+      idx: 'اتجاه ٠١', title: 'المتحف', s: ['٤/١٠', '١٠/١٠', '٧/١٠'],
+      sub: 'عاجي، خطوط شعرية، عنوان بخط نسخي عربي، ومساحة بيضاء سخية. الجمال هنا من السكون — كأن الشاشة لوحة معلّقة.',
+      kvr: '2px', kvc: '34px', src: 'Editorial + Amiri',
+      sh: '٠ (حدود شعرية)', bl: 'ممنوع',
+      sig: [
+        'علامة زاوية ١px على كل كارت — توقيع معماري لا يتكرر في نظام آخر.',
+        'خط عنوان نسخي (Amiri) مقابل نص بلا زخرفة — تباين صوتي.',
+        'مساحة بيضاء سخية بدل الحدود — الفصل بالفراغ لا بالخط.',
+        'لون واحد فقط: البرونز. لا ألوان دلالية إلا للتحذير.',
+        'لا ظل إطلاقًا — العمق من ترتيب المستويات اللونية.'
+      ],
+      verd: [5, 5, 3, 5, 5],
+      note: 'الخطر: المساحة البيضاء تقتل الكثافة. مناسب للتقارير والطباعة والعرض التنفيذي — غير مناسب كأساس للكاشير.'
+    },
+    workshop: {
+      idx: 'اتجاه ٠٢', title: 'الورشة الدقيقة', s: ['٩/١٠', '٨/١٠', '٩/١٠'],
+      sub: 'العمارة مش زينة: شبكة صارمة، خط نحاسي واحد، وارتفاع بالضوء لا بالظل. الجمال هنا من الانضباط.',
+      kvr: '6px', kvc: '32px', src: 'Carbon + Stripe',
+      sh: '٢ (خفيف جدًا)', bl: 'ممنوع',
+      sig: [
+        'خط نحاسي ١px يظهر فقط عند التركيز — خيط النحاس في البورسلين.',
+        'ارتفاع بالفرق اللوني (٢–٣٪) لا بالظل: لا كروت طايرة.',
+        'كل رقم مالي جدولي العرض — الأعمدة تتراصف كمعمار.',
+        'حدود شعرية مزدوجة: فاصل داخلي رقيق، صفر ظل خارجي.',
+        'إيقاع ٤px بلا استثناء — العين تحس بالوزن قبل أن تعرف السبب.'
+      ],
+      verd: [5, 5, 3, 5, 4],
+      note: 'الخطر: قد يبدو «هادئًا جدًا» في العرض التقديمي. قوّته الحقيقية تظهر في الاستخدام اليومي — ٨ ساعات وردية بلا إجهاد بصري.'
+    },
+    copper: {
+      idx: 'اتجاه ٠٣', title: 'ليل نحاسي', s: ['٨/١٠', '١٠/١٠', '٧/١٠'],
+      sub: 'داكن أولًا، نحاس متوهج، وتدرّج سطحي بدل الظلال. مصمّم ليُشاهد من مسافة — توتم ومينيو بورد.',
+      kvr: '10px', kvc: '36px', src: 'Linear + visionOS',
+      sh: 'توهج نحاسي محدود', bl: 'في الشل فقط',
+      sig: [
+        'توهج نحاسي واحد على العنصر الأساسي — لا أكثر من عنصر واحد متوهج.',
+        'لا أسود نقي: #0B0F14 → #171E27 — عمق بلا انطفاء.',
+        'سطوح متدرّجة بدل ظلال — العمق من الضوء.',
+        'زوايا ١٠px + حركة ربيعية ١٨٠ms.',
+        'تباين نص ٨٧٪ لا ١٠٠٪ — الراحة البصرية في الليل.'
+      ],
+      verd: [3, 3, 5, 5, 5],
+      note: 'الخطر: الأداء على تيرمنال POS ضعيف، والتباين في مطبخ مضيء. الأفضل استخدامه للشاشات الموجّهة للعميل، لا للمطبخ.'
+    }
+  };
+
+  var tabs = document.querySelectorAll('[data-go]');
+  function apply(k) {
+    var d = DATA[k];
+    if (!d) return;
+    document.documentElement.setAttribute('data-dir', k);
+    document.getElementById('idx').textContent = d.idx;
+    document.getElementById('title').textContent = d.title;
+    document.getElementById('sub').textContent = d.sub;
+    document.getElementById('s1').textContent = d.s[0];
+    document.getElementById('s2').textContent = d.s[1];
+    document.getElementById('s3').textContent = d.s[2];
+    document.getElementById('kv-r').textContent = d.kvr;
+    document.getElementById('kv-c').textContent = d.kvc;
+    document.getElementById('kv-src').textContent = d.src;
+    document.getElementById('kv-sh').textContent = d.sh;
+    document.getElementById('kv-bl').textContent = d.bl;
+    document.getElementById('note').textContent = d.note;
+    var ul = document.getElementById('sig');
+    ul.innerHTML = '';
+    d.sig.forEach(function (t) {
+      var li = document.createElement('li');
+      li.textContent = t;
+      ul.appendChild(li);
+    });
+    var rows = document.querySelectorAll('#verd > div');
+    rows.forEach(function (row, i) {
+      var meter = row.querySelector('.meter');
+      meter.innerHTML = '';
+      for (var j = 0; j < 5; j++) {
+        var b = document.createElement('i');
+        if (j < d.verd[i]) b.className = 'on';
+        meter.appendChild(b);
+      }
+    });
+    tabs.forEach(function (t) {
+      t.setAttribute('aria-selected', t.dataset.go === k ? 'true' : 'false');
+    });
+    try { history.replaceState(null, '', '#' + k); } catch (e) {}
+  }
+
+  tabs.forEach(function (t) {
+    t.addEventListener('click', function () { apply(t.dataset.go); });
+  });
+  document.addEventListener('keydown', function (e) {
+    var map = { '1': 'museum', '2': 'workshop', '3': 'copper' };
+    if (map[e.key]) apply(map[e.key]);
+  });
+
+  var start = (location.hash || '').replace('#', '');
+  apply(DATA[start] ? start : 'workshop');
+  window.addEventListener('hashchange', function () {
+    var k = (location.hash || '').replace('#', '');
+    if (DATA[k]) apply(k);
+  });
+})();
+</script>
+</body>
+</html>

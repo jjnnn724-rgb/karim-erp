@@ -68,6 +68,7 @@ async function notifyChainEvent(req, dispatch, event, { io = null, reason = null
             entity: 'dispatches',
             entityId: String(dispatch?.id ?? ''),
             link: 'dispatch',
+            category: 'dispatch', // (2026-10-31) قناة الجرس المصنّف + أولوية المنادي
             targetRoles: spec.targetRoles || [],
             targetUserIds: spec.targetCreator && creatorUserId ? [creatorUserId] : [],
             targetUsernames: spec.targetCreator && !creatorUserId ? [dispatch?.createdBy] : [],

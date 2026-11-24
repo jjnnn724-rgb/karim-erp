@@ -238,7 +238,7 @@ function showShortcutsHelp(){
 
 // <i class=ji data-i=party></i> Confetti Celebration
 function celebrate(){
-  const colors = ['#d4a843','#f0c96b','#2ecc71','#3498db','#9b59b6','#e74c3c'];
+  const colors = ['#14735b','#f0c96b','#2ecc71','#3498db','#9b59b6','#e74c3c'];
   const emojis = ['<i class=ji data-i=party></i>','<i class=ji data-i=party></i>','<i class=ji data-i=star></i>','<i class=ji data-i=star></i>','<i class=ji data-i=star></i>','<i class=ji data-i=star></i>'];
   for(let i = 0; i < 50; i++){
     setTimeout(()=>{

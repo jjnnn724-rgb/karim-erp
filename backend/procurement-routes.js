@@ -16,6 +16,7 @@ const { pool } = require('./shared-pool');
 const { riyadhToday } = require('./riyadh-date'); // M20
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { logger } = require('./logger');
+const { makeEmitScoped } = require('./realtime/guard');
 const { validateVatNumber, TAX_STATUSES } = require('./tax-rule-service');
 const { emitDomainEvent } = require('./realtime/producers');
 const { arFuzzyPattern } = require('./ar-search');
@@ -40,12 +41,14 @@ const TAX_STATUS_VALUES = ['REGISTERED', 'NOT_REGISTERED', 'EXEMPT'];
 
 // ─── Pure helpers (مصدَّرة للاختبارات) ────────────────────────────────────────
 
+/** @param {any} value */
 function roundMoney(value) {
     const n = Number(value);
     if (!Number.isFinite(n)) {return 0;}
     return Math.round(n * 100) / 100;
 }
 
+/** @param {any} totalAmount @param {any} paidAmount */
 function computeInvoicePaymentStatus(totalAmount, paidAmount) {
     const total = roundMoney(totalAmount);
     const paid = roundMoney(paidAmount);
@@ -55,10 +58,12 @@ function computeInvoicePaymentStatus(totalAmount, paidAmount) {
     return 'partial';
 }
 
+/** @param {any} openingBalance @param {any} invoicesTotal @param {any} paymentsTotal */
 function computeSupplierBalance(openingBalance, invoicesTotal, paymentsTotal) {
     return roundMoney(roundMoney(openingBalance) + roundMoney(invoicesTotal) - roundMoney(paymentsTotal));
 }
 
+/** @param {any} value */
 function normalizeDay(value) {
     if (value == null) {return '';}
     const raw = value instanceof Date ? value.toISOString() : String(value);
@@ -69,6 +74,7 @@ function normalizeDay(value) {
  * كشف حساب مورد: رصيد افتتاحي للفترة + حركات مُرتبة زمنيًا برصيد جارٍ.
  * الفواتير مدين (تزيد المستحق) والدفعات دائن (تخفضه). الحركات السابقة لبداية
  * الفترة تُطوى داخل الرصيد الافتتاحي حتى يظل الرصيد الجاري صادقًا.
+ * @param {any} openingBalance @param {any} invoices @param {any} payments @param {any} fromDate @param {any} toDate
  */
 function buildStatementRows(openingBalance, invoices, payments, fromDate, toDate) {
     const from = normalizeDay(fromDate);
@@ -245,7 +251,7 @@ function fail(res, status, error, message, extra = {}) {
 }
 function emit(req, entity, action, data, entityName) {
     if (!req.io) {return;}
-    req.io.emit('entity_changed', {
+    makeEmitScoped(req.io)('entity_changed', {
         entity,
         entityName: entityName || 'المشتريات والموردين',
         action,
@@ -316,11 +322,13 @@ async function ensureProcurementSchema() {
         CREATE TABLE IF NOT EXISTS tax_config (
             id INT PRIMARY KEY CHECK (id = 1),
             standard_vat_rate NUMERIC(5,2) NOT NULL DEFAULT 15.00,
+            filing_frequency VARCHAR(10) NOT NULL DEFAULT 'quarterly' CHECK (filing_frequency IN ('monthly', 'quarterly')),
             country_code CHAR(2) NOT NULL DEFAULT 'SA',
             currency CHAR(3) NOT NULL DEFAULT 'SAR',
             vat_law_ref TEXT NOT NULL DEFAULT 'KSA VAT Law — standard rate 15% since 1 July 2020 (ZATCA)',
             updated_at TIMESTAMPTZ NOT NULL DEFAULT now()
         );
+        ALTER TABLE tax_config ADD COLUMN IF NOT EXISTS filing_frequency VARCHAR(10) NOT NULL DEFAULT 'quarterly';
         INSERT INTO tax_config (id, standard_vat_rate, country_code, currency)
         VALUES (1, 15.00, 'SA', 'SAR') ON CONFLICT (id) DO NOTHING;
         CREATE TABLE IF NOT EXISTS supplier_tax_audit (
@@ -775,17 +783,37 @@ router.post('/payments', jwtAuth, requireRole(...PAYMENT_WRITE_ROLES), async (re
         // Cr 1000 صندوق (أو 1010 بنك حسب طريقة الدفع) — idempotent بمعرف الدفعة.
         try {
             const { postJournal } = require('../accounting-routes');
-            const _cashAcct = String(v.clean.method).toLowerCase() === 'cash' ? '1000' : '1010';
+            const _accts = await require('../coa-mapping').resolveAccounts(pool, 'procurement', 'supplier_payment', {
+                payable_account: '2000',
+                cash_account: '1000',
+                bank_account: '1010',
+            });
+            const _cashAcct = String(v.clean.method).toLowerCase() === 'cash' ? _accts.cash_account : _accts.bank_account;
             await postJournal(pool, {
                 date: v.clean.date || riyadhToday(),
                 memo: `دفعة مورد ${supplier.name} (${v.clean.method})`,
                 source_type: 'supplier_payment', source_id: String(paymentId),
                 lines: [
-                    { account_code: "2000", debit: Number(v.clean.amount), credit: 0, memo: `سداد ذمم ${supplier.name}` },
+                    { account_code: _accts.payable_account, debit: Number(v.clean.amount), credit: 0, memo: `سداد ذمم ${supplier.name}` },
                     { account_code: _cashAcct, debit: 0, credit: Number(v.clean.amount), memo: "خروج نقدية — دفعة مورد" },
                 ],
             });
-        } catch (jeErr) { logger.warn("[payment_ledger] best-effort skipped:", jeErr.message); }
+        } catch (jeErr) {
+            logger.warn("[payment_ledger] best-effort skipped:", jeErr.message);
+            const { recordPostingFailure } = require('../posting-failures');
+            await recordPostingFailure(pool, {
+                module: 'procurement',
+                source_type: 'supplier_payment',
+                source_id: paymentId,
+                payload: {
+                    amount: Number(v.clean.amount),
+                    method: v.clean.method,
+                    supplier_id: v.clean.supplierId,
+                    invoice_id: invoice ? invoice.id : null,
+                },
+                error: jeErr,
+            });
+        }
 res.status(201).json({ payment, invoice, supplierDueTotal: roundMoney(totals.due) });
     } catch (error) {
         await client.query('ROLLBACK').catch(() => {});
@@ -864,10 +892,18 @@ router.delete('/payments/:id', jwtAuth, requireRole(...PAYMENT_DELETE_ROLES), as
             }
         }
         await client.query('COMMIT');
+        // A2 (2026-11-06): قيد الدفعة المنشور لا يُمسح — يُبطل. الميزان والقوائم
+        // تقرأ status='posted' فقط، فالإبطال يُخرجه من الأرصدة كاملة، والصف يبقى
+        // شاهدًا على الحركة (لا فقدان صامت للأثر).
         try {
-            await pool.query(`DELETE FROM journal_lines WHERE entry_id IN (SELECT id FROM journal_entries WHERE source_type='supplier_payment' AND source_id=$1)`, [String(paymentId)]);
-            await pool.query(`DELETE FROM journal_entries WHERE source_type='supplier_payment' AND source_id=$1`, [String(paymentId)]);
-        } catch (jeErr) { logger.warn("[payment_ledger_purge]", jeErr.message); }
+            const { voidSourceJournals } = require('./journal-void');
+            const v = await voidSourceJournals(pool, {
+                sourceType: 'supplier_payment', sourceIds: paymentId,
+                reason: `عكس دفعة المورد ${paymentId} — إبطال القيد`,
+                actor: req.user?.username || String(req.user?.id || ''), actorUserId: req.user?.id,
+            });
+            if (v.voided) {logger.info(`[payment_ledger_void] ${paymentId} → ${v.entries.map((e) => e.entry_no).join(', ')}`);}
+        } catch (jeErr) { logger.warn("[payment_ledger_void]", jeErr.message); }
         emit(req, 'procurement', 'delete', payment);
         if (invoice) {emit(req, 'purchaseInvoices', 'update', invoice, 'فواتير الشراء');}
         res.json({ ok: true, deleted: paymentId, invoice });

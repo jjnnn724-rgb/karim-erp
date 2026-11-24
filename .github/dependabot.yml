@@ -1,0 +1,30 @@
+version: 2
+# التبعيات تُحدَّث أسبوعيًا في دفعات مجمّعة بدل طوفان PRs.
+# الإنتاج يُشحن من backend/** (npm audit --omit=dev في CI)، وتحديثات
+# التطوير (jest/electron-builder/capacitor) لا تصل الخادم — لذلك تُجمَّع.
+updates:
+  - package-ecosystem: npm
+    directory: /
+    schedule:
+      interval: weekly
+      day: saturday
+    open-pull-requests-limit: 5
+    versioning-strategy: increase-if-necessary
+    groups:
+      production-dependencies:
+        dependency-type: production
+        update-types: [patch, minor]
+      development-dependencies:
+        dependency-type: development
+        update-types: [patch, minor]
+    ignore:
+      # قفزات major تغيّر واجهات (jest 30, electron major...) وتحتاج
+      # ترحيلًا واختبارات كاملة — تُفتح يدويًا لا آليًا.
+      - dependency-name: '*'
+        update-types: [version-update:semver-major]
+
+  - package-ecosystem: github-actions
+    directory: /
+    schedule:
+      interval: monthly
+    open-pull-requests-limit: 3

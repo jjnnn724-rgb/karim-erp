@@ -193,6 +193,10 @@ function isPgRunning(host, port, user, password) {
 // that would corrupt real restaurant records.
 const DEMO_MIGRATIONS = new Set(['006_demo_seed.sql']);
 function isDemoMigration(f) { return DEMO_MIGRATIONS.has(path.basename(String(f || ''))); }
+// ملفات الرجوع (_down.sql) ليست ترحيلًا أمام أي مشغّل آلي: تُشغَّل يدويًا وبقرار.
+// تركها داخل عدّ migrations يجعل كل تطبيق كامل (setup/serve/smart-install/
+// acceptance) يطبّق 134 ثم 134_down في نفس الجلسة — يبني الأثر ثم يهدمه.
+function isRollbackMigration(f) { return /_down\.sql$/i.test(path.basename(String(f || ''))); }
 function isDemoMode() {
     // KARIM_ primary; HORUS_ legacy for old .env files (one release cycle)
     const v = String(getEnv('KARIM_MIGRATION_MODE', '') || process.env.HORUS_MIGRATION_MODE || '');
@@ -421,7 +425,7 @@ module.exports = {
     MIN_NODE_VERSION, MIN_PG_MAJOR, DEFAULT_DB_PORT, APP_PORT,
     log, loadEnv, getEnv,
     getPgBinary, isPgInstalled, isPgRunning,
-    isDemoMigration, isDemoMode, shouldApplyMigration,
+    isDemoMigration, isDemoMode, shouldApplyMigration, isRollbackMigration,
     ensureEnvFile, genSecret, generateSecret, setupEnvSecrets,
     run, runAsync, ensureDir, rmrf,
     isPortInUse, httpReq, psql, psqlFile, detectDbPort,

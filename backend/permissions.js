@@ -7,12 +7,13 @@
  * remove role access. Admin role implies every permission (no rows needed).
  * Grant changes are audit-logged (permission_audit) with actor + reason.
  *
- * Enforcement points (v1): frontend menus + page access + generic CRUD
- * entities below. Dedicated transactional routes (dispatch approve, payments,
- * journal...) stay role-based in v1 — documented, not silent.
+ * Enforcement points: frontend menus + page access + generic CRUD
+ * entities below and dedicated dispatch workflow routes. Explicit deny wins
+ * over role and grant; admin remains the system override.
  */
 
 const { pool } = require('./shared-pool');
+const { getTenantId } = require('./middleware/correlation');
 
 // ─── Catalog: key → Arabic label, group, menus, generic-CRUD entities ───────
 const PERMISSIONS = [
@@ -48,6 +49,22 @@ const PERMISSIONS = [
       menus: ['dispatch'], entitiesRead: ['dispatches', 'kitchenReturns'], entitiesWrite: [] },
     { key: 'dispatch.edit', ar: 'إدارة الصرف', group: 'التشغيل',
       menus: ['dispatch'], entitiesRead: ['dispatches', 'kitchenReturns'], entitiesWrite: ['dispatches', 'kitchenReturns'] },
+    // صرف مباشر للمخزن: تجاوز اعتماد الشيف العمومي — منح لكل مستخدم على حدة
+    // (طلب المالك 2026-10-29: إذن سامح السيد عيد يذهب مباشرة إلى المخازن)
+    { key: 'dispatch.direct', ar: 'صرف مباشر للمخزن (بلا اعتماد الشيف)', group: 'التشغيل',
+      menus: ['dispatch'], entitiesRead: [], entitiesWrite: [] },
+    { key: 'dispatch.chef_approve', ar: 'اعتماد ورفض الشيف لأذون الصرف', group: 'التشغيل',
+      menus: ['dispatch'], entitiesRead: [], entitiesWrite: [] },
+    { key: 'dispatch.approve', ar: 'اعتماد وصرف أذون المخزن', group: 'التشغيل',
+      menus: ['dispatch'], entitiesRead: [], entitiesWrite: [] },
+    { key: 'dispatch.receive', ar: 'استلام أذون الصرف', group: 'التشغيل',
+      menus: ['dispatch'], entitiesRead: [], entitiesWrite: [] },
+    { key: 'dispatch.return', ar: 'إرجاع مواد أذون الصرف', group: 'التشغيل',
+      menus: ['dispatch'], entitiesRead: [], entitiesWrite: [] },
+    { key: 'dispatch.cancel', ar: 'إلغاء إذن صرف قبل الصرف', group: 'التشغيل',
+      menus: ['dispatch'], entitiesRead: [], entitiesWrite: [] },
+    { key: 'dispatch.void', ar: 'إبطال إذن صرف مرحّل', group: 'التشغيل',
+      menus: ['dispatch'], entitiesRead: [], entitiesWrite: [] },
     // المطبخ
     { key: 'kitchen.view', ar: 'عرض المطبخ والوصفات', group: 'التشغيل',
       menus: ['kitchen', 'recipes'], entitiesRead: ['recipes'], entitiesWrite: [] },
@@ -72,6 +89,15 @@ const PERMISSIONS = [
       menus: ['cashier-monitor'], entitiesRead: [], entitiesWrite: [] },
     { key: 'whatsapp.use', ar: 'استخدام واتساب', group: 'التكامل',
       menus: ['whatsapp'], entitiesRead: [], entitiesWrite: [] },
+    // الامتثال السعودي — مفاتيح إضافية فقط، بلا أدوار جديدة (ADR-005)
+    { key: 'compliance.view', ar: 'عرض حالة الامتثال وسجل التسليم', group: 'الامتثال السعودي',
+      menus: [], entitiesRead: [], entitiesWrite: [] },
+    { key: 'compliance.configure', ar: 'إدارة إعدادات المزوّدين واعتماداتهم', group: 'الامتثال السعودي',
+      menus: [], entitiesRead: [], entitiesWrite: [] },
+    { key: 'compliance.submit', ar: 'إرسال وإعادة محاولة التسليم', group: 'الامتثال السعودي',
+      menus: [], entitiesRead: [], entitiesWrite: [] },
+    { key: 'compliance.review', ar: 'مراجعة الميت واعتماد الاستثناءات', group: 'الامتثال السعودي',
+      menus: [], entitiesRead: [], entitiesWrite: [] },
     // النظام (عرض فقط — الكتابة الحساسة تبقى للأدوار)
     { key: 'users.view', ar: 'عرض المستخدمين', group: 'النظام',
       menus: ['users', 'settings'], entitiesRead: [], entitiesWrite: [] },
@@ -80,17 +106,20 @@ const PERMISSIONS = [
 const PERM_MAP = new Map(PERMISSIONS.map((p) => [p.key, p]));
 
 // entity → { read: key, write: key } derived from catalog (first match wins)
+/** @type {Record<string, Record<string, string>>} */
 const ENTITY_PERMS = {};
 for (const p of PERMISSIONS) {
     for (const e of p.entitiesRead || []) {ENTITY_PERMS[e] = ENTITY_PERMS[e] || {}; ENTITY_PERMS[e].read = ENTITY_PERMS[e].read || p.key;}
     for (const e of p.entitiesWrite || []) {ENTITY_PERMS[e] = ENTITY_PERMS[e] || {}; ENTITY_PERMS[e].write = ENTITY_PERMS[e].write || p.key;}
 }
 
+/** @param {any} entity @param {any} mode */
 function permForEntity(entity, mode) {
     const m = ENTITY_PERMS[entity];
     return (m && m[mode]) || null;
 }
 
+/** @param {any} grants */
 function menusForGrants(grants) {
     const out = new Set();
     for (const g of grants || []) {
@@ -100,20 +129,25 @@ function menusForGrants(grants) {
     return [...out];
 }
 
-/** Menus covered by deny keys (for hiding grant/role menus they map to). */
+/** Menus covered by deny keys (for hiding grant/role menus they map to). @param {any} denies */
 function menusForDenies(denies) {
     return menusForGrants(denies);
 }
 
 // ─── Grant/deny storage (30s per-process cache, invalidated on change) ─────
-const _cache = new Map(); // userId -> { at, grants:Set, denies:Set }
+// SaaS: userId وحده لم يعد كافياً — نفس المعرّف الرقمي يتكرر لدى مستأجرين.
+// المفتاح = tenant:userId عند وجود سياق، وuserId في الوضع الحالي (بلا تغيير سلوك).
+const _cache = new Map(); // cacheKey -> { at, grants:Set, denies:Set }
 const CACHE_MS = 30000;
 
+/** @param {any} userId @param {any} [db] */
 async function getUserPerms(userId, db) {
     const id = Number(userId);
     const empty = { grants: new Set(), denies: new Set() };
     if (!Number.isInteger(id) || id <= 0) {return empty;}
-    const hit = _cache.get(id);
+    const tenantId = getTenantId();
+    const cacheKey = tenantId ? `${tenantId}:${id}` : String(id);
+    const hit = _cache.get(cacheKey);
     if (hit && Date.now() - hit.at < CACHE_MS) {return { grants: hit.grants, denies: hit.denies };}
     const conn = db || pool;
     const rows = (await conn.query(`SELECT perm_key, effect FROM user_permissions WHERE user_id = $1`, [id])).rows;
@@ -124,20 +158,24 @@ async function getUserPerms(userId, db) {
         if (r.effect === 'deny') {denies.add(r.perm_key);}
         else {grants.add(r.perm_key);}
     }
-    _cache.set(id, { at: Date.now(), grants, denies });
+    _cache.set(cacheKey, { at: Date.now(), grants, denies });
     return { grants, denies };
 }
 
-/** Backward-compatible: grants only. */
+/** Backward-compatible: grants only. @param {any} userId @param {any} [db] */
 async function getUserGrants(userId, db) {
     return (await getUserPerms(userId, db)).grants;
 }
 
+/** @param {any} userId */
 function invalidateUser(userId) {
-    _cache.delete(Number(userId));
+    const id = Number(userId);
+    const tenantId = getTenantId();
+    // في وضع SaaS نُبطل مفتاح السياق الحالي، وفي الوضع العادي المفتاح الرقمي.
+    _cache.delete(tenantId ? `${tenantId}:${id}` : id);
 }
 
-/** Effective check: admin → everything; DENY beats role AND grant; else role/grant. */
+/** Effective check: admin → everything; DENY beats role AND grant; else role/grant. @param {any} user @param {any} permKey @param {any[]} [roles] @param {any} [db] */
 async function userHasPerm(user, permKey, roles = [], db) {
     if (!user) {return false;}
     if (user.role === 'admin') {return true;}
@@ -151,10 +189,10 @@ async function userHasPerm(user, permKey, roles = [], db) {
     return grants.has(permKey);
 }
 
-/** Express guard: deny-first, then role, then grant. */
+/** Express guard: deny-first, then role, then grant. @param {any} roles @param {any} permKey */
 function requireRoleOrPerm(roles, permKey) {
     const list = Array.isArray(roles) ? roles : [roles];
-    return async (req, res, next) => {
+    return /** @param {any} req @param {any} res @param {any} next */ async (req, res, next) => {
         try {
             if (req.user?.role === 'admin') {return next();}
             if (permKey && PERM_MAP.has(permKey)) {
@@ -172,7 +210,26 @@ function requireRoleOrPerm(roles, permKey) {
     };
 }
 
+// ─── فصل المهام: مجموعات لا يجتمع مفتاحاها لمستخدم غير admin (ADR-005) ─────
+const SOD_CONFLICTS = Object.freeze([
+    ['compliance.configure', 'compliance.submit'],
+    ['compliance.configure', 'compliance.review'],
+    ['compliance.submit', 'compliance.review'],
+    ['dispatch.chef_approve', 'dispatch.approve'],
+    ['dispatch.approve', 'dispatch.receive'],
+]);
+
+/** @param {any} grants */
+function sodConflict(grants) {
+    const set = new Set(Array.isArray(grants) ? grants : []);
+    for (const [a, b] of SOD_CONFLICTS) {
+        if (set.has(a) && set.has(b)) {return [a, b];}
+    }
+    return null;
+}
+
 module.exports = {
     PERMISSIONS, PERM_MAP, ENTITY_PERMS, permForEntity, menusForGrants, menusForDenies,
     getUserPerms, getUserGrants, invalidateUser, userHasPerm, requireRoleOrPerm,
+    SOD_CONFLICTS, sodConflict,
 };

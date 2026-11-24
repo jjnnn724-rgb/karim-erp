@@ -1,14 +1,16 @@
 'use strict';
 
 /**
- * password-vault.js — خزنة كلمات المرور القابلة للاسترجاع (قراءة: أدمن فقط).
+ * password-vault.js — تشفير AES-256-GCM للأسرار المخزَّنة (وليس لكلمات المرور).
  * ────────────────────────────────────────────────────────────────────────────
- * القرار المطلوب من المالك: إمكانية «رؤية» كلمة مرور أي مستخدم من صفحة
- * المستخدمين (لمساعدة موظف نسي كلمته). bcrypt يبقى هو أداة التحقق من الدخول
- * ولم يُمس — هذه نسخة إضافية اختيارية تُكتب مع كل تعيين كلمة مرور:
- *   • AES-256-GCM بمفتاح مشتق من JWT_SECRET (سري بالفعل في .env خارج Git)
- *   • تُخزن في عمود users.password_vault — لا تُرجع في أي استجابة API عامة
- *   • لو تغيّر JWT_SECRET تصبح النسخ القديمة غير قابلة للفك (fail-safe)
+ * استرجاع كلمات المرور أُغلق نهائيًا (2026-10-27): لا مسار API ولا واجهة تكشف
+ * كلمة مرور، ولا كتابة جديدة في users.password_vault. التحقق يبقى عبر bcrypt
+ * وحده، والاستعادة عبر رموز لمرة واحدة (pos_password_reset_codes).
+ *
+ * الاستخدام الحالي: أسرار MFA (TOTP/WebAuthn) عبر mfa-store.js، مع إبقاء
+ * ensurePasswordVaultSchema للتوافق مع العمود القديم فقط.
+ *   • AES-256-GCM بمفتاح VAULT_KEY، وإلا مشتق تراثي من JWT_SECRET
+ *   • لو تغيّر المفتاح تصبح النسخ القديمة غير قابلة للفك (fail-safe)
  *
  * @module password-vault
  */
@@ -25,6 +27,7 @@ const VAULT_PREFIX = 'v1:';
 // Falls back to legacy sha256 derivation for backward compatibility with
 // existing encrypted passwords. Set VAULT_KEY in .env for full separation.
 let _vaultKeyCache = null;
+let _vaultFallbackWarned = false;
 
 /** مفتاح التشفير — VAULT_KEY أولاً، وإلا التراثي (للتوافق مع البيانات القديمة). */
 function vaultKey() {
@@ -39,6 +42,11 @@ function vaultKey() {
     const secret = String(process.env.JWT_ACCESS_SECRET || process.env.JWT_REFRESH_SECRET
         || process.env.JWT_SECRET || process.env.EMPLOYEE_QR_SECRET || '');
     if (secret.length < 16) {return null;}
+    // تأمين 2026-11 (M10): تحذير إنتاجي صريح — الفصل الكامل يتطلب VAULT_KEY مستقلًا.
+    if (process.env.NODE_ENV === 'production' && !_vaultFallbackWarned) {
+        _vaultFallbackWarned = true;
+        logger.warn('[pw-vault] VAULT_KEY غير مضبوط في الإنتاج — مفتاح الخزنة مشتق من سر JWT: اختراق سر واحد يعني تزوير التوكنات وفك تشفير الاعتمادات معًا. اضبط VAULT_KEY مستقلًا (32+ حرفًا) ثم رحّل السجلات القديمة بإعادة التشفير.');
+    }
     _vaultKeyCache = crypto.createHash('sha256').update(secret + '|karim-pw-vault|v1').digest();
     return _vaultKeyCache;
 }

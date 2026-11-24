@@ -34,12 +34,12 @@
  * THIS FILE NEVER WRITES.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.180';
-import { fetchPnl, fetchNewest } from './finance-repo.js?v=4.9.180';
-import { fetchInventory, stockState } from './inventory-repo.js?v=4.9.180';
-import { fetchDispatches, itemsSummary, chainStage, rowDeptMatches } from './dispatch-repo.js?v=4.9.180';
-import { fetchPurchaseRequests } from './pr-repo.js?v=4.9.180';
-import { fetchCurrency } from './reports-repo.js?v=4.9.180';
+import { apiFetch } from '../../core/api.js?v=4.9.323';
+import { fetchPnl, fetchNewest } from './finance-repo.js?v=4.9.323';
+import { fetchInventory, stockState } from './inventory-repo.js?v=4.9.323';
+import { fetchDispatches, itemsSummary, chainStage, rowDeptMatches } from './dispatch-repo.js?v=4.9.323';
+import { fetchPurchaseRequests } from './pr-repo.js?v=4.9.323';
+import { fetchCurrency } from './reports-repo.js?v=4.9.323';
 
 const n = (v) => {
     const x = Number(v);
@@ -266,6 +266,7 @@ export function buildDeptHeadView(snapshot = {}, user = {}) {
     const expenseSummary = (panel && panel.expenses) || null;
     const labels = (expenseSummary && expenseSummary.labels) || {};
     const bySource = (expenseSummary && expenseSummary.bySource) || {};
+    const monthly = (expenseSummary && expenseSummary.monthly) || {};
 
     const sources = Object.entries(bySource).map(([key, v]) => ({
         key,
@@ -298,6 +299,13 @@ export function buildDeptHeadView(snapshot = {}, user = {}) {
         counts,
         cost: expenseSummary ? n(expenseSummary.total) : null,
         costCount: expenseSummary ? n(expenseSummary.count) : null,
+        monthly,
+        monthlyExpenses: monthly,
+        byMonth: monthly,
+        monthlySeries: Object.entries(monthly).map(([month, total]) => ({
+            month,
+            total: n(total),
+        })).sort((a, b) => String(a.month).localeCompare(String(b.month))),
         sources,
         subDepartments: Array.isArray(panel && panel.subDepartments) ? panel.subDepartments : [],
         statusSlices: Object.entries(statusCount).map(([key, count]) => ({

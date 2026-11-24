@@ -1,0 +1,170 @@
+# Phase 6b — server.js الكامل في بيئة معزولة (شبكة مقطوعة)
+
+- **التاريخ:** 2026-11-07
+- **الملف:** `tests/phase6b-server-boot.test.js` + الحارس `scripts/phase6b-egress-guard.js`
+- **النتيجة:** **6/6 ✅** في 24.3 ثانية
+- **الحكم:** نقطة الإقلاع الإنتاجية نفسها (`backend/server.js`) تعمل كاملةً على
+  نسخة مستعادة من النسخة الاحتياطية، بلا `account_mapping` (مسار fallback
+  الحقيقي)، بلا أي اتصال خارج loopback، وبلا تحميل `oracledb`.
+
+## كيف تُعزل البيئة
+
+1. **قاعدة مستعادة:** `karim_erp_phase6b` استُعيدت من
+   `karim_erp-nightly-20261106210048.dump` (انظر `BACKUP_RESTORE_EVIDENCE.md`).
+   `schema_migrations` = 133 (**قبل 134**) ⇒ `account_mapping` غير موجودة،
+   فكل مسارات المحاسبة تمر بالثوابت الافتراضية.
+2. **المتغيرات:** `YARASOFT_ENABLED=false`, `YARASOFT_ORACLE_ENABLED=false`,
+   `KARIM_LAN_BEACON=false`, `WARMUP_ENABLED=false`, `WHATSAPP_ENABLED=false`,
+   `PUSH_ENABLED=false`, `SKIP_BULLMQ=true`, `GOVERNANCE_SCHEDULER=false`,
+   `PORT=18973`, `NODE_ENV=production`.
+3. **الحارس عبر `NODE_OPTIONS=--require`** يُحمَّل قبل server.js ويقوم بـ:
+   - قطع `net.Socket.prototype.connect` لأي مضيف غير loopback (وسجل JSONL)؛
+   - قطع `dgram.send` لأي عنوان غير loopback (يشمل بيكل LAN)؛
+   - منع `dns.lookup` لأي اسم غير محلي وغير اسم الجهاز نفسه؛
+   - منع تحميل `oracledb` نهائيًا وتسجيل المحاولة؛
+   - **إجبار any `listen` على 0.0.0.0/:: إلى 127.0.0.1**.
+
+## النتائج المقيسة
+
+| # | الفحص | النتيجة |
+|---|-------|---------|
+| 1 | `/api/health/live` + `/startup` + `/ready` | 200 / 200 / 200، `ready.status=ok` |
+| 2 | `account_mapping` في القاعدة المستعادة | `to_regclass = null` ✅ (fallback حقيقي) |
+| 3 | ترحيل قيد عبر `POST /api/accounting/journal` | 201، `JE-20261107-0006`، مدين 250 = دائن 250، سطران |
+| 4 | ميزان المراجعة 2019-07 | مدين 1000.00 = دائن 1000.00، `balanced: true` |
+| 5 | دلتا التسوية البنكية 1010 | **+250.00** بالضبط بعد الترحيل |
+| 6 | التدفق النقدي / CFO | 200، الداخل 1000.00، CFO يعود بأرقام رقمية |
+| 7 | إقفال 2019-07 ثم ترحيل عليه | إقفال 200؛ الترحيل مرفوض **423**؛ إعادة فتح 200 |
+| 8 | سجل الحارس | `guard-loaded` داخل pid السيرفر نفسه، **0 محاولة محجوبة**، **0 oracledb** |
+| 9 | الاستماع | `listen-forced: 0.0.0.0 → 127.0.0.1` على المنفذ 18973 |
+| 10 | فحص LAN حي | الاتصال بـ`100.67.162.108:18973` **مرفوض** (المنفذ غير مفتوح على الشبكة) |
+
+## عيوب اكتُشفت وأُصلحت أثناء بناء الهارنس (شفافية)
+
+1. **`PORT` نصي من `.env` كان يفلت من شبكة الحارس** — `server.js:153` يستخدمه
+   كما هو، وشرط الحارس كان `typeof args[0] === 'number'`، فبقي السيرفر يستمع
+   على `0.0.0.0` في أول تشغيل. أُصلح بتحويل البورت إلى رقم داخل الحارس،
+   وأُثبت بالفحص الحي على عنوان LAN (مرفوض) و`listen-forced` في السجل.
+2. **`guard-loaded` يظهر مرتين بنفس pid** — ليس تكرار تحميل: خيط عامل
+   (`backend/pw-crypto.js:34` → `pw-worker.js`) يشترك في pid ويُعيد تشغيل
+   `--require` لكل worker thread. لا أثر على العزل (الحارس يُطبَّق في الخيط
+   والعملية معًا).
+3. **كاش GET (30 ثانية)** في `backend/api-cache.js` لا يُبطَل بكتابة
+   `accounting/journal` (الموردَان `accounting`+`journal` مقابل
+   `accounting`+`bank-rec` ليسا على غصن واحد). الهارنس يقرأ بـ`?live=1` —
+   وهو المسار المخصص لتجاوز الكاش — حتى تقيس التقارير أثر الترحيل فورًا.
+
+## حدود الإثبات (مقصودة)
+
+- **لا اتصال بـOracle أو YaraSoft إطلاقًا**؛ المتغيران معطلان، والحارس يمنع
+  تحميل `oracledb` ويسجل أي محاولة (كانت صفرًا). هذا إثبات استقلالية لا إثبات
+  تكامل مع المصادر الخارجية.
+- القاعدة **staging مستعادة**، وليست الإنتاج؛ قيود الاختبار موسومة
+  `zz-phase6b-*` وتبقى في قاعدة الاختبار عند `PHASE6B_KEEP_DB=1`.
+- لا يُقاس الأداء أو التزامن هنا؛ الغرض إثبات الإقلاع والدورة المحاسبية.
+
+## إعادة الإنتاج
+
+```bash
+# 1) فك تشفير نسخة الليلة (يتطلب KARIM_BACKUP_PASSPHRASE)
+node scripts/decrypt-backup.js database/backups/karim_erp-nightly-20261106210048.dump.kbak
+
+# 2) تشغيل الهارنس (ينشئ القاعدة من dump إن لم تكن موجودة)
+PHASE6B_DUMP="$TEMP/karim_erp_phase6b.dump" PHASE6B_KEEP_DB=1 \
+KARIM_TEST_DB_ISOLATED=1 KARIM_TEST_DB_NAME=karim_erp_test DB_NAME=karim_erp_test \
+node node_modules/jest/bin/jest.js tests/phase6b-server-boot.test.js --runInBand --forceExit
+```
+
+## تشغيل على قاعدة الإنتاج `karim_erp` (2026-11-07 00:41 محلي)
+
+بأمر المالك: «نفّذ Phase 6b على الإنتاج». شُغّل نفس الهارنس بقاعدة الإنتاج
+فعليًا (`PHASE6B_DB=karim_erp`, منفذ loopback 18977)، مع بقاء خدمة الإنتاج
+الأصلية تعمل في نفس الوقت.
+
+```bash
+DB_NAME=karim_erp_test KARIM_TEST_DB_NAME=karim_erp_test KARIM_TEST_DB_ISOLATED=1 \
+PHASE6B_DB=karim_erp PHASE6B_PORT=18977 \
+node node_modules/jest/bin/jest.js tests/phase6b-server-boot.test.js --runInBand --forceExit
+```
+
+**النتيجة: 6/6 ✅ في 28.9 ثانية.** سطر الإثبات المنشور:
+
+```
+PHASE6B_EVIDENCE {"db":"karim_erp","port":18977,"restoredByTest":false,"accountMappingTable":null,"user":{"id":"1","role":"admin","username":"admin"},"health":{"live":200,"startup":200,"ready":200,"readyState":"ok"},"journal":{"status":201,"entryNo":"JE-20261107-0018","debit":250,"credit":250,"lines":2},"tb":{"totalDebit":250,"totalCredit":250,"balanced":true},"cashFlow":{"status":200,"inflow":250,"outflow":0},"cfo":{"status":200,"revenue":0,"net":0},"bankRec":{"status":200,"before":0,"book":250,"statement":0,"diff":-250},"period":{"close":200,"blocked":423,"reopen":200},"egress":{"guardLoadedPids":[9632,9632],"serverPid":9632,"blocked":[],"oracleAttempts":0,"listenForced":[{"kind":"listen-forced","port":18977,"from":"0.0.0.0","to":"127.0.0.1"}],"recordedLines":3,"lanProbe":{"host":"100.67.162.108","connected":false}},"serverExit":null}
+```
+
+**بصمة الإثبات (SHA-256 لكائن JSON أعلاه — نفس تعريف Phase 6):**
+
+```
+887f590b2cc669534255eb1ac9318ac1e64210cc74037ed44c2a821241a092a5
+```
+
+### التنظيف والتحقق (لأنها قاعدة إنتاج)
+
+كتب الاختبار قيدًا واحدًا `JE-20261107-0018` (zz-phase6b) وفترة `2019-07`،
+فأُزيلا بعد التشغيل داخل معاملة واحدة. المقارنة مع لقطة ما قبل التشغيل:
+
+| البند | قبل | بعد التنظيف |
+|---|---:|---:|
+| `journal_entries` | 37,829 | 37,829 |
+| `journal_lines` | 75,873 | 75,873 |
+| `accounting_periods` | 12 | 12 |
+| `notifications` | 7,077 | 7,077 |
+| `chart_of_accounts` | 108 | 108 |
+| `pos_audit_logs` | 243 | 243 |
+| ميزان posted | 7,521,462.29 = 7,521,462.29 | نفسه |
+| 1150 / 1200 / 3100 / 4000 / 5000 | 100,667.93 / -915.77 / -2,252,293.42 / -3,666,358.74 / 722,533.01 | نفسه |
+| قيود `zz-phase6b-*` | 0 | 0 |
+| فترة `2019-07` | غير موجودة | غير موجودة |
+
+**ملاحظات شفافية:**
+
+- قيد الاختبار استهلك معرّفًا في sequence ثم حُذف؛ التسلسل تقدّم ولا يمكن
+  إرجاعه — لا أثر محاسبي (العدّادات والميزان والأرصدة مطابقة).
+- `entry_no` فريد على الصفوف الموجودة؛ الرقم `JE-20261107-0018` أُعيد استخدامه
+  بعد التنظيف لقيد `yarasoft_revenue` شرعي (21:42:08) — الرقم عرض لا مفتاح،
+  ولم يبقَ أي صف `zz-phase6b-*`.
+- الاختبار يعمل على نسخة سيرفر ثانية على loopback فقط؛ خدمة الإنتاج الأصلية
+  ظلت تعمل. عامل Oracle في النسخة الثانية كان معطّلًا بالمتغيرات والحارس.
+- `blocked=[]` و`oracleAttempts=0`: لم يُسجَّل أي محاولة خروج محجوبة في هذه
+  الجولة، والاستماع أُجبر على `127.0.0.1`، وفحص LAN الحي رفض الاتصال.
+- `cfo.revenue = 0` طبيعي: لم توجد قيود إيراد في 2019-07 لحظة القياس (قيد
+  الاختبار وحده). `bankRec.diff = -250` لأن كشف الحساب غير موجود لتلك الفترة —
+  سلوك fallback المتوقع وليس خطأ ترحيل.
+
+## بعد تطبيق 134 → 143 — على نسخة منفصلة (2026-11-07 02:03 محلي)
+
+بعد نجاح النافذة (`WINDOW_2026-11-07_REPORT.md`)، لم يُشغَّل الهارنس على
+`karim_erp` نفسها. بدلًا من ذلك:
+
+1. `pg_dump -Fc karim_erp` بعد الترقيات (93,338,825 بايت).
+2. `createdb karim_erp_phase6b_post` + `pg_restore --jobs=4` في 8,853 ms؛
+   النسخة تحمل `account_mapping=49` و`schema_migrations=140`.
+3. تشغيل الهارنس مرتين بالمتغيرات:
+
+```
+PHASE6B_DB=karim_erp_phase6b_post PHASE6B_PORT=18973 \
+PHASE6B_KEEP_DB=1 PHASE6B_EXPECT_MAPPING=1 \
+npx jest tests/phase6b-server-boot.test.js --runInBand
+```
+
+| البند | النتيجة |
+|---|---|
+| الاختبارات | **6/6** ثم **6/6** (25.6s) |
+| `mode` | `staging` (قاعدة منفصلة، لا نافذة إنتاج) |
+| `accountMappingTable` | `account_mapping` (49 صفًا — الفحص يتوقع وجوده الآن) |
+| `health` | live/startup/ready = 200/200/200، `readyState=ok` |
+| `egress.blocked` | `[]` |
+| `egress.oracleAttempts` | `0` |
+| `listen-forced` | `18973 → 127.0.0.1` |
+| فحص LAN | مرفوض (`100.67.162.108 connected=false`) |
+| بصمة الأدلة | `4a714f32…6f2b436` (سطر الأدلة الكامل في تقرير النافذة §6) |
+
+**فرق مقصود عن جولة 00:41:** الاختبار (2) صار يقبل الحالتين عبر
+`PHASE6B_EXPECT_MAPPING`: بدون المتغيّر يتوقع غياب `account_mapping` (قاعدة
+ما قبل 134)، ومع `=1` يتوقع وجوده و`COUNT > 0` (قاعدة بعد 143). هذا يمنع
+إنذارًا كاذبًا على قاعدة مُرقّاة دون إضعاف الفحص على قاعدة قديمة.
+
+**التنظيف:** `DROP DATABASE karim_erp_phase6b_post` بعد صفر اتصالات، وحُذف
+ملف dump المؤقت. النسخة المشفّرة الرسمية باقية. لم تُكتب أي صفوف في
+`karim_erp` من هذا التشغيل.

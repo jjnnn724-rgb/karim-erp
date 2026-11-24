@@ -202,6 +202,7 @@ menus: {
     'wh-moves': '<i class=ji data-i=chart></i>',
     'wh-returns': '<i class=ji data-i=undo></i>',
     'wh-prs': '<i class=ji data-i=clipboard-list></i>',
+    'dept-transfers': '<i class=ji data-i=arrow-left-right></i>',
     'roster': '<i class=ji data-i=calendar-clock></i>',
     shelves: '<i class=ji data-i=archive></i>',
     weight: '<i class=ji data-i=scale></i>',

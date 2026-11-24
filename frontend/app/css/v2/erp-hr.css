@@ -401,6 +401,8 @@
   body.erp-v2-print-card .erp-v2-employees .erp-emp-panel__body > :not([data-v2-file-qr]),
   body.erp-v2-print-card .erp-v2-employees [data-v2-file-qr] > :not(.erp-emp-qr-card),
   body.erp-v2-print-card .erp-v2-employees .erp-emp-qr__btns { display: none !important; }
+  /* الشاشة 144px تكفي للعين، والورق يحتاج حجمًا يمسحه الكشك بثقة. */
+  body.erp-v2-print-card .erp-v2-employees .erp-emp-qr__img { inline-size: 60mm; }
   body.erp-v2-print-card .erp-v2-employees .erp-emp-panel {
     border: none;
     box-shadow: none;
@@ -425,6 +427,9 @@
   }
   body.erp-v2-print-empcard .erp-v2-employees .erp-emp-rate { break-inside: avoid; }
   body.erp-v2-print-empcard .erp-v2-employees .erp-emp-qr__one { break-inside: avoid; }
+  /* ورقة البطاقة الكاملة: الرمزان بحجم يُمسح، لا بحجم العرض على الشاشة. */
+  body.erp-v2-print-empcard .erp-v2-employees .erp-emp-qr__img { inline-size: 34mm; }
+  body.erp-v2-print-empcard .erp-v2-employees .erp-emp-qr__one { inline-size: auto; }
 }
 
 @media print {
@@ -900,9 +905,10 @@
   font-weight: var(--erp-fw-semibold);
 }
 
-/* بطاقة QR: الرمز أصلًا 320px — يُعرض بحجمه على الورق، وبما لا يفيض
-   على الشاشة الضيقة. الرمزان جنبًا إلى جنب حين يتّسع المكان وحده،
-   وسطرٌ تحت كل رمز يقول لمن يخصّه: النظام للكشك، والبيانات للجوال. */
+/* بطاقة QR: الرمز مولّدٌ بدقة 320px ليبقى حادًا على الورق، لكنه يُعرض على
+   الشاشة بحجمٍ لا يبتلع اللوحة — الرمزان جنب بعض في صفٍّ واحد مضغوط، وكلاهما
+   يمسح مساحةً ثابتة مهما اختلف محتواها. طلب المالك 2026-10-29: «الباركودات
+   كبيرة جدًا». على الورق يرجع الرمز لحجم يُمسح بثقة من الكشك. */
 .erp-v2-employees .erp-emp-qr-card {
   display: flex;
   flex-direction: column;
@@ -912,26 +918,34 @@
   border: thin solid var(--erp-border);
   border-radius: var(--erp-radius-md);
   background: var(--erp-surface);
-  max-inline-size: min(100%, 700px);
+  max-inline-size: min(100%, 560px);
 }
 .erp-v2-employees .erp-emp-qr__pair {
   display: flex;
   flex-wrap: wrap;
   justify-content: center;
-  gap: var(--erp-space-3);
+  align-items: flex-start;
+  gap: var(--erp-space-4);
 }
 .erp-v2-employees .erp-emp-qr__one {
   display: flex;
   flex-direction: column;
   align-items: center;
   gap: var(--erp-space-1);
+  flex: 0 1 auto;
+  inline-size: 168px;
 }
 .erp-v2-employees .erp-emp-qr__cap {
   font-size: var(--erp-text-xs);
   color: var(--erp-text-muted);
   text-align: center;
 }
-.erp-v2-employees .erp-emp-qr__img { inline-size: min(320px, 100%); block-size: auto; }
+.erp-v2-employees .erp-emp-qr__img {
+  inline-size: 144px;
+  block-size: auto;
+  border-radius: var(--erp-radius-sm);
+  background: var(--erp-surface-raised);
+}
 .erp-v2-employees .erp-emp-qr__meta {
   display: flex;
   flex-direction: column;
@@ -945,6 +959,51 @@
   justify-content: center;
   gap: var(--erp-space-1);
 }
+
+/* أقسام الكشف: كل كتلة عنوانٌ وجسمٌ بغلافٍ واحد، بدل تسع لفّات مختلفة
+   كانت تجعل اللوحة تبدو مكدّسة لا مرتّبة (طلب المالك 2026-10-29). */
+.erp-v2-employees .erp-emp-sec-block {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-2);
+  padding: var(--erp-space-3);
+  border: thin solid var(--erp-border-subtle);
+  border-radius: var(--erp-radius-md);
+  background: var(--erp-surface);
+}
+
+/* عمودان للكتل الضيّقة على الشاشة الواسعة: الإجازات وبطاقة QR جنبًا إلى جنب،
+   بدل صفٍّ كامل يملؤه فراغٌ على يسار كتلةٍ عرضها 560px. الكتل العريضة
+   (الرأس، الأقسام المسماة، الأداء، كشف الفترة، الأزرار) تبقى بعرض كامل —
+   والكل يبقى أبناءً مباشرين للوحة لأن منتقيات الطباعة تخاطبهم بـ `>`. */
+@media (min-width: 1280px) {
+  .erp-v2-employees .erp-emp-panel__body.erp-stack {
+    display: grid;
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+    align-items: start;
+    gap: var(--erp-space-3);
+  }
+  .erp-v2-employees .erp-emp-panel__body > :is(.erp-emp-file__head, section,
+    [data-v2-file-kpis], [data-v2-file-range], .erp-emp-panel__actions) {
+    grid-column: 1 / -1;
+  }
+}
+
+/* مؤشرات الكشف: رقاقةٌ لا ترمي نصف الصف فراغًا — تتوسّع وتتقلّص ضمن حدٍّ
+   أدنى يبقى الرقم مقروءًا، فتُملأ الكتلة بعرضها لا بنصفه. */
+.erp-v2-employees .erp-emp-stats .erp-emp-stat { flex: 1 1 104px; }
+
+/* عمود «التأخير»: الدقائق الفعلية لكل طرف. «ضمن السماح» تُميَّز بلون info —
+   معلومة تُقرأ، لا تهمة ولا رقم مخفيّ. */
+.erp-v2-employees .erp-emp-delay {
+  display: inline-flex;
+  align-items: center;
+  gap: var(--erp-space-1);
+  font-size: var(--erp-text-sm);
+  white-space: nowrap;
+}
+.erp-v2-employees .erp-emp-delay--grace { color: var(--erp-info-text); }
+.erp-v2-employees .erp-emp-delay__counted { color: var(--erp-text-muted); }
 
 /* شريط نسبة الانتظام: <progress> أصلي بألوان النظام — لا عرضٌ سطري ولا
    لونٌ خام، والدلالة يقرأها قارئ الشاشة من العنصر نفسه. */

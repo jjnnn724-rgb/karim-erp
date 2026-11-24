@@ -85,6 +85,11 @@ function switchScannerTab(btn, tab) {
 
 async function _startScannerCamera(boxId) {
     const box = document.getElementById(boxId);
+    // المكتبة تُحمَّل عند الطلب (vendor-lazy) — أول فتح للكاميرا ينتظرها.
+    if (typeof Html5Qrcode === 'undefined' && typeof window.ensureHtml5Qrcode === 'function') {
+        if (box) {box.innerHTML = '<div class="scanner-loading">جارٍ تجهيز الكاميرا…</div>';}
+        try { await window.ensureHtml5Qrcode(); } catch (_) { /* يعالجه الشرط أدناه */ }
+    }
     if (typeof Html5Qrcode === 'undefined') {
         if (box) {box.innerHTML = '<div class="scanner-error"><i class=ji data-i=alert-triangle></i> مكتبة الكاميرا غير محمّلة. استخدم تبويب الإدخال اليدوي.</div>';}
         return;

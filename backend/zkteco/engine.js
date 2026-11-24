@@ -17,21 +17,23 @@
 
 const { pool } = require('../shared-pool');
 const { logger } = require('../logger');
+const { makeEmitScoped } = require('../realtime/guard');
 const { ZKClient, ZKError } = require('./client');
 const { engine, matchUserToEmployee: matchUtil, BUSINESS_TZ_OFFSET_MS } = require('../attendance-engine');
 const proto = require('./protocol');
 
 const AUTO_MATCH_DEFAULT = String(process.env.ZK_AUTO_MATCH_EMPLOYEE_ID ?? 'true') !== 'false';
 
+/** @param {any} n */
 function pad2(n) { return String(n).padStart(2, '0'); }
 
-/** تحويل وقت الجهاز المحلي (توقيت الرياض فعليًا) إلى لحظة زمنية صريحة */
+/** تحويل وقت الجهاز المحلي (توقيت الرياض فعليًا) إلى لحظة زمنية صريحة @param {any} wall */
 function wallToInstant(wall) {
     return new Date(Date.UTC(wall.year, wall.month - 1, wall.day, wall.hour, wall.minute, wall.second)
         - BUSINESS_TZ_OFFSET_MS);
 }
 
-/** مطابقة رقم جهاز بموظف: تطابق حرفي ثم رقمي (123 = 0123) */
+/** مطابقة رقم جهاز بموظف: تطابق حرفي ثم رقمي (123 = 0123) @param {any} deviceUserId @param {any} byDeviceId @param {any} byEmployeeNo */
 function matchUserToEmployee(deviceUserId, byDeviceId, byEmployeeNo) {
     return matchUtil(deviceUserId, byDeviceId, byEmployeeNo);
 }
@@ -44,11 +46,14 @@ class AttendanceSyncEngine {
         this._tickStartedAt = 0;
         this._watchdog = null;
         this.io = null;
+        /** بثّ مُوجَّه (غرفة erp:authed عند RT_REQUIRE_AUTH) — لا io.emit خام */
+        this.emit = null;
         this.lastReconcileAt = 0;
         /** id → { syncing, lastAttemptAt, lastResultAt, lastError, consecutiveFailures } */
         this.states = new Map();
     }
 
+    /** @param {any} id */
     _state(id) {
         let st = this.states.get(id);
         if (!st) {
@@ -73,9 +78,11 @@ class AttendanceSyncEngine {
         return Math.min(max, base * Math.pow(2, failures - 1));
     }
 
+    /** @param {any} io */
     start(io) {
         if (this.running) {return;}
         this.io = io || null;
+        this.emit = makeEmitScoped(io);
         this.running = true;
         // أول دورة بعد 3 ثوان من الإقلاع (يتيح للخادم إتمام التهيئة)
         this.timer = setTimeout(() => {
@@ -121,6 +128,7 @@ class AttendanceSyncEngine {
     /**
      * إعادة ضبط حالة جهاز في الذاكرة (عند تعديل عنوان IP أو المنفذ)
      * ليحاول المحرك الاتصال فورًا في الدورة التالية بدل انتظار التراجع الأسي.
+     * @param {any} deviceId
      */
     resetDeviceState(deviceId) {
         const st = this.states.get(deviceId);
@@ -161,13 +169,7 @@ class AttendanceSyncEngine {
                 `UPDATE attendance_devices SET status = 'disabled'
                  WHERE enabled = false AND status <> 'disabled'`
             ).catch(() => {});
-            // مصالحة الحضور (نسيان دخول/خروج + ربط متأخر) — مرة كل ساعة
-            if (!this.lastReconcileAt || now - this.lastReconcileAt > 3600 * 1000) {
-                this.lastReconcileAt = now;
-                try { await this.reconcileAttendance(); } catch (e) {
-                    logger.warn('[ZKTECO_ENGINE] مصالحة الحضور فشلت:', e.message);
-                }
-            }
+            // لا مصالحة ولا استكمال: البصمة تُسجَّل وتُحفظ — لا تصحيح صامت بعد وقوعه.
         } catch (error) {
             logger.error('[ZKTECO_ENGINE] دورة المزامنة فشلت:', error.message);
         } finally {
@@ -238,8 +240,8 @@ class AttendanceSyncEngine {
                 });
                 const res = await pool.query(
                     `INSERT INTO attendance_logs
-                        ("deviceId", "deviceUserId", "employeeId", "attendanceTime", "verifyType", "punchState")
-                     SELECT $1, u, e, t, v, p
+                        ("deviceId", "deviceUserId", "employeeId", "attendanceTime", "verifyType", "punchState", source)
+                     SELECT $1, u, e, t, v, p, 'device'
                      FROM unnest($2::text[], $3::bigint[], $4::timestamptz[], $5::int[], $6::int[])
                           AS x(u, e, t, v, p)
                      ON CONFLICT ("deviceId", "deviceUserId", "attendanceTime") DO NOTHING
@@ -262,7 +264,7 @@ class AttendanceSyncEngine {
             const brainCtx = { patterns: new Map(), last: new Map() };
             for (const row of insertedRows) {
                 if (!row.employeeId) {
-                    if (this.io) {this.io.emit('biometric:unmapped', {
+                    if (this.io) {this.emit('biometric:unmapped', {
                         deviceId: device.id, deviceUserId: row.deviceUserId,
                         time: row.attendanceTime, punchState: row.punchState,
                     });}
@@ -313,10 +315,10 @@ class AttendanceSyncEngine {
                 }
                 if (liveEvents.length <= 50) {
                     for (const ev of liveEvents) {
-                        this.io.emit('biometric:punch', ev);
+                        this.emit('biometric:punch', ev);
                     }
                 } else {
-                    this.io.emit('biometric:synced', {
+                    this.emit('biometric:synced', {
                         deviceId: device.id, deviceName: device.name,
                         inserted, writeBacks, at: new Date().toISOString(),
                     });
@@ -343,7 +345,7 @@ class AttendanceSyncEngine {
                     // beyond int32 range ("integer out of range"). Clamp to
                     // NULL instead of failing the whole batch (card is BIGINT).
                     const INT32_MAX = 2147483647;
-                    const toInt32 = (v, dflt) => {
+                    const toInt32 = (/** @type {any} */ v, /** @type {any} */ dflt) => {
                         const n = Number(v);
                         if (!Number.isFinite(n) || n < 0 || n > INT32_MAX) {return dflt;}
                         return Math.trunc(n);
@@ -552,7 +554,7 @@ class AttendanceSyncEngine {
             employeeId, punchState, instant, wall, device, source: 'device'
         });
         if (result.action && this.io) {
-            this.io.emit('attendance:updated', {
+            this.emit('attendance:updated', {
                 action: result.action,
                 source: 'device',
                 employee: { id: employeeId },
@@ -560,13 +562,6 @@ class AttendanceSyncEngine {
             });
         }
         return result.action;
-    }
-
-    /**
-     * مصالحة الحضور (مرة كل ساعة + عند الحاجة) — تفويض للمحرك الموحد
-     */
-    async reconcileAttendance() {
-        return engine.reconcileAttendance();
     }
 
     async _updateCheckpoint(deviceId, maxTs, totalRead, totalNew) {

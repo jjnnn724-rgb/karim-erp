@@ -173,7 +173,7 @@ describe('مقارنة الشهور — مصدر يارا المباشر', () =>
     test('تعذّر يارا لا يستبدل الإيراد برقم محلي', () => {
         expect(backend).toMatch(/loadMonthlyLinkedCashierRevenue\(range\.from, range\.to, \{ cashiers: requestedCashiers \}\)/);
         expect(backend).toMatch(/loadMonthlyLinkedCashierRevenue\(win\.from, win\.to, \{ cashiers: requestedCashiers \}\)/);
-        expect(backend).toMatch(/cashierRevenueForWindow: \(win\) => summarizeCashierDays\(cashierRevenue\.days, win\.from, win\.to\)/);
+        expect(backend).toMatch(/cashierRevenueForWindow: \((?:\/\*\*[^)]*?\*\/\s*)?win\) => summarizeCashierDays\(cashierRevenue\.days, win\.from, win\.to\)/);
         expect(backend).toMatch(/بلا بديل محلي/);
         expect(server).toMatch(/const \{ router: yaraReportsRouter \} = require\('\.\/yarasoft\/yara-reports'\)/);
     });
@@ -362,7 +362,7 @@ describe('مقارنة الشهور — المرآة تُقرأ بحذر', () =>
         expect(backend).toMatch(/oracleAvailable = true;/);
         expect(backend).toMatch(/oracleAvailable = false;/);
         expect(backend).toMatch(/oracle_available: oracleAvailable,/);
-        expect(backend).toMatch(/catch \(e\) \{[\s\S]*?oracle monthly cost unavailable/);
+        expect(backend).toMatch(/catch \((?:\/\*\*[^)]*?\*\/\s*)?e\) \{[\s\S]*?oracle monthly cost unavailable/);
     });
 });
 
@@ -465,11 +465,11 @@ describe('مقارنة الشهور — النشر: مفتاحٌ واحد في �
     });
 
     test('المعاينة V2 تحمّل الشاشة وتُنظّفها وتوجّهها', () => {
-        expect(preview).toMatch(/import \{ mountMonthlyComparisonScreen \} from '\.\/screens\/monthly-comparison\.js/);
+        expect(preview).toMatch(/module: 'monthly-comparison'/);
         expect(preview).toMatch(/let monthlyComparisonScreen = null;/);
         expect(preview).toMatch(/function teardownMonthlyComparisonScreen\(\)/);
         expect(preview).toMatch(/teardownMonthlyComparisonScreen\(\);/);
-        expect(preview).toMatch(/key: 'monthly-comparison', title: 'مقارنة الشهور', mount: mountMonthlyComparisonScreen/);
+        expect(preview).toMatch(/key: 'monthly-comparison', title: 'مقارنة الشهور', module: 'monthly-comparison'/);
         expect(preview).toMatch(/if \(key === 'monthly-comparison'\) \{/);
     });
 });

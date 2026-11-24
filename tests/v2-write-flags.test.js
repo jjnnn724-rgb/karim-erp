@@ -50,7 +50,8 @@ describe('write-flags — الافتراضي مغلق (باستثناء إضاف
         /* قرار المالك 2026‑10‑20: «إضافة فواتير» وظيفة أساسية ⇒ ظاهرة افتراضيًا */
         expect(ctx.invoiceCreateWriteEnabled('', null)).toBe(true);
         expect(ctx.deptCashierWriteEnabled('', null)).toBe(true);
-        expect(ctx.bulkImportWriteEnabled('', null)).toBe(false);
+        /* قرار المالك 2026-11-03: «كل شيء قبل النقل مهما كان» ⇒ الاستيراد الجماعي ظاهرٌ افتراضيًا */
+        expect(ctx.bulkImportWriteEnabled('', null)).toBe(true);
         expect(ctx.financeWriteEnabled(undefined, null)).toBe(false);
     });
 
@@ -76,7 +77,8 @@ describe('write-flags — الافتراضي مغلق (باستثناء إضاف
         expect(ctx.recipeWriteEnabled('', throwingStore)).toBe(true);
         expect(ctx.bulkImportWriteEnabled('', store('1'))).toBe(true);
         expect(ctx.bulkImportWriteEnabled('', store('0'))).toBe(false);
-        expect(ctx.bulkImportWriteEnabled('', throwingStore)).toBe(false);
+        /* ظاهرٌ افتراضيًا: تعذّر قراءة المخزّن لا يُخفي وظيفة (الحكم للخادم) */
+        expect(ctx.bulkImportWriteEnabled('', throwingStore)).toBe(true);
         expect(ctx.financeWriteEnabled('', store('0'))).toBe(false);
         expect(ctx.portalWriteEnabled('', store('0'))).toBe(false);
         expect(ctx.faceWriteEnabled('', store('0'))).toBe(false);
@@ -131,7 +133,8 @@ describe('write-flags — الافتراضي مغلق (باستثناء إضاف
         expect(ctx.fiscalWriteEnabled('?v2financewrite=1&v2zkwrite=1&v2facewrite=1', null)).toBe(false);
         expect(ctx.invoiceVoidWriteEnabled('?v2financewrite=1&v2fiscalwrite=1', null)).toBe(false);
         expect(ctx.invoiceCreateWriteEnabled('?v2invoicevoid=1&v2financewrite=1&v2invoicecreate=0', null)).toBe(false);
-        expect(ctx.bulkImportWriteEnabled('?v2invoicecreate=1&v2invoicevoid=1&v2financewrite=1', null)).toBe(false);
+        /* علمٌ ظاهرٌ افتراضيًا: لا تفتحه أعلامُ غيره — =0 يغلقه رغم فتحها */
+        expect(ctx.bulkImportWriteEnabled('?v2invoicecreate=1&v2invoicevoid=1&v2financewrite=1&v2bulkimport=0', null)).toBe(false);
         expect(ctx.invoiceCreateWriteEnabled('?v2bulkimport=1&v2invoicecreate=0', null)).toBe(false);
     });
 });

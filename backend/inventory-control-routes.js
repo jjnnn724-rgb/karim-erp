@@ -4,6 +4,7 @@ const { pool } = require('./shared-pool');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { logger } = require('./logger');
 const { postInventoryLedgerEntry } = require('./inventory-ledger');
+const { listColumnsExcluding } = require('./heavy-columns');
 const { normalizeScopeFilter, filterSnapshotRows, ensureAuditLocationSchema } = require('./stocktaking-routes');
 
 const router = express.Router();
@@ -101,10 +102,17 @@ function ensureLocationDeptSchema() {
     return locationDeptSchemaReady;
 }
 
+// PERF 2026-10-29: قائمة الجرد كانت تحمل صور التواقيع الثلاث (base64) لكل
+// جلسة — حتى 100 جلسة في طلب واحد — ولا يقرأها أي عميل. تُستثنى في SELECT
+// نفسها مع إبقاء البصمات؛ وفشل قراءة الأعمدة يعيد a.* كما كان.
+const AUDIT_SIGNATURE_COLUMNS = ['count_signature_data', 'submit_signature_data', 'approval_signature_data'];
+
 router.get('/inventory/audits', jwtAuth, requireRole(...AUDIT_READ_ROLES), async (req, res) => {
     try {
+        const cols = await listColumnsExcluding('inventory_audits', AUDIT_SIGNATURE_COLUMNS);
+        const projection = cols ? cols.map((c) => `a."${c}"`).join(', ') : 'a.*';
         const result = await pool.query(`
-            SELECT a.*, COALESCE(COUNT(i.id), 0)::int AS item_count
+            SELECT ${projection}, COALESCE(COUNT(i.id), 0)::int AS item_count
             FROM inventory_audits a
             LEFT JOIN inventory_audit_items i ON i.audit_id = a.id
             GROUP BY a.id
@@ -472,9 +480,15 @@ router.post(['/system/reset-production', '/system/reset-operational-numbers', '/
         // inside the transaction, and pool-based re-enable is a safety net only.
         // USER لا ALL: مشغّلات قيود المفاتيح الأجنبية مشغّلات نظام لا يملك
         // karim_app تعطيلها، فتفشل ALL وتُرحّل الـsavepoint ويبقى الحذف محجوبًا.
+        // لكن USER كان يعطّل أيضًا: (١) trg_pos_audit_chain — فكل إدراج أثناء
+        // النافذة يبقى بلا ختم إلى الأبد؛ (٢) حاجز حذف السجل — والتصفير لا
+        // يحذفه أصلًا (RESET_AUDIT_TABLES تتجاوزه) ولا يحذفه أي cascade، فتعطيله
+        // كان يفتح باب حذفٍ متزامن يكسر السلسلة عند الصف التالي. نُبقي الحذف
+        // محجوبًا دائمًا، ونعطّل حاجز التعديل وحده: حذف users يرفع actor_user_id
+        // بـSET NULL (غير محسوب في حِمل السلسلة فلا يكسر الختم).
         try {
             await client.query(`SAVEPOINT sp_triggers`);
-            await client.query(`ALTER TABLE pos_audit_logs DISABLE TRIGGER USER`);
+            await client.query(`ALTER TABLE pos_audit_logs DISABLE TRIGGER trg_pos_prevent_audit_update`);
             await client.query(`ALTER TABLE users DISABLE TRIGGER USER`);
             await client.query(`RELEASE SAVEPOINT sp_triggers`);
         } catch (trigErr) {
@@ -483,7 +497,7 @@ router.post(['/system/reset-production', '/system/reset-operational-numbers', '/
         }
 
         // حذف كل بيانات karim — ترتيب من الأبناء إلى الأباء (FK-safe)
-        // الاستراتيجية: SAVEPOINT لكل حذف حتى لا ي溯回 الكائن بأكمله
+        // الاستراتيجية: SAVEPOINT لكل حذف حتى لا ينسحب التراجع على الكائن بأكمله
         const allTables = [
             // ─── أولاً: أحفاد البعيد ──────────────────────────────────────
             'advance_applications', 'employee_evaluations', 'employee_contracts',

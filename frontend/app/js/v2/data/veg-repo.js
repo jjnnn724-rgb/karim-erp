@@ -29,6 +29,7 @@
  *     POST   /veg-requests/:id/receive         (:199) body {rejections, quantities[, prices]}
  *     POST   /veg-requests/:id/price           (:320) body {prices}
  *     PUT    /veg-requests/:id/items           (:391) body {items}
+ *     POST   /veg-requests/:id/admin/items     (:430) body {items} — أدمن فقط
  *     POST   /veg-requests/:id/cancel          (:444) body {reason}
  *     POST   /veg-requests/:id/printed         (:476) — عدّاد الطباعة
  *
@@ -49,6 +50,9 @@
  *   what it will actually accept is: admin|owner (any) or the CREATOR —
  *   everything else fails 403. V2 shows the button only for those two
  *   buckets instead of offering a button the server must reject.
+ *   UPDATE 2026-11-23: admin also gets the button while status=received and
+ *   saves through POST /:id/admin/items (admin-only) so forgotten items can
+ *   be added before pricing; everyone else keeps the pending/qty-only rule.
  *
  * ANNOUNCED HARDENING — path segment encoding
  *   Legacy encodes the id for the items PUT alone (:535) and sends the raw
@@ -67,7 +71,7 @@
  * PAIRS WITH: screens/veg-requests.js (screen 14 in js/v2/MIGRATION.md).
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.180';
+import { apiFetch } from '../../core/api.js?v=4.9.323';
 
 const num = (v) => {
     const n = Number(v);
@@ -81,6 +85,7 @@ export const VEG_READ_ROLES = [...VEG_CREATE_ROLES, 'warehouse'];
 export const VEG_RECEIVE_ROLES = ['sous_chef', 'admin', 'owner'];
 export const VEG_PRICE_ROLES = ['warehouse', 'admin', 'owner', 'manager'];
 export const VEG_EDIT_ROLES = ['sous_chef', 'admin', 'owner'];
+export const VEG_ADMIN_ROLES = ['admin'];
 
 /** بوابات القديم حرفيًا — vegCanCreate/vegCanPrice/vegIsBoss/vegCanReceive
  *  (features/veg-requests.js:18-26). */
@@ -145,6 +150,11 @@ export async function priceVegRequest(id, prices) {
 /** تعديل الكميات قبل الاعتماد — PUT /:id/items (:391). */
 export async function editVegItems(id, items) {
     return apiFetch(`/veg-requests/${encodeURIComponent(id)}/items`, { method: 'PUT', body: JSON.stringify({ items }) });
+}
+
+/** إضافة أصناف/تعديل كميات — الأدمن فقط — POST /:id/admin/items (:430). */
+export async function adminEditVegItems(id, items) {
+    return apiFetch(`/veg-requests/${encodeURIComponent(id)}/admin/items`, { method: 'POST', body: JSON.stringify({ items }) });
 }
 
 /** إلغاء — POST /:id/cancel (:444). */
@@ -266,10 +276,15 @@ export function vegPriceVisible(role, status) {
  *  وdept_head يسقطان قبل فحص المنشئ)، ثم البوابة الداخلية :403-408 تقبل
  *  admin/owner أيًّا كان أو منشئ الطلب — فزر التعديل لهذين الحقلين وحدهما. */
 export function vegEditVisible(role, status, raw = {}, userId = null) {
+    // الأدمن وحده يضيف الأصناف — ويسمح له قبل الاستلام وبعده (قبل التسعير)
+    if (VEG_ADMIN_ROLES.includes(role) && (status === 'pending' || status === 'received')) {return true;}
     if (status !== 'pending') {return false;}
     if (VEG_UI_BOSS_ROLES.includes(role)) {return true;}
     return VEG_EDIT_ROLES.includes(role) && userId != null && Number(raw.created_by) === Number(userId);
 }
+
+/** هل يملك المستخدم صلاحية إضافة الأصناف؟ (الأدمن فقط — بوابة الخادمrequireRole('admin')). */
+export function vegAdminVisible(role) {return VEG_ADMIN_ROLES.includes(role);}
 
 /** زر الإلغاء — شرط القديم :340: pending && (صاحب الطلب أو الإدارة). */
 export function vegCancelVisible(role, status, raw = {}, userId = null) {

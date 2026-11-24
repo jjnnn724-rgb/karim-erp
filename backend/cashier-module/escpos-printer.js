@@ -22,10 +22,17 @@ const CMD = {
 };
 const PAPER_WIDTH = 48;
 
+const METHOD_AR = { cash: 'نقدي', card: 'شبكة', wallet: 'محفظة', bank_transfer: 'تحويل', voucher: 'قسيمة', loyalty: 'نقاط' };
+
 function fmtMoney(n) { return Number(n).toFixed(2) + ' SAR'; }
 function textLine(t, _) { return Buffer.from(t + '\n', 'utf8'); }
 function divider(c = '-') { return Buffer.from(c.repeat(PAPER_WIDTH) + '\n', 'ascii'); }
 function blankLine() { return Buffer.from('\n', 'ascii'); }
+function methodLine(method) {
+    const code = String(method || '').toUpperCase();
+    const ar = METHOD_AR[String(method || '').toLowerCase()];
+    return ar ? `${ar} ${code}` : code;
+}
 
 function buildRasterLogo(width = 128) {
     try {
@@ -114,6 +121,19 @@ function buildBuffetPersonsSection(chunks, items, order) {
     chunks.push(divider('='));
 }
 
+/**
+ * @param {object} opts
+ * @param {*} opts.order
+ * @param {*} opts.items
+ * @param {*} opts.payments
+ * @param {*} [opts.qrPayload]
+ * @param {*} [opts.department]
+ * @param {*} [opts.cashier]
+ * @param {*} [opts.paid]
+ * @param {*} [opts.change]
+ * @param {boolean} [opts.buffet]
+ * @returns {Promise<Buffer[]>}
+ */
 async function buildEscPosReceipt({ order, items, payments, qrPayload, department, cashier, paid, change, buffet = false }) {
     const chunks = [];
     chunks.push(CMD.INIT);
@@ -125,8 +145,9 @@ async function buildEscPosReceipt({ order, items, payments, qrPayload, departmen
     chunks.push(textLine(department.name_ar || 'مطاعم الشرفه العالمي'));
     chunks.push(CMD.NORMAL_SIZE);
     chunks.push(CMD.BOLD_OFF);
+    chunks.push(textLine('فاتورة ضريبية مبسطة'));
     if (department.vat_number) {chunks.push(textLine(`الرقم الضريبي: ${department.vat_number}`));}
-    chunks.push(textLine('AST ' + new Date(order.created_at).toLocaleString('en-GB', { timeZone: 'Asia/Riyadh' })));
+    chunks.push(textLine(`التاريخ: ${new Date(order.created_at).toLocaleString('en-GB', { timeZone: 'Asia/Riyadh' })}`));
     chunks.push(divider('='));
 
     chunks.push(CMD.ALIGN_LEFT);
@@ -154,10 +175,11 @@ async function buildEscPosReceipt({ order, items, payments, qrPayload, departmen
     chunks.push(twoColumn('Subtotal:',    Number(order.subtotal).toFixed(2)));
     if (Number(order.discount_total) > 0) {chunks.push(twoColumn('Discount:', `-${Number(order.discount_total).toFixed(2)}`));}
     chunks.push(twoColumn('VAT (15%):',   Number(order.tax_total).toFixed(2)));
-    chunks.push(divider());
+    chunks.push(divider('='));
     chunks.push(CMD.BOLD_ON);
+    chunks.push(CMD.ALIGN_CENTER);
+    chunks.push(textLine('الإجمالي المستحق Total'));
     chunks.push(CMD.DOUBLE_WIDTH);
-    chunks.push(CMD.ALIGN_RIGHT);
     chunks.push(textLine(fmtMoney(order.total_amount)));
     chunks.push(CMD.NORMAL_SIZE);
     chunks.push(CMD.BOLD_OFF);
@@ -165,16 +187,16 @@ async function buildEscPosReceipt({ order, items, payments, qrPayload, departmen
     chunks.push(divider());
 
     chunks.push(CMD.BOLD_ON);
-    chunks.push(textLine('Payment'));
+    chunks.push(textLine('الدفع Payment'));
     chunks.push(CMD.BOLD_OFF);
     for (const p of payments) {
-        chunks.push(twoColumn(`  ${p.method.toUpperCase()}`, Number(p.amount).toFixed(2)));
+        chunks.push(twoColumn(`  ${methodLine(p.method)}`, Number(p.amount).toFixed(2)));
         if (p.reference) {chunks.push(textLine(`    ref: ${p.reference}`));}
     }
     chunks.push(twoColumn('Total Paid:', Number(paid).toFixed(2)));
     if (change > 0) {
         chunks.push(CMD.BOLD_ON);
-        chunks.push(twoColumn('Change:', fmtMoney(change)));
+        chunks.push(twoColumn('الباقي Change:', fmtMoney(change)));
         chunks.push(CMD.BOLD_OFF);
     }
     chunks.push(divider());
@@ -184,6 +206,8 @@ async function buildEscPosReceipt({ order, items, payments, qrPayload, departmen
     chunks.push(await buildQrCommand(qrPayload));
     chunks.push(blankLine());
     chunks.push(textLine('شكراً لزيارتكم'));
+    chunks.push(textLine('نتطلع لخدمتكم مرة أخرى'));
+    chunks.push(textLine('فاتورة إلكترونية — لا تحتاج ختماً أو توقيعاً'));
     chunks.push(CMD.FEED(3));
     chunks.push(CMD.CUT_PAPER);
     // ── درج النقدية (سؤال المالك 2026-10-06: «هل الكاشير يعمل بالدرج الفلوس؟») ──

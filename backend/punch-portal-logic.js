@@ -17,10 +17,16 @@
  *   2ج. PUNCH_LOCATION_FROZEN  إحداثيات مجمّدة أو انتقال مستحيل (تزوير)
  *   3. PUNCH_LOCATION_MOCKED   مؤشر موقع مزيف (L3)
  *   4. PUNCH_LOCATION_WEAK     دقة مريبة / إحداثيات قديمة / تشتت (L3)
+ *   4ب. PUNCH_LOCATION_CLOCK_SKEW ساعة الجهاز سابقة للسيرفر بأكثر من الحد المسموح
  *   5. PUNCH_OUT_OF_RANGE      خارج نطاق المطعم (L2)
  *   5ب. PUNCH_LOCATION_AMBIGUOUS منطقة الغموض في الوضع الصارم
  *   6. PUNCH_DEVICE_MISMATCH   جهاز غير مربوط بالحساب (L4)
  *   → accepted
+ * الصرامة (2026-11-02، مفاتيح مستقلة مغلقة افتراضيًا حتى يقرّر المالك):
+ *   • punch_geo_strict_multi_fix — لا استثناء القراءة الواحدة، ولا قديم محسوب سيرفريًا
+ *   • punch_face_strict + punch_face_min_samples + punch_face_replay_min_distance —
+ *     صور حيّة من الكاميرا، استخراج المتجه على السيرفر، عيّنة متعدّدة، ورفض إعادة
+ *     تشغيل نفس الصورة (الحاكم: assessFaceSamples أدناه)
  */
 // @ts-check
 'use strict';
@@ -85,6 +91,12 @@ try {
  * @property {boolean} teleportCheck فحص التنقل المستحيل ضد آخر بصمة مقبولة
  * @property {number} maxTeleportKmh أقصى سرعة مقبولة بين بصمتين (كم/س)
  * @property {number} radiusMeters
+ * @property {boolean} geoStrictMultiFix الصرامة الجغرافية: بلا استثناء القراءة الواحدة (2026-11-02)
+ * @property {number} maxClockSkewS أقصى انحراف مقبول بين ساعة الجهاز ولحظة وصول الطلب (ث)
+ * @property {boolean} faceStrict الصرامة الوجهية: عينات حيّة متعددة واستخراج على السيرفر فقط
+ * @property {number} faceMinSamples أقل عدد عينات وجه في البصمة الواحدة
+ * @property {number} faceReplayMinDistance أقل مسافة مقبولة بين وجه البصمة والقالب — الأدق من هذا
+ *   = نفس الصورة أعيدت لا نفس الوجه (تزييف إعادة تشغيل)
  * @property {number|null} lat إحداثيات المطعم — null = غير مضبوطة
  * @property {number|null} lng
  */
@@ -96,6 +108,8 @@ try {
  * @property {string|null} deviceId
  * @property {PunchLocation|null} [location]
  * @property {string|null} [boundDeviceId]
+ * @property {number|null} [serverNowMs] لحظة وصول الطلب بساعة السيرفر (epoch ms) —
+ *   تُستخدم لعمر القراءة المحسوب سيرفريًا بدل رقم يبعثه العميل.
  * @property {boolean} [viaTunnel] وصل عبر Cloudflare Tunnel (ترويسات cf-*) —
  *   الجيولوكيشن في المتصفح يتطلب HTTPS فالهواتف تدخل حصرًا عبر التونل؛ شبكتها
  *   الأصلية غير قابلة للتمييز، فيستبدل حكم L1 بقيد "الجيوفانس إلزامي".
@@ -106,7 +120,7 @@ try {
  * @typedef {Object} EvaluateResult
  * @property {'accepted'|'rejected'} decision
  * @property {string} [rejectCode]
- * @property {{networkOk: boolean, hasLocation: boolean, fixCount?: number, singleFix?: boolean, spreadM?: number, maxSpeedKmh?: number, trustScore?: number, trustSignals?: string[], bestLat?: number|null, bestLng?: number|null, distanceM: number|null, accuracyM: number|null, fixAgeS: number|null, deviceId: string|null}} details
+ * @property {{networkOk: boolean, hasLocation: boolean, fixCount?: number, singleFix?: boolean, spreadM?: number, maxSpeedKmh?: number, trustScore?: number, trustSignals?: string[], bestLat?: number|null, bestLng?: number|null, distanceM: number|null, accuracyM: number|null, fixAgeS: number|null, serverAgeS?: number|null, clockSkewS?: number|null, deviceId: string|null}} details
  */
 
 // ─── المسافات (geolib الاحترافية أولًا — Haversine احتياطيًا) ────────────────
@@ -254,6 +268,13 @@ function resolvePunchSettings(rows, env = {}) {
         teleportCheck: boolOr(kv.punch_teleport_check, true),
         maxTeleportKmh: /** @type {number} */ (numOr(kv.punch_max_teleport_kmh, 250)),
         radiusMeters: /** @type {number} */ (numOr(kv.punch_radius_meters, 120)),
+        // صرامة 2026-11-02 (دليل backtest-strict-gates): الافتراضي مغلق حتى يقرّر
+        // المالك — المفتوح يرفض فوريًا 40/119 بصمة مقبولة اليوم (قراءة واحدة).
+        geoStrictMultiFix: boolOr(kv.punch_geo_strict_multi_fix, false),
+        maxClockSkewS: /** @type {number} */ (numOr(kv.punch_max_clock_skew_s, 120)),
+        faceStrict: boolOr(kv.punch_face_strict, false),
+        faceMinSamples: /** @type {number} */ (numOr(kv.punch_face_min_samples, 2)),
+        faceReplayMinDistance: /** @type {number} */ (numOr(kv.punch_face_replay_min_distance, 0.004)),
         lat: coordsSet ? lat : null,
         lng: coordsSet ? lng : null,
     };
@@ -447,6 +468,37 @@ function assessTeleport(prev, curr, maxKmh = 250) {
     };
 }
 
+// ─── عمر القراءة المحسوب سيرفريًا (لا رقمًا يدّعيه العميل) ──────────────────
+
+/**
+ * عمر الإصلاح وحساب الانحراف محسوبان من طابع الجهاز مقابل لحظة وصول الطلب عند
+ * السيرفر. عمليًا يبعث العميل fixAgeS=0 دائمًا (p95 للمقْبولة = 0)، فالرقم
+ * المُصرَّح به لا يثبت شيئًا ولا يصلح كحدّ أمان.
+ * لا يُقاس العمر إلا إذا كان انحراف الساعة داخل الحد: جهاز ضبط ساعته متأخرة
+ * بساعة يقرأ «قديمة» بريئًا، فلا يُعاقَب على ساعة لا علاقة لها بالموقع.
+ * @param {GeoFix|null|undefined} fix
+ * @param {number|null|undefined} serverNowMs
+ * @param {{maxAgeS?: number, maxSkewS?: number}} [limits]
+ * @returns {{status: 'ok'|'unverifiable'|'skew'|'stale'|'no_server_clock', ageS: number|null, skewS: number|null}}
+ */
+function assessFixFreshness(fix, serverNowMs, limits = {}) {
+    const maxAgeS = Number.isFinite(Number(limits.maxAgeS)) ? Number(limits.maxAgeS) : 30;
+    const maxSkewS = Number.isFinite(Number(limits.maxSkewS)) ? Number(limits.maxSkewS) : 120;
+    const t = fix ? Number(fix.t) : NaN;
+    const now = Number(serverNowMs);
+    if (!Number.isFinite(t) || !Number.isFinite(now)) {
+        return { status: 'unverifiable', ageS: null, skewS: null };
+    }
+    const skewS = (t - now) / 1000;
+    if (skewS > maxSkewS) {return { status: 'skew', ageS: null, skewS: Math.round(skewS) };}
+    const ageS = (now - t) / 1000;
+    // ساعة متأخرة بأكثر من الحد: لا نثق في عمرها أصلًا — لا نعاقب عليها (الموظف
+    // ساعتُه غلط بريئةً)، ولا ندّعي أنها طازجة. تُوثَّق unverifiable للمراجعة.
+    if (-skewS > maxSkewS) {return { status: 'unverifiable', ageS: null, skewS: Math.round(skewS) };}
+    if (ageS > maxAgeS) {return { status: 'stale', ageS: Math.round(ageS), skewS: Math.round(skewS) };}
+    return { status: 'ok', ageS: Math.round(ageS), skewS: Math.round(skewS) };
+}
+
 // ─── التعرف على الوجه (L5) — مطابقة متجهات بدون صور ─────────────────────────
 
 const FACE_DESCRIPTOR_LEN = 128;
@@ -510,8 +562,57 @@ function evaluateFaceMatch(candidate, stored, threshold) {
     return { ok: best <= thr, distance: Math.round(best * 10000) / 10000, threshold: thr, samples: samples.length };
 }
 
-// ─── الربط الذاتي للجهاز (L4 self-heal) — قرار نقي يُختبَر معزولًا ───────────
+/**
+ * حكم الصرامة على عينات الوجه (L5-strict) — نقي: يستقبل ما حسبه السيرفر لا ما ادّعاه العميل.
+ * الدليل الميداني (scripts/backtest-strict-gates-2026-11-02.js): 118 من 119 بصمة
+ * مقبولة مسافة وجهها < 0.05 وp50=0.014 — تشابه شبه تام مع القالب. التشابه التام
+ * سمة صورة أعيدت، لا وجه عُرض أمام كاميرا، فالحكم لا يعتمد على العتبة وحدها:
+ *   • بلا صور (متجه من العميل فقط) → PUNCH_FACE_SERVER_EMBED_REQUIRED — المتجه يُبعث
+ *     من الجهاز ولا يُعاد استخدامه كدليل هوية، وإلا صار قالب التسجيل مفتاحًا دائمًا.
+ *   • صورة من المعرض لا من الكاميرا → PUNCH_FACE_UPLOAD_FORBIDDEN
+ *   • عدد العينات أقل من الحد → PUNCH_FACE_SAMPLES_REQUIRED — عيّنة واحدة لا تُثبت حيّة
+ *   • صورتان متطابقتان بايتيًا أو أدقّ من حدّ إعادة التشغيل → PUNCH_FACE_REPLAY
+ *   • أي عيّنة فوق العتبة → PUNCH_FACE_MISMATCH (كل العيّنات لا تُقبل بأحسنها)
+ * @param {{distances: Array<number|string|null|undefined>, identicalImages?: boolean, fromUpload?: boolean, hasServerImage?: boolean,
+ *          minSamples?: number, threshold?: number, replayMinDistance?: number}} input
+ * @returns {{ok: boolean, rejectCode?: string, maxDistance: number|null, samples: number}}
+ */
+function assessFaceSamples(input) {
+    const distances = (Array.isArray(input.distances) ? input.distances : [])
+        // null/undefined = لم يُرصد وجه في تلك العيّنة — لا تُقرأ «صفرًا» فتطابق تمامًا
+        .filter((d) => typeof d === 'number' || (typeof d === 'string' && d.trim() !== ''))
+        .map((d) => Number(d)).filter((d) => Number.isFinite(d));
+    const minSamples = Math.max(1, Number(input.minSamples) || 2);
+    const threshold = Number(input.threshold);
+    const replayMin = Number.isFinite(Number(input.replayMinDistance))
+        ? Number(input.replayMinDistance) : 0.004;
+    const base = {
+        ok: false,
+        maxDistance: distances.length ? Math.max(...distances) : null,
+        samples: distances.length,
+    };
+    if (input.hasServerImage !== true) {
+        return { ...base, rejectCode: 'PUNCH_FACE_SERVER_EMBED_REQUIRED' };
+    }
+    if (input.fromUpload === true) {
+        return { ...base, rejectCode: 'PUNCH_FACE_UPLOAD_FORBIDDEN' };
+    }
+    if (distances.length < minSamples) {
+        return { ...base, rejectCode: 'PUNCH_FACE_SAMPLES_REQUIRED' };
+    }
+    if (input.identicalImages === true) {
+        return { ...base, rejectCode: 'PUNCH_FACE_REPLAY' };
+    }
+    if (Math.min(...distances) < replayMin) {
+        return { ...base, rejectCode: 'PUNCH_FACE_REPLAY' };
+    }
+    if (Number.isFinite(threshold) && Math.max(...distances) > threshold) {
+        return { ...base, rejectCode: 'PUNCH_FACE_MISMATCH' };
+    }
+    return { ...base, ok: true };
+}
 
+// ─── الربط الذاتي للجهاز (L4 self-heal) — قرار نقي يُختبَر معزولًا ───────────
 /**
  * ماذا تفعل بوابة البصمة مع ربط الجهاز لهذا الطلب؟ (نقي — بلا DB)
  *   'rebind' : جهاز جديد لحساب مربوط — اربطه تلقائيًا ووثّق ذلك (الافتراضي)
@@ -558,6 +659,8 @@ function evaluatePunch(settings, req) {
         distanceM: /** @type {number|null} */ (null),
         accuracyM: /** @type {number|null} */ (null),
         fixAgeS: /** @type {number|null} */ (null),
+        serverAgeS: /** @type {number|null|undefined} */ (undefined),
+        clockSkewS: /** @type {number|null|undefined} */ (undefined),
         deviceId: req.deviceId || null,
     };
 
@@ -597,6 +700,10 @@ function evaluatePunch(settings, req) {
         // — وبقية الطبقات (النطاق والوجه وربط الجهاز والواقعية) مفروضة بالكامل،
         // ويُوثَّق ذلك بإشارة SINGLE_FIX_FALLBACK للمراجعة.
         if (settings.multiFixRequired && fixes.length < 2) {
+            // الصرامة (punch_geo_strict_multi_fix): بلا استثناء — قراءة واحدة لا تُثبت شيئًا.
+            if (settings.geoStrictMultiFix) {
+                return { decision: 'rejected', rejectCode: 'PUNCH_LOCATION_WEAK', details };
+            }
             const f = fixes[0];
             const strictAcc = Math.min(Number(settings.maxAccuracyM) || 50, 30);
             const maxAge = Number(settings.maxFixAgeS) || 30;
@@ -667,6 +774,19 @@ function evaluatePunch(settings, req) {
         if (details.fixAgeS < 0 || details.fixAgeS > settings.maxFixAgeS) {
             return { decision: 'rejected', rejectCode: 'PUNCH_LOCATION_WEAK', details };
         }
+        // عمر محسوب سيرفريًا: العميل يبعث fixAgeS=0 دائمًا عمليًا، فالاعتماد عليه وحده
+        // يجعل حدّ العمر زينة. الانحراف الكبير بين ساعة الجهاز والسيرفر = ساعة مضبوطة
+        // للتحايل (مرفوض دائمًا)؛ القراءة القديمة تُرفض عند الصرامة فقط.
+        const freshness = assessFixFreshness(best, req.serverNowMs,
+            { maxAgeS: settings.maxFixAgeS, maxSkewS: settings.maxClockSkewS });
+        details.serverAgeS = freshness.ageS;
+        details.clockSkewS = freshness.skewS;
+        if (freshness.status === 'skew') {
+            return { decision: 'rejected', rejectCode: 'PUNCH_LOCATION_CLOCK_SKEW', details };
+        }
+        if (settings.geoStrictMultiFix && freshness.status === 'stale') {
+            return { decision: 'rejected', rejectCode: 'PUNCH_LOCATION_WEAK', details };
+        }
 
         // 5. النطاق: المسافة من إحداثيات المطعم (من أفضل إصلاح) — geolib الاحترافية
         details.distanceM = Math.round(haversineMeters(settings.lat, settings.lng, best.lat, best.lng) * 10) / 10;
@@ -702,10 +822,12 @@ module.exports = {
     normalizeFixes,
     assessFixQuality,
     assessFixRealism,
+    assessFixFreshness,
     assessTeleport,
     isValidFaceDescriptor,
     faceDistance,
     evaluateFaceMatch,
+    assessFaceSamples,
     resolveDeviceBindingAction,
     evaluatePunch,
     FACE_DESCRIPTOR_LEN,

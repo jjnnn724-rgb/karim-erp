@@ -9,6 +9,7 @@
  *   • safeQuery() — automatic retry of transient DB failures
  */
 const { logger } = require('./logger');
+const { getTenantClient, getTenantId } = require('./middleware/correlation');
 const { Pool } = require('pg');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
@@ -18,7 +19,7 @@ require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
 // then falls back to reading .env file directly for values that were
 // persisted to disk but not yet in process.env (e.g., DB_PORT auto-fixed
 // by setup scripts during the same boot cycle).
-function dbEnv(key, fallback) {
+function dbEnv(/** @type {any} */ key, /** @type {any} */ fallback) {
   if (process.env[key] !== undefined && process.env[key] !== '') {
     return process.env[key];
   }
@@ -85,13 +86,15 @@ let _pool = new Pool({
   keepAliveInitialDelayMillis: 10000,
 });
 
-function _attachPoolHandlers(p) {
+function _attachPoolHandlers(/** @type {any} */ p) {
+  // @ts-ignore — legacy callback: pg's event typings don't expose these params
   p.on('connect', client => {
     logger.info('[shared-pool] new DB connection established', { pid: client.processID });
     // FIX 2026-10-19: عميلٌ مأخوذ من الـpool قد يبثّ 'error' بعد قطع الاتصال
     // (Connection terminated unexpectedly)؛ وبلا مستمع يتحوّل الحدث إلى
     // uncaughtException يُسقط الخادم كله. مستمعٌ دائم لكل عميل يجعل القطع
     // حدثًا مُعالَجًا يتعافى منه الـpool بدل أن يقتل العملية.
+    // @ts-ignore —的错误对象只用于日志
     client.on('error', err => {
       logger.warn('[shared-pool] client socket error (absorbed):', err && err.message);
     });
@@ -101,6 +104,7 @@ function _attachPoolHandlers(p) {
     // وإلا غطّى على الأعطال الحقيقية في السجل.
     logger.debug('[shared-pool] idle connection closed');
   });
+  // @ts-ignore —的错误对象只用于日志
   p.on('error', err => {
     logger.error('[shared-pool] Unexpected error on idle client:', err.message);
   });
@@ -138,10 +142,89 @@ async function reinitPool() {
   return _pool;
 }
 
-// Proxy so all existing `pool.query(...)` calls transparently use the current pool
+const TENANT_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * استعلام داخل سياق مستأجر بلا معاملة صريحة: نفتح معاملة قصيرة، نضبط GUC
+ * المعرّف (set_config المعاملاتي — لا حقن نصي)، ننفّذ الاستعلام ثم نُغلق.
+ * دي طبقة أمان إضافية لكل `pool.query` في وضع SaaS؛ الكود القديم خارج السياق
+ * ما زال يمرّ عبر المسار الأصلي حرفياً.
+ * @param {string} tenantId
+ * @param {any[]} args
+ */
+async function tenantScopedQuery(tenantId, args) {
+  const client = await _pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('SELECT set_config($1,$2,true)', ['app.tenant_id', tenantId]);
+    const result = await /** @type {any} */ (client.query)(...args);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    try { await client.query('ROLLBACK'); } catch (_) { /* الخطأ الأصلي هو المهم */ }
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
+/**
+ * اتصال مباشر (`pool.connect()`) داخل سياق مستأجر: نضبط GUC على مستوى الجلسة
+ * قبل أول استعلام، ونعيد ضبطه قبل إعادة الاتصال للـpool. كده كل مسار قديم
+ * يفتح اتصالًا بنفسه يرى معرّف المستأجر دون تعديل ١٣٨ موقع نداء.
+ * @param {string} tenantId
+ * @param {any[]} args
+ */
+async function tenantScopedConnect(tenantId, args) {
+  const client = await _pool.connect(...args);
+  const rawQuery = client.query.bind(client);
+  const rawRelease = client.release.bind(client);
+  try {
+    await rawQuery('SELECT set_config($1,$2,false)', ['app.tenant_id', tenantId]);
+  } catch (error) {
+    rawRelease();
+    throw error;
+  }
+  let released = false;
+  client.release = (/** @type {any[]} */ ...releaseArgs) => {
+    if (released) {return;}
+    released = true;
+    // إعادة الضبط قبل إرجاع الاتصال: لا يتسرّب معرّف مستأجر لطلب تالٍ.
+    rawQuery("SELECT set_config('app.tenant_id','',false)")
+      .catch(() => { /* الاتصال يُعاد للـpool على أي حال */ })
+      .finally(() => rawRelease(...releaseArgs));
+  };
+  return client;
+}
+
+// Proxy so all existing `pool.query(...)` calls transparently use the current pool.
+// SaaS: داخل معاملة مستأجر، الاستعلامات تُوجَّه للعميل المحجوز (نفس الاتصال الذي
+// حمل `SET LOCAL app.tenant_id`) — وإلا سترى سياسات RLS صفر صفوف. وإن وُجد
+// معرّف مستأجر في سياق الطلب بلا عميل محجوز، يُنشأ نطاق معاملة قصير لكل استعلام.
+// خارج السياق لا يتغيّر أي شيء: السلوك القديم حرفياً.
 const pool = new Proxy(/** @type {import('pg').Pool} */ (/** @type {unknown} */ ({})), {
   get(_, prop) {
-    if (prop === 'query' || prop === 'connect' || prop === 'end' || prop === 'on') {
+    if (prop === 'query') {
+      return (/** @type {any[]} */ ...args) => {
+        const scoped = getTenantClient();
+        if (scoped) {return scoped.query(...args);}
+        const tenantId = getTenantId();
+        if (tenantId && TENANT_UUID_RE.test(String(tenantId))) {
+          return tenantScopedQuery(String(tenantId), args);
+        }
+        return _pool.query(...args);
+      };
+    }
+    if (prop === 'connect') {
+      return (/** @type {any[]} */ ...args) => {
+        const tenantId = getTenantId();
+        if (tenantId && TENANT_UUID_RE.test(String(tenantId))) {
+          return tenantScopedConnect(String(tenantId), args);
+        }
+        return _pool.connect(...args);
+      };
+    }
+    if (prop === 'end' || prop === 'on') {
       return _pool[prop].bind(_pool);
     }
     if (prop === 'totalCount' || prop === 'idleCount' || prop === 'waitingCount') {

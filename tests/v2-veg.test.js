@@ -23,7 +23,7 @@
  *     :265/:429/:492/:541/:550)، وwindow.prompt القديم :546 صار حقلًا
  *   • الطباعة: النافذة تُفتح في إيماءة النقر قبل الجلب، والعدّاد يُطلق ولا
  *     يُنتظر (:576)، والورقة A4 من vegBuildPrintHtml :582-680 ببنتها
- *     الذهبية #c9a227 وتوقيعَي الشيف وأمين المخزن
+ *     الخضراء #8fbfa9 وتوقيعَي الشيف وأمين المخزن
  *   • الشاشة: لا fetch/apiFetch، لا معالج سطري إلا زرا ورقة الطباعة، حارس
  *     أحدث قراءة + isConnected + busy قرار واحد + destroy() يُتلف الجدول
  *   • status.js: حالات veg_request الأربع مسجلة بأيقونات موجودة فعلًا في
@@ -73,14 +73,14 @@ function loadEsm(file, injections = {}, collect = []) {
 }
 
 const EXPORTS = ['VEG_CREATE_ROLES', 'VEG_READ_ROLES', 'VEG_RECEIVE_ROLES',
-    'VEG_PRICE_ROLES', 'VEG_EDIT_ROLES',
+    'VEG_PRICE_ROLES', 'VEG_EDIT_ROLES', 'VEG_ADMIN_ROLES',
     'VEG_UI_CREATE_ROLES', 'VEG_UI_PRICE_ROLES', 'VEG_UI_BOSS_ROLES', 'VEG_STATUS_FILTERS',
     'fetchVegRequests', 'fetchVegCatalog', 'fetchVegRequestById',
-    'createVegRequest', 'receiveVegRequest', 'priceVegRequest', 'editVegItems',
+    'createVegRequest', 'receiveVegRequest', 'priceVegRequest', 'editVegItems', 'adminEditVegItems',
     'cancelVegRequest', 'markVegPrinted',
     'vegRequestToRow', 'vegItemsOf', 'collectVegItems',
     'vegCreatePayload', 'vegReceivePayload', 'vegEditPayload',
-    'vegCreateVisible', 'vegReceiveVisible', 'vegPriceVisible', 'vegEditVisible', 'vegCancelVisible'];
+    'vegCreateVisible', 'vegReceiveVisible', 'vegPriceVisible', 'vegEditVisible', 'vegCancelVisible', 'vegAdminVisible'];
 
 function repoStub(impl) {
     const calls = [];
@@ -100,7 +100,7 @@ const stripComments = (s) => s
     .replace(/\/\*[\s\S]*?\*\//g, '')
     .replace(/^\s*\/\/.*$/gm, '');
 
-describe('veg-repo — الباب الواحد: ثلاث قراءات وستة أبواب كتابة', () => {
+describe('veg-repo — الباب الواحد: ثلاث قراءات وسبعة أبواب كتابة', () => {
     test('كل ما تحتاجه الشاشة مُصدَّر', () => {
         const src = source(REPO);
         for (const name of EXPORTS) {
@@ -176,6 +176,12 @@ describe('veg-repo — الباب الواحد: ثلاث قراءات وستة �
         expect(edit.bodies[0].method).toBe('PUT');
         expect(JSON.parse(edit.bodies[0].body)).toEqual({ items });
 
+        const admEdit = repoStub({});
+        await admEdit.repo.adminEditVegItems(9, items);
+        expect(admEdit.calls).toEqual(['/veg-requests/9/admin/items']);
+        expect(admEdit.bodies[0].method).toBe('POST');
+        expect(JSON.parse(admEdit.bodies[0].body)).toEqual({ items });
+
         const canc = repoStub({});
         await canc.repo.cancelVegRequest(9, 'سبب');
         expect(canc.calls).toEqual(['/veg-requests/9/cancel']);
@@ -228,6 +234,7 @@ describe('veg-repo — الثوابت مرايا الخادم والقديم ب�
             "router.post('/:id/receive', ...receiveGate",
             "router.post('/:id/price', jwtAuth, requireRole('warehouse', 'admin', 'owner', 'manager')",
             "router.put('/:id/items', jwtAuth, requireRole(...EDIT_ROLES)",
+            "router.post('/:id/admin/items', jwtAuth, requireRole('admin')",
             "router.post('/:id/cancel', jwtAuth, requireRole(...READ_ROLES)",
             "router.post('/:id/printed', jwtAuth, requireRole(...READ_ROLES)",
         ]) {
@@ -369,7 +376,13 @@ describe('veg-repo — الصف والمحوّلات والبوابات', () => 
         expect(repo.vegEditVisible('sous_chef', 'pending', raw, null)).toBe(false);
         expect(repo.vegEditVisible('warehouse', 'pending', raw, 15)).toBe(false);   // الميدل وير :391 يقصيه قبل فحص المنشئ
         expect(repo.vegEditVisible('dept_head', 'pending', raw, 15)).toBe(false);   // الانحراف: القديم يعرض :511
-        expect(repo.vegEditVisible('admin', 'received', raw, 99)).toBe(false);
+        // 2026-11-23: الأدمن وحده يضيف أصناف بعد الاستلام (قبل التسعير)
+        expect(repo.vegEditVisible('admin', 'received', raw, 99)).toBe(true);
+        expect(repo.vegEditVisible('owner', 'received', raw, 99)).toBe(false);
+        expect(repo.vegEditVisible('admin', 'priced', raw, 99)).toBe(false);
+        expect(repo.vegAdminVisible('admin')).toBe(true);
+        expect(repo.vegAdminVisible('owner')).toBe(false);
+        expect(repo.vegAdminVisible('sous_chef')).toBe(false);
 
         expect(repo.vegCancelVisible('admin', 'pending', raw, 99)).toBe(true);
         expect(repo.vegCancelVisible('sous_chef', 'pending', raw, 15)).toBe(true);
@@ -420,11 +433,11 @@ describe('شاشة 14 — العقد المصدَّر من المصدر', () => 
         expect(stripComments(source(VR))).not.toMatch(/signatureData/);
     });
 
-    test('الأبواب التسعة كلها مستدعاة: ثلاث قراءات وست كتابات', () => {
+    test('الأبواب العشرة كلها مستدعاة: ثلاث قراءات وسبع كتابات', () => {
         const s = src();
         for (const fn of ['fetchVegRequests', 'fetchVegCatalog', 'fetchVegRequestById',
             'createVegRequest', 'receiveVegRequest', 'priceVegRequest', 'editVegItems',
-            'cancelVegRequest', 'markVegPrinted']) {
+            'adminEditVegItems', 'cancelVegRequest', 'markVegPrinted']) {
             expect(s).toMatch(new RegExp(`\\b${fn}\\(`));
         }
     });
@@ -435,6 +448,7 @@ describe('شاشة 14 — العقد المصدَّر من المصدر', () => 
         expect(s).toContain('await receiveVegRequest(id, vegReceivePayload({ rejections, quantities, prices, direct }));');
         expect(s).toContain('await priceVegRequest(panelRaw.id, prices);');
         expect(s).toContain('await editVegItems(panelRaw.id, vegEditPayload(rows));');
+        expect(s).toContain('await adminEditVegItems(panelRaw.id, vegEditPayload([...rows, ...added]));');
         expect(s).toContain('await cancelVegRequest(panelRaw.id, reason);');
         expect(s).toMatch(/markVegPrinted\(raw\.id\)\.catch\(\(\) => \{\}\);/);   // مشي القديم :576
         // والقديم نفسه يشهد للعدّاد الذي لا يُنتظر
@@ -570,9 +584,10 @@ describe('شاشة 14 — العقد المصدَّر من المصدر', () => 
         expect(s).toContain('مرفوض، لا يُسعَّر ولا يُحمَّل');
         expect(s).toContain('data-v2-line=');
         expect(s).toContain('data-v2-total');
-        // التعديل: أرقام الأصناف القائمة فقط — إضافة الأصناف مرفوضة بطلب جديد
+        // التعديل: أرقام الأصناف القائمة + إضافة أصناف للأدمن فقط
         expect(s).toContain('data-v2-edit-qty');
-        expect(s).toContain('إضافة أصناف جديدة مرفوضة — طلب جديد لها');
+        expect(s).toContain('إضافة الأصناف الجديدة للمدير فقط');
+        expect(s).toContain('data-v2-add-admin-item');
     });
 
     test('الطباعة: العارض الداخلي يُفتح مباشرة قبل الجلب، والورقة ورقة القديم بحرفها', () => {
@@ -586,12 +601,12 @@ describe('شاشة 14 — العقد المصدَّر من المصدر', () => 
         expect(s.match(/fetchVegRequestById\(/g)).toHaveLength(1);   // القراءة الطازجة مرة واحدة
         // الورقة من vegBuildPrintHtml :582-680 — بنتها الذهبية وخاناتها
         const legacy = legacyOf();
-        for (const lit of ['<div class="title">طلب شراء خضار</div>', '#c9a227', '#16213e',
+        for (const lit of ['<div class="title">طلب شراء خضار</div>', '#8fbfa9', '#16213e',
             'size: A4', 'عاجل — التوريد بأسرع وقت', 'الجهة الطالبة:', 'إجمالي الأصناف:',
             'طُبعت من نظام Karim ERP بواسطة', 'نسخة رقم ', 'توقيع الشيف — ', 'توقيع أمين المخزن — الاستلام']) {
             expect(s).toContain(lit);
         }
-        for (const lit of ['<div class="title">طلب شراء خضار</div>', '#c9a227', '#16213e',
+        for (const lit of ['<div class="title">طلب شراء خضار</div>', '#8fbfa9', '#16213e',
             'عاجل — التوريد بأسرع وقت', 'الجهة الطالبة:', 'إجمالي الأصناف:',
             'طُبعت من نظام Karim ERP بواسطة', 'نسخة رقم ', 'توقيع الشيف — ', 'توقيع أمين المخزن — الاستلام']) {
             expect(legacy).toContain(lit);
@@ -656,13 +671,12 @@ describe('شاشة 14 — السجل المشترك والمضيف والطبق�
 
     test('المضيف يمرر الهوية كاملة — المعرّف يحكم بوابتي التعديل والإلغاء والاسم يطبع', () => {
         const h = source(HOST);
-        expect(h).toMatch(/import \{ mountVegScreen \} from '\.\/screens\/veg-requests\.js\?v=/);
-        expect(h).toMatch(/vegScreen = mountVegScreen\(shell\.main\.querySelector\('\[data-v2-veg-host\]'\), \{/);
+        expect(h).toMatch(/vegScreen = \(await mountLazy\('veg-requests', '\[data-v2-veg-host\]'/);
         expect(h).toMatch(/role: session\.role,/);
         expect(h).toMatch(/userId: u\.id != null \? u\.id : \(u\.sub != null \? Number\(u\.sub\) : null\),/);
         expect(h).toMatch(/userName: String\(u\.name \|\| u\.username \|\| ''\),/);
         expect(h).toMatch(/notify: notifyTo\(note\),/);
-        expect(h).toMatch(/confirmFn: \(message\) => window\.confirm\(message\),/);
+        expect(h).toMatch(/confirmFn: confirmAction,/);
         expect(h).toMatch(/if \(navStatus\.current !== 'veg-requests'\) \{return;\}/);
     });
 
@@ -674,7 +688,7 @@ describe('شاشة 14 — السجل المشترك والمضيف والطبق�
 
     test('الشاشة تُستورد بمراجعة الصفحة نفسها وتُركّب على مضيفها', () => {
         const rev = source(V2_HTML).match(/js\/v2\/preview\.js\?v=([0-9.]+)/)[1];
-        expect(source(HOST)).toContain(`./screens/veg-requests.js?v=${rev}`);
+        expect(source(path.join(V2, 'screens', 'registry.js'))).toContain(`./veg-requests.js?v=${rev}`);
         expect(source(V2_HTML)).toContain(`js/v2/preview.js?v=${rev}`);
         expect(source(V2_HTML)).toContain(`css/v2/erp-ops.css?v=${rev}`);
     });

@@ -2,13 +2,19 @@
  * v2-users.test.js — عقد شاشة المستخدمين ومرآة خادمها
  * ═══════════════════════════════════════════════════════════════════════
  * المرجع: backend/server.js (generic CRUD + :1684-1695 قواعد users +
- *   :1349 ربط الموظف) + ops-inspect-routes.js:17 (الخزنة) +
- *   frontend/app/js/features/settings-users.js:596-716 (السلوك) +
- *   features/auth-navigation.js:85-94 (رمز الاستعادة).
+ *   :1349 ربط الموظف) + frontend/app/js/features/settings-users.js:596-716
+ *   (السلوك) + features/auth-navigation.js:85-94 (رمز الاستعادة).
  */
 const fs = require('fs');
 const path = require('path');
 const vm = require('vm');
+
+jest.mock('../backend/cashier-module/jwt-middleware', () => ({
+    jwtAuth: (req, res, next) => next(),
+    requireRole: () => (req, res, next) => next(),
+}));
+jest.mock('../backend/shared-pool', () => ({ pool: { query: jest.fn() } }));
+jest.mock('../backend/logger', () => ({ logger: { info: jest.fn(), warn: jest.fn(), error: jest.fn() } }));
 
 const APP = path.join(__dirname, '..', 'frontend', 'app');
 const V2 = path.join(APP, 'js', 'v2');
@@ -48,28 +54,26 @@ function repoStub(impl) {
 }
 
 describe('المستخدمون — مرآة الخادم', () => {
-    test('الأبواب الستة تطابق العقود مساراً وطريقة', async () => {
+    test('الأبواب الخمسة تطابق العقود مساراً وطريقة', async () => {
         const { apiFetch, calls } = repoStub(() => ({}));
         const ctx = loadEsm(REPO, { apiFetch }, [
             'createUser', 'updateUser', 'deleteUser', 'linkUserEmployee',
-            'fetchUserPassword', 'issueUserResetCode',
+            'issueUserResetCode',
         ]);
         await ctx.createUser({ username: 'k1', password: 'Abcd1234', role: 'cashier', name: 'كاشير 1', active: true });
         await ctx.updateUser(5, { name: 'كاشير 1' });
         await ctx.deleteUser(5);
         await ctx.linkUserEmployee(5, 9);
-        await ctx.fetchUserPassword(5);
         await ctx.issueUserResetCode('k1');
         expect(calls.map((c) => `${c.method} ${c.path}`)).toEqual([
             'POST /users',
             'PUT /users/5',
             'DELETE /users/5',
             'PUT /users/5/employee',
-            'GET /users/5/password',
             'POST /auth/forgot-password/request-code',
         ]);
         expect(JSON.parse(calls[3].body)).toEqual({ employeeId: 9 });
-        expect(JSON.parse(calls[5].body)).toEqual({ username: 'k1' });
+        expect(JSON.parse(calls[4].body)).toEqual({ username: 'k1' });
     });
 
     test('قوة كلمة المرور مرآة jwt-middleware (12+ حرف+رقم)', () => {
@@ -109,11 +113,10 @@ describe('المستخدمون — عقد الشاشة من المصدر', () =>
         expect(s).not.toMatch(/\bprompt\(/);
     });
 
-    test('بوابة الأدمن + حماية الحساب الحالي + الخزنة والرمز', () => {
+    test('بوابة الأدمن + حماية الحساب الحالي + الرمز', () => {
         const s = src();
         expect(s).toMatch(/هذه الصفحة للمدير فقط/);
-        expect(s).toMatch(/لا يمكن حذف حسابك/);
-        expect(s).toMatch(/data-v2-pw/);
+        expect(s).toMatch(/لا يمكن تعطيل حسابك/);
         expect(s).toMatch(/data-v2-reset/);
         expect(s).toMatch(/data-v2-del/);
         expect(s).toMatch(/username.*readonly|readonly.*username/s);
@@ -126,5 +129,57 @@ describe('المستخدمون — عقد الشاشة من المصدر', () =>
             expect(versions.length).toBeGreaterThan(0);
             for (const v of versions) {expect(v).toBe(REV);}
         }
+    });
+});
+
+describe('استرجاع كلمة المرور — أُغلق نهائيًا', () => {
+    test('لا مسار GET /api/users/:id/password في الخادم', () => {
+        const ops = require('../backend/ops-inspect-routes');
+        const routes = [];
+        const app = { get: (p) => routes.push(p) };
+        ops.register(app, { metrics: { snapshot: () => ({}) } });
+        expect(routes).toEqual(['/api/metrics', '/api/schema/constraints']);
+        expect(routes.some((p) => /users\/:id\/password/.test(p))).toBe(false);
+    });
+
+    test('لا واجهة كشف في V2 ولا في القديم', () => {
+        const legacy = read(path.join(APP, 'js', 'features', 'settings-users.js'));
+        for (const s of [read(REPO), read(SCREEN), legacy]) {
+            expect(s).not.toMatch(/users\/:id\/password|fetchUserPassword|viewPassword|viewUserPassword/);
+        }
+        expect(read(SCREEN)).not.toMatch(/data-v2-pw/);
+    });
+
+    test('لا كتابة جديدة في password_vault ولا فك تشفير', () => {
+        const files = [
+            'backend/server.js',
+            'backend/cashier-module/jwt-middleware.js',
+            'backend/cashier-module/password-recovery-routes.js',
+            'backend/ops-inspect-routes.js',
+        ].map((f) => read(path.join(__dirname, '..', f)));
+        for (const s of files) {
+            expect(s).not.toMatch(/UPDATE users SET password_vault|decryptFromVault|encryptForVault/);
+        }
+    });
+
+    test('بيانات كلمات المرور محفوظة — لا تصفير ولا حذف لـ password_vault', () => {
+        const rootDir = path.join(__dirname, '..');
+        const skip = new Set(['node_modules', 'backups', 'uploads', 'logs']);
+        const bad = [];
+        const walk = (dir) => {
+            for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
+                if (skip.has(e.name)) { continue; }
+                const p = path.join(dir, e.name);
+                if (e.isDirectory()) { walk(p); continue; }
+                if (!/\.(js|sql)$/.test(e.name)) { continue; }
+                if (fs.statSync(p).size > 2 * 1024 * 1024) { continue; }
+                if (/password_vault\s*=\s*(?:NULL|'')|DROP\s+COLUMN\s+(?:IF\s+EXISTS\s+)?password_vault/i.test(read(p))) {
+                    bad.push(path.relative(rootDir, p));
+                }
+            }
+        };
+        walk(path.join(rootDir, 'backend'));
+        walk(path.join(rootDir, 'database', 'migrations'));
+        expect(bad).toEqual([]);
     });
 });

@@ -15,7 +15,7 @@
 
    THE CROWN LAYER
    ───────────────
-   css/v2/erp-identity.css («ليل الزمرد») loads LAST in v2.html and
+   css/v2/erp-identity.css («ليل الياقوت») loads LAST in v2.html and
    re-aliases every --erp-* semantic to its own primitives. It is the
    visual identity; this sheet is the neutral semantic contract underneath
    it (names, scales, z-order, motion) and the degradation path if the
@@ -87,9 +87,9 @@ body {
   --erp-focus-ring-offset: var(--erp-surface);
 
   /* ── Brand ────────────────────────────────────────────────────────── */
-  --erp-brand:             var(--karim-gold,       #b45309);
-  --erp-brand-hover:       var(--karim-gold-light, #d97706);
-  --erp-brand-active:      var(--karim-gold-dark,  #92400e);
+  --erp-brand:             var(--karim-gold,       #5b21b6);
+  --erp-brand-hover:       var(--karim-gold-light, #0e5c45);
+  --erp-brand-active:      var(--karim-gold-dark,  #0a3d2f);
   /* Static rgba first, color-mix second: browsers without color-mix drop the
      second declaration and keep a valid tint instead of an invalid one. */
   --erp-brand-soft:        rgba(180, 83, 9, .12);
@@ -164,7 +164,10 @@ body {
      computed list contained the family twice. Plain literal chain, no
      indirection. */
   --erp-font-sans:  "IBM Plex Sans Arabic", "Tajawal", "Cairo", "Segoe UI", sans-serif;
-  --erp-font-mono:  var(--karim-font-mono, ui-monospace, "Cascadia Mono", Consolas, monospace);
+  /* الوجه الرقميّ: IBM Plex Mono محليٌّ (erp-mono.css). كان يسقط على
+     Cascadia/Consolas — خطِّ الجهاز — فشكلُ رقمِ الفاتورة يختلف من جهازٍ
+     لآخر. الآن-faceٌ من المستودع، توأمُ Plex Sans بصريًّا. */
+  --erp-font-mono:  "IBM Plex Mono", var(--karim-font-mono, ui-monospace, "Cascadia Mono", Consolas, monospace);
 
   --erp-text-xs:   11px;
   --erp-text-sm:   12px;

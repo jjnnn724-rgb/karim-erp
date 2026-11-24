@@ -411,7 +411,7 @@ class KarimERPProvisioner {
             );
 
             const files = fs.readdirSync(migrationsDir)
-                .filter(f => f.endsWith('.sql'))
+                .filter(f => f.endsWith('.sql') && !/_down\.sql$/i.test(f))
                 .sort();
 
             let applied = 0;

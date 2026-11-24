@@ -1,0 +1,119 @@
+name: V3 CI
+
+on:
+  # حزمة v3 مستقلة (pnpm workspace تحت v3/). على الدفع: تعمل عند تغيّر ملفاتها فقط.
+  # على كل PR: تعمل دائمًا — لأنها فحص مطلوب لحماية main (فحص غائب = دمج معلّق).
+  push:
+    paths:
+      - 'v3/**'
+      - '.github/workflows/ci-v3.yml'
+  pull_request:
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.ref }}
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
+
+env:
+  NODE_VERSION: '22.x'
+  PNPM_VERSION: '12.18.0' # نفس packageManager في v3/package.json
+  RETENTION_DAYS: 14
+
+jobs:
+  v3-gate:
+    name: 🧱 V3 Gate (pnpm — typecheck/test/build/lint + e2e)
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    defaults:
+      run:
+        working-directory: v3
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup pnpm
+        uses: pnpm/action-setup@v4
+        with:
+          version: ${{ env.PNPM_VERSION }}
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: ${{ env.NODE_VERSION }}
+          cache: 'pnpm'
+          cache-dependency-path: v3/pnpm-lock.yaml
+
+      - name: Install dependencies (frozen lockfile)
+        run: pnpm install --frozen-lockfile
+
+      # البوابة الكاملة: typecheck ثم اختبارات الوحدة ثم البناء ثم lint.
+      # البناء هنا مقصود قبل الـe2e: الحزمة العامة تخدم dist عبر خادم ثابت.
+      - name: Gate 1/4 — typecheck (كل الحزم)
+        run: pnpm typecheck
+
+      - name: Gate 2/4 — tests (كل الحزم)
+        run: pnpm test
+
+      - name: Gate 3/4 — build (كل الحزم)
+        run: pnpm build
+
+      - name: Gate 4/4 — biome check (lint + format + imports)
+        run: pnpm lint
+
+      - name: Install Playwright Chromium
+        working-directory: v3/apps/web
+        run: |
+          # تنزيل المتصفح عرضة لفشل شبكة عابر على العدّاد: 3 محاولات ثم تراجع
+          # بلا --with-deps (ubuntu-latest يحوي أغلب المكتبات)، مع سجل مرفوع.
+          set +e
+          for i in 1 2 3; do
+            pnpm exec playwright install --with-deps chromium > pw-install.log 2>&1
+            if [ $? -eq 0 ]; then echo "playwright installed (attempt $i)"; exit 0; fi
+            echo "::warning::playwright install attempt $i failed"
+            tail -15 pw-install.log
+            sleep 15
+          done
+          pnpm exec playwright install chromium > pw-install.log 2>&1
+          CODE=$?
+          tail -15 pw-install.log
+          exit $CODE
+
+      - name: Upload Playwright install log (on failure)
+        if: failure()
+        continue-on-error: true
+        uses: actions/upload-artifact@v4
+        with:
+          name: pw-install-log
+          path: v3/apps/web/pw-install.log
+          retention-days: 7
+
+      - name: E2E public (desktop + mobile — بلا API ولا جلسة)
+        working-directory: v3/apps/web
+        run: pnpm e2e:public
+
+      - name: Bundle budget (ميزانية gzip KiB على dist)
+        working-directory: v3/apps/web
+        run: pnpm e2e:budget
+
+      # Lighthouse على الحزمة العامة: يبدأ خادما الثابت تلقائيًا إن لم يكن قائمًا.
+      # الحدود في e2e/lighthouse-budget.json — أي تجاوز يُفشل البوابة.
+      - name: Lighthouse gate (performance/a11y/best-practices/SEO)
+        working-directory: v3/apps/web
+        run: pnpm perf:lighthouse
+
+      - name: Upload Playwright report
+        if: failure()
+        continue-on-error: true # تشخيص فقط (حصة اللقطات)
+        uses: actions/upload-artifact@v4
+        with:
+          name: v3-playwright-report
+          path: |
+            v3/apps/web/playwright-report/**
+            v3/apps/web/e2e/playwright-report/**
+            v3/apps/web/test-results/**
+            v3/apps/web/e2e/test-results/**
+          if-no-files-found: ignore
+          retention-days: ${{ env.RETENTION_DAYS }}

@@ -57,6 +57,10 @@ export const SUB_ROUTES = [
     'procurement-payments',
     'goods-scan',
     'warehouse-gov',
+    // موجز المدير: شاشة المالك الأولى (قرار 2026-11-03) — في الموزّع
+    // (preview.js «case executive») ولا في أي قائمة، فلزم القيد هنا
+    // وإلا كان الرابط #/executive يسقط على لوحة التحكم بصامتًا.
+    'executive',
 ];
 
 /** Shape of a real nav key — lowercase letters, digits, hyphens. Anything

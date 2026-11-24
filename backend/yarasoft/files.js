@@ -182,7 +182,7 @@ async function readFileWithMeta(filePath, { maxBytes = 10 * 1024 * 1024 } = {}) 
 /**
  * Phase 10 — أرشفة آمنة: لا تُحرَّك الفاتورة الأصلية إلا بعد التزام المعاملة.
  * النقل داخل المشاركة نفسها (rename سريع) ومع سقوط rename بين الأحزام
- * (跨 الأقراص) نستخدم نسخة + حذف. الفشل غير قاتل — يُعاد في الدورة القادمة.
+ * (عبر الأقراص) نستخدم نسخة + حذف. الفشل غير قاتل — يُعاد في الدورة القادمة.
  */
 async function moveFile(fromPath, toDir, { timeoutMs = 15000 } = {}) {
     await fsp.mkdir(toDir, { recursive: true }).catch(() => {});

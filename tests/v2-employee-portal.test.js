@@ -74,7 +74,7 @@ describe('بوابة الموظف — عقد الشاشة', () => {
 
     test('المضيف ما زال يربط المفتاح', () => {
         const h = read(HOST);
-        expect(h).toMatch(/mount: mountEmployeePortalScreen/);
+        expect(h).toMatch(/module: 'employee-portal'/);
         expect(h).toMatch(/key: 'employee-portal'/);
     });
 });

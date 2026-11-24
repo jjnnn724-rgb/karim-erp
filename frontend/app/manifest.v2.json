@@ -1,0 +1,80 @@
+{
+  "name": "مطاعم الشرفه العالمي — Karim ERP V2",
+  "short_name": "Karim V2",
+  "description": "نظام إدارة المطاعم المتكامل: كاشير، مخزون، موارد بشرية، مالية",
+  "lang": "ar",
+  "dir": "rtl",
+  "id": "/app/v2.html",
+  "start_url": "/app/v2.html?live=1",
+  "scope": "/app/",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#0c111d",
+  "theme_color": "#0F5B46",
+  "categories": [
+    "business",
+    "food",
+    "productivity"
+  ],
+  "icons": [
+    {
+      "src": "/app/assets/icon-192.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/app/assets/icon-512.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "any"
+    },
+    {
+      "src": "/app/assets/icon-192-maskable.png",
+      "sizes": "192x192",
+      "type": "image/png",
+      "purpose": "maskable"
+    },
+    {
+      "src": "/app/assets/icon-512-maskable.png",
+      "sizes": "512x512",
+      "type": "image/png",
+      "purpose": "maskable"
+    }
+  ],
+  "shortcuts": [
+    {
+      "name": "الحضور والانصراف",
+      "short_name": "الحضور",
+      "url": "/app/v2.html?live=1&v2routing=1#/attendance",
+      "icons": [
+        {
+          "src": "/app/assets/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "كاشير المطعم",
+      "short_name": "الكاشير",
+      "url": "/app/cashier/",
+      "icons": [
+        {
+          "src": "/app/assets/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    },
+    {
+      "name": "استعلام المبيعات",
+      "short_name": "المبيعات",
+      "url": "/app/v2.html?live=1&v2routing=1#/sales-inquiry",
+      "icons": [
+        {
+          "src": "/app/assets/icon-192.png",
+          "sizes": "192x192"
+        }
+      ]
+    }
+  ]
+}

@@ -20,7 +20,7 @@ const MAX_OFFSET = 50000;     // Allow loading large attendance datasets
 /**
  * Parse and validate pagination parameters from request query.
  * 
- * @param {Object} req.query - Express request query object
+ * @param {Object} query - Express request query object
  * @param {string[]} allowedSortColumns - Whitelist of sortable column names
  * @returns {{ page: number, limit: number, offset: number, sort: string, order: 'ASC'|'DESC', valid: boolean, errors: string[] }}
  */
@@ -92,8 +92,8 @@ function parsePaginationParams(query, allowedSortColumns = ['id']) {
  * Returns both the data query and count query for total records.
  *
  * @param {string} tableName - The table to query (must be validated beforehand)
- * @param {Object} params - Parsed pagination params from parsePaginationParams()
- * @param {Object} [options] - { branchId?: number } — تصفية اختيارية حسب الفرع (branch_id)
+ * @param {any} params - Parsed pagination params from parsePaginationParams()
+ * @param {any} [options] - { branchId?: number } — تصفية اختيارية حسب الفرع (branch_id)
  * @returns {{ dataQuery: string, countQuery: string, params: any[], countParams: any[] }}
  */
 function buildPaginatedQuery(tableName, params, options = {}) {
@@ -122,7 +122,16 @@ function buildPaginatedQuery(tableName, params, options = {}) {
     const where = predicates.length ? ` WHERE ${predicates.join(' AND ')}` : '';
     const limitPh = filterParams.length + 1;
     const offsetPh = filterParams.length + 2;
-    const dataQuery = `SELECT * FROM "${tableName}"${where} ORDER BY "${sort}" ${order} LIMIT $${limitPh} OFFSET $${offsetPh}`;
+    /* PERF 2026-10-29: كياناتٌ تحمل أعمدةً ثقيلة لا تعني شاشة القائمة (صور
+       تواقيع base64 في dispatches). كان الحل حذفها بعد الجلب، فظلّت تُقرأ من
+       القرص وتُحوَّل وتُحلَّل ثم تُرمى. هنا تُستثنى في SELECT نفسها. */
+    const columns = Array.isArray(options.selectColumns) && options.selectColumns.length
+        ? options.selectColumns.filter((c) => /^[A-Za-z_][A-Za-z0-9_]*$/.test(String(c)))
+        : [];
+    const projection = columns.length
+        ? columns.map((c) => `"${c}"`).join(', ')
+        : '*';
+    const dataQuery = `SELECT ${projection} FROM "${tableName}"${where} ORDER BY "${sort}" ${order} LIMIT $${limitPh} OFFSET $${offsetPh}`;
     const countQuery = `SELECT COUNT(*) AS total FROM "${tableName}"${where}`;
 
     return {
@@ -179,10 +188,10 @@ function paginationMiddleware(allowedSortColumns = ['id']) {
 /**
  * Send a paginated response with standard headers and structure.
  * 
- * @param {Object} res - Express response object
- * @param {Array} data - Array of results for current page
+ * @param {any} res - Express response object
+ * @param {any[]} data - Array of results for current page
  * @param {number} total - Total number of records (unpaginated)
- * @param {Object} pagination - Parsed pagination params
+ * @param {any} pagination - Parsed pagination params
  */
 function sendPaginatedResponse(res, data, total, pagination) {
     const { page, limit, sort, order } = pagination;

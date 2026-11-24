@@ -19,16 +19,21 @@
  * تتحقق من الدور والصلاحية — هذه الشاشة لا تحسب رقمًا بيدها إلا مجموعًا
  * لقيمٍ وردت من الخادم، وتنسب كل رقم إلى مصدره.
  */
-import { createDataTable } from '../data-display/data-table.js?v=4.9.180';
-import { openInAppReport } from '../report-viewer.js?v=4.9.180';
-import { fetchDepartments } from '../data/employees-repo.js?v=4.9.180';
-import { fetchRecipes } from '../data/recipes-repo.js?v=4.9.180';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.180';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.323';
+import { openInAppReport } from '../report-viewer.js?v=4.9.323';
+/* مصدر الأقسام هو المستودع المالي لا الموارد البشرية: المعادلة تقرأ
+   revenues.deptId و expenses.deptId و dispatches.deptCode — أكواد جدول
+   departments. قائمة hrDepartments كوداتها مختلفة (KITCHEN/SERVICE/…)
+   فكانت كل قراءة الشاشة تُصفّر: لا إيراد ولا أذون ولا إضافات. */
+import { fetchDepartments } from '../data/finance-repo.js?v=4.9.323';
+import { fetchRecipes } from '../data/recipes-repo.js?v=4.9.323';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.323';
 import {
     fetchDeptPnl, fetchDeptDispatches, fetchDeptAdditions,
     createDeptAddition, deleteDeptAddition, createProduction, fetchProductions,
     buildDeptEquation, ADDITION_CATEGORY,
-} from '../data/cost-center-repo.js?v=4.9.180';
+} from '../data/cost-center-repo.js?v=4.9.323';
+import { fetchDeptCashierLinks, deptCashierNos } from '../data/dept-cashier-repo.js?v=4.9.323';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -65,6 +70,7 @@ function template() {
         <div class="erp-card__body erp-stack">
           <ul class="erp-kpis" data-v2-kpis aria-label="معادلة القسم"></ul>
           <p class="erp-text-sm erp-text-muted" data-v2-summary role="status" aria-live="polite"></p>
+          <p class="erp-text-sm erp-text-muted" data-v2-attribution></p>
           <p class="erp-text-sm erp-text-muted">المعادلة: صافي القسم = إيراد الكاشير المرتبط به − كلفة الصرف − كلفة التوليد − الإضافات.
             كل قيمة من مصدرها الأولي (أذون معتمدة، مصروفات، تجميع المالية)، واعتماد الصرف والتوليد يُرحّل قيد
             Dr 5000 / Cr 1200 بمركز تكلفة القسم تلقائيًا على الخادم.</p>
@@ -119,12 +125,15 @@ export function mountCostCenterScreen(host, ctx = {}) {
     let productionRows = [];
     let pnlRow = null;
     let recipes = [];
+    let departments = [];
+    let cashierLinks = [];
 
     host.insertAdjacentHTML('beforeend', template());
     const el = host.lastElementChild;
     const q = (s) => el.querySelector(s);
     const kpisEl = q('[data-v2-kpis]');
     const summaryEl = q('[data-v2-summary]');
+    const attrEl = q('[data-v2-attribution]');
     const countEl = q('[data-v2-count]');
     const failuresBox = q('[data-v2-failures]');
     const deptSel = q('[data-v2-dept]');
@@ -190,6 +199,27 @@ export function mountCostCenterScreen(host, ctx = {}) {
     }
 
     /* ── الرسم ── */
+    /**
+     * من أين جاء إيراد هذا القسم: إسناد كاشير من جدول 103 (مع الفروع)، أو
+     * إيراد مباشر مسجَّل على القسم نفسه. الشفافية هنا تمنع قراءة «صفر إيراد»
+     * كخسارة حين يكون الإيراد على قناة بيع لم تُربط بعد.
+     */
+    function paintAttribution() {
+        if (!attrEl) {return;}
+        if (!dept) {attrEl.textContent = ''; return;}
+        const { nos, source } = deptCashierNos(dept, { links: cashierLinks, departments });
+        if (!nos.length) {
+            attrEl.textContent = 'لا كاشير مرتبط بهذا القسم — الإيراد المعروض هو ما سُجّل على القسم نفسه.';
+            return;
+        }
+        const chips = nos
+            .sort((a, b) => a.localeCompare(b, 'en', { numeric: true }))
+            .map((no) => `<span class="erp-badge" data-tone="brand" dir="ltr">كاشير ${esc(no)}</span>`)
+            .join(' ');
+        attrEl.innerHTML = `الإيراد منسوب من ${chips}`
+            + ` <span class="erp-text-muted">${source === 'map' ? '— خريطة احتياطية حتى يُطبَّق جدول الروابط (103)' : '— ربط الأقسام بالكاشير (103)'}</span>`;
+    }
+
     function paintEquation() {
         const productionCost = productionRows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
         const additions = additionRows.reduce((s, r) => s + (Number(r.amount) || 0), 0);
@@ -214,6 +244,7 @@ export function mountCostCenterScreen(host, ctx = {}) {
               ${eq.marginPct !== null ? `<span class="erp-kpi__unit">${esc(String(eq.marginPct))}%</span>` : ''}</div></li>`;
         summaryEl.textContent = `${formatInt(dispatchRows.length)} إذنًا · ${formatInt(productionRows.length)} توليدًا · ${formatInt(additionRows.length)} إضافة — صافي القسم ${formatMoney(eq.net, currency).amount}${eq.marginPct !== null ? ` (هامش ${eq.marginPct}%)` : ''}`;
         countEl.textContent = dept ? `— ${dept}` : '';
+        paintAttribution();
     }
 
     function paintAll() {
@@ -257,6 +288,9 @@ export function mountCostCenterScreen(host, ctx = {}) {
                 fetchProductions({ from, to, dept }).then((res) => {
                     productionRows = Array.isArray(res?.data) ? res.data : [];
                 }).catch((e) => {failures.push(`التوليد: ${(e && e.message) || 'خطأ'}`);}),
+                fetchDeptCashierLinks().then((rows) => {
+                    cashierLinks = Array.isArray(rows) ? rows : [];
+                }).catch(() => { /* الإسناد زينة قراءة — لا يُسقط الصفحة */ }),
             ];
             await Promise.all(tasks);
             if (!el.isConnected || seq !== readSeq) {return;}
@@ -278,21 +312,21 @@ export function mountCostCenterScreen(host, ctx = {}) {
         const dispatchCost = dispatchRows.reduce((s, r) => s + (Number(r.value) || 0), 0);
         const eq = buildDeptEquation({ revenue: pnlRow ? Number(pnlRow.rev) || 0 : 0, dispatchCost, additions, productionCost });
         const w = openInAppReport('حساب القسم');
-        w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>حساب القسم</title></head><body style="font-family:\'Cairo\',Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز الحساب…</body></html>');
+        w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>حساب القسم</title></head><body style="font-family:\'IBM Plex Sans Arabic\',\'Tajawal\',Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز الحساب…</body></html>');
         const eqRow = (label, val, tone) => `<tr><td>${esc(label)}</td><td dir="ltr" style="text-align:left${tone ? `;color:${tone}` : ''}"><b>${esc(formatMoney(val, currency).amount)}</b></td></tr>`;
         const dspRows = dispatchRows.map((r, i) => `<tr><td>${i + 1}</td><td dir="ltr">#${esc(String(r.id))}</td><td>${esc(r.date || '—')}</td><td style="text-align:right">${esc(r.itemsText || '—')}</td><td dir="ltr">${esc(formatMoney(r.value, currency).amount)}</td></tr>`).join('');
         const prodRows = productionRows.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(String(r.date || '').slice(0, 10))}</td><td style="text-align:right">${esc(r.desc || '')}</td><td dir="ltr">${esc(formatMoney(r.amount, currency).amount)}</td></tr>`).join('');
         const addRows = additionRows.map((r, i) => `<tr><td>${i + 1}</td><td>${esc(String(r.date || '').slice(0, 10))}</td><td style="text-align:right">${esc(r.desc || '')}</td><td dir="ltr">${esc(formatMoney(r.amount, currency).amount)}</td></tr>`).join('');
         w.document.open();
         w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>حساب القسم ${esc(dept)}</title>`
-            + '<style>body{font-family:\'Cairo\',Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:28px;direction:rtl}'
-            + '.sheet{max-width:960px;margin:auto}.head{text-align:center;border-bottom:3px solid #b45309;padding-bottom:14px;margin-bottom:16px}'
-            + '.head h1{margin:0 0 6px;color:#b45309;font-size:22px}.head p{margin:3px 0;color:#555;font-size:13px}'
-            + '.net{margin:14px 0;border:2px solid #b45309;border-radius:10px;padding:12px;text-align:center;font-size:15px}.net b{font-size:20px;color:#7c3500}'
-            + 'h2{font-size:14px;color:#7c3500;border-bottom:2px solid #f7ead8;padding-bottom:5px;margin:16px 0 8px}'
+            + '<style>body{font-family:\'IBM Plex Sans Arabic\',\'Tajawal\',Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:28px;direction:rtl}'
+            + '.sheet{max-width:960px;margin:auto}.head{text-align:center;border-bottom:3px solid #0f5b46;padding-bottom:14px;margin-bottom:16px}'
+            + '.head h1{margin:0 0 6px;color:#0f5b46;font-size:22px}.head p{margin:3px 0;color:#555;font-size:13px}'
+            + '.net{margin:14px 0;border:2px solid #0f5b46;border-radius:10px;padding:12px;text-align:center;font-size:15px}.net b{font-size:20px;color:#0a3d2f}'
+            + 'h2{font-size:14px;color:#0a3d2f;border-bottom:2px solid #eaf3ee;padding-bottom:5px;margin:16px 0 8px}'
             + 'table{width:100%;border-collapse:collapse;margin-bottom:6px}th,td{border:1px solid #ccc;padding:6px;text-align:right;font-size:12px}'
-            + 'th{background:#f7ead8;color:#7c3500}'
-            + '.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#b45309;color:#fff}'
+            + 'th{background:#eaf3ee;color:#0a3d2f}'
+            + '.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#0f5b46;color:#fff}'
             + '.controls button.secondary{background:#555}'
             + '@media print{body{padding:0}.controls{display:none!important}@page{size:A4;margin:11mm}}</style></head><body>'
             + '<div class="controls"><button type="button" data-cc-print>طباعة</button><button type="button" class="secondary" data-cc-close>إغلاق</button></div>'
@@ -392,15 +426,18 @@ export function mountCostCenterScreen(host, ctx = {}) {
     (async () => {
         const seq = ++readSeq;
         try {
-            const [depts, recs, cur] = await Promise.all([
+            const [depts, recs, cur, links] = await Promise.all([
                 fetchDepartments().catch(() => []),
                 fetchRecipes().catch(() => []),
                 fetchCurrency().catch(() => ''),
+                fetchDeptCashierLinks().catch(() => []),
             ]);
             if (!el.isConnected || seq !== readSeq) {return;}
             currency = String(cur ?? '');
             recipes = Array.isArray(recs) ? recs : [];
+            cashierLinks = Array.isArray(links) ? links : [];
             const list = Array.isArray(depts) ? depts : [];
+            departments = list;
             deptSel.innerHTML = list.map((d) => `<option value="${esc(String(d.code))}">${esc(d.name || d.code)}</option>`).join('');
             dept = deptSel.value || '';
             paintProdForm();

@@ -105,6 +105,9 @@ describe('ledger-yara-parity — المرآة للقراءة فقط', () => {
 
     test('التقرير يُكتب في database/backups ولا يكتب في القاعدة وقت المعاينة', () => {
         expect(source).toMatch(/ledger-yara-parity-\$\{started/);
+        // المجلد قد لا يوجد على عدّاد نظيف (gitignored) — إنشاؤه جزء من التجهيز،
+        // والعقد الحقيقي في تأكيدات المصدر أعلاه (لا كتابة على القاعدة وقت المعاينة).
+        fs.mkdirSync(path.join(ROOT, 'database', 'backups'), { recursive: true });
         expect(fs.existsSync(path.join(ROOT, 'database', 'backups'))).toBe(true);
     });
 });

@@ -397,7 +397,7 @@ describe('9. عقود المصدر والتوصيل', () => {
     });
 
     test('التوصيل: استيراد + مُوزِّع + teardown + مسار فرعي + ورقة أنماط', () => {
-        expect(HOST_SRC).toContain(`import { mountGoodsScanScreen } from './screens/goods-scan.js?v=${REV}';`);
+        expect(HOST_SRC).toMatch(/module: 'goods-scan'/);
         expect(HOST_SRC).toMatch(/if \(key === 'goods-scan'\) \{\n\s*renderGoodsScanScreen\(\);/);
         expect(HOST_SRC).toMatch(/function renderGoodsScanScreen\(\) \{\n\s*renderLiveRegisterScreen\(\{ key: 'goods-scan'/);
         expect(HOST_SRC).toMatch(/teardownGoodsScanScreen\(\);/);

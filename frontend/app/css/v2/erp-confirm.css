@@ -1,0 +1,172 @@
+/* ═══════════════════════════════════════════════════════════════════
+   V2 — Confirm dialog · js/v2/confirm.js
+   ───────────────────────────────────────────────────────────────────
+   Zero hex: every colour, radius, space, shadow and duration below is a
+   live `var(--erp-*)`. No new font, no new shadow, no new colour.
+   Logical properties only, so the card reads correctly in RTL without a
+   single [dir] selector.
+   Self-contained by necessity: the <dialog> is mounted on document.body
+   (native top layer), outside `.erp-v2`, so it cannot borrow `.erp-btn`.
+   ═══════════════════════════════════════════════════════════════════ */
+
+.erp-confirm {
+  inline-size: min(440px, calc(100vw - (var(--erp-space-6) * 2)));
+  max-block-size: calc(100vh - (var(--erp-space-6) * 2));
+  padding: 0;
+  border: 0;
+  background: transparent;
+  color: var(--erp-text-primary);
+  font-family: var(--erp-font-sans);
+  overflow: visible;
+  z-index: var(--erp-z-modal);
+}
+
+.erp-confirm::backdrop {
+  /* --erp-scrim ينقلب في الوضع الداكن (‎.45 أسود → ‎.6 أسود)؛ اشتقاقُ
+     الشريط من لون النصّ كان يقلبه إلى حجابٍ فاتح على الخلفية الداكنة. */
+  background: var(--erp-scrim);
+}
+
+/* الحركة على الحوار وحده؛ قاعدة تقليل الحركة العامة في erp-themes مقيَّدة
+   بـ`.erp-v2`، والحوار يُركَّب على body خارجها — فيحتاج حراسه. */
+.erp-confirm[open] {
+  animation: erp-confirm-in var(--erp-duration-base, 180ms) var(--erp-ease-out, ease-out);
+}
+
+@keyframes erp-confirm-in {
+  from { opacity: 0; transform: translateY(8px) scale(.98); }
+  to { opacity: 1; transform: none; }
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .erp-confirm[open] {
+    animation: none;
+  }
+}
+
+.erp-confirm__card {
+  display: flex;
+  flex-direction: column;
+  gap: var(--erp-space-3);
+  padding: var(--erp-space-5);
+  background: var(--erp-surface);
+  border: 1px solid var(--erp-border);
+  border-radius: var(--erp-radius-xl);
+  box-shadow: var(--erp-shadow-xl);
+}
+
+.erp-confirm__head {
+  display: flex;
+  align-items: center;
+  gap: var(--erp-space-3);
+}
+
+.erp-confirm__icon {
+  display: grid;
+  place-items: center;
+  inline-size: 36px;
+  block-size: 36px;
+  flex-shrink: 0;
+  border-radius: var(--erp-radius-full);
+  background: var(--erp-warning-soft);
+  color: var(--erp-warning-text);
+}
+
+.erp-confirm__icon svg {
+  inline-size: var(--erp-icon-md);
+  block-size: var(--erp-icon-md);
+}
+
+.erp-confirm[data-tone="danger"] .erp-confirm__icon {
+  background: var(--erp-danger-soft);
+  color: var(--erp-danger-text);
+}
+
+.erp-confirm__title {
+  margin: 0;
+  font-size: var(--erp-text-lg);
+  font-weight: 600;
+  line-height: var(--erp-leading-tight);
+}
+
+.erp-confirm__msg {
+  margin: 0;
+  /* الرسائل تحمل أسطرًا مقصودة (payroll.js) — سطرٌ واحد يُلغيها. */
+  white-space: pre-line;
+  font-size: var(--erp-text-md);
+  line-height: var(--erp-leading-base);
+  color: var(--erp-text-secondary);
+  max-block-size: 46vh;
+  overflow-block: auto;
+}
+
+.erp-confirm__actions {
+  display: flex;
+  justify-content: flex-end;
+  gap: var(--erp-space-2);
+  margin-block-start: var(--erp-space-2);
+}
+
+.erp-confirm__btn {
+  min-block-size: 40px;
+  padding-inline: var(--erp-space-4);
+  border: 1px solid transparent;
+  border-radius: var(--erp-radius-md);
+  font-family: inherit;
+  font-size: var(--erp-text-md);
+  font-weight: 500;
+  cursor: pointer;
+  transition: background-color var(--erp-duration-fast, 120ms) var(--erp-ease-standard, ease);
+}
+
+.erp-confirm__btn:focus-visible {
+  outline: 2px solid var(--erp-focus-ring, var(--erp-brand));
+  outline-offset: 2px;
+}
+
+.erp-confirm__btn--primary {
+  background: var(--erp-brand);
+  color: var(--erp-text-inverse);
+}
+
+.erp-confirm__btn--danger {
+  background: var(--erp-danger);
+  color: var(--erp-text-inverse);
+}
+
+.erp-confirm__btn--ghost {
+  background: transparent;
+  border-color: var(--erp-border);
+  color: var(--erp-text-primary);
+}
+
+.erp-confirm__btn--ghost:hover {
+  background: var(--erp-surface-hover);
+}
+
+.erp-confirm__btn--primary:hover,
+.erp-confirm__btn--danger:hover {
+  filter: brightness(1.05);
+}
+
+@media (max-width: 480px) {
+  .erp-confirm {
+    inline-size: calc(100vw - (var(--erp-space-4) * 2));
+  }
+  .erp-confirm__card {
+    padding: var(--erp-space-4);
+  }
+  .erp-confirm__actions {
+    flex-direction: column-reverse;
+  }
+  .erp-confirm__btn {
+    inline-size: 100%;
+    min-block-size: 44px;
+  }
+}
+
+@media print {
+  .erp-confirm {
+    display: none !important;
+  }
+}

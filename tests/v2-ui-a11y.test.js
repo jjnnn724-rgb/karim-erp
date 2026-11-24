@@ -99,9 +99,11 @@ describe('V2 UI a11y guards', () => {
         expect(css).toMatch(/\.erp-v2 \.erp-shell__page-title\s*\{[^}]*clip-path:\s*inset\(50%\)/);
         expect(css).not.toMatch(/\.erp-v2 \.erp-shell__page-title\s*\{[^}]*display:\s*none/);
         // عنوان الشاشة الداخلي h2: عنوان المستند واحد.
+        /* «زمرد كريم» 2026-11-01: عنوان الشاشة الداخلي صار رأس البطل الموحد
+           erp-dash-title (h2 واحد لكل مستند) بدل أصناف الرؤوس الخاصة. */
         for (const f of ['js/v2/screens/cash-register.js', 'js/v2/screens/cashier-sales.js']) {
-            expect(read(f)).not.toMatch(/<h1 class="(?:cashreg|csales)__title"/);
-            expect(read(f)).toMatch(/<h2 class="(?:cashreg|csales)__title"/);
+            expect(read(f)).not.toMatch(/<h1 class="erp-dash-title"/);
+            expect(read(f)).toMatch(/<h2 class="erp-dash-title"/);
         }
     });
 

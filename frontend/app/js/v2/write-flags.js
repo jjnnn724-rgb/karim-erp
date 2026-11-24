@@ -24,6 +24,8 @@
  *   ?v2invoicecreate=1 | 0  → إنشاء/تعديل فاتورة شراء (26c-2)
  *                             استثناءٌ: ظاهرٌ افتراضيًا، و`=0` وحده يُخفيه
  *   ?v2bulkimport=1 | 0     → استيراد الموظفين/المستخدمين الجماعي (26د)
+ *                             استثناءٌ: ظاهرٌ افتراضيًا (قرار المالك 2026-11-03
+ *                             قبل النقل إلى V2 — والقرار الأمني للخادم بالدور)
  *   ?v2chat=1 | 0           → الشات الداخلي (إرسال رسالة = كتابة، 2026-10-17)
  *   ?v2deptcashier=1 | 0    → ربط القسم بكاشيره المعيَّن (جدول 103، 2026-10-19)
  *                             استثناءٌ: ظاهرٌ افتراضيًا، و`=0` وحده يُخفيه
@@ -134,8 +136,15 @@ export function invoiceCreateWriteEnabled(search, storage) {
     return readFlagDefaultOn(INVOICE_CREATE_WRITE_FLAG, 'karim_v2_invoice_create_write', search, storage);
 }
 
+/**
+ * الاستيراد الجماعي — ظاهرٌ افتراضيًا (قرار المالك 2026-11-03: «كل شيء قبل
+ * النقل مهما كان»). Wizard الـV2 مكتمل ومُختبَر، والحكم الأمني للخادم:
+ * المسار apiCreate نفسه المستعمل في V1 مع فحص الدور في كل نداء، فهذا العلم رسمٌ فقط.
+ *   · `?v2bulkimport=0` أو المخزّن '0' → يُخفي الأزرار
+ *   · `=1` أو غياب الاثنين → ظاهرة
+ */
 export function bulkImportWriteEnabled(search, storage) {
-    return readFlag(BULK_IMPORT_WRITE_FLAG, 'karim_v2_bulk_import_write', search, storage);
+    return readFlagDefaultOn(BULK_IMPORT_WRITE_FLAG, 'karim_v2_bulk_import_write', search, storage);
 }
 
 export function chatWriteEnabled(search, storage) {

@@ -1,0 +1,11 @@
+#!/bin/sh
+# 🏰 بوابة ما قبل الالتزام — لا التزام يدخل إلا نظيفًا (سريع، ثوانٍ).
+# التثبيت: npm run hooks:install   (core.hooksPath لهذا الـworktree فقط)
+# التجاوز الطارئ الموثق: git commit --no-verify (يُراجَع في CI لاحقًا — ليس بابًا خلفيًا معتادًا)
+set -e
+ROOT="$(git rev-parse --show-toplevel)"
+cd "$ROOT"
+echo "🏰 pre-commit: أسرار + تاريخ الترحيلات + إصدار الواجهة"
+node scripts/check-secrets.js
+node scripts/migration-immutability.js
+node scripts/frontend-version.js --check

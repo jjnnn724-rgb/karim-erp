@@ -5,10 +5,9 @@
  * ═══════════════════════════════════════════════════════════════════════
  * WHY
  *   ترحيل قيد الإذن (Dr 5000 تكلفة المخزون المصروف / Cr 1200 المخزون) يجري
- *   **بعد** COMMIT حركة المخزون والمصروف. فإذا فشل (كما حدث 2026-10-26:
- *   قيد `cost_centers_code_check` رفض أسماء الأقسام بأحرف صغيرة) بقي الإذن
- *   معتمدًا، والمخزون ناقصًا، ولا قيد في الدفتر — فرقٌ صامت بين دفتر المخزون
- *   ودفتر الأستاذ. هذا السكربت يكشف الفرق، ويرحّل الناقص عند الطلب فقط.
+ *   الآن داخل معاملة اعتماد المخزون قبل COMMIT. هذا السكربت يكشف النواقص
+ *   التاريخية (مثل فشل 2026-10-26: قيد `cost_centers_code_check` رفض أسماء
+ *   الأقسام بأحرف صغيرة) ويرحّلها عند الطلب فقط، بالمراجعة الحالية للإذن.
  *
  * USAGE
  *   node scripts/reconcile-dispatch-ledger.js            # تقرير فقط (افتراضي)
@@ -18,7 +17,7 @@
  * SAFETY
  *   • بلا --apply لا يكتب شيئًا إطلاقًا.
  *   • الترحيل idempotent: postJournal يردّ القيد القائم بدل إنشاء ثانٍ
- *     (source_type='dispatch' + source_id=<id>).
+ *     (source_type='dispatch' + source_id=<id> للمراجعة 0 أو <id>#rN).
  *   • لا يحذف ولا يعدّل أي قيد قائم، ولا يمسّ المخزون أو المصروفات.
  *   • الأذون بقيمة صفر تُتخطّى صراحةً (لا قيد بلا مبلغ).
  */
@@ -47,8 +46,20 @@ async function main() {
 
     const { rows } = await pool.query(`
         SELECT d.id, d.date, d.status, d."deptCode" AS dept,
-               COALESCE(v.total, 0)::numeric(14,2) AS value
+               COALESCE(v.total, 0)::numeric(14,2) AS value,
+               rev.revision, rev.source_id,
+               EXISTS (SELECT 1 FROM journal_entries jv
+                        WHERE jv.source_type = 'dispatch' AND jv.source_id = rev.source_id
+                          AND jv.status = 'void') AS was_voided
           FROM dispatches d
+          CROSS JOIN LATERAL (
+                SELECT COUNT(*)::int AS revision,
+                       CASE WHEN COUNT(*) > 0
+                            THEN d.id::text || '#r' || COUNT(*)::text
+                            ELSE d.id::text END AS source_id
+                  FROM dispatch_workflow_events we
+                 WHERE we.dispatch_id = d.id AND we.event_type = 'reopened'
+               ) rev
           LEFT JOIN LATERAL (
                 SELECT SUM((x->>'approvedValue')::numeric) AS total
                   FROM jsonb_array_elements(COALESCE(d."approvedItems", '[]'::jsonb)) x
@@ -56,15 +67,20 @@ async function main() {
          WHERE ${where.join(' AND ')}
            AND NOT EXISTS (
                 SELECT 1 FROM journal_entries e
-                 WHERE e.source_type = 'dispatch' AND e.source_id = d.id::text)
+                 WHERE e.source_type = 'dispatch' AND e.source_id = rev.source_id
+                   AND e.status <> 'void')
          ORDER BY d.date, d.id`, params);
 
-    const zero = rows.filter((r) => !(Number(r.value) > 0));
-    const todo = rows.filter((r) => Number(r.value) > 0);
+    const voided = rows.filter((r) => r.was_voided);
+    const zero = rows.filter((r) => !r.was_voided && !(Number(r.value) > 0));
+    const todo = rows.filter((r) => !r.was_voided && Number(r.value) > 0);
     const total = todo.reduce((s, r) => s + Number(r.value), 0);
 
     console.log(`أذون معتمدة بلا قيد: ${rows.length}  (بقيمة: ${todo.length} / ${total.toFixed(2)})`);
     if (zero.length) { console.log(`  منها ${zero.length} بقيمة صفر — تُتخطّى (لا قيد بلا مبلغ).`); }
+    // الإبطال قرار بشري: القيد المُبطَل يبقى خارج الأستاذ حتى يُعاد ترحيلُه صراحةً،
+    // وإلا قلب كل --apply تلقائيًّا قرارَ المالك إلى قيد جديد برقم مراجعة.
+    if (voided.length) { console.log(`  منها ${voided.length} قيدها مُبطَل عمدًا — لا تُعاد تلقائيًا (${voided.map((r) => '#' + r.id).join(' ')})`); }
     todo.forEach((r) => console.log(`  #${r.id}  ${r.date}  ${r.status.padEnd(16)} ${String(r.dept || '?').padEnd(15)} ${Number(r.value).toFixed(2)}`));
 
     if (!APPLY) {
@@ -79,6 +95,7 @@ async function main() {
         try {
             const out = await postDispatchToLedger(r.id, {
                 totalValue: Number(r.value), date: String(r.date), deptCode: r.dept,
+                revision: Number(r.revision),
             });
             if (out && out.skipped) { failed.push({ id: r.id, why: out.skipped }); continue; }
             ok += 1;

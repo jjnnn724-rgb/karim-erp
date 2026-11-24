@@ -120,7 +120,12 @@ function buildCspDirectives(opts, nonce) {
         'connect-src': [
             self,
             'ws:', 'wss:',   // Socket.io WebSockets
-            'http:', 'https:', // ZATCA / Cloudflare tunnel fallback
+            // تأمين 2026-11 (M4): أُزيلت http:/https: المعممة (كانت تسمح لأي XSS
+            // بالتسريب لأي وجهة). الاتصال الخارجي المشروع الوحيد في المتصفح هو
+            // ترجمة شاشة المنيو (menu-totem-dashboard.js) — مثبّت بالاسم.
+            // ملاحظة سياسة: beacon تحليلات Cloudflare المحقون عبر النفق يُحجب
+            // بذلك عمدًا (كما في سياسة V2) — ليس ميزة تشغيلية.
+            'https://api.mymemory.translated.net',
         ],
         'frame-src': [
             self,
@@ -162,6 +167,11 @@ function buildV2Csp() {
         "style-src-attr 'unsafe-inline'",
         "img-src 'self' data: blob:",
         "font-src 'self' data:",
+        /* Arrival sounds (js/v2/sounds.js) fall back to an in-memory data: WAV
+           when Web Audio is blocked or fails — the <audio> element must be able
+           to load it. Scoped to 'self' + data: (like img/font); no external
+           origins, matching the rest of this policy. */
+        "media-src 'self' data:",
         "connect-src 'self' ws: wss:",
         "frame-src 'self'",
         "frame-ancestors 'none'",
@@ -200,7 +210,7 @@ function buildStrictCsp(opts = {}) {
         "style-src-attr 'unsafe-inline'",
         "img-src 'self' data: blob: https:",
         "font-src 'self' data: https://fonts.gstatic.com",
-        "connect-src 'self' ws: wss: http: https:",
+        "connect-src 'self' ws: wss: https://api.mymemory.translated.net",
         "frame-src 'self'",
         "frame-ancestors 'none'",
         "form-action 'self'",

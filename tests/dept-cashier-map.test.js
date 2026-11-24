@@ -103,10 +103,10 @@ describe('deptIdentityColor — هوية لونية آمنة للبطاقات (�
         expect(m.deptIdentityColor({ color: ' #2196F3 ' })).toBe('#2196F3');
     });
 
-    test('اللون الغيّر أو غير الصالح → الافتراضي الذهبي (حماية من لون 3 خانات أو نص)', () => {
-        expect(m.deptIdentityColor({})).toBe('#D4A843');
-        expect(m.deptIdentityColor({ color: '#abc' })).toBe('#D4A843');
-        expect(m.deptIdentityColor({ color: 'chef-hat' })).toBe('#D4A843');
-        expect(m.deptIdentityColor(null)).toBe('#D4A843');
+    test('اللون الغيّر أو غير الصالح → الافتراضي الزمردي (حماية من لون 3 خانات أو نص)', () => {
+        expect(m.deptIdentityColor({})).toBe('#14735b');
+        expect(m.deptIdentityColor({ color: '#abc' })).toBe('#14735b');
+        expect(m.deptIdentityColor({ color: 'chef-hat' })).toBe('#14735b');
+        expect(m.deptIdentityColor(null)).toBe('#14735b');
     });
 });

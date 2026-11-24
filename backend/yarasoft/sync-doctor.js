@@ -51,16 +51,22 @@ async function oraConnect() {
 }
 
 /** عدّادات Oracle لكل يوم في [fromDay, toDay) — فواتير CC + BILLS4 */
+// عدّ بمستند واحد وبمرشّح المبلغ الموجب: المستهلِك يرفض NET_VAL<=0 ولا يسجّله أبدًا،
+// فعدّها كان يُبقي كل نافذة «ناقصة» للأبد ويعيد سحبها كاملة كل دورة (مخلفات staging).
 async function oracleDailyCounts(fromDay, toDay) {
     const { conn } = await oraConnect();
     try {
         const oracledb = require('oracledb');
         const r = await oraExecute(conn, `
-            SELECT TO_CHAR(DOC_DATE, 'YYYY-MM-DD') AS DAY, 'CC' AS SRC, COUNT(*) AS CNT, SUM(NET_VAL) AS TOTAL
+            SELECT TO_CHAR(DOC_DATE, 'YYYY-MM-DD') AS DAY, 'CC' AS SRC
+                 , COUNT(DISTINCT CASE WHEN COALESCE(NET_VAL, TOTAL_VAL, 0) > 0 THEN DOC_NO END) AS CNT
+                 , SUM(CASE WHEN COALESCE(NET_VAL, TOTAL_VAL, 0) > 0 THEN NET_VAL END) AS TOTAL
               FROM CC_BILLS3 WHERE DOC_DATE >= TO_DATE(:fromDay, 'YYYY-MM-DD') AND DOC_DATE < TO_DATE(:toDay, 'YYYY-MM-DD') AND PSTD = 'Y' AND TRIM(CSHR_NO) <> '2'
              GROUP BY TO_CHAR(DOC_DATE, 'YYYY-MM-DD')
             UNION ALL
-            SELECT TO_CHAR(DOC_DATE, 'YYYY-MM-DD') AS DAY, 'BILLS4' AS SRC, COUNT(*) AS CNT, SUM(NET_VAL) AS TOTAL
+            SELECT TO_CHAR(DOC_DATE, 'YYYY-MM-DD') AS DAY, 'BILLS4' AS SRC
+                 , COUNT(DISTINCT CASE WHEN COALESCE(NET_VAL, TOTAL_VAL, 0) > 0 THEN DOC_NO END) AS CNT
+                 , SUM(CASE WHEN COALESCE(NET_VAL, TOTAL_VAL, 0) > 0 THEN NET_VAL END) AS TOTAL
               FROM BILLS4 WHERE DOC_DATE >= TO_DATE(:fromDay, 'YYYY-MM-DD') AND DOC_DATE < TO_DATE(:toDay, 'YYYY-MM-DD') AND PSTD = 'Y'
              GROUP BY TO_CHAR(DOC_DATE, 'YYYY-MM-DD')`,
             { fromDay, toDay }, { outFormat: oracledb.OBJECT });
@@ -150,8 +156,8 @@ async function catchUp(days, io) {
             let oraCnt = 0;
             try {
                 const oracledb = require('oracledb');
-                const c1 = await oraExecute(conn, `SELECT COUNT(*) AS C FROM CC_BILLS3 WHERE DOC_DATE >= TO_DATE(:f,'YYYY-MM-DD') AND DOC_DATE < TO_DATE(:t,'YYYY-MM-DD') AND PSTD='Y' AND TRIM(CSHR_NO) <> '2'`, { f: fromDay, t: toDay }, { outFormat: oracledb.OBJECT });
-                const c2 = await oraExecute(conn, `SELECT COUNT(*) AS C FROM BILLS4 WHERE DOC_DATE >= TO_DATE(:f,'YYYY-MM-DD') AND DOC_DATE < TO_DATE(:t,'YYYY-MM-DD') AND PSTD='Y'`, { f: fromDay, t: toDay }, { outFormat: oracledb.OBJECT });
+                const c1 = await oraExecute(conn, `SELECT COUNT(DISTINCT CASE WHEN COALESCE(NET_VAL, TOTAL_VAL, 0) > 0 THEN DOC_NO END) AS C FROM CC_BILLS3 WHERE DOC_DATE >= TO_DATE(:f,'YYYY-MM-DD') AND DOC_DATE < TO_DATE(:t,'YYYY-MM-DD') AND PSTD='Y' AND TRIM(CSHR_NO) <> '2'`, { f: fromDay, t: toDay }, { outFormat: oracledb.OBJECT });
+                const c2 = await oraExecute(conn, `SELECT COUNT(DISTINCT CASE WHEN COALESCE(NET_VAL, TOTAL_VAL, 0) > 0 THEN DOC_NO END) AS C FROM BILLS4 WHERE DOC_DATE >= TO_DATE(:f,'YYYY-MM-DD') AND DOC_DATE < TO_DATE(:t,'YYYY-MM-DD') AND PSTD='Y'`, { f: fromDay, t: toDay }, { outFormat: oracledb.OBJECT });
                 oraCnt = Number(c1.rows?.[0]?.C || 0) + Number(c2.rows?.[0]?.C || 0);
             } finally { try { await conn.close(); } catch (_) {} }
             const loc = (await pool.query(
@@ -184,6 +190,120 @@ function jobStatus() {
     return { running: job.running, startedAt: job.startedAt, finishedAt: job.finishedAt, posted: job.totalPosted, dups: job.totalDups, chunks: job.chunks, error: job.error };
 }
 
+/* ── استرداد الصفوف العالقة في PROCESSING ────────────────────────────────
+   العامل قصير العمر بحارس 8 دقائق، وقد يُقتل بين حجز صف السجل وإتمام
+   المعاملة (stage=DATABASE_TRANSACTION) — فيبقى عالقًا أبدًا: يظهر «معلّقًا»
+   في /status، ويعترض إعادة استيراد فاتورته لأن الحجز يرفض معالجًا ثانيًا.
+   الاسترداد يعيد بناء الفاتورة من payload المحفوظ ويعيد مسارها نفسه:
+   حاجز external_ref داخل المعاملة ينهي الحالة كـ DUPLICATE إن كان الإيراد
+   قد سُجّل فعلًا، فيُصحّح السجل بلا أي تكرار، ويُدخله إن كان ناقصًا. */
+async function recoverStaleImports({ olderThanMinutes = 15, io = null } = {}) {
+    const minutes = String(Math.max(1, Number(olderThanMinutes) || 15));
+    const { rows: stale } = await pool.query(
+        `UPDATE invoice_import_log SET updated_at = NOW()
+          WHERE status = 'PROCESSING'
+            AND updated_at < NOW() - ($1 || ' minutes')::interval
+          RETURNING id, external_invoice_number, payload, file_hash, total_amount`,
+        [minutes]);
+
+    const out = { scanned: stale.length, recovered: 0, duplicates: 0, failed: 0, needsMapping: 0 };
+    if (!stale.length) {return out;}
+
+    const crypto = require('crypto');
+    const { STATUS, processOneInvoice } = require('./importer');
+    const { resolveSection, bumpUnmappedAmount } = require('./section-resolver');
+    const { loadConfig } = require('./config');
+    const { liveConsume } = require('./oracle-consume');
+    const baseConfig = loadConfig();
+    const config = liveConsume() ? { ...baseConfig, dryRun: false } : baseConfig;
+
+    /** @param {number} id @param {string} message */
+    const markFailed = async (id, message) => {
+        await pool.query(
+            `UPDATE invoice_import_log SET status = $2, error_message = $3, updated_at = NOW() WHERE id = $1`,
+            [id, STATUS.FAILED, String(message).slice(0, 500)]);
+        out.failed++;
+    };
+
+    for (const row of stale) {
+        // pg يحلّل jsonb إلى كائن أصلًا — لا نفترض نصًّا (JSON.parse يرمي).
+        const rawPayload = row.payload;
+        let saved = null;
+        if (rawPayload) {
+            try { saved = typeof rawPayload === 'string' ? JSON.parse(rawPayload) : rawPayload; }
+            catch (_) { saved = null; }
+        }
+        const invoiceNumber = String(saved?.invoiceNumber || row.external_invoice_number || '').trim();
+
+        /* 1) حاجز الإيراد المسجَّل يسبق كل شيء: إن كان مسجّلًا بأي بادئة
+              (ora:/…/جهاز) فالسجل يحتاج تصحيح حالة فقط — لا إعادة معالجة
+              تدخل بمرجع مختلف لو تغيّر اشتقاق الجهاز منذ آخر تشغيل. يعمل
+              حتى لو فقدنا payload، فلا يبقى فاتورة مسجَّلة عالقة. */
+        if (invoiceNumber) {
+            const already = await pool.query(
+                `SELECT id FROM revenues WHERE external_ref LIKE '%' || $1 LIMIT 1`,
+                [invoiceNumber]);
+            if (already.rows[0]) {
+                await pool.query(
+                    `UPDATE invoice_import_log SET status = $2, stage = $3, error_message = NULL, updated_at = NOW()
+                      WHERE id = $1`,
+                    [row.id, STATUS.COMPLETED, 'COMPLETED']);
+                out.duplicates++;
+                continue;
+            }
+        }
+
+        /* 2) بلا بيانات قابلة للإعادة — يُعلَّم FAILED صريحًا لا يبقى معلقًا */
+        if (!saved || !invoiceNumber) {
+            await markFailed(row.id, 'انقطعت المعالجة قبل حفظ بيانات الفاتورة — أعد استيرادها من شاشة الاستيراد');
+            continue;
+        }
+        const total = Number(saved.total);
+        if (!Number.isFinite(total) || total <= 0) {
+            await markFailed(row.id, `مبلغ غير صالح (${saved.total}) — لا يُعاد تلقائيًا`);
+            continue;
+        }
+        try {
+            const invoice = {
+                key: invoiceNumber,
+                invoiceNumber,
+                srcTable: String(saved.srcTable || 'CC').toUpperCase(),
+                sectionName: String(saved.sectionName || ''),
+                date: String(saved.date || ''),
+                customer: saved.customer ?? null,
+                totals: { total },
+                items: Array.isArray(saved.items) ? saved.items : [],
+            };
+            const hash = String(row.file_hash || '')
+                || crypto.createHash('sha256').update(JSON.stringify(invoice)).digest('hex');
+            const resolution = await resolveSection(invoice.srcTable, invoice.sectionName, invoice.date);
+            if (resolution.unmapped) {
+                await pool.query(
+                    `UPDATE invoice_import_log SET status = $2, stage = $3, error_message = $4, updated_at = NOW()
+                      WHERE id = $1`,
+                    [row.id, STATUS.NEEDS_MAPPING, 'SECTION_MAPPING',
+                        `قسم جديد يحتاج اعتماد: ${resolution.srcTable} / ${resolution.srcName}`]);
+                await bumpUnmappedAmount(resolution.srcTable, resolution.srcName, total);
+                out.needsMapping++;
+                continue;
+            }
+            const res = await processOneInvoice({
+                invoice, meta: { hash }, filePath: `oracle:${invoiceNumber}`,
+                config, importer: null, logRow: row, io, started: Date.now(), device: resolution.device,
+            });
+            if (res.status === STATUS.COMPLETED) {out.recovered++;}
+            else if (res.status === STATUS.DUPLICATE) {out.duplicates++;}
+            else {out.failed++;}
+        } catch (e) {
+            const msg = e instanceof Error ? e.message : String(e);
+            await markFailed(row.id, 'تعذّر الاسترداد: ' + msg.slice(0, 300));
+            logger.error('[sync-doctor] recover failed: ' + msg);
+        }
+    }
+    logger.info(`[sync-doctor] stale-log recovery: ${JSON.stringify(out)}`);
+    return out;
+}
+
 /** لحاق تلقائي عند الإقلاع: لو الجهاز اتقفل واشتغل، يلحق كل اللي فات لوحده */
 function bootCatchUp(io) {
     const cfg = loadOracleConfig();
@@ -194,4 +314,4 @@ function bootCatchUp(io) {
     }, 60_000).unref?.();
 }
 
-module.exports = { reconcile, catchUp, jobStatus, bootCatchUp, catchupDays };
+module.exports = { reconcile, catchUp, jobStatus, bootCatchUp, catchupDays, recoverStaleImports };

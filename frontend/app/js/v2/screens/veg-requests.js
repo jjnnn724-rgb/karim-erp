@@ -22,17 +22,17 @@
  *   • الأخطاء تُطبع من ردّ الخادم (e.message) لا من نصوص مخترعة.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.180';
-import { openInAppReport } from '../report-viewer.js?v=4.9.180';
-import { statusBadge } from '../status.js?v=4.9.180';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.323';
+import { openInAppReport } from '../report-viewer.js?v=4.9.323';
+import { statusBadge } from '../status.js?v=4.9.323';
 import {
     fetchVegRequests, fetchVegCatalog, fetchVegRequestById, vegRequestToRow, vegItemsOf,
     VEG_STATUS_FILTERS,
-    vegCreateVisible, vegReceiveVisible, vegPriceVisible, vegEditVisible, vegCancelVisible,
+    vegCreateVisible, vegReceiveVisible, vegPriceVisible, vegEditVisible, vegCancelVisible, vegAdminVisible,
     collectVegItems, vegCreatePayload, vegReceivePayload, vegEditPayload,
-    createVegRequest, receiveVegRequest, priceVegRequest, editVegItems, cancelVegRequest, markVegPrinted,
-} from '../data/veg-repo.js?v=4.9.180';
-import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.180';
+    createVegRequest, receiveVegRequest, priceVegRequest, editVegItems, adminEditVegItems, cancelVegRequest, markVegPrinted,
+} from '../data/veg-repo.js?v=4.9.323';
+import { fetchCurrency, formatMoney, formatInt } from '../data/reports-repo.js?v=4.9.323';
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
@@ -83,15 +83,15 @@ function buildVegPrintHtml(req, byName) {
 <style>
 @page { size: A4; margin: 13mm; }
 * { box-sizing: border-box; margin: 0; padding: 0; }
-body { font-family: 'Segoe UI', Tahoma, sans-serif; color: #16213e; background: #fff; font-size: 13.5px; }
+body { font-family: 'IBM Plex Sans Arabic','Tajawal',Tahoma,sans-serif; color: #16213e; background: #fff; font-size: 13.5px; }
 .sheet { max-width: 780px; margin: 0 auto; }
-.head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #c9a227; padding-bottom: 12px; }
+.head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #8fbfa9; padding-bottom: 12px; }
 .brand h1 { font-size: 22px; color: #16213e; letter-spacing: .5px; }
 .brand .sub { color: #7a7a8c; font-size: 11.5px; margin-top: 3px; }
 .docno { text-align: left; }
-.docno .no { font-size: 17px; font-weight: 800; color: #16213e; border: 2px solid #c9a227; border-radius: 10px; padding: 6px 14px; display: inline-block; direction: ltr; }
+.docno .no { font-size: 17px; font-weight: 800; color: #16213e; border: 2px solid #8fbfa9; border-radius: 10px; padding: 6px 14px; display: inline-block; direction: ltr; }
 .docno .dt { color: #555; font-size: 12px; margin-top: 6px; }
-.title { background: #16213e; color: #c9a227; text-align: center; font-size: 18px; font-weight: 800; padding: 9px; border-radius: 10px; margin: 14px 0; letter-spacing: 1px; }
+.title { background: #16213e; color: #8fbfa9; text-align: center; font-size: 18px; font-weight: 800; padding: 9px; border-radius: 10px; margin: 14px 0; letter-spacing: 1px; }
 .meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 .meta .m { background: #f6f4ec; border: 1px solid #e2ddc9; border-radius: 9px; padding: 6px 12px; font-size: 12.5px; }
 .meta .m b { color: #16213e; }
@@ -104,7 +104,7 @@ td.c { text-align: center; width: 46px; } td.qty { text-align: center; font-weig
 td.name { font-weight: 700; } td.note { color: #666; font-size: 12px; }
 .rej { color: #c0392b; font-weight: 800; font-size: 10.5px; }
 .total { margin-top: 8px; text-align: left; font-weight: 800; color: #16213e; }
-.notes-box { margin-top: 12px; background: #f6f4ec; border: 1px dashed #c9a227; border-radius: 10px; padding: 10px 14px; font-size: 13px; }
+.notes-box { margin-top: 12px; background: #f6f4ec; border: 1px dashed #8fbfa9; border-radius: 10px; padding: 10px 14px; font-size: 13px; }
 .signs { display: flex; gap: 24px; margin-top: 30px; }
 .sign { flex: 1; text-align: center; }
 .sign .line { border-top: 2px dotted #999; margin-top: 46px; padding-top: 6px; font-weight: 700; font-size: 12.5px; }
@@ -112,9 +112,9 @@ td.name { font-weight: 700; } td.note { color: #666; font-size: 12px; }
 .stamp { display: inline-block; border: 2.5px solid #27ae60; color: #27ae60; font-weight: 900; font-size: 16px; border-radius: 10px; padding: 4px 18px; transform: rotate(-4deg); margin-top: 14px; }
 .stamp.no { border-color: #c0392b; color: #c0392b; }
 .recv-line { margin-top: 6px; font-size: 12.5px; color: #27ae60; }
-.foot { border-top: 2px solid #c9a227; margin-top: 26px; padding-top: 8px; display: flex; justify-content: space-between; color: #7a7a8c; font-size: 10.5px; }
+.foot { border-top: 2px solid #8fbfa9; margin-top: 26px; padding-top: 8px; display: flex; justify-content: space-between; color: #7a7a8c; font-size: 10.5px; }
 .controls { text-align: center; margin-bottom: 14px; }
-.controls button { border: 0; border-radius: 7px; padding: 10px 26px; margin: 0 5px; font: inherit; cursor: pointer; background: #c9a227; color: #16213e; font-weight: 800; }
+.controls button { border: 0; border-radius: 7px; padding: 10px 26px; margin: 0 5px; font: inherit; cursor: pointer; background: #8fbfa9; color: #16213e; font-weight: 800; }
 .controls button.secondary { background: #555; color: #fff; }
 @media print { .sheet { max-width: none; } .controls { display: none !important; } }
 </style></head><body>
@@ -198,6 +198,7 @@ export function mountVegScreen(host, ctx = {}) {
     const role = ctx.role ? String(ctx.role) : '';
     const userId = ctx.userId != null ? Number(ctx.userId) : null;
     const userName = String(ctx.userName || '');
+    const canAdmin = vegAdminVisible(role);
 
     let rawRows = [];                       // آخر قراءة خام من الخادم
     let rawById = new Map();
@@ -574,7 +575,19 @@ export function mountVegScreen(host, ctx = {}) {
              ${panelActions('تأكيد التسعير', 'coins', '', !priced.length)}`);
     }
 
-    /* ── لوحة تعديل الكميات ─────────────────────────────────────────────── */
+    /* ── لوحة تعديل الكميات (+ إضافة أصناف للأدمن فقط) ──────────────────── */
+
+    function adminAddedRowHtml(name, qty, unit) {
+        return `<div class="erp-veg-line" data-v2-admin-added-row>
+          <div class="erp-veg-line__row">
+            <span class="erp-veg-line__name">${esc(name)} <small class="erp-text-muted">(${esc(qty)} ${esc(unit)})</small></span>
+            <button type="button" class="erp-btn erp-btn--sm erp-btn--ghost" data-v2-remove-admin-item aria-label="إزالة الصنف">إزالة</button>
+          </div>
+          <input type="hidden" data-v2-admin-added-name value="${esc(name)}">
+          <input type="hidden" data-v2-admin-added-qty value="${esc(qty)}">
+          <input type="hidden" data-v2-admin-added-unit value="${esc(unit)}">
+        </div>`;
+    }
 
     function editHtml(raw) {
         const items = vegItemsOf(raw);
@@ -587,10 +600,22 @@ export function mountVegScreen(host, ctx = {}) {
                 aria-label="كمية ${esc(it.name)}">
             </div>
           </div>`).join('');
-        return panelShell(`تعديل كميات الطلب ${esc(raw.request_no || ('#' + raw.id))}`, 'pencil',
-            `<div class="erp-flow-note" data-tone="warning">التعديل قبل الاعتماد النهائي فقط — أي تغيير يُوثَّق باسمك. إضافة أصناف جديدة مرفوضة — طلب جديد لها.</div>
+        const adminBox = canAdmin ? `
+          <div class="erp-flow-note" data-tone="info">👤 الأدمن فقط: أضف أصناف نسيها الشيف وقت الاستلام — تُوثَّق الكميات في سجل الطلب (قبل التسعير).</div>
+          <div class="erp-veg-line__row">
+            <input class="erp-input" type="text" data-v2-admin-name placeholder="اسم الصنف" aria-label="اسم الصنف الجديد">
+            <input class="erp-input" type="number" min="0.001" step="0.001" value="1" data-v2-admin-qty aria-label="كمية الصنف الجديد">
+            <input class="erp-input" type="text" value="كجم" data-v2-admin-unit aria-label="وحدة الصنف الجديد">
+            <button type="button" class="erp-btn erp-btn--sm" data-v2-add-admin-item>إضافة صنف</button>
+          </div>
+          <div class="erp-stack" data-v2-admin-added></div>` : '';
+        return panelShell(`${canAdmin ? 'تعديل الطلب (أدمن) ' : 'تعديل كميات الطلب '}${esc(raw.request_no || ('#' + raw.id))}`, 'pencil',
+            `<div class="erp-flow-note" data-tone="warning">${canAdmin
+                ? 'تقدر تضيف أصناف وتعدّل الكميات قبل التسعير — أي تغيير يُوثَّق باسمك في سجل الطلب.'
+                : 'التعديل قبل الاعتماد النهائي فقط — أي تغيير يُوثَّق باسمك. إضافة الأصناف الجديدة للمدير فقط.'}</div>
              <div class="erp-stack">${rows || '<span class="erp-text-muted">لا أصناف</span>'}</div>
-             ${panelActions('حفظ الكميات', 'check')}`);
+             ${adminBox}
+             ${panelActions(canAdmin ? 'حفظ التعديلات' : 'حفظ الكميات', 'check')}`);
     }
 
     /* ── لوحة الإلغاء: سبب اختياري (بديل window.prompt الممنوع) ─────────── */
@@ -742,9 +767,18 @@ export function mountVegScreen(host, ctx = {}) {
                 qty: Number(inp.value),
                 unit: inp.getAttribute('data-v2-edit-unit') || '',
             }));
-            await editVegItems(panelRaw.id, vegEditPayload(rows));
+            const added = [...panelEl.querySelectorAll('[data-v2-admin-added-row]')].map((row) => ({
+                name: row.querySelector('[data-v2-admin-added-name]')?.value || '',
+                qty: Number(row.querySelector('[data-v2-admin-added-qty]')?.value),
+                unit: row.querySelector('[data-v2-admin-added-unit]')?.value || '',
+            }));
+            if (canAdmin) {
+                await adminEditVegItems(panelRaw.id, vegEditPayload([...rows, ...added]));
+            } else {
+                await editVegItems(panelRaw.id, vegEditPayload(rows));
+            }
             closePanel();
-            notify('تم تعديل الكميات');
+            notify(canAdmin ? 'تمت إضافة/تعديل الأصناف' : 'تم تعديل الكميات');
             await reload();
         } catch (e) {
             panelMsg((e && e.message) || 'تعذر التعديل');
@@ -773,7 +807,7 @@ export function mountVegScreen(host, ctx = {}) {
 
     function printVeg(raw) {
         const w = openInAppReport(`طلب شراء خضار #${raw.id}`);
-        w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>طلب شراء خضار #${esc(raw.id)}</title></head><body style="font-family:'Segoe UI',Tahoma,sans-serif;padding:24px">جارٍ تجهيز طلب الخضار…</body></html>`);
+        w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>طلب شراء خضار #${esc(raw.id)}</title></head><body style="font-family:'IBM Plex Sans Arabic','Tajawal',Tahoma,sans-serif;padding:24px">جارٍ تجهيز طلب الخضار…</body></html>`);
         (async () => {
             let full = raw;
             try {
@@ -881,6 +915,30 @@ export function mountVegScreen(host, ctx = {}) {
         if (removeCustom) {
             removeCustom.closest('[data-v2-custom]')?.remove();
             updateCreateCount();
+            return;
+        }
+        if (event.target.closest('[data-v2-add-admin-item]')) {
+            const nameIn = panelEl.querySelector('[data-v2-admin-name]');
+            const qtyIn = panelEl.querySelector('[data-v2-admin-qty]');
+            const unitIn = panelEl.querySelector('[data-v2-admin-unit]');
+            const name = String(nameIn?.value || '').trim();
+            const qty = Number(qtyIn?.value);
+            if (!name) {notify('اكتب اسم الصنف'); return;}
+            if (!Number.isFinite(qty) || qty <= 0) {notify('أدخل كمية صحيحة أكبر من صفر'); return;}
+            const key = name.toLowerCase();
+            const box = panelEl.querySelector('[data-v2-admin-added]');
+            const exists = [...(box?.querySelectorAll('[data-v2-admin-added-name]') || [])]
+                .some((el) => String(el.value).toLowerCase() === key)
+                || [...panelEl.querySelectorAll('[data-v2-edit-name]')]
+                .some((el) => String(el.getAttribute('data-v2-edit-name') || '').toLowerCase() === key);
+            if (exists) {notify('الصنف موجود بالفعل في الطلب'); return;}
+            box?.insertAdjacentHTML('beforeend', adminAddedRowHtml(name, qty, unitIn?.value || 'وحدة'));
+            if (nameIn) {nameIn.value = '';}
+            return;
+        }
+        const removeAdmin = event.target.closest('[data-v2-remove-admin-item]');
+        if (removeAdmin) {
+            removeAdmin.closest('[data-v2-admin-added-row]')?.remove();
             return;
         }
         const pr = event.target.closest('[data-v2-priority]');

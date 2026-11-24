@@ -78,7 +78,13 @@ describe('POS V2 — عقد الواجهة المدمجة', () => {
         expect(screen).toContain('accept="image/jpeg,image/png,image/webp"');
         expect(screen).toContain('file.size > 5 * 1024 * 1024');
         expect(screen).toContain('if (el.isConnected) {renderCashier();}');
-        expect(screen).toContain('safeProductImageUrl(p.image_url)');
+        // الحارس صار يأخذ معرّف الصنف أيضًا: اسم الرفع يجب أن يخص هذا الصنف
+        // (لا صورة صنف آخر)، والقائمة البيضاء باقية (/uploads/menu/ أو https فقط).
+        expect(screen).toContain('safeProductImageUrl(p.image_url, p.id)');
+        expect(screen).toContain("if (url.startsWith('/uploads/menu/')) {");
+        expect(screen).toContain("if (!/^[0-9]+$/.test(id)) {return '';}");
+        expect(screen).toContain("return new RegExp('(^|[^0-9])' + id + '([^0-9]|$)').test(name) ? url : '';");
+        expect(screen).toContain("return /^https:\\/\\//i.test(url) ? url : '';");
         expect(styles).toContain('.erp-pos-v2-product-image img');
         expect(styles).toContain('.erp-pos-v2-image-action');
     });
@@ -247,8 +253,8 @@ describe('POS V2 — عقد الواجهة المدمجة', () => {
 
     test('المضيف يربط المفتاح مع التفكيك ويمرر العلم للواجهة', () => {
         const host = read(HOST);
-        expect(host).toMatch(/import \{ mountPosEntryScreen \} from '\.\/screens\/pos-entry\.js\?v=/);
-        expect(host).toMatch(/key: 'pos', title: 'الكاشير', mount: mountPosEntryScreen/);
+        expect(host).toMatch(/module: 'pos-entry'/);
+        expect(host).toMatch(/key: 'pos', title: 'الكاشير', module: 'pos-entry'/);
         expect(host).toMatch(/if \(key === 'pos'\)/);
         expect(host).toMatch(/function teardownPosEntryScreen\(\)/);
         expect(host).toContain('featureFlags: V2_FEATURE_FLAGS');

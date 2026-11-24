@@ -51,6 +51,7 @@ async function pollAndPrint() {
     }
 }
 
+/** @param {any} client @param {any} job */
 async function attemptPrint(client, job) {
     // قاعدة الطابعات صغيرة — نحملها كاملة ليعمل التراجع الذكي (Task 36):
     // المطلوب بالمعرف إن كان متصلًا، وإلا أول طابعة متصلة من نفس kind.
@@ -79,7 +80,7 @@ async function attemptPrint(client, job) {
             [printer.id]
         );
         logger.info(`[print-worker] ✓ job ${job.id} on ${printer.id}`);
-    } catch (err) {
+    } catch (/** @type {any} */ err) {
         // فشل اتصال شبكي حقيقي يهبط حالة الطابعة (خطأ الإعدادات لا يغيّرها)
         const isConnErr = printer.connection_type === 'network'
             && (CONNECTION_ERROR_CODES.has(err.code) || err.message === 'Printer timeout');
@@ -93,6 +94,7 @@ async function attemptPrint(client, job) {
     }
 }
 
+/** @param {any} client @param {any} jobId @param {any} errorMsg @param {any} [attempts] */
 async function markPrintFailed(client, jobId, errorMsg, attempts = 1) {
     // Exponential backoff keyed on the job's attempt count (the old call used
     // Math.pow(2, 0) — a constant 2s retry for all 8 attempts)
@@ -106,6 +108,56 @@ async function markPrintFailed(client, jobId, errorMsg, attempts = 1) {
     logger.warn(`[print-worker] ✗ job ${jobId}: ${errorMsg} (retry in ${backoffMs}ms)`);
 }
 
+/**
+ * طابعة ويندوز محلية (USB غالبًا): ESC/POS خام عبر winspool، لا lpr ولا UNC.
+ * يُكتب جسم المهمة في ملف مؤقت ثم يستدعيه raw-print.ps1 — البايتات تصل
+ * للسائق كما هي، فتعمل الأوامر العربية والقطع وفتح الدرج.
+ * @param {any} printerName @param {any} payloadBuffer
+ */
+async function sendToLocalWindowsQueue(printerName, payloadBuffer) {
+    if (process.platform !== 'win32') {
+        throw new Error('الطابعة المحلية windows_local متاحة على ويندوز فقط');
+    }
+    const name = String(printerName || '').trim();
+    if (!name) {
+        throw new Error('اسم الطابعة المحلية مفقود');
+    }
+    const fs = require('fs');
+    const os = require('os');
+    const path = require('path');
+    const tmpDir = await fs.promises.mkdtemp(path.join(os.tmpdir(), 'karim-print-'));
+    const tmpFile = path.join(tmpDir, 'job.bin');
+    try {
+        await fs.promises.writeFile(tmpFile, Buffer.from(payloadBuffer));
+        const ps1 = path.join(__dirname, 'raw-print.ps1');
+        await new Promise((resolve, reject) => {
+            const child = spawn(
+                'powershell.exe',
+                ['-NoProfile', '-NonInteractive', '-ExecutionPolicy', 'Bypass', '-File', ps1,
+                 '-PrinterName', name, '-File', tmpFile],
+                { stdio: ['ignore', 'ignore', 'pipe'], windowsHide: true }
+            );
+            let stderr = '';
+            const timer = setTimeout(() => {
+                child.kill();
+                reject(new Error('Printer timeout'));
+            }, 20_000);
+            child.stderr.on('data', (chunk) => { stderr += String(chunk).slice(0, 800); });
+            child.on('error', (err) => { clearTimeout(timer); reject(err); });
+            child.on('exit', (code) => {
+                clearTimeout(timer);
+                if (code === 0) { resolve(); return; }
+                const err = /** @type {any} */ (new Error(`تعذرت الطباعة على «${name}»: ${stderr.trim() || `exit ${String(code)}`}`));
+                err.code = 'EPRINTLOCAL';
+                reject(err);
+            });
+        });
+    } finally {
+        await fs.promises.rm(tmpDir, { recursive: true, force: true }).catch(() => {});
+    }
+}
+
+/** @param {any} printer @param {any} payloadBuffer */
 async function sendToPrinter(printer, payloadBuffer) {
     if (printer.connection_type === 'network') {
         const [host, port] = (printer.address || '').split(':');
@@ -141,7 +193,7 @@ async function sendToPrinter(printer, payloadBuffer) {
         try {
             await tryUnc();
             return;
-        } catch (uncErr) {
+        } catch (/** @type {any} */ uncErr) {
             // تراجع: lpr إن وُجد
             try {
                 await new Promise((res, rej) => {
@@ -158,6 +210,8 @@ async function sendToPrinter(printer, payloadBuffer) {
             err.cause = uncErr;
             throw err;
 }
+        } else if (printer.connection_type === 'windows_local') {
+            await sendToLocalWindowsQueue(printer.address, payloadBuffer);
         } else if (printer.connection_type === 'usb') {
             throw new Error('USB printing requires escpos-usb package');
         } else {
@@ -171,6 +225,7 @@ if (require.main === module) {
         pollAndPrint().catch(err => logger.error('[print-worker] poll error:', err.message));
     }, POLL_INTERVAL_MS);
 
+    /** @param {any} signal */
     async function shutdown(signal) {
         logger.info(`[print-worker] received ${signal}, stopping...`);
         clearInterval(timer);
@@ -181,4 +236,4 @@ if (require.main === module) {
     process.on('SIGINT', () => shutdown('SIGINT'));
 }
 
-module.exports = { pollAndPrint, attemptPrint, sendToPrinter, markPrintFailed };
+module.exports = { pollAndPrint, attemptPrint, sendToPrinter, sendToLocalWindowsQueue, markPrintFailed };

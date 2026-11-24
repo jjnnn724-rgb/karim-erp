@@ -20,7 +20,6 @@ const jwt = require('jsonwebtoken');
 const crypto = require('crypto');
 const bcrypt = require('../pw-crypto');
 const { logger } = require('../logger');
-const { encryptForVault } = require('../password-vault');
 const { pool } = require('./db-pool');
 const { updateUserContext } = require('../middleware/correlation');
 const { loadState: loadMfaState, mfaRequiredFor } = require('./mfa-store');
@@ -137,9 +136,11 @@ function signAccessToken(user) {
  * تذكرة قصيرة العمر بين كلمة المرور والرمز الثاني.
  * `mfa`: تحقق من رمز TOTP ومدته 5 دقائق.
  * `mfa_enroll`: تسجيل أول مرة (QR + تأكيد) ومدته 15 دقيقة.
+ * `restore_stepup`: تحقق خطوة إضافية قبل استعادة نسخة احتياطية (كلمة مرور
+ * + TOTP/استرداد) — تُستهلك مرة واحدة في مسار الاستعادة (تأمين 2026-11).
  * التذكرة لا تفتح أي مسار آخر: jwtAuth يرفض أي توكن غرضه ليس access.
  */
-const MFA_TICKET_TTL = { mfa: '5m', mfa_enroll: '15m' };
+const MFA_TICKET_TTL = { mfa: '5m', mfa_enroll: '15m', restore_stepup: '5m' };
 function signMfaTicket(user, purpose) {
     const ttl = MFA_TICKET_TTL[purpose];
     if (!ttl) {throw new Error('INVALID_MFA_PURPOSE');}
@@ -243,38 +244,21 @@ const ROTATION_ALLOWED_PATHS = new Set(['/api/auth/change-password', '/api/auth/
  * PASSWORD_MIGRATION_REQUIRED and the admin is instructed to run the
  * migration script.
  */
-// ─── R18 (Enterprise 2026-10-03): قفل تدريجي للحساب عند التخمين ──────────
-// كان الاعتماد على حد المعدل فقط (20 محاولة/15د لكل حساب+IP). الآن: 5 فشلات
-// خلال 15 دقيقة على (IP+اسم المستخدم) → قفل 15 دقيقة برسالة صريحة. النجاح
-// يصفّر العداد. في الذاكرة (يتصفّر بإعادة التشغيل) — نفس نمط محدد المعدل.
-const LOGIN_LOCKOUT = { MAX_FAILS: 5, WINDOW_MS: 15 * 60 * 1000, LOCK_MS: 15 * 60 * 1000 };
-const _loginFails = new Map();
+// ─── R18 (Enterprise 2026-10-03) + R18++ (2026-11-19): قفل تدريجي دائم ─────
+// 5 فشلات خلال 15 دقيقة على (IP+اسم المستخدم) → قفل 15 دقيقة برسالة صريحة.
+// النجاح يصفّر العداد. كان في الذاكرة (يتصفّر بإعادة التشغيل) — الآن يُحفَظ
+// في login_lockouts (ترحيل 153) مع تراجع تلقائي للذاكرة إن لم يُطبق الترحيل.
+const lockoutStore = require('./login-lockout-store');
 function loginLockKey(req, username) {
     return `${req.ip || 'ip'}:${String(username || '').toLowerCase().slice(0, 64)}`;
 }
-function loginLockState(req, username) {
+async function loginLockState(req, username) {
     const k = loginLockKey(req, username);
-    const e = _loginFails.get(k);
-    if (!e) {return { locked: false, k }; }
-    if (e.lockUntil && Date.now() < e.lockUntil) {
-        return { locked: true, k, retryAfter: Math.ceil((e.lockUntil - Date.now()) / 1000) };
-    }
-    if (e.firstAt && Date.now() - e.firstAt > LOGIN_LOCKOUT.WINDOW_MS) {_loginFails.delete(k);}
-    return { locked: false, k };
+    const s = await lockoutStore.state(k);
+    return { ...s, k };
 }
-function recordLoginFail(req, username) {
-    const k = loginLockKey(req, username);
-    const now = Date.now();
-    const e = _loginFails.get(k) || { count: 0, firstAt: now, lockUntil: 0 };
-    if (now - e.firstAt > LOGIN_LOCKOUT.WINDOW_MS) {e.count = 0; e.firstAt = now;}
-    e.count++;
-    if (e.count >= LOGIN_LOCKOUT.MAX_FAILS) {e.lockUntil = now + LOGIN_LOCKOUT.LOCK_MS;}
-    _loginFails.set(k, e);
-    if (_loginFails.size > 10000) {
-        for (const [kk, v] of _loginFails) {
-            if (v.firstAt < now - LOGIN_LOCKOUT.WINDOW_MS && !(v.lockUntil > now)) {_loginFails.delete(kk);}
-        }
-    }
+async function recordLoginFail(req, username) {
+    await lockoutStore.fail(loginLockKey(req, username));
 }
 
 function publicUserOf(user) {
@@ -337,7 +321,7 @@ async function loginHandler(req, res) {
     }
 
     // R18: حساب مقفل؟ (قبل أي استعلام — لا إجابة حتى عن وجود الحساب)
-    const lock = loginLockState(req, username);
+    const lock = await loginLockState(req, username);
     if (lock.locked) {
         logger.warn({ username: String(username).slice(0, 64), ip: req.ip }, '[auth] login attempt on LOCKED account');
         return res.status(423).json({ error: 'ACCOUNT_LOCKED', message: `الحساب مقفل مؤقتًا بسبب محاولات دخول فاشلة متكررة — أعد المحاولة بعد ${lock.retryAfter} ثانية`, retryAfter: lock.retryAfter });
@@ -351,7 +335,7 @@ async function loginHandler(req, res) {
             [username]
         );
         if (r.rows.length === 0 || !r.rows[0].active) {
-            recordLoginFail(req, username);
+            await recordLoginFail(req, username);
             return res.status(401).json({ error: 'INVALID_CREDENTIALS' });
         }
         const user = r.rows[0];
@@ -375,13 +359,13 @@ async function loginHandler(req, res) {
             ok = await bcrypt.compare(password, user.password);
         } catch (bcryptErr) {
             logger.error('[auth] bcrypt.compare failed:', bcryptErr);
-            return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'bcrypt comparison failed', detail: bcryptErr?.message || String(bcryptErr) });
+            return res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر تسجيل الدخول — حاول مرة أخرى' });
         }
         if (!ok) {
-            recordLoginFail(req, username);
+            await recordLoginFail(req, username);
             return res.status(401).json({ error: 'INVALID_CREDENTIALS' });
         }
-        _loginFails.delete(loginLockKey(req, username)); // R18: نجاح = صفير العداد
+        await lockoutStore.clear(loginLockKey(req, username)); // R18: نجاح = تصفير العداد (دائم)
 
         const access = signAccessToken(user);
         if (user.must_change_password) {
@@ -436,7 +420,7 @@ async function loginHandler(req, res) {
         });
 } catch (err) {
         logger.error('[auth] login handler error:', err);
-        if (!res.headersSent) {res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر تسجيل الدخول — حاول مرة أخرى', detail: err?.message || String(err) });}
+        if (!res.headersSent) {res.status(500).json({ error: 'INTERNAL_ERROR', message: 'تعذر تسجيل الدخول — حاول مرة أخرى' });}
     } finally {
         client.release();
     }
@@ -472,9 +456,6 @@ async function changePasswordHandler(req, res) {
             `UPDATE users SET password = $1, must_change_password = FALSE, password_migrated_at = CURRENT_TIMESTAMP WHERE id = $2;`,
             [hash, user.id]
         );
-        // خزنة كلمات المرور: حدّث النسخة القابلة للاسترجاع (قرار المالك — أدمن فقط يقرأها)
-        const _vault = encryptForVault(newPassword);
-        if (_vault) { await client.query(`UPDATE users SET password_vault = $1 WHERE id = $2;`, [_vault, user.id]); }
         await client.query(`DELETE FROM pos_refresh_tokens WHERE user_id = $1;`, [user.id]).catch(() => {});
         const rotatedUser = { ...user, must_change_password: false };
         // من كان مقيّدًا بتدوير كلمة المرور لا يهبط بجلسة كاملة مباشرة:
@@ -534,7 +515,7 @@ function jwtAuth(req, res, next) {
         const expired = err.name === 'TokenExpiredError';
         return res.status(401).json({
             error: expired ? 'TOKEN_EXPIRED' : 'TOKEN_INVALID',
-            message: err.message,
+            message: expired ? 'انتهت صلاحية الجلسة — سجّل الدخول من جديد.' : 'رمز الدخول غير صالح.',
         });
     }
     // تذاكر MFA غرضها مختلف ولا تصلح لجلسة: حتى لو سُرّبت، لا تفتح شيئًا
@@ -575,12 +556,13 @@ function jwtAuth(req, res, next) {
             return next();
         })
         .catch((err) => {
-            // Fail-open under DB pressure: if we can't check the active status,
-            // allow the request through (the JWT is still valid). Returning 503
-            // here caused cascading failures under load — every authenticated
-            // request failed when the pool was saturated.
-            logger.warn('[auth] active-check failed (fail-open):', err.message);
-            return next();
+            // Fail-closed: تعذّر إثبات أن الحساب نشط ⇒ لا يمرّ الطلب.
+            // 503 لا 401 حتى لا يمسح العميل جلسة سليمة بسبب ضغط مؤقت.
+            logger.warn('[auth] active-check failed (fail-closed):', err.message);
+            return res.status(503).json({
+                error: 'ACCOUNT_CHECK_UNAVAILABLE',
+                message: 'تعذّر التحقق من حالة الحساب مؤقتًا — أعد المحاولة.',
+            });
         });
 }
 

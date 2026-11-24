@@ -1,0 +1,30 @@
+
+.erp-pr-kpi--warning .erp-pr-kpi__icon {
+    border-color: var(--erp-warning);
+    background: var(--erp-warning-soft);
+    color: var(--erp-warning-text);
+}
+.erp-pr-status-filters {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    gap: 0.375rem;
+    margin: 0;
+    padding: 0;
+    border: 0;
+}
+.erp-pr-status[aria-pressed="true"] {
+    border-color: var(--erp-primary);
+    background: var(--erp-surface-sunken);
+    color: var(--erp-ink);
+    font-weight: 600;
+    box-shadow: var(--erp-shadow-card);
+}
+
+@media (max-width: 640px) {
+    .erp-pr-status-filters {
+        gap: 0.3rem;
+    }
+}
+
+

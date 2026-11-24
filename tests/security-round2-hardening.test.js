@@ -4,9 +4,8 @@
  * يغطي إصلاحات الجولة الثانية (كل منطق قرار نقي مُصدَّر ومُختبَر مباشرة،
  * وطبقة HTTP تُثبت حيًا في scripts/live_security_audit_r2.py):
  *
- * 1. حرس حذف إذن الصرف canDeleteDispatch:
- *    كان DELETE /api/dispatches/:id يقبل حذف إذن معتمد/مستلم/مرفوض —
- *    يمحو مستندًا ماليًا موقّعًا رحّل مصروفات وحركات دفتر وأحداث موقّعة.
+ * 1. منع حذف إذن الصرف تمامًا:
+ *    كل الحالات تُلغى أو تُبطل بحركات عكسية محفوظة، ولا يُمحى المستند المالي.
  *
  * 2. الكيانات المحمية من الحذف PROTECTED_DELETE_ENTITIES:
  *    inventoryTx (دفتر الحركات) + kitchenReturns (حذف الصف يعيد فتح سقف
@@ -30,6 +29,7 @@
  */
 
 const { describe, it, expect } = require('@jest/globals');
+const fs = require('fs');
 const path = require('path');
 
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
@@ -41,7 +41,6 @@ const {
     isProtectedDeleteEntity,
     maskEmployeeRowForRole,
 } = require('../backend/schema-registry');
-const { canDeleteDispatch } = require('../backend/warehouse-routes');
 const { validateOrderPayload, ORDER_PAYMENT_STATUSES } = require('../backend/cashier-module/orders-routes');
 const { canDecideLeave } = require('../backend/leave-workflow-routes');
 const { pool } = require('../backend/shared-pool');
@@ -50,36 +49,21 @@ afterAll(async () => {
     await pool.end();
 });
 
-// ─── 1) حرس حذف إذن الصرف ────────────────────────────────────────────────────
-describe('Round-2 — canDeleteDispatch (signed dispatch documents are not deletable)', () => {
-    it('الطلب المعلّق pending قابل للحذف (إلغاء طلب خاطئ لم تحسمه أي جهة)', () => {
-        expect(canDeleteDispatch({ status: 'pending' })).toEqual({ ok: true });
+// ─── 1) منع حذف إذن الصرف ─────────────────────────────────────────────────────
+describe('Round-2 — dispatch deletion is disabled for every status', () => {
+    it('CRUD العام يرفض الحذف حتى للطلب المعلّق ويوجّه الإلغاء', () => {
+        const server = fs.readFileSync(path.join(__dirname, '..', 'backend', 'server.js'), 'utf8');
+        expect(server).toContain("error: 'DISPATCH_DELETE_DISABLED'");
+        expect(server).toContain('لا يُحذف إذن الصرف — استخدم الإلغاء قبل الصرف');
     });
 
-    it('الإذن المعتمد ممنوع — مستند مالي مرحّل مصروفات وحركات', () => {
-        const guard = canDeleteDispatch({ status: 'approved' });
-        expect(guard.ok).toBe(false);
-        expect(guard.code).toBe('DISPATCH_ALREADY_APPROVED');
-    });
-
-    it('الإذن المستلم كليًا أو جزئيًا ممنوع', () => {
-        expect(canDeleteDispatch({ status: 'received' }).code).toBe('DISPATCH_ALREADY_RECEIVED');
-        expect(canDeleteDispatch({ status: 'partially_received' }).code).toBe('DISPATCH_ALREADY_RECEIVED');
-    });
-
-    it('الإذن المرفوض ممنوع — قرار الرفض موقّع في سلسلة الأحداث', () => {
-        expect(canDeleteDispatch({ status: 'rejected' }).code).toBe('DISPATCH_REJECTED');
-    });
-
-    it('إذن بانتظار المخازن (chef_approved) ممنوع — قرار الشيف موقّع', () => {
-        const guard = canDeleteDispatch({ status: 'chef_approved' });
-        expect(guard.ok).toBe(false);
-        expect(guard.code).toBe('DISPATCH_CHEF_DECIDED');
-    });
-
-    it('غياب الإذن وحالة غير معروفة يعطيان رموز خطأ صريحة', () => {
-        expect(canDeleteDispatch(null).code).toBe('DISPATCH_NOT_FOUND');
-        expect(canDeleteDispatch({ status: 'whatever' }).code).toBe('DISPATCH_INVALID_STATUS');
+    it('لا يبقى مسار حذف أو حارس قديم يسمح بمحو المستند', () => {
+        const routes = fs.readFileSync(path.join(__dirname, '..', 'backend', 'warehouse-routes.js'), 'utf8');
+        const dispatchRoutes = fs.readFileSync(path.join(__dirname, '..', 'backend', 'warehouse', 'dispatch-routes.js'), 'utf8');
+        expect(routes).not.toContain('canDeleteDispatch');
+        expect(dispatchRoutes).not.toContain("router.delete('/dispatches");
+        expect(dispatchRoutes).toContain("router.post('/dispatches/:id/cancel'");
+        expect(dispatchRoutes).toContain("router.post('/dispatches/:id/void'");
     });
 });
 

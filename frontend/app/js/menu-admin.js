@@ -742,7 +742,7 @@ function printWeeklyFile(all) {
     .day-name{font-family:'Aref Ruqaa',serif;font-size:32px;color:#6d4c12}
     .day-title{font-size:17px;color:#8a7648}
     .day-note{font-size:13.5px;color:#8a7648;margin:6px 0}
-    h3{font-size:17px;color:#fffdf7;background:linear-gradient(90deg,#8a6420,#c9a227);display:inline-block;padding:3px 16px;border-radius:999px;margin:12px 0 6px}
+    h3{font-size:17px;color:#fffdf7;background:linear-gradient(90deg,#0f5b46,#3fbf93);display:inline-block;padding:3px 16px;border-radius:999px;margin:12px 0 6px}
     ul{list-style:none}
     li{display:flex;align-items:baseline;gap:10px;padding:7px 2px;border-bottom:1px dotted #c9b98a;font-size:15.5px}
     li .in{font-weight:600} li .in small{color:#8a7648;font-weight:400}
@@ -782,7 +782,7 @@ function trySsoFromParent() {
         sessionStorage.setItem('mb_token', TOKEN);
         sessionStorage.setItem('mb_app_key', APP_KEY);
         return true;
-    } catch (_) { return false; } //跨越 origin — نتجاهل ونطلب تسجيل الدخول
+    } catch (_) { return false; } // cross-origin — نتجاهل ونطلب تسجيل الدخول
 }
 
 async function doLogin(u, p) {

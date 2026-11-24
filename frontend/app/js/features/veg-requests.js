@@ -504,8 +504,11 @@ async function vegReceive(id) {
 }
 
 function vegCanEdit(r) {
-    if (!r || r.status !== 'pending') {return false;}
+    if (!r) {return false;}
     const role = STATE.currentUser?.role;
+    // الأدمن يضيف أصناف نسيها الشيف قبل الاستلام وبعده (قبل التسعير)
+    if (role === 'admin' && (r.status === 'pending' || r.status === 'received')) {return true;}
+    if (r.status !== 'pending') {return false;}
     if (['warehouse', 'admin', 'owner', 'manager', 'kitchen', 'sous_chef', 'dept_head'].includes(role)) {return true;}
     return Number(r.created_by) === Number(STATE.currentUser?.id);
 }
@@ -514,29 +517,82 @@ function vegEditItems(id) {
     const r = list.find(x => Number(x.id) === Number(id));
     if (!r) {toast('الطلب غير موجود','error');return;}
     const items = Array.isArray(r.items) ? r.items : [];
-    showModal('<h3><i class=ji data-i=pencil></i> تعديل كميات الطلب ' + esc(r.request_no || ('#' + r.id)) + '</h3>'
-        + '<div class="text-muted" style="margin-bottom:10px">التعديل قبل الاعتماد النهائي فقط — أي تغيير يُوثَّق باسمك.</div>'
+    const isAdmin = STATE.currentUser?.role === 'admin';
+    const adminHtml = isAdmin ? '<div style="border:1px solid var(--line);border-radius:8px;padding:10px;margin-top:12px">'
+        + '<div class="text-muted" style="margin-bottom:8px">👤 الأدمن فقط: أضف أصناف نسيها الشيف وقت الاستلام — تُوثَّق الكميات في سجل الطلب (قبل التسعير).</div>'
+        + '<div class="fr" style="gap:8px">'
+        + '<input type="text" id="vegAdminNewName" placeholder="اسم الصنف" aria-label="اسم الصنف الجديد">'
+        + '<input type="number" id="vegAdminNewQty" min="0.001" step="0.001" value="1" aria-label="كمية الصنف الجديد">'
+        + '<input type="text" id="vegAdminNewUnit" value="كجم" aria-label="وحدة الصنف الجديد">'
+        + '<button type="button" class="btn btn-blue btn-sm" data-karim-action="vegAddAdminItemRow">إضافة صنف</button>'
+        + '</div><div id="vegAdminAddedRows" data-veg-original-names="' + esc(JSON.stringify(items.map(it => String(it.name || '').toLowerCase()))) + '"></div>'
+        + '</div>' : '';
+    showModal('<h3><i class=ji data-i=pencil></i> ' + (isAdmin ? 'تعديل الطلب (أدمن) ' : 'تعديل كميات الطلب ') + esc(r.request_no || ('#' + r.id)) + '</h3>'
+        + '<div class="text-muted" style="margin-bottom:10px">' + (isAdmin
+            ? 'تقدر تضيف أصناف وتعدّل الكميات قبل التسعير — أي تغيير يُوثَّق باسمك في سجل الطلب.'
+            : 'التعديل قبل الاعتماد النهائي فقط — أي تغيير يُوثَّق باسمك. إضافة الأصناف الجديدة للمدير فقط.') + '</div>'
         + items.map((it, i) => '<div class="fr" style="align-items:end;gap:8px"><div class="fg" style="flex:2"><label>' + esc(it.name) + ' (' + esc(it.unit || '') + ')</label><input type="number" min="0.001" step="0.001" id="vegEditQty_' + i + '" value="' + Number(it.qty || 0) + '"></div></div>').join('')
-        + '<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" data-karim-action="vegSubmitItemsEdit" data-karim-arg0="' + Number(id) + '"><i class=ji data-i=save></i> حفظ الكميات</button></div>');
+        + adminHtml
+        + '<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" data-karim-action="vegSubmitItemsEdit" data-karim-arg0="' + Number(id) + '"><i class=ji data-i=save></i> ' + (isAdmin ? 'حفظ التعديلات' : 'حفظ الكميات') + '</button></div>');
+}
+function vegAddAdminItemRow() {
+    const nameEl = document.getElementById('vegAdminNewName');
+    const qtyEl = document.getElementById('vegAdminNewQty');
+    const unitEl = document.getElementById('vegAdminNewUnit');
+    const box = document.getElementById('vegAdminAddedRows');
+    if (!box || !nameEl || !qtyEl) {return;}
+    const name = String(nameEl.value || '').trim();
+    const qty = Number(qtyEl.value);
+    if (!name) {toast('اكتب اسم الصنف','error'); return;}
+    if (!Number.isFinite(qty) || qty <= 0) {toast('أدخل كمية صحيحة أكبر من صفر','error'); return;}
+    const key = name.toLowerCase();
+    let original;
+    try {original = JSON.parse(box.getAttribute('data-veg-original-names') || '[]');} catch (_) {original = [];}
+    const exists = original.includes(key) || [...box.querySelectorAll('[data-veg-admin-added-name]')]
+        .some((el) => String(el.getAttribute('value') || '').toLowerCase() === key);
+    if (exists) {toast('الصنف موجود بالفعل في الطلب','error'); return;}
+    const unit = String(unitEl?.value || '').trim() || 'وحدة';
+    const row = document.createElement('div');
+    row.className = 'veg-custom-row';
+    row.setAttribute('data-veg-admin-row', '1');
+    row.innerHTML = '<span>' + esc(name) + ' — ' + esc(String(qty)) + ' ' + esc(unit) + '</span>'
+        + '<input type="hidden" data-veg-admin-added-name value="' + esc(name) + '">'
+        + '<input type="hidden" data-veg-admin-added-qty value="' + esc(String(qty)) + '">'
+        + '<input type="hidden" data-veg-admin-added-unit value="' + esc(unit) + '">'
+        + '<button type="button" class="btn btn-red btn-sm" data-karim-action="this.parentElement.remove">✖</button>';
+    box.appendChild(row);
+    nameEl.value = '';
 }
 async function vegSubmitItemsEdit(id) {
     const list = (window._vegLog || []);
     const r = list.find(x => Number(x.id) === Number(id));
     if (!r) {toast('الطلب غير موجود','error');return;}
     const items = Array.isArray(r.items) ? r.items : [];
+    const isAdmin = STATE.currentUser?.role === 'admin';
     const payload = items.map((it, i) => {
         const el = document.getElementById('vegEditQty_' + i);
         return { name: it.name, qty: el ? Number(el.value) : it.qty, unit: it.unit };
     });
+    if (isAdmin) {
+        [...document.querySelectorAll('[data-veg-admin-row]')].forEach((row) => {
+            payload.push({
+                name: row.querySelector('[data-veg-admin-added-name]')?.getAttribute('value') || '',
+                qty: Number(row.querySelector('[data-veg-admin-added-qty]')?.getAttribute('value')),
+                unit: row.querySelector('[data-veg-admin-added-unit]')?.getAttribute('value') || '',
+            });
+        });
+    }
     try {
         showLoad();
-        const res = await apiFetch('/veg-requests/' + encodeURIComponent(id) + '/items', { method: 'PUT', body: JSON.stringify({ items: payload }) });
+        const url = '/veg-requests/' + encodeURIComponent(id) + (isAdmin ? '/admin/items' : '/items');
+        const res = await apiFetch(url, { method: isAdmin ? 'POST' : 'PUT', body: JSON.stringify({ items: payload }) });
         if (res.request) {
             const ix = (window._vegLog || []).findIndex(x => Number(x.id) === Number(id));
             if (ix > -1) {window._vegLog[ix] = res.request;}
         }
         closeModal(); renderPage();
-        toast('تم تعديل الكميات','success');
+        if (isAdmin) {toast('تمت إضافة/تعديل الأصناف','success');}
+        else {toast('تم تعديل الكميات','success');}
     } catch (e) { toast(e.message || 'تعذر التعديل', 'error'); }
     finally { hideLoad(); }
 }
@@ -608,13 +664,13 @@ function vegBuildPrintHtml(req) {
 * { box-sizing: border-box; margin: 0; padding: 0; }
 body { font-family: 'Segoe UI', Tahoma, sans-serif; color: #16213e; background: #fff; font-size: 13.5px; }
 .sheet { max-width: 780px; margin: 0 auto; }
-.head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #c9a227; padding-bottom: 12px; }
+.head { display: flex; justify-content: space-between; align-items: flex-start; border-bottom: 3px solid #8fbfa9; padding-bottom: 12px; }
 .brand h1 { font-size: 22px; color: #16213e; letter-spacing: .5px; }
 .brand .sub { color: #7a7a8c; font-size: 11.5px; margin-top: 3px; }
 .docno { text-align: left; }
-.docno .no { font-size: 17px; font-weight: 800; color: #16213e; border: 2px solid #c9a227; border-radius: 10px; padding: 6px 14px; display: inline-block; direction: ltr; }
+.docno .no { font-size: 17px; font-weight: 800; color: #16213e; border: 2px solid #8fbfa9; border-radius: 10px; padding: 6px 14px; display: inline-block; direction: ltr; }
 .docno .dt { color: #555; font-size: 12px; margin-top: 6px; }
-.title { background: #16213e; color: #c9a227; text-align: center; font-size: 18px; font-weight: 800; padding: 9px; border-radius: 10px; margin: 14px 0; letter-spacing: 1px; }
+.title { background: #16213e; color: #8fbfa9; text-align: center; font-size: 18px; font-weight: 800; padding: 9px; border-radius: 10px; margin: 14px 0; letter-spacing: 1px; }
 .meta { display: flex; gap: 8px; flex-wrap: wrap; margin-bottom: 12px; }
 .meta .m { background: #f6f4ec; border: 1px solid #e2ddc9; border-radius: 9px; padding: 6px 12px; font-size: 12.5px; }
 .meta .m b { color: #16213e; }
@@ -627,7 +683,7 @@ td.c { text-align: center; width: 46px; } td.qty { text-align: center; font-weig
 td.name { font-weight: 700; } td.note { color: #666; font-size: 12px; }
 .rej { color: #c0392b; font-weight: 800; font-size: 10.5px; }
 .total { margin-top: 8px; text-align: left; font-weight: 800; color: #16213e; }
-.notes-box { margin-top: 12px; background: #f6f4ec; border: 1px dashed #c9a227; border-radius: 10px; padding: 10px 14px; font-size: 13px; }
+.notes-box { margin-top: 12px; background: #f6f4ec; border: 1px dashed #8fbfa9; border-radius: 10px; padding: 10px 14px; font-size: 13px; }
 .signs { display: flex; gap: 24px; margin-top: 30px; }
 .sign { flex: 1; text-align: center; }
 .sign .line { border-top: 2px dotted #999; margin-top: 46px; padding-top: 6px; font-weight: 700; font-size: 12.5px; }
@@ -635,7 +691,7 @@ td.name { font-weight: 700; } td.note { color: #666; font-size: 12px; }
 .stamp { display: inline-block; border: 2.5px solid #27ae60; color: #27ae60; font-weight: 900; font-size: 16px; border-radius: 10px; padding: 4px 18px; transform: rotate(-4deg); margin-top: 14px; }
 .stamp.no { border-color: #c0392b; color: #c0392b; }
 .recv-line { margin-top: 6px; font-size: 12.5px; color: #27ae60; }
-.foot { border-top: 2px solid #c9a227; margin-top: 26px; padding-top: 8px; display: flex; justify-content: space-between; color: #7a7a8c; font-size: 10.5px; }
+.foot { border-top: 2px solid #8fbfa9; margin-top: 26px; padding-top: 8px; display: flex; justify-content: space-between; color: #7a7a8c; font-size: 10.5px; }
 @media print { .sheet { max-width: none; } }
 </style></head><body>
 <div class="sheet">
@@ -692,5 +748,5 @@ export {
     vegAddCustomRow, vegSetPriority, vegSendRequest, vegResetForm, vegSetFilter,
     vegPrint, vegReceive, vegCancel, vegBuildPrintHtml,
     vegTogglePricing, vegPriceCalc, vegSubmitPrices, vegToggleReceive, vegSubmitReceive,
-    vegCanEdit, vegEditItems, vegSubmitItemsEdit, vegUpdateCount,
+    vegCanEdit, vegEditItems, vegAddAdminItemRow, vegSubmitItemsEdit, vegUpdateCount,
 };

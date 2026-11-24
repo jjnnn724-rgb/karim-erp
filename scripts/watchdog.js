@@ -270,9 +270,15 @@ async function waitPortFree(port, totalMs = 45000) {
     } catch (e) { report.checks.disk = 'unknown:' + String(e.message).slice(0, 60); }
 
     // ── 5) حداثة النسخ الليلية ──
+    // الحداثة تُقاس على الأثر المتبقي لا على الصريح: خط الأنابيب يحذف
+    // „.dump“ فور نجاح التشفير (تدعيم 2026-10-26) وتُبقي التدويرات 7 مجموعات
+    // فقط. حين كان الاستعلام لا يطابق إلا الاسم الصريح كان „dumps“ فارغًا
+    // دائمًا ⇒ عمرٌ وهمي 9999 ساعة ⇒ „backup-stale“ ⇒ pg_dump كامل + تشفير +
+    // نسختان مرآيتان في كل نبضة. المقيس: 1,819 نسخة في 14 يومًا بفاصل 5 دقائق
+    // = 141.84 جيجا على D:/KarimBackups\nightly-dump ومثلها على E:.
     try {
         const dumps = fs.readdirSync(BACKUPS)
-            .filter((f) => /^karim_erp-nightly-\d+\.dump$/.test(f))
+            .filter((f) => /^karim_erp-nightly-\d+\.dump(\.kbak|\.gpg)?$/.test(f))
             .map((f) => ({ f, m: fs.statSync(path.join(BACKUPS, f)).mtimeMs, s: fs.statSync(path.join(BACKUPS, f)).size }))
             .filter((x) => x.s > 5 * 1024 * 1024)
             .sort((a, b) => b.m - a.m);

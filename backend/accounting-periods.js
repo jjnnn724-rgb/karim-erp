@@ -20,7 +20,11 @@ const path = require('path');
 const { pool } = require('./shared-pool');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { logger } = require('./logger');
+const { makeEmitScoped } = require('./realtime/guard');
 const { riyadhToday } = require('./riyadh-date');
+// Phase 3 (2026-11-06): قراءة حسابات النقدية/البنك من account_mapping؛
+// الافتراضي الممرَّر هو الثابت القديم نفسه (1000/1010) قبل ضبط الجدول.
+const { resolveAccounts } = require('./coa-mapping');
 
 const router = express.Router();
 const READ_ROLES = ['admin', 'accountant', 'manager', 'auditor'];
@@ -29,6 +33,7 @@ const WRITE_ROLES = ['admin', 'accountant'];
 // node-pg يُرجع عمود DATE ككائن Date (منتصف الليل المحلي) — String(date) كان
 // يعطي "Mon Sep ..." فيفشل اختبار YYYY-MM فيُتخطى فحص القفل بصمت. نجدد الشهر
 // من مكونات التاريخ المحلية (لا toISOString — ينزح يومًا في UTC+3).
+/** @param {any} dateStr */
 const periodOf = (dateStr) => {
     if (dateStr instanceof Date && !Number.isNaN(dateStr.getTime())) {
         return `${dateStr.getFullYear()}-${String(dateStr.getMonth() + 1).padStart(2, '0')}`;
@@ -54,8 +59,32 @@ async function assertPeriodOpen(dateStr) {
     if (/^\d{4}-\d{2}$/.test(p) && await isPeriodClosed(p)) {throw closedError(p);}
 }
 
+/**
+ * نسخة ذرّية داخل معاملة ترحيل: تقفل صف الفترة (SELECT ... FOR UPDATE) داخل نفس
+ * الـ client/BEGIN التي تُدرج فيها القيد — تمنع سباق "الفترة تُقفل بين الفحص والإدراج"
+ * (TOCTOU). نفس دلالة assertPeriodOpen: الفترة مقفولة ⇒ 423. الجدول مفقود (079 غير مطبق)
+ * ⇒ لا يُكسر البيع (نفس سياسة ccReady)، يُكتفى بتحذير.
+ * @param {{query:(sql:string,params?:any[])=>Promise<{rows:any[]}>}} client
+ * @param {string} dateStr - YYYY-MM-DD
+ * @returns {Promise<void>}
+ */
+async function assertPeriodOpenInTx(client, dateStr) {
+    const p = periodOf(dateStr);
+    if (!/^\d{4}-\d{2}$/.test(p)) {return;}
+    try {
+        const r = await client.query(
+            'SELECT closed FROM accounting_periods WHERE period = $1 FOR UPDATE', [p]);
+        if (r.rows[0] && r.rows[0].closed === true) {throw closedError(p);}
+    } catch (e) {
+        const err = /** @type {any} */ (e);
+        if (err && err.statusCode === 423) {throw e;}
+        if (err && err.code === '42P01') {return;} // الجدول غير موجود — لا نكسر المسار (021/079 غير مطبق)
+        throw e;
+    }
+}
+
 // ─── الفترات ────────────────────────────────────────────────────────────────
-router.get('/periods', jwtAuth, requireRole(...READ_ROLES), async (req, res, next) => {
+router.get('/periods', jwtAuth, requireRole(...READ_ROLES), /** @param {any} req @param {any} res @param {any} next */ async (req, res, next) => {
     try {
         const { rows } = await pool.query(
             `WITH months AS (
@@ -79,7 +108,7 @@ router.get('/periods', jwtAuth, requireRole(...READ_ROLES), async (req, res, nex
     } catch (e) { next(e); }
 });
 
-router.post('/periods/:period/close', jwtAuth, requireRole(...WRITE_ROLES), async (req, res, next) => {
+router.post('/periods/:period/close', jwtAuth, requireRole(...WRITE_ROLES), /** @param {any} req @param {any} res @param {any} next */ async (req, res, next) => {
     try {
         const period = String(req.params.period || '');
         if (!/^\d{4}-\d{2}$/.test(period)) {
@@ -101,12 +130,12 @@ router.post('/periods/:period/close', jwtAuth, requireRole(...WRITE_ROLES), asyn
             [period, req.user?.id || null, String(req.body?.note || '').slice(0, 255) || null]
         );
         logger.info(`[PERIOD] أُقفلت ${period} بواسطة ${req.user?.name || req.user?.id}`);
-        if (req.io) {req.io.emit('entity_changed', { entity: 'accounting_period', action: 'close', data: { period } });}
+        if (req.io) {makeEmitScoped(req.io)('entity_changed', { entity: 'accounting_period', action: 'close', data: { period } });}
         res.json({ ok: true, period, closed: true });
     } catch (e) { next(e); }
 });
 
-router.post('/periods/:period/open', jwtAuth, requireRole('admin'), async (req, res, next) => {
+router.post('/periods/:period/open', jwtAuth, requireRole('admin'), /** @param {any} req @param {any} res @param {any} next */ async (req, res, next) => {
     try {
         const period = String(req.params.period || '');
         if (!/^\d{4}-\d{2}$/.test(period)) {
@@ -124,7 +153,7 @@ router.post('/periods/:period/open', jwtAuth, requireRole('admin'), async (req, 
 });
 
 // ─── المسودات والاعتماد ─────────────────────────────────────────────────────
-router.get('/drafts', jwtAuth, requireRole(...READ_ROLES), async (req, res, next) => {
+router.get('/drafts', jwtAuth, requireRole(...READ_ROLES), /** @param {any} req @param {any} res @param {any} next */ async (req, res, next) => {
     try {
         const { rows } = await pool.query(
             `SELECT e.*, u.username AS created_by_name,
@@ -136,7 +165,7 @@ router.get('/drafts', jwtAuth, requireRole(...READ_ROLES), async (req, res, next
     } catch (e) { next(e); }
 });
 
-router.post('/journal/:id/approve', jwtAuth, requireRole(...WRITE_ROLES), async (req, res, _next) => {
+router.post('/journal/:id/approve', jwtAuth, requireRole(...WRITE_ROLES), /** @param {any} req @param {any} res @param {any} _next */ async (req, res, _next) => {
     try {
         const id = Number(req.params.id);
         if (!Number.isInteger(id) || id <= 0) {
@@ -155,8 +184,8 @@ router.post('/journal/:id/approve', jwtAuth, requireRole(...WRITE_ROLES), async 
               WHERE id = $1 AND status = 'draft'
                 AND NOT EXISTS (
                     SELECT 1 FROM accounting_periods ap
-                    WHERE ap.month = to_char(journal_entries.date, 'YYYY-MM')
-                      AND ap.status = 'closed'
+                    WHERE ap.period = to_char(journal_entries.date, 'YYYY-MM')
+                      AND ap.closed = TRUE
                 )
               RETURNING *`,
             [id, req.user?.id || null]
@@ -170,20 +199,21 @@ router.post('/journal/:id/approve', jwtAuth, requireRole(...WRITE_ROLES), async 
             return res.status(423).json({ error: 'PERIOD_LOCKED', message: 'الفترة المحاسبية مقفلة — لا يمكن اعتماد قيودها' });
         }
         logger.info(`[LEDGER] اعتُمد القيد ${rows[0].entry_no} بواسطة ${req.user?.name || req.user?.username || req.user?.id}`);
-        if (req.io) {req.io.emit('entity_changed', { entity: 'journal', action: 'approve', data: rows[0] });}
+        if (req.io) {makeEmitScoped(req.io)('entity_changed', { entity: 'journal', action: 'approve', data: rows[0] });}
         res.json({ ok: true, entry: rows[0] });
     } catch (e) {
-        logger.error('[LEDGER_APPROVE]', e.message);
-        const code = e.statusCode || 500;
+        const err = /** @type {any} */ (e);
+        logger.error('[LEDGER_APPROVE]', err.message);
+        const code = err.statusCode || 500;
         res.status(code).json({
             error: code === 423 ? 'PERIOD_LOCKED' : 'LEDGER_APPROVE_FAILED',
-            message: code === 423 ? e.message : 'تعذر اعتماد القيد — راجع سجل الخادم',
+            message: code === 423 ? err.message : 'تعذر اعتماد القيد — راجع سجل الخادم',
         });
     }
 });
 
 // ─── الميزانية العمومية ─────────────────────────────────────────────────────
-router.get('/balance-sheet', jwtAuth, requireRole(...READ_ROLES), async (req, res, next) => {
+router.get('/balance-sheet', jwtAuth, requireRole(...READ_ROLES), /** @param {any} req @param {any} res @param {any} next */ async (req, res, next) => {
     try {
         const asOf = /^\d{4}-\d{2}-\d{2}$/.test(String(req.query.as_of || ''))
             ? String(req.query.as_of) : riyadhToday();
@@ -201,10 +231,10 @@ router.get('/balance-sheet', jwtAuth, requireRole(...READ_ROLES), async (req, re
               ORDER BY c.code`,
             [asOf]
         );
-        const bal = (r) => Number(r.dr) - Number(r.cr); // مدين موجب
-        const isDr = (t) => t === 'asset' || t === 'cogs' || t === 'expense';
+        const bal = (/** @type {any} */ r) => Number(r.dr) - Number(r.cr); // مدين موجب
+        const isDr = (/** @type {any} */ t) => t === 'asset' || t === 'cogs' || t === 'expense';
         const accounts = rows.map((r) => ({ ...r, balance: isDr(r.type) ? bal(r) : -bal(r) }));
-        const sum = (t) => accounts.filter((a) => a.type === t)
+        const sum = (/** @type {any} */ t) => accounts.filter((a) => a.type === t)
             .reduce((s, a) => s + a.balance, 0);
         const profit = sum('revenue') - sum('cogs') - sum('expense');
         const assets = sum('asset'), liabilities = sum('liability');
@@ -225,12 +255,16 @@ router.get('/balance-sheet', jwtAuth, requireRole(...READ_ROLES), async (req, re
     } catch (e) { next(e); }
 });
 
-// ─── التدفق النقدي (الطريقة المباشرة على 1000/1010) ─────────────────────────
-router.get('/cash-flow', jwtAuth, requireRole(...READ_ROLES), async (req, res, next) => {
+// ─── التدفق النقدي (الطريقة المباشرة على حسابَي النقدية/البنك من الخريطة) ────
+router.get('/cash-flow', jwtAuth, requireRole(...READ_ROLES), /** @param {any} req @param {any} res @param {any} next */ async (req, res, next) => {
     try {
-        const okD = (v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : null);
+        const okD = (/** @type {any} */ v) => (/^\d{4}-\d{2}-\d{2}$/.test(String(v || '')) ? String(v) : null);
         const to = okD(req.query.to) || riyadhToday();
         const from = okD(req.query.from) || `${to.slice(0, 7)}-01`;
+        const accts = await resolveAccounts(pool, 'reports', 'cash_flow', {
+            cash_account: '1000', bank_account: '1010',
+        });
+        const cashAccounts = [accts.cash_account, accts.bank_account];
         const { rows } = await pool.query(
             `SELECT l.debit::numeric(14,2) AS dr, l.credit::numeric(14,2) AS cr,
                     oc.type AS counter_type, oc.name_ar AS counter_name, oc.code AS counter_code
@@ -243,25 +277,26 @@ router.get('/cash-flow', jwtAuth, requireRole(...READ_ROLES), async (req, res, n
                  WHERE l2.entry_id = l.entry_id AND l2.id <> l.id
                  ORDER BY (l2.debit + l2.credit) DESC LIMIT 1
                ) oc ON TRUE
-              WHERE l.account_code IN ('1000', '1010')`,
-            [from, to]
+              WHERE l.account_code = ANY($3::text[])`,
+            [from, to, cashAccounts]
         );
         let openBal = 0;
         try {
             const ob = await pool.query(
                 `SELECT (COALESCE(SUM(debit),0) - COALESCE(SUM(credit),0))::numeric(14,2) AS b
                    FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id
-                  WHERE l.account_code IN ('1000','1010') AND e.status = 'posted' AND e.date < $1::date`,
-                [from]
+                  WHERE l.account_code = ANY($2::text[]) AND e.status = 'posted' AND e.date < $1::date`,
+                [from, cashAccounts]
             );
             openBal = Number(ob.rows[0]?.b || 0);
         } catch (e) {
             // رقم مالي تحميلي — لا يصح تجاهله بصمت؛ نُبلغ ونُعلّم الاستجابة.
-            logger.error('[CASH_FLOW] opening balance query failed:', e.message);
+            logger.error('[CASH_FLOW] opening balance query failed:', (/** @type {any} */ (e)).message);
             openBal = 0;
             res.locals.openingUnavailable = true;
         }
         let inflow = 0, outflow = 0;
+        /** @type {Record<string, number>} */
         const byCounter = {};
         for (const r of rows) {
             const net = Number(r.dr) - Number(r.cr); // موجب = داخل للصندوق
@@ -269,7 +304,7 @@ router.get('/cash-flow', jwtAuth, requireRole(...READ_ROLES), async (req, res, n
             const k = `${r.counter_code} ${r.counter_name || ''}`.trim();
             byCounter[k] = (byCounter[k] || 0) + net;
         }
-        const r2 = (n) => Math.round(n * 100) / 100;
+        const r2 = (/** @type {any} */ n) => Math.round(n * 100) / 100;
         res.json({
             ok: true, from, to,
             opening: r2(openBal), inflow: r2(inflow), outflow: r2(outflow),
@@ -290,4 +325,4 @@ function ensureAccountingPeriodsSchema() {
     })().catch((e) => { logger.error('[ACCOUNTING_PERIODS] init skipped:', e.message); });
 }
 
-module.exports = { router, isPeriodClosed, assertPeriodOpen, closedError, ensureAccountingPeriodsSchema };
+module.exports = { router, isPeriodClosed, assertPeriodOpen, assertPeriodOpenInTx, closedError, ensureAccountingPeriodsSchema };

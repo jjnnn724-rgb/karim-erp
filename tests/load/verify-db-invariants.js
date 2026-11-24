@@ -1,7 +1,7 @@
 ﻿// ط§ظ„طھط­ظ‚ظ‚ ظ…ظ† ظ‚ظٹظˆط¯ 095 ط¹ظ„ظ‰ drill (ظ†ط³ط®ط© ظ†ط¸ظٹظپط© â€” ط£ط±ظ‚ط§ظ… ظپط±ظٹط¯ط© ظ„ظƒظ„ طھط´ط؛ظٹظ„)
 'use strict';
 const { Client } = require('pg');
-const c = new Client({ host: '127.0.0.1', port: 5432, user: 'postgres', password: 'Kimo20177', database: 'karim_erp_drill' });
+const c = new Client({ host: '127.0.0.1', port: 5432, user: 'postgres', password: process.env.LOADTEST_PG_PASSWORD || process.env.PGPASSWORD || '', database: 'karim_erp_drill' });
 let failed = 0;
 const record = (n, ok, d) => { console.log((ok ? 'PASS' : 'FAIL') + ' | ' + n + ' | ' + d); if (!ok) { failed++; } };
 const stamp = Date.now().toString(36).toUpperCase();

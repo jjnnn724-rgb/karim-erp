@@ -20,6 +20,13 @@ describe('README release metadata', () => {
         expect(readme).toContain(`Electron ${electronMajor}`);
     });
 
+    test('Express table matches the installed major version (no Express 5 claim)', () => {
+        const expressMajor = (pkg.dependencies.express.match(/\d+/) || [])[0];
+        expect(expressMajor).toBeTruthy();
+        expect(readme).toContain(`Express ${expressMajor}`);
+        expect(readme).not.toMatch(/Express\s*5/);
+    });
+
     test('installer example matches electron-builder artifact naming', () => {
         expect(readme).toContain(`KarimERP-Setup-${pkg.version}-x64.exe`);
     });

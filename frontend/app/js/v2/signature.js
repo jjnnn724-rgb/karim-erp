@@ -64,7 +64,7 @@ export function signaturePadMarkup(id, title, accountName) {
     </div>`;
 }
 
-function signatureFont(size) {return `700 ${size}px 'Aref Ruqaa','Cairo',cursive`;}
+function signatureFont(size) {return `700 ${size}px 'Aref Ruqaa','Aref Ruqaa','IBM Plex Sans Arabic',cursive`;}
 
 function paintTypedSignature(id) {
     const state = PADS.get(id);
@@ -78,7 +78,7 @@ function paintTypedSignature(id) {
     ctx.direction = 'rtl';
     if (!state.hasInk) {
         ctx.fillStyle = '#9aa1ad';
-        ctx.font = "26px 'Cairo',sans-serif";
+        ctx.font = "26px 'IBM Plex Sans Arabic','Tajawal',Tahoma,sans-serif";
         ctx.fillText('التوقيع يظهر هنا بعد كتابة الاسم', canvas.width / 2, canvas.height / 2 - 8);
         return;
     }
@@ -88,7 +88,7 @@ function paintTypedSignature(id) {
     const nameW = Math.min(ctx.measureText(name).width, canvas.width - 110);
     ctx.fillStyle = '#1f2430';
     ctx.fillText(name, canvas.width / 2, 88);
-    ctx.strokeStyle = '#b45309';
+    ctx.strokeStyle = '#0f5b46';
     ctx.lineWidth = 2.5;
     ctx.lineCap = 'round';
     const uy = 148;
@@ -97,7 +97,7 @@ function paintTypedSignature(id) {
     ctx.bezierCurveTo(canvas.width / 2 - nameW / 6, uy - 12, canvas.width / 2 + nameW / 6, uy + 12, canvas.width / 2 + nameW / 2, uy - 6);
     ctx.stroke();
     ctx.fillStyle = '#6b7280';
-    ctx.font = "20px 'Cairo',sans-serif";
+    ctx.font = "20px 'IBM Plex Sans Arabic','Tajawal',Tahoma,sans-serif";
     ctx.fillText(`توقيع إلكتروني • ${SIGNATURE_DATE_FMT.format(new Date())}`, canvas.width / 2, 188);
 }
 

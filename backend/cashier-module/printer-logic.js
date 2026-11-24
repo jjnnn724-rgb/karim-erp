@@ -14,18 +14,18 @@
 const { z } = require('zod');
 
 const KINDS = ['receipt', 'kot'];
-const CONNECTION_TYPES = ['network', 'windows_share', 'usb'];
+const CONNECTION_TYPES = ['network', 'windows_share', 'windows_local', 'usb'];
 const PAPER_WIDTHS = [58, 80];
 const CHARSETS = ['utf8', 'cp864'];
 const PRINTER_ID_RE = /^[a-z0-9][a-z0-9-]{0,39}$/;
 const DEFAULT_PORT = 9100;
 
-/** kind من معرف المهمة/الطابعة: kot-* → kot، غير ذلك receipt */
+/** kind من معرف المهمة/الطابعة: kot-* → kot، غير ذلك receipt @param {any} printerId */
 function kindOfPrinterId(printerId) {
     return String(printerId || '').startsWith('kot-') ? 'kot' : 'receipt';
 }
 
-/** المعرف القياسي من النوع + رقم القسم */
+/** المعرف القياسي من النوع + رقم القسم @param {any} kind @param {any} departmentId */
 function resolvePrinterId(kind, departmentId) {
     if (!KINDS.includes(kind)) {return { ok: false, code: 'BAD_KIND' };}
     const id = Number(departmentId);
@@ -52,10 +52,27 @@ function normalizeShareAddress(address) {
     return m ? { server: m[1], share: m[2] } : null;
 }
 
+/**
+ * windows_local: اسم طابور الطباعة كما يظهر في ويندوز (USB عادةً).
+ * الاسم حرّي (عربي/مسافات/شرطة)، ويُرفض أي مسار أو محرف تحكّم حتى لا يُستخدم
+ * كمسار ملف أو كخيار لسطر أوامر.
+ */
+function normalizeLocalPrinterName(address) {
+    if (typeof address !== 'string') {return null;}
+    const name = address.trim();
+    if (!name || name.length > 120) {return null;}
+    if (/[\\/]/.test(name)) {return null;}
+    // eslint-disable-next-line no-control-regex
+    if (/[\u0000-\u001f\u007f]/.test(name)) {return null;}
+    if (name === '.' || name === '..') {return null;}
+    return { name };
+}
+
 /** تحقق موحد لنوع الاتصال — يعيد كائنًا مقننًا أو null */
 function validatePrinterAddress(connectionType, address) {
     if (connectionType === 'network') {return normalizeNetworkAddress(address);}
     if (connectionType === 'windows_share') {return normalizeShareAddress(address);}
+    if (connectionType === 'windows_local') {return normalizeLocalPrinterName(address);}
     return null; // usb غير مدعوم عمدًا
 }
 
@@ -85,8 +102,8 @@ const printerRegistrationSchema = z
             .union([z.number().int().positive(), z.string().regex(/^\d+$/)])
             .optional(),
         name: z.string().trim().max(80).optional(),
-        connection_type: z.enum(['network', 'windows_share']),
-        address: z.string().trim().min(3).max(120),
+        connection_type: z.enum(['network', 'windows_share', 'windows_local']),
+        address: z.string().trim().min(1).max(120),
         paper_width_mm: z.union([z.literal(58), z.literal(80)]).default(80),
         charset: z.enum(['utf8', 'cp864']).default('utf8'),
     })
@@ -98,7 +115,9 @@ const printerRegistrationSchema = z
                 message:
                     val.connection_type === 'network'
                         ? 'عنوان الشبكة المتوقع host:port — مثال: 192.168.1.50 أو 192.168.1.50:9100'
-                        : 'صيغة المشاركة المتوقعة server/share — مثال: POSPC/POS58',
+                        : val.connection_type === 'windows_local'
+                          ? 'اسم الطابعة المحلية مطلوب كما يظهر في ويندوز — مثال: POS-80'
+                          : 'صيغة المشاركة المتوقعة server/share — مثال: POSPC/POS58',
             });
         }
         if (!val.id && !val.department_id) {
@@ -114,8 +133,8 @@ const printerRegistrationSchema = z
 const printerUpdateSchema = z
     .object({
         name: z.string().trim().max(80).optional(),
-        connection_type: z.enum(['network', 'windows_share']).optional(),
-        address: z.string().trim().min(3).max(120).optional(),
+        connection_type: z.enum(['network', 'windows_share', 'windows_local']).optional(),
+        address: z.string().trim().min(1).max(120).optional(),
         paper_width_mm: z.union([z.literal(58), z.literal(80)]).optional(),
         charset: z.enum(['utf8', 'cp864']).optional(),
         is_online: z.boolean().optional(),
@@ -171,6 +190,7 @@ module.exports = {
     resolvePrinterId,
     normalizeNetworkAddress,
     normalizeShareAddress,
+    normalizeLocalPrinterName,
     validatePrinterAddress,
     pickPrinterForJob,
     printerRegistrationSchema,

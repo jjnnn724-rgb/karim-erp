@@ -180,13 +180,12 @@ router.post('/purchase-invoices/:id/void', jwtAuth, requireRole('admin'), async 
         if (payClass.autoOnly) {
             const payIds = payClass.auto.map(p => String(p.id));
             await client.query('DELETE FROM supplier_payments WHERE id = ANY($1::bigint[])', [payClass.auto.map(p => Number(p.id))]);
-            await client.query(
-                `DELETE FROM journal_lines WHERE entry_id IN (
-                    SELECT id FROM journal_entries WHERE source_type='supplier_payment' AND source_id = ANY($1::text[]))`,
-                [payIds]);
-            await client.query(
-                `DELETE FROM journal_entries WHERE source_type='supplier_payment' AND source_id = ANY($1::text[])`,
-                [payIds]);
+            // A2 (2026-11-06): قيود الدفعات لا تُمسح — تُبطل داخل نفس المعاملة.
+            await require('../journal-void').voidSourceJournals(client, {
+                sourceType: 'supplier_payment', sourceIds: payIds,
+                reason: `إبطال فاتورة الشراء ${invoiceId} — عكس دفعاتها الآلية وقيودها`,
+                actor: req.user?.username || String(req.user?.id || ''), actorUserId: req.user?.id,
+            });
             deletedPayments = payClass.auto.length;
         }
         const mainLocation = await getWarehouseLocation(client, 'MAIN-WAREHOUSE', 'المخزن الرئيسي', 'warehouse');
@@ -245,10 +244,11 @@ router.post('/purchase-invoices/:id/void', jwtAuth, requireRole('admin'), async 
             reversed++;
         }
         // عكس القيد المحاسبي المرتبط (إن وُجد) — إبطال موثق بدل الحذف الصامت
-        await client.query(
-            `UPDATE journal_entries SET status='void'
-              WHERE source_type='purchase_invoice' AND source_id=$1 AND status='posted'`,
-            [String(invoiceId)]);
+        await require('../journal-void').voidSourceJournals(client, {
+            sourceType: 'purchase_invoice', sourceIds: invoiceId,
+            reason: `إلغاء فاتورة الشراء ${invoiceId} (${inv.invoiceNumber || '—'})`,
+            actor: req.user?.username || String(req.user?.id || ''), actorUserId: req.user?.id,
+        });
         await client.query('DELETE FROM "purchaseInvoices" WHERE id = $1', [invoiceId]);
         // TASK 9: حدث دومين داخل نفس المعاملة (fail-open)
         await emitDomainEvent(pool, client, 'PURCHASE', {
@@ -440,10 +440,13 @@ router.post('/purchase-invoices/clear-all', jwtAuth, requireRole('admin'), async
         // الفاتورة المفردة (status='void'، لا حذف صامت).
         let voidedJournals = 0;
         if (ids.length) {
-            const vj = await client.query(
-                `UPDATE journal_entries SET status='void'
-                  WHERE source_type='purchase_invoice' AND source_id = ANY($1::text[]) AND status='posted'`, [ids]);
-            voidedJournals = vj.rowCount;
+            // ROOT FIX 2026-10-02 + A2 2026-11-06: تُبطَّل موثقًا (status='void' +
+            // voided_by/reason) — لا حذف صامت ولا مسح صلب.
+            voidedJournals = (await require('../journal-void').voidSourceJournals(client, {
+                sourceType: 'purchase_invoice', sourceIds: ids,
+                reason: 'حذف شامل لفواتير الشراء (clear-all) — إبطال القيود',
+                actor: req.user?.username || String(req.user?.id || ''), actorUserId: req.user?.id,
+            })).voided;
         }
         await client.query('COMMIT');
         try { emit(req, 'purchaseInvoices', 'reset', {}); emit(req, 'inventory', 'reset', {}); emit(req, 'inventoryTx', 'reset', {}); } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }

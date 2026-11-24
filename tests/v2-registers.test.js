@@ -137,9 +137,13 @@ describe('سجلات القراءة — عقد المشي المحدود وأب�
             dispatch.fetchDispatches(), warehouse.fetchInventoryTx(),
             warehouse.fetchKitchenReturns(), invoices.fetchPurchaseInvoices(),
         ]);
-        for (const entity of ['dispatches', 'inventoryTx', 'kitchenReturns', 'purchaseInvoices']) {
-            expect(calls).toContain(`/${entity}?page=1&limit=1000&sort=id&order=${entity === 'purchaseInvoices' ? 'asc' : 'desc'}&v2_period=month`);
+        for (const entity of ['dispatches', 'inventoryTx', 'kitchenReturns']) {
+            expect(calls).toContain(`/${entity}?page=1&limit=1000&sort=id&order=desc&v2_period=month`);
         }
+        /* FIX 2026-11-01: فواتير الشراء تجلب السجل كله (أحدث أولًا بلا
+           v2_period) — الفترة الدقيقة فلترةُ عميل بحقلَي from/to، فلم يعد
+           فلتر «الشهر الحالي» يُخفي السجل في أول يوم من شهر جديد. */
+        expect(calls).toContain('/purchaseInvoices?page=1&limit=1000&sort=id&order=desc');
     });
 
     test('حدود الشهر واليوم تتبع تقويم الرياض عند عبور منتصف الليل', () => {

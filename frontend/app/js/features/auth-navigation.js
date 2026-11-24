@@ -89,7 +89,7 @@ try{
 const r=await fetch(API_BASE+'/auth/forgot-password/request-code',{method:'POST',headers:{'Content-Type':'application/json','Accept':'application/json',...(window._jwt?{Authorization:'Bearer '+window._jwt}:{})},body:JSON.stringify({username:u.username})});
 const data=await r.json().catch(()=>({}));
 if(!r.ok){ toast(serverMessage(data, 'تعذر إصدار رمز الاستعادة'),'error'); return; }
-showModal(`<h3><i class=ji data-i=key></i> رمز استعادة لكلمة المرور</h3><div class="workflow-banner">أعطِ هذا الرمز للموظف <strong>${esc(data.user_name||u.name)}</strong> (@${esc(data.username)}) ليغيّر كلمة مروره بنفسه من شاشة الدخول عبر زر «نسيت كلمة المرور؟».</div><div style="text-align:center;margin:18px 0"><div class="mono" style="font-size:40px;letter-spacing:10px;font-weight:bold;color:var(--gold,#c9a227)">${esc(data.code)}</div><small class="text-muted">صالح 10 دقائق · استخدام واحد فقط · إصدار رمز جديد يُبطل هذا الرمز</small></div><div class="modal-footer"><button class="btn" data-karim-action="closeModal">إغلاق</button><button class="btn btn-gold" data-karim-action="copyResetCode" data-karim-arg0="${esc(data.code)}"><i class=ji data-i=copy></i> نسخ الرمز</button></div>`);
+showModal(`<h3><i class=ji data-i=key></i> رمز استعادة لكلمة المرور</h3><div class="workflow-banner">أعطِ هذا الرمز للموظف <strong>${esc(data.user_name||u.name)}</strong> (@${esc(data.username)}) ليغيّر كلمة مروره بنفسه من شاشة الدخول عبر زر «نسيت كلمة المرور؟».</div><div style="text-align:center;margin:18px 0"><div class="mono" style="font-size:40px;letter-spacing:10px;font-weight:bold;color:var(--gold,#8fbfa9)">${esc(data.code)}</div><small class="text-muted">صالح 10 دقائق · استخدام واحد فقط · إصدار رمز جديد يُبطل هذا الرمز</small></div><div class="modal-footer"><button class="btn" data-karim-action="closeModal">إغلاق</button><button class="btn btn-gold" data-karim-action="copyResetCode" data-karim-arg0="${esc(data.code)}"><i class=ji data-i=copy></i> نسخ الرمز</button></div>`);
 }catch(_){ toast('تعذر الاتصال بالخادم','error'); }
 }
 function copyResetCode(code){
@@ -171,6 +171,35 @@ return;
 // Load protected business data only after a valid JWT exists.
 await enterApp();
 }
+// ── إشعارات الهاتف (FCM Push) — 2026-10-31 ──
+// داخل APK فقط (window.Capacitor موجود في WebView كاباسيتور، غائب في المتصفح).
+// يطلب إذن الإشعارات (أندرويد 13+) ويسجّل توكن الجهاز لحساب المستخدم الحالي —
+// فيصله إشعار شريط النظام بصوته **حتى والتطبيق مقفول تمامًا**
+// (الخادم يرسل عبر backend/push-service.js عند كل إشعار موجَّه).
+let _pushSetupDone = false;
+async function setupPushNotifications(){
+    if (_pushSetupDone) {return;}
+    try {
+        const cap = window.Capacitor;
+        const Push = cap && cap.Plugins && cap.Plugins.PushNotifications;
+        if (!Push || typeof cap.isNativePlatform !== 'function' || !cap.isNativePlatform()) {return;}
+        const result = await Push.requestPermissions();
+        if (!result || result.receive !== 'granted') {return;}
+        _pushSetupDone = true;
+        // حدث التسجيل: التوكن قد يتجدد في كل إقلاع — الخادم يعمل upsert تلقائيًا.
+        Push.addListener('registration', (token) => {
+            const value = token && token.value;
+            if (!value) {return;}
+            try {
+                apiFetch('/push/register', {
+                    method: 'POST',
+                    body: JSON.stringify({ token: value, platform: 'android' }),
+                }).catch(() => { /* التوكن يعاد في الإقلاع التالي */ });
+            } catch (_) { /* */ }
+        });
+        Push.addListener('registrationError', () => { /* يعاد في الإقلاع التالي */ });
+    } catch (_) { /* إشعارات الهاتف خدمة إضافية — لا تكسر الدخول أبدًا */ }
+}
 async function enterApp(){
 document.getElementById('login').style.display = 'none';
 document.getElementById('app').style.display = 'block';
@@ -212,6 +241,8 @@ loadData().then(async ()=>{
 // Task 20: سجّل هوية المستخدم على غرف الإشعارات + اجلب صندوقه من قاعدة البيانات
 if (typeof window._rtStart === 'function') {window._rtStart();}
 if (typeof window._rtRegisterUser === 'function') {window._rtRegisterUser();}
+// إشعارات الهاتف: سجّل توكن الجهاز لحساب المستخدم (APK فقط — تأجيل بلا انتظار)
+try { setupPushNotifications(); } catch (_) {}
 refreshNotifications();
 }
 function doLogout(){

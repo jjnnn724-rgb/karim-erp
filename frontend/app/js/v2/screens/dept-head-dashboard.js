@@ -15,10 +15,10 @@
  * screen, with its signatures and server gates.
  */
 
-import { donutChart } from '../charts.js?v=4.9.180';
-import { statusBadge } from '../status.js?v=4.9.180';
-import { fetchDeptHeadSnapshot, buildDeptHeadView } from '../data/dashboard-repo.js?v=4.9.180';
-import { esc, money, moneyText, int, kpiStrip, miniList, failureBox } from '../role-dash-parts.js?v=4.9.180';
+import { donutChart } from '../charts.js?v=4.9.323';
+import { statusBadge } from '../status.js?v=4.9.323';
+import { fetchDeptHeadSnapshot, buildDeptHeadView } from '../data/dashboard-repo.js?v=4.9.323';
+import { esc, money, moneyText, int, kpiStrip, miniList, failureBox } from '../role-dash-parts.js?v=4.9.323';
 
 function template() {
     return `
@@ -60,6 +60,7 @@ function template() {
           </div>
           <div class="erp-card__body">
             <div data-v2-sources></div>
+            <div data-v2-monthly style="margin-block-start:var(--erp-space-4)"></div>
             <div data-v2-subs style="margin-block-start:var(--erp-space-4)"></div>
           </div>
         </section>
@@ -98,6 +99,7 @@ export function mountDeptHeadDashboardScreen(host, ctx = {}) {
     const noteEl = q('[data-v2-note]');
     const failuresEl = q('[data-v2-failures]');
     const sourcesEl = q('[data-v2-sources]');
+    const monthlyEl = q('[data-v2-monthly]');
     const subsEl = q('[data-v2-subs]');
     const recentEl = q('[data-v2-recent]');
 
@@ -162,6 +164,14 @@ export function mountDeptHeadDashboardScreen(host, ctx = {}) {
             amountHtml: `<span class="${s.total < 0 ? 'erp-text-success' : ''}">${money(s.total, cur)}</span>`,
         })), 'لا مصروفات مسجلة لهذا القسم', v.panelFailed ? 'لوحة القسم لم تُقرأ — لا أرقام تقديرية.' : '');
 
+        monthlyEl.innerHTML = (v.monthlySeries && v.monthlySeries.length)
+            ? `<h4 class="erp-card__title erp-text-sm">المصارف الشهرية (من أذون الصرف)</h4>`
+                + miniList(v.monthlySeries.map((m) => ({
+                    main: String(m.month || '—'),
+                    sub: 'مصروفات القسم',
+                    amountHtml: `<span class="${esc(m.total < 0 ? 'erp-text-success' : '')}">${esc(money(m.total, cur))}</span>`,
+                })), 'لا مصارف شهرية مسجلة')
+            : '';
         subsEl.innerHTML = v.subDepartments.length
             ? `<h4 class="erp-card__title erp-text-sm">الأقسام التابعة</h4>`
                 + miniList(v.subDepartments.map((d) => ({
@@ -195,6 +205,7 @@ export function mountDeptHeadDashboardScreen(host, ctx = {}) {
             kpisEl.innerHTML = '';
             chartsEl.innerHTML = '';
             sourcesEl.innerHTML = '';
+            monthlyEl.innerHTML = '';
             subsEl.innerHTML = '';
             recentEl.innerHTML = '';
             deptEl.textContent = '';

@@ -615,8 +615,8 @@ describe('شاشة 10 — السجل المشترك والمضيف والطبق�
 
     test('المضيف يركّب الشاشة ويدمّرها عند المغادرة ويعرف نطاقها', () => {
         const host = source(HOST);
-        expect(host).toMatch(/import \{ mountLeavesScreen \} from '\.\/screens\/leaves\.js\?v=/);
-        expect(host).toMatch(/leavesScreen = mountLeavesScreen\(/);
+        expect(host).toMatch(/mountLazy\('leaves'/);
+        expect(host).toMatch(/leavesScreen = \(await mountLazy\('leaves'/);
         expect(host).toMatch(/leavesScreen\.destroy\(\)/);
         expect(host).toMatch(/navStatus\.current !== 'leaves'/);
     });

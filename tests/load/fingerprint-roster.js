@@ -2,7 +2,7 @@
 'use strict';
 const fs = require('fs');
 const { Pool } = require('pg');
-const pool = new Pool({ host: '127.0.0.1', port: 5432, user: 'postgres', password: 'Kimo20177', database: 'karim_erp', max: 3 });
+const pool = new Pool({ host: '127.0.0.1', port: 5432, user: 'postgres', password: process.env.LOADTEST_PG_PASSWORD || process.env.PGPASSWORD || '', database: 'karim_erp', max: 3 });
 const q = async (sql, p) => (await pool.query(sql, p)).rows;
 const csvCell = (v) => `"${String(v ?? '').replace(/"/g, '""')}"`;
 

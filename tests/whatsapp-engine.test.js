@@ -172,14 +172,17 @@ describe('employee normalization and delay logic', () => {
 
     test('counts only the net shortfall of the shift hours (قرار المالك: الإتمام هو المعيار)', () => {
         // دوام 09:00 + 8 ساعات: وصل 09:35 وخرج 17:30 (بعد النهاية 30د)
-        // → أكمل 7:55 من 8 ساعات → عجز 5د يبتلعه ربع الساعة سماحية (قرار المالك 2026-10-10) → صفر
+        // → أكمل 7:55 من 8 ساعات → عجز 5د يُحسب كاملًا بلا سماح (قرار المالك 2026-11-02)
         const row = { checkIn: '09:35', checkOut: '17:30' };
         const employee = { shift_start: '09:00', shift_karim: 8 };
         const parts = calculateDelayParts(row, employee);
-        // 35 − 15 سماحية = 20
-        expect(parts.arrivalLateMinutes).toBe(20);
+        // قرار المالك 2026-11-07 (توحيد الحكم على أطراف اليوم): دقائق العجز تُوزَّع
+        // على طرفي اليوم بسقف العجز الكلي (دخول أولًا ثم انصراف) — فالعجز 5 دقائق
+        // يُنسب كله للدخول، ولا تُعرض 35 دقيقة كاملة ما دام البقاء غطّى معظمها.
+        // lateMinutes (المالي) = العجز الصافي 5 كما كان — بلا سماحية.
+        expect(parts.arrivalLateMinutes).toBe(5);
         expect(parts.earlyLeaveMinutes).toBe(0);
-        expect(parts.lateMinutes).toBe(0);
+        expect(parts.lateMinutes).toBe(5);
     });
 });
 

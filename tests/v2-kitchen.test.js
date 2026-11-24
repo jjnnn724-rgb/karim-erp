@@ -959,7 +959,10 @@ describe('preview.js — المضيف: لا نموذجيات وتلفيدٌ نظ
 
     test('الشاشة تُستورد بمراجعة الصفحة نفسها وتُركّب على مضيفها', () => {
         const rev = source(V2_HTML).match(/js\/v2\/preview\.js\?v=([0-9.]+)/)[1];
-        expect(host()).toContain(`./screens/kitchen.js?v=${rev}`);
+        // منذ 2026-10-27 تُحمَّل الشاشات عند الطلب من registry.js لا استيرادًا
+        // ساكنًا في preview.js — الرقم نفسه يحكم السجل كما يحكم الصفحة.
+        expect(source(path.join(V2, 'screens', 'registry.js'))).toContain(`./kitchen.js?v=${rev}`);
+        expect(host()).toContain("mountLazy('kitchen', '[data-v2-kitchen-host]'");
         expect(host()).toContain('data-v2-kitchen-host');
     });
 
@@ -971,7 +974,7 @@ describe('preview.js — المضيف: لا نموذجيات وتلفيدٌ نظ
 
     test('W1-2: المضيف يمرر اسم الحساب (يقفل التواقيع) وconfirmFn', () => {
         expect(fn()).toMatch(/userName: String\(u\.name \|\| u\.username \|\| ''\),/);
-        expect(fn()).toMatch(/confirmFn: \(message\) => window\.confirm\(message\),/);
+        expect(fn()).toMatch(/confirmFn: confirmAction,/);
         expect(fn()).toMatch(/const u = session\.user \|\| \{\};/);
         expect(fn()).toMatch(/notify: notifyTo\(note\),/);
         // والشاشة لا تسأل بنفسها خارج fallback المضيف الواحد

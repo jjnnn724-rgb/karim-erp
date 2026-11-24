@@ -36,7 +36,9 @@ describe('Cashier V2 standalone PWA', () => {
         const html = read(path.join(PWA, 'index.html'));
         expect(css).toContain('.cashier-app-main .erp-pos-v2-products');
         expect(css).toContain('minmax(clamp(6.25rem, 7vw, 7.75rem), 1fr)');
-        expect(css).toContain('aspect-ratio: 1.6 / 1');
+        // مربّع لا شريط: الصور المرفوعة بمقاسات مختلفة تظهر كاملة بلا قصّ (cashier.css)
+        expect(css).toContain('aspect-ratio: 1 / 1');
+        expect(css).toContain('object-fit: contain');
         expect(css).toContain('font-size: clamp(0.75rem, 0.85vw, 0.875rem)');
         expect(css).toContain('@media (max-width: 900px)');
         expect(css).toContain('@media (max-width: 520px)');

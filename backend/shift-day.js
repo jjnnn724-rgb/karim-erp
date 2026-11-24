@@ -1,5 +1,5 @@
 /**
- * shift-day.js — منطق يوم الوردية والورديات الليلية (مشترك: zkteco + QR)
+ * shift-day.js — منطق يوم الوردية والورديات الليلية (مشترك: جهاز البصمة + كاميرا التطبيق)
  * ────────────────────────────────────────────────────────────────────────────
  * • يوم الوردية: البصمة قبل ساعة الفصل (NIGHT_CUTOFF_HOUR، افتراضي 5 فجرًا)
  *   تُنسب ليوم العمل السابق — فيدخل انصراف الفجر مع حضور الليلة السابقة.
@@ -25,6 +25,7 @@ function nightCutoffHour() {
     return 5;
 }
 
+/** @param {any} value */
 function normalizeEmployeeCode(value) {
     const raw = String(value ?? '').trim();
     if (!raw) {return null;}
@@ -41,6 +42,7 @@ function normalizeEmployeeCode(value) {
     return raw;
 }
 
+/** @param {any} value */
 function normalizeDepartmentCode(value) {
     const raw = String(value ?? '').trim();
     if (!raw) {return null;}
@@ -64,7 +66,7 @@ function normalizeDepartmentCode(value) {
     return map[normalized] || normalized;
 }
 
-/** تاريخ أمس بصيغة yyyy-mm-dd */
+/** تاريخ أمس بصيغة yyyy-mm-dd @param {any} dateStr */
 function prevDay(dateStr) {
     const [y, m, d] = String(dateStr).split('-').map(Number);
     const dt = new Date(Date.UTC(y, m - 1, d) - 24 * 3600 * 1000);
@@ -72,7 +74,7 @@ function prevDay(dateStr) {
     return `${dt.getUTCFullYear()}-${p(dt.getUTCMonth() + 1)}-${p(dt.getUTCDate())}`;
 }
 
-/** يوم الوردية لبصمة: قبل الفجر → أمس */
+/** يوم الوردية لبصمة: قبل الفجر → أمس @param {any} wallDate @param {any} wallHour @param {any} [cutoff] */
 function shiftDateFor(wallDate, wallHour, cutoff = nightCutoffHour()) {
     if (cutoff == null) {return wallDate;}
     if (Number(wallHour) < cutoff) {return prevDay(wallDate);}
@@ -96,30 +98,30 @@ function shiftDateForEmployee(wallDate, wallHour, employee, cutoff = nightCutoff
     return wallDate;
 }
 
-/** تحقق بداية الوردية HH:MM — يرجع المطبّع أو يرمي */
+/** تحقق بداية الوردية HH:MM — يرجع المطبّع أو يرمي @param {any} value */
 function normalizeShiftStart(value) {
     if (value == null || String(value).trim() === '') {return null;}
     const m = String(value).trim().match(/^(\d{1,2}):(\d{2})$/);
     if (!m) {
-        const err = new Error('بداية الوردية بصيغة HH:MM (مثال 22:00)');
+        const err = /** @type {any} */ (new Error('بداية الوردية بصيغة HH:MM (مثال 22:00)'));
         err.statusCode = 422; err.code = 'SHIFT_START_INVALID'; throw err;
     }
     const h = Number(m[1]);
     const mi = Number(m[2]);
     if (h > 23 || mi > 59) {
-        const err = new Error('بداية الوردية ساعة غير صالحة');
+        const err = /** @type {any} */ (new Error('بداية الوردية ساعة غير صالحة'));
         err.statusCode = 422; err.code = 'SHIFT_START_INVALID'; throw err;
     }
     const p = (n) => String(n).padStart(2, '0');
     return `${p(h)}:${p(mi)}`;
 }
 
-/** تحقق ساعات الوردية 1–24 — يرجع الرقم أو يرمي */
+/** تحقق ساعات الوردية 1–24 — يرجع الرقم أو يرمي @param {any} value */
 function normalizeShiftKarim(value) {
     if (value == null || String(value).trim() === '') {return null;}
     const n = Number(value);
     if (!Number.isFinite(n) || n < 1 || n > 24) {
-        const err = new Error('ساعات الوردية بين 1 و 24');
+        const err = /** @type {any} */ (new Error('ساعات الوردية بين 1 و 24'));
         err.statusCode = 422; err.code = 'SHIFT_HOURS_INVALID'; throw err;
     }
     return Math.round(n * 100) / 100;
@@ -154,7 +156,7 @@ function delayEngineEnabled() {
     return String(process.env.ATTENDANCE_DELAY_ENGINE ?? 'true').trim().toLowerCase() !== 'false';
 }
 
-/** متأخر؟ مقارنة ببداية الوردية + سماحية 15 دقيقة (قرار المالك 2026-10-10) */
+/** متأخر؟ بعد بداية الدوام بالبطاقة مباشرة (بلا سماحية افتراضيًا — قرار 2026-11-05) */
 function isLate(wallHour, wallMinute, shiftStart, fallbackStart = 9, graceMin = graceMinutes()) {
     if (!delayEngineEnabled()) {return false;}
     let sH = fallbackStart;
@@ -164,9 +166,24 @@ function isLate(wallHour, wallMinute, shiftStart, fallbackStart = 9, graceMin = 
     return (wallHour * 60 + wallMinute) > (sH * 60 + sM + graceMin);
 }
 
-/** فترة السماح بالدقائق — قرار المالك 2026-10-10: ربع ساعة سماح للدخول والانصراف */
+/** فترة السماح بالدقائق — قرار المالك 2026-11-05: **بلا سماح**.
+ *  التأخير يُحسب من أول دقيقة بعد بداية دوام البطاقة. (كانت ١٥ دقيقة 2026-10-10
+ *  ثم «ميزانية مشتركة» 2026-11-03 — أُلغيت بالتعقيد اللي كان بيجلبها.
+ *  المفتاح ATTENDANCE_GRACE_MINUTES يقبل قيمة > 0 للطوارئ فقط، والافتراضي ٠. */
+const DEFAULT_GRACE_MINUTES = 0;
+
 function graceMinutes() {
-    return 15;
+    const raw = process.env.ATTENDANCE_GRACE_MINUTES;
+    if (raw == null || String(raw).trim() === '') {return DEFAULT_GRACE_MINUTES;}
+    const n = Number(raw);
+    if (!Number.isFinite(n) || n < 0 || n > 120) {return DEFAULT_GRACE_MINUTES;}
+    return Math.floor(n);
+}
+
+/** الدقائق بعد حدّ السماح — بصفر سماح تساوي الدقائق الخام نفسها. */
+function overGrace(rawMinutes, grace = graceMinutes()) {
+    const raw = Math.max(0, Number(rawMinutes) || 0);
+    return raw > grace ? raw : 0;
 }
 
 /** نافذة القفل بالدقائق بعد نهاية الوردية — LOCK_GRACE_MINUTES، افتراضي 10 */
@@ -191,19 +208,24 @@ function getShiftStartMinutes(employee) {
 }
 
 function calculateDelayParts(row, employee) {
-    const zero = { arrivalLateMinutes: 0, earlyLeaveMinutes: 0, lateMinutes: 0 };
+    // التأخير = العجز عن ساعات البطاقة، لا مجرد عبور الساعة (قرار المالك 2026-11-07):
+    //   وصول مبكر يغطي انصرافًا مبكرًا، وبقاء أطول يغطي وصولًا متأخرًا.
+    //   من أكمل ساعات ورديته لا يُعرض عليه «تأخير»، وتُوزَّع دقائق العجز على
+    //   طرفي اليوم (دخول أولًا ثم انصراف) بسقف العجز الكلي.
+    //   lateMinutes = العجز الكلي (والدخول وحده لو بلا خروج).
+    const zero = {
+        arrivalLateMinutes: 0, earlyLeaveMinutes: 0, lateMinutes: 0,
+        arrivalLateRawMinutes: 0, earlyLeaveRawMinutes: 0,
+    };
     if (!delayEngineEnabled()) {return zero;}
     if (!row) {return zero;}
+    const grace = graceMinutes();
     const checkInMin = parseTimeMinutes(row.checkIn);
     const shiftMin = getShiftStartMinutes(employee);
-    // سماحية 15 دقيقة (قرار المالك 2026-10-10): تأخير الدخول ضمنها = في الميعاد
-    const arrival = checkInMin == null ? 0 : Math.max(0, checkInMin - shiftMin - graceMinutes());
+    const arrivalRaw = checkInMin == null ? 0 : Math.max(0, checkInMin - shiftMin);
 
-    let early = 0;
-    // قرار المالك (2026-09): المعتمد = صافي العجز عن ساعات الوردية —
-    // «أهم شي يكمل 10 أو 12 ساعته»: الدخول المبكر يغطي الانصراف المبكر،
-    // والتأخير يُمتص بالبقاء أطول. أي نقص (قبل أو بعد) يُحسب تأخيرًا.
-    let late = arrival; // بلا بصمة خروج: اليوم مفتوح → يُحكم عليه عند إغلاقه
+    let earlyRaw = 0;
+    let shortfallRaw = 0;
     const checkOutMin = parseTimeMinutes(row.checkOut);
     if (checkOutMin != null) {
         const karim = Number(employee?.shift_karim) > 0 ? Number(employee.shift_karim) : 10;
@@ -219,20 +241,36 @@ function calculateDelayParts(row, employee) {
         // بلا دخول مسجل لا يُحتسب تبكير: الخروج وحده لا يثبت شيئًا
         // (مقارنة رقم مع null في جافاسكربت تعطي true زائفة وتنتج دقائق وهمية)
         if (checkInMin != null && out >= shiftMin) {
-            // سماحية 15 دقيقة للانصراف المبكر أيضًا
-            early = Math.max(0, endRaw - out - graceMinutes());
+            earlyRaw = Math.max(0, endRaw - out);
         }
         if (checkInMin != null) {
             const requiredMin = Math.round(karim * 60);
             const workedMin = out - checkInMin; // نفس التظليل الليلي المطبق على out
-            late = Math.max(0, requiredMin - workedMin - graceMinutes());
+            shortfallRaw = Math.max(0, requiredMin - workedMin);
         }
     }
+
+    // توزيع العجز على الطرفين: لا دقائق تأخير إن لم يكن هناك عجز أصلًا.
+    // بلا بصمة خروج يبقى الحكم على الدخول وحده (اليوم مفتوح).
+    let arrivalNet = arrivalRaw;
+    let earlyNet = earlyRaw;
+    if (checkOutMin != null) {
+        arrivalNet = Math.min(arrivalRaw, shortfallRaw);
+        earlyNet = Math.min(earlyRaw, Math.max(0, shortfallRaw - arrivalNet));
+    }
+
+    // بلا سماحية افتراضيًا (grace = 0): فوق الصفر تُحسب الدقائق كاملة.
+    const arrival = arrivalNet > grace ? arrivalNet : 0;
+    const early = earlyNet > grace ? earlyNet : 0;
+    // بلا بصمة خروج: اليوم مفتوح → يُحكم على العجز عند إغلاقه (الدخول وحده).
+    const late = checkOutMin == null ? arrival : overGrace(shortfallRaw, grace);
 
     return {
         arrivalLateMinutes: arrival,
         earlyLeaveMinutes: early,
         lateMinutes: late,
+        arrivalLateRawMinutes: arrivalNet,
+        earlyLeaveRawMinutes: earlyNet,
     };
 }
 
@@ -240,7 +278,7 @@ function calculateLateMinutes(row, employee) {
     return calculateDelayParts(row, employee).lateMinutes;
 }
 
-/** انصراف مبكر؟ خروج قبل نهاية الوردية بما يتجاوز السماحية (15 دقيقة) */
+/** انصراف مبكر؟ خروج قبل نهاية الوردية بالبطاقة (بلا سماحية افتراضيًا) */
 function isEarlyLeave(outHour, outMinute, shiftStart, shiftKarim, graceMin = graceMinutes()) {
     if (!delayEngineEnabled()) {return false;}
     const m = String(shiftStart || '09:00').match(/^(\d{1,2}):(\d{2})$/);
@@ -253,9 +291,11 @@ function isEarlyLeave(outHour, outMinute, shiftStart, shiftKarim, graceMin = gra
 }
 
 module.exports = {
+    shiftDateModeEnabled,
     nightCutoffHour,
     delayEngineEnabled,
     graceMinutes,
+    overGrace,
     lockGraceMinutes,
     prevDay,
     shiftDateFor,

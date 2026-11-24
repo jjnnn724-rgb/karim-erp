@@ -16,7 +16,7 @@ const express = require('express');
 const { pool } = require('./shared-pool');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { logger } = require('./logger');
-const { PERMISSIONS, PERM_MAP, menusForGrants, menusForDenies, getUserPerms, getUserGrants, invalidateUser } = require('./permissions');
+const { PERMISSIONS, PERM_MAP, menusForGrants, menusForDenies, getUserPerms, getUserGrants, invalidateUser, sodConflict } = require('./permissions');
 
 const router = express.Router();
 const ADMIN_ONLY = ['admin'];
@@ -69,6 +69,12 @@ router.put('/users/:id', jwtAuth, requireRole(...ADMIN_ONLY), async (req, res) =
             : null; // null = لا تغيير على السحب
         const reason = String(req.body?.reason ?? '').slice(0, 300) || null;
         const actor = req.user?.username || String(req.user?.id || '');
+        const effective = wanted.filter((key) => !(wantedDenies && wantedDenies.includes(key)));
+        const conflict = sodConflict(effective);
+        if (conflict) {
+            return fail(res, 409, 'SOD_CONFLICT',
+                `لا يجوز جمع ${conflict[0]} مع ${conflict[1]} لمستخدم واحد — افصل المهام.`);
+        }
         const client = await pool.connect();
         try {
             await client.query('BEGIN');

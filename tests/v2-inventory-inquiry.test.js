@@ -276,12 +276,12 @@ describe('الشاشات والبطاقة — لا شبكة، ولا نسخة ث
 
     test('المضيف يركّب المفتاحين ويهدم شاشتيهما قبل التنقل', () => {
         const host = read(PREVIEW);
-        expect(host).toMatch(/import \{ mountQueryScreen \} from '\.\/screens\/inventory-inquiry\.js\?v=/);
-        expect(host).toMatch(/import \{ mountProfessionalScreen \} from '\.\/screens\/inventory-inquiry-pro\.js\?v=/);
+        expect(host).toMatch(/module: 'inventory-inquiry'/);
+        expect(host).toMatch(/module: 'inventory-inquiry-pro'/);
         expect(host).toMatch(/if \(key === 'query'\) \{\s*renderQueryScreen\(\);\s*return;/);
         expect(host).toMatch(/if \(key === 'professional'\) \{\s*renderProfessionalScreen\(\);\s*return;/);
-        expect(host).toMatch(/function renderQueryScreen\(\) \{ renderLiveRegisterScreen\(\{ key: 'query', title: 'محرك الاستعلامات', mount: mountQueryScreen/);
-        expect(host).toMatch(/function renderProfessionalScreen\(\) \{ renderLiveRegisterScreen\(\{ key: 'professional', title: 'البطاقة الفاخرة', mount: mountProfessionalScreen/);
+        expect(host).toMatch(/function renderQueryScreen\(\) \{ renderLiveRegisterScreen\(\{ key: 'query', title: 'محرك الاستعلامات', module: 'inventory-inquiry'/);
+        expect(host).toMatch(/function renderProfessionalScreen\(\) \{ renderLiveRegisterScreen\(\{ key: 'professional', title: 'البطاقة الفاخرة', module: 'inventory-inquiry-pro'/);
         expect(host).toMatch(/function teardownQueryScreen\(\) \{\s*if \(queryScreen\) \{ queryScreen\.destroy\(\); queryScreen = null; \}/);
         expect(host).toMatch(/function teardownProfessionalScreen\(\) \{\s*if \(professionalScreen\) \{ professionalScreen\.destroy\(\); professionalScreen = null; \}/);
         // الهدم يُنادى في كنسة الشاشات نفسها، وإلا بقيت مستمعات التنقل بعد مغادرة المفتاح
@@ -308,7 +308,8 @@ describe('الواجهة القديمة — نفس المفتاحين، ونفس
         // كان يكسر هذا الاختبار بلا سبب حقيقي.
         const rev = (read(INDEX).match(/js\/main\.js\?v=([\d.]+)/) || [])[1];
         expect(rev).toBeTruthy();
-        expect(read(MAIN)).toContain(`await safeBridge('./features/inventory-inquiry.js?v=${rev}', 'BRIDGE-INQ');`);
+        // 2026-10-28: الوحدات صارت قائمةً واحدة تُجلب مسبقًا وتُقيَّم بالترتيب.
+        expect(read(MAIN)).toContain(`['./features/inventory-inquiry.js?v=${rev}', 'BRIDGE-INQ']`);
         const router = read(ROUTER);
         expect(router).toMatch(/case 'query':[\s\S]{0,200}await renderInventoryQueryPage\(\);/);
         expect(router).toMatch(/case 'professional':[\s\S]{0,200}await renderItemCardPage\(\);/);

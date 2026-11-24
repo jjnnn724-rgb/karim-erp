@@ -26,7 +26,7 @@ describe('V2 command palette a11y contract', () => {
         expect(SRC).toMatch(/class="erp-pal__input"[^>]*role="combobox"[^>]*aria-expanded="true"/);
         expect(SRC).toMatch(/aria-controls="erp-pal-list"/);
         expect(SRC).toMatch(/id="erp-pal-list" role="listbox"/);
-        expect(SRC).toMatch(/<li role="option" id="erp-pal-opt-\$\{i\}" aria-selected=/);
+        expect(SRC).toMatch(/<li role="option" id="erp-pal-opt-\$\{esc\(i\)\}" aria-selected=/);
     });
 
     test('الاختيار يُعلن عبر aria-activedescendant', () => {

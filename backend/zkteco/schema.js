@@ -87,14 +87,37 @@ CREATE TABLE IF NOT EXISTS attendance_logs (
     "attendanceTime" TIMESTAMPTZ NOT NULL,
     "verifyType" SMALLINT NOT NULL DEFAULT 1,
     "punchState" SMALLINT NOT NULL DEFAULT 0,
-    source VARCHAR(20) NOT NULL DEFAULT 'device',
+    -- لا default: كل كاتب يعلن مصدره صراحةً (device / portal / manual) — 2026-11-07
+    source VARCHAR(20) NOT NULL,
     "syncedAt" TIMESTAMPTZ NOT NULL DEFAULT NOW(),
-    CONSTRAINT uq_attendance_logs_punch UNIQUE ("deviceId", "deviceUserId", "attendanceTime")
+    CONSTRAINT uq_attendance_logs_punch UNIQUE ("deviceId", "deviceUserId", "attendanceTime"),
+    CONSTRAINT attendance_logs_source_allowed CHECK (source IN ('device', 'portal', 'manual'))
 );
+-- تصحيح بصمةٍ خام واحدة (2026-11-06): الصفُّ يبقى في الدفتر ولا يُحذف،
+-- ويُستثنى من بناء الحضور ومن المطابقة حتى تُستعاد — أثرٌ دائمٌ قابل للعكس.
+ALTER TABLE attendance_logs ADD COLUMN IF NOT EXISTS ignored BOOLEAN NOT NULL DEFAULT false;
+ALTER TABLE attendance_logs ADD COLUMN IF NOT EXISTS "ignoredReason" TEXT;
+ALTER TABLE attendance_logs ADD COLUMN IF NOT EXISTS "ignoredBy" VARCHAR(120);
+ALTER TABLE attendance_logs ADD COLUMN IF NOT EXISTS "ignoredAt" TIMESTAMPTZ;
+-- الحذر لجدولٍ قائم: القيد يُضاف NOT VALID (الصفوف القديمة تبقى، والجديد يُرفض)
+DO $$
+BEGIN
+    IF NOT EXISTS (SELECT 1 FROM pg_constraint WHERE conname = 'attendance_logs_source_allowed') THEN
+        ALTER TABLE attendance_logs ADD CONSTRAINT attendance_logs_source_allowed
+            CHECK (source IN ('device', 'portal', 'manual')) NOT VALID;
+    END IF;
+END $$;
+-- لا مصدر ضمني على جدولٍ قائم أيضًا: الكاتب يعلن مصدره.
+ALTER TABLE attendance_logs ALTER COLUMN source DROP DEFAULT;
+CREATE INDEX IF NOT EXISTS idx_attendance_logs_ignored
+    ON attendance_logs("attendanceTime") WHERE ignored;
 CREATE INDEX IF NOT EXISTS idx_attendance_logs_time ON attendance_logs("attendanceTime");
 CREATE INDEX IF NOT EXISTS idx_attendance_logs_employee ON attendance_logs("employeeId", "attendanceTime");
 CREATE INDEX IF NOT EXISTS idx_attendance_logs_unmapped ON attendance_logs("deviceId")
     WHERE "employeeId" IS NULL;
+-- الربط المتأخر يبحث برقم الجهاز في البصمات غير المنسوبة فقط (مركز التحكم)
+CREATE INDEX IF NOT EXISTS idx_attendance_logs_unmapped_uid
+    ON attendance_logs (btrim("deviceUserId")) WHERE "employeeId" IS NULL;
 
 -- نقطة تفتيش المزامنة لكل جهاز (GREATEST — لا تراجع للخلف)
 CREATE TABLE IF NOT EXISTS device_sync_state (
@@ -126,6 +149,21 @@ CREATE TABLE IF NOT EXISTS zk_device_users (
     UNIQUE ("deviceId", "userId")
 );
 CREATE INDEX IF NOT EXISTS idx_zk_device_users_device ON zk_device_users ("deviceId");
+
+-- سجل إجراءات مركز التحكم (تشغيل/إيقاف المحرك، إعادة بناء الأيام)
+-- يُكتب ولا يُعدَّل ولا يُحذف — أثرٌ دائم لمن فعل ماذا ولماذا.
+CREATE TABLE IF NOT EXISTS zk_control_audit (
+    id BIGSERIAL PRIMARY KEY,
+    action VARCHAR(32) NOT NULL,
+    "actorId" BIGINT,
+    "actorName" VARCHAR(120),
+    "actorRole" VARCHAR(40),
+    reason TEXT,
+    detail JSONB NOT NULL DEFAULT '{}'::jsonb,
+    "createdAt" TIMESTAMPTZ NOT NULL DEFAULT NOW()
+);
+CREATE INDEX IF NOT EXISTS idx_zk_control_audit_created
+    ON zk_control_audit ("createdAt" DESC);
 `;
 
 /** @type {Promise<void>|null} ضمان تطبيق المخطط مرة واحدة فقط */

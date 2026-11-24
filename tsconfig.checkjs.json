@@ -4,6 +4,6 @@
     "checkJs": true,
     "noEmit": true
   },
-  "include": ["backend/**/*.js"],
+  "include": ["backend/**/*.js", "backend/**/*.d.ts"],
   "exclude": ["backend/node_modules/**"]
 }

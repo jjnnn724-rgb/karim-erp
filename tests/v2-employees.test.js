@@ -395,7 +395,7 @@ describe('V2 employees screen + layer (source contract)', () => {
     test('the host still tears the screen down on navigation', () => {
         const p = fs.readFileSync(path.join(V2, 'preview.js'), 'utf8');
         expect(p).toMatch(/employeesScreen\.destroy\(\)/);
-        expect(p).toMatch(/mountEmployeesScreen\(/);
+        expect(p).toMatch(/mountLazy\('employees'/);
     });
 });
 
@@ -677,7 +677,11 @@ describe('V2 employees screen — the write cycle (W2-2 source contract)', () =>
 
     test('the panel is born outside both cards, so it shows in cards view too', () => {
         const s = screen();
-        expect(s.lastIndexOf('<div data-v2-panel hidden>')).toBeGreaterThan(s.lastIndexOf('</section>'));
+        // العقدة معقودة على القالب وحده: الكشف صار أقسامًا مسماة، وفتح اللوحة
+        // فيه </section> أسطرًا لاحقًا في الملف — والقصد أن اللوحة خارج
+        // بطاقتي الدليل داخل القالب، لا أن القالب آخر </section> في الملف.
+        const tpl = s.slice(s.indexOf('function template()'), s.indexOf('export function mountEmployeesScreen'));
+        expect(tpl.lastIndexOf('<div data-v2-panel hidden>')).toBeGreaterThan(tpl.lastIndexOf('</section>'));
         expect(s).toMatch(/function setPanel\(html\)/);
         expect(s).toMatch(/panelEl\.hidden = false/);
         expect(s).toMatch(/panelEl\.hidden = true/);
@@ -697,8 +701,9 @@ describe('V2 employees screen — the write cycle (W2-2 source contract)', () =>
             /esc\(x\.warn\)/,
             /esc\(qrUrl\)/,
             /esc\(payload\.cardId \|\| ''\)/,
-            /esc\(s\.from \|\| ''\)/,
-            /esc\(s\.to \|\| ''\)/,
+            /String\(s\.from \|\| ''\)/,
+            /String\(s\.to \|\| ''\)/,
+            /esc\(period\)/,
             /esc\(r\.start\)/,
             /esc\(r\.end\)/,
             /esc\(r\.type\)/,
@@ -794,10 +799,10 @@ describe('V2 employees screen — the write cycle (W2-2 source contract)', () =>
 
     test('the host passes confirmFn to the employees mount', () => {
         const p = fs.readFileSync(path.join(V2, 'preview.js'), 'utf8');
-        const at = p.indexOf('mountEmployeesScreen(');
+        const at = p.indexOf("mountLazy('employees'");
         expect(at).toBeGreaterThan(-1);
-        const mount = p.slice(at, p.indexOf('});', at));
-        expect(mount).toMatch(/confirmFn: \(message\) => window\.confirm\(message\)/);
+        const mount = p.slice(at, p.indexOf('})) || employeesScreen;', at));
+        expect(mount).toMatch(/confirmFn: confirmAction/);
         expect(p).toMatch(/employeesScreen\.destroy\(\)/);
     });
 

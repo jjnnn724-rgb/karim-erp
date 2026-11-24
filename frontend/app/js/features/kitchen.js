@@ -7,6 +7,7 @@
 // KITCHEN & DISPATCH
 // ============================================
 let kitchenOverviewLoading = false;
+function dispatchOperationHeaders(action,id){return {'X-Idempotency-Key':`dispatch-${action}:${id}:${uid()}`};}
 async function refreshKitchenOverview(){ if(kitchenOverviewLoading){return;} kitchenOverviewLoading=true; try{STATE.kitchenOps=await apiFetch('/kitchen/overview'); renderPage();}catch(e){toast(e.message||'تعذر تحديث لوحة المطبخ','error')}finally{kitchenOverviewLoading=false;} }
 let kitchenProductionRows=[];
 let kitchenProductionDestinationsRows=[];
@@ -138,9 +139,9 @@ function renderKitchenDispatchRegister(){
         return true;
     }).slice().reverse();
     const monthFiltered=window.dispRegFrom||window.dispRegTo;
-    const statusLabel={pending:'بانتظار اعتماد المخزن',approved:'معتمد — بانتظار استلام المطبخ',partially_received:'مستلم جزئيًا',received:'مستلم ومغلق',rejected:'مرفوض من الإدارة'};
-    const statusClass={pending:'bdg-orange',approved:'bdg-green',partially_received:'bdg-blue',received:'bdg-green',rejected:'bdg-red'};
-    return `<div class="tbl-wrap kitchen-dispatch-register"><div class="tbl-hd"><div><h3><i class=ji data-i=clipboard-list></i> أذونات الصرف الواردة للمطبخ والأقسام التابعة له</h3><small class="text-muted">أذونات المطبخ وأقسامه الفرعية بعد اعتماد المخزن: راجع الكميات، ثم سجّل الاستلام بتوقيع مسؤول القسم.${monthFiltered?' <span class="badge bdg-blue">الشهر الحالي</span>':''}</small></div><span class="badge bdg-blue">${fN(rows.length)} إذن</span></div><div class="fr" style="padding:8px 14px;gap:8px;flex-wrap:wrap"><div class="fg"><label>من</label><input type="date" value="${window.dispRegFrom||''}" data-karim-action="renderPage" data-karim-event="change" data-karim-set="dispRegFrom:@value"></div><div class="fg"><label>إلى</label><input type="date" value="${window.dispRegTo||''}" data-karim-action="renderPage" data-karim-event="change" data-karim-set="dispRegTo:@value"></div>${monthFiltered?`<button class="btn btn-sm" data-karim-action="renderPage" data-karim-set="dispRegFrom:'',dispRegTo:''">عرض الكل (قديم + جديد)</button>`:''}</div><div class="tbl-scroll"><table><thead><tr><th>الإذن</th><th>القسم</th><th>الأصناف والكميات</th><th>التاريخ</th><th>الحالة</th><th>إجراء المطبخ</th></tr></thead><tbody>${rows.map(d=>`<tr><td class="fw-bold">#${esc(String(d.id))}</td><td><span class="badge bdg-purple">${esc(d.deptName||d.departmentName||'—')}</span></td><td>${(d.items||[]).map(i=>{const cw=i.catchWeightEnabled||i.actualWeight;return `${esc(i.itemName||i.name||'—')} (${fN(i.approvedQty??i.qty)}${cw&&i.packagingQty?` ${esc(i.catchWeightUom||'كجم')} / ${fN(i.packagingQty)} ${esc(i.packagingUom||'كرتون')}`:''})`;}).join('، ')||'—'}</td><td>${fD(d.date)}</td><td><span class="badge ${statusClass[d.status]||'bdg-orange'}">${statusLabel[d.status]||esc(d.status||'غير محدد')}</span>${d.kitchenReceivedBy?`<small class="text-muted" style="display:block;margin-top:4px"><i class=ji data-i=signature></i> ${esc(d.kitchenReceivedBy)}</small>`:''}</td><td style="display:flex;gap:5px;flex-wrap:wrap"><button class="btn btn-blue btn-sm" data-karim-action="viewDispatchDetails" data-karim-arg0="${esc(String(d.id))}"><i class=ji data-i=eye></i> عرض</button>${d.status==='approved'&&['admin','manager','kitchen'].includes(STATE.currentUser?.role)?`<button class="btn btn-gold btn-sm" data-karim-action="openReceiveModal" data-karim-arg0="${esc(String(d.id))}"><i class=ji data-i=inbox></i> استلام وتوقيع</button>`:''}${['approved','partially_received','received'].includes(d.status)?`<button class="btn btn-sm" data-karim-action="printDispatchNote" data-karim-arg0="${esc(String(d.id))}"><i class=ji data-i=printer></i> طباعة</button>`:''}</td></tr>`).join('')||'<tr><td colspan="6" class="u-empty-sm">لا توجد أذونات صرف مسجلة للمطبخ وأقسامه بعد</td></tr>'}</tbody></table></div></div>`;
+    const statusLabel={pending:'بانتظار اعتماد المخزن',chef_approved:'معتمد من الشيف — بانتظار المخازن',approved:'معتمد — بانتظار استلام المطبخ',partially_received:'مستلم جزئيًا',received:'مستلم ومغلق',rejected:'مرفوض من الإدارة',cancelled:'ملغى',voided:'باطل — أثر عكسي محفوظ'};
+    const statusClass={pending:'bdg-orange',chef_approved:'bdg-purple',approved:'bdg-green',partially_received:'bdg-blue',received:'bdg-green',rejected:'bdg-red',cancelled:'bdg-red',voided:'bdg-purple'};
+    return `<div class="tbl-wrap kitchen-dispatch-register"><div class="tbl-hd"><div><h3><i class=ji data-i=clipboard-list></i> أذونات الصرف الواردة للمطبخ والأقسام التابعة له</h3><small class="text-muted">أذونات المطبخ وأقسامه الفرعية بعد اعتماد المخزن: راجع الكميات، ثم سجّل الاستلام بتوقيع مسؤول القسم.${monthFiltered?' <span class="badge bdg-blue">الشهر الحالي</span>':''}</small></div><span class="badge bdg-blue">${fN(rows.length)} إذن</span></div><div class="fr" style="padding:8px 14px;gap:8px;flex-wrap:wrap"><div class="fg"><label>من</label><input type="date" value="${window.dispRegFrom||''}" data-karim-action="renderPage" data-karim-event="change" data-karim-set="dispRegFrom:@value"></div><div class="fg"><label>إلى</label><input type="date" value="${window.dispRegTo||''}" data-karim-action="renderPage" data-karim-event="change" data-karim-set="dispRegTo:@value"></div>${monthFiltered?`<button class="btn btn-sm" data-karim-action="renderPage" data-karim-set="dispRegFrom:'',dispRegTo:''">عرض الكل (قديم + جديد)</button>`:''}</div><div class="tbl-scroll"><table><thead><tr><th>الإذن</th><th>القسم</th><th>الأصناف والكميات</th><th>التاريخ</th><th>الحالة</th><th>إجراء المطبخ</th></tr></thead><tbody>${rows.map(d=>`<tr><td class="fw-bold">#${esc(String(d.id))}</td><td><span class="badge bdg-purple">${esc(d.deptName||d.departmentName||'—')}</span></td><td>${(d.items||[]).map(i=>{const cw=i.catchWeightEnabled||i.actualWeight;return `${esc(i.itemName||i.name||'—')} (${fN(i.approvedQty??i.qty)}${cw&&i.packagingQty?` ${esc(i.catchWeightUom||'كجم')} / ${fN(i.packagingQty)} ${esc(i.packagingUom||'كرتون')}`:''})`;}).join('، ')||'—'}</td><td>${fD(d.date)}</td><td><span class="badge ${statusClass[d.status]||'bdg-orange'}">${statusLabel[d.status]||esc(d.status||'غير محدد')}</span>${d.kitchenReceivedBy?`<small class="text-muted" style="display:block;margin-top:4px"><i class=ji data-i=signature></i> ${esc(d.kitchenReceivedBy)}</small>`:''}</td><td style="display:flex;gap:5px;flex-wrap:wrap"><button class="btn btn-blue btn-sm" data-karim-action="viewDispatchDetails" data-karim-arg0="${esc(String(d.id))}"><i class=ji data-i=eye></i> عرض</button>${canReceiveDispatch(d)?`<button class="btn btn-gold btn-sm" data-karim-action="openReceiveModal" data-karim-arg0="${esc(String(d.id))}"><i class=ji data-i=inbox></i> استلام وتوقيع</button>`:''}${['approved','partially_received','received','cancelled','voided'].includes(d.status)?`<button class="btn btn-sm" data-karim-action="printDispatchNote" data-karim-arg0="${esc(String(d.id))}"><i class=ji data-i=printer></i> طباعة</button>`:''}</td></tr>`).join('')||'<tr><td colspan="6" class="u-empty-sm">لا توجد أذونات صرف مسجلة للمطبخ وأقسامه بعد</td></tr>'}</tbody></table></div></div>`;
 }
 function renderKitchenDistributionRegister(){
  const rows=(STATE.kitchenOps?.distributions||[]).slice();
@@ -204,6 +205,80 @@ function canonicalDeptCode(code) {
     const clean = String(code).trim().toLowerCase();
     return DEPT_CODE_ALIASES[clean] || String(code).trim();
 }
+// نفس حارس الخادم: معرّفان رقميان صحيحان وموجبان فقط — لا تساوي نصي يطابق قيمتين مفقودتين.
+function isDispatchCreator(d){
+const actorId=Number(STATE.currentUser?.id),creatorId=Number(d?.creatorUserId);
+return Number.isInteger(actorId)&&actorId>0&&Number.isInteger(creatorId)&&creatorId>0&&actorId===creatorId;
+}
+function dispatchItemName(item){ return String(item?.itemName||item?.name||'').trim().toLowerCase(); }
+function dispatchItems(d){ return d?.approvedItems&&d.approvedItems.length?d.approvedItems:(d?.items||[]); }
+function dispatchInventoryItem(item){
+const name=dispatchItemName(item);
+return (STATE.inventory||[]).find(i=>dispatchItemName({itemName:i.name})===name);
+}
+function dispatchItemIsCatchWeight(item){
+return Boolean(item?.catchWeightEnabled||Number(item?.actualWeight)>0||item?.packagingQty!=null||dispatchInventoryItem(item)?.catch_weight_enabled);
+}
+function roundDispatchQty(value){ return Math.round((Number(value)||0)*1000)/1000; }
+function dispatchReceiptSummary(d,item){
+const name=dispatchItemName(item),rows=(Array.isArray(d?.receivedItems)?d.receivedItems:[]).filter(row=>dispatchItemName(row)===name);
+const approved=Math.max(0,Number(item?.approvedQty??item?.qty)||0);
+const priorQty=rows.reduce((sum,row)=>sum+Math.max(0,Number(row.receivedQty??row.qty)||0),0);
+const approvedBoxes=Math.max(0,Number(item?.packagingQty)||0);
+const priorBoxes=rows.reduce((sum,row)=>sum+Math.max(0,Number(row.receivedPackagingQty??row.packagingQty)||0),0);
+return {approvedQty:approved,priorQty:roundDispatchQty(priorQty),remainingQty:roundDispatchQty(Math.max(0,approved-priorQty)),
+approvedBoxes,priorBoxes:roundDispatchQty(priorBoxes),remainingBoxes:roundDispatchQty(Math.max(0,approvedBoxes-priorBoxes))};
+}
+function dispatchHasRemainingReceipt(d){
+return dispatchItems(d).some(item=>dispatchReceiptSummary(d,item).remainingQty>0.000001);
+}
+function dispatchDeptMatchesUser(d){
+const codes=String(STATE.currentUser?.dept_code||'').split(',').map(s=>s.trim()).filter(Boolean),target=String(d?.deptCode||'').trim();
+if(!codes.length||!target){return false;}
+return codes.some(code=>{
+const a=code.toLowerCase(),b=target.toLowerCase(),ca=canonicalDeptCode(code).toLowerCase(),cb=canonicalDeptCode(target).toLowerCase();
+return a===b||ca===cb||a===cb||b===ca;
+});
+}
+function canChefDecideDispatch(d){
+return Boolean(d&&['admin','manager','kitchen','sous_chef'].includes(STATE.currentUser?.role)&&d.needsChefApproval&&d.status==='pending'&&!isDispatchCreator(d));
+}
+function canWarehouseDecideDispatch(d){
+const role=STATE.currentUser?.role,statusAllowed=d?.needsChefApproval?d?.status==='chef_approved':d?.status==='pending';
+return Boolean(d&&['admin','manager','warehouse'].includes(role)&&statusAllowed&&!isDispatchCreator(d));
+}
+function canReceiveDispatch(d){
+const role=STATE.currentUser?.role;
+return Boolean(d&&['admin','manager','warehouse','kitchen','sous_chef','dept_head'].includes(role)&&['approved','partially_received'].includes(d.status)&&!isDispatchCreator(d)
+&&(role!=='dept_head'||dispatchDeptMatchesUser(d))&&dispatchHasRemainingReceipt(d));
+}
+function canCancelDispatch(d){
+const role=STATE.currentUser?.role;
+return Boolean(d&&['admin','manager','warehouse','kitchen','sous_chef','dept_head'].includes(role)&&['pending','chef_approved','rejected'].includes(d.status)
+&&(['admin','manager','warehouse'].includes(role)||isDispatchCreator(d)));
+}
+function canReopenDispatch(d){
+return Boolean(d&&['admin','manager'].includes(STATE.currentUser?.role)&&d.status==='approved'&&!d.kitchenReceivedAt&&!(Array.isArray(d.receivedItems)&&d.receivedItems.length>0));
+}
+function canVoidDispatch(d){
+return Boolean(d&&['admin','manager'].includes(STATE.currentUser?.role)&&['approved','partially_received','received'].includes(d.status));
+}
+function canVoidKitchenReturn(ret){
+return Boolean(ret&&['admin','manager','warehouse'].includes(STATE.currentUser?.role)&&ret.status!=='voided'&&!ret.voidedAt);
+}
+function ensureDispatchAction(d,allowed,deniedMessage){
+if(allowed){return true;}
+toast(isDispatchCreator(d)?'فصل المهام: لا يجوز اعتماد أو رفض أو استلام إذن أنشأته بنفسك':deniedMessage,'error');
+return false;
+}
+function dispatchRequestedQty(item){ return Math.max(0,Number(item?.qty??item?.requestedQty)||0); }
+function dispatchRequestedWeight(item,inv){
+const estimated=Number(item?.estWeightKg);
+if(estimated>0){return estimated;}
+const perBox=Number(inv?.packaging_qty_per_base);
+if(perBox>0){return roundDispatchQty(dispatchRequestedQty(item)*perBox);}
+return dispatchRequestedQty(item);
+}
 function myDeptCode(){ return STATE.currentUser?.dept_code || null; }
 function isDeptHead(){ return STATE.currentUser?.role==='dept_head'; }
 function deptNameByCode(code){
@@ -225,6 +300,8 @@ if(d.status==='approved') {return t('stg.dispensed');}
 if(d.status==='partially_received') {return t('stg.partial');}
 if(d.status==='received') {return t('stg.received');}
 if(d.status==='rejected') {return t('stg.rejected');}
+if(d.status==='cancelled') {return 'ملغى قبل الصرف';}
+if(d.status==='voided') {return 'باطل — أثر عكسي محفوظ';}
 return '—';
 }
 function renderDeptHeadDashboard(){
@@ -290,14 +367,14 @@ const warehouseQueue=dispatches.filter(d=>d.status==='chef_approved'||(d.status=
 const chainBanner=!isDeptHead()?`<div class="workflow-banner" style="margin-bottom:14px"><i class=ji data-i=clipboard-list></i> سلسلة الاعتماد: <strong>رئيس القسم</strong> ينشئ الطلب ← <strong>الشيف العمومي</strong> يعتمده ← <strong>المخازن</strong> تصرف وتخصم ← القسم يستلم من مخزنه الخاص.</div>`:'';
 const canDecideChef=['admin','manager','kitchen','sous_chef'].includes(role);
 const canDecideWarehouse=['admin','manager','warehouse'].includes(role);
-const canReceive=['admin','manager','kitchen','sous_chef'].includes(role);
-return `<div class="u-row-between"><h3 class="u-gold-strong"><i class=ji data-i=clipboard-list></i> ${t('pg.dispatch')}${isDeptHead()?` — ${esc(deptNameByCode(my))}`:''}${monthFiltered?' <span class="badge bdg-blue">الشهر الحالي</span>':''}</h3><button class="btn btn-gold" data-karim-action="showDispatchRequestModal"><i class=ji data-i=package></i> ${t('dsp.new')}</button></div>${chainBanner}<div class="fr" style="gap:8px;flex-wrap:wrap;margin-bottom:10px"><div class="fg"><label>من</label><input type="date" value="${window.dispFrom||''}" data-karim-action="renderPage" data-karim-event="change" data-karim-set="dispFrom:@value"></div><div class="fg"><label>إلى</label><input type="date" value="${window.dispTo||''}" data-karim-action="renderPage" data-karim-event="change" data-karim-set="dispTo:@value"></div>${monthFiltered?`<button class="btn btn-sm" data-karim-action="renderPage" data-karim-set="dispFrom:'',dispTo:''">عرض الكل (قديم + جديد)</button>`:''}</div>${canDecideChef||canDecideWarehouse?`<div class="fr u-mb12"><span class="badge bdg-orange"><i class=ji data-i=chef-hat></i> ${t('dsp.chefWait')}: ${chefQueue}</span><span class="badge bdg-blue"><i class=ji data-i=package></i> ${t('dsp.whWait')}: ${warehouseQueue}</span></div>`:''}<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=clipboard-list></i> ${isDeptHead()?t('dsp.mine'):t('dsp.all')}</h3><div class="u-row-wrap"><button class="btn btn-blue btn-sm" data-karim-action="dispPrintList"><i class=ji data-i=printer></i> طباعة الكشف</button></div></div><div class="tbl-scroll"><table><thead><tr><th>#</th><th>${t('dsp.dept')}</th><th>${t('dsp.items')}</th><th>${t('dsp.date')}</th><th>${t('dsp.stage')}</th><th>${t('dsp.status')}</th><th>${t('dsp.by')}</th><th>${t('dsp.actions')}</th></tr></thead><tbody>${dispatches.map((d,idx)=>{const canWarehouse=d.status==='pending'&&!d.needsChefApproval||d.status==='chef_approved';return `<tr><td>${idx+1}</td><td class="fw-bold">${esc(d.deptName)}</td><td>${(d.items||[]).map(i=>`${esc(i.itemName)} (${fN(i.qty)})`).join(', ')}</td><td>${fD(d.date)}</td><td>${esc(dispatchChainStage(d))}</td><td><span class="badge ${dispatchStatusClass(d.status)}">${dispatchStatusLabel(d.status)}</span></td><td>${esc(d.createdBy||'—')}${d.creatorRole==='dept_head'?' <span class="badge bdg-purple">رئيس قسم</span>':''}</td><td style="display:flex;gap:6px;flex-wrap:wrap">${d.status==='pending'&&d.needsChefApproval&&canDecideChef?`<button class="btn btn-green btn-sm" data-karim-action="openChefApproveModal" data-karim-arg0="${esc(String(d.id))}"><i class=ji data-i=chef-hat></i> اعتماد الشيف</button><button type="button" class="btn btn-red btn-sm" data-karim-action="openChefRejectModal" data-karim-arg0="${esc(String(d.id))}"><i class=ji data-i=circle-x></i> رفض الشيف</button>`:''}${canWarehouse&&canDecideWarehouse&&!['rejected'].includes(d.status)?`<button class="btn btn-green btn-sm" data-karim-action="openApproveModal" data-karim-arg0="${esc(String(d.id))}"><i class=ji data-i=circle-check></i> اعتماد المخازن</button><button type="button" class="btn btn-red btn-sm" data-karim-action="openRejectModal" data-karim-arg0="${esc(String(d.id))}"><i class=ji data-i=circle-x></i> رفض وتوقيع</button>`:''}${((d.status==='pending'&&canDecideWarehouse)||role==='admin')?`<button type="button" class="btn btn-sm ${role==='admin'&&d.status!=='pending'?'btn-red':''}" data-karim-action="deleteDispatch" data-karim-arg0="${esc(String(d.id))}" data-karim-arg1="${esc(String(d.status))}" title="${role==='admin'?'حذف نهائي للأدمن (أي حالة — موثّق باسمك)':'حذف طلب معلّق لم يُعتمد بعد'}"><i class=ji data-i=trash></i> ${role==='admin'&&d.status!=='pending'?'حذف نهائي (أدمن)':'حذف'}</button>`:''}${d.status==='approved'&&(canReceive||(isDeptHead()&&String(d.deptCode)===String(my)))?`<button type="button" class="btn btn-gold btn-sm" data-karim-action="openReceiveModal" data-karim-arg0="${esc(String(d.id))}"><i class=ji data-i=inbox></i> استلام وتوقيع</button>`:''}${canEditDispatch(d)?`<button type="button" class="btn btn-blue btn-sm" data-karim-action="openDispatchEditModal" data-karim-arg0="${esc(String(d.id))}"><i class=ji data-i=pencil></i> تعديل</button>`:''}<button type="button" class="btn btn-blue btn-sm" data-karim-action="viewDispatchDetails" data-karim-arg0="${esc(String(d.id))}"><i class=ji data-i=eye></i> عرض</button>${['approved','partially_received','received'].includes(d.status)?`<button type="button" class="btn btn-sm" data-karim-action="printDispatchNote" data-karim-arg0="${esc(String(d.id))}"><i class=ji data-i=printer></i> طباعة</button>`:''}</td></tr>`;}).join('')||'<tr><td colspan="8" class="u-empty">لا توجد طلبات</td></tr>'}</tbody></table></div></div>${renderKitchenReturnsSection()}`;
+const canReceive=['admin','manager','warehouse','kitchen','sous_chef','dept_head'].includes(role);
+return `<div class="u-row-between"><h3 class="u-gold-strong"><i class=ji data-i=clipboard-list></i> ${t('pg.dispatch')}${isDeptHead()?` — ${esc(deptNameByCode(my))}`:''}${monthFiltered?' <span class="badge bdg-blue">الشهر الحالي</span>':''}</h3><button class="btn btn-gold" data-karim-action="showDispatchRequestModal"><i class=ji data-i=package></i> ${t('dsp.new')}</button></div>${chainBanner}<div class="fr" style="gap:8px;flex-wrap:wrap;margin-bottom:10px"><div class="fg"><label>من</label><input type="date" value="${window.dispFrom||''}" data-karim-action="renderPage" data-karim-event="change" data-karim-set="dispFrom:@value"></div><div class="fg"><label>إلى</label><input type="date" value="${window.dispTo||''}" data-karim-action="renderPage" data-karim-event="change" data-karim-set="dispTo:@value"></div>${monthFiltered?`<button class="btn btn-sm" data-karim-action="renderPage" data-karim-set="dispFrom:'',dispTo:''">عرض الكل (قديم + جديد)</button>`:''}</div>${canDecideChef||canDecideWarehouse?`<div class="fr u-mb12"><span class="badge bdg-orange"><i class=ji data-i=chef-hat></i> ${t('dsp.chefWait')}: ${chefQueue}</span><span class="badge bdg-blue"><i class=ji data-i=package></i> ${t('dsp.whWait')}: ${warehouseQueue}</span></div>`:''}<div class="tbl-wrap"><div class="tbl-hd"><h3><i class=ji data-i=clipboard-list></i> ${isDeptHead()?t('dsp.mine'):t('dsp.all')}</h3><div class="u-row-wrap"><button class="btn btn-blue btn-sm" data-karim-action="dispPrintList"><i class=ji data-i=printer></i> طباعة الكشف</button></div></div><div class="tbl-scroll"><table><thead><tr><th>#</th><th>${t('dsp.dept')}</th><th>${t('dsp.items')}</th><th>${t('dsp.date')}</th><th>${t('dsp.stage')}</th><th>${t('dsp.status')}</th><th>${t('dsp.by')}</th><th>${t('dsp.actions')}</th></tr></thead><tbody>${dispatches.map((d,idx)=>{return `<tr><td>${idx+1}</td><td class="fw-bold">${esc(d.deptName)}</td><td>${(d.items||[]).map(i=>`${esc(i.itemName)} (${fN(i.qty)})`).join(', ')}</td><td>${fD(d.date)}</td><td>${esc(dispatchChainStage(d))}</td><td><span class="badge ${dispatchStatusClass(d.status)}">${dispatchStatusLabel(d.status)}</span></td><td>${esc(d.createdBy||'—')}${d.creatorRole==='dept_head'?' <span class="badge bdg-purple">رئيس قسم</span>':''}</td><td style="display:flex;gap:6px;flex-wrap:wrap">${canDecideChef&&canChefDecideDispatch(d)?`<button class="btn btn-green btn-sm" data-karim-action="openChefApproveModal" data-karim-arg0="${esc(String(d.id))}"><i class=ji data-i=chef-hat></i> اعتماد الشيف</button><button type="button" class="btn btn-red btn-sm" data-karim-action="openChefRejectModal" data-karim-arg0="${esc(String(d.id))}"><i class=ji data-i=circle-x></i> رفض الشيف</button>`:''}${canDecideWarehouse&&canWarehouseDecideDispatch(d)?`<button class="btn btn-green btn-sm" data-karim-action="openApproveModal" data-karim-arg0="${esc(String(d.id))}"><i class=ji data-i=circle-check></i> اعتماد المخازن</button><button type="button" class="btn btn-red btn-sm" data-karim-action="openRejectModal" data-karim-arg0="${esc(String(d.id))}"><i class=ji data-i=circle-x></i> رفض وتوقيع</button>`:''}${canCancelDispatch(d)?`<button type="button" class="btn btn-red btn-sm" data-karim-action="openDispatchCancelModal" data-karim-arg0="${esc(String(d.id))}" title="إلغاء قبل صرف المخزون مع حفظ السجل"><i class=ji data-i=x-circle></i> إلغاء</button>`:''}${canReopenDispatch(d)?`<button type="button" class="btn btn-gold btn-sm" data-karim-action="openDispatchReopenModal" data-karim-arg0="${esc(String(d.id))}" title="إعادة الإذن المعتمد غير المستلم للمراجعة بتوقيع"><i class=ji data-i=undo></i> إعادة للمراجعة</button>`:''}${canVoidDispatch(d)?`<button type="button" class="btn btn-red btn-sm" data-karim-action="openDispatchVoidModal" data-karim-arg0="${esc(String(d.id))}" title="إبطال المستند المرحّل وعكس أثره بتوقيع"><i class=ji data-i=ban></i> إبطال</button>`:''}${canReceive&&canReceiveDispatch(d)?`<button type="button" class="btn btn-gold btn-sm" data-karim-action="openReceiveModal" data-karim-arg0="${esc(String(d.id))}"><i class=ji data-i=inbox></i> استلام وتوقيع</button>`:''}${canEditDispatch(d)?`<button type="button" class="btn btn-blue btn-sm" data-karim-action="openDispatchEditModal" data-karim-arg0="${esc(String(d.id))}"><i class=ji data-i=pencil></i> تعديل</button>`:''}<button type="button" class="btn btn-blue btn-sm" data-karim-action="viewDispatchDetails" data-karim-arg0="${esc(String(d.id))}"><i class=ji data-i=eye></i> عرض</button>${['approved','partially_received','received','cancelled','voided'].includes(d.status)?`<button type="button" class="btn btn-sm" data-karim-action="printDispatchNote" data-karim-arg0="${esc(String(d.id))}"><i class=ji data-i=printer></i> طباعة</button>`:''}</td></tr>`;}).join('')||'<tr><td colspan="8" class="u-empty">لا توجد طلبات</td></tr>'}</tbody></table></div></div>${renderKitchenReturnsSection()}`;
 }
 // ═══ طلبات شراء النواقص: بيتها المخزن — أمين المخزن ينشئ ← الشيف يوقّع ← المدير العام يعتمد ← المخزن يستلم ═══
 // (2026-10-01 بطلب المالك: الإنشاء من المخزن حصرًا — kitchen/dept_head للعرض والاعتماد فقط)
 function dispPrintList(){
 const rows=(STATE.dispatches||[]).filter(d=>{const dd=String(d.date||'').slice(0,10);if(window.dispFrom&&dd<window.dispFrom){return false;}if(window.dispTo&&dd>window.dispTo){return false;}return true;}).slice().reverse();
-const body=rows.map((d,i)=>`<tr><td>${rows.length-i}</td><td>${esc(d.deptName||'—')}</td><td>${(d.items||[]).map(x=>`${esc(x.itemName)} (${fN(x.approvedQty??x.qty)})`).join('، ')}</td><td>${fD(d.date)}</td><td>${esc(d.status||'—')}</td></tr>`).join('');
+const body=rows.map((d,i)=>`<tr><td>${rows.length-i}</td><td>${esc(d.deptName||'—')}</td><td>${(d.items||[]).map(x=>`${esc(x.itemName)} (${fN(x.approvedQty??x.qty)})`).join('، ')}</td><td>${fD(d.date)}</td><td>${esc(dispatchStatusText(d.status))}</td></tr>`).join('');
 ysPrintReport('كشف أذونات الصرف', `${window.dispFrom||window.dispTo?`من ${window.dispFrom||'البداية'} إلى ${window.dispTo||'اليوم'}`:'كل الفترة'}`,
 [['عدد الأذون', fN(rows.length)]], ['#','القسم','الأصناف','التاريخ','الحالة'], body);
 }
@@ -320,25 +397,75 @@ closeModal(); renderPage(); toast('حُذف الطلب نهائيًا','info');
 }catch(e){ toast(e.message||'تعذر حذف الطلب','error'); }
 finally{ hideLoad(); }
 }
-async function deleteDispatch(id, forceStatus){
-const role = STATE.currentUser?.role;
-const dSelf=(STATE.dispatches||[]).find(x=>String(x.id)===String(id));
-const isCreatorPending = dSelf && String(dSelf.creatorUserId||'')===String(STATE.currentUser?.id||'') && dSelf.status==='pending';
-if(!['admin','manager','warehouse'].includes(role) && !isCreatorPending){ toast('الحذف للمخازن والإدارة أو صاحب الطلب المعلّق','error'); return; }
-const isAdmin = role === 'admin';
-const isSigned = forceStatus && forceStatus !== 'pending';
-if(isAdmin && isSigned){
-if(!confirm('⚠️ حذف نهائي لإذن صرف ' + forceStatus + ' ؟\nهذا مستند مالي موقّع — سيُحذف نهائيًا ويُوثّق باسمك في سجل الأدمن.\nهل أنت متأكد؟')) {return;}
-}else{
-if(!confirm('حذف طلب الصرف المعلق نهائيًا؟ (المعتمد/المستلم لا يُحذف إلا بواسطة الأدمن — حذف نهائي موثّق)')) {return;}
+async function refreshInventoryRows(ids){
+const clean=[...new Set((ids||[]).map(value=>Number(value)).filter(value=>Number.isInteger(value)&&value>0))];
+if(!clean.length){return true;}
+const results=await Promise.allSettled(clean.map(id=>apiFetch(`/inventory/${encodeURIComponent(id)}`)));
+let ok=true;
+results.forEach((result,index)=>{
+if(result.status==='fulfilled'){upsertStateEntity('inventory',result.value?.data||result.value);}
+else{ok=false;console.warn('[dispatch_inventory_refresh]',clean[index],result.reason?.message||result.reason);}
+});
+return ok;
 }
-try{ showLoad();
-await apiFetch(`/dispatches/${encodeURIComponent(id)}`, { method: 'DELETE' });
-STATE.dispatches=(STATE.dispatches||[]).filter(x=>String(x.id)!==String(id));
-closeModal(); renderPage(); toast(isAdmin && isSigned ? 'حُذف إذن الصرف نهائيًا (موثّق باسم الأدمن)' : 'حُذف طلب الصرف المعلق','info');
-}catch(e){ toast(e.message||'تعذر حذف طلب الصرف','error'); }
-finally{ hideLoad(); }
+async function refreshExpenseRows(ids){
+if(!['admin','manager','accountant','auditor'].includes(STATE.currentUser?.role)){return true;}
+const clean=[...new Set((ids||[]).map(value=>Number(value)).filter(value=>Number.isInteger(value)&&value>0))];
+if(!clean.length){return true;}
+const results=await Promise.allSettled(clean.map(id=>apiFetch(`/expenses/${encodeURIComponent(id)}`)));
+let ok=true;
+results.forEach((result,index)=>{
+if(result.status==='fulfilled'){upsertStateEntity('expenses',result.value?.data||result.value);}
+else{ok=false;console.warn('[dispatch_expense_refresh]',clean[index],result.reason?.message||result.reason);}
+});
+return ok;
 }
+function openDispatchCancelModal(id){
+const d=(STATE.dispatches||[]).find(x=>String(x.id)===String(id));if(!d){return;}
+if(!canCancelDispatch(d)){toast('الإلغاء متاح قبل صرف المخزون وبالصلاحية المحددة فقط','error');return;}
+showModal(`<h3><i class=ji data-i=x-circle></i> إلغاء إذن الصرف #${esc(String(d.id))}</h3><div class="workflow-banner">سيُحفظ الإذن بحالة <strong>ملغى</strong> مع سبب الإلغاء وسجل من قام به. الإلغاء متاح قبل صرف المخزون فقط.</div><div class="fg"><label>سبب الإلغاء *</label><textarea id="dispatchCancelReason" rows="3" maxlength="500" placeholder="اذكر سبب الإلغاء بوضوح"></textarea></div><div class="modal-footer"><button class="btn" data-karim-action="closeModal">تراجع</button><button class="btn btn-red" data-karim-action="confirmDispatchCancel" data-karim-arg0="${esc(String(id))}"><i class=ji data-i=x-circle></i> تأكيد الإلغاء</button></div>`);
+}
+async function confirmDispatchCancel(id){
+const d=(STATE.dispatches||[]).find(x=>String(x.id)===String(id));if(!d){return;}
+if(!canCancelDispatch(d)){toast('الإلغاء متاح قبل صرف المخزون وبالصلاحية المحددة فقط','error');return;}
+const reason=document.getElementById('dispatchCancelReason')?.value.trim();
+if(!reason){toast('أدخل سبب إلغاء إذن الصرف','error');return;}
+try{showLoad();const result=await apiFetch(`/warehouse/dispatches/${encodeURIComponent(id)}/cancel`,{method:'POST',headers:dispatchOperationHeaders('cancel',id),body:JSON.stringify({reason})});
+upsertStateEntity('dispatches',{...d,...(result.dispatch||{})});closeModal();renderPage();toast('تم إلغاء إذن الصرف وحفظ سجله','info');
+}catch(e){toast(e.message||'تعذر إلغاء إذن الصرف','error');}finally{hideLoad();}
+}
+function openSignedDispatchLifecycleModal(id,action){
+const d=(STATE.dispatches||[]).find(x=>String(x.id)===String(id));if(!d){return;}
+const allowed=action==='reopen'?canReopenDispatch(d):canVoidDispatch(d);
+if(!allowed){toast(action==='reopen'?'إعادة الإذن للمراجعة متاحة للإدارة وللإذن المعتمد الذي لم يبدأ استلامه':'الإبطال متاحة للإدارة للمستند المرحّل فقط','error');return;}
+const reopen=action==='reopen',title=reopen?'إعادة إذن الصرف للمراجعة':'إبطال إذن الصرف',warning=reopen
+?'سيُعكس صرف المخزون والمصروف المرتبط، ويعود الإذن إلى حالة انتظار الاعتماد دون حذف سجله. لا يُسمح بذلك بعد بدء أي استلام.'
+:'سيُعكس أثر الصرف والاستلام والمصروف المرتبط مع حفظ الإذن بحالة باطل. يجب إبطال أي مرتجع نشط مرتبط أولًا، وقد يُرفض العكس إذا استُهلكت المواد.';
+showModal(`<h3><i class=ji data-i=${reopen?'undo':'ban'}></i> ${title} #${esc(String(d.id))}</h3><div class="workflow-banner">${warning}</div><div class="fg"><label>${reopen?'سبب إعادة الإذن للمراجعة':'سبب الإبطال'} *</label><textarea id="dispatchLifecycleReason" rows="3" maxlength="500" placeholder="سبب موثق يظهر في سجل المستند"></textarea></div>${signaturePadMarkup('dispatchLifecycleSignature',reopen?'توقيع الإدارة على إعادة الإذن للمراجعة':'توقيع الإدارة على إبطال الإذن')}<div class="modal-footer"><button class="btn" data-karim-action="closeModal">تراجع</button><button class="btn ${reopen?'btn-gold':'btn-red'}" data-karim-action="${reopen?'confirmDispatchReopen':'confirmDispatchVoid'}" data-karim-arg0="${esc(String(id))}"><i class=ji data-i=${reopen?'undo':'ban'}></i> ${reopen?'تأكيد إعادة الإذن وتوقيع':'تأكيد الإبطال وتوقيع'}</button></div>`);
+afterModalSignatureInit('dispatchLifecycleSignature');
+}
+function openDispatchReopenModal(id){openSignedDispatchLifecycleModal(id,'reopen');}
+function openDispatchVoidModal(id){openSignedDispatchLifecycleModal(id,'void');}
+async function confirmSignedDispatchLifecycle(id,action){
+const d=(STATE.dispatches||[]).find(x=>String(x.id)===String(id));if(!d){return;}
+const allowed=action==='reopen'?canReopenDispatch(d):canVoidDispatch(d);
+if(!allowed){toast(action==='reopen'?'إعادة الإذن للمراجعة متاحة للإدارة وللإذن المعتمد الذي لم يبدأ استلامه':'الإبطال متاحة للإدارة للمستند المرحّل فقط','error');return;}
+const reason=document.getElementById('dispatchLifecycleReason')?.value.trim();
+if(!reason){toast(action==='reopen'?'أدخل سبب إعادة الإذن للمراجعة':'أدخل سبب إبطال الإذن','error');return;}
+const signatureData=readSignaturePad('dispatchLifecycleSignature');if(!signatureData){return;}
+const signerName=readSignerName('dispatchLifecycleSignature');if(!signerName){return;}
+try{showLoad();const result=await apiFetch(`/warehouse/dispatches/${encodeURIComponent(id)}/${action}`,{method:'POST',headers:dispatchOperationHeaders(action,id),body:JSON.stringify({reason,signatureData,signerName})});
+upsertStateEntity('dispatches',{...d,...(result.dispatch||{})});
+const inventoryIds=[...(result.movements||[]).map(row=>row.inventoryId??row.itemId),...(d.approvedItems||[]).map(item=>item.itemId)];
+const expenseIds=(d.approvedItems||[]).map(item=>item.expenseId);
+const refreshed=await Promise.all([refreshInventoryRows(inventoryIds),refreshExpenseRows(expenseIds)]);
+closeModal();renderPage();
+if(refreshed.every(Boolean)){toast(action==='reopen'?'تمت إعادة الإذن للمراجعة وعكس أثره':'تم إبطال الإذن وعكس أثره مع حفظ السجل','success');}
+else{toast('تم تنفيذ العملية، لكن تعذر تحديث بعض الأرصدة أو المصروفات — حدّث الصفحة','warning');}
+}catch(e){toast(e.message||(action==='reopen'?'تعذر إعادة الإذن للمراجعة':'تعذر إبطال الإذن'),'error');}finally{hideLoad();}
+}
+async function confirmDispatchReopen(id){await confirmSignedDispatchLifecycle(id,'reopen');}
+async function confirmDispatchVoid(id){await confirmSignedDispatchLifecycle(id,'void');}
 // ─── تعديل إذن الصرف قبل اعتماد المخازن (طلب المالك 2026-10-04) ───
 function canEditDispatch(d){
 if(!d||!['pending','chef_approved'].includes(d.status)){return false;}
@@ -471,7 +598,7 @@ if(!items.length){toast('اكتب صنفًا واحدًا على الأقل با
 const reason=document.getElementById('deReason')?.value.trim()||'';
 try{
 showLoad();
-const res=await apiFetch(`/warehouse/dispatches/${encodeURIComponent(id)}/edit`,{method:'PUT',body:JSON.stringify({items,deptCode:(document.getElementById('deDept')?.value)||undefined,reason})});
+const res=await apiFetch(`/warehouse/dispatches/${encodeURIComponent(id)}/edit`,{method:'PUT',headers:dispatchOperationHeaders('edit',id),body:JSON.stringify({items,deptCode:(document.getElementById('deDept')?.value)||undefined,reason})});
 const i=(STATE.dispatches||[]).findIndex(x=>String(x.id)===String(id));
 if(i>-1&&res.dispatch){STATE.dispatches[i]=res.dispatch;}
 closeModal();renderPage();
@@ -646,32 +773,34 @@ w.document.close();
 function renderKitchenReturnsSection(){
 // رئيس القسم يرى مرتجعات قسمه فقط
 const returns = (STATE.kitchenReturns||[]).slice().reverse().filter(r=>isDeptHead()?String(r.deptCode)===String(myDeptCode()):true);
-const totalValue = returns.reduce((sum,item)=>sum+(parseFloat(item.totalValue)||0),0);
+const totalValue = returns.filter(r=>r.status!=='voided'&&!r.voidedAt).reduce((sum,item)=>sum+(parseFloat(item.totalValue)||0),0);
 const canReturn=['admin','manager','warehouse','kitchen','sous_chef','dept_head'].includes(STATE.currentUser?.role);
-const canDelete=['admin','manager','warehouse'].includes(STATE.currentUser?.role);
+const canVoid=['admin','manager','warehouse'].includes(STATE.currentUser?.role);
 return `
 <div class="tbl-wrap" style="margin-top:18px">
 <div class="tbl-hd"><h3><i class=ji data-i=undo></i> سجل المرتجعات</h3>${canReturn?`<button class="btn btn-gold btn-sm" data-karim-action="showKitchenReturnModal"><i class=ji data-i=undo></i> إرجاع جديد</button>`:''}</div>
 <div class="tbl-scroll">
 <table>
-<thead><tr><th>#</th><th>القسم</th><th>طلب الصرف</th><th>الأصناف</th><th>السبب</th><th>التاريخ</th><th>القيمة</th>${canDelete?'<th>حذف</th>':''}</tr></thead>
+<thead><tr><th>#</th><th>القسم</th><th>طلب الصرف</th><th>الأصناف</th><th>السبب</th><th>التاريخ</th><th>القيمة</th><th>الحالة</th>${canVoid?'<th>الإبطال</th>':''}</tr></thead>
 <tbody>
 ${returns.map((ret,idx)=>`<tr>
 <td>${idx+1}</td>
 <td class="fw-bold">${esc(ret.deptName||'—')}</td>
-<td class="c-gold">#${ret.dispatchId||'—'}</td>
+<td class="c-gold">#${esc(String(ret.dispatchId||'—'))}</td>
 <td>${(ret.items||[]).map(item=>`${esc(item.name||item.itemName)} (${fN(item.qty)})`).join(', ')}</td>
 <td>${esc(ret.reason||'—')}</td>
 <td>${fD(ret.date)}</td>
 <td class="c-blue fw-bold">${fC(ret.totalValue||0)}</td>
-${canDelete?`<td><button class="btn btn-red btn-sm" data-karim-action="deleteKitchenReturn" data-karim-arg0="${esc(ret.id)}" title="حذف المرتجع"><i class=ji data-i=trash></i></button></td>`:''}
-</tr>`).join('')||'<tr><td colspan="7" class="u-empty-sm">لا توجد مرتجعات</td></tr>'}
+<td><span class="badge ${ret.status==='voided'||ret.voidedAt?'bdg-purple':'bdg-green'}">${ret.status==='voided'||ret.voidedAt?'ملغى — أثر عكسي':'معتمد'}</span></td>
+${canVoid?`<td>${canVoidKitchenReturn(ret)?`<button class="btn btn-red btn-sm" data-karim-action="openKitchenReturnVoidModal" data-karim-arg0="${esc(String(ret.id))}" title="إبطال المرتجع وعكس أثره مع حفظ السجل"><i class=ji data-i=ban></i> إبطال</button>`:'<span class="text-muted">تم الإبطال</span>'}</td>`:''}
+</tr>`).join('')||`<tr><td colspan="${canVoid?9:8}" class="u-empty-sm">لا توجد مرتجعات</td></tr>`}
 </tbody>
 <tfoot>
 <tr>
-<td colspan="6" class="u-num-l"><i class=ji data-i=banknote></i> الإجمالي المعكوس</td>
+<td colspan="6" class="u-num-l"><i class=ji data-i=banknote></i> الإجمالي المعكوس النشط</td>
 <td class="c-blue fw-bold">${fC(totalValue)}</td>
-${canDelete?'<td></td>':''}
+<td></td>
+${canVoid?'<td></td>':''}
 </tr>
 </tfoot>
 </table>
@@ -679,16 +808,27 @@ ${canDelete?'<td></td>':''}
 </div>
 `;
 }
-async function deleteKitchenReturn(id){
-if(!confirm('تأكيد حذف سجل المرتجع؟ لا يمكن التراجع.')) {return;}
-try{
-showLoad();
-const result=await apiFetch('/warehouse/returns/'+encodeURIComponent(id),{method:'DELETE'});
-upsertStateEntity('kitchenReturns',result); // سيزيله من STATE
-renderPage();
-toast('تم حذف سجل المرتجع','success');
-}catch(e){ toast(e.message||'تعذر الحذف','error'); }
-finally{ hideLoad(); }
+function openKitchenReturnVoidModal(id){
+const ret=(STATE.kitchenReturns||[]).find(row=>String(row.id)===String(id));if(!ret){return;}
+if(!canVoidKitchenReturn(ret)){toast('إبطال المرتجعات للإدارة والمخازن، ولا يُعاد إبطال المرتجع الملغى','error');return;}
+showModal(`<h3><i class=ji data-i=ban></i> إبطال المرتجع #${esc(String(ret.id))}</h3><div class="workflow-banner">سيُعكس أثر المرتجع على المخزون والمصروف، ويُحفظ السجل بحالة ملغى. قد يُرفض العكس إذا كانت الكميات قد استُهلكت أو تحركت بعد الإرجاع.</div><div class="fg"><label>سبب الإبطال *</label><textarea id="kitchenReturnVoidReason" rows="3" maxlength="500" placeholder="سبب موثق يظهر في سجل المرتجع"></textarea></div><div class="modal-footer"><button class="btn" data-karim-action="closeModal">تراجع</button><button class="btn btn-red" data-karim-action="confirmKitchenReturnVoid" data-karim-arg0="${esc(String(id))}"><i class=ji data-i=ban></i> تأكيد الإبطال</button></div>`);
+}
+async function confirmKitchenReturnVoid(id){
+const ret=(STATE.kitchenReturns||[]).find(row=>String(row.id)===String(id));if(!ret){return;}
+if(!canVoidKitchenReturn(ret)){toast('إبطال المرتجعات للإدارة والمخازن، ولا يُعاد إبطال المرتجع الملغى','error');return;}
+const reason=document.getElementById('kitchenReturnVoidReason')?.value.trim();
+if(!reason){toast('أدخل سبب إبطال المرتجع','error');return;}
+try{showLoad();const result=await apiFetch(`/warehouse/returns/${encodeURIComponent(id)}/void`,{method:'POST',headers:dispatchOperationHeaders('return-void',id),body:JSON.stringify({reason})});
+upsertStateEntity('kitchenReturns',{...ret,...(result.return||{})});
+(result.stockChanges||[]).forEach(row=>upsertStateEntity('inventory',row));
+(result.movements||result.transactions||[]).forEach(row=>upsertStateEntity('inventoryTx',row));
+(result.expenses||[]).forEach(row=>upsertStateEntity('expenses',row));
+const itemIds=(result.stockChanges||[]).length?[]:(ret.items||[]).map(item=>item.itemId??item.item_id),expenseIds=(result.expenses||[]).length?[]:(ret.items||[]).map(item=>item.expenseId);
+const refreshed=await Promise.all([refreshInventoryRows(itemIds),refreshExpenseRows(expenseIds)]);
+closeModal();renderPage();
+if(refreshed.every(Boolean)){toast(result.message||'تم إبطال المرتجع وعكس أثره مع حفظ السجل','success');}
+else{toast('تم إبطال المرتجع، لكن تعذر تحديث بعض الأرصدة أو المصروفات — حدّث الصفحة','warning');}
+}catch(e){toast(e.message||'تعذر إبطال المرتجع','error');}finally{hideLoad();}
 }
 function getDispatchDepartments(){
 const departments=[...(STATE.departments||[])];
@@ -938,6 +1078,7 @@ addNotification('طلب صرف جديد',`طلب صرف من ${dept?.name||'قس
 function openChefApproveModal(id){
 const d=STATE.dispatches.find(x=>String(x.id)===String(id));
 if(!d){return;}
+if(!ensureDispatchAction(d,canChefDecideDispatch(d),'اعتماد الشيف متاح لطلب رئيس قسم معلّق وبالصلاحية المحددة')){return;}
 const warnings=(d.items||[]).map(item=>{const inv=STATE.inventory.find(i=>i.name===item.itemName);const avail=inv?Number(inv.qty):0;const isCw=Boolean(inv?.catch_weight_enabled);const req=Number(item.qty)||0;return {item,avail,req,short:isCw?!(avail>0):avail<req,isCw};});
 // طلب المالك 2026-10-05: الاعتماد محجوب نهائيًا لو صنف بلا رصيد — والخادم يحسم كذلك
 const stockBlocked=warnings.some(w=>w.short);
@@ -946,10 +1087,12 @@ showModal(`<h3><i class=ji data-i=chef-hat></i> اعتماد الشيف العم
 afterModalSignatureInit('chefApprovalSignature');
 }
 async function confirmChefApprove(id){
+const d=(STATE.dispatches||[]).find(x=>String(x.id)===String(id));if(!d){return;}
+if(!ensureDispatchAction(d,canChefDecideDispatch(d),'اعتماد الشيف متاح لطلب رئيس قسم معلّق وبالصلاحية المحددة')){return;}
 const signatureData=readSignaturePad('chefApprovalSignature'); if(!signatureData){return;}
 const signerName=readSignerName('chefApprovalSignature'); if(!signerName){return;}
 try{showLoad();
-const result=await apiFetch(`/warehouse/dispatches/${encodeURIComponent(id)}/chef-approve`,{method:'POST',body:JSON.stringify({notes:document.getElementById('chefNotes')?.value.trim()||'',signatureData,signerName})});
+const result=await apiFetch(`/warehouse/dispatches/${encodeURIComponent(id)}/chef-approve`,{method:'POST',headers:dispatchOperationHeaders('chef-approve',id),body:JSON.stringify({notes:document.getElementById('chefNotes')?.value.trim()||'',signatureData,signerName})});
 upsertStateEntity('dispatches',result.dispatch);closeModal();renderPage();buildNav();
 toast('تم اعتماد الطلب وإحالته للمخازن','success');
 addNotification('اعتماد الشيف',`إذن #${id} صار بانتظار صرف المخازن`,'success');
@@ -958,16 +1101,19 @@ addNotification('اعتماد الشيف',`إذن #${id} صار بانتظار �
 function openChefRejectModal(id){
 const d=STATE.dispatches.find(x=>String(x.id)===String(id));
 if(!d){return;}
+if(!ensureDispatchAction(d,canChefDecideDispatch(d),'رفض الشيف متاح لطلب رئيس قسم معلّق وبالصلاحية المحددة')){return;}
 showModal(`<h3><i class=ji data-i=circle-x></i> رفض الشيف العمومي — ${esc(d.deptName)}</h3><div style="background:rgba(231,76,60,0.1);padding:12px;border-radius:var(--r);margin-bottom:16px"><strong>الأصناف:</strong> ${(d.items||[]).map(i=>esc(i.itemName)).join('، ')}</div><div class="fg"><label>سبب الرفض</label><textarea id="chefRejReason" rows="3" placeholder="مثال: الكمية كبيرة على احتياج القسم / الصنف غير مناسب"></textarea></div>${signaturePadMarkup('chefRejectionSignature','توقيع الشيف العمومي على الرفض')}<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-red" data-karim-action="confirmChefReject" data-karim-arg0="${esc(String(id))}"><i class=ji data-i=circle-x></i> تأكيد الرفض</button></div>`);
 afterModalSignatureInit('chefRejectionSignature');
 }
 async function confirmChefReject(id){
+const d=(STATE.dispatches||[]).find(x=>String(x.id)===String(id));if(!d){return;}
+if(!ensureDispatchAction(d,canChefDecideDispatch(d),'رفض الشيف متاح لطلب رئيس قسم معلّق وبالصلاحية المحددة')){return;}
 const reason=document.getElementById('chefRejReason')?.value.trim();
 if(!reason){ toast('أدخل سبب الرفض','error'); return; }
 const signatureData=readSignaturePad('chefRejectionSignature'); if(!signatureData){return;}
 const signerName=readSignerName('chefRejectionSignature'); if(!signerName){return;}
 try{showLoad();
-const result=await apiFetch(`/warehouse/dispatches/${encodeURIComponent(id)}/chef-reject`,{method:'POST',body:JSON.stringify({reason,signatureData,signerName})});
+const result=await apiFetch(`/warehouse/dispatches/${encodeURIComponent(id)}/chef-reject`,{method:'POST',headers:dispatchOperationHeaders('chef-reject',id),body:JSON.stringify({reason,signatureData,signerName})});
 upsertStateEntity('dispatches',result.dispatch);closeModal();renderPage();buildNav();
 toast('تم رفض الطلب وسيظهر لرئيس القسم','warning');
 addNotification('رفض الشيف',`إذن #${id} مرفوض: ${reason}`,'warning');
@@ -1009,7 +1155,7 @@ while(ctx.measureText(name).width > canvas.width-130 && size>30){ size-=4; ctx.f
 const nameW=Math.min(ctx.measureText(name).width, canvas.width-110);
 ctx.fillStyle='#1f2430';
 ctx.fillText(name, canvas.width/2, 88);
-ctx.strokeStyle='#b45309'; ctx.lineWidth=2.5; ctx.lineCap='round';
+ctx.strokeStyle='#0f5b46'; ctx.lineWidth=2.5; ctx.lineCap='round';
 const uy=148;
 ctx.beginPath();
 ctx.moveTo(canvas.width/2 - nameW/2, uy);
@@ -1054,38 +1200,43 @@ paintTypedSignature(id);
 return state.canvas.toDataURL('image/png');
 }
 function afterModalSignatureInit(...ids){setTimeout(()=>ids.forEach(initSignaturePad),0);}
-function dispatchStatusLabel(status){return ({pending:`<i class=ji data-i=hourglass></i> ${t('st.pending')}`,chef_approved:`<i class=ji data-i=chef-hat></i> ${t('st.chefOk')}`,approved:`<i class=ji data-i=circle-check></i> ${t('st.approved')}`,partially_received:`<i class=ji data-i=dot-orange></i> ${t('st.partial')}`,received:`<i class=ji data-i=package></i> ${t('st.received')}`,rejected:`<i class=ji data-i=circle-x></i> ${t('st.rejected')}`})[status]||'—';}
-function dispatchStatusClass(status){return status==='pending'?'bdg-orange':status==='chef_approved'?'bdg-purple':(['approved','received'].includes(status)?'bdg-green':status==='partially_received'?'bdg-blue':'bdg-red');}
+function dispatchStatusText(status){return ({pending:t('st.pending'),chef_approved:t('st.chefOk'),approved:t('st.approved'),partially_received:t('st.partial'),received:t('st.received'),rejected:t('st.rejected'),cancelled:'ملغى',voided:'باطل'})[status]||'—';}
+function dispatchStatusLabel(status){return ({pending:`<i class=ji data-i=hourglass></i> ${dispatchStatusText(status)}`,chef_approved:`<i class=ji data-i=chef-hat></i> ${dispatchStatusText(status)}`,approved:`<i class=ji data-i=circle-check></i> ${dispatchStatusText(status)}`,partially_received:`<i class=ji data-i=dot-orange></i> ${dispatchStatusText(status)}`,received:`<i class=ji data-i=package></i> ${dispatchStatusText(status)}`,rejected:`<i class=ji data-i=circle-x></i> ${dispatchStatusText(status)}`,cancelled:'<i class=ji data-i=x-circle></i> ملغى',voided:'<i class=ji data-i=ban></i> باطل'})[status]||'—';}
+function dispatchStatusClass(status){return status==='pending'?'bdg-orange':status==='chef_approved'?'bdg-purple':(['approved','received'].includes(status)?'bdg-green':status==='partially_received'?'bdg-blue':status==='cancelled'?'bdg-red':status==='voided'?'bdg-purple':'bdg-red');}
 function openApproveModal(id){
 const d=STATE.dispatches.find(x=>String(x.id)===String(id));
 if(!d){return;}
+if(!ensureDispatchAction(d,canWarehouseDecideDispatch(d),'اعتماد المخازن متاح للحالة الصحيحة من سلسلة الاعتماد فقط')){return;}
 let itemsHtml=''; let total=0;
 d.items.forEach((item,idx)=>{
 const inv=STATE.inventory.find(i=>i.name===item.itemName);
 const maxQty=inv?inv.qty:0;
 const isCatchWeight = inv?.catch_weight_enabled;
 const pkgUom = inv?.packaging_uom||item.packagingUom||'كرتون';
+const requestedQty=dispatchRequestedQty(item);
 if(!isCatchWeight){
-const val=Math.min(item.qty,maxQty)*(inv?.avgCost||0);
+const approveCap=Math.min(requestedQty,Math.max(0,Number(maxQty)||0));
+const val=approveCap*(inv?.avgCost||0);
 total+=val;
 itemsHtml+=`<div style="background:var(--bg3);padding:15px;border-radius:var(--r);margin-bottom:10px">
 <div class="fr"><div><strong>${esc(item.itemName)}</strong></div>
 <div>المتاح: ${fN(maxQty)} | المطلوب: ${fN(item.qty)}${item.requestedUom&&item.requestedQty?` <span class="badge bdg-purple" title="القسم طلب بوحدة ثانوية — تم التحويل لوحدة المخزن">طلب بـ ${fN(item.requestedQty)} ${esc(item.requestedUom)}</span>`:''}</div></div>
 <div class="fr">
-<div class="fg"><label>الكمية المعتمدة</label><input type="number" id="apQty_${idx}" value="${Math.min(item.qty,maxQty)}" step="0.01" min="0" max="${maxQty}" data-karim-action="updateApproveTotal" data-karim-event="input"></div>
+<div class="fg"><label>الكمية المعتمدة</label><input type="number" id="apQty_${idx}" value="${approveCap}" step="0.01" min="0" max="${approveCap}" data-karim-action="updateApproveTotal" data-karim-event="input"></div>
 <div class="fg"><label>القيمة</label><div id="apVal_${idx}" class="c-gold fw-bold">${fC(val)}</div></div></div>
 ${maxQty<item.qty?`<div class="text-muted" style="color:var(--orange)"><i class=ji data-i=alert-triangle></i> الكمية المطلوبة أكبر من المتوفر</div>`:''}</div>`;
 return;
 }
 // Catch Weight: الطلب بالكرتون — أوزن وصرف بالكيلو الفعلي (بلا أي تقدير)
 const reqBoxes=Number(item.packagingQty??item.qty)||0;
+const requestedWeight=dispatchRequestedWeight(item,inv),weightCap=Math.min(requestedWeight,Math.max(0,Number(maxQty)||0));
 itemsHtml+=`<div style="background:var(--bg3);padding:15px;border-radius:var(--r);margin-bottom:10px">
 <div class="fr"><div><strong>${esc(item.itemName)}</strong> <span class="badge bdg-blue">وزن متغير</span></div>
-<div>المطلوب: <b class="c-gold">${fN(reqBoxes)} ${esc(pkgUom)}</b> | المتاح: ${fN(maxQty)} كجم</div></div>
+<div>المطلوب: <b class="c-gold">${fN(reqBoxes)} ${esc(pkgUom)}</b> (≈ ${fN(requestedWeight)} كجم) | المتاح: ${fN(maxQty)} كجم</div></div>
 <div class="fr">
 <input type="hidden" id="apQty_${idx}" value="0">
-<div class="fg"><label>عدد الكراتين المصروفة *</label><input type="number" id="apPkgQty_${idx}" value="${reqBoxes||''}" step="1" min="1" placeholder="عدد الكراتين" data-karim-action="updateApproveTotal" data-karim-event="input"></div>
-<div class="fg"><label>الوزن الفعلي بالكيلو (الميزان) *</label><input type="number" id="apWeight_${idx}" step="0.001" min="0.001" max="${maxQty}" placeholder="أوزن الكراتين وأدخل الوزن" data-karim-action="updateApproveTotal" data-karim-event="input"></div>
+<div class="fg"><label>عدد الكراتين المصروفة *</label><input type="number" id="apPkgQty_${idx}" value="${reqBoxes||''}" step="1" min="1" max="${reqBoxes}" placeholder="عدد الكراتين" data-karim-action="updateApproveTotal" data-karim-event="input"></div>
+<div class="fg"><label>الوزن الفعلي بالكيلو (الميزان) *</label><input type="number" id="apWeight_${idx}" step="0.001" min="0.001" max="${weightCap}" placeholder="أوزن الكراتين وأدخل الوزن" data-karim-action="updateApproveTotal" data-karim-event="input"></div>
 <div class="fg"><label>القيمة (على الفعلي)</label><div id="apVal_${idx}" class="c-gold fw-bold">${fC(0)}</div></div></div>
 <div class="text-muted" id="apEst_${idx}" style="font-size:12px"></div><div class="text-muted" id="apAvg_${idx}" style="font-size:12px"></div></div>`;
 });
@@ -1131,6 +1282,8 @@ afterModalSignatureInit('warehouseApprovalSignature');
 }
 let _approvingDispatch = false;
 async function confirmApprove(id){
+const current=(STATE.dispatches||[]).find(x=>String(x.id)===String(id));if(!current){return;}
+if(!ensureDispatchAction(current,canWarehouseDecideDispatch(current),'اعتماد المخازن متاح للحالة الصحيحة من سلسلة الاعتماد فقط')){return;}
 // حارس النقر المتكرر (لوج الإنتاج: 88 طلب اعتماد لنفس الإذن في دقيقتين — لا رد فعل
 // أثناء التنفيذ فيعيد المستخدم الضغط، وتصطف الطلبات خلف قفل الصف 20 ثانية)
 if(_approvingDispatch){ toast('اعتماد الإذن قيد التنفيذ... انتظر النتيجة','info'); return; }
@@ -1152,6 +1305,9 @@ const actualWeight=parseFloat(document.getElementById(`apWeight_${idx}`)?.value)
 const packagingQty=parseFloat(document.getElementById(`apPkgQty_${idx}`)?.value)||0;
 if(!(actualWeight>0)){ hasError=true; toast(`أدخل الوزن الفعلي بالكيلو للصنف "${item.itemName}"`,'error'); return; }
 if(!(packagingQty>0)){ hasError=true; toast(`أدخل عدد الكراتين المصروفة للصنف "${item.itemName}"`,'error'); return; }
+const requestedWeight=dispatchRequestedWeight(item,inv),requestedBoxes=Number(item.packagingQty??item.qty)||0;
+if(actualWeight>requestedWeight+1e-6){ hasError=true; toast(`الوزن الفعلي من "${item.itemName}" أكبر من الكمية المطلوبة (${fN(requestedWeight)} كجم)`,'error'); return; }
+if(packagingQty>requestedBoxes+1e-6){ hasError=true; toast(`عدد الكراتين من "${item.itemName}" أكبر من المطلوب (${fN(requestedBoxes)})`,'error'); return; }
 if(actualWeight>Number(inv?.qty||0)){ hasError=true; toast(`الوزن الفعلي من "${item.itemName}" أكبر من المتوفر (${fN(inv.qty)} كجم)`,'error'); return; }
 const val=actualWeight*(Number(inv?.avgCost)||0);
 approvedItems.push({name:item.itemName,itemName:item.itemName,unit:inv?.catch_weight_uom||'kg',requestedQty:actualWeight,requestedPackagingQty:Number(item.packagingQty??item.qty)||null,approvedQty:actualWeight,avgCost:Number(inv?.avgCost)||0,approvedValue:val,
@@ -1160,6 +1316,8 @@ return;
 }
 const approvedQty=parseFloat(document.getElementById(`apQty_${idx}`)?.value);
 if(isNaN(approvedQty)||approvedQty<0){ hasError=true; return; }
+const requestedQty=dispatchRequestedQty(item);
+if(approvedQty>requestedQty+1e-6){ hasError=true; toast(`الكمية المعتمدة من "${item.itemName}" أكبر من الكمية المطلوبة (${fN(requestedQty)})`,'error'); return; }
 if(inv&&approvedQty>Number(inv.qty)){ hasError=true; toast(`الكمية المعتمدة من "${item.itemName}" أكبر من المتوفر`,'error'); return; }
 if(approvedQty>0){
 const val=approvedQty*(Number(inv?.avgCost)||0);
@@ -1168,9 +1326,15 @@ actualWeight:null,packagingQty:null,packagingUom:null,catchWeightUom:inv?.catch_
 }
 });
 if(hasError||approvedItems.length===0){ toast('تحقق من البيانات','error'); return; }
+const approveBtn=document.querySelector('[data-karim-action="confirmApprove"]');
+const approveBtnHtml=approveBtn?approveBtn.innerHTML:null;
+if(approveBtn){approveBtn.disabled=true;approveBtn.innerHTML='<i class=ji data-i=refresh></i> جارٍ الاعتماد…';}
 try{
-const result=await apiFetch(`/warehouse/dispatches/${encodeURIComponent(id)}/approve`,{method:'POST',body:JSON.stringify({approvedItems,approveNotes,signatureData,signerName})});
-upsertStateEntity('dispatches',result.dispatch);
+const result=await apiFetch(`/warehouse/dispatches/${encodeURIComponent(id)}/approve`,{method:'POST',headers:dispatchOperationHeaders('approve',id),body:JSON.stringify({approvedItems,approveNotes,signatureData,signerName})});
+// دمج الصف المعتمد فوق صف الحالة المحلي — الرد يعيد أعمدة القاعدة وحدها،
+// وحقول العرض (deptName) تأتي من الصف المحمّل؛ الدمج يمنع اختفاءها ويمنع
+// بقاء الحالة القديمة حتى ريفريش يدوي.
+upsertStateEntity('dispatches',{...d,...(result.dispatch||{}),status:(result.dispatch&&result.dispatch.status)||'approved'});
 (result.stockChanges||[]).forEach(row=>upsertStateEntity('inventory',row));
 (result.transactions||[]).forEach(row=>upsertStateEntity('inventoryTx',row));
 (result.expenses||[]).forEach(row=>upsertStateEntity('expenses',row));
@@ -1178,25 +1342,28 @@ closeModal(); renderPage();
 toast(`تمت الموافقة وحُسبت مصاريف القسم بقيمة ${fC(result.totalValue||0)}`,'success');
 addNotification('تمت الموافقة',`تم اعتماد طلب الصرف من ${d.deptName} وتسجيل تكلفته على القسم`,'success');
 }catch(e){ if(e && e.code==='DISPATCH_APPROVE_IN_PROGRESS'){ toast('الإذن قيد الاعتماد فعلًا — لا تضغط مجددًا','warning'); return; } toast(e.message||'تعذر اعتماد طلب الصرف','error'); }
+finally{ if(approveBtn&&approveBtn.isConnected){approveBtn.disabled=false;if(approveBtnHtml!=null){approveBtn.innerHTML=approveBtnHtml;}} }
 }catch(err){ console.error('[confirmApprove]',err); toast('خطأ غير متوقع أثناء الاعتماد: '+(err?.message||err),'error'); }
 finally{ _approvingDispatch=false; hideLoad(); }
 }
 function openRejectModal(id){
 const d=STATE.dispatches.find(x=>String(x.id)===String(id));
 if(!d){return;}
+if(!ensureDispatchAction(d,canWarehouseDecideDispatch(d),'رفض المخازن متاح للحالة الصحيحة من سلسلة الاعتماد فقط')){return;}
 showModal(`<h3><i class=ji data-i=circle-x></i> رفض طلب صرف</h3><div style="background:rgba(231,76,60,0.1);padding:12px;border-radius:var(--r);margin-bottom:16px"><strong>القسم:</strong> ${esc(d.deptName)}<br><strong>الأصناف:</strong> ${d.items.length}</div><div class="fg"><label>سبب الرفض</label><textarea id="rejReason" rows="3"></textarea></div>${signaturePadMarkup('warehouseRejectionSignature','توقيع أمين المخزن على الرفض')}<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-red" data-karim-action="confirmReject" data-karim-arg0="${esc(String(id))}"><i class=ji data-i=circle-x></i> تأكيد الرفض</button></div>`);afterModalSignatureInit('warehouseRejectionSignature');
 }
 async function confirmReject(id){
-const reason=document.getElementById('rejReason')?.value.trim();
-if(!reason){ toast('أدخل سبب الرفض','error'); return; }
 const d=STATE.dispatches.find(x=>String(x.id)===String(id));
 if(!d){return;}
+if(!ensureDispatchAction(d,canWarehouseDecideDispatch(d),'رفض المخازن متاح للحالة الصحيحة من سلسلة الاعتماد فقط')){return;}
+const reason=document.getElementById('rejReason')?.value.trim();
+if(!reason){ toast('أدخل سبب الرفض','error'); return; }
 try{
   const signatureData=readSignaturePad('warehouseRejectionSignature'); if(!signatureData){return;}
   const signerName=readSignerName('warehouseRejectionSignature'); if(!signerName){return;}
   const rejectedBy=STATE.currentUser?.username||'unknown';
   const rejectedDate=new Date().toISOString();
-  const response=await apiFetch(`/warehouse/dispatches/${encodeURIComponent(id)}/reject`,{method:'POST',body:JSON.stringify({reason,signatureData,signerName})});
+  const response=await apiFetch(`/warehouse/dispatches/${encodeURIComponent(id)}/reject`,{method:'POST',headers:dispatchOperationHeaders('reject',id),body:JSON.stringify({reason,signatureData,signerName})});
  const saved=response.dispatch;
  upsertStateEntity('dispatches', saved||{...d,status:'rejected',rejectionReason:reason,rejectedBy,rejectedDate});
  closeModal(); renderPage();
@@ -1204,21 +1371,39 @@ try{
 }catch(e){ toast(e.message||'تعذر رفض طلب الصرف','error'); }
 }
 function openReceiveModal(id){
-const d=STATE.dispatches.find(x=>String(x.id)===String(id)); if(!d){return;}
-const items=d.approvedItems&&d.approvedItems.length?d.approvedItems:d.items||[];
-const itemsHtml=items.map((item,idx)=>{const approved=Number(item.approvedQty??item.qty)||0;const isCw=Boolean(item.catchWeightEnabled||item.actualWeight);const apBoxes=Number(item.packagingQty)||0;const pkgUom=item.packagingUom||'كرتون';return `<div style="background:var(--bg3);padding:14px;border-radius:var(--r);margin-bottom:10px"><div class="fr"><strong>${esc(item.itemName||item.name)}</strong>${isCw?' <span class="badge bdg-blue">وزن متغير</span>':''}<span class="badge bdg-blue">المعتمد: ${fN(approved)} ${esc(item.unit||'')}${isCw&&apBoxes>0?` (${fN(apBoxes)} ${esc(pkgUom)})`:''}</span></div><div class="fr"><div class="fg u-mt8"><label>الوزن المستلم فعليًا (كجم)</label><input type="number" id="receivedQty_${idx}" min="0" max="${approved}" step="0.001" value="${approved}"></div>${isCw?`<div class="fg u-mt8"><label>عدد الكراتين المستلمة</label><input type="number" id="receivedPkg_${idx}" min="0" max="${apBoxes||''}" step="1" value="${apBoxes||''}"></div>`:''}</div></div>`;}).join('');
-showModal(`<h3><i class=ji data-i=inbox></i> استلام إذن الصرف — ${esc(d.deptName)}</h3><div class="workflow-banner">الاستلام والتوقيع باسم حسابك فقط (<strong>${esc(accountSignatureName()||'—')}</strong>) — لا يمكن توقيع أي اسم آخر. راجع الكميات ثم أكّد. لا يمكن تسجيل الاستلام مرتين.</div><div>${itemsHtml}</div><div class="fg"><label>ملاحظات الاستلام</label><textarea id="receiptNotes" rows="2" placeholder="أي عجز أو تلف أو ملاحظة عند الاستلام"></textarea></div>${signaturePadMarkup('kitchenReceiptSignature','توقيع المستلم — '+esc(accountSignatureName()))}<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" data-karim-action="confirmReceive" data-karim-arg0="${esc(String(id))}"><i class=ji data-i=inbox></i> تأكيد الاستلام والتوقيع</button></div>`);
+const d=STATE.dispatches.find(x=>String(x.id)===String(id));if(!d){return;}
+if(!ensureDispatchAction(d,canReceiveDispatch(d),'الاستلام متاح للإذن المعتمد أو المستلم جزئيًا بكمية متبقية وبالصلاحية المحددة')){return;}
+const items=dispatchItems(d);
+const itemsHtml=items.map((item,idx)=>{
+const summary=dispatchReceiptSummary(d,item),isCw=dispatchItemIsCatchWeight(item),pkgUom=item.packagingUom||'كرتون',qtyUom=isCw?(item.catchWeightUom||'كجم'):(item.unit||'');
+return `<div style="background:var(--bg3);padding:14px;border-radius:var(--r);margin-bottom:10px"><div class="fr"><strong>${esc(item.itemName||item.name)}</strong>${isCw?' <span class="badge bdg-blue">وزن متغير</span>':''}</div><div class="u-row-wrap u-mt8"><span class="badge bdg-blue">المعتمد: ${fN(summary.approvedQty)} ${esc(qtyUom)}</span><span class="badge bdg-purple">المستلم سابقًا: ${fN(summary.priorQty)} ${esc(qtyUom)}</span><span class="badge bdg-green">المتبقي: ${fN(summary.remainingQty)} ${esc(qtyUom)}</span>${isCw?`<span class="badge bdg-purple">كراتين سابقة: ${fN(summary.priorBoxes)}</span><span class="badge bdg-green">كراتين متبقية: ${fN(summary.remainingBoxes)} ${esc(pkgUom)}</span>`:''}</div><div class="fr"><div class="fg u-mt8"><label>${isCw?'الوزن المضاف في هذا الاستلام':'الكمية المضافة في هذا الاستلام'} (${esc(qtyUom)})</label><input type="number" id="receivedQty_${idx}" min="0" max="${summary.remainingQty}" step="0.001" value="${summary.remainingQty}"></div>${isCw?`<div class="fg u-mt8"><label>الكراتين المضافة في هذا الاستلام</label><input type="number" id="receivedPkg_${idx}" min="0" max="${summary.remainingBoxes}" step="1" value="${summary.remainingBoxes}"></div>`:''}</div><small class="text-muted">أدخل فرق هذا الاستلام فقط؛ صفر يعني عدم إضافة كمية، والسطر الصفري لا يُرسل.</small></div>`;
+}).join('');
+showModal(`<h3><i class=ji data-i=inbox></i> استلام إذن الصرف — ${esc(d.deptName)}</h3><div class="workflow-banner">الاستلام والتوقيع باسم حسابك فقط (<strong>${esc(accountSignatureName()||'—')}</strong>). الكميات المدخلة <strong>تُضاف إلى المستلم سابقًا</strong>، ويمكن تسجيل استلام جزئي ثم استكمال المتبقي لاحقًا.</div><div>${itemsHtml}</div><div class="fg"><label>ملاحظات الاستلام</label><textarea id="receiptNotes" rows="2" placeholder="أي عجز أو تلف أو ملاحظة عند الاستلام"></textarea></div>${signaturePadMarkup('kitchenReceiptSignature','توقيع المستلم — '+esc(accountSignatureName()))}<div class="modal-footer"><button class="btn" data-karim-action="closeModal">إلغاء</button><button class="btn btn-gold" data-karim-action="confirmReceive" data-karim-arg0="${esc(String(id))}"><i class=ji data-i=inbox></i> تأكيد الاستلام والتوقيع</button></div>`);
 afterModalSignatureInit('kitchenReceiptSignature');
 }
 async function confirmReceive(id){
-const d=STATE.dispatches.find(x=>String(x.id)===String(id)); if(!d){return;}
-const signatureData=readSignaturePad('kitchenReceiptSignature'); if(!signatureData){return;}
-const signerName=readSignerName('kitchenReceiptSignature'); if(!signerName){return;}
-const items=d.approvedItems&&d.approvedItems.length?d.approvedItems:d.items||[];
-const receivedItems=[]; let invalid=false;
-items.forEach((item,idx)=>{const approved=Number(item.approvedQty??item.qty)||0;const received=Number(document.getElementById(`receivedQty_${idx}`)?.value);if(!Number.isFinite(received)||received<0||received>approved){invalid=true;}const isCw=Boolean(item.catchWeightEnabled||item.actualWeight);const apBoxes=Number(item.packagingQty)||0;const pkgRaw=document.getElementById(`receivedPkg_${idx}`)?.value;const recvPkg=isCw?(pkgRaw===''||pkgRaw==null?apBoxes:Number(pkgRaw)):null;if(isCw&&(!Number.isFinite(recvPkg)||recvPkg<0||recvPkg>apBoxes)){invalid=true;}receivedItems.push({itemName:item.itemName||item.name,receivedQty:received,...(isCw?{receivedPackagingQty:recvPkg}:{}),notes:''});});
-if(invalid){toast('تحقق من كميات الاستلام؛ لا تتجاوز الكمية المعتمدة','error');return;}
-try{showLoad();const result=await apiFetch(`/warehouse/dispatches/${encodeURIComponent(id)}/receive`,{method:'POST',body:JSON.stringify({items:receivedItems,notes:document.getElementById('receiptNotes')?.value.trim()||'',signatureData,signerName})});upsertStateEntity('dispatches',result.dispatch);closeModal();renderPage();toast('تم تسجيل استلام المطبخ بالتوقيع','success');addNotification('استلام مطبخ',`تم استلام طلب الصرف #${id} وتوثيقه`,'success');}catch(e){toast(e.message||'تعذر تسجيل استلام المطبخ','error')}finally{hideLoad();}
+const d=STATE.dispatches.find(x=>String(x.id)===String(id));if(!d){return;}
+if(!ensureDispatchAction(d,canReceiveDispatch(d),'الاستلام متاح للإذن المعتمد أو المستلم جزئيًا بكمية متبقية وبالصلاحية المحددة')){return;}
+const items=dispatchItems(d),receivedItems=[];let invalid=false;
+items.forEach((item,idx)=>{
+const summary=dispatchReceiptSummary(d,item),name=item.itemName||item.name,raw=document.getElementById(`receivedQty_${idx}`)?.value;
+const delta=raw===''||raw==null?0:Number(raw);
+if(!Number.isFinite(delta)||delta<0||delta>summary.remainingQty+1e-6){invalid=true;toast(`كمية هذا الاستلام من "${name}" يجب أن تكون بين صفر والمتبقي (${fN(summary.remainingQty)})`,'error');return;}
+const isCw=dispatchItemIsCatchWeight(item);let packagingDelta=null;
+if(isCw){
+const pkgRaw=document.getElementById(`receivedPkg_${idx}`)?.value;packagingDelta=pkgRaw===''||pkgRaw==null?0:Number(pkgRaw);
+if(!Number.isFinite(packagingDelta)||packagingDelta<0||packagingDelta>summary.remainingBoxes+1e-6){invalid=true;toast(`الكراتين المضافة من "${name}" يجب أن تكون بين صفر والمتبقي (${fN(summary.remainingBoxes)})`,'error');return;}
+if(delta<=0&&packagingDelta>0){invalid=true;toast(`لا يمكن إضافة كراتين من "${name}" دون وزن مستلم في هذا الاستلام`,'error');return;}
+}
+if(delta>0){receivedItems.push({itemName:name,receivedQty:roundDispatchQty(delta),...(isCw?{receivedPackagingQty:roundDispatchQty(packagingDelta)}:{}),notes:''});}
+});
+if(invalid){return;}
+if(!receivedItems.length){toast('أدخل كمية استلام أكبر من صفر لصنف واحد على الأقل','error');return;}
+const signatureData=readSignaturePad('kitchenReceiptSignature');if(!signatureData){return;}
+const signerName=readSignerName('kitchenReceiptSignature');if(!signerName){return;}
+try{showLoad();const result=await apiFetch(`/warehouse/dispatches/${encodeURIComponent(id)}/receive`,{method:'POST',headers:dispatchOperationHeaders('receive',id),body:JSON.stringify({items:receivedItems,notes:document.getElementById('receiptNotes')?.value.trim()||'',signatureData,signerName})});
+upsertStateEntity('dispatches',{...d,...(result.dispatch||{})});closeModal();renderPage();toast('تم تسجيل الاستلام بالتوقيع','success');addNotification('استلام مواد',`تم تسجيل استلام طلب الصرف #${id} وتوثيقه`,'success');
+}catch(e){toast(e.message||'تعذر تسجيل الاستلام','error')}finally{hideLoad();}
 }
 function viewDispatchDetails(id){
 const d=STATE.dispatches.find(x=>String(x.id)===String(id));
@@ -1243,16 +1428,16 @@ if(!printWindow){ toast('اسمح بالنوافذ المنبثقة لطباعة
 const sigBlock=(label,dataUrl,who,at)=>`<div style="text-align:center;min-width:170px;flex:1">${dataUrl?`<img src="${dataUrl}" style="height:54px;object-fit:contain;margin-bottom:2px" alt="${label}">`:'<div style="height:54px"></div>'}<div style="border:1px solid #e5e7eb;border-top:3px solid #0f172a;border-radius:0 0 10px 10px;padding:8px 6px;font-size:12px;color:#444;background:#f8fafc"><b style="color:#0f172a">${label}</b>${who?`<br><b style="color:#111">${esc(who)}</b>`:''}${at?`<br><small>${esc(at)}</small>`:''}</div></div>`;
 const pItems=(d.approvedItems&&d.approvedItems.length?d.approvedItems:d.items)||[];
 const pTotal=pItems.reduce((s,i)=>s+Number(i.approvedValue||0),0);
-const pStatusAr={pending:'بانتظار الاعتماد',chef_approved:'معتمد من الشيف — بانتظار المخازن',approved:'معتمد من المخازن',partially_received:'مستلم جزئيًا',received:'مستلم',rejected:'مرفوض'}[d.status]||d.status||'—';
+const pStatusAr=dispatchStatusText(d.status);
 const pRow=(item,idx)=>{const cw=item.catchWeightEnabled||item.actualWeight;const qty=item.approvedQty??item.qty??0;const qtyCell=cw&&item.packagingQty?`${fN(qty)} ${esc(item.catchWeightUom||item.unit||'كجم')}<br><small>(${fN(item.packagingQty)} ${esc(item.packagingUom||'كرتون')})</small>`:`${fN(qty)} ${esc(item.unit||'')}`;const price=Number(item.avgCost)||0;return `<tr><td>${idx+1}</td><td style="text-align:right">${esc(item.name||item.itemName)}${cw?' <small>⚖ وزن متغير</small>':''}</td><td>${qtyCell}</td><td>${price?fC(price):'—'}</td><td class="c-gold fw-bold">${item.approvedValue?fC(item.approvedValue):'—'}</td></tr>`;};
 const pChain=[d.createdBy?['الطلب',d.createdBy,d.date||d.requestedAt]:null,d.chefApprovedBy?['اعتماد الشيف',d.chefApprovedBy,d.chefApprovedAt]:null,d.warehouseApprovedBy?['اعتماد المخزن',d.warehouseApprovedBy,d.warehouseApprovedAt||d.approvedDate]:null,d.kitchenReceivedBy?['الاستلام',d.kitchenReceivedBy,d.kitchenReceivedAt]:null].filter(Boolean);
-printWindow.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>إذن صرف #${d.id}</title><style>*{box-sizing:border-box}body{font-family:'Cairo',Tahoma,Arial,sans-serif;color:#1a1a1a;background:#eef2f7;margin:0;padding:32px 36px;direction:rtl}.sheet{max-width:800px;margin:auto;background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 8px 28px rgba(15,23,42,.10);padding:22px 24px 20px}.head{display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);border-bottom:4px solid #c9a227;border-radius:12px 12px 0 0;padding:18px 24px;margin:-22px -24px 16px}.doc-logo{width:74px;height:74px;object-fit:contain;background:#fff;border:2px solid #c9a227;border-radius:14px;padding:5px;box-shadow:0 2px 10px rgba(0,0,0,.35)}.head h1{margin:0;color:#f5d76e;font-size:24px}.head p{margin:2px 0;color:#cbd5e1;font-size:13px}.doc-title{text-align:center;margin:14px 0 4px}.doc-title h2{margin:0;font-size:22px;letter-spacing:.5px;color:#0f172a}.doc-title .st{display:inline-block;margin-top:8px;padding:4px 20px;border:0;border-radius:20px;font-size:12px;font-weight:800;color:#f5d76e;background:#0f172a;letter-spacing:.3px}.meta{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}.meta div{border:1px solid #e5e7eb;border-right:4px solid #c9a227;border-radius:10px;padding:8px 12px;background:#fff;box-shadow:0 1px 4px rgba(15,23,42,.05)}.meta b{display:block;color:#8a6d1b;font-size:11px;margin-bottom:2px}table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13.5px}th,td{border:1px solid #999;padding:8px;text-align:center}th{background:#0f172a;color:#f5d76e;font-size:12px;letter-spacing:.3px}td small{color:#555}tbody tr:nth-child(even) td{background:#f8fafc}tfoot td{font-weight:800;background:#0f172a;color:#f5d76e;font-size:14px}.chain{display:flex;gap:8px;margin-top:14px}.chain div{flex:1;border:1px solid #e5e7eb;border-top:3px solid #c9a227;border-radius:10px;padding:8px 6px;font-size:11px;text-align:center;background:#fff;box-shadow:0 1px 4px rgba(15,23,42,.05)}.chain b{display:block;color:#0f172a;margin-bottom:2px}.notes{margin-top:12px;border:1px solid #e5e7eb;border-right:4px solid #c9a227;border-radius:10px;padding:10px 14px;font-size:13px;min-height:44px;background:#fffbeb}.sigs{display:flex;gap:14px;margin-top:34px}.foot{margin-top:18px;text-align:center;font-size:11px;color:#888;border-top:2px solid #c9a227;padding-top:8px}.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 26px;margin:0 5px;font:inherit;cursor:pointer;background:#b45309;color:#fff;font-weight:700}.controls button.secondary{background:#555}@media print{body{padding:0;background:#fff}.sheet{box-shadow:none;border:0;border-radius:0}.head,.head h1,th,tfoot td,.doc-title .st{print-color-adjust:exact;-webkit-print-color-adjust:exact}.controls{display:none!important}@page{size:A4;margin:11mm}}</style></head><body><div class="controls"><button data-karim-action="print">🖨 طباعة</button><button class="secondary" data-karim-action="closeWindow">إغلاق</button></div><main class="sheet"><header class="head"><img class="doc-logo" src="${esc(getAbsoluteLogoSrc())}" alt="الشعار"><div><h1>${esc(STATE.settings.name||'مطاعم الشرفه العالمي')}</h1><p>نظام إدارة المخازن والمطاعم</p></div></header><div class="doc-title"><h2>إذن صرف مخزن</h2><span class="st">${esc(pStatusAr)}</span></div><section class="meta"><div><b>رقم الإذن</b>#${esc(String(d.id))}</div><div><b>القسم الطالب</b>${esc(dept?dept.name:d.deptName||'—')}</div><div><b>تاريخ الطلب</b>${esc(fD(d.date))}</div><div><b>تاريخ الاعتماد</b>${esc(d.warehouseApprovedAt||d.approvedDate?fD(d.warehouseApprovedAt||d.approvedDate):'—')}</div></section><table><thead><tr><th style="width:36px">#</th><th>الصنف</th><th>الكمية المعتمدة</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead><tbody>${pItems.map(pRow).join('')||'<tr><td colspan="5">لا أصناف</td></tr>'}</tbody><tfoot><tr><td colspan="4">الإجمالي (${pItems.length} صنف)</td><td>${fC(pTotal)}</td></tr></tfoot></table>${pChain.length?`<section class="chain">${pChain.map(c=>`<div><b>${esc(c[0])}</b>${esc(c[1])}<br><small>${esc(c[2]?fDT(c[2]):'')}</small></div>`).join('')}</section>`:''}<div class="notes"><b>ملاحظات الطلب:</b> ${esc(d.notes||'—')}${d.approveNotes?`<br><b>ملاحظات الاعتماد:</b> ${esc(d.approveNotes)}`:''}${d.receiptNotes?`<br><b>ملاحظات الاستلام:</b> ${esc(d.receiptNotes)}`:''}</div><div class="sigs">${sigBlock('توقيع الطالب',null,d.createdBy,d.date)}${sigBlock('توقيع أمين المخزن',d.warehouseApprovalSignatureData,d.warehouseApprovedBy,d.warehouseApprovedAt||d.approvedDate)}${sigBlock('توقيع المستلم',d.kitchenReceiptSignatureData,d.kitchenReceivedBy,d.kitchenReceivedAt)}</div><div class="foot">مستند مخزني معتمد إلكترونيًا — ${esc(STATE.settings.name||'')} — طُبع بتاريخ ${esc(fDT(new Date().toISOString()))}</div></main></body></html>`);
+printWindow.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>إذن صرف #${d.id}</title><style>*{box-sizing:border-box}body{font-family:'Cairo',Tahoma,Arial,sans-serif;color:#1a1a1a;background:#eef2f7;margin:0;padding:32px 36px;direction:rtl}.sheet{max-width:800px;margin:auto;background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 8px 28px rgba(15,23,42,.10);padding:22px 24px 20px}.head{display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);border-bottom:4px solid #8fbfa9;border-radius:12px 12px 0 0;padding:18px 24px;margin:-22px -24px 16px}.doc-logo{width:74px;height:74px;object-fit:contain;background:#fff;border:2px solid #8fbfa9;border-radius:14px;padding:5px;box-shadow:0 2px 10px rgba(0,0,0,.35)}.head h1{margin:0;color:#dcede4;font-size:24px}.head p{margin:2px 0;color:#cbd5e1;font-size:13px}.doc-title{text-align:center;margin:14px 0 4px}.doc-title h2{margin:0;font-size:22px;letter-spacing:.5px;color:#0f172a}.doc-title .st{display:inline-block;margin-top:8px;padding:4px 20px;border:0;border-radius:20px;font-size:12px;font-weight:800;color:#dcede4;background:#0f172a;letter-spacing:.3px}.meta{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}.meta div{border:1px solid #e5e7eb;border-right:4px solid #8fbfa9;border-radius:10px;padding:8px 12px;background:#fff;box-shadow:0 1px 4px rgba(15,23,42,.05)}.meta b{display:block;color:#3e6b58;font-size:11px;margin-bottom:2px}table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13.5px}th,td{border:1px solid #999;padding:8px;text-align:center}th{background:#0f172a;color:#dcede4;font-size:12px;letter-spacing:.3px}td small{color:#555}tbody tr:nth-child(even) td{background:#f8fafc}tfoot td{font-weight:800;background:#0f172a;color:#dcede4;font-size:14px}.chain{display:flex;gap:8px;margin-top:14px}.chain div{flex:1;border:1px solid #e5e7eb;border-top:3px solid #8fbfa9;border-radius:10px;padding:8px 6px;font-size:11px;text-align:center;background:#fff;box-shadow:0 1px 4px rgba(15,23,42,.05)}.chain b{display:block;color:#0f172a;margin-bottom:2px}.notes{margin-top:12px;border:1px solid #e5e7eb;border-right:4px solid #8fbfa9;border-radius:10px;padding:10px 14px;font-size:13px;min-height:44px;background:#f2f8f4}.sigs{display:flex;gap:14px;margin-top:34px}.foot{margin-top:18px;text-align:center;font-size:11px;color:#888;border-top:2px solid #8fbfa9;padding-top:8px}.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 26px;margin:0 5px;font:inherit;cursor:pointer;background:#0f5b46;color:#fff;font-weight:700}.controls button.secondary{background:#555}@media print{body{padding:0;background:#fff}.sheet{box-shadow:none;border:0;border-radius:0}.head,.head h1,th,tfoot td,.doc-title .st{print-color-adjust:exact;-webkit-print-color-adjust:exact}.controls{display:none!important}@page{size:A4;margin:11mm}}</style></head><body><div class="controls"><button data-karim-action="print">🖨 طباعة</button><button class="secondary" data-karim-action="closeWindow">إغلاق</button></div><main class="sheet"><header class="head"><img class="doc-logo" src="${esc(getAbsoluteLogoSrc())}" alt="الشعار"><div><h1>${esc(STATE.settings.name||'مطاعم الشرفه العالمي')}</h1><p>نظام إدارة المخازن والمطاعم</p></div></header><div class="doc-title"><h2>إذن صرف مخزن</h2><span class="st">${esc(pStatusAr)}</span></div><section class="meta"><div><b>رقم الإذن</b>#${esc(String(d.id))}</div><div><b>القسم الطالب</b>${esc(dept?dept.name:d.deptName||'—')}</div><div><b>تاريخ الطلب</b>${esc(fD(d.date))}</div><div><b>تاريخ الاعتماد</b>${esc(d.warehouseApprovedAt||d.approvedDate?fD(d.warehouseApprovedAt||d.approvedDate):'—')}</div></section><table><thead><tr><th style="width:36px">#</th><th>الصنف</th><th>الكمية المعتمدة</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead><tbody>${pItems.map(pRow).join('')||'<tr><td colspan="5">لا أصناف</td></tr>'}</tbody><tfoot><tr><td colspan="4">الإجمالي (${pItems.length} صنف)</td><td>${fC(pTotal)}</td></tr></tfoot></table>${pChain.length?`<section class="chain">${pChain.map(c=>`<div><b>${esc(c[0])}</b>${esc(c[1])}<br><small>${esc(c[2]?fDT(c[2]):'')}</small></div>`).join('')}</section>`:''}<div class="notes"><b>ملاحظات الطلب:</b> ${esc(d.notes||'—')}${d.approveNotes?`<br><b>ملاحظات الاعتماد:</b> ${esc(d.approveNotes)}`:''}${d.receiptNotes?`<br><b>ملاحظات الاستلام:</b> ${esc(d.receiptNotes)}`:''}</div><div class="sigs">${sigBlock('توقيع الطالب',null,d.createdBy,d.date)}${sigBlock('توقيع أمين المخزن',d.warehouseApprovalSignatureData,d.warehouseApprovedBy,d.warehouseApprovedAt||d.approvedDate)}${sigBlock('توقيع المستلم',d.kitchenReceiptSignatureData,d.kitchenReceivedBy,d.kitchenReceivedAt)}</div><div class="foot">مستند مخزني معتمد إلكترونيًا — ${esc(STATE.settings.name||'')} — طُبع بتاريخ ${esc(fDT(new Date().toISOString()))}</div></main></body></html>`);
 printWindow.document.close();
 printWindow.print();
 }
 // Kitchen Returns
 function showKitchenReturnModal(){
-const approvedDispatches = STATE.dispatches.filter(d=>d.status==='approved');
+const approvedDispatches = STATE.dispatches.filter(d=>['approved','partially_received','received'].includes(d.status));
 if(!approvedDispatches.length){
 /* إرجاع مباشر: بلا إذن صرف مسبق — القسم + أصناف المخزون */
 const depts=(STATE.departments||[]).filter(d=>!String(d.code||'').startsWith('ys_') && d.code !== 'kitchen' && d.code !== 'external_sales' && d.parent_code !== 'kitchen');
@@ -1262,7 +1447,7 @@ const deptField=isDeptHead()
 const invOpts=(STATE.inventory||[]).map(i=>`<option value="${esc(i.name)}">${esc(i.name)} (رصيد ${fN(i.qty)} ${esc(i.unit||'')})</option>`).join('');
 showModal(`
 <h3><i class=ji data-i=undo></i> إرجاع مباشر للمخزن</h3>
-<div class="workflow-banner">لا توجد طلبات صرف معتمدة — سيُسجَّل إرجاعًا مباشرًا من القسم إلى المخزن الرئيسي مع عكس مصروف القسم.</div>
+<div class="workflow-banner">لا توجد طلبات صرف قابلة للإرجاع — سيُسجَّل إرجاعًا مباشرًا من القسم إلى المخزن الرئيسي مع عكس مصروف القسم.</div>
 ${deptField}
 <div class="fg"><label>سبب الإرجاع</label>
 <select id="returnReason" class="u-input">
@@ -1360,7 +1545,7 @@ if(name&&qty>0){items.push({name,qty});}
 });
 if(items.length===0){ toast('أضف صنفًا واحدًا على الأقل','error'); return; }
 try{
-const result=await apiFetch('/warehouse/returns',{method:'POST',body:JSON.stringify({deptCode,reason,notes,items})});
+const result=await apiFetch('/warehouse/returns',{method:'POST',headers:dispatchOperationHeaders('return-create',uid()),body:JSON.stringify({deptCode,reason,notes,items})});
 upsertStateEntity('kitchenReturns',result.return);
 (result.stockChanges||[]).forEach(row=>upsertStateEntity('inventory',row));
 (result.transactions||[]).forEach(row=>upsertStateEntity('inventoryTx',row));
@@ -1385,7 +1570,7 @@ if(name && qty>0) {items.push({name,qty});}
 });
 if(items.length===0){ toast('أضف صنفًا واحدًا على الأقل','error'); return; }
 try{
-const result=await apiFetch('/warehouse/returns',{method:'POST',body:JSON.stringify({dispatchId,reason,notes,items})});
+const result=await apiFetch('/warehouse/returns',{method:'POST',headers:dispatchOperationHeaders('return-create',uid()),body:JSON.stringify({dispatchId,reason,notes,items})});
 upsertStateEntity('kitchenReturns',result.return);
 (result.stockChanges||[]).forEach(row=>upsertStateEntity('inventory',row));
 (result.transactions||[]).forEach(row=>upsertStateEntity('inventoryTx',row));
@@ -1508,7 +1693,7 @@ box.innerHTML=`<div style="color:#c0392b">${esc(e.message||'تعذر تحميل 
 function costCardHtml(c){
 const items=(c.consumption?.items||[]).slice(0,25).map(x=>`<tr><td>${esc(x.name)}</td><td>${fN(x.qty)} ${esc(x.unit||'')}</td><td>${fC(x.cost)}</td><td class="c-red">${fC(x.value)}</td><td class="text-muted">${esc(String(x.date||'').slice(0,10))}</td><td class="text-muted">#${esc(String(x.dispatch_no||''))}</td></tr>`).join('');
 const prods=(c.production?.lines||[]).map(p=>`<tr><td>${esc(p.product_name||`دفعة #${p.batch_id}`)}</td><td>${fN(p.allocated_qty)} من ${fN(p.planned_qty)}</td><td class="text-muted">${fC(p.batch_cost)}</td><td class="c-red fw-bold">${fC(p.cost)}</td><td class="text-muted">${esc(String(p.prod_date||'').slice(0,10))}</td></tr>`).join('');
-return `<div class="u-mt16" style="background:#fff;border-radius:14px;border-top:4px solid ${esc(c.color||'#c9a227')};box-shadow:0 2px 10px rgba(0,0,0,.06);padding:14px">
+return `<div class="u-mt16" style="background:#fff;border-radius:14px;border-top:4px solid ${esc(c.color||'#8fbfa9')};box-shadow:0 2px 10px rgba(0,0,0,.06);padding:14px">
 <div class="u-row-between"><h4 style="margin:0">${esc(c.icon||'')} ${esc(c.name)} <small class="text-muted">(${esc(c.from)} — ${esc(c.to)})</small></h4>
 <button class="btn btn-gold btn-sm" data-karim-action="printCostCard" data-karim-arg0="${esc(c.code)}"><i class=ji data-i=printer></i> طباعة البطاقة</button></div>
 <div class="u-mt12" style="display:grid;grid-template-columns:repeat(4,1fr);gap:10px;text-align:center">
@@ -1531,12 +1716,12 @@ const prods=(c.production?.lines||[]).map(p=>`<tr><td>${esc(p.product_name||`د�
 win.document.write(`<!doctype html><html dir="rtl"><head><meta charset="utf-8"><title>بطاقة تكلفة ${esc(c.name)}</title><style>
 body{font-family:'Cairo','Segoe UI',Tahoma,sans-serif;padding:0;margin:0;color:#1a1a2e}
 .header{background:linear-gradient(135deg,#0f172a,#1e3a5f);color:#fff;padding:20px 28px}
-.header h1{margin:0;font-size:20px;color:#f5d76e}.header p{margin:4px 0 0;color:#cbd5e1;font-size:12px}
+.header h1{margin:0;font-size:20px;color:#dcede4}.header p{margin:4px 0 0;color:#cbd5e1;font-size:12px}
 .container{padding:20px 28px}
 .summary{display:grid;grid-template-columns:repeat(4,1fr);gap:10px;margin:14px 0}
 .summary .card{background:#fff;border-radius:12px;padding:12px;text-align:center;border-top:3px solid #e2e8f0;box-shadow:0 1px 6px rgba(0,0,0,.05)}
 .summary b{display:block;font-size:17px;margin-top:4px}
-table{width:100%;border-collapse:collapse;margin-top:12px}th{background:#0f172a;color:#f5d76e;padding:8px;font-size:11px}td{padding:7px;border-bottom:1px solid #f1f5f9;text-align:center;font-size:12px}
+table{width:100%;border-collapse:collapse;margin-top:12px}th{background:#0f172a;color:#dcede4;padding:8px;font-size:11px}td{padding:7px;border-bottom:1px solid #f1f5f9;text-align:center;font-size:12px}
 h3{margin:16px 0 0;font-size:14px}
 @media print{.header{print-color-adjust:exact;-webkit-print-color-adjust:exact}}
 </style></head><body><div class="header"><h1>بطاقة تكلفة — ${esc(c.name)}</h1><p>الفترة ${esc(c.from)} — ${esc(c.to)} • ${esc(STATE.settings.name||'')}</p></div>
@@ -1547,7 +1732,8 @@ ${prods?`<h3>أوامر الإنتاج الموزعة على الجهة</h3><tab
 <p style="margin-top:14px;text-align:center;color:#94a3b8;font-size:11px">تم التوليد: ${new Date().toLocaleString('ar-EG')}</p>
 </div><script>window.onload=()=>setTimeout(()=>window.print(),300)</script></body></html>`);
 win.document.close();
-}/* ─── إجراءات مولَّدة (تفويض بدل معالجات سطرية) ─── */
+}
+/* ─── إجراءات مولَّدة (تفويض بدل معالجات سطرية) ─── */
 function kdSubmitKitchenProduction() {
     submitKitchenProduction();
 }
@@ -1582,4 +1768,4 @@ function kitchenResetDisp() {
 
 
 
-export {canEditDispatch, openDispatchEditModal, submitDispatchEdit, dispatchEditRowHtml, prefillDispatchEditRow, collectDispatchItems, kitchenOverviewLoading, refreshKitchenOverview, kitGoSec, kitchenProductionRows, kitchenProductionDestinationsRows, kitchenProductionDestinations, kitchenProductionMaterials, kitchenProductionMaterialRows, showKitchenProductionModal, syncKitchenProduct, setKitchenProductionMaterialField, addKitchenProductionMaterialRow, removeKitchenProductionMaterialRow, renderKitchenProductionMaterialRows, addKitchenProductionDistributionRow, removeKitchenProductionDistributionRow, syncKitchenProductionDestination, setKitchenProductionCustomName, setKitchenProductionDistributionQty, renderKitchenProductionRows, updateKitchenProductionTotal, submitKitchenProduction, kitchenGovernance, kitchenGovernanceLoading, refreshKitchenGovernance, showKitchenAuditCreateModal, createKitchenAudit, openKitchenAuditCount, saveKitchenAuditCount, submitKitchenAudit, approveKitchenAudit, confirmKitchenAuditApproval, renderKitchenGovernance, kitchenTransferStock, kitchenTransferRows, showKitchenStockReceiveModal, addKitchenTransferRow, removeKitchenTransferRow, renderKitchenTransferRows, updateKitchenTransferRow, syncKitchenTransferMax, submitKitchenStockReceive, renderKitchenDispatchRegister, renderKitchenDistributionRegister, dispPrintList, renderKitchen, renderCostCardsSection, loadCostCards, printCostCard, myDeptCode, isDeptHead, deptNameByCode, dispatchChainStage, renderDeptHeadDashboard, loadDeptPanel, renderDispatch, prCanSee, prCanCreate, prCanReceive, prCanChef, prCanGM, prCanCancel, prCanDelete, deletePR, deleteDispatch, prStatusLabel, prStatusClass, refreshPurchaseRequests, renderPRSection, openPRCreateModal, prAddManualRow, confirmPRCreate, openPRChefApproveModal, confirmPRChefApprove, openPRChefRejectModal, confirmPRChefReject, openPRGMApproveModal, confirmPRGMApprove, openPRGMRejectModal, confirmPRGMReject, openPRReceiveModal, prDeliverModeSync, prFreshSuggest, confirmPRReceive, cancelPR, viewPRDetails, printPR, renderKitchenReturnsSection, deleteKitchenReturn, getDispatchDepartments, showDispatchRequestModal, dispRowHtml, updateDispSummary, dispFilterItems, dispHideList, dispPickItem, addDispatchItemField, syncDispatchRowUnit, dispUomChanged, removeDispatchItem, submitDispatchRequest, openChefApproveModal, confirmChefApprove, openChefRejectModal, confirmChefReject, SIGNATURE_PADS, SIGNATURE_DATE_FMT, accountSignatureName, normalizeSigName, signatureNameMatchesAccount, readSignerName, signaturePadMarkup, signatureFont, paintTypedSignature, initSignaturePad, clearSignaturePad, readSignaturePad, afterModalSignatureInit, dispatchStatusLabel, dispatchStatusClass, openApproveModal, confirmApprove, openRejectModal, confirmReject, openReceiveModal, confirmReceive, viewDispatchDetails, printDispatchNote, showKitchenReturnModal, refreshReturnItems, addReturnItemField, addDirectReturnItemField, submitDirectReturn, submitKitchenReturn, syncRecipeToCashier, renderRecipes, recipeManagerState, recipeCatalogRow, recipeUnitInfo, recipeNormalizeUnit, recipeConvertQty, recipeDefaultUnit, recipeManagerCost, renderRecipeManagerIngredients, updateRecipeManagerPortion, updateRecipeManagerQty, updateRecipeManagerUnit, updateRecipeManagerWaste, removeRecipeManagerIngredient, addRecipeManagerIngredient, uploadRecipeManagerImage, openRecipeManager, saveRecipeManager, showAddRecipeModal, addRecipe, editRecipe, updateRecipe, deleteRecipe, kdSubmitKitchenProduction, kdAct, kdAct31, kdAct33, kdAct35, kdAct37, kitchenResetDisp };;;
+export {canEditDispatch, openDispatchEditModal, submitDispatchEdit, dispatchEditRowHtml, prefillDispatchEditRow, collectDispatchItems, kitchenOverviewLoading, refreshKitchenOverview, kitGoSec, kitchenProductionRows, kitchenProductionDestinationsRows, kitchenProductionDestinations, kitchenProductionMaterials, kitchenProductionMaterialRows, showKitchenProductionModal, syncKitchenProduct, setKitchenProductionMaterialField, addKitchenProductionMaterialRow, removeKitchenProductionMaterialRow, renderKitchenProductionMaterialRows, addKitchenProductionDistributionRow, removeKitchenProductionDistributionRow, syncKitchenProductionDestination, setKitchenProductionCustomName, setKitchenProductionDistributionQty, renderKitchenProductionRows, updateKitchenProductionTotal, submitKitchenProduction, kitchenGovernance, kitchenGovernanceLoading, refreshKitchenGovernance, showKitchenAuditCreateModal, createKitchenAudit, openKitchenAuditCount, saveKitchenAuditCount, submitKitchenAudit, approveKitchenAudit, confirmKitchenAuditApproval, renderKitchenGovernance, kitchenTransferStock, kitchenTransferRows, showKitchenStockReceiveModal, addKitchenTransferRow, removeKitchenTransferRow, renderKitchenTransferRows, updateKitchenTransferRow, syncKitchenTransferMax, submitKitchenStockReceive, renderKitchenDispatchRegister, renderKitchenDistributionRegister, dispPrintList, renderKitchen, renderCostCardsSection, loadCostCards, printCostCard, myDeptCode, isDeptHead, deptNameByCode, dispatchChainStage, renderDeptHeadDashboard, loadDeptPanel, renderDispatch, prCanSee, prCanCreate, prCanReceive, prCanChef, prCanGM, prCanCancel, prCanDelete, deletePR, openDispatchCancelModal, confirmDispatchCancel, openDispatchReopenModal, confirmDispatchReopen, openDispatchVoidModal, confirmDispatchVoid, prStatusLabel, prStatusClass, refreshPurchaseRequests, renderPRSection, openPRCreateModal, prAddManualRow, confirmPRCreate, openPRChefApproveModal, confirmPRChefApprove, openPRChefRejectModal, confirmPRChefReject, openPRGMApproveModal, confirmPRGMApprove, openPRGMRejectModal, confirmPRGMReject, openPRReceiveModal, prDeliverModeSync, prFreshSuggest, confirmPRReceive, cancelPR, viewPRDetails, printPR, renderKitchenReturnsSection, openKitchenReturnVoidModal, confirmKitchenReturnVoid, getDispatchDepartments, showDispatchRequestModal, dispRowHtml, updateDispSummary, dispFilterItems, dispHideList, dispPickItem, addDispatchItemField, syncDispatchRowUnit, dispUomChanged, removeDispatchItem, submitDispatchRequest, openChefApproveModal, confirmChefApprove, openChefRejectModal, confirmChefReject, SIGNATURE_PADS, SIGNATURE_DATE_FMT, accountSignatureName, normalizeSigName, signatureNameMatchesAccount, readSignerName, signaturePadMarkup, signatureFont, paintTypedSignature, initSignaturePad, clearSignaturePad, readSignaturePad, afterModalSignatureInit, dispatchStatusText, dispatchStatusLabel, dispatchStatusClass, openApproveModal, confirmApprove, openRejectModal, confirmReject, openReceiveModal, confirmReceive, viewDispatchDetails, printDispatchNote, showKitchenReturnModal, refreshReturnItems, addReturnItemField, addDirectReturnItemField, submitDirectReturn, submitKitchenReturn, syncRecipeToCashier, renderRecipes, recipeManagerState, recipeCatalogRow, recipeUnitInfo, recipeNormalizeUnit, recipeConvertQty, recipeDefaultUnit, recipeManagerCost, renderRecipeManagerIngredients, updateRecipeManagerPortion, updateRecipeManagerQty, updateRecipeManagerUnit, updateRecipeManagerWaste, removeRecipeManagerIngredient, addRecipeManagerIngredient, uploadRecipeManagerImage, openRecipeManager, saveRecipeManager, showAddRecipeModal, addRecipe, editRecipe, updateRecipe, deleteRecipe, kdSubmitKitchenProduction, kdAct, kdAct31, kdAct33, kdAct35, kdAct37, kitchenResetDisp };;;

@@ -251,10 +251,10 @@ describe('الشاشتان — لا شبكة مباشرة ولا معالج سط
 
     test('المضيف يربط المفتاحين ويفكّ الشاشتين عند الانتقال', () => {
         const h = read(HOST);
-        expect(h).toMatch(/import \{ mountShelvesScreen \} from '\.\/screens\/shelves\.js\?v=/);
-        expect(h).toMatch(/import \{ mountWeightScreen \} from '\.\/screens\/weight\.js\?v=/);
-        expect(h).toMatch(/key: 'shelves', title: 'الرفوف', mount: mountShelvesScreen/);
-        expect(h).toMatch(/key: 'weight', title: 'الميزان', mount: mountWeightScreen/);
+        expect(h).toMatch(/module: 'shelves'/);
+        expect(h).toMatch(/module: 'weight'/);
+        expect(h).toMatch(/key: 'shelves', title: 'الرفوف', module: 'shelves'/);
+        expect(h).toMatch(/key: 'weight', title: 'الميزان', module: 'weight'/);
         expect(h).toMatch(/if \(key === 'shelves'\)/);
         expect(h).toMatch(/if \(key === 'weight'\)/);
         expect(h).toMatch(/teardownShelvesScreen\(\)/);

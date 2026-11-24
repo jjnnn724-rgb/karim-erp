@@ -8,6 +8,7 @@
  *   • إنشاء: kitchen / sous_chef / dept_head / admin / owner / manager
  *   • قراءة: أعلاه + warehouse (المخازن يشوف كل الطلبات ويستلم)
  *   • استلام: warehouse / admin / owner / manager — من حالة «قيد الانتظار» فقط
+ *   • إضافة/تعديل أصناف أثناء الاستلام: admin فقط — قبل التسعير (pending/received)
  *   • إلغاء: صاحب الطلب نفسه أو admin/owner — قبل الاستلام فقط
  *   • كل النصوص الحرة تُنظّف من <> وقصّ الطول (لا HTML مخزّن)
  *   • الطلب يُنبَّه له لحظيًا عبر io.emit('veg_request:new')
@@ -18,7 +19,7 @@ const express = require('express');
 const { pool } = require('./shared-pool');
 const { logger } = require('./logger');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
-const { cleanText, validateItems, applyPrices, UNITS, VEG_CATALOG } = require('./veg-requests-logic');
+const { cleanText, validateItems, applyPrices, mergeAdminItems, UNITS, VEG_CATALOG } = require('./veg-requests-logic');
 
 const router = express.Router();
 
@@ -86,7 +87,7 @@ function ensureSchema() {
 
 // ─── كتالوج الخضار ───────────────────────────────────────────────────────────
 
-router.get('/catalog', jwtAuth, requireRole(...READ_ROLES), async (req, res, next) => {
+router.get('/catalog', jwtAuth, requireRole(...READ_ROLES), async (/** @type {any} */ req, /** @type {any} */ res, /** @type {any} */ next) => {
     try {
         res.json({ ok: true, categories: VEG_CATALOG, units: UNITS });
     } catch (e) { next(e); }
@@ -94,7 +95,7 @@ router.get('/catalog', jwtAuth, requireRole(...READ_ROLES), async (req, res, nex
 
 // ─── إنشاء طلب ───────────────────────────────────────────────────────────────
 
-router.post('/', jwtAuth, requireRole(...CREATE_ROLES), async (req, res, next) => {
+router.post('/', jwtAuth, requireRole(...CREATE_ROLES), async (/** @type {any} */ req, /** @type {any} */ res, next) => {
     try {
         await ensureSchema();
         const checked = validateItems(req.body?.items);
@@ -426,6 +427,46 @@ router.put('/:id/items', jwtAuth, requireRole(...EDIT_ROLES), async (req, res, n
     } catch (e) { next(e); }
 });
 
+// ─── إضافة أصناف نسيها الشيف وقت الاستلام — الأدمن فقط (طلب المالك 2026-11-23) ──
+// يسمح بإضافة أصناف جديدة أو تعديل الكميات في حالتَي pending و received.
+// بعد التسعير (priced) يُمنع: المصروف اتحمّل والإجمالي اثبّت. كل تغيير كمية
+// يُسجَّل باسم المُعدِّل داخل notes (سجل الطلب) مع ذكر الصنف والكمية قبل/بعد.
+router.post('/:id/admin/items', jwtAuth, requireRole('admin'), async (req, res, next) => {
+    try {
+        await ensureSchema();
+        const id = Number(req.params.id);
+        if (!Number.isInteger(id) || id <= 0) {
+            return res.status(422).json({ ok: false, error: 'ID_INVALID', message: 'معرّف طلب غير سليم' });
+        }
+        const row = (await pool.query('SELECT * FROM veg_requests WHERE id = $1', [id])).rows[0];
+        if (!row) {return res.status(404).json({ ok: false, error: 'NOT_FOUND', message: 'الطلب غير موجود' });}
+        if (!['pending', 'received'].includes(row.status)) {
+            return res.status(409).json({ ok: false, error: 'NOT_EDITABLE',
+                message: 'إضافة الأصناف قبل التسعير فقط — الطلب حالته ' + row.status });
+        }
+        const merged = mergeAdminItems(row.items, req.body?.items);
+        if (!merged.ok) {
+            return res.status(422).json({ ok: false, error: 'ITEMS_INVALID', message: merged.error });
+        }
+        const stamp = new Date().toISOString().slice(0, 16).replace('T', ' ');
+        const actor = cleanText(req.user.name || req.user.username, 60);
+        const detail = merged.changes.map((c) => c.action === 'add'
+            ? `+ ${c.name} ${c.to}`
+            : `~ ${c.name} ${c.from} → ${c.to}`).join(' | ').slice(0, 600) || 'لا تغيير';
+        const upd = await pool.query(
+            `UPDATE veg_requests SET items = $2::jsonb, items_count = $3, updated_at = NOW(),
+                notes = COALESCE(notes,'') || $4 WHERE id = $1 RETURNING *`,
+            [id, JSON.stringify(merged.items), merged.items.length,
+                ` [إضافة/تعديل أصناف (أدمن) ${stamp} بواسطة ${actor}: ${detail}]`]
+        );
+        logger.info('[veg-requests] إضافة/تعديل أصناف بواسطة الأدمن', {
+            request_no: row.request_no, by: req.user.username, changes: merged.changes,
+        });
+        try { if (req.io) { req.io.emit('veg_request:update', { id, action: 'admin_items_edited' }); } } catch (_) { /* best-effort */ }
+        return res.json({ ok: true, request: upd.rows[0], changes: merged.changes });
+    } catch (e) { next(e); }
+});
+
 // ─── إلغاء (صاحب الطلب قبل الاستلام، أو admin/owner) ─────────────────────────
 
 router.post('/:id/cancel', jwtAuth, requireRole(...READ_ROLES), async (req, res, next) => {
@@ -477,6 +518,6 @@ router.post('/:id/printed', jwtAuth, requireRole(...READ_ROLES), async (req, res
 });
 
 // أدوات نقية للاختبار (لا تُستخدم في المسار) — المصدر: veg-requests-logic.js
-router._internals = { cleanText, validateItems, UNITS, VEG_CATALOG };
+router._internals = { cleanText, validateItems, mergeAdminItems, UNITS, VEG_CATALOG };
 
 module.exports = router;

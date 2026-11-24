@@ -57,7 +57,7 @@ describe('تفاصيل القسم — الحسابات', () => {
         expect(ctx.cashierRevenueIn(revs, ['9'], '2026-10-01', '2026-10-15')).toBe(100);
         expect(ctx.cashierRevenueIn(revs, ['9'], null, null)).toBe(150);
         expect(ctx.deptIdentityColor({ color: '#AABBCC' })).toBe('#AABBCC');
-        expect(ctx.deptIdentityColor({})).toBe('#D4A843');
+        expect(ctx.deptIdentityColor({})).toBe('#14735b');
     });
 
     test('أبواب الإيراد/المصروف بنفس المسارات والحمولات', async () => {

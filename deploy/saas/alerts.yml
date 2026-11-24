@@ -1,0 +1,39 @@
+# deploy/saas/alerts.yml — قواعد تنبيه SaaS (جاهزة للنشر، غير مفعّلة حالياً)
+groups:
+  - name: karim-saas
+    rules:
+      - alert: KarimTenantResolverDown
+        expr: increase(karim_saas_events_total{event="resolver_unavailable"}[5m]) > 0
+        for: 1m
+        labels:
+          severity: critical
+        annotations:
+          summary: "فشل حل هوية المستأجر"
+          description: "التطبيق يرفض الطلبات بـ503 (fail-closed). راجع tenants/tenant_domains واتصال DB."
+
+      - alert: KarimTenantMismatchSpike
+        expr: rate(karim_saas_events_total{event="tenant_mismatch"}[5m]) > 0.01
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "ارتفاع محاولات تزوير المستأجر"
+          description: "راجع النطاقات الفرعية وتدوير أسرار JWT. لا تعطّل الفحص التقاطعي."
+
+      - alert: KarimSignupAbuse
+        expr: rate(karim_saas_events_total{event="signup_rate_limited"}[5m]) > 0.1
+        for: 5m
+        labels:
+          severity: warning
+        annotations:
+          summary: "محاولات تسجيل مفرطة"
+          description: "الحد المحلي 5/ساعة/IP. راجع مصدر الطلبات وانتقل إلى Redis إن لزم."
+
+      - alert: KarimQuotaDenialSpike
+        expr: increase(karim_saas_events_total{event="quota_denied"}[10m]) > 20
+        for: 5m
+        labels:
+          severity: info
+        annotations:
+          summary: "ارتفاع رفض الحدود"
+          description: "قد يكون طلب ترقية خطة أو خللاً في usage_counters. راجع التوزيع حسب tenant."

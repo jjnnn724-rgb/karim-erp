@@ -612,6 +612,19 @@ describe('V2 warehouse screen + layer (source contract)', () => {
         expect(s).toMatch(/table\.setLoading\(false\)/);
     });
 
+    // PERF 2026-10-29: shelf names were fetched with every inventory walk —
+    // one extra request per keystroke-debounced search. They ride a short
+    // cache instead, and a failed read is never cached.
+    test('shelf names ride a short cache instead of a network request per walk', () => {
+        const s = screen();
+        expect(s).toMatch(/const SHELF_CACHE_MS = 5 \* 60 \* 1000;/);
+        expect(s).toMatch(/function loadShelves\(\)/);
+        expect(s).toMatch(/shelfCache = \{ at: Date\.now\(\), rows \}/);
+        expect(s).toMatch(/\.finally\(\(\) => \{ shelfInFlight = null; \}\)/);
+        expect(s).toMatch(/loadShelves\(\),/);
+        expect(s).not.toMatch(/fetchShelves\(\),/);
+    });
+
     test('a rejected read is explained by the host, and empty is empty in both directions', () => {
         const s = screen();
         expect(s).toMatch(/Promise\.allSettled/);
@@ -662,7 +675,7 @@ describe('V2 warehouse screen + layer (source contract)', () => {
 
     test('the host mounts, notifies and tears the screen down on navigation', () => {
         const p = fs.readFileSync(path.join(V2, 'preview.js'), 'utf8');
-        expect(p).toMatch(/mountWarehouseScreen\(/);
+        expect(p).toMatch(/mountLazy\('warehouse'/);
         expect(p).toMatch(/warehouseScreen\.destroy\(\)/);
         expect(p).toMatch(/key === 'warehouse'/);
         expect(p).toMatch(/teardownWarehouseScreen\(\)/);
@@ -1076,7 +1089,7 @@ describe('V2 warehouse write surfaces + audit studio (source contract, W1-6)', (
         const p = fs.readFileSync(path.join(V2, 'preview.js'), 'utf8');
         expect((p.match(/userName: String\(u\.name \|\| u\.username \|\| ''\)/g) || []).length)
             .toBeGreaterThanOrEqual(2);
-        expect(p).toMatch(/warehouseScreen = mountWarehouseScreen\(shell\.main\.querySelector\('\[data-v2-warehouse-host\]'\), \{[\s\S]{0,300}userName: String\(u\.name \|\| u\.username \|\| ''\)/);
+        expect(p).toMatch(/warehouseScreen = \(await mountLazy\('warehouse', '\[data-v2-warehouse-host\]', \{[\s\S]{0,300}userName: String\(u\.name \|\| u\.username \|\| ''\)/);
     });
 
     test('the studio panel stays hidden until opened, and neither panel nor actions reach the printed sheet', () => {

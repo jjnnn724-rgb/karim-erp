@@ -9,6 +9,7 @@
 
 const express = require('express');
 const { pool } = require('../shared-pool');
+const { loadBrandSource } = require('../saas/tenant-settings');
 const { jwtAuth, requireRole } = require('../cashier-module/jwt-middleware');
 const { logger } = require('../logger');
 const { ensureYarasoftSchema } = require('./schema');
@@ -17,6 +18,7 @@ const router = express.Router();
 const READ_ROLES = ['admin', 'manager', 'accountant', 'auditor'];
 router.use(jwtAuth);
 
+/** @param {any} group */
 const periodExpr = (group) => {
     if (group === 'month') {return `TO_CHAR(revenue_date, 'YYYY-MM')`;}
     if (group === 'year') {return `TO_CHAR(revenue_date, 'YYYY')`;}
@@ -30,11 +32,59 @@ function riyadhDay(offsetDays = 0) {
 }
 
 /**
+ * شرط مطابقة الصنف — دقيقٌ حين تكون هوية الصنف معلومة، عائليٌّ حين لا تكون.
+ *
+ * لماذا (بلاغ المالك 2026-11-02): «لما ابحث عن مبيعات منتج يظهر المنتج فقط».
+ * البحث الحرّ ILIKE '%شاورما%' يجمع «شاورما» و«شاورما عربي» و«شاورما دبل»
+ * و«صحن شاورما» معًا، فتُخلط الكميات والأرقام وتبدو 108 فواتير لمنتجٍ واحد
+ * وهي فواتير عائلةٍ كاملة.
+ *
+ * القاعدة:
+ *   · كودٌ واسمٌ ⇒ هويّةٌ واحدة = (الكود + الاسم) معًا. بيانات المرآة الحيّة
+ *     تُثبت أن الكود وحده لا يميّز والاسم وحده لا يميّز:
+ *       · الكود 010102 يسمّي صنفين: «صحن شاورما قطع» (167 فاتورة) و«صحن شاورما» (6).
+ *       · الاسم «صحن شاورما عربي» يغطّي كودين: 010110 (523 فاتورة) و012106 (171).
+ *     فالزواج (كود، اسم) هو هويةُ الصنف الواحد بلا خلط.
+ *   · كودٌ وحده ⇒ مساواةٌ حرفية بالكود (حين لا يُعرف الاسم).
+ *   · اسمٌ وحده ⇒ مساواةٌ حرفية بالاسم. آمنٌ لأن الاسم يأتي من المرآة نفسها
+ *     (e->>'name') لا من كتابة المستخدم.
+ *   · لا نتيجة   ⇒ يعود البحث الحرّ (عائلة) بدل شاشةٍ فارغة.
+ *
+ * @param {string} code  كود الصنف (قد يكون فارغًا)
+ * @param {string} name  اسم الصنف (قد يكون فارغًا)
+ * @param {any[]} params  مصفوفة المعاملات — تُدفع القيمة داخلها ويُعاد رقم الموضع
+ * @returns {string|null} شرط SQL أو null (بلا صنف)
+ */
+function exactItemSql(code, name, params) {
+    const c = String(code || '').trim();
+    const n = String(name || '').trim();
+    if (c && n) {
+        params.push(c);
+        params.push(n);
+        const codePos = params.length - 1;
+        const namePos = params.length;
+        /* الزوج (كود، اسم) هويةٌ واحدة: سطرٌ بكودٍ آخر أو باسمٍ آخر لا يدخل،
+           وسطورٌ بلا كودٍ تُترك خارج النتيجة بدل أن تُنسب لصنفٍ لا تملك هويته
+           (٣٦ سطرًا بلا كودٍ من ٤٦٧٨٦ سطرًا في مدى شهر — أثرٌ ضئيل). */
+        return `(COALESCE(NULLIF(e->>'code',''),'') = $${codePos} AND (e->>'name') = $${namePos})`;
+    }
+    if (c) {
+        params.push(c);
+        return `COALESCE(NULLIF(e->>'code',''),'') = $${params.length}`;
+    }
+    if (n) {
+        params.push(n);
+        return `(e->>'name') = $${params.length}`;
+    }
+    return null;
+}
+
+/**
  * لوحة الكاشيرية الحية — GET /api/yara-reports/cashiers-live
  * لكل كاشير مفعّل (CC): فواتير/إجمالي اليوم + الأمس + نسبة التغير + آخر فاتورة.
  * + إجمالي اليوم الكلي (كل المصادر) للمقارنة.
  */
-router.get('/cashiers-live', requireRole(...READ_ROLES), async (req, res) => {
+router.get('/cashiers-live', requireRole(...READ_ROLES), /** @param {any} req @param {any} res */ async (req, res) => {
     try {
     await ensureYarasoftSchema();
         // ?date=YYYY-MM-DD لعرض أي يوم (افتراضي: اليوم) — يقارن دائمًا باليوم السابق له
@@ -178,6 +228,7 @@ async function _ciPoolGet(oracledb, cfg) {
  * ويُختار واحدٌ أو أكثر. التجميع يوميٌّ لكل كاشير كي تُقرأ الفترة المخصصة
  * بدقة (نصف شهر = أيامه وحدها) بدل تقريب الشهر كاملًا.
  * options.cashiers: مصفوفة أرقام مختارة؛ غيابها = كل المكتشَفين.
+ * @param {any} from @param {any} to @param {any} [options]
  */
 async function loadMonthlyLinkedCashierRevenue(from, to, options = {}) {
     let cashierRows;
@@ -189,9 +240,9 @@ async function loadMonthlyLinkedCashierRevenue(from, to, options = {}) {
                 AND NULLIF(TRIM(src_name), '') IS NOT NULL
               ORDER BY src_name`
         )).rows || [];
-    } catch (e) {
+    } catch (/** @type {any} */ e) {
         logger.error('[YARASOFT] linked cashier map read failed:', e.message);
-        const err = new Error('تعذّرت قراءة خريطة الكاشيرات المرتبطة بيارا سوفت.');
+        const err = /** @type {any} */ (new Error('تعذّرت قراءة خريطة الكاشيرات المرتبطة بيارا سوفت.'));
         err.statusCode = 503;
         err.code = 'LINKED_CASHIER_MAP_UNAVAILABLE';
         throw err;
@@ -206,7 +257,7 @@ async function loadMonthlyLinkedCashierRevenue(from, to, options = {}) {
     const { loadOracleConfig, oraExecute, oracleConnect, sanitizeError } = require('./oracle-link');
     const cfg = loadOracleConfig();
     if (!cfg.enabled) {
-        const err = new Error('ربط يارا سوفت المباشر غير مفعّل؛ لم تُستخدم أرقام بديلة من النظام المحلي.');
+        const err = /** @type {any} */ (new Error('ربط يارا سوفت المباشر غير مفعّل؛ لم تُستخدم أرقام بديلة من النظام المحلي.'));
         err.statusCode = 503;
         err.code = 'YARASOFT_REVENUE_UNAVAILABLE';
         throw err;
@@ -237,7 +288,7 @@ async function loadMonthlyLinkedCashierRevenue(from, to, options = {}) {
         if (requested && requested.length) {
             const missing = requested.filter((no) => !discoveredNos.includes(no));
             if (missing.length) {
-                const err = new Error(`كاشيرات غير موجودة في فواتير هذه الفترة: ${missing.join('، ')}`);
+                const err = /** @type {any} */ (new Error(`كاشيرات غير موجودة في فواتير هذه الفترة: ${missing.join('، ')}`));
                 err.statusCode = 400;
                 err.code = 'INVALID_CASHIERS';
                 throw err;
@@ -547,7 +598,7 @@ router.get('/cashier-items', requireRole(...READ_ROLES), async (req, res) => {
  * وper كاشير. الساعة تُشتق من DOC_TIME (نص 12h) بتجميع JS متسامح. كاش 30 ثانية.
  */
 const _ctCache = new Map();
-// 60 ثانية: لوحة الكاشيرية تستدعي كل 30 ثانية — TTL等于 الفترة كان يجعل كل
+// 60 ثانية: لوحة الكاشيرية تستدعي كل 30 ثانية — TTL يساوي الفترة كان يجعل كل
 // نداء يخترق الكاش ويضغط على Oracle (سبب ازدحام المجمع NJS-040).
 const CT_CACHE_MS = 60 * 1000;
 function _parseDocHour(s) {
@@ -709,12 +760,21 @@ router.get('/item-sales', requireRole('sous_chef', 'admin', 'owner'), async (req
         if (spanDays > 93) {return res.status(422).json({ ok: false, error: 'RANGE_TOO_WIDE', message: 'الحد الأقصى 93 يومًا' });}
         const cashier = String(req.query.cashier || '').trim().replace(/\D/g, '').slice(0, 8);
         const item = String(req.query.item || '').trim().slice(0, 60);
+        const itemCode = String(req.query.code || '').trim().slice(0, 60);
         const group = ['item', 'cashier', 'day'].includes(String(req.query.group)) ? req.query.group : 'item';
 
         const params = [from, to];
         let extra = '';
         if (cashier) {params.push(cashier); extra += ` AND o.cashier_no::text = $${params.length}`;}
-        if (item) {
+        /* كودٌ واسمٌ ⇒ هويةٌ واحدة (زوجٌ لا يختلط). كودٌ وحده ⇒ صنفٌ واحد
+           بكوده. واسمٌ وحده ⇒ بحثٌ عائليّ (قائمة ترشيح لا إحصاء منتج). */
+        const pairSql = (itemCode && item) ? exactItemSql(itemCode, item, params) : null;
+        if (pairSql) {
+            extra += ` AND ${pairSql}`;
+        } else if (itemCode) {
+            params.push(itemCode);
+            extra += ` AND COALESCE(NULLIF(e->>'code',''),'') = $${params.length}`;
+        } else if (item) {
             // تطبيع البحث العربي: تجاهل «ال» التعريف + كل كلمة على حدة
             // مثال: «البيبسي» ↔ «بيبسي»، «مشروب بيبسي» يلاقي أي صنف فيه بيبسي
             const words = item.split(/\s+/).filter(Boolean).map(w => w.replace(/^ال/, '').replace(/^وال/, '').replace(/^بال/, '')).filter(w => w.length >= 2);
@@ -788,7 +848,7 @@ const hRound = (v) => Math.round(Number(v || 0) * 100) / 100;
 
 async function loadSheetBrand() {
     try {
-        const r = (await pool.query(`SELECT name, currency, "logoB64" FROM settings WHERE id = 'main_settings' LIMIT 1`)).rows[0] || {};
+        const r = await loadBrandSource(pool);
         const code = String(r.currency || '').trim();
         return {
             name: String(r.name || '').trim() || 'مطاعم الشرفة العالمي',
@@ -878,6 +938,11 @@ router.get('/item-sales/print', requireRole('sous_chef', 'admin', 'owner'), asyn
         if (spanDays > 93) {return res.status(422).json({ ok: false, error: 'RANGE_TOO_WIDE', message: 'الحد الأقصى 93 يومًا' });}
         const cashier = String(req.query.cashier || '').trim().replace(/\D/g, '').slice(0, 8);
         const item = String(req.query.item || '').trim().slice(0, 60);
+        const itemCode = String(req.query.code || '').trim().slice(0, 60);
+        const itemMode = Boolean(item || itemCode);
+        /* exact=1 ⇒ الصنف المختار وحده (كودٌ أو اسمٌ حرفيّ) — الورقة تطابق
+           الشاشة حرفًا بحرف ولا تجمع «شاورما» بعائلتها. */
+        const printExact = ['1', 'true', 'yes'].includes(String(req.query.exact || '').trim().toLowerCase());
 
         const brand = await loadSheetBrand();
 
@@ -885,7 +950,13 @@ router.get('/item-sales/print', requireRole('sous_chef', 'admin', 'owner'), asyn
         const params = [from, to];
         const conds = [];
         if (cashier) {params.push(cashier); conds.push(`o.cashier_no::text = $${params.length}`);}
-        if (item) {
+        const exactSql = printExact ? exactItemSql(itemCode, item, params) : null;
+        if (exactSql) {
+            conds.push(exactSql);
+        } else if (itemCode) {
+            params.push(itemCode);
+            conds.push(`COALESCE(NULLIF(e->>'code',''),'') = $${params.length}`);
+        } else if (item) {
             const words = item.split(/\s+/).filter(Boolean).map(w => w.replace(/^ال/, '').replace(/^وال/, '').replace(/^بال/, '')).filter(w => w.length >= 2);
             const terms = words.length ? words : [item];
             const ors = terms.map((w) => {
@@ -933,7 +1004,7 @@ router.get('/item-sales/print', requireRole('sous_chef', 'admin', 'owner'), asyn
         )).rows[0] || {};
 
         // رأس السند: المحصَّل (net) مقابل صافٍ + ضريبة — فقط عند كشف الفترة كله
-        const head = item ? null : ((await pool.query(
+        const head = itemMode ? null : ((await pool.query(
             `SELECT COUNT(*)::int AS invoices,
                     COALESCE(SUM(o.total), 0)::float AS ex_vat,
                     COALESCE(SUM(o.vat), 0)::float AS vat,
@@ -943,7 +1014,7 @@ router.get('/item-sales/print', requireRole('sous_chef', 'admin', 'owner'), asyn
             params
         )).rows[0] || {});
 
-        const invoices = item ? (await pool.query(
+        const invoices = itemMode ? (await pool.query(
             `SELECT o.doc_no, o.cashier_no::text AS cashier_no, o.doc_date, o.doc_time,
                     o.net, o.total, o.vat,
                     SUM((e->>'qty')::numeric)::float AS item_qty,
@@ -973,14 +1044,14 @@ router.get('/item-sales/print', requireRole('sous_chef', 'admin', 'owner'), asyn
 
         const period = `من ${hLtr(from)} إلى ${hLtr(to)}`;
         const who = cashier ? `كاشير ${hEsc(cashierName || cashier)}` : 'كل الكاشيرات';
-        const scopeItem = item ? ` · بحث الصنف: ${hEsc(item)}` : '';
+        const scopeItem = itemMode ? ` · بحث الصنف: ${hEsc(item)}` : '';
 
         let cells = '';
         let title = '';
         let table = '';
         let docPill = '';
 
-        if (item) {
+        if (itemMode) {
             const invSum = invoices.reduce((a, r) => ({
                 qty: a.qty + Number(r.item_qty || 0),
                 ex: a.ex + Number(r.item_ex_vat || 0),
@@ -1104,7 +1175,7 @@ router.get('/item-sales/print', requireRole('sous_chef', 'admin', 'owner'), asyn
   <div class="body">
     <div class="grid">${cells}</div>
     ${table}
-    <div class="foot"><span>${hEsc(brand.name)} — ${hEsc(item ? 'استعلام صنف' : 'استعلام المبيعات')}</span>
+    <div class="foot"><span>${hEsc(brand.name)} — ${hEsc(itemMode ? 'استعلام صنف' : 'استعلام المبيعات')}</span>
       <span>طُبع ${hLtr(new Date().toLocaleString('en-GB'))} · Karim ERP</span></div>
   </div>
 </main></body></html>`;
@@ -1232,40 +1303,58 @@ router.get('/item-invoices', requireRole('sous_chef', 'admin', 'owner'), async (
         const spanDays = Math.round((new Date(to + 'T12:00:00Z') - new Date(from + 'T12:00:00Z')) / 86400000) + 1;
         if (spanDays > 93) {return res.status(422).json({ ok: false, error: 'RANGE_TOO_WIDE', message: 'الحد الأقصى 93 يومًا' });}
         const item = String(req.query.item || '').trim().slice(0, 60);
-        if (!item) {return res.status(422).json({ ok: false, error: 'ITEM_REQUIRED', message: 'اسم الصنف أو كوده مطلوب' });}
+        const itemCode = String(req.query.code || '').trim().slice(0, 60);
+        if (!item && !itemCode) {return res.status(422).json({ ok: false, error: 'ITEM_REQUIRED', message: 'اسم الصنف أو كوده مطلوب' });}
         const cashier = String(req.query.cashier || '').trim().replace(/\D/g, '').slice(0, 8);
         const limit = Math.min(Math.max(parseInt(req.query.limit, 10) || 300, 1), 1000);
         const offset = Math.max(parseInt(req.query.offset, 10) || 0, 0);
+        /* exact=1 ⇒ هويةُ صنفٍ محسومة (كودٌ أو اسمٌ حرفيّ) ⇒ منتجٌ واحد.
+           بلاه: كودٌ ⇒ منتجٌ واحد أيضًا (الكود لا يحتمل تأويلًا)، واسمٌ وحده
+           ⇒ بحثٌ عائليّ (مرشّح قائمة) — لأن الاسم المجرّد_family يخلط الأرقام. */
+        const exactFlag = ['1', 'true', 'yes'].includes(String(req.query.exact || '').trim().toLowerCase());
+        const wantExact = exactFlag || Boolean(itemCode);
 
-        // تطبيع البحث العربي — نفس قاعدة /item-sales حرفًا بحرف
-        const words = item.split(/\s+/).filter(Boolean).map(w => w.replace(/^ال/, '').replace(/^وال/, '').replace(/^بال/, '')).filter(w => w.length >= 2);
-        const terms = words.length ? words : [item];
-        const params = [from, to];
-        const ors = terms.map((w) => {
-            params.push('%' + w + '%');
-            return `((e->>'name') ILIKE $${params.length} OR (e->>'code') ILIKE $${params.length})`;
-        }).join(' OR ');
-        let match = `(${ors})`;
-        if (cashier) {params.push(cashier); match += ` AND o.cashier_no::text = $${params.length}`;}
+        /* مطابقتان تُبنىان لكلٍّ منها معاملاتها (رقم الموضع يختلف):
+           · دقيقة  — كودٌ أو اسمٌ حرفيّ من المرآة ⇒ منتجٌ واحد بلا خلط.
+           · عائلية — البحث الحرّ (ILIKE) ⇒ ترشيحُ قائمةٍ لا إحصاءُ منتج. */
+        const buildMatch = (precise) => {
+            const p = [from, to];
+            const conds = [];
+            if (cashier) {p.push(cashier); conds.push(`o.cashier_no::text = $${p.length}`);}
+            let itemSql = precise ? exactItemSql(itemCode, item, p) : null;
+            if (!itemSql && item) {
+                // تطبيع البحث العربي — نفس قاعدة /item-sales حرفًا بحرف
+                const words = item.split(/\s+/).filter(Boolean).map(w => w.replace(/^ال/, '').replace(/^وال/, '').replace(/^بال/, '')).filter(w => w.length >= 2);
+                const terms = words.length ? words : [item];
+                const ors = terms.map((w) => {
+                    p.push('%' + w + '%');
+                    return `((e->>'name') ILIKE $${p.length} OR (e->>'code') ILIKE $${p.length})`;
+                }).join(' OR ');
+                itemSql = `(${ors})`;
+            }
+            if (itemSql) {conds.push(itemSql);}
+            return { params: p, where: conds.length ? ` AND ${conds.join(' AND ')}` : '' };
+        };
 
         const names = new Map((await pool.query(
             `SELECT TRIM(src_name) AS no, display_ar FROM yarasoft_revenue_map WHERE src_table='CC' AND active=true`
         )).rows.map(r => [r.no, r.display_ar]));
 
-        // إجماليات الصنف على المدى كله (قبل LIMIT) — الأرقام لا تتغير بالترقيم
-        const totals = (await pool.query(
-            `SELECT COUNT(DISTINCT o.doc_no)::int AS invoices,
+        /** جلب الإجماليات والفواتير لمطابقة واحدة (الإجماليات قبل LIMIT). */
+        const runMatch = async (m) => {
+            const totals = (await pool.query(
+                `SELECT COUNT(DISTINCT o.doc_no)::int AS invoices,
                     COALESCE(SUM((e->>'qty')::numeric), 0)::float AS qty,
                     COALESCE(SUM((e->>'total')::numeric), 0)::float AS net,
                     COALESCE(SUM((e->>'vat')::numeric), 0)::float AS vat
                FROM ys_mirror_orders o, jsonb_array_elements(o.lines) e
-              WHERE o.doc_date >= $1 AND o.doc_date <= $2 AND ${match}`,
-            params
-        )).rows[0] || { invoices: 0, qty: 0, net: 0, vat: 0 };
+              WHERE o.doc_date >= $1 AND o.doc_date <= $2 ${m.where}`,
+                m.params
+            )).rows[0] || { invoices: 0, qty: 0, net: 0, vat: 0 };
 
-        params.push(limit, offset);
-        const rows = (await pool.query(
-            `SELECT o.doc_no, o.cashier_no::text AS cashier_no, o.doc_date, o.doc_time,
+            const pageParams = [...m.params, limit, offset];
+            const rows = (await pool.query(
+                `SELECT o.doc_no, o.cashier_no::text AS cashier_no, o.doc_date, o.doc_time,
                     o.net, o.total, o.discount, o.vat, o.payed,
                     o.pay_cash, o.pay_network, o.pay_credit, o.pay_mobile,
                     o.table_name, o.zone_name,
@@ -1278,12 +1367,22 @@ router.get('/item-invoices', requireRole('sous_chef', 'admin', 'owner'), async (
                     MAX(COALESCE((e->>'price')::numeric, 0))::float AS item_price,
                     COUNT(*)::int AS item_lines
                FROM ys_mirror_orders o, jsonb_array_elements(o.lines) e
-              WHERE o.doc_date >= $1 AND o.doc_date <= $2 AND ${match}
+              WHERE o.doc_date >= $1 AND o.doc_date <= $2 ${m.where}
               GROUP BY o.doc_no
               ORDER BY o.doc_date DESC, o.doc_no DESC
-              LIMIT $${params.length - 1} OFFSET $${params.length}`,
-            params
-        )).rows;
+              LIMIT $${pageParams.length - 1} OFFSET $${pageParams.length}`,
+                pageParams
+            )).rows;
+            return { totals, rows };
+        };
+
+        const precise = buildMatch(wantExact);
+        /* نوعُ المطابقة يُعلن في الردّ: pair = (كود+اسم) ⇒ منتجٌ واحد بلا
+           خلط، code/name = هويةٌ ناقصة، search = بحثٌ عائليّ (قائمة). */
+        const match = wantExact ? (itemCode && item ? 'pair' : (itemCode ? 'code' : 'name')) : 'search';
+        const result = await runMatch(precise);
+        const totals = result.totals;
+        const rows = result.rows;
 
         const invoices = rows.map((r) => ({
             doc_no: r.doc_no,
@@ -1301,7 +1400,7 @@ router.get('/item-invoices', requireRole('sous_chef', 'admin', 'owner'), async (
             item_vat: Number(r.item_vat || 0), item_lines: Number(r.item_lines || 0),
         }));
         res.set('Cache-Control', 'no-store');
-        res.json({ ok: true, from, to, item, invoices, totals: {
+        res.json({ ok: true, from, to, item, code: itemCode, match, invoices, totals: {
             invoices: Number(totals.invoices || 0), qty: Number(totals.qty || 0),
             net: Math.round(Number(totals.net || 0) * 100) / 100,
             vat: Math.round(Number(totals.vat || 0) * 100) / 100,

@@ -26,15 +26,44 @@
     box-shadow: var(--erp-shadow-lg);
   }
 
-  /* تفريغ مساحة كافية أسفل المحتوى لمنع حجب البيانات بالشريط */
+  /* تفريغ مساحة كافية أسفل المحتوى لمنع حجب البيانات بالشريط، وتفريغ
+     الحواف اليُمنى واليُسرى في الوضع الأفقي: هناك يصير الجانبان منطقة
+     عدم أمان، فيلتصق نصّ الجدول بحافة الشاشة تحت الإبهام. */
   body.erp-mobile-shell-on .erp-shell__content,
   body.erp-mobile-shell-on #erp-main {
     padding-bottom: calc(88px + env(safe-area-inset-bottom, 0px));
+    padding-inline-start: max(var(--erp-space-3), env(safe-area-inset-left, 0px));
+    padding-inline-end: max(var(--erp-space-3), env(safe-area-inset-right, 0px));
   }
 
   /* الشريط السفلي هو سطح الإجراءات على الجوال: الزر العائم فوقه كان
      يتقاطع معه (كلاهما --erp-z-fab أسفل الشاشة). */
   body.erp-mobile-shell-on .erp-fab-host { display: none; }
+
+  /* «viewport-fit=cover» يمدّ الصفحة تحت النوتش وشريط الحالة، فلا بدّ
+     أن يعوّض الرأس اللاصق تلك المسافة، وإلّا التُصقت العناوين بشريط
+     النظام على الآيفون. الرأسُ ثابتُ الارتفاع، لذا يُزاد ارتفاعُه هو
+     وحشوه العلوي معًا — أمّا وضعُه أسفل الحافة فيترك شريحةً من المحتوى
+     المتحرّك تظهر فوقه داخل منطقة عدم الأمان. */
+  body.erp-mobile-shell-on .erp-shell__header {
+    height: calc(var(--erp-header-height) + env(safe-area-inset-top, 0px));
+    padding-block-start: env(safe-area-inset-top, 0px);
+  }
+
+  .erp-offline-bar {
+    padding-block-start: calc(8px + env(safe-area-inset-top, 0px));
+  }
+
+  /* الدرجُ مخزونٌ ثابتُ الارتفاع، فحاشيتاه تسقطان داخل منطقة عدم
+     الأمان على الهاتف: الشعار يختفي خلف النوتش وآخر بندٍ في القائمة
+     خلف شريط الإيماءة. الحشو يُزاد داخل الدرج نفسه، لا على محتواه،
+     كي يبقى التمرير الداخلي صحيحًا حتى آخر بند. */
+  .erp-shell__sidebar {
+    padding-block-start: env(safe-area-inset-top, 0px);
+  }
+  .erp-shell__nav {
+    padding-block-end: calc(var(--erp-space-3) + env(safe-area-inset-bottom, 0px));
+  }
 }
 
 .erp-mobile-nav .erp-mnav-item {

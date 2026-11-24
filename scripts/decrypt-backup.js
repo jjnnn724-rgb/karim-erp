@@ -37,7 +37,7 @@ if (head.equals(MAGIC)) {
     let passphrase = envPass;
     if (!passphrase) {
         // قراءة بلا echo: نطلبها ونEchoها؟ لا — نستخدم stdin حتى لا تُطبع.
-        process.stdout.write('عب��رة مرور فك التشفير: ');
+        process.stdout.write('عبارة مرور فك التشفير: ');
         const chunks = [];
         process.stdin.on('data', (c) => chunks.push(c));
         process.stdin.on('end', () => {

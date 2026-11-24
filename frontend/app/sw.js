@@ -10,7 +10,7 @@
  */
 'use strict';
 
-const CACHE_VERSION='4.25.61'; // 2026-10-17: معاينة شاشة سامسونج الطولية بنسبة 9:16
+const CACHE_VERSION='4.25.62'; // 2026-11-12: تصميم كاشير Midnight & Emerald + طرق دفع ظاهرة
 const CACHE = `karim-erp-${CACHE_VERSION}`;
 const STATIC_CACHE = `karim-static-${CACHE_VERSION}`;
 const API_CACHE = `karim-api-${CACHE_VERSION}`;
@@ -20,7 +20,7 @@ const FONT_CACHE = `karim-fonts-${CACHE_VERSION}`;
 /* الكاش المُسبق صار مُشتقًّا لا مُؤلَّفًا: الصفحة نفسها تُخبرنا بما تطلبه.
  * القائمة اليدوية القديمة كانت ٦١ مفتاحًا تُنزَّل مرّتين (كاشَين) = ٨٬٤١٢٬١٢٠ بايتًا،
  * ٢٨ منها لا يطابق أي طلبٍ حقيقي (مسارٌ بلا ?v= لوحداتٍ تُستدعى دائمًا بـ ?v=، أو مراجعةٌ
- * قديمة مثل pos.js?v=4.9.77 بينما الصفحة تطلب 4.9.33) = ٢٬٦٤٩٬٤٦٦ بايتًا لا تُقرأ أبدًا؛
+ * قديمة مثل pos.js?v=4.9.323 بينما الصفحة تطلب 4.9.33) = ٢٬٦٤٩٬٤٦٦ بايتًا لا تُقرأ أبدًا؛
  * وفي المقابل ١٢٥ أصلًا تطلبه الصفحات فعليًا لم يكن مخزَّنًا إطلاقًا. المصدر الآن:
  * وسوم src/href في الصفحات + ما تستورده وحداتُها.
  */
@@ -140,12 +140,26 @@ async function precacheAll() {
     const importedRefs = [];
     moduleTexts.forEach((js, i) => {importedRefs.push(...refsInModule(js, hrefOf(walkable[i])));});
 
+    /* الطبقة الثالثة — الشاشات وحدها. preview.js لم يعد يستورد الشاشات
+       استيرادًا ساكنًا (screens/registry.js يستوردها ديناميكيًّا عند الطلب)،
+       فبلا هذه الخطوة يفقد التثبيتُ كلَّ شاشةٍ لم تُفتَح بعدُ — وجهازُ الكاشير
+       ينقطع عنه الشبكة في منتصف الوردية فيجد الشاشة غيرَ مخزَّنة، وهو أسوأ من
+       بطءِ أوّلِ تحميل. نقرأ سجلَّ الشاشات وحده ونضمّ ما يشير إليه من
+       /js/v2/screens/ — نفس المحتوى الذي كان يُخزَّن قبل التحميل الكسول، دون
+       سحب بقية الاعتماديات ومزاحمة الميزانية. */
+    const screenRefs = [];
+    const registryKey = [...new Set(importedRefs)].find((k) => k.startsWith('/app/js/v2/screens/registry.js'));
+    if (registryKey) {
+        const text = await take(registryKey, true);
+        if (text) {screenRefs.push(...refsInModule(text, hrefOf(registryKey)).filter((k) => k.includes('/js/v2/screens/')));}
+    }
+
     // FIX (Enterprise 2026-10-21): الأصول الصريحة (manifest + الأيقونات) كانت
     // تُقصّ مع الترتيب الأبجدي عند بلوغ الحد — فيسقط manifest.json من الذيل
     // ويختفي التطبيق المثبَّت. الصريح الآن **أولًا دائمًا**، والباقي يملأ
     // ما تبقّى من الميزانية.
     const explicit = MANIFEST_ASSETS.filter((key) => !stored.has(key));
-    const derived = [...new Set([...pageRefs, ...importedRefs])]
+    const derived = [...new Set([...pageRefs, ...importedRefs, ...screenRefs])]
         .filter((key) => !stored.has(key) && !explicit.includes(key))
         .sort();
     const budget = Math.max(PRECACHE_LIMIT - stored.size - explicit.length, 0);
@@ -264,7 +278,15 @@ self.addEventListener('fetch', (event) => {
                 .catch(async () => {
                     // دون اتصال: نخدم نسخة مخزّنة **صالحة** فقط، وإلا صفحة
                     // إخطار مفهومة بدل شاشة بيضاء.
-                    const hit = (await caches.match(req)) || (await caches.match('/app/index.html'));
+                    /* استراحة (2026-11-02 · الهاتف): الطلب المُستَعمَل هو
+                       /app/v2.html?live=1، والاختلاف في الاستعلام (‪&v2routing=1‬
+                       أو رابطٌ مختصر من المانيفست) يصنع مفتاحًا جديدًا لا يطابق
+                       أي نسخة مخزَّنة — فكان الهاتف يفتح الواجهة القديمة عند
+                       انقطاع الشبكة. مطابقةٌ بالاستعلام مُهمَل تُبقي الموظف على
+                       شاشته، والذيلُ القديم يبقى احتياطًا أخيرًا. */
+                    const exact = await caches.match(req);
+                    const samePage = exact || (await caches.match(req, { ignoreSearch: true }));
+                    const hit = samePage || (await caches.match('/app/index.html'));
                     if (hit && hit.ok) {
                         try {
                             const body = await hit.clone().text();

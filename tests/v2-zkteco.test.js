@@ -71,6 +71,7 @@ const EXPORTS = [
     'scanNetwork', 'saveMapping', 'autoLinkMappings', 'importDeviceUsers',
     'deviceToRow', 'mappingStats', 'coverageStats', 'validateDeviceForm',
     'punchStateName', 'verifyTypeName', 'downloadZkLogsCsv',
+    'fetchZkReconciliation',
 ];
 
 describe('v2 شاشة 11 — أجهزة البصمة: مرآة الخادم', () => {
@@ -140,6 +141,35 @@ describe('v2 شاشة 11 — أجهزة البصمة: مرآة الخادم', ()
         ]) {
             expect(serverSrc).toContain(door);
         }
+    });
+
+    test('باب المطابقة: مسارٌ واحد بلا كتابة، والراوتر يعلنه', async () => {
+        const { apiFetch, calls } = repoStub(() => ({
+            summary: { device_punches: 5, matched: 3, orphan_punches: 1, unmapped_punches: 1, system_rows: 4, rows_without_device_punch: 2 },
+            orphans: [{ log_id: 9, employee_name: 'مازن', attendance_time: '2026-11-01T08:00:00.000Z' }],
+            unmapped: [{ log_id: 10, device_user_id: '77' }],
+            rows_without_device_punch: [{ attendance_id: 3, employee_name: 'سيف', date: '2026-11-01', check_in: '09:00', check_out: '17:00', reason: 'بوابة التطبيق' }],
+            generated_at: '2026-11-02T10:00:00.000Z',
+        }));
+        const ctx = loadEsm(REPO, { apiFetch }, EXPORTS);
+        const res = await ctx.fetchZkReconciliation({ from: '2026-10-01', to: '2026-11-01', limit: 500 });
+        expect(calls).toHaveLength(1);
+        expect(calls[0].method).toBe('GET');
+        expect(calls[0].path).toBe('/zkteco/reconciliation?from=2026-10-01&to=2026-11-01&limit=500');
+        // الراوتر يعلن المسار بنفس الاسم
+        expect(read(SERVER)).toContain("router.get('/reconciliation'");
+        // الأرقام كما وردت من الخادم — لا إعادة اشتقاق
+        expect(res.summary.orphan_punches).toBe(1);
+        expect(res.orphans.length).toBe(1);
+        expect(res.unmapped.length).toBe(1);
+        expect(res.rows_without_device_punch[0].reason).toBe('بوابة التطبيق');
+    });
+
+    test('باب المطابقة بلا تاريخ = بلا مرشّحات في الرابط', async () => {
+        const { apiFetch, calls } = repoStub(() => ({}));
+        const ctx = loadEsm(REPO, { apiFetch }, EXPORTS);
+        await ctx.fetchZkReconciliation({});
+        expect(calls[0].path).toBe('/zkteco/reconciliation?limit=500');
     });
 
     test('commKey لا يخرج من deviceToRow — لا قيمة ولا مفتاح ولا نص', () => {
@@ -261,6 +291,16 @@ describe('v2 شاشة 11 — عقد المصدر (CSP/تأكيد/هدم/تبوي
             expect(src).toContain(`data-v2-pane="${tab}"`);
         }
         expect(src).toMatch(/role="tablist"/);
+    });
+
+    test('تبويب مطابقة الجهاز بالنظام: بابٌ للقراءة بلا كتابة', () => {
+        expect(src).toContain('data-v2-tab="recon"');
+        expect(src).toContain('data-v2-pane="recon"');
+        expect(src).toContain('fetchZkReconciliation');
+        // لا زرّ كتابة في لوح المطابقة — القراءة فقط
+        expect(src).toMatch(/async function loadRecon\(force = false\)/);
+        expect(src).toMatch(/data-v2-recon-load/);
+        expect(src).not.toMatch(/data-v2-recon-(save|write|delete)/);
     });
 
     test('كل كتابات القديم مستوردة ومستدعاة — لا زر بلا باب', () => {

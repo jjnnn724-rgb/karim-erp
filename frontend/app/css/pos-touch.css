@@ -1,0 +1,276 @@
+/* pos-touch.css — طبقة اللمس لشاشة الكاشير
+   ═══════════════════════════════════════════════════════════════════════════
+   الشاشة تُستخدم بإصبع على شاشة لمس أكثر مما تُستخدم بفأرة. الطبقات السابقة
+   (pos.css + pro-theme + pos-fit) صُممت لسطح المكتب: أزرار 26–34px، وتأثيرات
+   hover تبقى ملتصقة بعد اللمس، وقيم رقمية تُكتب بلوحة مفاتيح غير موجودة على
+   جهاز الكاشير. هذه الطبقة تعالج الثلاثة:
+
+     · مقاسات لمس ≥ 44px (المعيار: هدف اللمس المريح) على الأجهزة اللمسية فقط
+     · ردّ فعل ضغط فوري (:active) بدل hover — يُرى على شاشة اللمس
+     · منع تكبير النقر المزدوج والاختيار الطويل والظل الأزرق للمتصفح
+   ولا تمسّ تخطيط «شاشة واحدة»: الأصناف والسلة يُعاد ترقيمها تلقائيًا مع
+   ارتفاع الصف الجديد (pos-fit.js يقيس من الهندسة الحقيقية لا من رقم ثابت). */
+
+:root {
+  --pos-touch-target: 44px;
+}
+
+/* ── قواعد عامة: كل جهاز ─────────────────────────────────────────────── */
+html { touch-action: manipulation; }
+
+button,
+input,
+select,
+textarea,
+.product-card,
+.cat-tab,
+.pay-channel,
+.cart-item,
+.buffet-person-card {
+  touch-action: manipulation;
+}
+
+button,
+.icon-btn,
+.qty-btn,
+.quick-cash-btn,
+.cat-tab,
+.product-card,
+.modal-btn,
+.pos-pager-btn,
+.cart-action-btn,
+.pay-remaining-btn {
+  -webkit-tap-highlight-color: transparent;
+  -webkit-touch-callout: none;
+}
+
+button,
+.icon-btn,
+.qty-btn,
+.cat-tab,
+.modal-btn,
+.pos-pager-btn,
+.cart-action-btn {
+  user-select: none;
+  -webkit-user-select: none;
+}
+
+/* ردّ فعل الضغط — الفأرة تحصل على hover، والإصبع على :active */
+.icon-btn:active:not(:disabled),
+.qty-btn:active:not(:disabled),
+.quick-cash-btn:active:not(:disabled),
+.cat-tab:active,
+.modal-btn:active:not(:disabled),
+.pos-pager-btn:active:not(:disabled),
+.cart-action-btn:active:not(:disabled),
+.pay-remaining-btn:active:not(:disabled),
+.product-card:active:not(.out-of-stock) {
+  transform: scale(.97);
+  filter: brightness(.97);
+}
+
+.btn-complete:active:not(:disabled) {
+  transform: translateY(1px) scale(.995);
+}
+
+/* ── أجهزة بلا مؤشر دقيق: لا تُترك تأثيرات hover ملتصقة ──────────────── */
+@media (hover: none) {
+  .icon-btn:hover,
+  .icon-btn.danger:hover,
+  .qty-btn:hover,
+  .quick-cash-btn:hover,
+  .cart-action-btn:hover:not(:disabled),
+  .modal-btn:hover,
+  .btn:hover,
+  .cat-tab:hover,
+  .pay-channel:hover,
+  .held-order-card:hover,
+  .buffet-person-card:hover {
+    transform: none;
+    filter: none;
+    box-shadow: none;
+    border-color: var(--pos-border);
+    background: inherit;
+    color: inherit;
+  }
+
+  .product-card:hover {
+    transform: none;
+    box-shadow: none;
+    border-color: var(--pos-border);
+    background: var(--pos-surface);
+  }
+
+  .cart-item:hover,
+  .recent-order-item:hover,
+  .orders-table-wrap tbody tr:hover {
+    background: transparent;
+  }
+}
+
+/* ── الأجهزة اللمسية: أهداف لمس مريحة ────────────────────────────────── */
+@media (pointer: coarse) {
+  .icon-btn {
+    min-width: 46px;
+    height: 44px;
+    padding: 0 10px;
+    font-size: 16px;
+    border-radius: 9px;
+  }
+
+  .qty-btn {
+    width: 40px;
+    height: 40px;
+    font-size: 19px;
+    border-radius: 10px;
+  }
+
+  .quick-cash-btn {
+    min-height: 52px;
+    font-size: 16px;
+    padding: 10px 8px;
+    border-radius: 10px;
+  }
+
+  .pay-remaining-btn {
+    min-height: 34px;
+    padding: 0 12px;
+    font-size: 12.5px;
+  }
+
+  .pay-channel input {
+    min-height: 50px;
+    font-size: 20px;
+    border-radius: 10px;
+  }
+
+  .pay-channel .ref-input,
+  .pay-channel input.ref-input {
+    min-height: 42px;
+    font-size: 15px;
+  }
+
+  .pay-channel { padding: 10px; border-radius: 12px; }
+
+  .cat-tab {
+    min-height: 44px;
+    padding: 0 18px;
+    font-size: 14.5px;
+  }
+
+  .product-card { padding: 10px; }
+
+  .btn-complete,
+  .modal-btn,
+  .btn {
+    min-height: 52px;
+    font-size: 15.5px;
+    border-radius: 12px;
+  }
+
+  .cart-action-btn { min-height: 46px; }
+
+  .pos-pager-btn {
+    width: 48px;
+    height: 48px;
+    font-size: 22px;
+    border-radius: 12px;
+  }
+
+  .login-form input,
+  .login-form button,
+  .card button {
+    min-height: 54px;
+    font-size: 17px;
+  }
+
+  /* الحقول النصية بخط 16px على الأقل حتى لا يكبّر iOS الواجهة عند اللمس */
+  input,
+  select,
+  textarea {
+    font-size: 16px;
+  }
+
+  #product-search {
+    font-size: 17px;
+    min-height: 48px;
+  }
+
+  .pay-keypad key,
+  .pay-keypad button {
+    min-height: 54px;
+    font-size: 20px;
+  }
+}
+
+/* ── لوحة الأرقام اللمسية (pos-touch.js) ────────────────────────────── */
+.pay-keypad {
+  position: fixed;
+  z-index: 9500;
+  inset-inline-end: 18px;
+  bottom: 18px;
+  width: 268px;
+  padding: 10px;
+  border-radius: 16px;
+  background: var(--pos-surface, #fff);
+  border: 1px solid var(--pos-border, #e5e7eb);
+  box-shadow: 0 18px 44px -12px rgba(0, 0, 0, .35);
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 6px;
+  font-family: inherit;
+}
+
+.pay-keypad.hidden { display: none !important; }
+
+.pay-keypad-head {
+  grid-column: 1 / -1;
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 8px;
+  padding: 2px 4px 6px;
+  font-size: 12px;
+  font-weight: 700;
+  color: var(--pos-text-2, #52525b);
+}
+
+.pay-keypad-value {
+  font-size: 20px;
+  font-weight: 800;
+  color: var(--pos-text, #171717);
+  font-variant-numeric: tabular-nums;
+  direction: ltr;
+}
+
+.pay-keypad button {
+  border: 1px solid var(--pos-border, #e5e7eb);
+  background: var(--pos-surface-2, #fafafa);
+  color: var(--pos-text, #171717);
+  border-radius: 12px;
+  min-height: 48px;
+  font-size: 19px;
+  font-weight: 700;
+  font-family: inherit;
+  cursor: pointer;
+  touch-action: manipulation;
+}
+
+.pay-keypad button:active { transform: scale(.96); background: var(--pos-gold-lighter, #fbf3e4); }
+.pay-keypad button.wide { grid-column: span 2; }
+.pay-keypad button.ok { background: var(--pos-green, #08875c); border-color: var(--pos-green, #08875c); color: #fff; }
+.pay-keypad button.back { color: var(--pos-red, #b91c1c); font-size: 15px; font-weight: 800; }
+
+@keyframes payKeypadIn {
+  from { opacity: 0; transform: translateY(10px) scale(.98); }
+  to { opacity: 1; transform: none; }
+}
+.pay-keypad:not(.hidden) { animation: payKeypadIn .16s ease-out both; }
+
+@media (prefers-reduced-motion: reduce) {
+  .pay-keypad:not(.hidden) { animation: none; }
+}
+
+@media print {
+  .pay-keypad { display: none !important; }
+}

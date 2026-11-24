@@ -10,7 +10,7 @@
 const lib = require('../../scripts/shared');
 // Ensure we are in the project root
 process.chdir(lib.ROOT);
-const { log, MIGRATIONS_DIR, MIGRATION_LOCK, getEnv, psqlFile, shouldApplyMigration } = lib;
+const { log, MIGRATIONS_DIR, MIGRATION_LOCK, getEnv, psqlFile, shouldApplyMigration, isRollbackMigration } = lib;
 const fs = require('fs');
 const path = require('path');
 const {
@@ -36,8 +36,11 @@ async function main() {
     }
 
     const dbName = getEnv('DB_NAME', 'karim_erp');
+    // ملفات الرجوع (_down.sql) خارج العدّ: الترتيب أبجدي فيقع 134_coa_foundation_down.sql
+    // مباشرة بعد 134_coa_foundation.sql في أي تشغيل كامل — يبني الأثر ثم يهدمه في
+    // نفس الجلسة. الرجوع إجراء يدوي صريح (انظر بوابة الملف المستهدف أدناه).
     const migrationFiles = fs.readdirSync(MIGRATIONS_DIR)
-        .filter((file) => file.endsWith('.sql'))
+        .filter((file) => file.endsWith('.sql') && !isRollbackMigration(file))
         .sort();
     if (process.argv[2] === '--status') {
         if (!String(process.env.DB_NAME || '').trim()) {
@@ -130,7 +133,14 @@ async function main() {
 
         let pending;
         if (targetFile) {
-            pending = [path.basename(targetFile)].filter((file) => !isMigrationApplied(file, applied));
+            const name = path.basename(targetFile);
+            if (isRollbackMigration(name)) {
+                log.error(`${name} ملف رجوع — لا يُشغَّل من المشغّل: كان يُسجَّل في schema_migrations كترحيل مطبَّق فيُلوّث السجل.`);
+                log.error('الرجوع اليدوي: psql -f database/migrations/' + name + ' (مع قرار مالك + نسخة احتياطية).');
+                process.exitCode = 2;
+                return;
+            }
+            pending = [name].filter((file) => !isMigrationApplied(file, applied));
         } else {
             const all = migrationFiles.sort();
             pending = all.filter(f => !isMigrationApplied(f, applied) && shouldApplyMigration(f));

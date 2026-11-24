@@ -16,6 +16,7 @@ const {
     ownershipScope,
 } = require('../backend/notification-routes');
 const { buildChainNotification } = require('../backend/dispatch-notifier');
+const { buildRequestNotification } = require('../backend/procurement-notifier');
 
 const USERS = [
     { id: 1, username: 'admin', name: 'مدير النظام', role: 'admin', dept_code: null, active: true },
@@ -96,6 +97,14 @@ describe('بناء صف الإشعار', () => {
         expect(row.user_id).toBe(3);
         expect(row.read).toBe(false);
     });
+
+    test('التصنيف يُحفظ للقنوات المعتمدة فقط والغريب يسقط إلى null (عام)', () => {
+        expect(buildNotificationRow({ id: 10, title: 'أ', message: 'م', category: 'dispatch', userId: 2 }).category).toBe('dispatch');
+        expect(buildNotificationRow({ id: 10, title: 'أ', message: 'م', category: 'procurement', userId: 2 }).category).toBe('procurement');
+        expect(buildNotificationRow({ id: 10, title: 'أ', message: 'م', category: 'weird', userId: 2 }).category).toBeNull();
+        expect(buildNotificationRow({ id: 10, title: 'أ', message: 'م', category: '', userId: 2 }).category).toBeNull();
+        expect(buildNotificationRow({ id: 10, title: 'أ', message: 'م', userId: 2 }).category).toBeNull();
+    });
 });
 
 describe('بث الإشعارات عبر Socket.IO', () => {
@@ -109,6 +118,23 @@ describe('بث الإشعارات عبر Socket.IO', () => {
         const count = emitNotificationRows(io, rows);
         expect(count).toBe(2);
         expect(sent.filter(r => String(r).startsWith('user:')).sort()).toEqual(['user:2', 'user:3']);
+    });
+
+    test('الـ payload يحمل التصنيف وأولوية قنوات الطلبات فقط', () => {
+        const seen = [];
+        const io = { to(room) { return { emit(event, payload) { seen.push({ room, event, payload }); } }; } };
+        emitNotificationRows(io, [
+            buildNotificationRow({ id: 1, title: 'صرف', message: 'م', category: 'dispatch', userId: 2 }),
+            buildNotificationRow({ id: 2, title: 'شراء', message: 'م', category: 'procurement', userId: 3 }),
+            buildNotificationRow({ id: 3, title: 'عام', message: 'م', userId: 4 }),
+        ]);
+        const byId = Object.fromEntries(seen.map(x => [x.payload.id, x.payload]));
+        expect(byId[1].category).toBe('dispatch');
+        expect(byId[1].priority).toBe(true);
+        expect(byId[2].category).toBe('procurement');
+        expect(byId[2].priority).toBe(true);
+        expect(byId[3].category).toBeNull();
+        expect(byId[3].priority).toBe(false);
     });
 
     test('بلا io أو صفوف لا يرمي ولا يبث', () => {
@@ -172,5 +198,45 @@ describe('نصوص سلسلة اعتماد طلبات الصرف', () => {
     test('حدث مجهول يعيد null بلا أخطاء', () => {
         expect(buildChainNotification(dispatch, 'unknown_event')).toBeNull();
         expect(buildChainNotification(null, 'created_direct')).not.toBeNull();
+    });
+});
+
+describe('نصوص سلسلة طلبات الشراء (procurement-notifier 2026-10-31)', () => {
+    const pr = { id: 55, request_number: 'PR-20261031-000001', creator_name: 'أمين المخازن', created_by: 3 };
+
+    test('إنشاء عادي يوجَّه للشيف العمومي ولمقدم الطلب', () => {
+        const spec = buildRequestNotification(pr, 'created_pending_chef');
+        expect(spec.targetRoles).toEqual(['kitchen', 'sous_chef']);
+        expect(spec.targetCreator).toBe(true);
+        expect(spec.title).toBe('طلب شراء جديد');
+        expect(spec.message).toContain('PR-20261031-000001');
+        expect(spec.message).toContain('بانتظار توقيع الشيف');
+    });
+
+    test('إنشاء الشيف الموقِّع يوجَّه للمخازن مباشرة', () => {
+        const spec = buildRequestNotification(pr, 'created_approved');
+        expect(spec.targetRoles).toEqual(['warehouse']);
+        expect(spec.targetCreator).toBeUndefined();
+        expect(spec.message).toContain('بانتظار توريد المخزن');
+    });
+
+    test('توقيع الشيف يوجَّه للمدير العام ولمقدم الطلب', () => {
+        const spec = buildRequestNotification(pr, 'chef_approved');
+        expect(spec.targetRoles).toEqual(['admin', 'manager']);
+        expect(spec.targetCreator).toBe(true);
+        expect(spec.type).toBe('success');
+    });
+
+    test('الرفض يحمل السبب ويوجَّه لمقدم الطلب، والاعتماد النهائي للمخازن', () => {
+        const rejected = buildRequestNotification(pr, 'gm_rejected', { reason: 'كميات مبالغ فيها' });
+        expect(rejected.targetCreator).toBe(true);
+        expect(rejected.message).toContain('كميات مبالغ فيها');
+        expect(buildRequestNotification(pr, 'gm_approved').targetRoles).toEqual(['warehouse']);
+        expect(buildRequestNotification(pr, 'chef_rejected', { reason: 'x' }).type).toBe('warning');
+    });
+
+    test('حدث مجهول يعيد null بلا أخطاء', () => {
+        expect(buildRequestNotification(pr, 'unknown_event')).toBeNull();
+        expect(buildRequestNotification(null, 'created_approved')).not.toBeNull();
     });
 });

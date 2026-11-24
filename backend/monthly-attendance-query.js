@@ -1,9 +1,15 @@
 function buildMonthlyAttendanceSummaryQuery() {
   // الدقائق من النصين المعروضين (HH:MM) لا من workMinutes المخزن — يمنع قيمًا
   // شاذة (25:43) من أزمنة instant متقطعة. التفاف ليلي فقط عند out<in.
+  //
+  // يوم الإجازة المعتمدة لا يُحتسب حضورًا ولا انصرافًا ولا تأخيرًا — ولو فيه
+  // بصمة فعلية (ريان عادل 1/11: بصمة 04:30 في يوم راحته). لا تُكتب ملاحظات داخل
+  // نص SQL نفسه: «//» عندها عامل قسمة عند PostgreSQL وليس تعليقًا.
   return `SELECT e.id, e.name, e."employeeId", e."deviceUserId", e.department, e.position, e.shift_start, e.shift_karim, e."joinDate", e.day_off,
-                 COUNT(a.id)::int AS days, COUNT(a."checkIn")::int AS present,
-                 COUNT(a."checkOut")::int AS complete, COUNT(*) FILTER (WHERE a.late)::int AS late,
+                 COUNT(a.id)::int AS days,
+                 COUNT(a."checkIn") FILTER (WHERE NOT COALESCE(a.on_leave, false))::int AS present,
+                 COUNT(a."checkOut") FILTER (WHERE NOT COALESCE(a.on_leave, false))::int AS complete,
+                 COUNT(*) FILTER (WHERE a.late AND NOT COALESCE(a.on_leave, false))::int AS late,
                  COUNT(*) FILTER (WHERE a.on_leave)::int AS leave_days,
                   COALESCE(SUM(CASE WHEN NOT COALESCE(a.on_leave, false)
                     AND a."checkIn" ~ '^([01]?\\d|2[0-3]):[0-5]\\d$' AND a."checkOut" ~ '^([01]?\\d|2[0-3]):[0-5]\\d$'

@@ -13,7 +13,9 @@
  *     warehouseApproved{At,By}, warehouseRejected{At,By},
  *     kitchenReceived{At,By}, receivedItems(jsonb), receiptNotes,
  *     closed{At,By}, needsChefApproval, chefApproved{At,By},
- *     chefRejected{At,By}, creatorRole, creatorUserId, lastEventHash.
+ *     chefRejected{At,By}, creatorRole, creatorUserId, lastEventHash,
+ *     cancelled{At,By}, cancellationReason, reopened{At,By}, reopenReason,
+ *     voided{At,By}, voidReason, voidedJournalCount.
  *   Direct status edits are rejected server-side (405
  *   DISPATCH_WORKFLOW_REQUIRED, server.js:1935) — decisions travel the
  *   dispatch workflow, a separate screen, never a row button here.
@@ -31,20 +33,22 @@
  * W1 (2026-10-15) — THIS FILE IS NOW THE SINGLE DOOR OF THE DECISION CYCLE
  *   The read register stays read-only; the cycle writes live below with
  *   contracts copied from the server, not invented:
- *     POST   /api/dispatches                        server.js:1544 (create roles)
- *     DELETE /api/dispatches/:id                    server.js delete block
+ *     POST   /api/dispatches                         server.js:1544 (create roles)
+ *     POST   /warehouse/dispatches/:id/cancel       dispatch-routes.js:101
+ *     POST   /warehouse/dispatches/:id/reopen       dispatch-routes.js:135
+ *     POST   /warehouse/dispatches/:id/void         dispatch-routes.js:180
  *     POST   /warehouse/dispatches/:id/chef-approve warehouse-routes.js:829
  *     POST   /warehouse/dispatches/:id/chef-reject  warehouse-routes.js:886
  *     POST   /warehouse/dispatches/:id/approve      warehouse-routes.js:621
  *     POST   /warehouse/dispatches/:id/reject       warehouse-routes.js:1039
  *     POST   /warehouse/dispatches/:id/receive      warehouse-routes.js:1076
  *     PUT    /warehouse/dispatches/:id/edit         warehouse-routes.js:932
- *   Every decision endpoint requires the account-locked electronic
- *   signature (requireSignature, warehouse-routes.js:365) and the server
- *   remains the authority on every gate — this file only names the paths.
+ *   All decisions except cancellation require the account-locked electronic
+ *   signature (requireSignature, warehouse-routes.js:365). Every write carries
+ *   X-Idempotency-Key; the server remains the authority on every gate.
  */
 
-import { apiFetch } from '../../core/api.js?v=4.9.180';
+import { apiFetch } from '../../core/api.js?v=4.9.323';
 
 /** قراءة أذون الصرف. scope='month' (الافتراضي) = الشهر الحالي بفلتر الخادم
  *  (server.js:1680 يطبّق dateRange عند v2_period=month وحده)؛ scope='all' =
@@ -170,10 +174,14 @@ export const WAREHOUSE_DECIDE_ROLES = ['admin', 'manager', 'warehouse'];
 export const RECEIVE_ROLES = ['admin', 'manager', 'kitchen', 'sous_chef'];
 /** من يعدّل قبل اعتماد المخازن — مرآة canEditDispatch (kitchen.js:343-353). */
 export const EDIT_ROLES = ['kitchen', 'sous_chef', 'admin', 'manager'];
-/** الحالات التي يُطبع فيها الإذن — مرآة شرط زر الطباعة (kitchen.js:294). */
-export const PRINT_STATUSES = ['approved', 'partially_received', 'received'];
+/** الإلغاء قبل الصرف متاح للمخازن والإدارة، ولمنشئ الإذن ضمن أدوار الإنشاء. */
+export const CANCEL_ROLES = ['admin', 'manager', 'warehouse'];
+/** الإرجاع والإبطال للمدير العام فقط — مرآة requireRoleOrPerm(dispatch.void). */
+export const LIFECYCLE_ROLES = ['admin', 'manager'];
+/** الحالات التي يُطبع فيها الإذن، بما فيها المستندات الموقّعة الملغاة/المبطلة. */
+export const PRINT_STATUSES = ['approved', 'partially_received', 'received', 'cancelled', 'voided'];
 
-/** كلمات مرحلة السلسلة — منسوخة من core/i18n.js:98-100 كما تنطقها الشاشة القديمة. */
+/** كلمات مرحلة السلسلة — القديمة كما هي، مع حالتي الإلغاء والإبطال الجديدتين. */
 export const CHAIN_STAGE_AR = {
     chefWait: 'بانتظار اعتماد الشيف العمومي',
     whWait: 'بانتظار اعتماد المخازن',
@@ -182,6 +190,8 @@ export const CHAIN_STAGE_AR = {
     partial: 'استُلم جزئيًا',
     received: 'مستلم ومغلق',
     rejected: 'مرفوض',
+    cancelled: 'ملغى قبل الصرف',
+    voided: 'مُبطل وعُكست آثاره المخزنية والمالية',
 };
 
 /** مرحلة السلسلة الحالية — مرآة dispatchChainStage (kitchen.js:220-229). */
@@ -193,6 +203,8 @@ export function chainStage(row = {}) {
     if (st === 'partially_received') {return CHAIN_STAGE_AR.partial;}
     if (st === 'received') {return CHAIN_STAGE_AR.received;}
     if (st === 'rejected') {return CHAIN_STAGE_AR.rejected;}
+    if (st === 'cancelled') {return CHAIN_STAGE_AR.cancelled;}
+    if (st === 'voided') {return CHAIN_STAGE_AR.voided;}
     return '';
 }
 
@@ -201,37 +213,129 @@ export function deptCodesOf(user) {
     return String((user && user.deptCode) || '').split(',').map((s) => s.trim().toLowerCase()).filter(Boolean);
 }
 
-/** هل إذن هذا الصف يخص قسم صاحب الحساب؟ — مرآة deptsMatch (warehouse-routes.js). */
+/**
+ * مرادفات أكواد الأقسام — مرآة `DEPT_CODE_ALIASES` في backend/warehouse-routes.js.
+ * أذون الصرف تُسجّل القسم التشغيلي (`hot_hall`) بينما حسابات HR قد تحمل
+ * الاسم الآخر (`SERVICE`): بلا توحيد كانت مقارنة النصّ تُسقط زر الاستلام
+ * والتعديل لرئيس القسم. نفس الجدول في الخادم هنا — الواجهة لا تخمّن.
+ */
+const DEPT_CODE_ALIASES = Object.freeze({
+    shop: 'CAF', caf: 'CAF',
+    ca1: 'NAS', nas: 'NAS',
+    juice: 'G', g: 'G',
+    service: 'hot_hall', hot_hall: 'hot_hall',
+    kitchen: 'kitchen', storeroom: 'storeroom',
+    external_sales: 'external_sales', salads: 'salads', sweets: 'sweets',
+    bakery: 'bakery', hot_kitchen: 'hot_kitchen', butcher: 'butcher',
+    fnb: 'fnb', open_buffet: 'open_buffet', kstore: 'kstore',
+});
+
+export function canonicalDeptCode(code) {
+    const clean = String(code || '').trim().toLowerCase();
+    if (!clean) {return '';}
+    return DEPT_CODE_ALIASES[clean] || String(code || '').trim();
+}
+
+/** هل إذن هذا الصف يخص قسم صاحب الحساب؟ — مرآة deptsMatch (warehouse-routes.js)
+ *  بالمقارنة على الكود الموحّد، لا نصّ الحساب نصّ الإذن. */
 export function rowDeptMatches(user, row) {
     const codes = deptCodesOf(user);
-    return codes.length > 0 && codes.includes(String((row && row.deptCode) || '').trim().toLowerCase());
+    const target = canonicalDeptCode(row && row.deptCode).toLowerCase();
+    return codes.length > 0 && codes.some((code) => canonicalDeptCode(code).toLowerCase() === target);
 }
 
-/* ── بوابات ظهور الإجراءات لكل صف — مرايا أسطر الشاشة القديمة ────────── */
+/* ── بوابات ظهور الإجراءات لكل صف ─────────────────────────────────────── */
 
-/** أزرار الشيف: pending && needsChefApproval (kitchen.js:294). */
-export function chefActionsVisible(role, row) {
-    return String(row.status) === 'pending' && !!row.needsChefApproval && CHEF_DECIDE_ROLES.includes(role);
+/** V2 يحمل هوية الحساب في userId — لا id. نفس فصل المهام المفروض بالخادم. */
+function isDispatchCreator(row, user) {
+    const creatorId = Number(row && row.creatorUserId);
+    const actorId = Number(user && user.userId);
+    return Number.isInteger(creatorId) && creatorId > 0
+        && Number.isInteger(actorId) && actorId > 0 && actorId === creatorId;
 }
 
-/** أزرار المخازن: (pending && !needsChefApproval) || chef_approved (kitchen.js:294). */
-export function warehouseActionsVisible(role, row) {
+/** الأصناف المعتمدة (أو المطلوبة قبل الاعتماد) كما يراها مسار الاستلام. */
+function dispatchLines(row = {}) {
+    if (Array.isArray(row.approvedItems) && row.approvedItems.length) {return row.approvedItems;}
+    return Array.isArray(row.items) ? row.items : [];
+}
+
+const receiptItemKey = (item) => String((item && (item.itemName || item.name)) || '').trim().toLowerCase();
+
+/** رصيد صنف في الاستلام: المعتمد والمستلم تراكميًا والمتبقي للتكملة.
+ *  receivedItems في قاعدة البيانات تراكمية، لذا لا تُجمع قيمها؛ يُطابَق آخر
+ *  سطر بالاسم كما يفعل مسار الاستلام. packagingQty للوزن المتغير صناديق. */
+export function dispatchReceiptBalance(row = {}, index = 0) {
+    const item = dispatchLines(row)[index] || {};
+    const itemKey = receiptItemKey(item);
+    let prior = null;
+    for (const received of (Array.isArray(row.receivedItems) ? row.receivedItems : [])) {
+        if (receiptItemKey(received) === itemKey) {prior = received;}
+    }
+    const approved = Math.max(0, num(item.approvedQty ?? item.qty));
+    const received = Math.max(0, num(prior && prior.receivedQty));
+    const approvedPackaging = Math.max(0, num(item.packagingQty ?? item.approvedPackagingQty));
+    const receivedPackaging = Math.max(0, num(prior && prior.receivedPackagingQty));
+    return {
+        item,
+        approved,
+        received,
+        remaining: Math.max(0, approved - received),
+        isCatchWeight: Boolean(item.catchWeightEnabled || item.actualWeight || approvedPackaging > 0),
+        approvedPackaging,
+        receivedPackaging,
+        remainingPackaging: Math.max(0, approvedPackaging - receivedPackaging),
+    };
+}
+
+/** هل بقي وزن/كمية أو صناديق وزن متغير قابلة للاستلام؟ دالة نقية بلا DOM. */
+export function hasRemaining(row = {}) {
+    const items = dispatchLines(row);
+    return items.some((_, index) => {
+        const balance = dispatchReceiptBalance(row, index);
+        return balance.remaining > 1e-6
+            || (balance.isCatchWeight && balance.remainingPackaging > 1e-6);
+    });
+}
+
+/** أزرار الشيف: pending && needsChefApproval، ولا قرار لمنشئ الإذن. */
+export function chefActionsVisible(role, row = {}, user = null) {
+    return String(row.status) === 'pending' && !!row.needsChefApproval
+        && CHEF_DECIDE_ROLES.includes(role) && !isDispatchCreator(row, user);
+}
+
+/** أزرار المخازن: (pending && !needsChefApproval) || chef_approved، وفصل المهام. */
+export function warehouseActionsVisible(role, row = {}, user = null) {
     const st = String(row.status);
     return ((st === 'pending' && !row.needsChefApproval) || st === 'chef_approved')
-        && WAREHOUSE_DECIDE_ROLES.includes(role);
+        && WAREHOUSE_DECIDE_ROLES.includes(role) && !isDispatchCreator(row, user);
 }
 
-/** الحذف: معلّق للمخازن والمدير، وأي حالة للأدمن — نهائي موثّق (kitchen.js:294). */
-export function deleteVisible(role, row) {
-    if (role === 'admin') {return true;}
-    return String(row.status) === 'pending' && WAREHOUSE_DECIDE_ROLES.includes(role);
+/** الإلغاء قبل الصرف فقط: الإدارة/المخازن، أو منشئ الإذن ضمن أدوار الإنشاء. */
+export function cancelVisible(role, row = {}, user = null) {
+    return ['pending', 'chef_approved', 'rejected'].includes(String(row.status))
+        && CREATE_ROLES.includes(role)
+        && (CANCEL_ROLES.includes(role) || isDispatchCreator(row, user));
 }
 
-/** الاستلام: approved && (canReceive أو رئيس القسم المخوّل صاحب الإذن).
- *  رئيس القسم هنا بأكواد قسمه (مطابقة الخادم canReceiveDispatch) لا
- *  بالمقارنة النصية الحرفية القديمة التي كانت تُسقط الأقسام المتعددة. */
-export function receiveVisible(role, row, user) {
-    if (String(row.status) !== 'approved') {return false;}
+/** الإرجاع للمراجعة: معتمد ولم يبدأ استلامه؛ يعكس الصرف والتكلفة بتوقيع. */
+export function reopenVisible(role, row = {}) {
+    return LIFECYCLE_ROLES.includes(role) && String(row.status) === 'approved'
+        && !row.kitchenReceivedAt
+        && !(Array.isArray(row.receivedItems) && row.receivedItems.length > 0);
+}
+
+/** الإبطال: مستند مرحّل (معتمد/جزئي/مستلم)، للمدير العام بتوقيع وسبب. */
+export function voidVisible(role, row = {}) {
+    return LIFECYCLE_ROLES.includes(role)
+        && ['approved', 'partially_received', 'received'].includes(String(row.status));
+}
+
+/** الاستلام: approved|partially_received مع متبقٍ، وفصل المهام؛ رئيس القسم
+ *  يستلم قسمه فقط (مطابقة canReceiveDispatch بالكود الموحّد). */
+export function receiveVisible(role, row = {}, user = null) {
+    if (!['approved', 'partially_received'].includes(String(row.status))) {return false;}
+    if (!hasRemaining(row) || isDispatchCreator(row, user)) {return false;}
     if (RECEIVE_ROLES.includes(role)) {return true;}
     return role === 'dept_head' && rowDeptMatches(user, row);
 }
@@ -359,42 +463,65 @@ export async function fetchDispatchFull(id) {
 
 /* ── أبواب الكتابة — المسارات كما هي عند الخادم، والرسائل تصعد كما ترد ── */
 
+function operationKey(action, id) {
+    const unique = globalThis.crypto?.randomUUID?.() || `${Date.now()}-${Math.random().toString(36).slice(2)}`;
+    return `dispatch-${action}:${id}:${unique}`;
+}
+
+function writeDispatch(path, method, body, action, id) {
+    return apiFetch(path, {
+        method,
+        body: JSON.stringify(body),
+        headers: { 'X-Idempotency-Key': operationKey(action, id) },
+    });
+}
+
 /** إنشاء طلب صرف — POST /api/dispatches (server.js:1544-1621). */
 export async function createDispatch(body) {
-    return apiFetch('/dispatches', { method: 'POST', body: JSON.stringify(body) });
+    return writeDispatch('/dispatches', 'POST', body, 'create', 'new');
 }
 
 /** تعديل قبل اعتماد المخازن — PUT /warehouse/dispatches/:id/edit (:932). */
 export async function editDispatch(id, body) {
-    return apiFetch(`/warehouse/dispatches/${encodeURIComponent(id)}/edit`, { method: 'PUT', body: JSON.stringify(body) });
+    return writeDispatch(`/warehouse/dispatches/${encodeURIComponent(id)}/edit`, 'PUT', body, 'edit', id);
 }
 
-/** حذف — DELETE /api/dispatches/:id (معلّق للمخازن، وأي حالة للأدمن بموثّق). */
-export async function deleteDispatch(id) {
-    return apiFetch(`/dispatches/${encodeURIComponent(id)}`, { method: 'DELETE' });
+/** إلغاء موثّق قبل صرف المخزون — POST /warehouse/dispatches/:id/cancel. */
+export async function cancelDispatch(id, body) {
+    return writeDispatch(`/warehouse/dispatches/${encodeURIComponent(id)}/cancel`, 'POST', body, 'cancel', id);
+}
+
+/** إرجاع الإذن المعتمد غير المستلم للمراجعة وعكس أثره — /reopen موقّع. */
+export async function reopenDispatch(id, body) {
+    return writeDispatch(`/warehouse/dispatches/${encodeURIComponent(id)}/reopen`, 'POST', body, 'reopen', id);
+}
+
+/** إبطال إذن مرحّل وعكس آثاره المخزنية والمالية — /void موقّع. */
+export async function voidDispatch(id, body) {
+    return writeDispatch(`/warehouse/dispatches/${encodeURIComponent(id)}/void`, 'POST', body, 'void', id);
 }
 
 /** اعتماد الشيف — POST /warehouse/dispatches/:id/chef-approve (:829). */
 export async function chefApproveDispatch(id, body) {
-    return apiFetch(`/warehouse/dispatches/${encodeURIComponent(id)}/chef-approve`, { method: 'POST', body: JSON.stringify(body) });
+    return writeDispatch(`/warehouse/dispatches/${encodeURIComponent(id)}/chef-approve`, 'POST', body, 'chef-approve', id);
 }
 
 /** رفض الشيف — POST /warehouse/dispatches/:id/chef-reject (:886). */
 export async function chefRejectDispatch(id, body) {
-    return apiFetch(`/warehouse/dispatches/${encodeURIComponent(id)}/chef-reject`, { method: 'POST', body: JSON.stringify(body) });
+    return writeDispatch(`/warehouse/dispatches/${encodeURIComponent(id)}/chef-reject`, 'POST', body, 'chef-reject', id);
 }
 
 /** اعتماد المخازن — POST /warehouse/dispatches/:id/approve (:621). */
 export async function approveDispatch(id, body) {
-    return apiFetch(`/warehouse/dispatches/${encodeURIComponent(id)}/approve`, { method: 'POST', body: JSON.stringify(body) });
+    return writeDispatch(`/warehouse/dispatches/${encodeURIComponent(id)}/approve`, 'POST', body, 'approve', id);
 }
 
 /** رفض المخازن — POST /warehouse/dispatches/:id/reject (:1039). */
 export async function rejectDispatch(id, body) {
-    return apiFetch(`/warehouse/dispatches/${encodeURIComponent(id)}/reject`, { method: 'POST', body: JSON.stringify(body) });
+    return writeDispatch(`/warehouse/dispatches/${encodeURIComponent(id)}/reject`, 'POST', body, 'reject', id);
 }
 
 /** استلام القسم — POST /warehouse/dispatches/:id/receive (:1076). */
 export async function receiveDispatch(id, body) {
-    return apiFetch(`/warehouse/dispatches/${encodeURIComponent(id)}/receive`, { method: 'POST', body: JSON.stringify(body) });
+    return writeDispatch(`/warehouse/dispatches/${encodeURIComponent(id)}/receive`, 'POST', body, 'receive', id);
 }

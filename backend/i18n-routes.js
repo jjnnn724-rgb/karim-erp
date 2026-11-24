@@ -4,12 +4,20 @@
  * fail-open بالكامل: لا جدول branches؟ لا إعدادات؟ راجع الافتراضيات آمنة.
  */
 const { pool } = require('./shared-pool');
+const { createTenantSettings } = require('./saas/tenant-settings');
 
 const CURRENCY_RE = /^[A-Za-z]{3}$/;
+let tenantSettingsStore = null;
+function getTenantSettingsStore() {
+    if (!tenantSettingsStore) {
+        tenantSettingsStore = createTenantSettings({ pool, env: process.env, logger: require('./logger').logger });
+    }
+    return tenantSettingsStore;
+}
 
-function register(app) {
+function register(/** @type {any} */ app) {
 
-    app.get('/api/i18n/config', asyncHandler(async (req, res) => {
+    app.get('/api/i18n/config', asyncHandler(async (/** @type {any} */ req, /** @type {any} */ res) => {
         const cfg = {
             lang: process.env.DEFAULT_LANGUAGE === 'en' ? 'en' : 'ar',
             currency: String(process.env.CURRENCY_DEFAULT || 'SAR').toUpperCase(),
@@ -39,11 +47,24 @@ function register(app) {
             )).rows;
         } catch (_) { /* قبل الـmigration: قائمة فارغة */ }
 
+        // SaaS: إعدادات المستأجر تتحكّم أخيراً — لا يبقى عميلان بنفس الضريبة/الهوية.
+        // بلا سياق (الوضع الحالي) لا يتغيّر شيء عن المسار القديم.
+        if (req.tenant && req.tenant.id) {
+            const local = await getTenantSettingsStore().localization(req.tenant.id);
+            if (local) {
+                cfg.lang = local.lang;
+                cfg.currency = local.currency;
+                cfg.tax_rate = local.tax_rate;
+                if (local.branding) {cfg.branding = local.branding;}
+                if (local.timezone) {cfg.timezone = local.timezone;}
+            }
+        }
+
         res.json({ ok: true, ...cfg });
     }));
 }
 
-function asyncHandler(fn) {
+function asyncHandler(/** @type {any} */ fn) {
     return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 }
 

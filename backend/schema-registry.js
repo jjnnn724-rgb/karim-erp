@@ -32,7 +32,7 @@ const TYPES = {
 const entitySchemas = {
     // ─── Users (sensitive: role/id are admin-only) ────
     users: {
-        writeable: ['username', 'password', 'name', 'email', 'phone', 'active', 'role', 'dept_code'],
+        writeable: ['username', 'password', 'name', 'email', 'phone', 'active', 'role', 'dept_code', 'must_change_password'],
         required: ['username', 'name'],
         types: {
             username: TYPES.STRING,
@@ -43,6 +43,9 @@ const entitySchemas = {
             active: TYPES.BOOLEAN,
             role: TYPES.ENUM,
             dept_code: TYPES.STRING,
+            // يضبطه الخادم تلقائيًا عند تغيير كلمة مرور الغير؛ يُقبل صراحةً
+            // ككسرٍ مقصود (مثال: admin يسلّم كلمة مرور مؤقتة بلا إجبار).
+            must_change_password: TYPES.BOOLEAN,
         },
         allowedValues: {
             // Must match the roles defined in frontend/app/js/app.js (ROLES)
@@ -254,7 +257,7 @@ const entitySchemas = {
 
     // ─── Departments (Operational — migration 001) ─────
     departments: {
-        writeable: ['code', 'name', 'icon', 'color', 'parent_code'],
+        writeable: ['code', 'name', 'icon', 'color', 'parent_code', 'is_factory'],
         required: ['code', 'name'],
         types: {
             code: TYPES.STRING,
@@ -262,6 +265,7 @@ const entitySchemas = {
             icon: TYPES.STRING,
             color: TYPES.STRING,
             parent_code: TYPES.STRING,
+            is_factory: TYPES.BOOLEAN,
         },
         maxLength: { code: 50, name: 255, icon: 50, color: 50, parent_code: 50 },
         protected: ['id'],

@@ -5,59 +5,91 @@
  * W1-1 (2026-10-15): الشاشة كانت قراءةً فقط؛ صارت تنفّذ دورة الإذن كاملة
  * بنفس عقد الشاشات 01–12 وسجل leaves:
  *   إنشاء (طلب صرف جديد) · اعتماد/رفض الشيف · اعتماد/رفض المخازن ·
- *   استلام القسم بالتوقيع · تعديل قبل اعتماد المخازن · حذف (نهائي للأدمن
- *   وموثّق) · تفاصيل · طباعة الإذن (ورقة A4 بالتواقيع) · طباعة الكشف.
+ *   استلام القسم بالتوقيع على دفعات · إلغاء قبل الصرف · إرجاع/إبطال موقّعان ·
+ *   تعديل قبل اعتماد المخازن · تفاصيل · طباعة الإذن · طباعة الكشف.
  *
  * قواعد لم تُخترع:
  *   • الباب الواحد للشبكة: js/v2/data/dispatch-repo.js — لا fetch/ apiFetch
  *     في هذا الملف (الاختبارات تفرضه نصيًا).
- *   • نصوص اللوحات والحمولات (payloads) منسوخة من features/kitchen.js حرفًا
- *     بحرف — بما فيها الشواذ المقصودة (requestedQty:actualWeight في الوزن
- *     المتغير، ومفتاح estWeightKg عند الإنشاء).
+ *   • حمولات القرارات القديمة محفوظة، بما فيها requestedQty:actualWeight في
+ *     الوزن المتغير وestWeightKg عند الإنشاء؛ مسارات الإلغاء/الإرجاع/الإبطال
+ *     مطابقة لعقد الخادم الجديد. الاستلام يرسل فروق هذه المرة فقط.
  *   • بوابة الرصيد = المخزن الرئيسي (/warehouse/main-availability) — نفس
  *     معادلة dispatchStockGate الخادمية، لا إجمالي الأرصدة القديم.
  *   • التواقيع عبر js/v2/signature.js المقفلة على اسم الحساب، ويحسمها
  *     الخادم (requireSignature). بلا اسم حساب لا تُفتح لوحة قرار موقّعة.
- *   • الحذف والحالات: الواجهة تعرض ما يعرضه القديم؛ الكلمة النهائية للخادم.
+ *   • فصل المهام في الواجهة على creatorUserId === user.userId، والخادم
+ *     هو المرجع النهائي للحالات والصلاحيات.
  *   • الأخطاء تُطبع من ردّ الخادم (e.message) لا من نصوص مخترعة، والتكرار
  *     (409 DUPLICATE_DISPATCH) يُكشف بالرسالة لأن core/api.js:serverErrorInfo
  *     يقرأ data.error لا data.code.
  */
 
-import { createDataTable } from '../data-display/data-table.js?v=4.9.180';
-import { statusBadge, resolveStatus } from '../status.js?v=4.9.180';
-import { formatInt } from '../data/employees-repo.js?v=4.9.180';
-import { openInAppReport } from '../report-viewer.js?v=4.9.180';
-import { formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.180';
+import { createDataTable } from '../data-display/data-table.js?v=4.9.323';
+import { statusBadge, resolveStatus } from '../status.js?v=4.9.323';
+import { formatInt } from '../data/employees-repo.js?v=4.9.323';
+import { openInAppReport } from '../report-viewer.js?v=4.9.323';
+import { formatQty, formatMoney } from '../data/reports-repo.js?v=4.9.323';
 import {
     fetchDispatches, dispatchToRow, summarizeDispatches,
     matchDispatchProduct, summarizeProductWithdrawal,
     CREATE_ROLES, chainStage, deptCodesOf,
-    chefActionsVisible, warehouseActionsVisible, deleteVisible, receiveVisible,
-    editVisible, printVisible,
+    chefActionsVisible, warehouseActionsVisible, receiveVisible,
+    cancelVisible, reopenVisible, voidVisible, editVisible, printVisible, dispatchReceiptBalance,
     fetchMainAvailability, fetchDispatchCatalog, catalogItem, arSearchKey, searchCatalog,
     fetchDepartmentOptions, deptNameByCode, fetchDispatchSettings, fetchDispatchFull,
-    createDispatch, editDispatch, deleteDispatch,
+    createDispatch, editDispatch, cancelDispatch, reopenDispatch, voidDispatch,
     chefApproveDispatch, chefRejectDispatch, approveDispatch, rejectDispatch, receiveDispatch,
-} from '../data/dispatch-repo.js?v=4.9.180';
+} from '../data/dispatch-repo.js?v=4.9.323';
 import {
     normalizeSignerName, signaturePadMarkup, initSignaturePad, readSignaturePad,
     disposeSignaturePads,
-} from '../signature.js?v=4.9.180';
+} from '../signature.js?v=4.9.323';
 
-const SIGN_KINDS = new Set(['chef-approve', 'chef-reject', 'approve', 'reject', 'receive']);
+const SIGN_KINDS = new Set(['chef-approve', 'chef-reject', 'approve', 'reject', 'receive', 'reopen', 'void']);
 const SIG_IDS = {
     chefApprove: 'v2dsp-chef-approve-sig',
     chefReject: 'v2dsp-chef-reject-sig',
     approve: 'v2dsp-approve-sig',
     reject: 'v2dsp-reject-sig',
     receive: 'v2dsp-receive-sig',
+    reopen: 'v2dsp-reopen-sig',
+    void: 'v2dsp-void-sig',
 };
 const ALL_SIG_IDS = Object.values(SIG_IDS);
+
+/* سجل الحالات المشترك لم يُحدَّث بعد؛ لا نظهر cancelled/voided كنص إنجليزي
+   مجهول، ونبقي بقية الحالات على المحوّل الموحّد كما هي. */
+const DISPATCH_STATUS_OVERRIDES = Object.freeze({
+    cancelled: { label: 'ملغى', tone: 'danger', icon: 'circle-x' },
+    voided: { label: 'مُبطل', tone: 'danger', icon: 'archive' },
+});
 
 const esc = (v) => String(v ?? '')
     .replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;')
     .replace(/"/g, '&quot;').replace(/'/g, '&#39;');
+
+function dispatchStatus(value) {
+    const raw = String(value ?? '');
+    const local = Object.prototype.hasOwnProperty.call(DISPATCH_STATUS_OVERRIDES, raw)
+        ? DISPATCH_STATUS_OVERRIDES[raw] : null;
+    return local ? { ...local, known: true, raw } : resolveStatus('dispatch', value);
+}
+
+function dispatchStatusLabel(value) {
+    const status = dispatchStatus(value);
+    return (status && status.label) || String(value || '—');
+}
+
+function dispatchStatusBadge(value) {
+    const raw = String(value ?? '');
+    if (!Object.prototype.hasOwnProperty.call(DISPATCH_STATUS_OVERRIDES, raw)) {return statusBadge('dispatch', value);}
+    const status = dispatchStatus(value);
+    return `<span class="erp-badge" data-tone="${esc(status.tone)}" data-unknown="false"`
+        + ` data-raw="${esc(status.raw)}" aria-label="${esc(status.label)}">`
+        + `<i class="ji" data-i="${esc(status.icon)}" aria-hidden="true"></i>`
+        + `<span class="erp-badge-label">${esc(status.label)}</span></span>`;
+}
 
 /** Local YYYY-MM-DD (device calendar — same basis as the legacy today()). */
 function isoDay(offsetDays = 0) {
@@ -92,12 +124,16 @@ function signatureErrorText(err) {
 
 function template(from, to, canCreate) {
     return `
+      <div class="erp-v2-dispatch-page">
+      <div class="erp-dash-head" style="--erp-dash-eyebrow:'DISPATCH ORDERS'">
+        <div>
+          <h2 class="erp-dash-title">أذون الصرف</h2>
+          <div class="erp-dash-sub">كل ما خرج من المخازن — حركةٌ بإذنها واعتماداتها وتواقيعها.</div>
+        </div>
+      </div>
       <section class="erp-card erp-v2-dispatch">
         <div class="erp-card__head">
-          <h3 class="erp-card__title">أذون الصرف
-            <span class="erp-eyebrow" dir="ltr" lang="en">Dispatch Orders</span>
-            <span class="erp-text-muted erp-text-sm" data-v2-count></span>
-          </h3>
+          <span class="erp-text-muted erp-text-sm" data-v2-count></span>
           <span class="erp-grow"></span>
           <span class="erp-v2-dispatch__tools erp-no-print">
             ${canCreate ? `<button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-new>
@@ -121,6 +157,9 @@ function template(from, to, canCreate) {
             <button type="button" class="erp-btn erp-btn--sm" data-v2-print aria-label="طباعة الكشف المفلتر">
               <i class="ji" data-i="printer" aria-hidden="true"></i><span>اطبع المعروض</span>
             </button>
+            <button type="button" class="erp-btn erp-btn--sm" data-v2-cons aria-label="تقرير استهلاك الأصناف">
+              <i class="ji" data-i="trending-up" aria-hidden="true"></i><span>تقرير الاستهلاك</span>
+            </button>
             <button type="button" class="erp-btn erp-btn--primary erp-btn--sm" data-v2-reload>
               <i class="ji" data-i="refresh" aria-hidden="true"></i><span>عرض</span>
             </button>
@@ -130,29 +169,27 @@ function template(from, to, canCreate) {
           <p class="erp-text-sm erp-text-muted" data-v2-summary role="status" aria-live="polite"></p>
           <p class="erp-text-sm erp-text-muted">
             دورة الإذن كاملة من هنا (إنشاء · اعتماد الشيف · اعتماد المخازن ·
-            استلام بتوقيع · تعديل · حذف · طباعة) — الأزرار حسب الدور، والخادم
-            يحسم كل خطوة والتواقيع إلكترونية مقفلة باسم الحساب. ابحث باسم أي
+            استلام جزئي بتوقيع · إلغاء · إرجاع/إبطال موقّعان · تعديل · طباعة) —
+            الأزرار حسب الدور، والخادم يحسم كل خطوة والتواقيع إلكترونية مقفلة
+            باسم الحساب. ابحث باسم أي
             صنفٍ مسحوب («دجاج» تجد «الدجاج» و«بدجاجه») وسطّر النطاق الشهر الحالي
             أو كل السجل، و«اطبع المعروض» يطبع نتائج بحثك بالضبط.
           </p>
           <div data-v2-panel hidden></div>
           <div data-v2-table></div>
         </div>
-      </section>`;
+      </section>
+      </div>`;
 }
 
 /**
  * @param {ParentNode} host where the screen is inserted
  * @param {{role?: string|null, userId?: number|string|null, userName?: string|null,
- *          deptCode?: string|null, notify?: (message:string, kind?:string)=>void,
- *          confirmFn?: (message:string)=>boolean|Promise<boolean>}} [ctx]
+ *          deptCode?: string|null, notify?: (message:string, kind?:string)=>void}} [ctx]
  * @returns {{el: HTMLElement, reload: ()=>Promise<void>, getRows: ()=>any[], destroy: ()=>void}}
  */
 export function mountDispatchScreen(host, ctx = {}) {
     const notify = typeof ctx.notify === 'function' ? ctx.notify : (m) => console.info('[V2 dispatch]', m);
-    const confirmFn = typeof ctx.confirmFn === 'function'
-        ? ctx.confirmFn
-        : (message) => Promise.resolve(window.confirm(message));
     const role = ctx.role ? String(ctx.role) : '';
     const signerName = normalizeSignerName(ctx.userName || '');
     const user = {
@@ -164,6 +201,7 @@ export function mountDispatchScreen(host, ctx = {}) {
     let rawRows = [];                       // آخر قراءة خام من الخادم
     let rawById = new Map();
     let loading = false;
+    let reloadQueued = false;               // طلب تحديث وصل أثناء قراءة جارية
     let readSeq = 0;                        // أحدث قراءة تفوز
     let busy = false;                       // قرار واحد في المرة
     let panelSeq = 0;                       // إغلاق اللوحة يُلغي أي تجهيز جارٍ
@@ -174,6 +212,9 @@ export function mountDispatchScreen(host, ctx = {}) {
     let suggestState = [];
     let settingsState = null;               // {name, currency, logoB64} — مرة واحدة
     let dataScope = 'month';                // month = فلتر الخادم | all = السجل كله
+    let loadedSpan = null;                  /* (2026-11-01) نافذة ما حُمِّل فعلًا
+        {min,max} — «التواريخ هي السيد»: لو الفترة المطلوبة خارجهما يجلب
+        كل السجل تلقائيًا بدل صفٍّ فارغٍ يوحي بغياب البيانات. */
     let productQuery = '';                  // بحث الصنف الخام — يُطبَّع في المستودع
     let productTimer = 0;                   // كتمُ إدخال البحث 250ms
 
@@ -236,7 +277,7 @@ export function mountDispatchScreen(host, ctx = {}) {
                 render: (row) => {
                     if (!row.status) {return `<span class="erp-text-muted">—</span>`;}
                     const stage = chainStage(row._raw || {});
-                    return `${statusBadge('dispatch', row.status)}${stage ? `<div class="erp-text-sm erp-text-muted">${esc(stage)}</div>` : ''}`;
+                    return `${dispatchStatusBadge(row.status)}${stage ? `<div class="erp-text-sm erp-text-muted">${esc(stage)}</div>` : ''}`;
                 },
             },
             {
@@ -244,7 +285,7 @@ export function mountDispatchScreen(host, ctx = {}) {
                 render: (row) => (row.by ? esc(row.by) : `<span class="erp-text-muted">—</span>`),
             },
             {
-                key: 'actions', header: 'إجراءات', width: '340px', className: 'erp-v2-dispatch-actions',
+                key: 'actions', header: 'إجراءات', width: '420px', className: 'erp-v2-dispatch-actions',
                 render: (row) => rowActionsHtml(row._raw || {}),
             },
         ],
@@ -257,24 +298,36 @@ export function mountDispatchScreen(host, ctx = {}) {
           <i class="ji" data-i="${icon}" aria-hidden="true"></i><span>${esc(label)}</span></button>`;
     }
 
-    /** أزرار الصف بأيادٍ مرآة لشروط الشاشة القديمة (dispatch-repo يوثّق الأسطر). */
+    /** أزرار الصف هي مرآة بوابات المستودع؛ الخادم يعيد التحقق من كل إجراء. */
     function rowActionsHtml(raw) {
         if (!raw || raw.id === undefined) {return '—';}
         const id = raw.id;
         const out = [btn('view', id, 'eye', 'عرض')];
         if (printVisible(raw)) {out.push(btn('print', id, 'printer', 'طباعة'));}
         if (editVisible(role, raw, user)) {out.push(btn('edit', id, 'pencil', 'تعديل'));}
-        if (chefActionsVisible(role, raw)) {
+        if (chefActionsVisible(role, raw, user)) {
             out.push(btn('chef-approve', id, 'chef-hat', 'اعتماد الشيف', 'erp-btn--primary'));
             out.push(btn('chef-reject', id, 'circle-x', 'رفض', 'erp-btn--danger'));
         }
-        if (warehouseActionsVisible(role, raw)) {
+        if (warehouseActionsVisible(role, raw, user)) {
             out.push(btn('approve', id, 'circle-check', 'اعتماد وصرف', 'erp-btn--primary'));
             out.push(btn('reject', id, 'circle-x', 'رفض', 'erp-btn--danger'));
         }
         if (receiveVisible(role, raw, user)) {out.push(btn('receive', id, 'inbox', 'استلام', 'erp-btn--primary'));}
-        if (deleteVisible(role, raw)) {out.push(btn('delete', id, 'trash', 'حذف', 'erp-btn--danger'));}
+        if (cancelVisible(role, raw, user)) {out.push(btn('cancel', id, 'circle-x', 'إلغاء', 'erp-btn--danger'));}
+        if (reopenVisible(role, raw)) {out.push(btn('reopen', id, 'undo', 'إرجاع'));}
+        if (voidVisible(role, raw)) {out.push(btn('void', id, 'archive', 'إبطال', 'erp-btn--danger'));}
         return out.join('');
+    }
+
+    function actionVisible(kind, raw) {
+        if (kind === 'chef-approve' || kind === 'chef-reject') {return chefActionsVisible(role, raw, user);}
+        if (kind === 'approve' || kind === 'reject') {return warehouseActionsVisible(role, raw, user);}
+        if (kind === 'receive') {return receiveVisible(role, raw, user);}
+        if (kind === 'cancel') {return cancelVisible(role, raw, user);}
+        if (kind === 'reopen') {return reopenVisible(role, raw);}
+        if (kind === 'void') {return voidVisible(role, raw);}
+        return true;
     }
 
     /* ── اللوحة: غلاف ومكوّنات مشتركة ───────────────────────────────────── */
@@ -350,6 +403,83 @@ export function mountDispatchScreen(host, ctx = {}) {
         const res = readSignaturePad(panelEl, id, signerName);
         if (res.error) {panelMsg(signatureErrorText(res.error)); return null;}
         return res.dataUrl;
+    }
+
+    /* زر القرار يعلن انشغاله من أول نقرة: بلا ذلك يبدو الضغط ميتًا أثناء
+       انتظار الخادم (خصم المخزون + قيد التكلفة) فيضغط المستخدم مرة ثانية. */
+    function setPanelBusy(label) {
+        const btn = panelEl.querySelector('[data-v2-submit]');
+        if (!btn) {return null;}
+        const prevHtml = btn.innerHTML;
+        btn.disabled = true;
+        btn.setAttribute('aria-busy', 'true');
+        btn.innerHTML = `<span class="erp-btn__spin" aria-hidden="true"></span><span>${esc(label)}</span>`;
+        panelEl.setAttribute('aria-busy', 'true');
+        return prevHtml;
+    }
+
+    function clearPanelBusy(prevHtml) {
+        panelEl.removeAttribute('aria-busy');
+        const btn = panelEl.querySelector('[data-v2-submit]');
+        if (!btn) {return;}
+        btn.disabled = false;
+        btn.removeAttribute('aria-busy');
+        if (prevHtml != null) {btn.innerHTML = prevHtml;}
+    }
+
+    /* الصف المعتمد من ردّ الخادم هو الحقيقة — يُدمج في السجل ويُرسم فورًا،
+       فلا يعتمد ظهور الحالة الجديدة على نجاح قراءة القائمة بعدها. */
+    function applyDecisionResult(result) {
+        const row = result && result.dispatch;
+        if (!row || row.id == null) {return;}
+        const key = String(row.id);
+        const idx = rawRows.findIndex((r) => String(r.id) === key);
+        if (idx >= 0) {rawRows[idx] = {...rawRows[idx], ...row};}
+        else {rawRows.unshift(row);}
+        rawById.set(key, rawRows[idx >= 0 ? idx : 0]);
+        paint();
+    }
+
+    /* تعارض الحالة (409) ليس فشلًا: معناه أن القرار مسجَّل فعلًا — غالبًا من
+       ضغطتنا السابقة التي نجحت في الخادم. الردّ يحمل الحالة الحالية، فتُدمج
+       وتُرسم فورًا ويُغلق اللوحة؛ وإلا بقي زر «اعتماد» أمام المستخدم فيضغط
+       مرة ثانية على إذن معتمد. */
+    const DECIDED_CODES = new Set([
+        'DISPATCH_ALREADY_APPROVED', 'DISPATCH_ALREADY_RECEIVED', 'DISPATCH_REJECTED',
+        'DISPATCH_INVALID_STATUS', 'DISPATCH_NOT_PENDING',
+        'CHEF_APPROVAL_NOT_REQUIRED', 'CHEF_APPROVAL_REQUIRED',
+        'DISPATCH_NOT_RECEIVABLE', 'DISPATCH_RECEIPT_ALREADY_RECORDED',
+    ]);
+    const LIFECYCLE_STATE_CODES = new Set([
+        'DISPATCH_NOT_CANCELLABLE', 'DISPATCH_NOT_REOPENABLE', 'DISPATCH_NOT_VOIDABLE',
+    ]);
+    const LIFECYCLE_IN_PROGRESS = Object.freeze({
+        DISPATCH_CANCEL_IN_PROGRESS: 'إلغاء هذا الإذن قيد التنفيذ فعلًا — انتظر النتيجة ولا تضغط مجددًا',
+        DISPATCH_REOPEN_IN_PROGRESS: 'إرجاع هذا الإذن قيد التنفيذ فعلًا — انتظر النتيجة ولا تضغط مجددًا',
+        DISPATCH_VOID_IN_PROGRESS: 'إبطال هذا الإذن قيد التنفيذ فعلًا — انتظر النتيجة ولا تضغط مجددًا',
+    });
+
+    function handleDecisionConflict(e) {
+        const code = e && e.code;
+        if (code && LIFECYCLE_STATE_CODES.has(code)) {
+            closePanel();
+            notify((e && e.message) || 'تغيّرت حالة الإذن — حُدِّث السجل من الخادم');
+            reload();
+            return true;
+        }
+        if (!code || !DECIDED_CODES.has(code)) {return false;}
+        const details = (e && e.details) || {};
+        const id = details.dispatchId != null ? details.dispatchId : (panelRaw && panelRaw.id);
+        const currentStatus = details.status || null;
+        closePanel();
+        if (id != null && currentStatus) {
+            applyDecisionResult({ dispatch: { id, status: currentStatus } });
+            notify(`القرار مسجَّل فعلًا — الحالة الحالية: ${dispatchStatusLabel(currentStatus)}`);
+        } else {
+            notify('القرار مسجَّل فعلًا — حُدِّثت الحالة من الخادم');
+        }
+        reload();
+        return true;
     }
 
     /* ── البيانات المرجعية للنماذج (كتالوج + أرصدة الرئيسي + أقسام) ────── */
@@ -741,19 +871,22 @@ export function mountDispatchScreen(host, ctx = {}) {
             const isCw = !!(cat && cat.catchWeight);
             const pkgUom = (cat && cat.packagingUom) || item.packagingUom || 'كرتون';
             const cwUom = (cat && cat.catchWeightUom) || 'kg';
+            const requested = Math.max(0, Number(item.qty) || 0);
             const dataAttrs = `data-ap-row="${idx}" data-cw="${isCw ? 1 : 0}" data-cost="${avgCost}" data-max="${onHand}"
-                 data-avgbox="${cat ? cat.avgBoxPerCrate : 0}" data-pkg-uom="${esc(pkgUom)}" data-cw-uom="${esc(cwUom)}"`;
+                 data-requested="${requested}" data-avgbox="${cat ? cat.avgBoxPerCrate : 0}"
+                 data-pkg-uom="${esc(pkgUom)}" data-cw-uom="${esc(cwUom)}"`;
             if (!isCw) {
-                const q0 = Math.min(Number(item.qty) || 0, onHand);
+                const approvedLimit = Math.min(requested, Math.max(0, onHand));
+                const q0 = approvedLimit;
                 total += q0 * avgCost;
                 return `<div class="erp-dispatch-line" ${dataAttrs}>
                   <div class="erp-dispatch-line__row">
                     <strong>${esc(item.itemName)}</strong>
-                    <span class="erp-text-sm erp-text-muted">المتاح: ${formatQty(onHand)} | المطلوب: ${formatQty(item.qty)}${item.requestedUom && item.requestedQty ? ` <span class="erp-badge" data-tone="brand">طلب بـ ${formatQty(item.requestedQty)} ${esc(item.requestedUom)}</span>` : ''}</span>
+                    <span class="erp-text-sm erp-text-muted">المتاح: ${formatQty(onHand)} | المطلوب: ${formatQty(requested)}${item.requestedUom && item.requestedQty ? ` <span class="erp-badge" data-tone="brand">طلب بـ ${formatQty(item.requestedQty)} ${esc(item.requestedUom)}</span>` : ''}</span>
                   </div>
                   <div class="erp-di__fields">
                     <label class="erp-field"><span class="erp-label">الكمية المعتمدة</span>
-                      <input class="erp-input" type="number" data-ap="qty" step="0.001" min="0" max="${onHand}" value="${q0}">
+                      <input class="erp-input" type="number" data-ap="qty" step="0.001" min="0" max="${approvedLimit}" value="${q0}">
                     </label>
                     <div class="erp-field"><span class="erp-label">القيمة</span>
                       <div data-ap="val" class="erp-num">${moneyText(q0 * avgCost)}</div>
@@ -762,19 +895,24 @@ export function mountDispatchScreen(host, ctx = {}) {
                   ${onHand < (Number(item.qty) || 0) ? '<div class="erp-dispatch-line__flag erp-text-sm"><i class="ji" data-i="alert-triangle" aria-hidden="true"></i> الكمية المطلوبة أكبر من المتوفر</div>' : ''}
                 </div>`;
             }
-            const reqBoxes = Number(item.packagingQty ?? item.qty) || 0;
-            return `<div class="erp-dispatch-line" ${dataAttrs}>
+            const reqBoxes = Math.max(0, Number(item.packagingQty ?? item.qty) || 0);
+            /* سقف الكيلو من وزن الطلب الفعلي/التقديري عند وجوده فقط؛ رقم
+               الصناديق لا يُقارن بالكيلو. وفي غيابه يبقى الرصيد هو السقف. */
+            const requestedWeight = Math.max(0, Number(item.actualWeight) || Number(item.estWeightKg) || 0);
+            const weightLimit = Math.min(requestedWeight > 0 ? requestedWeight : onHand, Math.max(0, onHand));
+            const cwDataAttrs = `${dataAttrs} data-requested-boxes="${reqBoxes}" data-requested-weight="${requestedWeight}"`;
+            return `<div class="erp-dispatch-line" ${cwDataAttrs}>
               <div class="erp-dispatch-line__row">
                 <strong>${esc(item.itemName)}</strong>
                 <span class="erp-badge" data-tone="info">وزن متغير</span>
-                <span class="erp-text-sm erp-text-muted">المطلوب: <b>${formatQty(reqBoxes)} ${esc(pkgUom)}</b> | المتاح: ${formatQty(onHand)} كجم</span>
+                <span class="erp-text-sm erp-text-muted">المطلوب: <b>${formatQty(reqBoxes)} ${esc(pkgUom)}</b>${requestedWeight > 0 ? ` | سقف وزن الطلب: ${formatQty(requestedWeight)} كجم` : ''} | المتاح: ${formatQty(onHand)} كجم</span>
               </div>
               <div class="erp-di__fields">
                 <label class="erp-field"><span class="erp-label">عدد الكراتين المصروفة *</span>
-                  <input class="erp-input" type="number" data-ap="pkg" step="1" min="1" value="${reqBoxes || ''}" placeholder="عدد الكراتين">
+                  <input class="erp-input" type="number" data-ap="pkg" step="1" min="1" max="${reqBoxes}" value="${reqBoxes || ''}" placeholder="عدد الكراتين">
                 </label>
                 <label class="erp-field"><span class="erp-label">الوزن الفعلي بالكيلو (الميزان) *</span>
-                  <input class="erp-input" type="number" data-ap="weight" step="0.001" min="0.001" max="${onHand}" placeholder="أوزن الكراتين وأدخل الوزن">
+                  <input class="erp-input" type="number" data-ap="weight" step="0.001" min="0.001" max="${weightLimit}" placeholder="أوزن الكراتين وأدخل الوزن">
                 </label>
                 <div class="erp-field"><span class="erp-label">القيمة (على الفعلي)</span>
                   <div data-ap="val" class="erp-num">${moneyText(0)}</div>
@@ -840,32 +978,82 @@ export function mountDispatchScreen(host, ctx = {}) {
              ${panelActions('تأكيد الرفض', 'circle-x')}`);
     }
 
+    function cancelHtml(raw) {
+        return panelShell(`إلغاء إذن الصرف — ${esc(raw.deptName || '')}`, 'circle-x',
+            `<div class="erp-flow-note" data-tone="warning"><strong>إلغاء موثّق قبل الصرف:</strong> يبقى المستند محفوظًا؛ تُسجّل الحالة والسبب والفاعل في سجل الإذن. الإذن المرحّل يحتاج إرجاعًا أو إبطالًا موقّعًا.</div>
+             <div class="details-list">
+               <div class="details-item"><strong>الحالة:</strong> <span>${dispatchStatusBadge(raw.status)}</span></div>
+               <div class="details-item"><strong>الأصناف:</strong> <span>${formatInt(Array.isArray(raw.items) ? raw.items.length : 0)}</span></div>
+             </div>
+             <label class="erp-field"><span class="erp-label">سبب الإلغاء *</span>
+               <textarea class="erp-input" data-f="reason" rows="3" placeholder="مثال: لم يعد القسم يحتاج الأصناف / تكرار الطلب"></textarea></label>
+             ${panelActions('تأكيد الإلغاء', 'circle-x')}`);
+    }
+
+    function reopenHtml(raw) {
+        return panelShell(`إرجاع إذن الصرف للمراجعة — ${esc(raw.deptName || '')}`, 'undo',
+            `<div class="erp-flow-note" data-tone="warning"><strong>الإرجاع متاح قبل بدء الاستلام فقط.</strong> يعيد الإذن إلى حالة الانتظار، ويعكس خصم المخزن والمصروف المرحّل في معاملة واحدة موثّقة.</div>
+             <div class="details-list">
+               <div class="details-item"><strong>الحالة:</strong> <span>${dispatchStatusBadge(raw.status)}</span></div>
+               <div class="details-item"><strong>الأصناف:</strong> <span>${formatInt(Array.isArray(raw.items) ? raw.items.length : 0)}</span></div>
+             </div>
+             <label class="erp-field"><span class="erp-label">سبب الإرجاع *</span>
+               <textarea class="erp-input" data-f="reason" rows="3" placeholder="مثال: تصحيح الكميات قبل الاستلام"></textarea></label>
+             ${signaturePadMarkup(SIG_IDS.reopen, 'توقيع المدير على إرجاع الإذن', signerName)}
+             ${panelActions('تأكيد الإرجاع والتوقيع', 'undo')}`);
+    }
+
+    function voidHtml(raw) {
+        return panelShell(`إبطال إذن الصرف — ${esc(raw.deptName || '')}`, 'archive',
+            `<div class="erp-flow-note" data-tone="danger"><strong>الإبطال يعكس الأثر المخزني والمالي للمستند.</strong> قد يتعذر إذا كان هناك مرتجع نشط مرتبط بالإذن، أو كانت المواد المستلمة قد استُهلكت/تحوّلت ولم يعد رصيد القسم يسمح بالعكس.</div>
+             <div class="details-list">
+               <div class="details-item"><strong>الحالة:</strong> <span>${dispatchStatusBadge(raw.status)}</span></div>
+               <div class="details-item"><strong>القسم:</strong> <span>${esc(raw.deptName || '—')}</span></div>
+             </div>
+             <label class="erp-field"><span class="erp-label">سبب الإبطال *</span>
+               <textarea class="erp-input" data-f="reason" rows="3" placeholder="مثال: إلغاء المستند بعد تصحيح العملية"></textarea></label>
+             ${signaturePadMarkup(SIG_IDS.void, 'توقيع المدير على إبطال الإذن', signerName)}
+             ${panelActions('تأكيد الإبطال والتوقيع', 'archive')}`);
+    }
+
+    const receiptQty = (v) => Math.round((Number(v) || 0) * 1000) / 1000;
+
     function receiveHtml(raw) {
         const items = (raw.approvedItems && raw.approvedItems.length ? raw.approvedItems : raw.items) || [];
         const rows = items.map((item, idx) => {
-            const approved = Number(item.approvedQty ?? item.qty) || 0;
-            const isCw = Boolean(item.catchWeightEnabled || item.actualWeight);
-            const apBoxes = Number(item.packagingQty) || 0;
+            const balance = dispatchReceiptBalance(raw, idx);
+            const isCw = balance.isCatchWeight && balance.approvedPackaging > 0;
+            const unit = isCw ? (item.catchWeightUom || 'كجم') : (item.unit || '');
             const pkgUom = item.packagingUom || 'كرتون';
+            const approved = receiptQty(balance.approved);
+            const received = receiptQty(balance.received);
+            const remaining = receiptQty(balance.remaining);
+            const approvedBoxes = receiptQty(balance.approvedPackaging);
+            const receivedBoxes = receiptQty(balance.receivedPackaging);
+            const remainingBoxes = receiptQty(balance.remainingPackaging);
+            const withBoxes = (qty, boxes) => `${formatQty(qty)} ${esc(unit)}${isCw ? ` (${formatQty(boxes)} ${esc(pkgUom)})` : ''}`;
             return `<div class="erp-dispatch-line" data-ap-row="${idx}" data-cw="${isCw ? 1 : 0}"
-                         data-approved="${approved}" data-apboxes="${apBoxes}">
+                         data-approved="${approved}" data-received="${received}" data-remaining="${remaining}"
+                         data-apboxes="${approvedBoxes}" data-receivedboxes="${receivedBoxes}" data-remainingboxes="${remainingBoxes}">
               <div class="erp-dispatch-line__row">
                 <strong>${esc(item.itemName || item.name)}</strong>
                 ${isCw ? '<span class="erp-badge" data-tone="info">وزن متغير</span>' : ''}
-                <span class="erp-badge" data-tone="info">المعتمد: ${formatQty(approved)} ${esc(item.unit || '')}${isCw && apBoxes > 0 ? ` (${formatQty(apBoxes)} ${esc(pkgUom)})` : ''}</span>
+                <span class="erp-badge" data-tone="info">المعتمد: ${withBoxes(approved, approvedBoxes)}</span>
+                <span class="erp-badge">مستلم سابقًا: ${withBoxes(received, receivedBoxes)}</span>
+                <span class="erp-badge" data-tone="${remaining > 0 || (isCw && remainingBoxes > 0) ? 'warning' : 'success'}">المتبقي: ${withBoxes(remaining, remainingBoxes)}</span>
               </div>
               <div class="erp-di__fields">
-                <label class="erp-field"><span class="erp-label">${isCw ? 'الوزن المستلم فعليًا (كجم)' : 'الكمية المستلمة'}</span>
-                  <input class="erp-input" type="number" data-ap="recv" min="0" max="${approved}" step="0.001" value="${approved}">
+                <label class="erp-field"><span class="erp-label">${isCw ? 'الوزن المستلم في هذه المرة (كجم)' : 'الكمية المستلمة في هذه المرة'}</span>
+                  <input class="erp-input" type="number" data-ap="recv" min="0" max="${remaining}" step="0.001" value="${remaining}">
                 </label>
-                ${isCw ? `<label class="erp-field"><span class="erp-label">عدد الكراتين المستلمة</span>
-                  <input class="erp-input" type="number" data-ap="recvpkg" min="0" max="${apBoxes || ''}" step="1" value="${apBoxes || ''}">
+                ${isCw ? `<label class="erp-field"><span class="erp-label">عدد الكراتين المستلمة في هذه المرة</span>
+                  <input class="erp-input" type="number" data-ap="recvpkg" min="0" max="${remainingBoxes}" step="1" value="${remainingBoxes}">
                 </label>` : ''}
               </div>
             </div>`;
         }).join('');
         return panelShell(`استلام إذن الصرف — ${esc(raw.deptName || '')}`, 'inbox',
-            `<div class="erp-flow-note" data-tone="info">الاستلام والتوقيع باسم حسابك فقط (<strong>${esc(signerName || '—')}</strong>) — لا يمكن توقيع أي اسم آخر. راجع الكميات ثم أكّد. لا يمكن تسجيل الاستلام مرتين.</div>
+            `<div class="erp-flow-note" data-tone="info">الاستلام والتوقيع باسم حسابك فقط (<strong>${esc(signerName || '—')}</strong>). كل رقم ترسله هو <strong>فرق هذه المرة وليس إجماليًا مستلمًا</strong>؛ يُضاف إلى المستلم سابقًا، والصنف الذي تترك فروعه صفرًا لا يدخل الطلب. يمكن الاستلام على دفعات.</div>
              <div class="erp-stack">${rows}</div>
              <label class="erp-field"><span class="erp-label">ملاحظات الاستلام</span>
                <textarea class="erp-input" data-f="notes" rows="2" placeholder="أي عجز أو تلف أو ملاحظة عند الاستلام"></textarea></label>
@@ -882,7 +1070,16 @@ export function mountDispatchScreen(host, ctx = {}) {
                 : '');
         const receiptAudit = raw.kitchenReceivedAt
             ? `<div class="erp-flow-note" data-tone="success"><i class="ji" data-i="circle-check" aria-hidden="true"></i> تم استلام الإذن وتوقيعه من ${esc(raw.deptName)} بواسطة <strong>${esc(raw.kitchenReceivedBy || '—')}</strong> بتاريخ ${esc(fDT(raw.kitchenReceivedAt))}.<br><small>التوقيع الإلكتروني محفوظ ضمن سجل الإذن.</small></div>`
-            : '<div class="erp-flow-note" data-tone="info">الإذن معتمد من المخازن ولم يتم تسجيل استلام القسم وتوقيعه بعد.</div>';
+            : (['cancelled', 'voided'].includes(String(raw.status))
+                ? ''
+                : '<div class="erp-flow-note" data-tone="info">الإذن معتمد من المخازن ولم يتم تسجيل استلام القسم وتوقيعه بعد.</div>');
+        const lifecycleAudit = raw.cancelledAt
+            ? `<div class="erp-flow-note" data-tone="danger"><i class="ji" data-i="circle-x" aria-hidden="true"></i> ألغى <strong>${esc(raw.cancelledBy || '—')}</strong> الإذن بتاريخ ${esc(fDT(raw.cancelledAt))}.<br><strong>السبب:</strong> ${esc(raw.cancellationReason || '—')}</div>`
+            : (raw.voidedAt
+                ? `<div class="erp-flow-note" data-tone="danger"><i class="ji" data-i="archive" aria-hidden="true"></i> أبطل <strong>${esc(raw.voidedBy || '—')}</strong> الإذن بتاريخ ${esc(fDT(raw.voidedAt))} وعُكست آثاره المخزنية والمالية.<br><strong>السبب:</strong> ${esc(raw.voidReason || '—')}</div>`
+                : (raw.reopenedAt
+                    ? `<div class="erp-flow-note" data-tone="info"><i class="ji" data-i="undo" aria-hidden="true"></i> أعاد <strong>${esc(raw.reopenedBy || '—')}</strong> الإذن للمراجعة بتاريخ ${esc(fDT(raw.reopenedAt))}.<br><strong>السبب:</strong> ${esc(raw.reopenReason || '—')}</div>`
+                    : ''));
         const rowsHtml = source.map((item) => {
             const cw = item.catchWeightEnabled || item.actualWeight;
             const q = cw && item.packagingQty
@@ -898,7 +1095,7 @@ export function mountDispatchScreen(host, ctx = {}) {
         return panelShell(`تفاصيل طلب الصرف #${esc(raw.id)}`, 'clipboard-list',
             `<div class="details-list">
                <div class="details-item"><strong>القسم:</strong> <span>${esc(raw.deptName || '—')}</span></div>
-               <div class="details-item"><strong>الحالة:</strong> <span>${statusBadge('dispatch', raw.status)}</span></div>
+               <div class="details-item"><strong>الحالة:</strong> <span>${dispatchStatusBadge(raw.status)}</span></div>
                <div class="details-item"><strong>التاريخ:</strong> <span>${esc(fD(raw.date))}</span></div>
                <div class="details-item"><strong>الطالب:</strong> <span>${esc(raw.createdBy || '—')}${raw.creatorRole === 'dept_head' ? ' <span class="erp-badge" data-tone="brand">رئيس قسم</span>' : ''}</span></div>
                <div class="details-item"><strong>المرحلة الحالية:</strong> <span>${esc(chainStage(raw) || '—')}</span></div>
@@ -913,8 +1110,11 @@ export function mountDispatchScreen(host, ctx = {}) {
                <div class="details-item"><strong>ملاحظات الطلب:</strong> <span>${esc(raw.notes || '—')}</span></div>
                ${raw.approveNotes ? `<div class="details-item"><strong>ملاحظات الاعتماد:</strong> <span>${esc(raw.approveNotes)}</span></div>` : ''}
                ${raw.rejectionReason ? `<div class="details-item"><strong>سبب الرفض:</strong> <span>${esc(raw.rejectionReason)}</span></div>` : ''}
+               ${raw.cancellationReason ? `<div class="details-item"><strong>سبب الإلغاء:</strong> <span>${esc(raw.cancellationReason)}</span></div>` : ''}
+               ${raw.reopenReason ? `<div class="details-item"><strong>سبب الإرجاع:</strong> <span>${esc(raw.reopenReason)}</span></div>` : ''}
+               ${raw.voidReason ? `<div class="details-item"><strong>سبب الإبطال:</strong> <span>${esc(raw.voidReason)}</span></div>` : ''}
              </div>
-             ${chefAudit}${receiptAudit}
+             ${chefAudit}${receiptAudit}${lifecycleAudit}
              <div class="erp-dispatch-panel__actions">
                <span class="erp-grow"></span>
                <button type="button" class="erp-btn erp-btn--primary" data-v2-panel-close>إغلاق</button>
@@ -927,6 +1127,11 @@ export function mountDispatchScreen(host, ctx = {}) {
         if (busy) {notify('جارٍ تنفيذ عملية — انتظر النتيجة'); return;}
         if (SIGN_KINDS.has(kind) && !signerName) {
             notify('اسم حسابك غير متاح في الجلسة — أعد تسجيل الدخول لتنفيذ قرار موقّع');
+            return;
+        }
+        if (['chef-approve', 'chef-reject', 'approve', 'reject', 'receive', 'cancel', 'reopen', 'void'].includes(kind)
+            && !actionVisible(kind, raw)) {
+            notify('هذا الإجراء غير متاح في الحالة الحالية أو لهذا الحساب — يشمل ذلك فصل المهام');
             return;
         }
         if (kind === 'edit' && !editVisible(role, raw, user)) {
@@ -983,6 +1188,20 @@ export function mountDispatchScreen(host, ctx = {}) {
             initSignaturePad(panelEl, SIG_IDS.reject, signerName);
             return;
         }
+        if (kind === 'cancel') {
+            setPanel(cancelHtml(raw));
+            return;
+        }
+        if (kind === 'reopen') {
+            setPanel(reopenHtml(raw));
+            initSignaturePad(panelEl, SIG_IDS.reopen, signerName);
+            return;
+        }
+        if (kind === 'void') {
+            setPanel(voidHtml(raw));
+            initSignaturePad(panelEl, SIG_IDS.void, signerName);
+            return;
+        }
         if (kind === 'receive') {
             await ensureSettings();
             if (!panelAlive(seq)) {return;}
@@ -991,29 +1210,83 @@ export function mountDispatchScreen(host, ctx = {}) {
         }
     }
 
-    async function confirmDelete(raw) {
+    /* ── إرسال لوحات القرار ─────────────────────────────────────────────── */
+
+    async function submitCancel() {
         if (busy) {notify('جارٍ تنفيذ عملية — انتظر النتيجة'); return;}
-        const st = resolveStatus('dispatch', raw.status);
-        const label = (st && st.label) ? st.label : (raw.status || '');
-        const strong = role === 'admin' && String(raw.status) !== 'pending';
-        const msg = strong
-            ? `⚠️ حذف نهائي لإذن صرف (${label})؟\nهذا مستند مالي موقّع — سيُحذف نهائيًا ويُوثّق باسمك في سجل مدير النظام.\nهل أنت متأكد؟`
-            : 'حذف طلب الصرف المعلق نهائيًا؟ (المعتمد/المستلم لا يُحذف إلا بواسطة مدير النظام — حذف نهائي موثّق)';
-        const ok = await confirmFn(msg);
-        if (!ok) {return;}
+        const raw = panelRaw;
+        if (!raw) {return;}
+        const reason = panelEl.querySelector('[data-f=reason]')?.value.trim() || '';
+        if (!reason) {panelMsg('أدخل سبب إلغاء إذن الصرف'); return;}
         busy = true;
+        const prevBtn = setPanelBusy('جارٍ الإلغاء…');
         try {
-            await deleteDispatch(raw.id);
-            notify(strong ? 'حُذف إذن الصرف نهائيًا (موثّق باسم مدير النظام)' : 'حُذف طلب الصرف المعلق');
+            const result = await cancelDispatch(raw.id, { reason });
+            closePanel();
+            notify('تم إلغاء إذن الصرف وتسجيل السبب في سجله');
+            applyDecisionResult(result);
             await reload();
         } catch (e) {
-            notify((e && e.message) || 'تعذر حذف الإذن');
+            if (handleDecisionConflict(e)) {return;}
+            if (e && LIFECYCLE_IN_PROGRESS[e.code]) {notify(LIFECYCLE_IN_PROGRESS[e.code]);}
+            else {panelMsg((e && e.message) || 'تعذر إلغاء إذن الصرف');}
         } finally {
             busy = false;
+            clearPanelBusy(prevBtn);
         }
     }
 
-    /* ── إرسال لوحات القرار ─────────────────────────────────────────────── */
+    async function submitReopen() {
+        if (busy) {notify('جارٍ تنفيذ عملية — انتظر النتيجة'); return;}
+        const raw = panelRaw;
+        if (!raw) {return;}
+        const reason = panelEl.querySelector('[data-f=reason]')?.value.trim() || '';
+        if (!reason) {panelMsg('أدخل سبب إرجاع الإذن للمراجعة'); return;}
+        const sig = readSig(SIG_IDS.reopen);
+        if (sig == null) {return;}
+        busy = true;
+        const prevBtn = setPanelBusy('جارٍ الإرجاع…');
+        try {
+            const result = await reopenDispatch(raw.id, { reason, signatureData: sig, signerName });
+            closePanel();
+            notify('تم إرجاع الإذن للمراجعة وعكس أثره المخزني والمالي');
+            applyDecisionResult(result);
+            await reload();
+        } catch (e) {
+            if (handleDecisionConflict(e)) {return;}
+            if (e && LIFECYCLE_IN_PROGRESS[e.code]) {notify(LIFECYCLE_IN_PROGRESS[e.code]);}
+            else {panelMsg((e && e.message) || 'تعذر إرجاع إذن الصرف');}
+        } finally {
+            busy = false;
+            clearPanelBusy(prevBtn);
+        }
+    }
+
+    async function submitVoid() {
+        if (busy) {notify('جارٍ تنفيذ عملية — انتظر النتيجة'); return;}
+        const raw = panelRaw;
+        if (!raw) {return;}
+        const reason = panelEl.querySelector('[data-f=reason]')?.value.trim() || '';
+        if (!reason) {panelMsg('أدخل سبب إبطال إذن الصرف'); return;}
+        const sig = readSig(SIG_IDS.void);
+        if (sig == null) {return;}
+        busy = true;
+        const prevBtn = setPanelBusy('جارٍ الإبطال…');
+        try {
+            const result = await voidDispatch(raw.id, { reason, signatureData: sig, signerName });
+            closePanel();
+            notify('تم إبطال إذن الصرف وعكس آثاره المخزنية والمالية');
+            applyDecisionResult(result);
+            await reload();
+        } catch (e) {
+            if (handleDecisionConflict(e)) {return;}
+            if (e && LIFECYCLE_IN_PROGRESS[e.code]) {notify(LIFECYCLE_IN_PROGRESS[e.code]);}
+            else {panelMsg((e && e.message) || 'تعذر إبطال إذن الصرف');}
+        } finally {
+            busy = false;
+            clearPanelBusy(prevBtn);
+        }
+    }
 
     async function submitChefApprove() {
         const raw = panelRaw;
@@ -1021,15 +1294,19 @@ export function mountDispatchScreen(host, ctx = {}) {
         if (sig == null) {return;}
         const notes = panelEl.querySelector('[data-f=notes]')?.value.trim() || '';
         busy = true;
+        const prevBtn = setPanelBusy('جارٍ الاعتماد…');
         try {
-            await chefApproveDispatch(raw.id, { notes, signatureData: sig, signerName });
+            const result = await chefApproveDispatch(raw.id, { notes, signatureData: sig, signerName });
             closePanel();
             notify('تم اعتماد الطلب وإحالته للمخازن');
+            applyDecisionResult(result);
             await reload();
         } catch (e) {
+            if (handleDecisionConflict(e)) {return;}
             panelMsg((e && e.message) || 'تعذر اعتماد الطلب');
         } finally {
             busy = false;
+            clearPanelBusy(prevBtn);
         }
     }
 
@@ -1040,15 +1317,19 @@ export function mountDispatchScreen(host, ctx = {}) {
         const sig = readSig(SIG_IDS.chefReject);
         if (sig == null) {return;}
         busy = true;
+        const prevBtn = setPanelBusy('جارٍ الرفض…');
         try {
-            await chefRejectDispatch(raw.id, { reason, signatureData: sig, signerName });
+            const result = await chefRejectDispatch(raw.id, { reason, signatureData: sig, signerName });
             closePanel();
             notify('تم رفض الطلب وسيظهر لرئيس القسم');
+            applyDecisionResult(result);
             await reload();
         } catch (e) {
+            if (handleDecisionConflict(e)) {return;}
             panelMsg((e && e.message) || 'تعذر رفض الطلب');
         } finally {
             busy = false;
+            clearPanelBusy(prevBtn);
         }
     }
 
@@ -1061,12 +1342,17 @@ export function mountDispatchScreen(host, ctx = {}) {
             const item = raw.items[idx] || {};
             const cost = Number(row.dataset.cost) || 0;
             const onHand = Number(row.dataset.max) || 0;
+            const requested = Number(row.dataset.requested) || 0;
             if (row.dataset.cw === '1') {
                 const actualWeight = parseFloat(row.querySelector('[data-ap=weight]')?.value) || 0;
                 const packagingQty = parseFloat(row.querySelector('[data-ap=pkg]')?.value) || 0;
+                const requestedBoxes = Number(row.dataset.requestedBoxes) || 0;
+                const requestedWeight = Number(row.dataset.requestedWeight) || 0;
                 if (!(actualWeight > 0)) {failMsg = `أدخل الوزن الفعلي بالكيلو للصنف "${item.itemName}"`; break;}
                 if (!(packagingQty > 0)) {failMsg = `أدخل عدد الكراتين المصروفة للصنف "${item.itemName}"`; break;}
-                if (actualWeight > onHand) {failMsg = `الوزن الفعلي من "${item.itemName}" أكبر من المتوفر (${formatQty(onHand)} كجم)`; break;}
+                if (packagingQty > requestedBoxes + 1e-6) {failMsg = `عدد الكراتين من "${item.itemName}" أكبر من المطلوب (${formatQty(requestedBoxes)})`; break;}
+                if (requestedWeight > 0 && actualWeight > requestedWeight + 1e-6) {failMsg = `الوزن الفعلي من "${item.itemName}" أكبر من سقف الطلب الأصلي (${formatQty(requestedWeight)} كجم)`; break;}
+                if (actualWeight > onHand + 1e-6) {failMsg = `الوزن الفعلي من "${item.itemName}" أكبر من المتوفر (${formatQty(onHand)} كجم)`; break;}
                 // طلب بـ actualWeight في requestedQty — نفس شذوذ القديم المقصود (kitchen.js:1158)
                 approvedItems.push({
                     name: item.itemName, itemName: item.itemName,
@@ -1083,7 +1369,8 @@ export function mountDispatchScreen(host, ctx = {}) {
             }
             const approvedQty = parseFloat(row.querySelector('[data-ap=qty]')?.value);
             if (Number.isNaN(approvedQty) || approvedQty < 0) {failMsg = 'تحقق من الكميات المعتمدة'; break;}
-            if (approvedQty > onHand) {failMsg = `الكمية المعتمدة من "${item.itemName}" أكبر من المتوفر`; break;}
+            if (approvedQty > requested + 1e-6) {failMsg = `الكمية المعتمدة من "${item.itemName}" أكبر من المطلوب (${formatQty(requested)})`; break;}
+            if (approvedQty > onHand + 1e-6) {failMsg = `الكمية المعتمدة من "${item.itemName}" أكبر من المتوفر`; break;}
             if (approvedQty > 0) {
                 approvedItems.push({
                     name: item.itemName, itemName: item.itemName,
@@ -1102,12 +1389,15 @@ export function mountDispatchScreen(host, ctx = {}) {
         if (sig == null) {return;}
         const approveNotes = panelEl.querySelector('[data-f=notes]')?.value.trim() || '';
         busy = true;
+        const prevBtn = setPanelBusy('جارٍ الاعتماد…');
         try {
             const result = await approveDispatch(raw.id, { approvedItems, approveNotes, signatureData: sig, signerName });
             closePanel();
             notify(`تمت الموافقة وحُسبت مصاريف القسم بقيمة ${moneyPlain(result && result.totalValue || 0)}`);
+            applyDecisionResult(result);
             await reload();
         } catch (e) {
+            if (handleDecisionConflict(e)) {return;}
             if (e && e.code === 'DISPATCH_APPROVE_IN_PROGRESS') {
                 notify('الإذن قيد الاعتماد فعلًا — لا تضغط مجددًا');
             } else {
@@ -1115,6 +1405,7 @@ export function mountDispatchScreen(host, ctx = {}) {
             }
         } finally {
             busy = false;
+            clearPanelBusy(prevBtn);
         }
     }
 
@@ -1125,42 +1416,51 @@ export function mountDispatchScreen(host, ctx = {}) {
         const sig = readSig(SIG_IDS.reject);
         if (sig == null) {return;}
         busy = true;
+        const prevBtn = setPanelBusy('جارٍ الرفض…');
         try {
-            await rejectDispatch(raw.id, { reason, signatureData: sig, signerName });
+            const result = await rejectDispatch(raw.id, { reason, signatureData: sig, signerName });
             closePanel();
             notify('تم رفض الطلب');
+            applyDecisionResult(result);
             await reload();
         } catch (e) {
+            if (handleDecisionConflict(e)) {return;}
             panelMsg((e && e.message) || 'تعذر رفض طلب الصرف');
         } finally {
             busy = false;
+            clearPanelBusy(prevBtn);
         }
     }
 
     async function submitReceive() {
+        if (busy) {notify('جارٍ تنفيذ عملية — انتظر النتيجة'); return;}
         const raw = panelRaw;
+        if (!raw) {return;}
         let failMsg = '';
         const receivedItems = [];
         for (const row of panelEl.querySelectorAll('[data-ap-row]')) {
             const idx = Number(row.dataset.apRow);
-            const item = ((raw.approvedItems && raw.approvedItems.length ? raw.approvedItems : raw.items) || [])[idx] || {};
-            const approved = Number(row.dataset.approved) || 0;
+            const balance = dispatchReceiptBalance(raw, idx);
+            const item = balance.item;
+            const remaining = receiptQty(balance.remaining);
+            const remainingBoxes = receiptQty(balance.remainingPackaging);
             const received = Number(row.querySelector('[data-ap=recv]')?.value);
-            if (!Number.isFinite(received) || received < 0 || received > approved) {
-                failMsg = 'تحقق من كميات الاستلام؛ لا تتجاوز الكمية المعتمدة';
+            if (!Number.isFinite(received) || received < 0 || received > remaining + 1e-6) {
+                failMsg = `الكمية المستلمة من "${item.itemName || item.name || 'الصنف'}" تتجاوز المتبقي (${formatQty(remaining)})`;
                 break;
             }
             const isCw = row.dataset.cw === '1';
-            const apBoxes = Number(row.dataset.apboxes) || 0;
             let recvPkg = null;
             if (isCw) {
-                const rawPkg = row.querySelector('[data-ap=recvpkg]')?.value;
-                recvPkg = (rawPkg === '' || rawPkg == null) ? apBoxes : Number(rawPkg);
-                if (!Number.isFinite(recvPkg) || recvPkg < 0 || recvPkg > apBoxes) {
-                    failMsg = 'تحقق من كميات الاستلام؛ لا تتجاوز الكمية المعتمدة';
+                recvPkg = Number(row.querySelector('[data-ap=recvpkg]')?.value);
+                if (!Number.isFinite(recvPkg) || recvPkg < 0 || recvPkg > remainingBoxes + 1e-6) {
+                    failMsg = `عدد الكراتين المستلمة من "${item.itemName || item.name || 'الصنف'}" يتجاوز المتبقي (${formatQty(remainingBoxes)})`;
                     break;
                 }
             }
+            /* صفر الوزن/الكمية والصناديق = صنف مؤجّل: لا يُرسل، فيحتفظ
+               الخادم بقيمه التراكمية السابقة. الحمولة كلها فروق هذه المرة. */
+            if (!(received > 0) && !(isCw && recvPkg > 0)) {continue;}
             receivedItems.push({
                 itemName: item.itemName || item.name,
                 receivedQty: received,
@@ -1169,19 +1469,30 @@ export function mountDispatchScreen(host, ctx = {}) {
             });
         }
         if (failMsg) {panelMsg(failMsg); return;}
+        if (!receivedItems.length) {panelMsg('أدخل كمية أو وزنًا مستلمًا أكبر من صفر لصنف واحد على الأقل'); return;}
+        if (!receivedItems.some((item) => item.receivedQty > 0)) {
+            panelMsg('يجب إدخال وزن أو كمية أكبر من صفر؛ صناديق الوزن المتغير وحدها لا تُسجّل كاستلام');
+            return;
+        }
         const sig = readSig(SIG_IDS.receive);
         if (sig == null) {return;}
         const notes = panelEl.querySelector('[data-f=notes]')?.value.trim() || '';
         busy = true;
+        const prevBtn = setPanelBusy('جارٍ تسجيل الاستلام…');
         try {
-            await receiveDispatch(raw.id, { items: receivedItems, notes, signatureData: sig, signerName });
+            const result = await receiveDispatch(raw.id, { items: receivedItems, notes, signatureData: sig, signerName });
             closePanel();
-            notify('تم تسجيل استلام المطبخ بالتوقيع');
+            notify(result && result.dispatch && result.dispatch.status === 'received'
+                ? 'تم تسجيل استلام الإذن بالكامل والتوقيع'
+                : 'تم تسجيل الاستلام الجزئي — بقي المتبقي لدفعة لاحقة');
+            applyDecisionResult(result);
             await reload();
         } catch (e) {
-            panelMsg((e && e.message) || 'تعذر تسجيل استلام المطبخ');
+            if (handleDecisionConflict(e)) {return;}
+            panelMsg((e && e.message) || 'تعذر تسجيل استلام القسم');
         } finally {
             busy = false;
+            clearPanelBusy(prevBtn);
         }
     }
 
@@ -1193,6 +1504,9 @@ export function mountDispatchScreen(host, ctx = {}) {
         if (panelKind === 'chef-reject') {submitChefReject(); return;}
         if (panelKind === 'approve') {submitApprove(); return;}
         if (panelKind === 'reject') {submitReject(); return;}
+        if (panelKind === 'cancel') {submitCancel(); return;}
+        if (panelKind === 'reopen') {submitReopen(); return;}
+        if (panelKind === 'void') {submitVoid(); return;}
         if (panelKind === 'receive') {submitReceive();}
     }
 
@@ -1207,7 +1521,7 @@ export function mountDispatchScreen(host, ctx = {}) {
     async function printNote(raw) {
         // العارض داخلي فلا نافذة منبثقة تُحجب، ويُعرض «جارٍ التجهيز» فورًا.
         const w = openInAppReport(`إذن صرف #${raw.id}`);
-        w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>إذن صرف #${esc(raw.id)}</title></head><body style="font-family:'Cairo',Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز إذن الصرف…</body></html>`);
+        w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>إذن صرف #${esc(raw.id)}</title></head><body style="font-family:'IBM Plex Sans Arabic','Tajawal',Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز إذن الصرف…</body></html>`);
         let d = raw;
         try {
             const full = await fetchDispatchFull(raw.id);
@@ -1219,7 +1533,11 @@ export function mountDispatchScreen(host, ctx = {}) {
         const cur = currencyOf();
         const pMoney = (v) => { const m = formatMoney(v, cur); return `${m.amount}${m.hasUnit ? ` ${esc(m.unit)}` : ''}`; };
         const pTotal = pItems.reduce((s, i) => s + Number(i.approvedValue || 0), 0);
-        const pStatusAr = { pending: 'بانتظار الاعتماد', chef_approved: 'معتمد من الشيف — بانتظار المخازن', approved: 'معتمد من المخازن', partially_received: 'مستلم جزئيًا', received: 'مستلم', rejected: 'مرفوض' }[d.status] || d.status || '—';
+        const pStatusAr = {
+            pending: 'بانتظار الاعتماد', chef_approved: 'معتمد من الشيف — بانتظار المخازن',
+            approved: 'معتمد من المخازن', partially_received: 'مستلم جزئيًا',
+            received: 'مستلم', rejected: 'مرفوض', cancelled: 'ملغى', voided: 'مُبطل',
+        }[d.status] || dispatchStatusLabel(d.status);
         const pRow = (item, idx) => {
             const cw = item.catchWeightEnabled || item.actualWeight;
             const qty = item.approvedQty ?? item.qty ?? 0;
@@ -1234,8 +1552,11 @@ export function mountDispatchScreen(host, ctx = {}) {
             d.chefApprovedBy ? ['اعتماد الشيف', d.chefApprovedBy, d.chefApprovedAt] : null,
             d.warehouseApprovedBy ? ['اعتماد المخزن', d.warehouseApprovedBy, d.warehouseApprovedAt || d.approvedDate] : null,
             d.kitchenReceivedBy ? ['الاستلام', d.kitchenReceivedBy, d.kitchenReceivedAt] : null,
+            d.cancelledBy ? ['الإلغاء', d.cancelledBy, d.cancelledAt] : null,
+            d.reopenedBy ? ['الإرجاع للمراجعة', d.reopenedBy, d.reopenedAt] : null,
+            d.voidedBy ? ['الإبطال', d.voidedBy, d.voidedAt] : null,
         ].filter(Boolean);
-        const doc = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>إذن صرف #${esc(d.id)}</title><style>*{box-sizing:border-box}body{font-family:'Cairo',Tahoma,Arial,sans-serif;color:#1a1a1a;background:#eef2f7;margin:0;padding:32px 36px;direction:rtl}.sheet{max-width:800px;margin:auto;background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 8px 28px rgba(15,23,42,.10);padding:22px 24px 20px}.head{display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);border-bottom:4px solid #c9a227;border-radius:12px 12px 0 0;padding:18px 24px;margin:-22px -24px 16px}.doc-logo{width:74px;height:74px;object-fit:contain;background:#fff;border:2px solid #c9a227;border-radius:14px;padding:5px;box-shadow:0 2px 10px rgba(0,0,0,.35)}.head h1{margin:0;color:#f5d76e;font-size:24px}.head p{margin:2px 0;color:#cbd5e1;font-size:13px}.doc-title{text-align:center;margin:14px 0 4px}.doc-title h2{margin:0;font-size:22px;letter-spacing:.5px;color:#0f172a}.doc-title .st{display:inline-block;margin-top:8px;padding:4px 20px;border:0;border-radius:20px;font-size:12px;font-weight:800;color:#f5d76e;background:#0f172a;letter-spacing:.3px}.meta{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}.meta div{border:1px solid #e5e7eb;border-right:4px solid #c9a227;border-radius:10px;padding:8px 12px;background:#fff;box-shadow:0 1px 4px rgba(15,23,42,.05)}.meta b{display:block;color:#8a6d1b;font-size:11px;margin-bottom:2px}table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13.5px}th,td{border:1px solid #999;padding:8px;text-align:center}th{background:#0f172a;color:#f5d76e;font-size:12px;letter-spacing:.3px}td small{color:#555}tbody tr:nth-child(even) td{background:#f8fafc}tfoot td{font-weight:800;background:#0f172a;color:#f5d76e;font-size:14px}.chain{display:flex;gap:8px;margin-top:14px}.chain div{flex:1;border:1px solid #e5e7eb;border-top:3px solid #c9a227;border-radius:10px;padding:8px 6px;font-size:11px;text-align:center;background:#fff;box-shadow:0 1px 4px rgba(15,23,42,.05)}.chain b{display:block;color:#0f172a;margin-bottom:2px}.notes{margin-top:12px;border:1px solid #e5e7eb;border-right:4px solid #c9a227;border-radius:10px;padding:10px 14px;font-size:13px;min-height:44px;background:#fffbeb}.sigs{display:flex;gap:14px;margin-top:34px}.foot{margin-top:18px;text-align:center;font-size:11px;color:#888;border-top:2px solid #c9a227;padding-top:8px}.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 26px;margin:0 5px;font:inherit;cursor:pointer;background:#b45309;color:#fff;font-weight:700}.controls button.secondary{background:#555}@media print{body{padding:0;background:#fff}.sheet{box-shadow:none;border:0;border-radius:0}.head,.head h1,th,tfoot td,.doc-title .st{print-color-adjust:exact;-webkit-print-color-adjust:exact}.controls{display:none!important}@page{size:A4;margin:11mm}}</style></head><body><div class="controls"><button type="button" data-v2-print>🖨 طباعة</button><button type="button" class="secondary" data-v2-close>إغلاق</button></div><main class="sheet"><header class="head"><img class="doc-logo" src="${esc(absoluteLogo(settings))}" alt="الشعار"><div><h1>${esc(settings.name || 'مطاعم الشرفه العالمي')}</h1><p>نظام إدارة المخازن والمطاعم</p></div></header><div class="doc-title"><h2>إذن صرف مخزن</h2><span class="st">${esc(pStatusAr)}</span></div><section class="meta"><div><b>رقم الإذن</b>#${esc(String(d.id))}</div><div><b>القسم الطالب</b>${esc(d.deptName || '—')}</div><div><b>تاريخ الطلب</b>${esc(fD(d.date))}</div><div><b>تاريخ الاعتماد</b>${esc(d.warehouseApprovedAt || d.approvedDate ? fD(d.warehouseApprovedAt || d.approvedDate) : '—')}</div></section><table><thead><tr><th style="width:36px">#</th><th>الصنف</th><th>الكمية المعتمدة</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead><tbody>${pItems.map(pRow).join('') || '<tr><td colspan="5">لا أصناف</td></tr>'}</tbody><tfoot><tr><td colspan="4">الإجمالي (${formatInt(pItems.length)} صنف)</td><td>${pMoney(pTotal)}</td></tr></tfoot></table>${pChain.length ? `<section class="chain">${pChain.map((c) => `<div><b>${esc(c[0])}</b>${esc(c[1])}<br><small>${esc(c[2] ? fDT(c[2]) : '')}</small></div>`).join('')}</section>` : ''}<div class="notes"><b>ملاحظات الطلب:</b> ${esc(d.notes || '—')}${d.approveNotes ? `<br><b>ملاحظات الاعتماد:</b> ${esc(d.approveNotes)}` : ''}${d.receiptNotes ? `<br><b>ملاحظات الاستلام:</b> ${esc(d.receiptNotes)}` : ''}</div><div class="sigs">${sigBlock('توقيع الطالب', null, d.createdBy, d.date)}${sigBlock('توقيع أمين المخزن', d.warehouseApprovalSignatureData, d.warehouseApprovedBy, d.warehouseApprovedAt || d.approvedDate)}${sigBlock('توقيع المستلم', d.kitchenReceiptSignatureData, d.kitchenReceivedBy, d.kitchenReceivedAt)}</div><div class="foot">مستند مخزني معتمد إلكترونيًا — ${esc(settings.name || '')} — طُبع بتاريخ ${esc(fDT(new Date().toISOString()))}</div></main></body></html>`;
+        const doc = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>إذن صرف #${esc(d.id)}</title><style>*{box-sizing:border-box}body{font-family:'IBM Plex Sans Arabic','Tajawal',Tahoma,Arial,sans-serif;color:#1a1a1a;background:#eef2f7;margin:0;padding:32px 36px;direction:rtl}.sheet{max-width:800px;margin:auto;background:#fff;border:1px solid #e5e7eb;border-radius:14px;box-shadow:0 8px 28px rgba(15,23,42,.10);padding:22px 24px 20px}.head{display:flex;align-items:center;gap:16px;background:linear-gradient(135deg,#0f172a 0%,#1e3a5f 100%);border-bottom:4px solid #8fbfa9;border-radius:12px 12px 0 0;padding:18px 24px;margin:-22px -24px 16px}.doc-logo{width:74px;height:74px;object-fit:contain;background:#fff;border:2px solid #8fbfa9;border-radius:14px;padding:5px;box-shadow:0 2px 10px rgba(0,0,0,.35)}.head h1{margin:0;color:#dcede4;font-size:24px}.head p{margin:2px 0;color:#cbd5e1;font-size:13px}.doc-title{text-align:center;margin:14px 0 4px}.doc-title h2{margin:0;font-size:22px;letter-spacing:.5px;color:#0f172a}.doc-title .st{display:inline-block;margin-top:8px;padding:4px 20px;border:0;border-radius:20px;font-size:12px;font-weight:800;color:#dcede4;background:#0f172a;letter-spacing:.3px}.meta{display:grid;grid-template-columns:repeat(4,1fr);gap:8px;margin:14px 0}.meta div{border:1px solid #e5e7eb;border-right:4px solid #8fbfa9;border-radius:10px;padding:8px 12px;background:#fff;box-shadow:0 1px 4px rgba(15,23,42,.05)}.meta b{display:block;color:#3e6b58;font-size:11px;margin-bottom:2px}table{width:100%;border-collapse:collapse;margin-top:10px;font-size:13.5px}th,td{border:1px solid #999;padding:8px;text-align:center}th{background:#0f172a;color:#dcede4;font-size:12px;letter-spacing:.3px}td small{color:#555}tbody tr:nth-child(even) td{background:#f8fafc}tfoot td{font-weight:800;background:#0f172a;color:#dcede4;font-size:14px}.chain{display:flex;gap:8px;margin-top:14px}.chain div{flex:1;border:1px solid #e5e7eb;border-top:3px solid #8fbfa9;border-radius:10px;padding:8px 6px;font-size:11px;text-align:center;background:#fff;box-shadow:0 1px 4px rgba(15,23,42,.05)}.chain b{display:block;color:#0f172a;margin-bottom:2px}.notes{margin-top:12px;border:1px solid #e5e7eb;border-right:4px solid #8fbfa9;border-radius:10px;padding:10px 14px;font-size:13px;min-height:44px;background:#f2f8f4}.sigs{display:flex;gap:14px;margin-top:34px}.foot{margin-top:18px;text-align:center;font-size:11px;color:#888;border-top:2px solid #8fbfa9;padding-top:8px}.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 26px;margin:0 5px;font:inherit;cursor:pointer;background:#0f5b46;color:#fff;font-weight:700}.controls button.secondary{background:#555}@media print{body{padding:0;background:#fff}.sheet{box-shadow:none;border:0;border-radius:0}.head,.head h1,th,tfoot td,.doc-title .st{print-color-adjust:exact;-webkit-print-color-adjust:exact}.controls{display:none!important}@page{size:A4;margin:11mm}}</style></head><body><div class="controls"><button type="button" data-v2-print>🖨 طباعة</button><button type="button" class="secondary" data-v2-close>إغلاق</button></div><main class="sheet"><header class="head"><img class="doc-logo" src="${esc(absoluteLogo(settings))}" alt="الشعار"><div><h1>${esc(settings.name || 'مطاعم الشرفه العالمي')}</h1><p>نظام إدارة المخازن والمطاعم</p></div></header><div class="doc-title"><h2>إذن صرف مخزن</h2><span class="st">${esc(pStatusAr)}</span></div><section class="meta"><div><b>رقم الإذن</b>#${esc(String(d.id))}</div><div><b>القسم الطالب</b>${esc(d.deptName || '—')}</div><div><b>تاريخ الطلب</b>${esc(fD(d.date))}</div><div><b>تاريخ الاعتماد</b>${esc(d.warehouseApprovedAt || d.approvedDate ? fD(d.warehouseApprovedAt || d.approvedDate) : '—')}</div></section><table><thead><tr><th style="width:36px">#</th><th>الصنف</th><th>الكمية المعتمدة</th><th>سعر الوحدة</th><th>الإجمالي</th></tr></thead><tbody>${pItems.map(pRow).join('') || '<tr><td colspan="5">لا أصناف</td></tr>'}</tbody><tfoot><tr><td colspan="4">الإجمالي (${formatInt(pItems.length)} صنف)</td><td>${pMoney(pTotal)}</td></tr></tfoot></table>${pChain.length ? `<section class="chain">${pChain.map((c) => `<div><b>${esc(c[0])}</b>${esc(c[1])}<br><small>${esc(c[2] ? fDT(c[2]) : '')}</small></div>`).join('')}</section>` : ''}<div class="notes"><b>ملاحظات الطلب:</b> ${esc(d.notes || '—')}${d.approveNotes ? `<br><b>ملاحظات الاعتماد:</b> ${esc(d.approveNotes)}` : ''}${d.receiptNotes ? `<br><b>ملاحظات الاستلام:</b> ${esc(d.receiptNotes)}` : ''}${d.cancellationReason ? `<br><b>سبب الإلغاء:</b> ${esc(d.cancellationReason)}` : ''}${d.reopenReason ? `<br><b>سبب الإرجاع:</b> ${esc(d.reopenReason)}` : ''}${d.voidReason ? `<br><b>سبب الإبطال:</b> ${esc(d.voidReason)}` : ''}</div><div class="sigs">${sigBlock('توقيع الطالب', null, d.createdBy, d.date)}${sigBlock('توقيع أمين المخزن', d.warehouseApprovalSignatureData, d.warehouseApprovedBy, d.warehouseApprovedAt || d.approvedDate)}${sigBlock('توقيع المستلم', d.kitchenReceiptSignatureData, d.kitchenReceivedBy, d.kitchenReceivedAt)}</div><div class="foot">${['cancelled', 'voided'].includes(String(d.status)) ? 'مستند مخزني موثّق إلكترونيًا' : 'مستند مخزني معتمد إلكترونيًا'} — ${esc(settings.name || '')} — طُبع بتاريخ ${esc(fDT(new Date().toISOString()))}</div></main></body></html>`;
         w.document.open();
         w.document.write(doc);
         w.document.close();
@@ -1251,9 +1572,101 @@ export function mountDispatchScreen(host, ctx = {}) {
      *  — الآن يبني نفس الكشف من الصفوف المعروضة فعلًا (inRange) في نافذة
      *  تُفتح داخل إيماءة النقر حتى لا يحجبها المتصفح. */
 
+    /* ── تقرير استهلاك الأصناف (2026-11-01 بطلب المالك): كل صنفٍ استهلك
+       كم في الفترة — تجميع الأصناف المصروفة فعليًا (approvedItems) من
+       الأذون المعتمدة/المستلمة داخل نطاق التاريخ، مرتبةً بالقيمة تنازليًا،
+       بورقةٍ فاخرة عبر عارض التقارير (طباعة/PDF/مشاركة/واتساب). */
+    function consReport() {
+        const w = openInAppReport('تقرير استهلاك الأصناف');
+        w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>تقرير استهلاك الأصناف</title></head><body style="font-family:Cairo,Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز التقرير…</body></html>');
+        const view = rawRows.map((r) => ({ ...dispatchToRow(r), _raw: r }));
+        const { rows: dated } = inRange(view);
+        /* الاستهلاك = ما صُرف فعليًا من المخازن (معتمد من المخازن أو مستلم) */
+        const rows = dated.filter((r) => r.status === 'received' || r.status === 'warehouse_approved');
+        const from = q('#v2dsp-from').value;
+        const to = q('#v2dsp-to').value;
+        const period = (from || to) ? `من ${from || 'البداية'} إلى ${to || 'اليوم'}` : 'كل الفترة';
+        const map = new Map();
+        let issuedCount = 0;
+        for (const row of rows) {
+            const raw = row._raw || {};
+            const items = (Array.isArray(raw.approvedItems) && raw.approvedItems.length) ? raw.approvedItems : [];
+            if (!items.length) {continue;}
+            issuedCount += 1;
+            for (const it of items) {
+                const name = String(it.itemName || it.name || '').trim();
+                if (!name) {continue;}
+                const qty = Number(it.approvedQty ?? it.requestedQty ?? it.qty) || 0;
+                const value = Number(it.approvedValue) || (qty * (Number(it.avgCost) || 0));
+                const unit = String(it.unit || '');
+                const cur = map.get(name) || { name, qty: 0, value: 0, count: 0, unit };
+                cur.qty += qty;
+                cur.value += value;
+                cur.count += 1;
+                if (!cur.unit && unit) {cur.unit = unit;}
+                map.set(name, cur);
+            }
+        }
+        const list = [...map.values()].sort((a, b) => b.value - a.value);
+        const totalValue = list.reduce((a, x) => a + x.value, 0);
+        const fmtQty = (v) => (Math.round(v * 1000) / 1000).toLocaleString('en-US', { maximumFractionDigits: 3 });
+        const fmtMoney = (v) => (Math.round(v * 100) / 100).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+        const body = list.map((x, i) => `
+            <tr>
+              <td>${i + 1}</td>
+              <td style="text-align:right"><b>${esc(x.name)}</b></td>
+              <td>${esc(x.unit || '—')}</td>
+              <td class="n" dir="ltr">${fmtQty(x.qty)}</td>
+              <td>${x.count}</td>
+              <td class="n" dir="ltr">${fmtMoney(x.qty ? x.value / x.qty : 0)}</td>
+              <td class="n" dir="ltr"><b>${fmtMoney(x.value)}</b></td>
+            </tr>`).join('') || '<tr><td colspan="7">لا استهلاك في هذه الفترة</td></tr>';
+        const html = `<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8">
+          <title>تقرير استهلاك الأصناف</title><style>
+          *{box-sizing:border-box}body{font-family:'IBM Plex Sans Arabic','Tajawal',Tahoma,Arial,sans-serif;color:#1c2420;background:#fff;margin:0;padding:28px 32px}
+          .head{display:flex;justify-content:space-between;align-items:center;border-bottom:3px solid #18352b;padding-bottom:12px;margin-bottom:6px}
+          .head h1{margin:0;font-size:22px;color:#18352b}
+          .head .brand-note{font-size:12px;color:#5d6f66}
+          .sub{text-align:center;margin:10px 0 2px;font-size:16px;font-weight:700;color:#18352b}
+          .range{text-align:center;font-size:12.5px;color:#5d6f66;margin-bottom:14px}
+          .kpis{display:flex;gap:10px;margin:0 0 14px}
+          .kpi{flex:1;background:#eef5f1;border:1px solid #bcd8cb;border-radius:10px;padding:10px 12px;text-align:center}
+          .kpi b{display:block;font-size:16px;color:#0a3d2f}
+          .kpi span{font-size:11px;color:#5d6f66}
+          table{width:100%;border-collapse:collapse;font-size:12.5px}
+          th{background:#18352b;color:#fff;padding:8px 6px;border:1px solid #234a3b}
+          td{border:1px solid #cfe0d8;padding:7px 6px;text-align:center}
+          tbody tr:nth-child(even) td{background:#f3f8f5}
+          tfoot td{font-weight:800;background:#e8f2ec;color:#0a3d2f;border:1px solid #bcd8cb}
+          .n{direction:ltr}
+          .sig{display:flex;gap:18px;margin-top:34px}
+          .sig div{flex:1;border-top:2px solid #18352b;padding-top:6px;text-align:center;font-size:11.5px;color:#5d6f66}
+          .foot{margin-top:14px;text-align:center;font-size:11px;color:#7a8a80}
+          @page{size:A4;margin:11mm}
+          </style></head><body>
+          <div class="head"><h1>تقرير استهلاك الأصناف</h1><div class="brand-note">نظام مطاعم الشرفة — مستند إلكتروني معتمد</div></div>
+          <div class="sub">استهلاك كل صنفٍ من المخازن بحسب الفترة</div>
+          <div class="range">الفترة: ${period} · ${issuedCount} إذن صرف مصروف</div>
+          <div class="kpis">
+            <div class="kpi"><span>أذون مصروفة</span><b>${issuedCount}</b></div>
+            <div class="kpi"><span>أصناف مستهلكة</span><b>${list.length}</b></div>
+            <div class="kpi"><span>إجمالي القيمة المستهلكة</span><b>${fmtMoney(totalValue)} ريال</b></div>
+          </div>
+          <table><thead><tr><th>#</th><th>الصنف</th><th>الوحدة</th><th>الكمية المستهلكة</th><th>مرات الصرف</th><th>متوسط سعر الوحدة</th><th>إجمالي القيمة</th></tr></thead>
+          <tbody>${body}</tbody>
+          <tfoot><tr><td colspan="6">إجمالي القيمة المستهلكة (${list.length} صنف)</td><td>${fmtMoney(totalValue)}</td></tr></tfoot></table>
+          <div class="sig"><div>توقيع أمين المخزن</div><div>توقيع المحاسبة</div><div>اعتماد المدير</div></div>
+          <div class="foot">الاستهلاك محسوب من الأصناف المصروفة فعليًا (معتمدة من المخازن أو مستلمة) — طُبع ${esc(fDT(new Date().toISOString()))}</div>
+          </body></html>`;
+        w.document.open();
+        w.document.write(html);
+        w.document.close();
+        w.focus();
+    }
+
     async function printList() {
         const w = openInAppReport('كشف أذونات الصرف');
-        w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>كشف أذونات الصرف</title></head><body style="font-family:\'Cairo\',Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز الكشف…</body></html>');
+        w.document.write('<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>كشف أذونات الصرف</title></head><body style="font-family:\'IBM Plex Sans Arabic\',\'Tajawal\',Tahoma,Arial,sans-serif;padding:24px">جارٍ تجهيز الكشف…</body></html>');
         const view = rawRows.map((r) => ({ ...dispatchToRow(r), _raw: r }));
         /* الكشف يطبع المعروض بالضبط: التاريخ + بحث الصنف (نفس طبقتَي paint). */
         const { rows: dated } = inRange(view);
@@ -1279,11 +1692,7 @@ export function mountDispatchScreen(host, ctx = {}) {
         }
         const body = rows.map((row, i) => {
             const raw = row._raw || {};
-            let statusLabel = raw.status || '—';
-            try {
-                const st = resolveStatus('dispatch', raw.status);
-                if (st && st.label) {statusLabel = st.label;}
-            } catch { /* keep raw status */ }
+            const statusLabel = dispatchStatusLabel(raw.status);
             /* desc: rows[0] = الأحدث فيأخذ الترقيم 1 صاعدًا معه. */
             return `<tr><td>${i + 1}</td><td>${esc(row.dept || raw.deptName || '—')}</td>`
                 + `<td style="text-align:right">${esc(row.itemsText || '—')}</td>`
@@ -1310,22 +1719,22 @@ export function mountDispatchScreen(host, ctx = {}) {
                         + `<td class="n" dir="ltr">${esc(((Number(it.qty) || 0) * unit).toFixed(2))}</td></tr>`);
                 }
             }
-            detailBlock = `<h2 style="font-size:15px;color:#7c3500;border-bottom:2px solid #f7ead8;padding-bottom:6px;margin:16px 0 8px">سطور الصنف المطابق — الكمية المعتمدة × متوسط تكلفته</h2>`
+            detailBlock = `<h2 style="font-size:15px;color:#0a3d2f;border-bottom:2px solid #eaf3ee;padding-bottom:6px;margin:16px 0 8px">سطور الصنف المطابق — الكمية المعتمدة × متوسط تكلفته</h2>`
                 + `<table><thead><tr><th>#</th><th>التاريخ</th><th>الإذن</th><th>الصنف</th><th>الكمية</th><th>القيمة</th></tr></thead>`
                 + `<tbody>${itemRows.join('') || '<tr><td colspan="6">لا سطور مطابقة</td></tr>'}</tbody></table>`;
         }
         const dateStr = new Date().toLocaleString('ar-EG');
         w.document.open();
         w.document.write(`<!DOCTYPE html><html dir="rtl" lang="ar"><head><meta charset="UTF-8"><title>كشف أذونات الصرف</title>`
-            + '<style>body{font-family:\'Cairo\',Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:28px;direction:rtl}'
-            + '.sheet{max-width:900px;margin:auto}.head{text-align:center;border-bottom:3px solid #b45309;padding-bottom:16px;margin-bottom:18px}'
-            + '.head h1{margin:0 0 6px;color:#b45309;font-size:24px}.head p{margin:3px 0;color:#555;font-size:13px}'
+            + '<style>body{font-family:\'IBM Plex Sans Arabic\',\'Tajawal\',Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:28px;direction:rtl}'
+            + '.sheet{max-width:900px;margin:auto}.head{text-align:center;border-bottom:3px solid #0f5b46;padding-bottom:16px;margin-bottom:18px}'
+            + '.head h1{margin:0 0 6px;color:#0f5b46;font-size:24px}.head p{margin:3px 0;color:#555;font-size:13px}'
             + '.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px}'
             + '.summary div{border:1px solid #ddd;border-radius:8px;padding:10px;text-align:center}'
-            + '.summary b{display:block;font-size:17px;color:#7c3500;margin-top:4px}.summary span{font-size:12px;color:#555}'
+            + '.summary b{display:block;font-size:17px;color:#0a3d2f;margin-top:4px}.summary span{font-size:12px;color:#555}'
             + 'table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:8px;text-align:right;font-size:12px}'
-            + 'th{background:#f7ead8;color:#7c3500}'
-            + '.controls{text-align:center;margin-bottom:20px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#b45309;color:#fff}'
+            + 'th{background:#eaf3ee;color:#0a3d2f}'
+            + '.controls{text-align:center;margin-bottom:20px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#0f5b46;color:#fff}'
             + '.controls button.secondary{background:#555}'
             + '@media print{body{padding:0}.controls{display:none!important}@page{size:A4;margin:12mm}}</style></head><body>'
             + '<div class="controls"><button type="button" data-pl-print>طباعة</button><button type="button" class="secondary" data-pl-close>إغلاق</button></div>'
@@ -1369,14 +1778,7 @@ export function mountDispatchScreen(host, ctx = {}) {
             ? dated.filter((r) => matchDispatchProduct(r, productQuery))
             : dated;
         const c = summarizeDispatches(rows);
-        const states = Object.entries(c).map(([k, v]) => {
-            let label = k || 'بلا حالة';
-            try {
-                const s = resolveStatus('dispatch', k);
-                if (s && s.label) {label = s.label;}
-            } catch { /* adapter stays total — raw key above */ }
-            return `${label} ${v}`;
-        }).join(' · ');
+        const states = Object.entries(c).map(([k, v]) => `${k ? dispatchStatusLabel(k) : 'بلا حالة'} ${v}`).join(' · ');
         let productLine = '';
         if (productQuery) {
             const { vouchers, byName } = summarizeProductWithdrawal(rows, productQuery);
@@ -1392,8 +1794,12 @@ export function mountDispatchScreen(host, ctx = {}) {
         table.setRows(rows);
     }
 
+    /* COALESCE (2026-10-29): كان `if (loading) {return;}` يُسقط بصمت طلب
+       التحديث القادم من اعتماد/استلام ناجح فوق قراءة جارية — فيبقى السجل على
+       حالته القديمة حتى ريفريش يدوي (عطل المالك: «في الشكل لازم ريفرش»).
+       الآن الطلب يُسجَّل ويُعاد فور انتهاء القراءة الجارية بدل إسقاطه. */
     async function reload() {
-        if (loading) {return;}
+        if (loading) {reloadQueued = true; return;}
         loading = true;
         const seq = ++readSeq;
         if (!rawRows.length) {table.setLoading(true);}
@@ -1402,6 +1808,13 @@ export function mountDispatchScreen(host, ctx = {}) {
             if (!el.isConnected || seq !== readSeq) {return;}   // destroyed / newer read wins
             rawRows = list;
             rawById = new Map(list.map((r) => [String(r.id), r]));
+            loadedSpan = list.reduce((acc, r) => {
+                const d = String(r.date || '').slice(0, 10);
+                if (!d) {return acc;}
+                if (!acc.min || d < acc.min) {acc.min = d;}
+                if (!acc.max || d > acc.max) {acc.max = d;}
+                return acc;
+            }, { min: '', max: '' });
             paint();
         } catch (e) {
             if (!el.isConnected || seq !== readSeq) {return;}
@@ -1417,6 +1830,7 @@ export function mountDispatchScreen(host, ctx = {}) {
                     : `تعذّر تحميل الأذون: ${(e && e.message) || 'خطأ'}`));
         } finally {
             loading = false;
+            if (reloadQueued) {reloadQueued = false; reload();}
         }
     }
 
@@ -1429,7 +1843,6 @@ export function mountDispatchScreen(host, ctx = {}) {
             if (!raw) {notify('تعذر العثور على الإذن — حدّث القائمة'); return;}
             const act = actBtn.dataset.v2Act;
             if (act === 'print') {printNote(raw); return;}
-            if (act === 'delete') {confirmDelete(raw); return;}
             openPanel(act, raw);
             return;
         }
@@ -1453,6 +1866,7 @@ export function mountDispatchScreen(host, ctx = {}) {
             return;
         }
         if (event.target.closest('[data-v2-print]')) {printList(); return;}
+        if (event.target.closest('[data-v2-cons]')) {consReport(); return;}
         if (event.target.closest('[data-v2-reload]')) {reload(); return;}
         if (event.target.closest('[data-erp-retry]')) {reload();}
     });
@@ -1485,6 +1899,22 @@ export function mountDispatchScreen(host, ctx = {}) {
         }
     });
 
+    async function onRangeChanged() {
+        const from = q('#v2dsp-from').value;
+        const to = q('#v2dsp-to').value;
+        const ALL = 'all';
+        if (dataScope !== ALL && loadedSpan && (
+            (from && loadedSpan.min && from < loadedSpan.min)
+            || (to && loadedSpan.max && to > loadedSpan.max))) {
+            dataScope = ALL;
+            const scopeSel = q('#v2dsp-scope');
+            if (scopeSel) {scopeSel.value = ALL;}
+            await reload();
+            return;
+        }
+        paint();
+    }
+
     el.addEventListener('change', (event) => {
         if (event.target.matches('#v2dsp-scope')) {
             /* ثوابت لا حرفيات داخل ternary — جامع الأيقونات في عقد
@@ -1495,11 +1925,11 @@ export function mountDispatchScreen(host, ctx = {}) {
             reload();
             return;
         }
-        if (event.target.matches('#v2dsp-from, #v2dsp-to')) {paint();}
+        if (event.target.matches('#v2dsp-from, #v2dsp-to')) {void onRangeChanged();}
     });
 
     el.addEventListener('keydown', (event) => {
-        if (event.key === 'Enter' && event.target.matches('#v2dsp-from, #v2dsp-to, [data-v2-product-search]')) {paint();}
+        if (event.key === 'Enter' && event.target.matches('#v2dsp-from, #v2dsp-to, [data-v2-product-search]')) {void onRangeChanged();}
     });
 
     reload();

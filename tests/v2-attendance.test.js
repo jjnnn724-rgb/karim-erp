@@ -48,6 +48,7 @@ function loadEsm(file, injections = {}, collect = []) {
     const context = {
         console, JSON, String, Number, Boolean, Array, Object, RegExp, Error, Date, Math, Promise,
         Set, Map, encodeURIComponent, decodeURIComponent, TextDecoder, Uint8Array, Intl,
+        URLSearchParams,
         ...injections,
     };
     vm.createContext(context);
@@ -233,6 +234,106 @@ describe('V2 attendance repository — honesty of the derived numbers', () => {
         expect(repo.formatInt(null)).toBe('0');
         expect(repo.formatInt(7.6)).toBe('8');
     });
+
+    test('باب سجل التدقيق: قراءةٌ بمرشّحات مُتحقَّق منها، لا كتابة', async () => {
+        const calls = [];
+        const apiFetch = jest.fn(async (p) => {
+            calls.push(p);
+            return { rows: [], total: 0 };
+        });
+        const repo = loadEsm(REPO, { apiFetch }, []);
+        await repo.fetchAttendanceAudit({ from: '2026-10-01', to: '2026-10-31', action: 'update', limit: 300 });
+        expect(calls[0]).toBe('/attendance/audit?from=2026-10-01&to=2026-10-31&action=update&limit=300&offset=0');
+        // تاريخٌ غير صالح يُسقط المرشّح ولا يُرسل
+        await repo.fetchAttendanceAudit({ from: 'yesterday', to: '' });
+        expect(calls[1]).toBe('/attendance/audit?limit=200&offset=0');
+    });
+
+    test('صفّ التدقيق يعرض ما تغيّر قبل/بعد — بلا تجميل ولا اختراع', () => {
+        const { repo } = repoHarness();
+        const rows = repo.auditEditRows({
+            rows: [{
+                id: 5, action: 'update', reason: 'خطأ في الإدخال', actorName: 'سيف', actorRole: 'manager',
+                employee_name: 'مازن', employee_no: 'EMP-12', source: 'api', createdAt: '2026-11-02T08:00:00.000Z',
+                changedFields: { checkIn: { before: '09:00', after: '10:00' }, checkOut: { before: '17:00', after: null } },
+            }],
+            total: 1,
+        });
+        expect(rows).toHaveLength(1);
+        expect(rows[0].actionAr).toBe('تصحيح');
+        expect(rows[0].tone).toBe('warning');
+        expect(rows[0].employeeName).toBe('مازن');
+        expect(rows[0].actorName).toBe('سيف');
+        expect(rows[0].reason).toBe('خطأ في الإدخال');
+        expect(rows[0].fields).toEqual([
+            { field: 'checkIn', before: '09:00', after: '10:00' },
+            { field: 'checkOut', before: '17:00', after: null },
+        ]);
+        // سطرٌ بلا حقول = لا قيم مختلفة، لا كسرٌ للشاشة
+        expect(repo.auditEditRows({ rows: [{ id: 6, action: 'delete' }] })[0].fields).toEqual([]);
+    });
+});
+
+describe('المرحلة 1 — الحكم من المحسوب لا من العلم المخزَّن', () => {
+    const base = {
+        employeeId: '7', date: '2026-11-01', checkIn: '13:43', checkOut: '23:45',
+    };
+
+    test('من أكمل ساعات ورديته حاضر ولو حُفظ عليه late/early_leave القديمان', () => {
+        const { repo } = repoHarness();
+        const row = repo.attendanceToRow({
+            ...base, late: true, early_leave: true,
+            lateMinutes: 0, arrivalLateMinutes: 0, earlyLeaveMinutes: 0,
+        });
+        expect(row.state).toBe('present');
+    });
+
+    test('علم مخزَّن كاذب لا يخفي عجزًا محسوبًا', () => {
+        const { repo } = repoHarness();
+        const row = repo.attendanceToRow({
+            ...base, late: false, early_leave: false,
+            lateMinutes: 18, arrivalLateMinutes: 18, earlyLeaveMinutes: 0,
+        });
+        expect(row.state).toBe('late');
+    });
+
+    test('عجز الانصراف وحده يبقى «انصراف مبكر»', () => {
+        const { repo } = repoHarness();
+        const row = repo.attendanceToRow({
+            ...base, checkIn: '13:00', checkOut: '22:15',
+            lateMinutes: 45, arrivalLateMinutes: 0, earlyLeaveMinutes: 45,
+        });
+        expect(row.state).toBe('early');
+    });
+
+    test('وجود عجز دخول مع انصراف مبكر لا يُخفي التأخر', () => {
+        const { repo } = repoHarness();
+        const row = repo.attendanceToRow({
+            ...base, checkIn: '14:10', checkOut: '22:30',
+            lateMinutes: 40, arrivalLateMinutes: 40, earlyLeaveMinutes: 30,
+        });
+        expect(row.state).toBe('late');
+    });
+
+    test('حمولة بلا حقول محسوبة تعود للعلم المخزَّن — توافق محفوظ', () => {
+        const { repo } = repoHarness();
+        expect(repo.attendanceToRow({ ...base, late: true }).state).toBe('late');
+        expect(repo.attendanceToRow({ ...base, early_leave: true }).state).toBe('early');
+    });
+
+    test('صندوق الاستثناءات يستخدم نفس الحكم: مكتمل الساعات ليس استثناءً', () => {
+        const { repo } = repoHarness();
+        const rec = {
+            ...base, late: true, early_leave: true,
+            lateMinutes: 0, arrivalLateMinutes: 0, earlyLeaveMinutes: 0,
+        };
+        const out = repo.buildTodayExceptions({
+            records: [rec], employees: [{ id: '7', name: 'أحمد', status: 'active' }],
+            todayStr: '2026-11-01', full: false,
+        });
+        expect(out.rows).toHaveLength(0);
+        expect(out.open).toBe(0);
+    });
 });
 
 describe('V2 attendance screen + layer (source contract)', () => {
@@ -330,7 +431,7 @@ describe('V2 attendance screen + layer (source contract)', () => {
     test('the host still tears the screen down on navigation', () => {
         const p = fs.readFileSync(path.join(V2, 'preview.js'), 'utf8');
         expect(p).toMatch(/attendanceScreen\.destroy\(\)/);
-        expect(p).toMatch(/mountAttendanceScreen\(/);
+        expect(p).toMatch(/mountLazy\('attendance'/);
         expect(p).toMatch(/noSessionState/);
     });
 });

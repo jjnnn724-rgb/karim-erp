@@ -3,16 +3,21 @@ const crypto = require('crypto');
 const { pool } = require('./shared-pool');
 const { riyadhToday } = require('./riyadh-date'); // M20
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
+const { requireRoleOrPerm } = require('./permissions');
+const { idempotency } = require('./middleware/idempotency');
 const { logger } = require('./logger');
+const { makeEmitScoped } = require('./realtime/guard');
 const { postInventoryLedgerEntry } = require('./inventory-ledger');
 const { computeInvoicePaymentStatus } = require('./procurement-routes');
 const { computeInvoiceVat, loadStandardRate } = require('./tax-rule-service');
 const { emitDomainEvent } = require('./realtime/producers');
 const { ensureDispatchCreatorSchema, notifyChainEvent } = require('./dispatch-notifier');
+const { DEDICATED_STORE_CODES } = require('./dept-stores');
 // سياسة تاريخ الصلاحية: اختياري، ويُرفض فقط إن جاء بصيغة فاسدة (2026-10-20)
 const { normalizeExpiryDate, readExpiryField, checkExpiryOnLines, latestExpiryFor } = require('./expiry-policy');
 
 const router = express.Router();
+const CREATE_ROLES = ['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'dept_head'];
 const WRITE_ROLES = ['admin', 'manager', 'warehouse'];
 // المرتجع يُنشئه المطبخ/القسم فعليًا ويستلمه المخزن — نفس خريطة schema-registry
 const RETURN_ROLES = ['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'dept_head'];
@@ -27,12 +32,14 @@ const CHEF_APPROVAL_ROLES = ['admin', 'manager', 'kitchen', 'sous_chef'];
 // حتى 20 ثانية، فتتجمد المعاملات المخزنية كلها. الرفض الفوري يحمي الخصم من
 // الازدواج ويظهر للمستخدم سببًا واضحًا بدل التعليق.
 const _dispatchOpInFlight = new Set();
+/** @param {any} id @param {any} kind */
 function beginDispatchOp(id, kind) {
     const key = `${kind}:${id}`;
     if (_dispatchOpInFlight.has(key)) {return false;}
     _dispatchOpInFlight.add(key);
     return true;
 }
+/** @param {any} id @param {any} kind */
 function endDispatchOp(id, kind) { _dispatchOpInFlight.delete(`${kind}:${id}`); }
 
 // خريطة الربط المعياري بين أكواد أقسام التشغيل/المخزن وأكواد الموارد البشرية
@@ -59,12 +66,14 @@ const DEPT_CODE_ALIASES = Object.freeze({
     'kstore': 'kstore',
 });
 
+/** @param {any} code */
 function canonicalDeptCode(code) {
     if (!code) {return '';}
     const clean = String(code).trim().toLowerCase();
     return DEPT_CODE_ALIASES[clean] || String(code).trim();
 }
 
+/** @param {any} codeA @param {any} codeB */
 function deptsMatch(codeA, codeB) {
     if (!codeA || !codeB) {return false;}
     const cleanA = String(codeA).trim().toLowerCase();
@@ -76,6 +85,7 @@ function deptsMatch(codeA, codeB) {
 }
 
 // ═══ بوابة استلام رئيس القسم: يستلم إذن قسمه هو فقط ═══
+/** @param {any} user @param {any} dispatch */
 function canReceiveDispatch(user, dispatch) {
     if (!user || !dispatch) {return { ok: false, code: 'INVALID_INPUT' };}
     if (user.role === 'dept_head') {
@@ -84,24 +94,49 @@ function canReceiveDispatch(user, dispatch) {
         if (!rawList.length) {return { ok: false, code: 'DEPT_HEAD_WITHOUT_DEPARTMENT' };}
         const matches = rawList.some((c) => deptsMatch(c, d));
         if (!matches) {return { ok: false, code: 'DEPT_MISMATCH' };}
+        // رئيس القسم هو الجهة المستفيدة من إذن قسمه — يستلمه حتى لو أنشأه.
+        // فصل المهام محفوظ: ليس له صلاحية اعتماد المخازن، والتوقيع إلزامي على الاستلام.
+        return { ok: true };
     }
+    const selfGuard = dispatchSelfDecisionGuard(user, dispatch);
+    if (!selfGuard.ok) {return selfGuard;}
     return { ok: true };
+}
+
+/** @param {any} user @param {any} dispatch */
+function isDispatchCreator(user, dispatch) {
+    const actorId = Number(user?.id);
+    const creatorId = Number(dispatch?.creatorUserId);
+    return Number.isInteger(actorId) && actorId > 0 && Number.isInteger(creatorId) && creatorId > 0 && actorId === creatorId;
+}
+
+/** @param {any} user @param {any} dispatch */
+function dispatchSelfDecisionGuard(user, dispatch) {
+    if (!isDispatchCreator(user, dispatch)) {return { ok: true };}
+    return { ok: false, code: 'DISPATCH_SELF_DECISION_FORBIDDEN' };
 }
 
 // ═══ Task 19: سلسلة اعتماد طلبات الصرف ═══
 // رئيس القسم (dept_head) ينشئ الطلب (needsChefApproval=true) → الشيف العمومي يعتمده
 // (status=chef_approved) → المخازن تعتمد وتخصم (status=approved) → القسم يستلم.
-const DEPT_STORES = Object.freeze({
-    salads:         { code: 'STORE-SALADS',      name: 'مخزن قسم السلطات' },
-    sweets:         { code: 'STORE-SWEETS',      name: 'مخزن الحلواني' },
-    bakery:         { code: 'STORE-BAKERY',      name: 'مخزن الخباز' },
-    hot_kitchen:    { code: 'STORE-HOT-KITCHEN', name: 'مخزن المطبخ الساخن' },
-    external_sales: { code: 'STORE-EXTERNAL',    name: 'مخزن البيع الخارجي' },
+// رموز المخازن من dept-stores.js (مصدر واحد للحقيقة) حتى لا تختلف جهة
+// أذونات الصرف عن جهة التحويل.
+const DEPT_STORE_NAMES = Object.freeze({
+    salads:         'مخزن قسم السلطات',
+    sweets:         'مخزن الحلواني',
+    bakery:         'مخزن الخباز',
+    hot_kitchen:    'مخزن المطبخ الساخن',
+    external_sales: 'مخزن البيع الخارجي',
 });
+const DEPT_STORES = Object.freeze(Object.keys(DEDICATED_STORE_CODES).reduce(function (acc, key) {
+    acc[key] = { code: DEDICATED_STORE_CODES[key], name: DEPT_STORE_NAMES[key] || DEDICATED_STORE_CODES[key] };
+    return acc;
+}, {}));
 
 /**
  * نقية: متجر القسم الخاص بحسب كود القسم (null إن لم يوجد مخزن مخصص).
  * kitchen و open_buffet يكملان إلى KITCHEN-MAIN كما في السلوك القديم.
+ * @param {any} deptCode
  */
 function resolveDispatchTargetStore(deptCode) {
     const key = String(deptCode || '').trim().toLowerCase();
@@ -112,9 +147,12 @@ function resolveDispatchTargetStore(deptCode) {
  * نقية: هل يمكن للمخازن اعتماد هذا الإذن وخصم المخزون؟
  * يحدد أخطاء السلسلة: طلب رئيس قسم يجب أن يمر بالشيف العمومي أولًا،
  * ولا يجوز الاعتماد المزدوج لإذن معتمد/مرفوض/مستلم سلفًا.
+ * @param {any} dispatch
  */
-function canWarehouseApprove(dispatch) {
+function canWarehouseApprove(dispatch, user = null) {
     if (!dispatch) {return { ok: false, code: 'DISPATCH_NOT_FOUND' };}
+    const selfGuard = dispatchSelfDecisionGuard(user, dispatch);
+    if (!selfGuard.ok) {return selfGuard;}
     if (dispatch.needsChefApproval && dispatch.status === 'pending') {
         return { ok: false, code: 'CHEF_APPROVAL_REQUIRED' };
     }
@@ -130,9 +168,12 @@ function canWarehouseApprove(dispatch) {
 
 /**
  * نقية: هل يستطيع الشيف العمومي تداول هذا الإذن (اعتماد/رفض)؟
+ * @param {any} dispatch
  */
-function canChefDecide(dispatch) {
+function canChefDecide(dispatch, user = null) {
     if (!dispatch) {return { ok: false, code: 'DISPATCH_NOT_FOUND' };}
+    const selfGuard = dispatchSelfDecisionGuard(user, dispatch);
+    if (!selfGuard.ok) {return selfGuard;}
     if (!dispatch.needsChefApproval) {return { ok: false, code: 'CHEF_APPROVAL_NOT_REQUIRED' };}
     if (dispatch.status !== 'pending') {return { ok: false, code: 'DISPATCH_NOT_PENDING' };}
     return { ok: true };
@@ -152,22 +193,6 @@ function resolveDeptHeadDispatch(user, requestedDeptCode) {
         return { ok: true, deptCode: match };
     }
     return { ok: true, deptCode: rawList[0] };
-}
-
-/**
- * تدقيق أمني جولة 2: حرس حذف إذن الصرف — المستندات المالية الموقّعة
- * (معتمد/مرفوض/مستلم/بانتظار الشيف) لا تُمحى عبر CRUD العام؛ حذفها يقطع
- * السلسلة المالية (مصروفات مرحّلة + حركات دفتر + أحداث موقّعة بسلسلة hash).
- * فقط الطلب المعلّق (pending) الذي لم تحسمه أي جهة يجوز إلغاؤه بحذفه.
- */
-function canDeleteDispatch(dispatch) {
-    if (!dispatch) {return { ok: false, code: 'DISPATCH_NOT_FOUND' };}
-    if (dispatch.status === 'pending') {return { ok: true };}
-    if (dispatch.status === 'approved') {return { ok: false, code: 'DISPATCH_ALREADY_APPROVED' };}
-    if (dispatch.status === 'rejected') {return { ok: false, code: 'DISPATCH_REJECTED' };}
-    if (['received', 'partially_received'].includes(dispatch.status)) {return { ok: false, code: 'DISPATCH_ALREADY_RECEIVED' };}
-    if (dispatch.status === 'chef_approved') {return { ok: false, code: 'DISPATCH_CHEF_DECIDED' };}
-    return { ok: false, code: 'DISPATCH_INVALID_STATUS' };
 }
 
 // ═══ Task 28: لوحة رئيس القسم (dept-panel) — بوابات وتجميعات نقية ═══
@@ -316,7 +341,7 @@ function json(value) {
 }
 function emit(req, entity, action, data) {
     if (!req.io) {return;}
-    req.io.emit('entity_changed', {
+    makeEmitScoped(req.io)('entity_changed', {
         entity,
         entityName: entity,
         action,
@@ -563,9 +588,10 @@ module.exports = {
     resolveDispatchTargetStore,
     canWarehouseApprove,
     canChefDecide,
+    isDispatchCreator,
+    dispatchSelfDecisionGuard,
     resolveDeptHeadDispatch,
     canReceiveDispatch,
-    canDeleteDispatch,
     dispatchStockGate,
     normalizeSignerName,
     signerMatchesAccount,
@@ -588,7 +614,7 @@ module.exports = {
 // scope داخلي للوحدات المُستخرجة — كل أسماء النطاق A (pool/jwtAuth/logger/…).
 // ليس جزءًا من API العام الموثّق، بل جسر تحميل بين الوحدات.
 module.exports.__scope = Object.freeze({
-    express, crypto, router, WRITE_ROLES, RETURN_ROLES, APPROVAL_ROLES, RECEIVE_ROLES, CHEF_APPROVAL_ROLES, _dispatchOpInFlight, DEPT_CODE_ALIASES, DEPT_STORES, DEPT_PANEL_ROLES, EXPENSE_SOURCE_LABELS, pool, riyadhToday, jwtAuth, requireRole, logger, postInventoryLedgerEntry, computeInvoicePaymentStatus, computeInvoiceVat, loadStandardRate, emitDomainEvent, ensureDispatchCreatorSchema, notifyChainEvent, normalizeExpiryDate, readExpiryField, checkExpiryOnLines, latestExpiryFor, beginDispatchOp, endDispatchOp, canonicalDeptCode, deptsMatch, canReceiveDispatch, resolveDispatchTargetStore, canWarehouseApprove, canChefDecide, resolveDeptHeadDispatch, canDeleteDispatch, canAccessDeptPanel, resolvePanelDept, classifyExpenseSource, aggregatePanelExpenses, id, normItemName, n, round, allocatePurchaseDiscount, dateOnly, cleanName, json, emit, fail, normalizeSignature, signatureHash, normalizeSignerName, signerMatchesAccount, accountDisplayName, appendDispatchEvent, requireSignature, normalizeRequestedItems, dispatchStockGate, getWarehouseLocation, getDispatchTargetLocation, ensureLocationBalance, ensureLegacyKitchenReceiptLedger
+    express, crypto, router, CREATE_ROLES, WRITE_ROLES, RETURN_ROLES, APPROVAL_ROLES, RECEIVE_ROLES, CHEF_APPROVAL_ROLES, _dispatchOpInFlight, DEPT_CODE_ALIASES, DEPT_STORES, DEPT_PANEL_ROLES, EXPENSE_SOURCE_LABELS, pool, riyadhToday, jwtAuth, requireRole, requireRoleOrPerm, idempotency, logger, postInventoryLedgerEntry, computeInvoicePaymentStatus, computeInvoiceVat, loadStandardRate, emitDomainEvent, ensureDispatchCreatorSchema, notifyChainEvent, normalizeExpiryDate, readExpiryField, checkExpiryOnLines, latestExpiryFor, beginDispatchOp, endDispatchOp, canonicalDeptCode, deptsMatch, isDispatchCreator, dispatchSelfDecisionGuard, canReceiveDispatch, resolveDispatchTargetStore, canWarehouseApprove, canChefDecide, resolveDeptHeadDispatch, canAccessDeptPanel, resolvePanelDept, classifyExpenseSource, aggregatePanelExpenses, id, normItemName, n, round, allocatePurchaseDiscount, dateOnly, cleanName, json, emit, fail, normalizeSignature, signatureHash, normalizeSignerName, signerMatchesAccount, accountDisplayName, appendDispatchEvent, requireSignature, normalizeRequestedItems, dispatchStockGate, getWarehouseLocation, getDispatchTargetLocation, ensureLocationBalance, ensureLegacyKitchenReceiptLedger
 });
 
 // تحميل المسارات **بالترتيب الأصلي** — Express يطابق بالترتيب، وتغييره يغيّر معنى المسارات.

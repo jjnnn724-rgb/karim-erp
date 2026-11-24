@@ -1,5 +1,5 @@
 /**
- * v2-identity.test.js — عقد هوية «ليل الزمرد»
+ * v2-identity.test.js — عقد هوية «ليل الياقوت»
  * ═══════════════════════════════════════════════════════════════════════
  * الهوية طبقةُ عرضٍ أخيرة (erp-identity.css): تعيد صياغة التوكنات وحدها،
  * فلا تلمس أي ملف مكوّن. وهذا بالضبط سببُ الحاجة إلى حارسٍ آلي: الخطأ هنا
@@ -8,7 +8,7 @@
  *
  * الملف يثبّت سبعة أشياء:
  *   ١) الورقة مربوطة في الصفحتين (V2 + الكاشير) بنسخة الصفحة، وآخر الطبقات.
- *   ٢) ألوان الواجهة (theme-color) على الزمرد الجديد.
+ *   ٢) ألوان الواجهة (theme-color) على الياقوت الجديد.
  *   ٣) التباين: كل درجة نصّ ≥ 4.5 على السطح والكانفس، بعد حلّ var() فعليًا
  *      من الملف نفسه — لا نسخٌ يدوي للأرقام.
  *   ٤) العمود الجانبي والعلامة والتركيز والحالات في الوضعين.
@@ -156,7 +156,7 @@ function htmlFiles(dir) {
     return acc;
 }
 
-describe('هوية V2 — «ليل الزمرد»', () => {
+describe('هوية V2 — «ليل الياقوت»', () => {
     test('الورقة مربوطة في V2 والكاشير بنسخة الصفحة، وآخر ما يُحمَّل قبل كروم المعاينة', () => {
         const rev = pageRevision();
         const html = read(path.join(APP, 'v2.html'));
@@ -172,11 +172,11 @@ describe('هوية V2 — «ليل الزمرد»', () => {
         expect(cash(`/app/css/v2/erp-identity.css?v=${rev}`)).toBeLessThan(cash(`/app/cashier/cashier.css?v=`));
     });
 
-    test('theme-color على الزمرد في الصفحتين، ومانيفست الكاشير يلبس الهوية', () => {
-        expect(read(path.join(APP, 'v2.html'))).toContain('<meta name="theme-color" content="#0F5B46">');
-        expect(read(path.join(APP, 'cashier', 'index.html'))).toContain('<meta name="theme-color" content="#0F5B46">');
+    test('theme-color على الياقوت في الصفحتين، ومانيفست الكاشير يلبس الهوية', () => {
+        expect(read(path.join(APP, 'v2.html'))).toContain('<meta name="theme-color" content="#1C1230">');
+        expect(read(path.join(APP, 'cashier', 'index.html'))).toContain('<meta name="theme-color" content="#1C1230">');
         const manifest = JSON.parse(read(path.join(APP, 'cashier', 'manifest.json')));
-        expect(manifest.theme_color).toBe('#0F5B46');
+        expect(manifest.theme_color).toBe('#1C1230');
         expect(manifest.background_color).toBe('#F6F1E6');
     });
 
@@ -191,9 +191,9 @@ describe('هوية V2 — «ليل الزمرد»', () => {
             expect(onSurface[i]).toBeLessThan(onSurface[i - 1]);
         }
         // القيم الموثّقة في رأس الملف: انزياحٌ بمقدار 0.05 يستوجب تحديثها معًا.
-        expect(onSurface[0]).toBeCloseTo(14.48, 1);
-        expect(onSurface[3]).toBeCloseTo(5.12, 1);
-        expect(onCanvas[3]).toBeCloseTo(4.66, 1);
+        expect(onSurface[0]).toBeCloseTo(14.82, 1);
+        expect(onSurface[3]).toBeCloseTo(5.32, 1);
+        expect(onCanvas[3]).toBeCloseTo(4.84, 1);
     });
 
     test('سلّم النص الداكن: كل درجة ≥ 4.5 على سطحه وكانفسه', () => {
@@ -203,15 +203,15 @@ describe('هوية V2 — «ليل الزمرد»', () => {
             expect(contrast(t(`--erp-text-${g}`), t('--erp-background'))).toBeGreaterThanOrEqual(4.5);
         }
         const faint = contrast(t('--erp-text-faint'), t('--erp-surface'));
-        expect(faint).toBeCloseTo(6.73, 1);
+        expect(faint).toBeCloseTo(6.64, 1);
     });
 
-    test('العلامة والتركيز: الزمرد للفعل، النحاس للحلقة، وحبرُ الزرّ يتبع التعبئة', () => {
+    test('العلامة والتركيز: الياقوت للفعل، الشامبانيا للحلقة، وحبرُ الزرّ يتبع التعبئة', () => {
         for (const theme of ['light', 'dark']) {
             const t = palette(theme);
             expect(contrast(t('--erp-brand-text'), t('--erp-surface'))).toBeGreaterThanOrEqual(4.5);
-            /* الحبرُ مخصّصٌ للتعبئة الزمردية: عاجيٌّ على الزمرد العميق في
-               الفاتح، وليليٌّ على اليشم المضيء في الداكن — بعكس
+            /* الحبرُ مخصّصٌ للتعبئة الياقوتية: عاجيٌّ على الياقوت العميق في
+               الفاتح، وليليٌّ على الياقوت المضيء في الداكن — بعكس
                --erp-text-inverse الذي يخدم تعبئة الخطر. */
             expect(contrast(t('--erp-cta-ink'), t('--erp-brand'))).toBeGreaterThanOrEqual(4.5);
             // حلقة التركيز عنصرٌ غير نصي: حدّ WCAG 1.4.11 هو 3:1.
@@ -220,17 +220,21 @@ describe('هوية V2 — «ليل الزمرد»', () => {
         }
     });
 
-    test('النحاس النصي ≥ 4.5 في الوضعين — الذهب يبقى للعلامات لا للأرقام', () => {
+    test('حليّ الشامبانيا النصي ≥ 4.5 في الوضعين — «ياقوت ملكي» بلا دفء ترابي (2026-11-06)', () => {
         for (const theme of ['light', 'dark']) {
             const t = palette(theme);
             for (const bg of ['--erp-surface', '--erp-background']) {
                 expect({ theme, bg, ok: contrast(t('--erp-dash-accent-text'), t(bg)) >= 4.5 })
                     .toEqual({ theme, bg, ok: true });
             }
-            // النحاس المجوهر نفسه مسموح كعلامة غير نصية (≥3:1).
+            // الشامبانيا المجهرة نفسها مسموحة كعلامة غير نصية (≥3:1).
             expect(contrast(t('--erp-brass'), t('--erp-surface'))).toBeGreaterThanOrEqual(3);
         }
-        expect(palette('light')('--erp-dash-accent-text')).toBe('#7A5A12');
+        /* قرار المالك: بلا أخضر في أي مكان — عائلة الحلي صارت شامبانيا
+           ملكية من عائلة الذهب نفسها، والياقوت هو لون الفعل الوحيد. */
+        expect(palette('light')('--erp-dash-accent-text')).toBe('#6E5310');
+        expect(palette('light')('--erp-brass')).toBe('#97742A');
+        expect(palette('dark')('--erp-brass-text')).toBe('#F2CD72');
     });
 
     test('سُلَّم الرسوم: كل درجةٍ تُرى على الورقة والكانفس (حدّ 1.4.11 = 3:1)', () => {
@@ -258,12 +262,12 @@ describe('هوية V2 — «ليل الزمرد»', () => {
         }
         const t = palette('dark');
         // القيم البدائية للهوية، لا أدبيات erp-themes.css.
-        expect(t('--erp-brand-text')).toBe('#7FE0BC');
-        expect(t('--erp-surface-raised')).toBe('#122A21');
-        expect(t('--erp-text-inverse')).toBe('#0A1A14');
+        expect(t('--erp-brand-text')).toBe('#C9B8FF');
+        expect(t('--erp-surface-raised')).toBe('#1D243F');
+        expect(t('--erp-text-inverse')).toBe('#0B0D1F');
     });
 
-    test('العمود الجانبي: الزمرد الليلي لا يبتلع أي درجة نص', () => {
+    test('العمود الجانبي: الكحل الملكي لا يبتلع أي درجة نص', () => {
         for (const theme of ['light', 'dark']) {
             const t = palette(theme);
             const pairs = [

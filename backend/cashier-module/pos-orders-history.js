@@ -19,6 +19,7 @@ const { pool } = require('../shared-pool');
 const { jwtAuth, requireRole } = require('./jwt-middleware');
 const { generalLimiter, crudLimiter } = require('../rate-limiter');
 const { buildEscPosReceipt } = require('./escpos-printer');
+const { buildReceiptHtml } = require('./receipt-html');
 const { postInventoryLedgerEntry } = require('../inventory-ledger');
 const { convertQuantity } = require('../unit-conversion');
 const QRCode = require('qrcode');
@@ -364,7 +365,7 @@ router.get('/ys/:docNo/receipt-html', jwtAuth, requireRole('admin', 'manager', '
   .footer{margin-top:10px;text-align:center;font-size:11px;color:#888;border-top:1px dashed #999;padding-top:6px}
   .qr-section{text-align:center;margin:8px 0} .qr-section img{width:110px;height:110px}
   .tag{display:inline-block;border:1px solid #b58a2b;color:#7a5c14;border-radius:6px;padding:1px 8px;font-size:11px}
-  @media print { body { margin:0; padding:4px; } .noprint{display:none} }
+  @media print { @page { size: 80mm 200mm; margin: 2mm; } body { margin:0; padding:4px; } .noprint{display:none} }
 </style></head><body>
   <div class="header center">
     <img class="brand-logo" src="/app/assets/karim-logo.png" alt="">
@@ -612,19 +613,6 @@ router.get('/:id/receipt-html', jwtAuth, requireRole('admin', 'manager', 'cashie
         // Open-buffet department → persons-oriented receipt (guest tiers),
         // not the menu-item layout
         const isBuffet = order.department_code === 'erp_open_buffet';
-        const personsTotal = items.reduce((s, it) => s + (Number(it.quantity) || 0), 0);
-        // ar-SA defaults to the Islamic (Umm al-Qura) calendar — force the
-        // Gregorian calendar so receipts show the expected civil date
-        const date = new Date(order.created_at).toLocaleString('ar-SA-u-ca-gregory', { timeZone: 'Asia/Riyadh' });
-        const logoUrl = '/app/assets/karim-logo.png';
-
-        // Change/refund rows (direction='out') are money LEAVING the drawer —
-        // they must render as "الباقي", never as an incoming payment.
-        const inPayments = payments.filter(p => p.direction === 'in');
-        const changeGiven = payments.filter(p => p.direction === 'out' && p.payer_info?.reason === 'change')
-            .reduce((s, p) => s + Number(p.amount), 0);
-        const distinctVatRates = [...new Set(items.map(it => Number(it.vat_rate)).filter(v => Number.isFinite(v) && v > 0))];
-        const vatLabel = distinctVatRates.length === 1 ? `الضريبة (${distinctVatRates[0]}%)` : 'الضريبة';
         
         // qr_payload is base64 of the raw TLV byte string, NOT of a PNG image.
         // Rendering it into <img src="data:image/png;base64,..."> produced a
@@ -636,113 +624,13 @@ router.get('/:id/receipt-html', jwtAuth, requireRole('admin', 'manager', 'cashie
             catch (qrErr) { logger.error({ err: qrErr.message }, '[pos-orders] QR render failed'); }
         }
         
-        const html = `<!DOCTYPE html>
-<html dir="rtl" lang="ar">
-<head>
-<meta charset="UTF-8">
-<meta name="viewport" content="width=device-width, initial-scale=1.0">
-<title>فاتورة #${order.invoice_counter}</title>
-<style>
-  * { margin: 0; padding: 0; box-sizing: border-box; }
-  body { font-family: 'Cairo', 'Segoe UI', Tahoma, sans-serif; font-size: 13px; color: #1a1a1a; max-width: 80mm; margin: 0 auto; padding: 8px; }
-  .center { text-align: center; }
-  .left { text-align: left; }
-  .bold { font-weight: 800; }
-  .header { margin-bottom: 8px; border-bottom: 1px dashed #999; padding-bottom: 6px; }
-  .brand-logo { width: 58px; height: 58px; object-fit: contain; background: #fff; border: 1px solid #d4a843; border-radius: 9px; padding: 4px; margin-bottom: 4px; }
-  .header h2 { font-size: 16px; margin-bottom: 2px; }
-  .header .sub { font-size: 11px; color: #666; }
-  .divider { border-top: 1px dashed #999; margin: 6px 0; }
-  .row { display: flex; justify-content: space-between; margin: 2px 0; }
-  .row .label { color: #555; }
-  .item-row { margin: 4px 0; }
-  .item-row .name { font-weight: 600; }
-  .item-row .detail { display: flex; justify-content: space-between; font-size: 12px; color: #555; }
-  .total-row { font-size: 16px; font-weight: 900; margin-top: 4px; }
-  .payment-row { font-size: 11px; color: #444; }
-  .footer { margin-top: 10px; text-align: center; font-size: 11px; color: #888; border-top: 1px dashed #999; padding-top: 6px; }
-  .void-stamp { color: #e74c3c; font-size: 24px; font-weight: 900; border: 3px solid #e74c3c; padding: 4px 12px; display: inline-block; transform: rotate(-15deg); opacity: 0.6; margin: 10px 0; }
-  .qr-section { text-align: center; margin: 8px 0; }
-  .qr-section img { width: 100px; height: 100px; }
-  .buffet-banner { background: #f5f0e6; border: 1.5px solid #d4a843; border-radius: 8px; padding: 6px; margin: 8px 0; font-size: 15px; font-weight: 900; color: #7a5c14; }
-  .buffet-persons { width: 100%; border-collapse: collapse; margin: 6px 0; }
-  .buffet-persons th, .buffet-persons td { border-bottom: 1px dashed #bbb; padding: 4px 2px; font-size: 12px; text-align: right; }
-  .buffet-persons th { background: #f5f0e6; color: #7a5c14; font-size: 11px; }
-  .buffet-persons td.c, .buffet-persons th.c { text-align: center; }
-  .persons-total { font-size: 16px; font-weight: 900; color: #7a5c14; background: #f5f0e6; border-radius: 8px; padding: 6px 10px; margin: 6px 0; }
-  @media print { body { margin: 0; padding: 4px; } }
-</style>
-</head>
-<body>
-<div class="header center">
-  <img class="brand-logo" src="${logoUrl}" alt="مطاعم الشرفه العالمي">
-  <h2>${escHtml(order.department_name || 'مطاعم الشرفه العالمي')}</h2>
-  <div class="sub">${escHtml(order.department_name_en || '')}</div>
-  ${order.vat_number ? `<div class="sub">الرقم الضريبي: ${escHtml(order.vat_number)}</div>` : ''}
-  <div class="sub">${date}</div>
-</div>
-
-<div class="row"><span class="label">فاتورة #</span><span class="bold">${order.invoice_counter}</span></div>
-<div class="row"><span class="label">الكاشير:</span><span>${escHtml(order.cashier_name || '—')}</span></div>
-<div class="divider"></div>
-
-${isBuffet ? `
-<div class="buffet-banner center">🍽 البوفيه المفتوح — Open Buffet</div>
-${order.notes ? `<div class="row"><span class="label">العائلة / المناسبة:</span><span class="bold">${escHtml(order.notes)}</span></div>` : ''}
-<table class="buffet-persons">
-  <thead><tr><th>الفئة</th><th class="c">عدد الأشخاص</th><th class="c">سعر الفرد</th><th>المجموع</th></tr></thead>
-  <tbody>
-  ${items.map(it => `
-    <tr>
-      <td>${escHtml(it.product_name)}</td>
-      <td class="c bold">${Number(it.quantity)} فرد</td>
-      <td class="c">${Number(it.unit_price) > 0 ? Number(it.unit_price).toFixed(2) : 'مجاناً (ضيافة)'}</td>
-      <td>${Number(it.line_total).toFixed(2)} ر.س</td>
-    </tr>`).join('')}
-  </tbody>
-</table>
-<div class="row persons-total"><span>إجمالي عدد الأشخاص</span><span>${personsTotal} فرد</span></div>
-` : `
-${items.map(it => `
-<div class="item-row">
-  <div class="name">${escHtml(it.product_name)}</div>
-  <div class="detail">
-    <span>${Number(it.quantity)} × ${Number(it.unit_price).toFixed(2)}</span>
-    <span>${Number(it.line_total).toFixed(2)} ر.س</span>
-  </div>
-  ${Number(it.discount) > 0 ? `<div class="detail"><span>خصم</span><span>-${Number(it.discount).toFixed(2)}</span></div>` : ''}
-</div>
-`).join('')}
-`}
-
-<div class="divider"></div>
-<div class="row"><span>المجموع</span><span>${Number(order.subtotal).toFixed(2)}</span></div>
-${Number(order.discount_total) > 0 ? `<div class="row"><span>الخصم</span><span>-${Number(order.discount_total).toFixed(2)}</span></div>` : ''}
-<div class="row"><span>${vatLabel}</span><span>${Number(order.tax_total).toFixed(2)}</span></div>
-<div class="divider"></div>
-<div class="row total-row"><span>الإجمالي</span><span>${Number(order.total_amount).toFixed(2)} ر.س</span></div>
-
-${inPayments.length > 0 ? `
-<div class="divider"></div>
-<div class="bold" style="margin-bottom:4px">الدفع:</div>
-${inPayments.map(p => `
-<div class="payment-row row">
-  <span>${p.method === 'cash' ? '💵 نقدي' : p.method === 'card' ? '💳 بطاقة' : p.method === 'wallet' ? '📱 محفظة' : escHtml(p.method)}</span>
-  <span>${Number(p.amount).toFixed(2)}</span>
-</div>
-`).join('')}
-${changeGiven > 0 ? `<div class="payment-row row bold"><span>الباقي للعميل</span><span>-${changeGiven.toFixed(2)}</span></div>` : ''}
-` : ''}
-
-${order.qr_payload && qrImageDataUrl ? `
-<div class="qr-section">
-  <img src="${qrImageDataUrl}" alt="ZATCA QR" style="width:80px;height:80px">
-  <div style="font-size:9px;color:#888">ZATCA QR</div>
-</div>
-` : ''}
-
-${order.status === 'cancelled' ? `<div class="center"><div class="void-stamp">ملغاة</div></div>` : ''}
-</body></html>`;
+        const html = buildReceiptHtml({
+            order,
+            items,
+            payments,
+            qrImageDataUrl,
+            isBuffet,
+        });
 
         // Return JSON { html } — the shared frontend api() helper always parses
         // JSON, so sending raw text/html made the print window render
@@ -848,6 +736,16 @@ router.post('/:id/void', jwtAuth, requireRole('admin', 'manager'), crudLimiter, 
         if (!orderRes.rows.length) { await client.query('ROLLBACK'); return res.status(404).json({ error: 'NOT_FOUND' }); }
         const order = orderRes.rows[0];
         if (order.status === 'cancelled') { await client.query('ROLLBACK'); return res.status(409).json({ error: 'ALREADY_CANCELLED', message: 'الفاتورة ملغاة بالفعل' }); }
+        // قفل الفترة يُفحص قبل بدء أي عكس: إلغاء بلا قيد عكسي يُبقي الإيراد
+        // والضريبة والتكلفة حيّة في الأستاذ — الرفض الصريح أأمن من نصف إلغاء.
+        const reversalDay = riyadhToday();
+        const periodClosed = (await client.query(
+            `SELECT 1 FROM accounting_periods WHERE period = $1 AND closed = true LIMIT 1`,
+            [reversalDay.slice(0, 7)])).rows[0];
+        if (periodClosed) {
+            await client.query('ROLLBACK');
+            return res.status(423).json({ error: 'PERIOD_CLOSED', message: 'الشهر المالي مقفل — أعد فتح الفترة قبل الإلغاء (لم يُغيَّر شيء)' });
+        }
         const items = (await client.query(`SELECT * FROM pos_order_items WHERE order_id = $1 ORDER BY id`, [id])).rows;
         // Resolve the SAME consumption location the sale used — including the
         // kitchen_policies override (the sale consumed from the kitchen, so the
@@ -935,48 +833,83 @@ router.post('/:id/void', jwtAuth, requireRole('admin', 'manager'), crudLimiter, 
         await client.query(`UPDATE pos_orders SET status='cancelled', voided_at=CURRENT_TIMESTAMP, voided_by=$2, void_reason=$3, updated_at=CURRENT_TIMESTAMP WHERE id=$1`, [id, req.user.id, reason || 'إلغاء بواسطة المدير']);
         const revNote = `[VOID] عكس فاتورة #${order.invoice_counter}${reason ? ' — ' + reason : ''}`;
         const dept = (await client.query(`SELECT legacy_dept_code FROM pos_departments WHERE id=$1`, [order.department_id])).rows[0];
-        if (dept?.legacy_dept_code) {await client.query(`INSERT INTO revenues (id, "deptId", source, amount, date, notes) VALUES ($1,$2,'POS_VOID',-CAST($3 AS numeric),CURRENT_DATE,$4)`, [Date.now() * 1000 + require('crypto').randomInt(0, 1000), dept.legacy_dept_code, order.total_amount, revNote]);}
-        // ROOT FIX 2026-10-02: الإلغاء كان يعكس المخزون والإيرادات التشغيلية
-        // ويترك قيد البيع حيًا في الأستاذ — يُرحّل قيد عكسي موثق فقط إن وُجد
-        // قيد بيع أصلي (pos_sale posted) مع صيانة قفل الفترة المالية.
-        const periodClosed = (await client.query(
-            `SELECT 1 FROM accounting_periods WHERE period = to_char(CURRENT_DATE,'YYYY-MM') AND closed = true LIMIT 1`)).rows[0];
-        const saleJe = periodClosed ? { rows: [] } : (await client.query(
-            `SELECT id FROM journal_entries WHERE source_type='pos_sale' AND source_id=$1 AND status='posted' LIMIT 1`, [String(id)])).rows[0];
-        await client.query('COMMIT');
-        if (saleJe) {
-            try {
-                const t = Number(order.total_amount) || 0;
-                const tax = Number(order.tax_total) || 0;
-                const rev = Math.max(0, Math.round((t - tax) * 100) / 100);
-                const lines = [{ account_code: '4000', debit: rev, credit: 0, memo: `عكس مبيعات فاتورة #${order.invoice_counter}` }];
-                if (tax > 0) {lines.push({ account_code: '2100', debit: tax, credit: 0, memo: 'عكس ضريبة الفاتورة' });}
-                lines.push({ account_code: '1000', debit: 0, credit: t, memo: 'رد التحصيل — إلغاء فاتورة' });
-                const { postJournal } = require('../accounting-routes');
-                await postJournal(pool, {
-                    date: new Date().toISOString().slice(0, 10),
-                    memo: `إلغاء فاتورة كاشير #${order.invoice_counter}${reason ? ' — ' + reason : ''}`,
-                    source_type: 'pos_void',
-                    source_id: String(id),
-                    lines,
-                });
-                logger.info(`[LEDGER] قيد عكس إلغاء الفاتورة #${order.invoice_counter} مُرحّل`);
-            } catch (jeErr) { logger.warn('[pos_void_ledger] best-effort skipped:', jeErr.message); }
-        } else if (periodClosed) {
-            logger.warn(`[pos-orders] إلغاء الفاتورة #${order.invoice_counter} في شهر مالي مقفل — لا قيد عكسي (راجع المالية)`);
+        if (dept?.legacy_dept_code) {await client.query(`INSERT INTO revenues (id, "deptId", source, amount, date, notes) VALUES ($1,$2,'POS_VOID',-CAST($3 AS numeric),$5,$4)`, [Date.now() * 1000 + require('crypto').randomInt(0, 1000), dept.legacy_dept_code, order.total_amount, revNote, reversalDay]);}
+        // ROOT FIX 2026-10-27: الإلغاء كان يُرحّل قيدًا عكسيًا «بأفضل جهد» بعد
+        // COMMIT، وبسطور الإيراد والضريبة والصندوق فقط — فأي فشل يُبقي قيد
+        // البيع حيًا، والتكلفة (5000/1200) والبنك (1010) لا يُعكسان أبدًا.
+        // الآن: قلب سطور قيد البيع نفسه مدين↔دائن داخل نفس المعاملة — إما
+        // يُلغى كل شيء ويُرحّل العكس، أو لا يتغيّر شيء إطلاقًا.
+        const { reverseJournalLines, buildFallbackVoidLines } = require('./pos-void-lines');
+        const original = (await client.query(
+            `SELECT id FROM journal_entries
+              WHERE source_type = 'pos_sale' AND source_id = $1 AND status = 'posted'
+              ORDER BY id DESC LIMIT 1`, [String(id)])).rows[0];
+        // لا قيد بيع أصلي (بيع سابق لتفعيل الأستاذ): يُعاد بناء العكس من
+        // بيانات الفاتورة والتحصيل وتكلفة الاستهلاك الفعلية في دفتر المخزون.
+        const voidAccounts = await require('../coa-mapping').resolveAccounts(client, 'sales_pos', 'void', {
+            cash_account: '1000',
+            bank_account: '1010',
+            revenue_account: '4000',
+            vat_output_account: '2100',
+            cogs_account: '5000',
+            inventory_account: '1200',
+        });
+        const buildFallbackLines = async () => buildFallbackVoidLines({
+            invoiceCounter: order.invoice_counter,
+            total: order.total_amount,
+            tax: order.tax_total,
+            accounts: voidAccounts,
+            cogs: (await client.query(
+                `SELECT COALESCE(SUM(total_cost), 0) AS cogs FROM inventory_ledger
+                  WHERE reference_type = 'pos_order' AND reference_id = $1 AND quantity_delta < 0`,
+                [id])).rows[0].cogs,
+            payments: (await client.query(
+                `SELECT method, amount, direction FROM pos_invoice_payments WHERE order_id = $1`, [id])).rows,
+        });
+        /** @type {import('./pos-void-lines').JournalLine[]} */
+        let revLines = [];
+        if (original) {
+            const origLines = (await client.query(
+                `SELECT * FROM journal_lines WHERE entry_id = $1 ORDER BY id`, [original.id])).rows;
+            revLines = reverseJournalLines(origLines);
         }
-        logger.info({ orderId: id, userId: req.user.id, restoredQty }, '[pos-orders] voided and reversed');
-        res.json({ message: 'تم إلغاء الفاتورة واسترجاع المخزون والمدفوعات', order_id: id, status: 'cancelled', restored_quantity: restoredQty, refund_total: refundTotal, reversal_note: revNote });
+        if (revLines.length < 2) { revLines = await buildFallbackLines(); }
+        // القيد العكسي داخل المعاملة: فشله يُلغي الإلغاء كله (لا حالة نصفية).
+        const { postJournal } = require('../accounting-routes');
+        let reversalEntry = null;
+        /** @param {import('./pos-void-lines').JournalLine[]} lines */
+        const postReversal = (lines) => postJournal(client, {
+            date: reversalDay,
+            memo: `إلغاء فاتورة كاشير #${order.invoice_counter}${reason ? ' — ' + reason : ''}`,
+            source_type: 'pos_void',
+            source_id: String(id),
+            lines,
+            created_by: req.user?.id || null,
+        });
+        if (revLines.length >= 2) {
+            let out;
+            try {
+                out = await postReversal(revLines);
+            } catch (jeErr) {
+                // حساب أُوقف بعد البيع: يُعاد بناء العكس بالحسابات القياسية
+                // بدل تعطيل الإلغاء نهائيًا.
+                if (jeErr.statusCode !== 422 || !original) { throw jeErr; }
+                revLines = await buildFallbackLines();
+                out = await postReversal(revLines);
+            }
+            reversalEntry = out.entry || null;
+            logger.info(`[LEDGER] قيد عكس إلغاء الفاتورة #${order.invoice_counter} ${out.replay ? 'مُرحّل مسبقًا' : 'مُرحّل'} (${original ? 'قلب قيد البيع' : 'مُعاد بناؤه'})`);
+        }
+        await client.query('COMMIT');
+        logger.info({ orderId: id, userId: req.user.id, restoredQty, reversalEntry: reversalEntry?.entry_no }, '[pos-orders] voided and reversed');
+        res.json({ message: 'تم إلغاء الفاتورة واسترجاع المخزون والمدفوعات', order_id: id, status: 'cancelled', restored_quantity: restoredQty, refund_total: refundTotal, reversal_note: revNote, journal_entry_no: reversalEntry?.entry_no || null });
     } catch (err) {
         await client.query('ROLLBACK').catch(() => {});
         logger.error({ err: err.message }, '[pos-orders] void failed');
-        res.status(500).json({ error: 'INTERNAL', message: err.message });
+        const code = err.statusCode || 500;
+        const errorCode = code === 423 ? 'PERIOD_CLOSED' : code === 422 ? 'LEDGER_REJECTED' : 'INTERNAL';
+        res.status(code).json({ error: errorCode, message: err.message });
     } finally { client.release(); }
 });
-
-function escHtml(s) {
-    if (!s) {return '';}
-    return String(s).replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
-}
 
 module.exports = router;

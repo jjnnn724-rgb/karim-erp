@@ -40,21 +40,62 @@ async function listTables() {
     return r.rows.map((x) => x.table_name);
 }
 
-/** قراءة صفوف من جدول (قراءة فقط + سقف صفوف + أعمدة صريحة). */
+/** أعمدة لا تخرج للنموذج إطلاقًا — `SELECT *` كان يرسل حشوات كلمات المرور.
+ * تأمين 2026-11 (L1): وسّعت القائمة لتشمل التوكنات والحشوات والأسرار. */
+const DENIED_COLUMNS = new Set([
+    'password', 'password_vault', 'password_hash',
+    'token', 'token_hash', 'refresh_token', 'access_token',
+    'secret', 'mfa_secret', 'totp_secret', 'recovery_codes',
+    'reset_code', 'code_hash', 'api_key', 'private_key',
+    'credential', 'credentials', 'encrypted_payload',
+]);
+
+/** جداول حساسة لا تُقرأ بالأداة إطلاقًا (توكنات/اعتمادات/تحديات مصادقة). */
+const DENIED_TABLES = new Set([
+    'pos_refresh_tokens', 'pos_password_reset_codes', 'user_mfa',
+    'user_webauthn_credentials', 'webauthn_challenges',
+    'integration_credentials', 'attendance_device_tokens', 'push_tokens',
+]);
+
+/** @param {any[]} rows */
+function scrubDeniedColumns(rows) {
+    return rows.map((row) => {
+        if (!row || typeof row !== 'object') {return row;}
+        const safe = { ...row };
+        for (const col of DENIED_COLUMNS) {delete safe[col];}
+        return safe;
+    });
+}
+
+/** قراءة صفوف من جدول (قراءة فقط + سقف صفوف + أعمدة صريحة).
+ * @param {string} table @param {{limit?:number, order?:string}} [opts] */
 async function readTable(table, { limit = 20, order = 'id DESC' } = {}) {
     const name = String(table || '').replace(/[^a-z0-9_]/gi, '');
     if (!name) {throw new Error('BAD_TABLE');}
+    if (DENIED_TABLES.has(name.toLowerCase())) {throw new Error('TABLE_DENIED: ' + name);}
     const exists = await pool.query(
         `SELECT 1 FROM information_schema.tables WHERE table_schema='public' AND table_name = $1`, [name]);
     if (!exists.rows.length) {throw new Error('TABLE_NOT_FOUND: ' + name);}
     const cols = await pool.query(
         `SELECT column_name FROM information_schema.columns WHERE table_schema='public' AND table_name = $1 ORDER BY ordinal_position`, [name]);
-    const orderCol = cols.rows.some((c) => c.column_name === order.split(' ')[0]) ? order : '1';
-    const r = await pool.query(`SELECT * FROM public."${name}" ORDER BY ${orderCol} LIMIT ${Math.min(Number(limit) || 20, 200)}`);
-    return { table: name, columns: cols.rows.map((c) => c.column_name), rows: r.rows };
+    // تأمين 2026-11 (L1): كان الجزء الأول فقط يُتحقق ثم يُحقن النص كاملًا
+    // ('id DESC, (SELECT …)' كان يمر). الآن عمود مثبّت + اتجاه من قائمة مغلقة.
+    const orderParts = String(order || '').trim().split(/\s+/);
+    const colOk = cols.rows.some((c) => c.column_name === orderParts[0]);
+    const dirOk = orderParts.length === 1 || (orderParts.length === 2 && /^(asc|desc)$/i.test(orderParts[1]));
+    const orderSql = colOk && dirOk
+        ? `"${orderParts[0]}" ${(orderParts[1] || 'ASC').toUpperCase()}`
+        : '1';
+    const r = await pool.query(`SELECT * FROM public."${name}" ORDER BY ${orderSql} LIMIT ${Math.min(Number(limit) || 20, 200)}`);
+    return {
+        table: name,
+        columns: cols.rows.map((c) => c.column_name).filter((c) => !DENIED_COLUMNS.has(c)),
+        rows: scrubDeniedColumns(r.rows),
+    };
 }
 
-/** بحث نصّي في أعمدة نصية لجدول (قراءة فقط). */
+/** بحث نصّي في أعمدة نصية لجدول (قراءة فقط).
+ * @param {string} table @param {string} term @param {{limit?:number}} [opts] */
 async function searchTable(table, term, { limit = 20 } = {}) {
     const name = String(table || '').replace(/[^a-z0-9_]/gi, '');
     if (!name) {throw new Error('BAD_TABLE');}
@@ -62,19 +103,23 @@ async function searchTable(table, term, { limit = 20 } = {}) {
         `SELECT column_name, data_type FROM information_schema.columns
           WHERE table_schema='public' AND table_name = $1
             AND data_type IN ('text','character varying','character')`, [name]);
+    cols.rows = cols.rows.filter((c) => !DENIED_COLUMNS.has(c.column_name));
     if (!cols.rows.length) {return { table: name, rows: [] };}
     const where = cols.rows.map((c, i) => `CAST("${c.column_name}" AS TEXT) ILIKE $${i + 1}`).join(' OR ');
     const params = cols.rows.map(() => `%${String(term || '').trim()}%`);
     const r = await pool.query(`SELECT * FROM public."${name}" WHERE ${where} LIMIT ${Math.min(Number(limit) || 20, 100)}`, params);
-    return { table: name, rows: r.rows };
+    return { table: name, rows: scrubDeniedColumns(r.rows) };
 }
 
-/** بحث في كود المشروع (قراءة ملفات فقط). */
+/** بحث في كود المشروع (قراءة ملفات فقط).
+ * @param {string} pattern @param {{limit?:number}} [opts] */
 function searchCode(pattern, { limit = 20 } = {}) {
     const needle = String(pattern || '').trim();
     if (!needle) {return { hits: [] };}
+    /** @type {any[]} */
     const hits = [];
     const skip = new Set(['node_modules', '.git', 'coverage', 'logs', 'database\\backups', 'var', 'runtime']);
+    /** @param {string} dir @param {number} depth */
     const walk = (dir, depth) => {
         if (depth > 6 || hits.length >= limit) {return;}
         for (const e of fs.readdirSync(dir, { withFileTypes: true })) {
@@ -139,12 +184,12 @@ async function applyDraft(id, ctx) {
     d.status = res.ok ? 'applied' : 'failed';
     d.appliedAt = new Date().toISOString();
     d.result = res;
-    if (res.ok) {logger.info(`[ai-assistant] مسوّدة ${id} (${d.kind}) طُبّقت بواسطة ${(ctx.user && ctx.user.username) || '؟'}`);}
+    if (res.ok) {logger.info(`[ai-assistant] مسوّدة ${id} (${d.kind}) طُبّقت بواسطة ${(ctx.user && /** @type {{username?:string}} */ (ctx.user).username) || '؟'}`);}
     else {logger.warn(`[ai-assistant] مسوّدة ${id} (${d.kind}) فشلت: ${res.message}`);}
     return d;
 }
 
-/** رفض مسوّدة. */
+/** رفض مسوّدة. @param {string} id */
 function rejectDraft(id) {
     const d = drafts.get(id);
     if (!d) {throw new Error('DRAFT_NOT_FOUND');}
@@ -153,7 +198,8 @@ function rejectDraft(id) {
     return d;
 }
 
-/** نداء داخلي لنفس الخادم — بنفس قواعده (تحقّق + تدقيق + صلاحيات). */
+/** نداء داخلي لنفس الخادم — بنفس قواعده (تحقّق + تدقيق + صلاحيات).
+ * @param {string} path @param {object} payload @param {{token?:string,user?:object}} ctx */
 async function callSelf(path, payload, ctx) {
     const base = process.env.SELF_BASE_URL || `https://127.0.0.1:${process.env.PORT || 5000}`;
     const https = require('https');
@@ -180,7 +226,7 @@ async function callSelf(path, payload, ctx) {
                 let parsed = null;
                 try { parsed = JSON.parse(raw); } catch (_e) { /* غير JSON */ }
                 resolve({
-                    ok: res.statusCode >= 200 && res.statusCode < 300,
+                    ok: (res.statusCode || 0) >= 200 && (res.statusCode || 0) < 300,
                     status: res.statusCode,
                     message: (parsed && (parsed.message || parsed.error)) || String(raw).slice(0, 160),
                     body: parsed,
@@ -302,8 +348,7 @@ const TOOL_DEFS = [
 /**
  * ينفّذ أداة واحدة (بصلاحيات المالك) ويعيد نتيجتها كنصّ.
  * @param {string} name
- * @param {object} args
- * @param {{token:string, user?:object}} ctx
+ * @param {{table?:string,term?:string,pattern?:string,limit?:number,id?:string,kind?:string,payload?:object}} args
  */
 async function runTool(name, args) {
     const a = args || {};
@@ -313,15 +358,15 @@ async function runTool(name, args) {
             return { ok: true, text: `جداول النظام (${tables.length}): ` + tables.join('، ') };
         }
         case 'read_table': {
-            const r = await readTable(a.table, { limit: a.limit });
+            const r = await readTable(a.table || '', { limit: a.limit });
             return { ok: true, text: JSON.stringify(r).slice(0, 6000), data: r };
         }
         case 'search_table': {
-            const r = await searchTable(a.table, a.term, { limit: a.limit });
+            const r = await searchTable(a.table || '', a.term || '', { limit: a.limit });
             return { ok: true, text: JSON.stringify(r).slice(0, 6000), data: r };
         }
         case 'search_code': {
-            const r = searchCode(a.pattern, { limit: a.limit });
+            const r = searchCode(a.pattern || '', { limit: a.limit });
             return { ok: true, text: JSON.stringify(r).slice(0, 6000), data: r };
         }
         case 'list_drafts': {

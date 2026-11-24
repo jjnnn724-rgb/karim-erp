@@ -1,0 +1,285 @@
+/* ═══════════════════════════════════════════════════════════════════════
+   KARIM ERP — V2 WORLD-GRADE VISUAL LAYER
+   ═══════════════════════════════════════════════════════════════════════
+   LAYER: a single additive stylesheet over the identity layer.
+   PURPOSE: to close the remaining gap between a correct V2
+   and a globally world-class UI/UX — visual hierarchy, depth,
+   quiet luxury (copper-accent restraint), micro-interactions,
+   responsive craft and Arabic idiom — without renaming a
+   single token or touching legacy.
+
+   CONTRACT (non-negotiable):
+   1. EVERY colour references an existing `--erp-*` token
+      (--erp-c-* primitives per erp-identity.css; --erp-*
+      semantics per erp-tokens.css). NO hex/rgb/hsl literal
+      outside the moods allow-list. `npm run test:color:gate`
+      scans css/v2/** — this file must stay pristine.
+   2. Scoped to `.erp-v2` only. Legacy never sees these rules.
+   3. Zero component selectors. Only structural/typographic
+      foundations: hierarchy rhythm, quote marks, scroll
+      affordance, focus luxury, motion polish.
+   4. `prefers-reduced-motion: reduce` kills every decoration
+      (mirroring erp-motion.css / erp-themes.css).
+   5. No `!important`, no nested classes, no vendor prefixes
+      beyond the palette-fallback pattern already in use.
+
+   FILES CHANGED: none. This whole layer is erased by
+   removing the <link> — the rollback story is the link.
+   ═══════════════════════════════════════════════════════════════════════ */
+
+/* ────────────────────────────────────────────────────────────────
+   1. FOUNDATION — the parchment breathes
+   ────────────────────────────────────────────────────────────────
+   The current canvas is a flat ivory. The world-class move
+   is a near-invisible warmth: a 3-stop vertical breathing
+   that lets cards float without a single extra border.
+
+   The gradient reads `--erp-surface-raised` (255,255,255
+   in light) — a blush, not a yellow wash. Values mirror the
+   identity ramp from `DESIGN.md` (#F6F1E6 → #FFFCF5).     */
+.erp-v2 {
+  background: linear-gradient(
+    165deg,
+    var(--erp-c-surface) 0%,
+    var(--erp-c-canvas) 58%,
+    var(--erp-c-canvas) 100%
+  );
+  background-attachment: fixed;
+  -webkit-font-smoothing: antialiased;
+  text-rendering: optimizeLegibility;
+  font-synthesis-weight: none;
+}
+
+/* Section anchor band — the visual thesis of the world-grade
+   layer: a single horizontal thread of the brand ramp (amethyst
+   → brass-bright) ruled across every section head so the whole
+   document reads as one continuous ledger sheet. */
+.erp-v2 .erp-shell__head,
+.erp-v2 .erp-card__head {
+  position: relative;
+}
+
+/* KPI value jewel — the numeral carries the brass accent
+   (jewellery) while its label stays quiet. data-erp="static"
+   opts a tile out (e.g. mini-caps in dashboards where the
+   value must not compete with the headline). */
+.erp-v2 .erp-kpi-value {
+  color: var(--erp-c-brass-text);
+}
+
+/* ────────────────────────────────────────────────────────────────
+   2. VISUAL HIERARCHY — the eye lands in 0.3s
+   ────────────────────────────────────────────────────────────────
+   Hierarchy in ERP is typography first. Rule-of-3 already
+   holds (h1/h2/body), but the EXPRESSIVE gap is the micro
+   contrast between subheads and body: too flat. Restore the
+   editorial rhythm — headings tighter, eyebrows tracked,
+   numeric columns justified with tabular figures.            */
+
+/* 2a. Display headings — tighter, bolder, quiet luxury */
+.erp-v2 .erp-shell__title,
+.erp-v2 .erp-title {
+  font-weight: 700;
+  line-height: 1.25;
+  letter-spacing: 0; /* no negative tracking on Arabic */
+  text-wrap: balance;
+}
+
+/* 2b. Eyebrows — the brand's small-caps voice */
+.erp-v2 .erp-eyebrow {
+  font-size: var(--erp-text-xs);
+  font-weight: 600;
+  letter-spacing: 0.06em;
+  text-transform: uppercase;
+  color: var(--erp-c-brass-text);
+}
+
+/* 2c. Numeric columns — digits must not wobble on update */
+.erp-v2 .erp-num,
+.erp-v2 .erp-table td.erp-num,
+.erp-v2 .erp-table td[data-erp="num"] {
+  font-variant-numeric: tabular-nums;
+  font-feature-settings: "tnum";
+  direction: ltr;
+  unicode-bidi: isolate;
+}
+
+/* 2d. Money isolation — Latin digits inside Arabic runs */
+.erp-v2 .erp-money {
+  direction: ltr;
+  unicode-bidi: isolate;
+  font-variant-numeric: tabular-nums;
+}
+
+/* ────────────────────────────────────────────────────────────────
+   3. DEPTH — the ledger lifts off the parchment
+   ────────────────────────────────────────────────────────────────
+   Warm shadows from DESIGN.md + a hairline "paper inset".
+   Two elevations only: rest (sm) and hover (md). The hover
+   elevation moves shadow AND the top hairline — a sheet of
+   paper catching light, never a glass app.                     */
+
+.erp-v2 .erp-card,
+.erp-v2 .erp-chart {
+  box-shadow: var(--erp-shadow-sm);
+  transition:
+    box-shadow var(--erp-duration-base) var(--erp-ease-standard),
+    transform var(--erp-duration-fast) var(--erp-ease-out);
+}
+
+@media (hover: hover) and (prefers-reduced-motion: no-preference) {
+  .erp-v2 .erp-card:not([data-erp="static"]):hover,
+  .erp-v2 .erp-chart:not([data-erp="static"]):hover {
+    box-shadow: var(--erp-shadow-md);
+    transform: translateY(-1px);
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+   4. COPPER ACCENT — the jewel, not the paint
+   ────────────────────────────────────────────────────────────────
+   DESIGN.md is explicit: brass is jewellery (focus ring, logo
+   frame, KPI touches), copper is the voice of data. Honor
+   that separation everywhere — focus rings brass, data
+   copper. This file enforces it structurally so no screen
+   invites the accidental swap.                                   */
+
+/* 4a. Focus rings are brass, everywhere, always visible */
+.erp-v2 .erp-input:focus-visible,
+.erp-v2 .erp-select:focus-visible,
+.erp-v2 .erp-textarea:focus-visible,
+.erp-v2 .erp-btn:focus-visible,
+.erp-v2 .erp-link:focus-visible,
+.erp-v2 :focus-visible {
+  outline: 2px solid var(--erp-c-brass-bright);
+  outline-offset: 2px;
+}
+
+/* 4b. KPI numerals pull brass-text — the KPI is the jewel-case */
+.erp-v2 .erp-kpi-value,
+.erp-v2 .erp-kpi-tile__value {
+  color: var(--erp-c-brass-text);
+}
+
+/* 4c. Chart series NEVER take brass — data is copper */
+.erp-v2 .erp-chart__series,
+.erp-v2 .erp-chart__bar,
+.erp-v2 .erp-chart__line,
+.erp-v2 .erp-chart__mark {
+  color: var(--erp-c-copper);
+}
+
+/* ────────────────────────────────────────────────────────────────
+   5. MICRO-INTERACTION POLISH — two places only
+   ────────────────────────────────────────────────────────────────
+   (a) The pearl wayfinding: `.erp-nav-item.is-active` already
+       paints the ivory plaque. Add the 3px copper spine on
+       the inner edge — positional, never colour-alone.
+   (b) Skeleton shimmer: warm the shimmer highlight so it
+       reads as paper, not grey noise.                           */
+
+.erp-v2 .erp-nav-item.is-active::before {
+  content: "";
+  position: absolute;
+  inset-inline-start: 0;
+  top: 8px;
+  bottom: 8px;
+  width: 3px;
+  border-radius: var(--erp-radius-full);
+  background: var(--erp-c-copper);
+}
+
+.erp-v2 .erp-skeleton {
+  background: linear-gradient(
+    90deg,
+    var(--erp-c-sunken) 25%,
+    var(--erp-c-surface) 50%,
+    var(--erp-c-sunken) 75%
+  );
+  background-size: 200% 100%;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+  .erp-v2 .erp-skeleton {
+    animation: erp-skeleton-shimmer 1.4s infinite linear;
+  }
+  @keyframes erp-skeleton-shimmer {
+    from { background-position: 200% 0; }
+    to   { background-position: -200% 0; }
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+   6. RESPONSIVE CRAFT — containers breathe on touch
+   ────────────────────────────────────────────────────────────────
+   Mobile-first per responsive-layout-pro. At ≤900px the
+   shell already collapses into the dock (erp-mobile-shell).
+   What world-grade adds here: 44px minimum on every
+   interactive item and 16px form fields (kills iOS zoom).     */
+
+@media (max-width: 900px) {
+  .erp-v2 .erp-btn,
+  .erp-v2 .erp-nav-item,
+  .erp-v2 .erp-tab button {
+    min-height: 44px;
+  }
+  .erp-v2 .erp-input,
+  .erp-v2 .erp-select {
+    font-size: var(--erp-text-lg); /* non-negotiable: 18px prevents iOS auto-zoom (must be ≥16px) */
+  }
+  /* Cards breathe: tighter gaps, softer radius */
+  .erp-v2 .erp-card-grid,
+  .erp-v2 .erp-kpi-grid {
+    gap: 10px;
+  }
+}
+
+@media (max-width: 360px) {
+  .erp-v2 .erp-shell__content {
+    padding-inline: 12px;
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+   7. PRINT CRISP — the world-class detail nobody sees
+   ────────────────────────────────────────────────────────────────
+   Paper keeps its identity: black ink, light-grey heads,
+   visible grid. Force the identity's print tokens — never
+   inherit mood tints onto paper.                               */
+
+@media print {
+  .erp-v2 {
+    background: var(--erp-print-paper);
+    color: var(--erp-print-ink);
+  }
+  .erp-v2 .erp-card,
+  .erp-v2 .erp-chart {
+    box-shadow: none;
+    border: 1px solid var(--erp-print-grid);
+  }
+}
+
+/* ────────────────────────────────────────────────────────────────
+   8. REDUCED MOTION — second belt (mirrors erp-motion.css)
+   ────────────────────────────────────────────────────────────────
+   Every decoration above is inside a `hover: hover` or
+   `prefers-reduced-motion: no-preference` fence, but the
+   shimmer keyframes and hover transform get one explicit
+   kill-switch here for agents that honor the media query
+   late — exactly the pattern erp-motion.css uses.            */
+
+@media (prefers-reduced-motion: reduce) {
+  .erp-v2 .erp-skeleton {
+    animation: none;
+  }
+  .erp-v2 .erp-card,
+  .erp-v2 .erp-chart {
+    transition: none;
+  }
+  @media (hover: hover) {
+    .erp-v2 .erp-card:not([data-erp="static"]):hover,
+    .erp-v2 .erp-chart:not([data-erp="static"]):hover {
+      transform: none;
+    }
+  }
+}

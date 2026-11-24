@@ -20,11 +20,11 @@
 
 :root {
   /* ── Brand accent (solid, no gradients) ── */
-  --karim-gold:        #b45309;           /* primary accent — bronze 700 */
-  --karim-gold-light:  #d97706;           /* hover / emphasis */
-  --karim-gold-dark:   #92400e;
-  --karim-gold-glow:   rgba(180, 83, 9, 0.10);
-  --karim-gold-gradient: #b45309;         /* legacy alias — flat */
+  --karim-gold:        #0f5b46;           /* primary accent — زمرد كريم (2026-11-01: النحاسي أُحيل للتقاعد) */
+  --karim-gold-light:  #0e5c45;           /* hover / emphasis */
+  --karim-gold-dark:   #0a3d2f;
+  --karim-gold-glow:   rgba(15, 91, 70, 0.10);
+  --karim-gold-gradient: #0f5b46;         /* legacy alias — flat */
 
   /* ── Canvas layers ── */
   --karim-bg:   #f4f5f7;

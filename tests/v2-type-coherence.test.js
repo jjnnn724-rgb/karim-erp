@@ -111,7 +111,7 @@ test('المصدراان لا يفترقان: السلّم متطابق الشك
 
     // الهوية ترفع ولا تخفض: درجةٌ أصغر من أصلها تعني خطًّا أصغر مما وعدت
     // به السلّم الأساسي في تلك الدرجة بالذات.
-    const regressions = SIZES.filter((s, n) => identity[s] < tokens[s]);
+    const regressions = SIZES.filter((s) => identity[s] < tokens[s]);
     expect({ identityLifts: regressions }).toEqual({ identityLifts: [] });
 });
 

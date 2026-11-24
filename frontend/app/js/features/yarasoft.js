@@ -217,26 +217,30 @@ tr.style.display = (!q || tr.innerText.toLowerCase().includes(q) || (window.arSe
 });
 }
 function ysPrintReport(title, subtitle, summaryPairs, headCols, bodyRows){
-const win = (window.openInAppReport ? window.openInAppReport('معاينة فاتورة يارسوفت') : window.open('', '_blank'));
+const win = (window.openInAppReport ? window.openInAppReport(title || 'تقرير') : window.open('', '_blank'));
 if(!win){ toast('اسمح بالنوافذ المنبثقة للطباعة', 'error'); return; }
-const dateStr = new Date().toLocaleString('ar-EG');
-win.document.write(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="UTF-8"><title>${esc(title)}</title>
-<style>body{font-family:Cairo,Tahoma,Arial,sans-serif;color:#111;background:#fff;margin:0;padding:28px;direction:rtl}
-.sheet{max-width:900px;margin:auto}.head{text-align:center;border-bottom:3px solid #b45309;padding-bottom:16px;margin-bottom:18px}
-.head h1{margin:0 0 6px;color:#b45309;font-size:24px}.head p{margin:3px 0;color:#555;font-size:13px}
-.summary{display:grid;grid-template-columns:repeat(auto-fit,minmax(150px,1fr));gap:10px;margin-bottom:18px}
-.summary div{border:1px solid #ddd;border-radius:8px;padding:10px;text-align:center}
-.summary b{display:block;font-size:17px;color:#7c3500;margin-top:4px}
-.summary span{font-size:12px;color:#555}
-table{width:100%;border-collapse:collapse}th,td{border:1px solid #ccc;padding:8px;text-align:right;font-size:12px}
-th{background:#f7ead8;color:#7c3500}tfoot td{font-weight:700;background:#fafafa}
-.controls{text-align:center;margin-bottom:20px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#b45309;color:#fff}
-.controls button.secondary{background:#555}
-@media print{body{padding:0}.controls{display:none!important}@page{size:A4;margin:12mm}}</style></head><body>
+/* هوية واحدة لكل تقارير يارسوفت: نفس ترويسة الشركة وجدول print-doc.css
+   الذي يحقنه العارض أيضًا — فلا يظهر اسم الشركة مرتين ولا يختلف الخط. */
+const company = String(STATE?.settings?.name || 'مطاعم الشرفه العالمي');
+const configured = String(STATE?.settings?.logoB64 || '');
+/* مسارات نسبية إلى مستند التطبيق: تعمل في الويب وElectron وWebView،
+   بينما المسار المطلق /app يفشل لو حُمّل التطبيق من أصل مختلف. */
+const appBase = document.baseURI;
+const logoSrc = /^data:image\//i.test(configured) ? configured : new URL('assets/al-shurfa-logo.png', appBase).href;
+const cssHref = new URL('css/print-doc.css', appBase).href;
+const now = new Date();
+const pad = (n) => String(n).padStart(2, '0');
+const dateStr = `${pad(now.getDate())}/${pad(now.getMonth() + 1)}/${now.getFullYear()} ${pad(now.getHours())}:${pad(now.getMinutes())}`;
+const cols = Array.isArray(headCols) ? headCols : [];
+const emptyRow = `<tr><td colspan="${Math.max(cols.length, 1)}" class="u-empty-sm">لا بيانات</td></tr>`;
+const summary = Array.isArray(summaryPairs) && summaryPairs.length
+? `<section class="summary">${summaryPairs.map(p => `<div><span>${esc(p[0])}</span><b>${p[1]}</b></div>`).join('')}</section>` : '';
+win.document.write(`<!doctype html><html lang="ar" dir="rtl" class="erp-print-doc"><head><meta charset="UTF-8"><meta name="color-scheme" content="light"><title>${esc(title)}</title><link rel="stylesheet" href="${esc(cssHref)}"></head><body>
 <div class="controls"><button data-karim-action="print">طباعة</button><button class="secondary" data-karim-action="closeWindow">إغلاق</button></div>
-<main class="sheet"><header class="head"><h1>${esc(STATE.settings?.name || 'مطاعم الشرفه العالمي')}</h1><p style="font-size:16px;font-weight:700;color:#111">${esc(title)}</p><p>${esc(subtitle || '')}</p><p>تاريخ التقرير: ${dateStr}</p></header>
-${summaryPairs?.length ? `<section class="summary">${summaryPairs.map(p => `<div><span>${esc(p[0])}</span><b>${p[1]}</b></div>`).join('')}</section>` : ''}
-<table><thead><tr>${headCols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${bodyRows || '<tr><td>لا بيانات</td></tr>'}</tbody></table>
+<main class="sheet"><header class="head"><img class="doc-logo" src="${esc(logoSrc)}" alt="شعار ${esc(company)}"><div><h1>${esc(company)}</h1><p class="head__en">AL SHURFA AL ALAMI RESTAURANTS</p><p class="head__title">${esc(title)}</p>${subtitle ? `<p>${esc(subtitle)}</p>` : ''}<p>تاريخ التقرير: ${dateStr}</p></div></header>
+${summary}
+<table><thead><tr>${cols.map(c => `<th>${esc(c)}</th>`).join('')}</tr></thead><tbody>${bodyRows || emptyRow}</tbody></table>
+<div class="foot">${esc(company)} · ${esc(title)} — ${dateStr}</div>
 </main></body></html>`);
 win.document.close();
 }
@@ -290,7 +294,7 @@ const d = YSSTATE.invDetail; if(!d) {return;}
 const p = d.payload || {};
 const items = Array.isArray(p.items) ? p.items : [];
 const rows = items.map((it,i)=>`<tr><td>${i+1}</td><td>${esc(it.name||it.externalCode||'—')}</td><td>${fN(it.quantity||0)}</td><td>${fC(it.unitPrice||0)}</td><td>${fC(it.total||0)}</td></tr>`).join('');
-ysPrintReport(`فاتورة ${esc(p.invoiceNumber||('رقم '+d.id))}`, `${p.sectionName?`القسم: ${p.sectionName} — `:''}${p.customer?`العميل: ${p.customer}`:''}`,
+ysPrintReport(`فاتورة ${p.invoiceNumber || ('رقم ' + d.id)}`, `${p.sectionName ? `القسم: ${p.sectionName} — ` : ''}${p.customer ? `العميل: ${p.customer}` : ''}`,
 [['الأصناف', items.length],['الإجمالي', fC(items.reduce((s,it)=>s+Number(it.total||0),0))]],
 ['#','الصنف','الكمية','السعر','الإجمالي'], rows);
 }

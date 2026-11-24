@@ -282,6 +282,17 @@ async function completeRequiredPasswordChange(result, currentPassword) {
     });
 }
 
+function safeProductImageUrl(value, productId) {
+    const url = String(value || '').trim();
+    if (url.startsWith('/uploads/menu/')) {
+        const id = String(productId == null ? '' : productId).trim();
+        if (!/^[0-9]+$/.test(id)) {return '';}
+        const name = url.slice('/uploads/menu/'.length).split(/[?#]/)[0] || '';
+        return new RegExp('(^|[^0-9])' + id + '([^0-9]|$)').test(name) ? url : '';
+    }
+    return /^https:\/\//i.test(url) ? url : '';
+}
+
 function productIcon(name, category) {
     const n = (name || '').toLowerCase();
     const c = (category || '').toLowerCase();
@@ -604,12 +615,13 @@ function renderProducts(filter = '') {
         const stockLabel = recipeManaged && stock <= 0 ? 'نفذ من مكونات المخزن' : recipeManaged && stock <= lowThreshold ? `${fmtQty(stock)} متبقي` : '';
         const outOfStock = recipeManaged && stock <= 0;
         const icon = productIcon(product.name_ar, product.category);
-        const image = product.image_url ? `<img src="${escapeHtml(product.image_url)}" alt="${escapeHtml(product.name_ar)}" loading="lazy">` : icon;
+        const image = safeProductImageUrl(product.image_url, product.id);
+        const imageContent = image ? `<img src="${escapeHtml(image)}" alt="" loading="lazy" decoding="async">` : icon;
 
         return `
             <button type="button" class="product-card ${outOfStock ? 'out-of-stock' : ''}" data-id="${product.id}" aria-disabled="${outOfStock ? 'true' : 'false'}" aria-label="${escapeHtml(product.name_ar)} — ${fmtMoney(product.price)} ${CURRENCY}${outOfStock ? ' — غير متاح' : ''}">
                 ${stockLabel ? `<div class="product-stock ${stockClass}">${stockLabel}</div>` : ''}
-                <div class="product-icon ${product.image_url ? 'has-product-image' : ''}">${image}</div>
+                <div class="product-icon ${image ? 'has-product-image' : ''}">${imageContent}</div>
                 <div class="product-name">${escapeHtml(product.name_ar)}</div>
                 <div class="product-price">${fmtMoney(product.price)} <span class="currency">${CURRENCY}</span></div>
                 ${product.barcode ? `<div class="product-meta">${escapeHtml(product.barcode)}</div>` : ''}
@@ -925,6 +937,14 @@ function renderBuffetReportHtml(r, { forPrint = false } = {}) {
         </div>`;
 }
 
+/* طبقة الطباعة الموحدة (سكربت كلاسيكي: تحميل ديناميكي) —
+   إن تعذّر تحميلها تُطبع الوثيقة كما هي بدل تعطيل الطباعة. */
+function applyPrintLayer(doc, title) {
+    return import(new URL('js/core/print-system.js', document.baseURI).href)
+        .then((mod) => mod.applyPrintSystem(doc, { title }))
+        .catch(() => false);
+}
+
 function printBuffetReport() {
     if (!lastBuffetReport) { showToast('لا يوجد تقرير للطباعة — اعرض التقرير أولًا', 'warning'); return; }
     const report = lastBuffetReport;
@@ -950,7 +970,8 @@ function printBuffetReport() {
         ${renderBuffetReportHtml(report, { forPrint: true })}
     </body></html>`);
     doc.close();
-    frame.onload = () => {
+    frame.onload = async () => {
+        await applyPrintLayer(frame.contentDocument, `تقرير البوفيه ${report.date}`);
         frame.contentWindow.focus();
         frame.contentWindow.print();
         setTimeout(() => frame.remove(), 2000);
@@ -1527,61 +1548,73 @@ async function archiveCatalogProduct() {
     }
 }
 
-function showReceipt(result) {
-    // Buffet invoices: show a PERSONS summary (guest tiers) instead of the
-    // plain totals-only block — mirrors the custom printed buffet receipt
-    const buffet = result.buffet || null;
-    const buffetHtml = buffet ? `
-        <div class="r-buffet-banner"><i class=ji data-i=users></i> بوفيه مفتوح — الفوترة بعدد الأشخاص</div>
-        ${result.party_name ? `<div class="row"><span>العائلة/المناسبة:</span><strong>${escapeHtml(result.party_name)}</strong></div>` : ''}
-        <div class="r-persons">
-            ${(buffet.tiers || []).map((t) => `
-                <div class="r-person-row">
-                    <span class="tname">${escapeHtml(t.name || '—')}</span>
-                    <span class="tcount">${fmtQty(t.persons)} فرد</span>
-                    <span class="tamount">${Number(t.unit_price) > 0 ? `${fmtMoney(t.amount)} ${CURRENCY}` : 'مجاناً'}</span>
-                </div>`).join('') || '<div class="r-person-row"><span class="tname">—</span></div>'}
-            <div class="r-person-total"><span>إجمالي عدد الأشخاص</span><strong>${fmtQty(buffet.persons_total)} فرد</strong></div>
-        </div>` : '';
-    $('#receipt-info').innerHTML = `
-        ${buffetHtml}
-        <div class="row"><span>رقم الفاتورة:</span><strong>#${result.invoice_counter}</strong></div>
-        <div class="row"><span>UUID:</span><strong style="font-size:10px">${String(result.invoice_uuid).slice(0, 18)}…</strong></div>
-        <div class="row"><span>الإجمالي:</span><strong>${fmtMoney(result.total_amount)} ${CURRENCY}</strong></div>
-        <div class="row"><span>المدفوع:</span><strong>${fmtMoney(result.paid)} ${CURRENCY}</strong></div>
-        <div class="row"><span>الباقي:</span><strong>${fmtMoney(result.change)} ${CURRENCY}</strong></div>
-        <div class="row"><span>الطباعة:</span><strong>${result.print_job_id ? '<i class=ji data-i=check></i> في الطابور' : '—'}</strong></div>
-        <div class="row"><span>ZATCA:</span><strong>${result.zatca_queued ? '<i class=ji data-i=check></i> في الطابور' : '—'}</strong></div>
-        ${kotReceiptHtml(result)}
-    `;
-    if (result.qr_payload) {
-        // qr_payload is base64 of the raw ZATCA TLV byte string — NOT a PNG.
-        // Rendering it directly as an <img> produced a broken image; encode a
-        // real scannable QR with the bundled qrcode lib (same as index.html).
-        if (typeof QRCode !== 'undefined' && typeof QRCode.toDataURL === 'function') {
-            QRCode.toDataURL(result.qr_payload, { width: 220, margin: 1, errorCorrectionLevel: 'M' })
-                .then((url) => { $('#receipt-qr').src = url; })
-                .catch(() => {});
-        } else {
-            $('#receipt-qr').src = `data:image/png;base64,${result.qr_payload}`;
-        }
+// ─── الفاتورة: نسخة واحدة تُعرض على الشاشة وتُطبع ───────────────────────
+// القالب نفسه يأتي من الخادم (/receipt-html) ويُعرض داخل iframe — فما يراه
+// الكاشير هو حرفيًا ما سيُطبع، والزر «طباعة الفاتورة» يطبع هذا الإطار.
+let lastReceipt = null;
+let receiptFrameToken = 0;
+
+function receiptStatusHtml(result) {
+    const chips = [];
+    chips.push(`<span class="r-chip gold">الإجمالي ${fmtMoney(result.total_amount || 0)} ${CURRENCY}</span>`);
+    if (Number(result.change) > 0) {chips.push(`<span class="r-chip green">الباقي ${fmtMoney(result.change)} ${CURRENCY}</span>`);}
+    if (result.buffet) {chips.push(`<span class="r-chip">بوفيه — ${fmtQty(result.buffet.persons_total)} فرد</span>`);}
+    chips.push(result.print_job_id
+        ? '<span class="r-chip"><i class=ji data-i=printer></i> حرارية: في الطابور</span>'
+        : '<span class="r-chip muted"><i class=ji data-i=printer></i> حرارية: لا طابعة</span>');
+    chips.push(result.zatca_queued
+        ? '<span class="r-chip"><i class=ji data-i=shield-check></i> ZATCA: في الطابور</span>'
+        : '<span class="r-chip muted">ZATCA: —</span>');
+    if (Array.isArray(result.kot_jobs) && result.kot_jobs.length) {
+        chips.push(`<button type="button" class="r-chip link" id="receipt-kot-link"><i class=ji data-i=chef-hat></i> تذاكر المطبخ (${result.kot_jobs.length})</button>`);
     }
+    return chips.join('');
+}
+
+async function showReceipt(result) {
+    lastReceipt = result;
+    $('#receipt-status').innerHTML = receiptStatusHtml(result);
+    $('#receipt-kot-link')?.addEventListener('click', () => openKotHtml(result.order_id));
+    const frame = $('#receipt-frame');
+    const fallback = $('#receipt-fallback');
+    fallback.classList.add('hidden');
+    frame.classList.remove('hidden');
+    frame.srcdoc = '<!DOCTYPE html><html dir="rtl" lang="ar"><body style="font-family:system-ui,sans-serif;padding:28px;color:#52525b;text-align:center">جارٍ تجهيز الفاتورة…</body></html>';
     showModal('receipt-modal');
+    if (result.order_id) { loadReceiptFrame(result.order_id).catch(() => {}); }
+}
+
+async function loadReceiptFrame(orderId) {
+    const token = ++receiptFrameToken;
+    try {
+        const resp = await api(`/api/pos/orders/${orderId}/receipt-html`);
+        const html = typeof resp === 'string' ? resp : (resp?.html || '');
+        if (!html) {throw new Error('EMPTY_RECEIPT');}
+        if (token !== receiptFrameToken) {return;}
+        $('#receipt-frame').srcdoc = html;
+    } catch (_err) {
+        if (token !== receiptFrameToken) {return;}
+        renderReceiptFallback();
+    }
+}
+
+function renderReceiptFallback() {
+    const r = lastReceipt || {};
+    $('#receipt-frame').classList.add('hidden');
+    const fallback = $('#receipt-fallback');
+    fallback.classList.remove('hidden');
+    fallback.innerHTML = `
+        <div class="row"><span>رقم الفاتورة:</span><strong>#${escapeHtml(r.invoice_counter ?? '—')}</strong></div>
+        <div class="row"><span>الإجمالي:</span><strong>${fmtMoney(r.total_amount || 0)} ${CURRENCY}</strong></div>
+        <div class="row"><span>المدفوع:</span><strong>${fmtMoney(r.paid || 0)} ${CURRENCY}</strong></div>
+        <div class="row"><span>الباقي:</span><strong>${fmtMoney(r.change || 0)} ${CURRENCY}</strong></div>
+        <div class="row"><span>ملاحظة:</span><strong>تعذر تحميل نسخة الفاتورة الكاملة</strong></div>`;
 }
 
 // ─── Kitchen Order Tickets (KOT) ─────────────────────────────────────────
 // The sale response lists the thermal tickets queued for each production
 // department (no prices on kitchen tickets). One click opens the printable
 // RTL ticket page for the kitchen tablet.
-function kotReceiptHtml(result) {
-    const jobs = Array.isArray(result.kot_jobs) ? result.kot_jobs : [];
-    if (!result.kot_enabled) {return '<div class="row"><span>تذاكر المطبخ:</span><strong>موقوفة من الضبط</strong></div>';}
-    if (!jobs.length) {return '<div class="row"><span>تذاكر المطبخ:</span><strong>— لا أصناف تجهيز</strong></div>';}
-    const depts = [...new Set(jobs.map((j) => j.department_name))].join('، ');
-    return `
-        <div class="row"><span>تذاكر المطبخ:</span><strong><i class=ji data-i=check></i> ${jobs.length} — ${escapeHtml(depts)}</strong></div>
-        <div class="row"><span></span><strong><a href="#" data-karim-action="openKotHtml" data-karim-arg0="${String(result.order_id)}" data-karim-prevent style="color:#d4a843;text-decoration:underline">فتح تذاكر المطبخ للطباعة</a></strong></div>`;
-}
 async function openKotHtml(orderId) {
     try {
         const res = await fetch(`/api/pos/kot/orders/${orderId}/html`, {
@@ -2053,10 +2086,40 @@ document.addEventListener('click', (event) => {
 
 $('#complete-sale-btn').addEventListener('click', completeSale);
 $('#new-sale-btn').addEventListener('click', () => hideModal('receipt-modal'));
-$('#print-receipt-btn').addEventListener('click', () => {
-    showToast('تم إرسال الإيصال إلى طابور الطباعة', 'info');
-    hideModal('receipt-modal');
-});
+$('#close-receipt-btn').addEventListener('click', () => hideModal('receipt-modal'));
+$('#print-receipt-btn').addEventListener('click', printCurrentReceipt);
+$('#drawer-btn').addEventListener('click', openCashDrawer);
+
+// طباعة نسخة المتصفح من نفس الإطار المعروض؛ الحرارية أُرسلت تلقائيًا عند البيع.
+function printCurrentReceipt() {
+    const frame = $('#receipt-frame');
+    if (frame && !frame.classList.contains('hidden')) {
+        try {
+            frame.contentWindow.focus();
+            frame.contentWindow.print();
+            return;
+        } catch (_) { /* السقوط لطباعة سجل الفواتير */ }
+    }
+    if (lastReceipt && lastReceipt.order_id && window.POS_ORDERS && window.POS_ORDERS.printReceipt) {
+        window.POS_ORDERS.printReceipt(lastReceipt.order_id);
+    }
+}
+
+async function openCashDrawer() {
+    const btn = $('#drawer-btn');
+    if (btn) {btn.disabled = true;}
+    try {
+        await api('/api/pos/drawer/open', {
+            method: 'POST',
+            body: JSON.stringify({ department_id: currentDepartment ? currentDepartment.id : null }),
+        });
+    } catch (err) {
+        const msg = (err.response && err.response.message) || err.message || 'تعذر فتح درج النقدية';
+        alert(msg);
+    } finally {
+        if (btn) {btn.disabled = false;}
+    }
+}
 
 $('#close-shift-btn').addEventListener('click', closeShiftSummary); $('#day-close-btn').addEventListener('click', openDayClose); $('#cancel-day-close').addEventListener('click', () => hideModal('day-close-modal')); $('#confirm-day-close').addEventListener('click', confirmDayClose);
 $('#cancel-close-shift').addEventListener('click', () => hideModal('close-shift-modal'));
