@@ -42,7 +42,7 @@ function normIds(sourceIds) {
 // أي ربط فيه معاملات زائدة عمّا تذكره الجملة، فلا يمكن اشتقاق SET ديناميكيًا
 // بأمان. العبارة الثابتة أيضًا هي ما تقيسه بوابة الأمان (sql-interp حصّتها صفر).
 //   migrated (بعد 137): $1 نوع، $2 معرّفات، $3 مُبطِل، $4 اسمه، $5 السبب
-//   prefix   (مراجعات): يضيف $6 أنماط LIKE
+//   prefix   (مراجعات): يضيف $6 أنماط LIKE للمراجعات `<id>:…` و`<id>#rN`
 const SQL_SRC_MIG = `
     UPDATE journal_entries
        SET status = 'void', voided_at = NOW(), voided_by = $3,
@@ -90,7 +90,8 @@ const SQL_BY_ID_LEGACY = `
  * @param {{query:Function}} db - client المعاملة أو المسبح
  * @param {{sourceType?:string, sourceIds?:string|number|Array<any>, matchPrefix?:boolean,
  *          reason?:string, actorUserId?:number|string, actor?:string}} [o]
- *   matchPrefix=true يُبطل أيضًا كل المراجعات `المعرف:…` (قيود التعديلات المتسلسلة).
+ *   matchPrefix=true يُبطل أيضًا المراجعات `المعرف:…` و`المعرف#rN`
+ *   (قيود التعديلات ودورات إعادة اعتماد الصرف).
  * @returns {Promise<{voided:number, entries:Array<{id:string, entry_no:string, source_id:string}>}>}
  */
 async function voidSourceJournals(db, { sourceType, sourceIds, matchPrefix = false, reason, actorUserId, actor } = {}) {
@@ -99,7 +100,9 @@ async function voidSourceJournals(db, { sourceType, sourceIds, matchPrefix = fal
     const note = String(reason || 'إبطال تشغيلي').slice(0, 500);
     const who = String(actor || '').slice(0, 120) || null;
     const migrated = await hasVoidColumns(db);
-    const patterns = matchPrefix ? ids.map((s) => `${likeEscape(s)}:%`) : null;
+    const patterns = matchPrefix
+        ? ids.flatMap((s) => [`${likeEscape(s)}:%`, `${likeEscape(s)}#r%`])
+        : null;
     let sql;
     let params;
     if (migrated) {

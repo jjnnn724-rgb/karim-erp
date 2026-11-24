@@ -256,10 +256,10 @@ router.post('/day-close', jwtAuth, requireRole('manager', 'admin'), async (req, 
                 if (journalsVoided) { logger.warn(`[day-close] ${journalsVoided} قيد بيع مُبطَل عمدًا — لم يُعد ترحيله ليوم ${date}`); }
             } catch (sweepErr) { logger.error('[day-close] journal sweep failed (non-fatal):', sweepErr.message); }
 
-            // ROOT FIX 2026-10-27: نفس الحلقة لأذون الصرف المعتمدة — ترحيل
-            // قيدها best-effort بعد COMMIT، فإذن بلا قيد = مخزون خرج بلا تكلفة
-            // في الأستاذ (سُجّل فعليًا 2026-10-26). الترحيل idempotent بمفتاح
-            // (dispatch, id) — إعادة التشغيل لا تُكرّر.
+            // ROOT FIX 2026-10-27: حلقة أمان لأذون الصرف المعتمدة؛ الترحيل
+            // عند الاعتماد يتم داخل معاملته، وهذه الحلقة تعالج النواقص التاريخية.
+            // المرجع الدقيق (dispatch,id#rN) حسب عدد أحداث reopened — المراجعة
+            // 0 تستخدم id المجرد، وإعادة التشغيل لا تُكرّر.
             let dispatchJournalsRepaired = 0;
             let dispatchJournalsVoided = 0;
             try {
@@ -268,13 +268,22 @@ router.post('/day-close', jwtAuth, requireRole('manager', 'admin'), async (req, 
                     `SELECT d.id, d.date, d."deptCode" AS dept,
                             COALESCE((SELECT SUM((x->>'approvedValue')::numeric)
                                         FROM jsonb_array_elements(COALESCE(d."approvedItems", '[]'::jsonb)) x), 0) AS value,
+                            rev.revision, rev.source_id,
                             EXISTS (SELECT 1 FROM journal_entries v
-                                     WHERE v.source_type = 'dispatch' AND v.source_id = d.id::text
+                                     WHERE v.source_type = 'dispatch' AND v.source_id = rev.source_id
                                        AND v.status = 'void') AS was_voided
                        FROM dispatches d
+                       CROSS JOIN LATERAL (
+                                SELECT COUNT(*)::int AS revision,
+                                       CASE WHEN COUNT(*) > 0
+                                            THEN d.id::text || '#r' || COUNT(*)::text
+                                            ELSE d.id::text END AS source_id
+                                  FROM dispatch_workflow_events we
+                                 WHERE we.dispatch_id = d.id AND we.event_type = 'reopened'
+                               ) rev
                       WHERE d.status = ANY($2::text[]) AND LEFT(d.date, 10) = $1
                         AND NOT EXISTS (SELECT 1 FROM journal_entries je
-                                         WHERE je.source_type = 'dispatch' AND je.source_id = d.id::text
+                                         WHERE je.source_type = 'dispatch' AND je.source_id = rev.source_id
                                            AND je.status = 'posted')`,
                     [date, ['approved', 'received', 'partially_received', 'closed']])).rows;
                 for (const row of missingDispatches) {
@@ -284,6 +293,7 @@ router.post('/day-close', jwtAuth, requireRole('manager', 'admin'), async (req, 
                     try {
                         const out = /** @type {any} */ (await postDispatchToLedger(row.id, {
                             totalValue: row.value, date: row.date, deptCode: row.dept,
+                            revision: Number(row.revision),
                         }));
                         if (!out.skipped) { dispatchJournalsRepaired += 1; }
                     } catch (e2) { logger.error('[day-close] dispatch journal repair failed', row.id, e2 instanceof Error ? e2.message : e2); }

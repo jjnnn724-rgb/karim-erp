@@ -3,6 +3,8 @@ const crypto = require('crypto');
 const { pool } = require('./shared-pool');
 const { riyadhToday } = require('./riyadh-date'); // M20
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
+const { requireRoleOrPerm } = require('./permissions');
+const { idempotency } = require('./middleware/idempotency');
 const { logger } = require('./logger');
 const { makeEmitScoped } = require('./realtime/guard');
 const { postInventoryLedgerEntry } = require('./inventory-ledger');
@@ -15,6 +17,7 @@ const { DEDICATED_STORE_CODES } = require('./dept-stores');
 const { normalizeExpiryDate, readExpiryField, checkExpiryOnLines, latestExpiryFor } = require('./expiry-policy');
 
 const router = express.Router();
+const CREATE_ROLES = ['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'dept_head'];
 const WRITE_ROLES = ['admin', 'manager', 'warehouse'];
 // المرتجع يُنشئه المطبخ/القسم فعليًا ويستلمه المخزن — نفس خريطة schema-registry
 const RETURN_ROLES = ['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'dept_head'];
@@ -92,7 +95,22 @@ function canReceiveDispatch(user, dispatch) {
         const matches = rawList.some((c) => deptsMatch(c, d));
         if (!matches) {return { ok: false, code: 'DEPT_MISMATCH' };}
     }
+    const selfGuard = dispatchSelfDecisionGuard(user, dispatch);
+    if (!selfGuard.ok) {return selfGuard;}
     return { ok: true };
+}
+
+/** @param {any} user @param {any} dispatch */
+function isDispatchCreator(user, dispatch) {
+    const actorId = Number(user?.id);
+    const creatorId = Number(dispatch?.creatorUserId);
+    return Number.isInteger(actorId) && actorId > 0 && Number.isInteger(creatorId) && creatorId > 0 && actorId === creatorId;
+}
+
+/** @param {any} user @param {any} dispatch */
+function dispatchSelfDecisionGuard(user, dispatch) {
+    if (!isDispatchCreator(user, dispatch)) {return { ok: true };}
+    return { ok: false, code: 'DISPATCH_SELF_DECISION_FORBIDDEN' };
 }
 
 // ═══ Task 19: سلسلة اعتماد طلبات الصرف ═══
@@ -128,8 +146,10 @@ function resolveDispatchTargetStore(deptCode) {
  * ولا يجوز الاعتماد المزدوج لإذن معتمد/مرفوض/مستلم سلفًا.
  * @param {any} dispatch
  */
-function canWarehouseApprove(dispatch) {
+function canWarehouseApprove(dispatch, user = null) {
     if (!dispatch) {return { ok: false, code: 'DISPATCH_NOT_FOUND' };}
+    const selfGuard = dispatchSelfDecisionGuard(user, dispatch);
+    if (!selfGuard.ok) {return selfGuard;}
     if (dispatch.needsChefApproval && dispatch.status === 'pending') {
         return { ok: false, code: 'CHEF_APPROVAL_REQUIRED' };
     }
@@ -147,8 +167,10 @@ function canWarehouseApprove(dispatch) {
  * نقية: هل يستطيع الشيف العمومي تداول هذا الإذن (اعتماد/رفض)؟
  * @param {any} dispatch
  */
-function canChefDecide(dispatch) {
+function canChefDecide(dispatch, user = null) {
     if (!dispatch) {return { ok: false, code: 'DISPATCH_NOT_FOUND' };}
+    const selfGuard = dispatchSelfDecisionGuard(user, dispatch);
+    if (!selfGuard.ok) {return selfGuard;}
     if (!dispatch.needsChefApproval) {return { ok: false, code: 'CHEF_APPROVAL_NOT_REQUIRED' };}
     if (dispatch.status !== 'pending') {return { ok: false, code: 'DISPATCH_NOT_PENDING' };}
     return { ok: true };
@@ -168,22 +190,6 @@ function resolveDeptHeadDispatch(user, requestedDeptCode) {
         return { ok: true, deptCode: match };
     }
     return { ok: true, deptCode: rawList[0] };
-}
-
-/**
- * تدقيق أمني جولة 2: حرس حذف إذن الصرف — المستندات المالية الموقّعة
- * (معتمد/مرفوض/مستلم/بانتظار الشيف) لا تُمحى عبر CRUD العام؛ حذفها يقطع
- * السلسلة المالية (مصروفات مرحّلة + حركات دفتر + أحداث موقّعة بسلسلة hash).
- * فقط الطلب المعلّق (pending) الذي لم تحسمه أي جهة يجوز إلغاؤه بحذفه.
- */
-function canDeleteDispatch(dispatch) {
-    if (!dispatch) {return { ok: false, code: 'DISPATCH_NOT_FOUND' };}
-    if (dispatch.status === 'pending') {return { ok: true };}
-    if (dispatch.status === 'approved') {return { ok: false, code: 'DISPATCH_ALREADY_APPROVED' };}
-    if (dispatch.status === 'rejected') {return { ok: false, code: 'DISPATCH_REJECTED' };}
-    if (['received', 'partially_received'].includes(dispatch.status)) {return { ok: false, code: 'DISPATCH_ALREADY_RECEIVED' };}
-    if (dispatch.status === 'chef_approved') {return { ok: false, code: 'DISPATCH_CHEF_DECIDED' };}
-    return { ok: false, code: 'DISPATCH_INVALID_STATUS' };
 }
 
 // ═══ Task 28: لوحة رئيس القسم (dept-panel) — بوابات وتجميعات نقية ═══
@@ -579,9 +585,10 @@ module.exports = {
     resolveDispatchTargetStore,
     canWarehouseApprove,
     canChefDecide,
+    isDispatchCreator,
+    dispatchSelfDecisionGuard,
     resolveDeptHeadDispatch,
     canReceiveDispatch,
-    canDeleteDispatch,
     dispatchStockGate,
     normalizeSignerName,
     signerMatchesAccount,
@@ -604,7 +611,7 @@ module.exports = {
 // scope داخلي للوحدات المُستخرجة — كل أسماء النطاق A (pool/jwtAuth/logger/…).
 // ليس جزءًا من API العام الموثّق، بل جسر تحميل بين الوحدات.
 module.exports.__scope = Object.freeze({
-    express, crypto, router, WRITE_ROLES, RETURN_ROLES, APPROVAL_ROLES, RECEIVE_ROLES, CHEF_APPROVAL_ROLES, _dispatchOpInFlight, DEPT_CODE_ALIASES, DEPT_STORES, DEPT_PANEL_ROLES, EXPENSE_SOURCE_LABELS, pool, riyadhToday, jwtAuth, requireRole, logger, postInventoryLedgerEntry, computeInvoicePaymentStatus, computeInvoiceVat, loadStandardRate, emitDomainEvent, ensureDispatchCreatorSchema, notifyChainEvent, normalizeExpiryDate, readExpiryField, checkExpiryOnLines, latestExpiryFor, beginDispatchOp, endDispatchOp, canonicalDeptCode, deptsMatch, canReceiveDispatch, resolveDispatchTargetStore, canWarehouseApprove, canChefDecide, resolveDeptHeadDispatch, canDeleteDispatch, canAccessDeptPanel, resolvePanelDept, classifyExpenseSource, aggregatePanelExpenses, id, normItemName, n, round, allocatePurchaseDiscount, dateOnly, cleanName, json, emit, fail, normalizeSignature, signatureHash, normalizeSignerName, signerMatchesAccount, accountDisplayName, appendDispatchEvent, requireSignature, normalizeRequestedItems, dispatchStockGate, getWarehouseLocation, getDispatchTargetLocation, ensureLocationBalance, ensureLegacyKitchenReceiptLedger
+    express, crypto, router, CREATE_ROLES, WRITE_ROLES, RETURN_ROLES, APPROVAL_ROLES, RECEIVE_ROLES, CHEF_APPROVAL_ROLES, _dispatchOpInFlight, DEPT_CODE_ALIASES, DEPT_STORES, DEPT_PANEL_ROLES, EXPENSE_SOURCE_LABELS, pool, riyadhToday, jwtAuth, requireRole, requireRoleOrPerm, idempotency, logger, postInventoryLedgerEntry, computeInvoicePaymentStatus, computeInvoiceVat, loadStandardRate, emitDomainEvent, ensureDispatchCreatorSchema, notifyChainEvent, normalizeExpiryDate, readExpiryField, checkExpiryOnLines, latestExpiryFor, beginDispatchOp, endDispatchOp, canonicalDeptCode, deptsMatch, isDispatchCreator, dispatchSelfDecisionGuard, canReceiveDispatch, resolveDispatchTargetStore, canWarehouseApprove, canChefDecide, resolveDeptHeadDispatch, canAccessDeptPanel, resolvePanelDept, classifyExpenseSource, aggregatePanelExpenses, id, normItemName, n, round, allocatePurchaseDiscount, dateOnly, cleanName, json, emit, fail, normalizeSignature, signatureHash, normalizeSignerName, signerMatchesAccount, accountDisplayName, appendDispatchEvent, requireSignature, normalizeRequestedItems, dispatchStockGate, getWarehouseLocation, getDispatchTargetLocation, ensureLocationBalance, ensureLegacyKitchenReceiptLedger
 });
 
 // تحميل المسارات **بالترتيب الأصلي** — Express يطابق بالترتيب، وتغييره يغيّر معنى المسارات.

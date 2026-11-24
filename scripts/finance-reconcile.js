@@ -154,25 +154,37 @@ async function paymentJournal(row, supplierName) {
     }
     report.supplier_payment = { missing: missingPay.length, repaired: payFixed, voided: payVoided };
 
-    // 5) أذون صرف معتمدة بلا قيد — ترحيلها best-effort بعد COMMIT، فإذن بلا
-    // قيد يعني مخزونًا خرج بلا تكلفة في الأستاذ (2026-10-26). idempotent.
+    // 5) أذون صرف معتمدة بلا قيد — تعويض النواقص التاريخية؛ الترحيل عند
+    // الاعتماد يتم داخل معاملته. المرجع الدقيق هو id للمراجعة 0 أو id#rN
+    // للمراجعة الحالية (عدد أحداث reopened) — idempotent بلا تكرار.
     const missingDispatch = (await pool.query(`
         SELECT d.id, d.date, d."deptCode" AS dept,
                COALESCE((SELECT SUM((x->>'approvedValue')::numeric)
                            FROM jsonb_array_elements(COALESCE(d."approvedItems", '[]'::jsonb)) x), 0) AS value,
+               rev.revision, rev.source_id,
                EXISTS (SELECT 1 FROM journal_entries v
-                        WHERE v.source_type='dispatch' AND v.source_id=d.id::text AND v.status='void') AS was_voided
+                        WHERE v.source_type='dispatch' AND v.source_id=rev.source_id AND v.status='void') AS was_voided
           FROM dispatches d
+          CROSS JOIN LATERAL (
+                SELECT COUNT(*)::int AS revision,
+                       CASE WHEN COUNT(*) > 0
+                            THEN d.id::text || '#r' || COUNT(*)::text
+                            ELSE d.id::text END AS source_id
+                  FROM dispatch_workflow_events we
+                 WHERE we.dispatch_id = d.id AND we.event_type = 'reopened'
+               ) rev
          WHERE d.status = ANY($1::text[])
            AND NOT EXISTS (SELECT 1 FROM journal_entries je
-                            WHERE je.source_type='dispatch' AND je.source_id=d.id::text AND je.status <> 'void')`,
+                            WHERE je.source_type='dispatch' AND je.source_id=rev.source_id AND je.status <> 'void')`,
         [['approved', 'received', 'partially_received', 'closed']])).rows;
     let dispFixed = 0;
     let dispVoided = 0;
     for (const r of missingDispatch) {
         if (r.was_voided) { dispVoided++; continue; }
         try {
-            const out = await acct.postDispatchToLedger(r.id, { totalValue: r.value, date: r.date, deptCode: r.dept });
+            const out = await acct.postDispatchToLedger(r.id, {
+                totalValue: r.value, date: r.date, deptCode: r.dept, revision: Number(r.revision),
+            });
             if (!out.skipped) {dispFixed++;}
         } catch (e) {
             failures++;

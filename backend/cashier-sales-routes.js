@@ -37,6 +37,7 @@ const express = require('express');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { generalLimiter } = require('./rate-limiter');
 const { pool } = require('./shared-pool');
+const { loadBrandSource } = require('./saas/tenant-settings');
 const { logger } = require('./logger');
 const QRCode = require('qrcode');
 
@@ -94,9 +95,7 @@ const BRAND_FALLBACK = { name: 'مطاعم الشرفة العالمي', currenc
 
 async function loadBrand() {
     try {
-        const r = await pool.query(
-            `SELECT name, currency, "logoB64" FROM settings WHERE id = 'main_settings' LIMIT 1`);
-        const row = r.rows[0] || {};
+        const row = await loadBrandSource(pool);
         const code = String(row.currency || '').trim();
         return {
             name: String(row.name || '').trim() || BRAND_FALLBACK.name,

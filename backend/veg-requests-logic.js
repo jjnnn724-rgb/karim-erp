@@ -170,4 +170,49 @@ function applyPrices(items, rawPrices) {
   return { ok: true, items: out, total: Math.round(total * 100) / 100 };
 }
 
-module.exports = { cleanText, validateItems, applyPrices, UNITS, VEG_CATALOG };
+/**
+ * دمج تعديلات الأدمن على أصناف طلب موجود (كميات + أصناف جديدة نسيها الشيف).
+ * الأصناف المُرسَلة تُطابق بالاسم: موجود → تُحدَّث كميته/وحدته، جديد → يُضاف.
+ * الأصناف غير المُرسَلة تبقى كما هي (لا حذف ضمني). الكميات كلها تُعاد للسجل.
+ * @param {Array<any>} existingItems أصناف الطلب المخزّنة
+ * @param {unknown} submittedItems أصناف كاملة كما أرسلها الأدمن
+ * @returns {{ok:boolean, items?:Array<any>, changes?:Array<{name:string, from:number, to:number, action:'add'|'qty'}>, error?:string}}
+ */
+function mergeAdminItems(existingItems, submittedItems) {
+  const existing = Array.isArray(existingItems) ? existingItems : [];
+  const checked = validateItems(submittedItems);
+  if (!checked.ok) {return checked;}
+
+  const byName = new Map(existing.map((it) => [String(it?.name || '').trim().toLowerCase(), it]));
+  const merged = [];
+  const changes = [];
+  for (const item of checked.items) {
+    const key = item.name.toLowerCase();
+    const target = byName.get(key);
+    if (!target) {
+      merged.push({ ...item });
+      changes.push({ name: item.name, from: 0, to: item.qty, action: 'add' });
+      continue;
+    }
+    const from = Number(target.qty) || 0;
+    // وحدة الصنف القائم تبقى إلا لو الأدمن أرسل وحدة صريحة من قائمة السماح
+    const unit = item.unit !== 'وحدة' ? item.unit
+      : (UNITS.includes(target.unit) && target.unit !== 'وحدة' ? target.unit : item.unit);
+    const next = { ...target, qty: item.qty, unit };
+    merged.push(next);
+    if (from !== item.qty || next.unit !== target.unit) {
+      changes.push({ name: item.name, from, to: item.qty, action: 'qty' });
+    }
+  }
+  const submitted = new Set(checked.items.map((it) => it.name.toLowerCase()));
+  for (const it of existing) {
+    const key = String(it?.name || '').trim().toLowerCase();
+    if (!submitted.has(key)) {merged.push(it);}
+  }
+  if (merged.length > 80) {
+    return { ok: false, error: 'عدد الأصناف كبير جدًا (الحد 80 صنفًا)' };
+  }
+  return { ok: true, items: merged, changes };
+}
+
+module.exports = { cleanText, validateItems, applyPrices, mergeAdminItems, UNITS, VEG_CATALOG };

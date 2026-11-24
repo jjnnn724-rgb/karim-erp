@@ -102,3 +102,34 @@ describe('سياسة الإبطال فقط — لا مسار تطبيق يمسح
         expect(m136).toMatch(/POSTED_JOURNAL_NO_HARD_DELETE/);
     });
 });
+
+describe('إبطال مراجعات مستند الصرف بالمرجع الفعلي', () => {
+    test('matchPrefix يطابق المراجعات <id>:… و<id>#rN بعد الترحيل', async () => {
+        const { voidSourceJournals } = require('../backend/journal-void');
+        const calls = [];
+        const db = {
+            query: jest.fn(async (sql, params) => {
+                calls.push({ sql, params });
+                if (sql.includes('information_schema.columns')) {return { rows: [{ ready: true }] };}
+                return { rows: [] };
+            }),
+        };
+        await voidSourceJournals(db, { sourceType: 'dispatch', sourceIds: '41', matchPrefix: true, reason: 'اختبار' });
+        expect(calls[1].sql).toContain('source_id LIKE ANY($6::text[])');
+        expect(calls[1].params[5]).toEqual(['41:%', '41#r%']);
+    });
+
+    test('قبل الترحيل تستخدم نفس الأنماط ولا تُسقط مراجعات #rN', async () => {
+        const { voidSourceJournals } = require('../backend/journal-void');
+        const calls = [];
+        const db = {
+            query: jest.fn(async (sql, params) => {
+                calls.push({ sql, params });
+                if (sql.includes('information_schema.columns')) {return { rows: [{ ready: false }] };}
+                return { rows: [] };
+            }),
+        };
+        await voidSourceJournals(db, { sourceType: 'dispatch', sourceIds: '41', matchPrefix: true });
+        expect(calls[1].params[2]).toEqual(['41:%', '41#r%']);
+    });
+});

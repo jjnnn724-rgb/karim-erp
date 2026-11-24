@@ -201,6 +201,7 @@ const FACE_STRICT_MESSAGES = {
     PUNCH_FACE_REPLAY: 'لقطة الوجه مكرّرة من نفس الصورة — أعد البصمة أمام الكاميرا مباشرة.',
     PUNCH_FACE_MISMATCH: 'الوجه غير مطابق لصاحب الحساب — البصمة مرفوضة.',
     PUNCH_FACE_NO_FACE: 'لم يتم رصد وجه في الصورة — أعد المحاولة بإضاءة جيدة.',
+    PUNCH_FACE_MULTIPLE_FACES: 'أكثر من وجه في الإطار — اقترب من الكاميرا وحدك ثم أعد المحاولة.',
     PUNCH_FACE_ENGINE_UNAVAILABLE: 'محرك التحقق من الوجه غير جاهز على السيرفر — تواصل مع الإدارة.',
     PUNCH_FACE_NOT_ENROLLED: 'لم يتم تسجيل وجهك بعد — راجع الموارد البشرية لتسجيل الوجه.',
 };
@@ -233,14 +234,18 @@ async function verifyFaceStrict(input) {
         'SELECT embeddings FROM punch_face_templates_v2 WHERE user_id = $1 AND active = TRUE', [userId])).rows[0];
     const distances = [];
     let missingFace = 0;
+    let multipleFaces = 0;
     if (tpl2 && tpl2.embeddings) {
         for (const dataUrl of rawImages) {
             /** @type {any} */
             let emb;
             try {
                 const buf = Buffer.from(String(dataUrl).replace(/^data:image\/\w+;base64,/, ''), 'base64');
-                emb = await faceV2.embedFaceImage(buf);
-            } catch (_) { emb = null; }
+                emb = await faceV2.embedFaceImage(buf, { rejectMultipleFaces: true });
+            } catch (err) {
+                if (err && /** @type {any} */ (err).code === 'MULTIPLE_FACES') {multipleFaces++;}
+                emb = null;
+            }
             const sim = emb ? faceV2.matchEmbedding(emb, tpl2.embeddings) : null;
             if (!Number.isFinite(Number(sim))) { missingFace++; continue; }
             distances.push(Math.round((1 - Number(sim)) * 10000) / 10000);
@@ -266,6 +271,9 @@ async function verifyFaceStrict(input) {
     }
     if (verdict.rejectCode === 'PUNCH_FACE_SAMPLES_REQUIRED' && missingFace > 0) {
         return { ok: false, rejectCode: 'PUNCH_FACE_NO_FACE', message: FACE_STRICT_MESSAGES.PUNCH_FACE_NO_FACE, faceDistance, signals };
+    }
+    if (multipleFaces > 0) {
+        return { ok: false, rejectCode: 'PUNCH_FACE_MULTIPLE_FACES', message: FACE_STRICT_MESSAGES.PUNCH_FACE_MULTIPLE_FACES, faceDistance, signals };
     }
     if (!verdict.ok) {
         const code = verdict.rejectCode || 'PUNCH_FACE_MISMATCH';
@@ -964,7 +972,34 @@ router.post('/face/enroll-v2', jwtAuth, requireRole('admin', 'hr'), /** @param {
             if (!buf.length) {
                 return res.status(422).json({ ok: false, error: 'FACE_IMAGES_INVALID', message: 'إحدى اللقطات غير سليمة' });
             }
-            const emb = await faceV2.embedFaceImage(buf);
+            // جودة التسجيل تحدد دقة كل بصمة لاحقة: نرفض الصورة المعتمة/الباهتة
+            // قبل أن تلوّث القالب، ونرفض وجود أكثر من وجه في اللقطة.
+            const quality = await faceV2.assessFaceQuality(buf);
+            if (!quality.ok) {
+                return res.status(422).json({
+                    ok: false,
+                    error: 'FACE_IMAGE_QUALITY',
+                    message: quality.reasons.includes('TOO_DARK')
+                        ? 'إحدى اللقطات معتمة — أعد التسجيل أمام إضاءة أقوى'
+                        : quality.reasons.includes('TOO_BRIGHT')
+                            ? 'إحدى اللقطات شديدة السطوع — تجنّب الضوء المباشر على الوجه'
+                            : 'إحدى اللقطات باهتة/ضبابية — ثبّت الكاميرا وأعد التسجيل',
+                    quality,
+                });
+            }
+            let emb;
+            try {
+                emb = await faceV2.embedFaceImage(buf, { rejectMultipleFaces: true });
+            } catch (err) {
+                if (err && /** @type {any} */ (err).code === 'MULTIPLE_FACES') {
+                    return res.status(422).json({
+                        ok: false,
+                        error: 'MULTIPLE_FACES',
+                        message: 'أكثر من وجه في إحدى اللقطات — سجّل وجه الموظف وحده في الإطار',
+                    });
+                }
+                throw err;
+            }
             if (!emb) {
                 return res.status(422).json({ ok: false, error: 'NO_FACE_IN_IMAGE', message: 'إحدى اللقطات لا تحتوي وجهًا واضحًا — أعد التسجيل' });
             }

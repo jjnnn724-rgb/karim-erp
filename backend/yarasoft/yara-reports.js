@@ -9,6 +9,7 @@
 
 const express = require('express');
 const { pool } = require('../shared-pool');
+const { loadBrandSource } = require('../saas/tenant-settings');
 const { jwtAuth, requireRole } = require('../cashier-module/jwt-middleware');
 const { logger } = require('../logger');
 const { ensureYarasoftSchema } = require('./schema');
@@ -847,7 +848,7 @@ const hRound = (v) => Math.round(Number(v || 0) * 100) / 100;
 
 async function loadSheetBrand() {
     try {
-        const r = (await pool.query(`SELECT name, currency, "logoB64" FROM settings WHERE id = 'main_settings' LIMIT 1`)).rows[0] || {};
+        const r = await loadBrandSource(pool);
         const code = String(r.currency || '').trim();
         return {
             name: String(r.name || '').trim() || 'مطاعم الشرفة العالمي',

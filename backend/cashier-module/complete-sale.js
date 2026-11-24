@@ -34,6 +34,7 @@ const { writeAuditLog } = require('./audit-middleware');
 const { riyadhDateOf } = require('../riyadh-date');
 const { convertQuantity } = require('../unit-conversion');
 const { recordSale } = require('./metrics');
+const { applyTenantToClient } = require('../saas/tenant-db');
 
 const ALLOWED_METHODS = new Set(['cash', 'card', 'wallet', 'bank_transfer', 'voucher', 'loyalty']);
 const MAX_ITEMS = 200;
@@ -522,6 +523,13 @@ async function completeSale(req, res) {
         client = await pool.connect();
         await client.query('BEGIN;');
         await client.query(`SET LOCAL TIME ZONE 'UTC';`);
+        // SaaS (مطفأ افتراضياً): tenantContext يضبط req.tenant فقط عند تفعيل
+        // SAAS_TENANT_ENABLED. وجوده يعني تثبيت السياق على نفس اتصال المعاملة
+        // قبل أي قراءة/كتابة، فترى سياسات RLS معرّف المستأجر الصحيح.
+        // غيابه = السلوك الحالي حرفياً (لا استعلام إضافي، لا تغيير زمن).
+        if (req.tenant && req.tenant.id) {
+            await applyTenantToClient(client, req.tenant.id);
+        }
         // Admitted sales get headroom: the global 30s statement guard is for
         // ordinary queries; a sale admitted through the semaphore may
         // legitimately wait on row locks drained ahead of it in the queue.

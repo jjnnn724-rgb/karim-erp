@@ -4,6 +4,7 @@
  */
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { pool } = require('./shared-pool');
+const saasMetrics = require('./saas/saas-metrics');
 
 const asyncHandler = fn => (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);
 
@@ -13,7 +14,17 @@ function register(app, opts = {}) {
     // Runtime metrics (enterprise observability) — للمالك/المدير فقط.
     app.get('/api/metrics', jwtAuth, requireRole('admin', 'manager'), (req, res) => {
         res.set('Cache-Control', 'no-store');
-        res.json(metrics.snapshot(pool));
+        const snap = metrics.snapshot(pool);
+        snap.saas = saasMetrics.snapshot();
+        res.json(snap);
+    });
+
+    // SaaS metrics in Prometheus text format — نفس مستوى حماية /api/metrics.
+    // ملاحظة: معرّفات المستأجرين تظهر كlabels ⇒ لا تُكشف للعميل العادي.
+    app.get('/api/saas/metrics/prometheus', jwtAuth, requireRole('admin', 'manager'), (req, res) => {
+        res.set('Content-Type', 'text/plain; version=0.0.4; charset=utf-8');
+        res.set('Cache-Control', 'no-store');
+        res.send(saasMetrics.prometheusFormat());
     });
 
     // DB Constraints API (for client-side validation)

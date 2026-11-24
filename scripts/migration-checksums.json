@@ -175,6 +175,15 @@
     "153_login_lockouts.sql": "9f45fc50481dd90d45530d666cbda999543488a85b448ec216beed5fa4b22d73",
     "153_login_lockouts_down.sql": "731718e318e3a6d115ebbe256e5f702deba7adf3a4f1fdd9e4095f8740e7832c",
     "154_post113_grants_down.sql": "8e6e7e62ace3eb281a248c15da19afa9305801a97d1d2de8a704bdb78ff9fac7",
-    "154_post113_grants.sql": "8e64e8b733cc6d941eb38618ba2777fa53cdcde028dda24e6ca6e9287cc28fc4"
+    "154_post113_grants.sql": "8e64e8b733cc6d941eb38618ba2777fa53cdcde028dda24e6ca6e9287cc28fc4",
+    "155_tenants_foundation.sql": "0813f294b8dffb675af1f81e9da45ada4ff951f9c9ca65b7536e347f353b1c3e",
+    "156_tenant_columns.sql": "790d72d52ebbd1464c15bd846fad2f8edaf0953cac023f8f2642949a1f420c63",
+    "157_tenant_backfill.sql": "b0a4364f453d0c52960277bfe7bab054657a99a8012ca49cf7ff3ce923f07dee",
+    "158_tenant_rls_policies.sql": "c5c213d408a8eb306927c0709735f8019e22a824242fa7fa0be457506b694765",
+    "159_tenant_default.sql": "4751eb9ff868f79df57771a9a45fa91be3c016bc40c34bc64653c7ca40357f51",
+    "160_dispatch_lifecycle.sql": "6f60002f9892f1cd2a20a9c7059f73d87635645087bf634988d4c6e16786fefd",
+    "161_child_tenant_columns.sql": "66d52ca4c36892938c7d041b09205d162977c4a94e56fa77431bf2bb597f9dbf",
+    "162_tenant_settings.sql": "3662a056fc91b40d7e9028606fb18ff5161559c8efef73bc17371f3f823214b8",
+    "163_saas_billing.sql": "8615bc27b546e8c6c433bc309a334d9be1b18402acaabd2ad42488df9eee677c"
   }
 }

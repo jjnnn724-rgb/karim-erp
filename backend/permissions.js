@@ -7,12 +7,13 @@
  * remove role access. Admin role implies every permission (no rows needed).
  * Grant changes are audit-logged (permission_audit) with actor + reason.
  *
- * Enforcement points (v1): frontend menus + page access + generic CRUD
- * entities below. Dedicated transactional routes (dispatch approve, payments,
- * journal...) stay role-based in v1 — documented, not silent.
+ * Enforcement points: frontend menus + page access + generic CRUD
+ * entities below and dedicated dispatch workflow routes. Explicit deny wins
+ * over role and grant; admin remains the system override.
  */
 
 const { pool } = require('./shared-pool');
+const { getTenantId } = require('./middleware/correlation');
 
 // ─── Catalog: key → Arabic label, group, menus, generic-CRUD entities ───────
 const PERMISSIONS = [
@@ -51,6 +52,18 @@ const PERMISSIONS = [
     // صرف مباشر للمخزن: تجاوز اعتماد الشيف العمومي — منح لكل مستخدم على حدة
     // (طلب المالك 2026-10-29: إذن سامح السيد عيد يذهب مباشرة إلى المخازن)
     { key: 'dispatch.direct', ar: 'صرف مباشر للمخزن (بلا اعتماد الشيف)', group: 'التشغيل',
+      menus: ['dispatch'], entitiesRead: [], entitiesWrite: [] },
+    { key: 'dispatch.chef_approve', ar: 'اعتماد ورفض الشيف لأذون الصرف', group: 'التشغيل',
+      menus: ['dispatch'], entitiesRead: [], entitiesWrite: [] },
+    { key: 'dispatch.approve', ar: 'اعتماد وصرف أذون المخزن', group: 'التشغيل',
+      menus: ['dispatch'], entitiesRead: [], entitiesWrite: [] },
+    { key: 'dispatch.receive', ar: 'استلام أذون الصرف', group: 'التشغيل',
+      menus: ['dispatch'], entitiesRead: [], entitiesWrite: [] },
+    { key: 'dispatch.return', ar: 'إرجاع مواد أذون الصرف', group: 'التشغيل',
+      menus: ['dispatch'], entitiesRead: [], entitiesWrite: [] },
+    { key: 'dispatch.cancel', ar: 'إلغاء إذن صرف قبل الصرف', group: 'التشغيل',
+      menus: ['dispatch'], entitiesRead: [], entitiesWrite: [] },
+    { key: 'dispatch.void', ar: 'إبطال إذن صرف مرحّل', group: 'التشغيل',
       menus: ['dispatch'], entitiesRead: [], entitiesWrite: [] },
     // المطبخ
     { key: 'kitchen.view', ar: 'عرض المطبخ والوصفات', group: 'التشغيل',
@@ -122,7 +135,9 @@ function menusForDenies(denies) {
 }
 
 // ─── Grant/deny storage (30s per-process cache, invalidated on change) ─────
-const _cache = new Map(); // userId -> { at, grants:Set, denies:Set }
+// SaaS: userId وحده لم يعد كافياً — نفس المعرّف الرقمي يتكرر لدى مستأجرين.
+// المفتاح = tenant:userId عند وجود سياق، وuserId في الوضع الحالي (بلا تغيير سلوك).
+const _cache = new Map(); // cacheKey -> { at, grants:Set, denies:Set }
 const CACHE_MS = 30000;
 
 /** @param {any} userId @param {any} [db] */
@@ -130,7 +145,9 @@ async function getUserPerms(userId, db) {
     const id = Number(userId);
     const empty = { grants: new Set(), denies: new Set() };
     if (!Number.isInteger(id) || id <= 0) {return empty;}
-    const hit = _cache.get(id);
+    const tenantId = getTenantId();
+    const cacheKey = tenantId ? `${tenantId}:${id}` : String(id);
+    const hit = _cache.get(cacheKey);
     if (hit && Date.now() - hit.at < CACHE_MS) {return { grants: hit.grants, denies: hit.denies };}
     const conn = db || pool;
     const rows = (await conn.query(`SELECT perm_key, effect FROM user_permissions WHERE user_id = $1`, [id])).rows;
@@ -141,7 +158,7 @@ async function getUserPerms(userId, db) {
         if (r.effect === 'deny') {denies.add(r.perm_key);}
         else {grants.add(r.perm_key);}
     }
-    _cache.set(id, { at: Date.now(), grants, denies });
+    _cache.set(cacheKey, { at: Date.now(), grants, denies });
     return { grants, denies };
 }
 
@@ -152,7 +169,10 @@ async function getUserGrants(userId, db) {
 
 /** @param {any} userId */
 function invalidateUser(userId) {
-    _cache.delete(Number(userId));
+    const id = Number(userId);
+    const tenantId = getTenantId();
+    // في وضع SaaS نُبطل مفتاح السياق الحالي، وفي الوضع العادي المفتاح الرقمي.
+    _cache.delete(tenantId ? `${tenantId}:${id}` : id);
 }
 
 /** Effective check: admin → everything; DENY beats role AND grant; else role/grant. @param {any} user @param {any} permKey @param {any[]} [roles] @param {any} [db] */
@@ -195,6 +215,8 @@ const SOD_CONFLICTS = Object.freeze([
     ['compliance.configure', 'compliance.submit'],
     ['compliance.configure', 'compliance.review'],
     ['compliance.submit', 'compliance.review'],
+    ['dispatch.chef_approve', 'dispatch.approve'],
+    ['dispatch.approve', 'dispatch.receive'],
 ]);
 
 /** @param {any} grants */

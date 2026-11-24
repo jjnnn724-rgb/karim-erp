@@ -154,7 +154,10 @@ async function postJournal(
   // قفل الفترات: أي ترحيل (يدوي أو تلقائي) على شهر مقفل يُرفض — التوافق محفوظ
   // لأن الفترات المفتوحة (الافتراضي) تمر دون أي تغيير سلوكي.
   const wantDraft = status === 'draft';
-  await require('./accounting-periods').assertPeriodOpen(day);
+  const periodGuard = db && db.release
+    ? require('./accounting-periods').assertPeriodOpenInTx(db, day)
+    : require('./accounting-periods').assertPeriodOpen(day);
+  await periodGuard;
   const clean = (Array.isArray(lines) ? lines : [])
     .map(l => ({
       account_code: String(l.account_code || '').trim(),
@@ -668,47 +671,48 @@ function normalizeCostCenterCode(code) {
 }
 
 /** @param {any} codes */
-async function ensureCostCenters(codes = []) {
+async function ensureCostCenters(codes = [], db = pool) {
   const wanted = [...new Set(codes.map(normalizeCostCenterCode).filter(Boolean))];
   if (!wanted.length) {
     return wanted;
   }
   try {
-    // ON CONFLICT بدل NOT EXISTS: الاعتمادات المتزامنة كانت تتسابق فتفشل
-    // إحداهما بخطأ 23505 (سُجّل فعلًا 2026-10-26 في سجل التشغيل).
-    await pool.query(
+    await db.query(
       `INSERT INTO cost_centers (code, name_ar)
              SELECT c, c FROM unnest($1::text[]) AS c
              ON CONFLICT (code) DO NOTHING`,
       [wanted]
     );
   } catch (/** @type {any} */ e) {
+    if (e && e.code === '42P01') {return wanted;}
     logger.warn(`[cost-centers] ensure skipped: ${e.message}`);
+    if (db && db.release) {throw e;}
   }
   return wanted;
 }
 
-/** ترحيل صرف معتمد: idempotent بمفتاح (dispatch, id) — best-effort بعد COMMIT.
+/** ترحيل صرف معتمد: idempotent بمفتاح (dispatch, id#rN) داخل معاملة المتصل.
  *  سطر التكلفة يحمل cost_center_code = القسم الطالب (إن وُجد مركزُه) —
  *  فانقسام COGS لكل قسم يصبح ممكنًا من الأستاذ مباشرة.  @param {any} dispatchId @param {any} totalValue */
-async function postDispatchToLedger(dispatchId, { totalValue, date, deptCode } = {}) {
+async function postDispatchToLedger(dispatchId, { totalValue, date, deptCode, db = pool, revision = 0 } = {}) {
   const v = round2(totalValue);
   if (!(v > 0)) {
     return { skipped: 'zero_total' };
   }
   const day = /^\d{4}-\d{2}-\d{2}$/.test(String(date || '').slice(0, 10)) ? String(date).slice(0, 10) : riyadhToday();
   if (deptCode) {
-    await ensureCostCenters([deptCode]);
+    await ensureCostCenters([deptCode], db);
   }
-  const accounts = await resolveAccounts(pool, 'inventory', 'stock_dispatch', {
+  const accounts = await resolveAccounts(db, 'inventory', 'stock_dispatch', {
     cogs_account: '5000',
     inventory_account: '1200',
   });
-  const out = await postJournal(pool, {
+  const sourceId = revision > 0 ? `${dispatchId}#r${revision}` : String(dispatchId);
+  const out = await postJournal(db, {
     date: day,
     memo: `صرف مخزون — إذن #${dispatchId}${deptCode ? ` (${deptCode})` : ''}`,
     source_type: 'dispatch',
-    source_id: String(dispatchId),
+    source_id: sourceId,
     lines: buildStockMoveLines(v, 'out', deptCode || null, accounts),
   });
   logger.info(`[LEDGER] صرف #${dispatchId}: ${out.replay ? 'مُرحّل مسبقًا' : `قيد ${out.entry.entry_no}`}`);
@@ -716,20 +720,20 @@ async function postDispatchToLedger(dispatchId, { totalValue, date, deptCode } =
 }
 
 /** ترحيل إرجاع معتمد (عكس متماثل): idempotent بمفتاح (kitchen_return, id).  @param {any} returnId @param {any} totalValue */
-async function postReturnToLedger(returnId, { totalValue, date, deptCode } = {}) {
+async function postReturnToLedger(returnId, { totalValue, date, deptCode, db = pool } = {}) {
   const v = round2(totalValue);
   if (!(v > 0)) {
     return { skipped: 'zero_total' };
   }
   const day = /^\d{4}-\d{2}-\d{2}$/.test(String(date || '').slice(0, 10)) ? String(date).slice(0, 10) : riyadhToday();
   if (deptCode) {
-    await ensureCostCenters([deptCode]);
+    await ensureCostCenters([deptCode], db);
   }
-  const accounts = await resolveAccounts(pool, 'inventory', 'stock_return', {
+  const accounts = await resolveAccounts(db, 'inventory', 'stock_return', {
     cogs_account: '5000',
     inventory_account: '1200',
   });
-  const out = await postJournal(pool, {
+  const out = await postJournal(db, {
     date: day,
     memo: `إرجاع مخزون — مرتجع #${returnId}${deptCode ? ` (${deptCode})` : ''}`,
     source_type: 'kitchen_return',

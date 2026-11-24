@@ -1,6 +1,7 @@
 const express = require('express');
 const crypto = require('crypto');
 const { pool } = require('./shared-pool');
+const { loadBrandSource } = require('./saas/tenant-settings');
 const { riyadhToday } = require('./riyadh-date'); // M20
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { logger } = require('./logger');
@@ -10,6 +11,7 @@ const { graceMinutes, calculateDelayParts } = require('./shift-day');
 const { classifyStoredDay } = require('./shift-day-builder');
 const { makeEmitScoped } = require('./realtime/guard');
 const { arFuzzyPattern } = require('./ar-search');
+const { userHasPerm } = require('./permissions');
 
 const router = express.Router();
 const QR_SECRET = process.env.EMPLOYEE_QR_SECRET || process.env.JWT_SECRET;
@@ -107,8 +109,42 @@ async function provisionCard(client, employee) {
     return { employee: persistedEmployee, qrPayload: buildQrPayload({ ...persistedEmployee, cardId: persistedEmployee.cardId || cardId, qrVersion: version }, token) };
 }
 
-function canAccessEmployee(req, employee) {
-    return ADMIN_ROLES.includes(req.user?.role) || Number(employee?.userId) === Number(req.user?.id);
+/**
+ * من يفتح بطاقة الموظف (QR أو البطاقة الفاخرة):
+ *  · الإدارة والموارد البشرية والشيف — أي موظف.
+ *  · رئيس القسم — موظفو قسمه فقط (مع مرادفات أكواد الأقسام).
+ *  · أي مستخدم — بطاقته هو.
+ *  · منح فردي `hr.view` — أي موظف (نفس كتالوج الصلاحيات).
+ * البوابة القديمة كانت أدوارًا فقط فتترك من مُنح `hr.view` أمام 403.
+ */
+const CARD_VIEW_ROLES = ['admin', 'hr', 'manager', 'sous_chef'];
+
+// أكواد الأقسام تأتي بصيغتين (HR vs التشغيل) — نفس مرادفات warehouse-routes.
+const CARD_DEPT_ALIASES = Object.freeze({
+    service: 'hot_hall',
+    hot_hall: 'hot_hall',
+    shop: 'caf',
+    caf: 'caf',
+    ca1: 'nas',
+    nas: 'nas',
+    juice: 'g',
+    g: 'g',
+});
+
+function normCardDept(value) {
+    const raw = String(value || '').trim().toLowerCase();
+    return CARD_DEPT_ALIASES[raw] || raw;
+}
+
+async function canViewEmployeeCard(req, employee) {
+    if (!req.user || !employee) {return false;}
+    if (Number(employee.userId) === Number(req.user.id)) {return true;}
+    if (CARD_VIEW_ROLES.includes(req.user.role)) {return true;}
+    if (req.user.role === 'dept_head') {
+        const mine = normCardDept(req.user.dept_code);
+        return Boolean(mine) && mine === normCardDept(employee.department);
+    }
+    return userHasPerm(req.user, 'hr.view', [], null);
 }
 
 function calculateMinutes(row) {
@@ -137,7 +173,7 @@ router.get('/employees/:id/card', jwtAuth, async (req, res) => {
     if (!requireQrSecret(res)) {return;}
     const employee = await getEmployee(pool, Number(req.params.id));
     if (!employee) {return res.status(404).json({ error: 'EMPLOYEE_NOT_FOUND', message: 'الموظف غير موجود' });}
-    if (!canAccessEmployee(req, employee)) {return res.status(403).json({ error: 'FORBIDDEN', message: 'لا تملك صلاحية عرض بطاقة هذا الموظف' });}
+    if (!(await canViewEmployeeCard(req, employee))) {return res.status(403).json({ error: 'FORBIDDEN', message: 'لا تملك صلاحية عرض بطاقة هذا الموظف' });}
 
     let card = { employee, qrPayload: null };
     if (!employee.qrTokenHash || !employee.qrTokenEncrypted || !employee.cardId || employee.cardStatus !== 'active') {
@@ -245,13 +281,50 @@ router.get('/attendance/report', jwtAuth, async (req, res) => {
     }
 });
 
-/** إعدادات بطاقات الموظفين (رابط التحقق + طوارئ) — تحكم من الواجهة بدل الكود */
+/** إعدادات بطاقات الموظفين — رابط التحقق + هوية البطاقة القابلة للتعديل من الواجهة. */
+const CARD_SETTINGS_DEFAULTS = Object.freeze({
+    verify_base: '',
+    emergency_phone: '',
+    org_name_ar: 'مطاعم الشرفه العالمي',
+    org_name_en: 'AL SHURFA AL ALAMI RESTAURANTS',
+    card_title_ar: 'بطاقة هوية رسمية',
+    card_slogan_ar: 'مجمع برج الساعة',
+    card_footer_ar: 'يتحمل حاملها المسؤولية القانونية كاملة عن استخدامها.',
+    badge_text: 'OFFICIAL EXECUTIVE',
+    accent: 'gold',
+    show_blood: 'true',
+    show_mrz: 'true',
+});
+const CARD_ACCENTS = new Set(['gold', 'emerald', 'sapphire', 'burgundy', 'platinum']);
+
+function cardSettingText(value, max) {
+    return String(value ?? '')
+        // eslint-disable-next-line no-control-regex
+        .replace(/[\u0000-\u001F\u007F]/g, ' ')
+        .replace(/\s+/g, ' ')
+        .trim()
+        .slice(0, max);
+}
+
 router.get('/card-settings', jwtAuth, async (req, res) => {
     try {
         await pool.query(`CREATE TABLE IF NOT EXISTS hr_card_settings (key TEXT PRIMARY KEY, value TEXT, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
         const rows = (await pool.query(`SELECT key, value FROM hr_card_settings`)).rows;
-        const o = Object.fromEntries(rows.map(r => [r.key, r.value]));
-        res.json({ ok: true, verifyBase: o.verify_base || process.env.CARD_VERIFY_BASE || 'https://192.168.1.165:5000', emergencyPhone: o.emergency_phone || process.env.EMERGENCY_PHONE || '' });
+        const o = { ...CARD_SETTINGS_DEFAULTS, ...Object.fromEntries(rows.map(r => [r.key, r.value])) };
+        res.json({
+            ok: true,
+            verifyBase: o.verify_base || process.env.CARD_VERIFY_BASE || 'https://192.168.1.165:5000',
+            emergencyPhone: o.emergency_phone || process.env.EMERGENCY_PHONE || '',
+            orgNameAr: o.org_name_ar,
+            orgNameEn: o.org_name_en,
+            cardTitle: o.card_title_ar,
+            slogan: o.card_slogan_ar,
+            footerNote: o.card_footer_ar,
+            badgeText: o.badge_text,
+            accent: CARD_ACCENTS.has(o.accent) ? o.accent : 'gold',
+            showBlood: String(o.show_blood).toLowerCase() !== 'false',
+            showMrz: String(o.show_mrz).toLowerCase() !== 'false',
+        });
     } catch (e) {
         logger.error('[hr_card_settings_get]', e);
         res.status(500).json({ error: 'CARD_SETTINGS_FAILED' });
@@ -260,11 +333,36 @@ router.get('/card-settings', jwtAuth, async (req, res) => {
 router.put('/card-settings', jwtAuth, requireRole('admin'), async (req, res) => {
     try {
         await pool.query(`CREATE TABLE IF NOT EXISTS hr_card_settings (key TEXT PRIMARY KEY, value TEXT, updated_at TIMESTAMPTZ NOT NULL DEFAULT NOW())`);
-        const base = String(req.body?.verifyBase || '').trim().replace(/\/$/, '');
-        if (base && !/^https?:\/\//i.test(base)) {return res.status(422).json({ error: 'BAD_URL', message: 'الرابط يجب أن يبدأ بـ http:// أو https://' });}
-        const emg = String(req.body?.emergencyPhone || '').trim().slice(0, 30);
-        if (base) {await pool.query(`INSERT INTO hr_card_settings (key, value, updated_at) VALUES ('verify_base', $1, NOW()) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`, [base]);}
-        await pool.query(`INSERT INTO hr_card_settings (key, value, updated_at) VALUES ('emergency_phone', $1, NOW()) ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`, [emg]);
+        const body = req.body || {};
+        const writes = [];
+        const push = (key, value) => writes.push([key, String(value)]);
+
+        if ('verifyBase' in body) {
+            const base = String(body.verifyBase || '').trim().replace(/\/$/, '');
+            if (base && !/^https?:\/\//i.test(base)) {return res.status(422).json({ error: 'BAD_URL', message: 'الرابط يجب أن يبدأ بـ http:// أو https://' });}
+            push('verify_base', cardSettingText(base, 255));
+        }
+        if ('emergencyPhone' in body) {push('emergency_phone', cardSettingText(body.emergencyPhone, 30));}
+        if ('orgNameAr' in body) {push('org_name_ar', cardSettingText(body.orgNameAr, 80) || CARD_SETTINGS_DEFAULTS.org_name_ar);}
+        if ('orgNameEn' in body) {push('org_name_en', cardSettingText(body.orgNameEn, 80) || CARD_SETTINGS_DEFAULTS.org_name_en);}
+        if ('cardTitle' in body) {push('card_title_ar', cardSettingText(body.cardTitle, 60) || CARD_SETTINGS_DEFAULTS.card_title_ar);}
+        if ('slogan' in body) {push('card_slogan_ar', cardSettingText(body.slogan, 60));}
+        if ('footerNote' in body) {push('card_footer_ar', cardSettingText(body.footerNote, 160) || CARD_SETTINGS_DEFAULTS.card_footer_ar);}
+        if ('badgeText' in body) {push('badge_text', cardSettingText(body.badgeText, 30) || CARD_SETTINGS_DEFAULTS.badge_text);}
+        if ('accent' in body) {
+            const accent = cardSettingText(body.accent, 20).toLowerCase();
+            push('accent', CARD_ACCENTS.has(accent) ? accent : 'gold');
+        }
+        if ('showBlood' in body) {push('show_blood', body.showBlood === false ? 'false' : 'true');}
+        if ('showMrz' in body) {push('show_mrz', body.showMrz === false ? 'false' : 'true');}
+
+        for (const [key, value] of writes) {
+            await pool.query(
+                `INSERT INTO hr_card_settings (key, value, updated_at) VALUES ($1, $2, NOW())
+                 ON CONFLICT (key) DO UPDATE SET value = EXCLUDED.value, updated_at = NOW()`,
+                [key, value]
+            );
+        }
         res.json({ ok: true });
     } catch (e) {
         logger.error('[hr_card_settings_put]', e);
@@ -275,14 +373,11 @@ router.put('/card-settings', jwtAuth, requireRole('admin'), async (req, res) => 
 /** بطاقة الموظف الفاخرة (توليد حي + عرض طباعة) */
 router.get('/employees/:id/lux-card', jwtAuth, async (req, res) => {
     try {
-    if (!ADMIN_ROLES.includes(req.user?.role)) {
-        const own = await pool.query(`SELECT id FROM employees WHERE "userId" = $1`, [req.user.id]);
-        if (!own.rows[0] || Number(own.rows[0].id) !== Number(req.params.id)) {
-            return res.status(403).json({ error: 'FORBIDDEN', message: 'بطاقتك فقط' });
-        }
-    }
     const emp = (await pool.query(`SELECT * FROM employees WHERE id = $1`, [Number(req.params.id)])).rows[0];
     if (!emp) {return res.status(404).json({ error: 'EMPLOYEE_NOT_FOUND', message: 'الموظف غير موجود' });}
+    if (!(await canViewEmployeeCard(req, emp))) {
+        return res.status(403).json({ error: 'FORBIDDEN', message: 'لا تملك صلاحية عرض بطاقة هذا الموظف' });
+    }
     const fp = String(emp.deviceUserId || emp.employeeId || '').trim();
     if (!fp) {return res.status(422).json({ error: 'NO_FP_NUMBER', message: 'الموظف بلا رقم بصمة' });}
     // FIX 2026-10-11 (C26): was spawnSync — blocked the entire Node event loop
@@ -576,20 +671,26 @@ router.get('/card/v/:code', cardVerifyLimiter, async (req, res) => {
         })).toString('base64url');
         req.query.s = 'short';
         req.shortVerified = emp;
-        return shortVerifyRender(req, res);
+        return await shortVerifyRender(req, res);
     } catch (e) {
         logger.error('[hr_card_verify_short]', e);
         res.status(500).send('تعذر التحقق حاليًا');
     }
 });
 
-function shortVerifyRender(req, res) {
+async function shortVerifyRender(req, res) {
     const emp = req.shortVerified;
     const active = emp.status === 'active' && (emp.cardStatus || 'active') === 'active';
-    const logoB64 = (() => { try {
-        return require('fs').readFileSync(require('path').join(__dirname, '..', 'frontend', 'app', 'assets', 'karim-logo.png')).toString('base64');
-    } catch (_) { return ''; } })();
-    res.type('html').send(`<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تحقق بطاقة موظف — مطاعم الشرفه العالمي</title>
+    const brand = await loadBrandSource(pool);
+    const brandName = String(brand.name || '').trim() || 'مطاعم الشرفه العالمي';
+    const logoB64 = (() => {
+        const fromSettings = String(brand.logoB64 || '');
+        if (/^data:image\//i.test(fromSettings)) {return fromSettings;}
+        try {
+            return require('fs').readFileSync(require('path').join(__dirname, '..', 'frontend', 'app', 'assets', 'karim-logo.png')).toString('base64');
+        } catch (_) { return ''; }
+    })();
+    res.type('html').send(`<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تحقق بطاقة موظف — ${esc(brandName)}</title>
 <style>body{font-family:'Cairo',Arial,sans-serif;background:linear-gradient(135deg,#061627,#0A2540 45%,#16307E);color:#fff;margin:0;padding:24px;text-align:center;min-height:100vh}
 .brand{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:4px}
 .brand img{width:76px;height:76px;object-fit:contain;background:#fff;border:2px solid #C9A961;border-radius:50%;padding:6px;box-shadow:0 0 18px rgba(201,169,97,.55)}
@@ -601,8 +702,8 @@ h1{color:#0A2540;margin:10px 0 2px;font-size:22px}.co{color:#8a6d2f;font-size:13
 .row{display:flex;justify-content:space-between;border-bottom:1px solid #eee;padding:8px 2px;font-size:14px}
 .row b{color:#0A2540}.meta{color:#6b7280;font-size:12px;margin-top:14px}</style></head><body>
 <div class="brand">
-${logoB64 ? `<img src="data:image/png;base64,${logoB64}" alt="شعار مطاعم الشرفه العالمي">` : ''}
-<div class="t"><b>مطاعم الشرفه العالمي</b><span>AL SHORFA RESTAURANTS — تحقق البطاقات</span></div>
+${logoB64 ? `<img src="data:image/png;base64,${logoB64}" alt="شعار ${esc(brandName)}">` : ''}
+<div class="t"><b>${esc(brandName)}</b><span>تحقق البطاقات</span></div>
 </div><div class="card">
 <h1>${esc(emp.name)}</h1>
 <div class="co">${esc(emp.position)} • ${esc(emp.dept_name || emp.department)}</div>
@@ -642,10 +743,16 @@ router.get('/card/verify', cardVerifyLimiter, async (req, res) => {
             [String(p.eid), String(p.cid), Number(p.v) || -1, hashToken(String(p.t))])).rows[0];
         if (!emp) {return res.status(404).send('البطاقة غير صالحة أو تم تجديدها');}
         const active = emp.status === 'active' && (emp.cardStatus || 'active') === 'active';
-        const logoB64 = (() => { try {
-            return require('fs').readFileSync(require('path').join(__dirname, '..', 'frontend', 'app', 'assets', 'karim-logo.png')).toString('base64');
-        } catch (_) { return ''; } })();
-        res.type('html').send(`<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تحقق بطاقة موظف — مطاعم الشرفه العالمي</title>
+        const brand = await loadBrandSource(pool);
+        const brandName = String(brand.name || '').trim() || 'مطاعم الشرفه العالمي';
+        const logoB64 = (() => {
+            const fromSettings = String(brand.logoB64 || '');
+            if (/^data:image\//i.test(fromSettings)) {return fromSettings;}
+            try {
+                return require('fs').readFileSync(require('path').join(__dirname, '..', 'frontend', 'app', 'assets', 'karim-logo.png')).toString('base64');
+            } catch (_) { return ''; }
+        })();
+        res.type('html').send(`<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1"><title>تحقق بطاقة موظف — ${esc(brandName)}</title>
 <style>body{font-family:'Cairo',Arial,sans-serif;background:linear-gradient(135deg,#061627,#0A2540 45%,#16307E);color:#fff;margin:0;padding:24px;text-align:center;min-height:100vh}
 .brand{display:flex;align-items:center;justify-content:center;gap:14px;margin-bottom:4px}
 .brand img{width:76px;height:76px;object-fit:contain;background:#fff;border:2px solid #C9A961;border-radius:50%;padding:6px;box-shadow:0 0 18px rgba(201,169,97,.55)}
@@ -658,8 +765,8 @@ h1{color:#0A2540;margin:10px 0 2px;font-size:22px}.co{color:#8a6d2f;font-size:13
 .row{display:flex;justify-content:space-between;border-bottom:1px solid #eee;padding:8px 2px;font-size:14px}
 .row b{color:#0A2540}.meta{color:#6b7280;font-size:12px;margin-top:14px}</style></head><body>
 <h2 style="display:none">تحقق</h2><div class="brand">
-${logoB64 ? `<img src="data:image/png;base64,${logoB64}" alt="شعار مطاعم الشرفه العالمي">` : ''}
-<div class="t"><b>مطاعم الشرفه العالمي</b><span>AL SHORFA RESTAURANTS — تحقق البطاقات</span></div>
+${logoB64 ? `<img src="data:image/png;base64,${logoB64}" alt="شعار ${esc(brandName)}">` : ''}
+<div class="t"><b>${esc(brandName)}</b><span>تحقق البطاقات</span></div>
 </div><div class="card">
 ${logoB64 ? `<img class="logo" src="data:image/png;base64,${logoB64}">` : ''}
 <h1>${esc(emp.name)}</h1>

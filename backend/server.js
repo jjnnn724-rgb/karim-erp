@@ -18,6 +18,8 @@ const { spawn } = require('child_process');
 
 // ─── Enterprise Foundation Layers ──────────────────────────
 const { correlationMiddleware } = require('./middleware/correlation');
+const { tenantContext } = require('./saas/tenant-context');
+const { register: registerSaasOnboarding } = require('./saas/onboarding-routes');
 const { createBrotliStatic } = require('./middleware/brotli-static');
 const { createBrotliMetrics } = require('./middleware/brotli-metrics');
 const { createCachePolicy, resolveCacheLimits } = require('./middleware/brotli-cache-policy');
@@ -50,7 +52,7 @@ const { forcesPasswordRotation } = require('./user-password-policy');
 const { writeAuditLog } = require('./cashier-module/audit-middleware');
 const { guardCreate } = require('./submit-guard');
 const { router: hrRouter } = require('./hr-routes');
-const { router: warehouseRouter, ensureLegacyKitchenReceiptLedger, resolveDeptHeadDispatch, canDeleteDispatch, dispatchStockGate, canonicalDeptCode } = require('./warehouse-routes');
+const { router: warehouseRouter, ensureLegacyKitchenReceiptLedger, resolveDeptHeadDispatch, dispatchStockGate, canonicalDeptCode } = require('./warehouse-routes');
 const { postInventoryLedgerEntry } = require('./inventory-ledger');
 const { normalizeExpiryDate, readExpiryField } = require('./expiry-policy');
 const { router: inventoryControlRouter } = require('./inventory-control-routes');
@@ -580,6 +582,11 @@ function apiKeyMiddleware(req, res, next) {
     next();
 }
 app.use('/api', apiKeyMiddleware);
+// SaaS (مطفأ افتراضياً): سياق المستأجر يُحقن هنا قبل apiCache (س602)،
+// فيغطي كل الـrouters والـCRUD الديناميكي دفعة واحدة. SAAS_TENANT_ENABLED=false ⇒ no-op.
+app.use('/api', tenantContext());
+// SaaS signup — مسار غير موجود (404) ما لم يُفعّل SAAS_SIGNUP_ENABLED صراحةً.
+registerSaasOnboarding(app);
 app.use('/api', rejectDuringShutdown); // Reject new requests during shutdown
 // ─── قراءة عدّادات مخالفات CSP (محمية بمفتاح التطبيق) ─────────────────────
 // الاستقبال (POST) عام لأن المتصفح لا يستطيع إضافة ترويسة x-api-key إلى
@@ -1923,6 +1930,7 @@ entities.forEach(entity => {
     if (requiresAdminRole || entity === 'dispatches') {
         const createRoles = entity === 'dispatches' ? ['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'dept_head'] : entity === 'payroll' ? ['admin', 'manager', 'accountant'] : ['admin', 'manager'];
         app.post(`/api/${entity}`, jwtAuth, requireRoleOrPerm(createRoles, permForEntity(entity, 'write')), crudLimiter, guardCreate(entity), asyncHandler(async (/** @type {any} */ req, /** @type {any} */ res) => {
+            if (entity === 'kitchenReturns') {return res.status(405).json({ error: 'RETURN_WORKFLOW_REQUIRED', message: 'استخدم /api/warehouse/returns لتنفيذ العكس المخزني والمحاسبي مع حفظ السجل' });}
             // ─── SECURITY: Filter body against whitelist (CRITICAL FIX) ──
             // حرس الصلاحية (سياسة 2026-10-20): الرصيد الافتتاحي بلا تاريخ مقبول.
             const expiryGuardA = checkInventoryOpeningExpiry(entity, req.body);
@@ -2179,6 +2187,7 @@ entities.forEach(entity => {
         const openWriteRoles = entity === 'attendance' ? ['admin', 'manager', 'hr'] : getEntityWriteRoles(entity);
         const writeGuard = openWriteRoles ? [requireRoleOrPerm(openWriteRoles, permForEntity(entity, 'write'))] : [];
         app.post(`/api/${entity}`, jwtAuth, ...writeGuard, crudLimiter, guardCreate(entity), asyncHandler(async (/** @type {any} */ req, /** @type {any} */ res) => {
+            if (entity === 'kitchenReturns') {return res.status(405).json({ error: 'RETURN_WORKFLOW_REQUIRED', message: 'استخدم /api/warehouse/returns لتنفيذ العكس المخزني والمحاسبي مع حفظ السجل' });}
             // ─── SECURITY: Filter body against whitelist ──
             // نفس حرس الصلاحية في المعالج الآخر (البوابة ذات الأدوار المفتوحة).
             const expiryGuardB = checkInventoryOpeningExpiry(entity, req.body);
@@ -2370,6 +2379,7 @@ entities.forEach(entity => {
             const { id } = req.params;
             dropExpiryFields(req); // الصلاحية تُقيَّد في الدفتر عبر مسارات الاستلام، لا عبر التعديل العام
             if (entity === 'dispatches') {return res.status(405).json({ error: 'DISPATCH_WORKFLOW_REQUIRED', message: 'استخدم مسار دورة إذن الصرف المخصص بدل تعديل الحالة مباشرة' });}
+            if (entity === 'kitchenReturns') {return res.status(405).json({ error: 'RETURN_WORKFLOW_REQUIRED', message: 'لا يُعدّل المرتجع مباشرة — استخدم مسار الإبطال لعكس أثره مع حفظ السجل' });}
             
             // ─── SECURITY: Filter body against whitelist ──
             const { errors, removedKeys, filtered: _filteredIn } = filterBody(entity, req.body, "update");
@@ -2575,6 +2585,7 @@ entities.forEach(entity => {
         const writeGuard = openWriteRoles ? [requireRoleOrPerm(openWriteRoles, permForEntity(entity, 'write'))] : [];
         app.put(`/api/${entity}/:id`, jwtAuth, ...writeGuard, crudLimiter, asyncHandler(async (/** @type {any} */ req, /** @type {any} */ res) => {
             const { id } = req.params;
+            if (entity === 'kitchenReturns') {return res.status(405).json({ error: 'RETURN_WORKFLOW_REQUIRED', message: 'لا يُعدّل المرتجع مباشرة — استخدم مسار الإبطال لعكس أثره مع حفظ السجل' });}
             dropExpiryFields(req); // نفس القاعدة: لا تعديل عام لتاريخ الصلاحية — مسارات الاستلام هي الحكم
             
             // ─── SECURITY: Filter body against whitelist ──
@@ -2748,51 +2759,8 @@ entities.forEach(entity => {
                  String(reason || req.query?.reason || req.body?.reason || 'admin force delete').slice(0, 500)]);
         } catch (/** @type {any} */ e) { logger.warn('[admin-force-delete-audit] skipped:', e.message); }
     }
-    // حذف تتابعي لمتعلقات إذن صرف (للأدمن فقط) — دفتر/حركات/مصاريف/قيود/أحداث/تنبيهات.
-    // الأرصدة المخزنية والمتوسطات لا تُمس عمدًا (واقع فيزيائي — تُسوّى بجرد تأكيدي).
-    // يعمل حتى لو صف الإذن نفسه محذوف مسبقًا (تنظيف البقايا).
-    /** @param {any} dispatchId @param {any} actor */
-    async function purgeDispatchRelated(dispatchId, actor = null) {
-        const out = { journal: 0, ledger: 0, tx: 0, expenses: 0, events: 0, notifications: 0 };
-        const ref = `DIS-${dispatchId}`;
-        const hash = `%طلب صرف #${dispatchId}%`;
-        const { voidSourceJournals } = require('./journal-void');
-        const who = { actor: actor?.username || actor?.name || 'admin', actorUserId: actor?.id };
-        try {
-            // A2 (2026-11-06): قيد الصرف المنشور لا يُمسح — يُبطل ويبقى أثره.
-            out.journal = (await voidSourceJournals(pool, {
-                sourceType: 'dispatch', sourceIds: String(dispatchId),
-                reason: `حذف إداري قسري لطلب الصرف #${dispatchId} (force-delete) — إبطال القيد`, ...who,
-            })).voided;
-            out.ledger = (await pool.query(
-                `DELETE FROM inventory_ledger WHERE reference_type='dispatch' AND (reference_id=$1 OR reference_id=$2) RETURNING id`,
-                [ref, String(dispatchId)])).rows.length;
-            out.tx = (await pool.query(
-                `DELETE FROM "inventoryTx" WHERE "dispatchId"=$1 RETURNING id`, [ref])).rows.length;
-            // مصاريف التسوية المرتبطة: تُبطل قيودها المرآتية قبل محو صفوفها،
-            // وإلا بقيت قيود مرحّلة بلا مستند (أيتام في الأستاذ العام).
-            const expenseRows = (await pool.query(
-                `SELECT id FROM expenses WHERE COALESCE("adjustmentType",'') IN ('dispatch','dispatch_return')
-                  AND (notes LIKE $1 OR "desc" LIKE $2)`, [hash, hash])).rows;
-            out.journal += (await voidSourceJournals(pool, {
-                sourceType: 'expense', sourceIds: expenseRows.map((r) => r.id),
-                reason: `إبطال مصاريف تسوية الصرف #${dispatchId} قبل حذفها`, ...who,
-            })).voided;
-            out.expenses = (await pool.query(
-                `DELETE FROM expenses WHERE COALESCE("adjustmentType",'') IN ('dispatch','dispatch_return')
-                  AND (notes LIKE $1 OR "desc" LIKE $2) RETURNING id`, [hash, hash])).rows.length;
-            out.events = (await pool.query(
-                `DELETE FROM dispatch_workflow_events WHERE dispatch_id=$1 RETURNING id`,
-                [isNaN(Number(dispatchId)) ? -1 : Number(dispatchId)])).rows.length;
-            out.notifications = (await pool.query(
-                `DELETE FROM notifications WHERE entity='dispatches' AND entity_id=$1 RETURNING id`,
-                [String(dispatchId)])).rows.length;
-        } catch (/** @type {any} */ e) { logger.warn('[purge-dispatch] partial:', e.message); }
-        return out;
-    }
     if (requiresAdminRole || entity === 'dispatches') {
-        // صاحب الإذن (kitchen/sous_chef/dept_head) أُضيف (طلب المالك 2026-10-04):
-        // يحذف طلبه المعلّق فقط — الفرض الفعلي داخل المعالج أدناه (creatorUserId + الحالة).
+        // إذن الصرف مستند مسار: الإلغاء والإبطال يحفظان السجل وأثره العكسي.
         const deleteRoles = entity === 'dispatches' ? ['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'dept_head'] : ['admin', 'manager'];
         app.delete(`/api/${entity}/:id`, jwtAuth, requireRoleOrPerm(deleteRoles, permForEntity(entity, 'write')), crudLimiter, asyncHandler(async (/** @type {any} */ req, /** @type {any} */ res) => {
             const { id } = req.params;
@@ -2849,50 +2817,12 @@ entities.forEach(entity => {
             }
             const periodBlockDel = await payrollRowViolation(entity, id);
             if (periodBlockDel) {return res.status(423).json(periodBlockDel);}
-            // تدقيق أمني جولة 2: إذن الصرف الموقّع (معتمد/مرفوض/مستلم) مستند مالي
-            // لا يُمحى عبر CRUD العام — الاعتماد يرحّل مصروفات وحركات دفتر وأحداث
-            // موقّعة بسلسلة hash؛ حذفه يقطع السلسلة. المعلّق فقط يجوز حذفه (إلغاء طلب خاطئ).
-            // استثناء الأدمن (2026-10-01): admin يحذف أي حالة — بتوثيق إجباري.
-            // صاحب الطلب (2026-10-04): يحذف طلبه المعلّق قبل وصوله للمخزن.
+            // لا استثناء للأدمن: الحذف يقطع المصروفات والدفتر وسلسلة الأحداث.
             if (entity === 'dispatches') {
-                const dispatchRow = (await pool.query('SELECT status, "creatorUserId" FROM dispatches WHERE id = $1', [id])).rows[0];
-                if (!dispatchRow) {return res.status(404).json({ error: 'NOT_FOUND', message: 'السجل المطلوب غير موجود' });}
-                const isAdmin = req.user?.role === 'admin';
-                const isCreator = dispatchRow.creatorUserId != null && Number(dispatchRow.creatorUserId) === Number(req.user?.id);
-                // مدير/أمين المخزن ينظّفان الطلبات المعلّقة (بلا أثر مالي)،
-                // وأي دور آخر يحذف طلبه المعلّق فقط. المعتمد/المستلم للأدمن وحده.
-                const isWarehouseSide = ['manager', 'warehouse'].includes(req.user?.role);
-                if (!isAdmin) {
-                    // ROOT FIX 2026-10-27: كان manager/warehouse يتجاوزان
-                    // canDeleteDispatch ويمحوان تتابعيًا إذنًا معتمدًا أو مستلمًا
-                    // (دفتر + مصاريف + قيود + أحداث موقّعة) — صلاحية الأدمن
-                    // وحدها. المستند المالي الموقّع لا يُمحى بأي دور آخر.
-                    const deleteGuard = canDeleteDispatch(dispatchRow);
-                    const mayDeletePending = deleteGuard.ok && (isCreator || isWarehouseSide);
-                    if (!mayDeletePending) {
-                        /** @type {any} */
-                        const deleteMessages = {
-                            DISPATCH_ALREADY_APPROVED: 'لا يمكن حذف إذن صرف معتمد — مستند مالي موقّع مرحّل مصروفات وحركات مخزون',
-                            DISPATCH_REJECTED: 'لا يمكن حذف إذن مرفوض — قرار الرفض موقّع وموثّق في سلسلة الأحداث',
-                            DISPATCH_ALREADY_RECEIVED: 'لا يمكن حذف إذن تم استلامه — الاستلام موقّع ومرحّل للمخزون',
-                            DISPATCH_CHEF_DECIDED: 'لا يمكن حذف إذن اعتمده الشيف العمومي — قرار موقّع في السلسلة (يمكن تعديله بدلًا من حذفه)',
-                            DISPATCH_INVALID_STATUS: 'حالة إذن الصرف لا تسمح بحذفه',
-                        };
-                        const message = !deleteGuard.ok
-                            ? (deleteMessages[/** @type {any} */ (deleteGuard.code)] || 'حذف إذن الصرف غير مسموح في هذه الحالة — الأدمن فقط يستطيع الحذف النهائي (force)')
-                            : 'الحذف لصاحب الطلب المعلّق فقط قبل اعتماد الشيف — بعد اعتماد الشيف تواصل مع الإدارة';
-                        return res.status(deleteGuard.ok ? 403 : 409).json({ error: deleteGuard.ok ? 'NOT_CREATOR' : deleteGuard.code, message });
-                    }
-                } else {
-                    // حذف تتابعي بأمر المالك (2026-10-01): إذن الأدمن يحذف معه كل
-                    // المتعلقات المالية (دفتر/حركات/مصاريف/قيود/أحداث/تنبيهات) —
-                    // الأرصدة المخزنية لا تُمس (واقع فيزيائي — يُسوّى بجرد)
-                    const rel = await purgeDispatchRelated(id, req.user);
-                    await logAdminForceDelete(req, entity, id,
-                        `dispatch status=${dispatchRow.status} force-delete by admin + cascade ` +
-                        `(journalVoided=${rel.journal} ledger=${rel.ledger} tx=${rel.tx} expenses=${rel.expenses} events=${rel.events} notifications=${rel.notifications})`);
-                    logger.warn('[admin] force-delete dispatch + cascade', { id, status: dispatchRow.status, by: req.user?.username || req.user?.id, ...rel });
-                }
+                return res.status(405).json({
+                    error: 'DISPATCH_DELETE_DISABLED',
+                    message: 'لا يُحذف إذن الصرف — استخدم الإلغاء قبل الصرف، أو الإرجاع/الإبطال بعد الصرف مع حفظ السجل',
+                });
             }
             if (entity === 'expenses') { await voidExpenseJournal(id, req.user); }
             if (entity === 'inventory' && (req.query?.force === '1' || req.query?.force === 'true' || req.body?.force === true)) {
@@ -2918,10 +2848,13 @@ entities.forEach(entity => {
         const writeGuard = openWriteRoles ? [requireRoleOrPerm(openWriteRoles, permForEntity(entity, 'write'))] : [];
         app.delete(`/api/${entity}/:id`, jwtAuth, ...writeGuard, crudLimiter, asyncHandler(async (/** @type {any} */ req, /** @type {any} */ res) => {
             const { id } = req.params;
-            // تدقيق أمني جولة 2: كيانات مالية/دفترية append-only — الحذف العام
-            // عليها مغلق تمامًا (لا دور يملكه): دفتر الحركات، مرتجعات الأقسام
-            // (حذفها يعيد فتح سقف الإرجاع)، وفواتير الموردين (حذفها يمحو الدين).
-            // استثناء الأدمن (2026-10-01): admin يحذف عبر ?force=1 — بتوثيق إجباري.
+            // المرتجعات إذن صرف عكسي مؤثر في المخزون والأستاذ: الإبطال فقط،
+            // ولا يستطيع الأدمن تجاوز ذلك بحذف قسري لأن العكس يحتاج حركات محفوظة.
+            if (entity === 'kitchenReturns') {
+                return res.status(405).json({ error: 'RETURN_DELETE_DISABLED', message: 'لا يُحذف المرتجع — استخدم /api/warehouse/returns/:id/void لعكس أثره مع حفظ السجل' });
+            }
+            // بقية الكيانات المالية/الدفترية محمية من الحذف العام، مع استثناء
+            // الأدمن الموثق عبر ?force=1.
             if (isProtectedDeleteEntity(entity)) {
                 const isAdminForce = req.user?.role === 'admin'
                     && (req.query?.force === '1' || req.query?.force === 'true' || req.body?.force === true || req.body?.force === '1');

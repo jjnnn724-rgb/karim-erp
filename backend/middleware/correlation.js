@@ -130,6 +130,11 @@ function correlationMiddleware(options = {}) {
             sampled,
             userId:    null,
             userRole:  null,
+            // مرحلة SaaS: يمتلأ بواسطة tenantContext middleware (مطفأ افتراضياً).
+            tenantId:   null,
+            tenantSlug: null,
+            // عميل PG المحجوز لهذا الطلب (عند تشغيل داخل معاملة مستأجر).
+            tenantClient: null,
             method:    req.method,
             url:       req.originalUrl,
             ip:        req.ip || req.connection?.remoteAddress,
@@ -166,6 +171,36 @@ function updateUserContext(userCtx) {
 }
 
 /**
+ * SaaS: enrich the SAME request store with tenant identity.
+ * Reuses the existing AsyncLocalStorage — no second context to keep in sync.
+ *   updateTenantContext({ id: uuid, slug: 'shorfa' })
+ */
+function updateTenantContext(tenantCtx) {
+    const ctx = getContext();
+    if (!ctx || !tenantCtx) {return;}
+    if (tenantCtx.id)   {ctx.tenantId   = tenantCtx.id;}
+    if (tenantCtx.slug) {ctx.tenantSlug = tenantCtx.slug;}
+}
+
+/** Tenant id of the current request, or null outside a tenant-scoped request. */
+function getTenantId() {
+    const ctx = getContext();
+    return ctx ? (ctx.tenantId || null) : null;
+}
+
+/** العميل المحجوز لمعاملة المستأجر — يقرأه Proxy الـpool لإعادة توجيه الاستعلامات. */
+function getTenantClient() {
+    const ctx = getContext();
+    return ctx ? (ctx.tenantClient || null) : null;
+}
+
+/** @param {any} client */
+function setTenantClient(client) {
+    const ctx = getContext();
+    if (ctx) {ctx.tenantClient = client || null;}
+}
+
+/**
  * Return an SQL comment string usable in raw queries — works
  * both inside requests (from AsyncLocalStorage) and outside
  * (falls back to a static label).
@@ -196,6 +231,10 @@ module.exports = {
     correlationMiddleware,
     getContext,
     updateUserContext,
+    updateTenantContext,
+    getTenantId,
+    getTenantClient,
+    setTenantClient,
     sqlComment,
     currentTraceFields,
     makeRequestId,

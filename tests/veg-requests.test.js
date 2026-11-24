@@ -6,7 +6,7 @@
  */
 'use strict';
 
-const { cleanText, validateItems, applyPrices, UNITS, VEG_CATALOG } = require('../backend/veg-requests-logic');
+const { cleanText, validateItems, applyPrices, mergeAdminItems, UNITS, VEG_CATALOG } = require('../backend/veg-requests-logic');
 
 describe('كتالوج الخضار', () => {
     test('مصنّف بأقسام وكل صنف له اسم ووحدة افتراضية من قائمة السماح', () => {
@@ -134,5 +134,63 @@ describe('applyPrices — الأصناف المرفوضة (المرفوض لا �
     test('كل الأصناف مرفوضة → رفض واضح (لا مصروف)', () => {
         const all = items.map(i => ({ ...i, rejected: true }));
         expect(applyPrices(all, []).ok).toBe(false);
+    });
+});
+
+describe('mergeAdminItems — إضافة/تعديل أصناف الأدمن', () => {
+    const existing = [
+        { name: 'طماطم', qty: 10, unit: 'كجم', note: null },
+        { name: 'خيار', qty: 4, unit: 'كجم', note: null, rejected: true },
+    ];
+
+    test('تعديل كمية صنف موجود يُبقي الوحدة ويسجّل الكمية قبل/بعد', () => {
+        const r = mergeAdminItems(existing, [{ name: 'طماطم', qty: 15, unit: 'كجم' }]);
+        expect(r.ok).toBe(true);
+        expect(r.items).toHaveLength(2);
+        expect(r.items[0].qty).toBe(15);
+        expect(r.items[0].unit).toBe('كجم');
+        expect(r.changes).toEqual([{ name: 'طماطم', from: 10, to: 15, action: 'qty' }]);
+    });
+
+    test('صنف جديد يُضاف بكميته ووحدته، والأصناف غير المُرسَلة تبقى', () => {
+        const r = mergeAdminItems(existing, [
+            { name: 'طماطم', qty: 10, unit: 'كجم' },
+            { name: 'بصل', qty: 3, unit: 'كيس' },
+        ]);
+        expect(r.ok).toBe(true);
+        expect(r.items.map(i => i.name)).toEqual(['طماطم', 'بصل', 'خيار']);
+        expect(r.items.find(i => i.name === 'بصل')).toMatchObject({ qty: 3, unit: 'كيس' });
+        expect(r.items.find(i => i.name === 'خيار').rejected).toBe(true);
+        expect(r.changes).toContainEqual({ name: 'بصل', from: 0, to: 3, action: 'add' });
+    });
+
+    test('وحدة الصنف القائم لا تُستبدل بـ «وحدة» لو الأدمن لم يرسل وحدة', () => {
+        const r = mergeAdminItems(existing, [{ name: 'طماطم', qty: 12, unit: '' }]);
+        expect(r.items[0].unit).toBe('كجم');
+    });
+
+    test('وحدة غير معروفة لصنف جديد تُستبدل بـ «وحدة» بدل الرفض', () => {
+        const r = mergeAdminItems(existing, [{ name: 'صنف جديد', qty: 2, unit: '<script>' }]);
+        expect(r.ok).toBe(true);
+        expect(r.items.find(i => i.name === 'صنف جديد').unit).toBe('وحدة');
+    });
+
+    test('كمية فاسدة أو اسم مكرر أو اسم بلا حروف → رفض واضح', () => {
+        expect(mergeAdminItems(existing, [{ name: 'طماطم', qty: 0 }]).ok).toBe(false);
+        expect(mergeAdminItems(existing, [{ name: '', qty: 2 }]).ok).toBe(false);
+        expect(mergeAdminItems(existing, [
+            { name: 'بصل', qty: 1 }, { name: 'بصل', qty: 2 },
+        ]).ok).toBe(false);
+    });
+
+    test('حد 80 صنفًا بعد الدمج', () => {
+        const many = Array.from({ length: 80 }, (_, i) => ({ name: 'صنف' + i, qty: 1 }));
+        expect(mergeAdminItems(existing, many).ok).toBe(false);
+    });
+
+    test('بدون تغييرات →changes فارغ (يُسجَّل «لا تغيير» في سجل الطلب)', () => {
+        const r = mergeAdminItems(existing, [{ name: 'طماطم', qty: 10, unit: 'كجم' }]);
+        expect(r.ok).toBe(true);
+        expect(r.changes).toEqual([]);
     });
 });

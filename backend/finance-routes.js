@@ -24,6 +24,7 @@
 
 const express = require('express');
 const { pool } = require('./shared-pool');
+const { loadBrandSource } = require('./saas/tenant-settings');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
 const { logger } = require('./logger');
 // M20: riyadhToday for business dates
@@ -2089,10 +2090,7 @@ async function financePrintBrand() {
         logo: '/app/assets/al-shurfa-logo.png',
     };
     try {
-        const result = await pool.query(
-            `SELECT name, currency, "logoB64" FROM settings WHERE id = 'main_settings' LIMIT 1`,
-        );
-        const row = result.rows[0] || {};
+        const row = await loadBrandSource(pool);
         const logo = String(row.logoB64 || '');
         return {
             name: String(row.name || '').trim() || fallback.name,

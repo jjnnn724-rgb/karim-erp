@@ -16,6 +16,7 @@
 
 const path = require('path');
 const fs = require('fs');
+const { logger } = require('./logger');
 let ort = null;      // تحميل كسول — الفشل لا يوقع السيرفر
 let sharpLib = null;
 let sessionPromise = null;
@@ -57,7 +58,7 @@ function getDetector() {
  * كشف وجه على السيرفر (UltraFace RFB-320 — MIT).
  * يمنع تمرير صور غير وجوه إلى محرك التعمية (ثغرة الإدخال خارج النطاق:
  * ArcFace ينتج متجهات متشابهة لأي محتوى غير وجه).
- * @returns {Promise<{score:number, rel:{x,y,w,h}}|null>} box نسبةً لأبعاد الصورة
+ * @returns {Promise<{score:number, rel:{x,y,w,h}, faces:number}|null>} box نسبةً لأبعاد الصورة
  */
 async function detectFace(imageBuffer) {
     const { ort, sharp } = lazyDeps();
@@ -80,9 +81,11 @@ async function detectFace(imageBuffer) {
     }
     if (!scores || !boxes) {return null;}
     const n = scores.length / 2;
-    let best = -1, bestScore = 0;
+    let best = -1, bestScore = 0, faces = 0;
     for (let i = 0; i < n; i++) {
-        if (scores[i * 2 + 1] > bestScore) {bestScore = scores[i * 2 + 1]; best = i;}
+        const s = scores[i * 2 + 1];
+        if (s >= 0.5) {faces++;}
+        if (s > bestScore) {bestScore = s; best = i;}
     }
     if (bestScore < 0.5) {return null;}
     const b = Array.from(boxes.slice(best * 4, best * 4 + 4));
@@ -90,8 +93,29 @@ async function detectFace(imageBuffer) {
     // تُنتج صناديق بحجم صفر فتفشل كل عمليات التسجيل/المطابقة
     return {
         score: bestScore,
+        faces,
         rel: { x: b[0], y: b[1], w: b[2] - b[0], h: b[3] - b[1] },
     };
+}
+
+/**
+ * جودة صورة الوجه — بوابة تسجيل فقط (لا تُطبَّق على البصمة الحية كي لا
+ * نرفض موظفًا تحت إضاءة تشغيلية أقل من المثالية):
+ *  · سطوع متوسط خارج 45..220 ⇒ TOO_DARK / TOO_BRIGHT
+ *  · انحراف معياري < 18 ⇒ LOW_CONTRAST (صورة باهتة/ضبابية بلا تفاصيل)
+ * @returns {Promise<{ok:boolean, mean:number, stdev:number, reasons:string[]}>}
+ */
+async function assessFaceQuality(imageBuffer) {
+    const { sharp } = lazyDeps();
+    const stats = await sharp(imageBuffer).removeAlpha().greyscale().stats();
+    const channel = stats.channels[0] || { mean: 0, stdev: 0 };
+    const mean = Math.round(Number(channel.mean) || 0);
+    const stdev = Math.round((Number(channel.stdev) || 0) * 10) / 10;
+    const reasons = [];
+    if (mean < 45) {reasons.push('TOO_DARK');}
+    if (mean > 220) {reasons.push('TOO_BRIGHT');}
+    if (stdev < 18) {reasons.push('LOW_CONTRAST');}
+    return { ok: reasons.length === 0, mean, stdev, reasons };
 }
 
 /** L2 normalization — يجعل المقارنة كوسينية نظيفة */
@@ -113,12 +137,20 @@ function cosineSimilarity(a, b) {
  * ينتج متجه الوجه 512-d من صورة لقطة وجه.
  * 1) كشف وجه إلزامي على السيرفر — الصور بلا وجه تُرفض (إغلاق ثغرة الإدخال).
  * 2) قصّ صندوق الوجه بهامش 25% → 112×112 RGB → تطبيع [-1,1] → ArcFace.
+ * @param {Buffer} imageBuffer
+ * @param {{rejectMultipleFaces?: boolean}} [options]
  * @returns {Promise<number[]|null>} متجه 512 مقنّع L2 — أو null إذا لا وجه
  */
-async function embedFaceImage(imageBuffer) {
+async function embedFaceImage(imageBuffer, options = {}) {
     const { ort, sharp } = lazyDeps();
     const det = await detectFace(imageBuffer);
     if (!det) {return null;}
+    if (options.rejectMultipleFaces && det.faces > 1) {
+        const err = new Error('MULTIPLE_FACES');
+        // @ts-ignore — رمز مقروء للمسار
+        err.code = 'MULTIPLE_FACES';
+        throw err;
+    }
     const meta = await sharp(imageBuffer).metadata();
     const W = meta.width || 160, H = meta.height || 160;
     const bx = det.rel.x * W, by = det.rel.y * H, bw = det.rel.w * W, bh = det.rel.h * H;
@@ -160,4 +192,4 @@ function matchEmbedding(candidate, storedSamples) {
     return Number.isFinite(best) ? best : null;
 }
 
-module.exports = { embedFaceImage, matchEmbedding, cosineSimilarity, l2normalize, modelAvailable, EMB_DIM, detectFace };
+module.exports = { embedFaceImage, matchEmbedding, cosineSimilarity, l2normalize, modelAvailable, EMB_DIM, detectFace, assessFaceQuality };

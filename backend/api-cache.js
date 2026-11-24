@@ -26,6 +26,8 @@
  * invalidateAll() is still called after permission changes so revokes apply instantly.
  */
 
+const { getTenantId } = require('./middleware/correlation');
+
 const _apiCache = new Map();
 // PERF-4: TTL bumped 10s → 30s (expensive reports recompute ~6×/min at 10s)
 const API_CACHE_TTL = 30_000;
@@ -136,7 +138,10 @@ function apiCacheMiddleware(req, res, next) {
        30 ثانية ولا يُخزَّن فيه — وإلا كان الزناد اللايف في شاشة المتابعة يجلب
        سحبًا من أوراكل ثم يُجيب القارئ بالنسخة القديمة نفسها. */
     if (String(req.query?.live || '') === '1') { return next(); }
-    const key = `${req.headers.authorization || ''}|${req.originalUrl}`;
+    // SaaS: بادئة المستأجر تمنع تسرّب إجابة مستأجر لآخر حتى لو تطابق التوكن والرابط.
+    // غياب السياق (الافتراضي اليوم) يُبقي المفتاح القديم حرفياً بلا تغيير سلوك.
+    const tenantPrefix = getTenantId() ? `${getTenantId()}|` : '';
+    const key = `${tenantPrefix}${req.headers.authorization || ''}|${req.originalUrl}`;
     const cached = _apiCache.get(key);
     if (cached && Date.now() - cached.ts < API_CACHE_TTL) {
         // LRU touch: re-insert so Map iteration order tracks recency

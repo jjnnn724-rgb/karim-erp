@@ -9,6 +9,7 @@
  *   • safeQuery() — automatic retry of transient DB failures
  */
 const { logger } = require('./logger');
+const { getTenantClient } = require('./middleware/correlation');
 const { Pool } = require('pg');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
@@ -138,10 +139,19 @@ async function reinitPool() {
   return _pool;
 }
 
-// Proxy so all existing `pool.query(...)` calls transparently use the current pool
+// Proxy so all existing `pool.query(...)` calls transparently use the current pool.
+// SaaS: داخل معاملة مستأجر، الاستعلامات تُوجَّه للعميل المحجوز (نفس الاتصال الذي
+// حمل `SET LOCAL app.tenant_id`) — وإلا سترى سياسات RLS صفر صفوف. خارج السياق
+// لا يتغيّر أي شيء: السلوك القديم حرفياً.
 const pool = new Proxy(/** @type {import('pg').Pool} */ (/** @type {unknown} */ ({})), {
   get(_, prop) {
-    if (prop === 'query' || prop === 'connect' || prop === 'end' || prop === 'on') {
+    if (prop === 'query') {
+      return (/** @type {any[]} */ ...args) => {
+        const scoped = getTenantClient();
+        return scoped ? scoped.query(...args) : _pool.query(...args);
+      };
+    }
+    if (prop === 'connect' || prop === 'end' || prop === 'on') {
       return _pool[prop].bind(_pool);
     }
     if (prop === 'totalCount' || prop === 'idleCount' || prop === 'waitingCount') {

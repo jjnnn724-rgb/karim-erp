@@ -1,0 +1,13 @@
+# deploy/saas/alertmanager.yml — قالب توجيه التنبيهات (بلا جهة خارجية مفترضة)
+route:
+  group_by: ['alertname']
+  group_wait: 30s
+  group_interval: 5m
+  repeat_interval: 4h
+  receiver: 'noop'
+
+receivers:
+  - name: 'noop'
+    # لا يوجد alerting خارجي مُعدّ بعد. استبدل بـwebhook/بريد داخل الشركة
+    # عند النشر الفعلي — لا تترك تنبيهات critical بلا مستقبل.
+    webhook_configs: []
