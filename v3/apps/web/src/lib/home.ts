@@ -593,7 +593,7 @@ const ROLE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
     accountant: ['cfo', 'pnl', 'monthly-comparison', 'cost-analysis', 'revenues', 'expenses'],
     auditor: ['briefing', 'reports', 'pnl', 'monthly-comparison', 'accounts', 'journal'],
     hr: ['hr-dashboard', 'employees', 'attendance', 'leaves', 'payroll', 'roster'],
-    dept_head: ['dept-head-dashboard', 'dept-employees', 'dispatch', 'dept-transfers', 'cost-center', 'reports'],
+    dept_head: ['dept-head-dashboard', 'dept-employees', 'dispatch', 'cost-center', 'reports'],
     warehouse: ['warehouse', 'warehouse-dashboard', 'dispatch', 'wh-prs', 'inventory-inquiry', 'wh-moves'],
     kitchen: ['kitchen', 'recipes', 'menu-board', 'dispatch', 'wh-returns', 'weight'],
     // قوائم الكاشير في V2 لا تشمل المالية ولا التقارير — الإجراءات من قوائمه الفعلية فقط.

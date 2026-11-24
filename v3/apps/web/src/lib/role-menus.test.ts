@@ -62,4 +62,11 @@ describe('role-menus', () => {
         expect(menus).toEqual([...roleMenus('hr')]);
         expect(new Set(menus).size).toBe(menus.length);
     });
+
+    it('التحويلات الداخلية للأدمن فقط', () => {
+        expect(roleMenus('admin')).toContain('dept-transfers');
+        for (const role of ['manager', 'warehouse', 'kitchen', 'sous_chef', 'dept_head', 'hr', 'accountant', 'owner']) {
+            expect(roleMenus(role)).not.toContain('dept-transfers');
+        }
+    });
 });
