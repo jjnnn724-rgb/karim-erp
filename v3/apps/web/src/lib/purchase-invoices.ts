@@ -40,6 +40,7 @@ export const purchaseInvoiceSchema = z
             .transform((value) => (value === null || value === undefined || value === '' ? null : String(value))),
         supplierName: optionalText,
         supplier_name_snapshot: optionalText,
+        vat_total: moneyValue,
         totalAmount: moneyValue,
         paidAmount: moneyValue,
         paymentStatus: optionalText,
@@ -129,6 +130,7 @@ export type PurchaseInvoiceRow = {
     supplierId: string | null;
     supplier: string;
     supplierResolved: boolean;
+    vat: string;
     total: string;
     paid: string;
     remaining: string;
@@ -162,6 +164,7 @@ export function invoiceToRow(
         supplierId: invoice.supplierId,
         supplier,
         supplierResolved: Boolean(live),
+        vat: moneyOf(invoice.vat_total),
         total: moneyOf(invoice.totalAmount),
         paid: moneyOf(invoice.paidAmount),
         remaining: invoiceRemaining(invoice),

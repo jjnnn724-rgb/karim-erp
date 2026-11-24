@@ -8,7 +8,14 @@ import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton 
 import { useAuthState } from '../lib/auth';
 import { fetchCurrency, firstOfMonth, riyadhToday } from '../lib/finance';
 import { formatMoney } from '../lib/format';
-import { fetchSuppliers, isSupplierActive, riyadhDaysAgo, type Supplier } from '../lib/procurement';
+import {
+    fetchSuppliers,
+    isSupplierActive,
+    normalizeTaxStatus,
+    riyadhDaysAgo,
+    type Supplier,
+    TAX_STATUS_LABEL,
+} from '../lib/procurement';
 import {
     fetchPurchaseInvoices,
     invoiceToRow,
@@ -419,7 +426,7 @@ function InvoiceFormDialog({ open, editing, suppliers, currency, saving, onClose
                             <option value="">بدون ربط (اسم حر)</option>
                             {supplierOptions.map((supplier) => (
                                 <option key={supplier.id} value={supplier.id}>
-                                    {supplier.name}
+                                    {supplier.name} — {TAX_STATUS_LABEL[normalizeTaxStatus(supplier.tax_registration_status)]}
                                 </option>
                             ))}
                         </select>
@@ -1317,6 +1324,9 @@ export function PurchaseInvoices() {
                                             onToggle={toggleSort}
                                             align="center"
                                         />
+                                        <th scope="col" className="px-sm py-xs text-end font-medium">
+                                            الضريبة
+                                        </th>
                                         <SortableTh
                                             label="الإجمالي"
                                             sortKey="total"
@@ -1369,6 +1379,12 @@ export function PurchaseInvoices() {
                                                 dir="ltr"
                                             >
                                                 {row.date || '—'}
+                                            </td>
+                                            <td
+                                                className="erp-numeric px-sm py-xxs text-end text-body-sm text-muted"
+                                                title={Number(row.vat) > 0 ? 'ضريبة قابلة للخصم (15%)' : 'لا ضريبة'}
+                                            >
+                                                {Number(row.vat) > 0 ? formatMoney(row.vat) : '—'}
                                             </td>
                                             <td className="erp-numeric px-sm py-xxs text-end text-ink">
                                                 {formatMoney(row.total)}
