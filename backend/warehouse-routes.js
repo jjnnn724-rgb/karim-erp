@@ -94,6 +94,9 @@ function canReceiveDispatch(user, dispatch) {
         if (!rawList.length) {return { ok: false, code: 'DEPT_HEAD_WITHOUT_DEPARTMENT' };}
         const matches = rawList.some((c) => deptsMatch(c, d));
         if (!matches) {return { ok: false, code: 'DEPT_MISMATCH' };}
+        // رئيس القسم هو الجهة المستفيدة من إذن قسمه — يستلمه حتى لو أنشأه.
+        // فصل المهام محفوظ: ليس له صلاحية اعتماد المخازن، والتوقيع إلزامي على الاستلام.
+        return { ok: true };
     }
     const selfGuard = dispatchSelfDecisionGuard(user, dispatch);
     if (!selfGuard.ok) {return selfGuard;}

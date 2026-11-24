@@ -200,6 +200,15 @@ describe('أذون الصرف — بوابات الأدوار (مرآة V2)', ()
         expect(receiveVisible('warehouse', approved, { id: '7' })).toBe(false);
         expect(receiveVisible('dept_head', approved, { id: '9', deptCode: 'K01' })).toBe(true);
         expect(receiveVisible('dept_head', approved, { id: '9', deptCode: 'K02' })).toBe(false);
+        const selfApproved = dispatchGate({
+            id: 5,
+            status: 'approved',
+            deptCode: 'K01',
+            creatorUserId: '9',
+            items: [{ itemName: 'أرز', qty: 2 }],
+        });
+        expect(receiveVisible('dept_head', selfApproved, { id: '9', deptCode: 'K01' })).toBe(true);
+        expect(receiveVisible('kitchen', selfApproved, { id: '9', deptCode: 'K01' })).toBe(false);
         expect(receiveVisible('kitchen', { ...approved, status: 'pending' }, { id: '7' })).toBe(false);
     });
 

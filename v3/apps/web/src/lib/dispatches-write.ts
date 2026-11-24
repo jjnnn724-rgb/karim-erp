@@ -196,7 +196,9 @@ export function receiveVisible(
     if (!['approved', 'partially_received'].includes(row.status) || !row.hasRemaining) {
         return false;
     }
-    if (row.creatorUserId !== '' && row.creatorUserId === String(user?.id ?? '')) {return false;}
+    const isCreator = row.creatorUserId !== '' && row.creatorUserId === String(user?.id ?? '');
+    // رئيس القسم يستلم إذن قسمه حتى لو أنشأه (الجهة المستفيدة). باقي الأدوار تخضع لفصل المهام.
+    if (isCreator && role !== 'dept_head') {return false;}
     if (isWriteRole(role, RECEIVE_ROLES)) {
         return true;
     }

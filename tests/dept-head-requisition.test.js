@@ -138,6 +138,17 @@ describe('canReceiveDispatch — رئيس القسم يستلم إذن قسمه 
         expect(canReceiveDispatch({ role: 'dept_head', dept_code: 'SALADS ' }, { deptCode: 'salads' })).toEqual({ ok: true });
     });
 
+    test('رئيس القسم يستلم إذن قسمه حتى لو كان هو من أنشأه', () => {
+        const own = { deptCode: 'salads', creatorUserId: 7 };
+        expect(canReceiveDispatch({ id: 7, role: 'dept_head', dept_code: 'salads' }, own)).toEqual({ ok: true });
+    });
+
+    test('منشئ الإذن من دور آخر يظل ممنوعًا (فصل المهام)', () => {
+        const own = { deptCode: 'salads', creatorUserId: 7 };
+        expect(canReceiveDispatch({ id: 7, role: 'warehouse', dept_code: 'salads' }, own).code)
+            .toBe('DISPATCH_SELF_DECISION_FORBIDDEN');
+    });
+
     test('رئيس قسم يحاول استلام إذن قسم آخر → DEPT_MISMATCH (403)', () => {
         const r = canReceiveDispatch({ role: 'dept_head', dept_code: 'salads' }, { deptCode: 'sweets' });
         expect(r.ok).toBe(false);
