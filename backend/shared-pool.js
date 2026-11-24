@@ -9,7 +9,7 @@
  *   • safeQuery() — automatic retry of transient DB failures
  */
 const { logger } = require('./logger');
-const { getTenantClient } = require('./middleware/correlation');
+const { getTenantClient, getTenantId } = require('./middleware/correlation');
 const { Pool } = require('pg');
 const path = require('path');
 require('dotenv').config({ path: path.join(__dirname, '..', '.env') });
@@ -139,16 +139,48 @@ async function reinitPool() {
   return _pool;
 }
 
+const TENANT_UUID_RE = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+
+/**
+ * استعلام داخل سياق مستأجر بلا معاملة صريحة: نفتح معاملة قصيرة، نضبط GUC
+ * المعرّف (set_config المعاملاتي — لا حقن نصي)، ننفّذ الاستعلام ثم نُغلق.
+ * دي طبقة أمان إضافية لكل `pool.query` في وضع SaaS؛ الكود القديم خارج السياق
+ * ما زال يمرّ عبر المسار الأصلي حرفياً.
+ * @param {string} tenantId
+ * @param {any[]} args
+ */
+async function tenantScopedQuery(tenantId, args) {
+  const client = await _pool.connect();
+  try {
+    await client.query('BEGIN');
+    await client.query('SELECT set_config($1,$2,true)', ['app.tenant_id', tenantId]);
+    const result = await client.query(...args);
+    await client.query('COMMIT');
+    return result;
+  } catch (error) {
+    try { await client.query('ROLLBACK'); } catch (_) { /* الخطأ الأصلي هو المهم */ }
+    throw error;
+  } finally {
+    client.release();
+  }
+}
+
 // Proxy so all existing `pool.query(...)` calls transparently use the current pool.
 // SaaS: داخل معاملة مستأجر، الاستعلامات تُوجَّه للعميل المحجوز (نفس الاتصال الذي
-// حمل `SET LOCAL app.tenant_id`) — وإلا سترى سياسات RLS صفر صفوف. خارج السياق
-// لا يتغيّر أي شيء: السلوك القديم حرفياً.
+// حمل `SET LOCAL app.tenant_id`) — وإلا سترى سياسات RLS صفر صفوف. وإن وُجد
+// معرّف مستأجر في سياق الطلب بلا عميل محجوز، يُنشأ نطاق معاملة قصير لكل استعلام.
+// خارج السياق لا يتغيّر أي شيء: السلوك القديم حرفياً.
 const pool = new Proxy(/** @type {import('pg').Pool} */ (/** @type {unknown} */ ({})), {
   get(_, prop) {
     if (prop === 'query') {
       return (/** @type {any[]} */ ...args) => {
         const scoped = getTenantClient();
-        return scoped ? scoped.query(...args) : _pool.query(...args);
+        if (scoped) {return scoped.query(...args);}
+        const tenantId = getTenantId();
+        if (tenantId && TENANT_UUID_RE.test(String(tenantId))) {
+          return tenantScopedQuery(String(tenantId), args);
+        }
+        return _pool.query(...args);
       };
     }
     if (prop === 'connect' || prop === 'end' || prop === 'on') {
