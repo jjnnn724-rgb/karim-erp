@@ -49,8 +49,9 @@ function register(/** @type {any} */ app) {
             record('signup_ok', out.tenantId);
             return res.status(201).json(out);
         } catch (err) {
-            const status = Number(err.status) || 422;
-            return res.status(status).json({ error: err.code || 'SIGNUP_FAILED' });
+            const failure = /** @type {any} */ (err);
+            const status = Number(failure.status) || 422;
+            return res.status(status).json({ error: failure.code || 'SIGNUP_FAILED' });
         }
     });
 }

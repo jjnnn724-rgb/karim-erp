@@ -186,7 +186,7 @@ function mergeAdminItems(existingItems, submittedItems) {
   const byName = new Map(existing.map((it) => [String(it?.name || '').trim().toLowerCase(), it]));
   const merged = [];
   const changes = [];
-  for (const item of checked.items) {
+  for (const item of checked.items || []) {
     const key = item.name.toLowerCase();
     const target = byName.get(key);
     if (!target) {
@@ -204,7 +204,7 @@ function mergeAdminItems(existingItems, submittedItems) {
       changes.push({ name: item.name, from, to: item.qty, action: 'qty' });
     }
   }
-  const submitted = new Set(checked.items.map((it) => it.name.toLowerCase()));
+  const submitted = new Set((checked.items || []).map((it) => it.name.toLowerCase()));
   for (const it of existing) {
     const key = String(it?.name || '').trim().toLowerCase();
     if (!submitted.has(key)) {merged.push(it);}
@@ -212,7 +212,7 @@ function mergeAdminItems(existingItems, submittedItems) {
   if (merged.length > 80) {
     return { ok: false, error: 'عدد الأصناف كبير جدًا (الحد 80 صنفًا)' };
   }
-  return { ok: true, items: merged, changes };
+  return /** @type {any} */ ({ ok: true, items: merged, changes });
 }
 
 module.exports = { cleanText, validateItems, applyPrices, mergeAdminItems, UNITS, VEG_CATALOG };

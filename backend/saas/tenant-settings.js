@@ -55,11 +55,11 @@ function createTenantSettings(opts) {
             let values;
             try {
                 const r = await pool.query('SELECT key, value FROM tenant_settings WHERE tenant_id = $1', [tenantId]);
-                values = {};
+                values = /** @type {Record<string, any>} */ ({});
                 for (const row of r.rows || []) { values[row.key] = row.value; }
             } catch (err) {
                 if (log && typeof log.warn === 'function') {
-                    log.warn('[tenant-settings] lookup failed, using global fallback:', err && err.message);
+                    log.warn('[tenant-settings] lookup failed, using global fallback:', err instanceof Error ? err.message : String(err));
                 }
                 values = null;
             }
@@ -72,10 +72,10 @@ function createTenantSettings(opts) {
 
         /**
          * @param {string|null} tenantId
-         * @returns {Promise<{lang:string,currency:string,tax_rate:number,branding:any}|null>}
+         * @returns {Promise<{lang:string,currency:string,tax_rate:number,branding:any,timezone:string|null}|null>}
          */
         async localization(tenantId) {
-            const values = await this.load(tenantId);
+            const values = tenantId ? await this.load(tenantId) : null;
             if (!values) { return null; }
 
             const branding = values.branding && typeof values.branding === 'object' ? values.branding : null;

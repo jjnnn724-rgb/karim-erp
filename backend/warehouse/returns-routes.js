@@ -352,7 +352,7 @@ router.post('/returns/:id/void', jwtAuth, requireRoleOrPerm(['admin', 'manager',
             actorUserId: req.user.id, actor,
         });
         const expenseJournal = await voidSourceJournals(client, {
-            sourceType: 'expense', sourceIds: items.map(/** @type {any} */ item => item.expenseId), reason,
+            sourceType: 'expense', sourceIds: items.map(/** @type {any} */ (item) => item.expenseId), reason,
             actorUserId: req.user.id, actor,
         });
         const updated = (await client.query(

@@ -51,7 +51,7 @@ function createTenantResolver(opts) {
                 }
             } catch (err) {
                 if (log && typeof log.warn === 'function') {
-                    log.warn('[tenant-resolver] DB lookup failed, falling back to env map:', err && err.message);
+                    log.warn('[tenant-resolver] DB lookup failed, falling back to env map:', err instanceof Error ? err.message : String(err));
                 }
             }
 

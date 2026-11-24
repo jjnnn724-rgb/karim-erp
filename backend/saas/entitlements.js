@@ -42,7 +42,7 @@ function createEntitlements(opts) {
                       WHERE tenant_id = $1 AND period_start = (now() AT TIME ZONE 'UTC')::date`,
                     [tenantId]
                 );
-                const used = {};
+                const used = /** @type {Record<string, number>} */ ({});
                 for (const r of usage.rows || []) { used[r.metric] = Number(r.value); }
                 value = {
                     status: row ? row.status : 'none',
@@ -59,7 +59,7 @@ function createEntitlements(opts) {
                 };
             } catch (err) {
                 if (log && typeof log.warn === 'function') {
-                    log.warn('[entitlements] lookup failed:', err && err.message);
+                    log.warn('[entitlements] lookup failed:', err instanceof Error ? err.message : String(err));
                 }
                 // فشل مخزن الحدود ⇒ رفض بأمان بدل السماح بلا سقف.
                 value = {

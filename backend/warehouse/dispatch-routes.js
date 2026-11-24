@@ -85,20 +85,20 @@ async function voidDispatchExpenses(/** @type {any} */ client, /** @type {any} *
         actorUserId: req.user.id, actor,
     });
     const linkedExpenseIds = (Array.isArray(dispatch.approvedItems) ? dispatch.approvedItems : [])
-        .map(/** @type {any} */ item => Number(item.expenseId)).filter(/** @type {any} */ value => Number.isInteger(value) && value > 0);
+        .map(/** @type {any} */ (item) => Number(item.expenseId)).filter(/** @type {any} */ (value) => Number.isInteger(value) && value > 0);
     const expenseRows = (await client.query(
         `SELECT id FROM expenses
           WHERE id=ANY($1::bigint[])
              OR (COALESCE("adjustmentType",'')='dispatch' AND (notes LIKE $2 OR "desc" LIKE $2))
           FOR UPDATE`, [linkedExpenseIds, `%طلب صرف #${dispatch.id}%`])).rows;
     const expenseJournal = await voidSourceJournals(client, {
-        sourceType: 'expense', sourceIds: expenseRows.map(/** @type {any} */ row => row.id), reason,
+        sourceType: 'expense', sourceIds: expenseRows.map(/** @type {any} */ (row) => row.id), reason,
         actorUserId: req.user.id, actor,
     });
     const expenses = (await client.query(
         `UPDATE expenses SET amount=0, "voidedAt"=NOW(), "voidedBy"=$2, "voidReason"=$3
-          WHERE id=ANY($1::bigint[]) RETURNING *`, [expenseRows.map(/** @type {any} */ row => row.id), actor, reason])).rows;
-    return { journalCount: journal.voided + expenseJournal.voided, expenses: expenses.map(/** @type {any} */ row => ({ id: row.id, amount: row.amount })) };
+          WHERE id=ANY($1::bigint[]) RETURNING *`, [expenseRows.map(/** @type {any} */ (row) => row.id), actor, reason])).rows;
+    return { journalCount: journal.voided + expenseJournal.voided, expenses: expenses.map(/** @type {any} */ (row) => ({ id: row.id, amount: row.amount })) };
 }
 
 router.post('/dispatches/:id/cancel', jwtAuth, requireRoleOrPerm(CREATE_ROLES, 'dispatch.cancel'), idempotency({ requireKey: true }), async (/** @type {any} */ req, /** @type {any} */ res) => {
@@ -843,7 +843,7 @@ router.post('/dispatches/:id/receive', jwtAuth, requireRoleOrPerm(RECEIVE_ROLES,
         const approved = normalizeRequestedItems(dispatch.approvedItems || dispatch.items);
         const approvedNames = new Set(approved.map(item => item.itemName.toLowerCase()));
         const priorReceived = new Map((Array.isArray(dispatch.receivedItems) ? dispatch.receivedItems : [])
-            .map(/** @type {any} */ item => [cleanName(item.itemName || item.name).toLowerCase(), item]));
+            .map(/** @type {any} */ (item) => [cleanName(item.itemName || item.name).toLowerCase(), item]));
         const requested = Array.isArray(req.body?.items) ? req.body.items : [];
         if (!requested.length) { await client.query('ROLLBACK'); return fail(res, 422, 'RECEIVED_ITEMS_REQUIRED', 'أدخل الكميات المستلمة للصنف'); }
         const requestedNames = new Set();
@@ -870,7 +870,7 @@ router.post('/dispatches/:id/receive', jwtAuth, requireRoleOrPerm(RECEIVE_ROLES,
         const receivedItems = approved.map((allowed) => {
             const nameKey = allowed.itemName.toLowerCase();
             const prior = priorReceived.get(nameKey) || {};
-            const raw = requested.find(/** @type {any} */ item => cleanName(item.itemName || item.name).toLowerCase() === nameKey);
+            const raw = requested.find(/** @type {any} */ (item) => cleanName(item.itemName || item.name).toLowerCase() === nameKey);
             const receivedDeltaQty = raw ? n(raw.receivedQty ?? raw.qty, -1) : 0;
             const alreadyReceivedQty = n(prior.receivedQty, 0);
             const receivedQty = round(alreadyReceivedQty + receivedDeltaQty);
