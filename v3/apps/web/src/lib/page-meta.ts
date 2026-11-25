@@ -95,13 +95,9 @@ function statusAccent(status: PageStatus): string {
 /** أيقونة SVG 32×32: حرف K على خلفية حسب الوضع + نقطة حالة. */
 export function faviconHref(resolved: ResolvedTheme, status: PageStatus): string {
     const background =
-        resolved === 'dark'
-            ? tokenColor('--erp-c-primary', FALLBACK_DARK_BG)
-            : tokenColor('--erp-c-primary', FALLBACK_LIGHT_BG);
+        resolved === 'dark' ? tokenColor('--erp-c-primary', FALLBACK_DARK_BG) : tokenColor('--erp-c-primary', FALLBACK_LIGHT_BG);
     const foreground =
-        resolved === 'dark'
-            ? tokenColor('--erp-c-on-primary', FALLBACK_DARK_FG)
-            : tokenColor('--erp-c-on-primary', FALLBACK_LIGHT_FG);
+        resolved === 'dark' ? tokenColor('--erp-c-on-primary', FALLBACK_DARK_FG) : tokenColor('--erp-c-on-primary', FALLBACK_LIGHT_FG);
     const accent = statusAccent(status);
     const svg = [
         '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 32 32" role="img">',

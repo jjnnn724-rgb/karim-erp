@@ -175,10 +175,7 @@ export function ZktecoControl() {
     const rebuildSpan = zkDaySpan(rebuildFrom, rebuildTo);
 
     const submitRebuild = async (): Promise<void> => {
-        const errors = zkRebuildErrors(
-            { employeeId: rebuildEmployee, from: rebuildFrom, to: rebuildTo, reason: rebuildReason },
-            maxDays,
-        );
+        const errors = zkRebuildErrors({ employeeId: rebuildEmployee, from: rebuildFrom, to: rebuildTo, reason: rebuildReason }, maxDays);
         if (errors.length > 0) {
             setRebuildError(errors[0] ?? '');
             return;
@@ -200,11 +197,7 @@ export function ZktecoControl() {
                 english="Raw punches"
                 actions={
                     <label className="flex items-center gap-xs text-body-sm text-ink">
-                        <input
-                            type="checkbox"
-                            checked={unmappedOnly}
-                            onChange={(event) => setUnmappedOnly(event.target.checked)}
-                        />
+                        <input type="checkbox" checked={unmappedOnly} onChange={(event) => setUnmappedOnly(event.target.checked)} />
                         غير المربوطة فقط
                     </label>
                 }
@@ -262,26 +255,16 @@ export function ZktecoControl() {
                                             </td>
                                             <td className="px-sm py-xxs text-ink">
                                                 {String(row.employeeName ?? '') ||
-                                                    (row.employeeId == null ? (
-                                                        <span className="text-warning-text">بلا موظف</span>
-                                                    ) : (
-                                                        '—'
-                                                    ))}
+                                                    (row.employeeId == null ? <span className="text-warning-text">بلا موظف</span> : '—')}
                                             </td>
                                             <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">
                                                 {String(row.deviceUserId ?? '') || '—'}
                                             </td>
-                                            <td className="px-sm py-xxs text-body-sm text-muted">
-                                                {zkPunchStateName(row.punchState)}
-                                            </td>
-                                            <td className="px-sm py-xxs text-body-sm text-muted">
-                                                {String(row.deviceName ?? '') || '—'}
-                                            </td>
+                                            <td className="px-sm py-xxs text-body-sm text-muted">{zkPunchStateName(row.punchState)}</td>
+                                            <td className="px-sm py-xxs text-body-sm text-muted">{String(row.deviceName ?? '') || '—'}</td>
                                             <td className="px-sm py-xxs">
                                                 {ignored ? (
-                                                    <Badge variant="warning">
-                                                        {String(row.ignoredReason ?? '') || 'متجاهلة'}
-                                                    </Badge>
+                                                    <Badge variant="warning">{String(row.ignoredReason ?? '') || 'متجاهلة'}</Badge>
                                                 ) : (
                                                     <Badge variant="success">مسجلة</Badge>
                                                 )}
@@ -397,10 +380,7 @@ export function ZktecoControl() {
                                                     <td className="px-sm py-xxs text-body-sm text-muted">
                                                         {String(row.reason ?? '') || '—'}
                                                     </td>
-                                                    <td
-                                                        className="erp-numeric px-sm py-xxs text-caption text-faint"
-                                                        dir="ltr"
-                                                    >
+                                                    <td className="erp-numeric px-sm py-xxs text-caption text-faint" dir="ltr">
                                                         {timeText(row.createdAt) || '—'}
                                                     </td>
                                                 </tr>
@@ -471,23 +451,15 @@ export function ZktecoControl() {
                                             <tr key={String(row.id)} className="border-b border-hairline">
                                                 <td className="px-sm py-xxs text-ink">
                                                     {String(row.name ?? '')}
-                                                    <span
-                                                        className="erp-numeric ms-xs text-caption text-faint"
-                                                        dir="ltr"
-                                                    >
+                                                    <span className="erp-numeric ms-xs text-caption text-faint" dir="ltr">
                                                         {String(row.employeeId ?? '')}
                                                     </span>
                                                 </td>
                                                 <td className="px-sm py-xxs text-body-sm text-warning-text">
                                                     {String(row.diagnosis ?? '')}
                                                 </td>
-                                                <td className="px-sm py-xxs text-body-sm text-muted">
-                                                    {String(row.action ?? '') || '—'}
-                                                </td>
-                                                <td
-                                                    className="erp-numeric px-sm py-xxs text-caption text-faint"
-                                                    dir="ltr"
-                                                >
+                                                <td className="px-sm py-xxs text-body-sm text-muted">{String(row.action ?? '') || '—'}</td>
+                                                <td className="erp-numeric px-sm py-xxs text-caption text-faint" dir="ltr">
                                                     {timeText(row.last_punch) || '—'}
                                                 </td>
                                             </tr>
@@ -553,12 +525,7 @@ export function ZktecoControl() {
                                 value={intOf(num(reconSummary.device_punches))}
                                 hint="في المدى المختار"
                             />
-                            <KpiCard
-                                label="مطابقة"
-                                english="Matched"
-                                value={intOf(num(reconSummary.matched))}
-                                hint="لها صف حضور"
-                            />
+                            <KpiCard label="مطابقة" english="Matched" value={intOf(num(reconSummary.matched))} hint="لها صف حضور" />
                             <KpiCard
                                 label="فجوات حقيقية"
                                 english="Real gaps"
@@ -686,18 +653,8 @@ export function ZktecoControl() {
                         onValueChange={(value) => setRebuildEmployee(value)}
                     />
                     <div className="grid grid-cols-2 gap-sm">
-                        <Input
-                            label="من"
-                            type="date"
-                            value={rebuildFrom}
-                            onChange={(event) => setRebuildFrom(event.target.value)}
-                        />
-                        <Input
-                            label="إلى"
-                            type="date"
-                            value={rebuildTo}
-                            onChange={(event) => setRebuildTo(event.target.value)}
-                        />
+                        <Input label="من" type="date" value={rebuildFrom} onChange={(event) => setRebuildFrom(event.target.value)} />
+                        <Input label="إلى" type="date" value={rebuildTo} onChange={(event) => setRebuildTo(event.target.value)} />
                     </div>
                     {rebuildSpan !== null && rebuildSpan > 0 ? (
                         <p className="text-caption text-muted" role="status">

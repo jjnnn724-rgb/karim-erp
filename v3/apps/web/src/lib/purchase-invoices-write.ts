@@ -363,10 +363,7 @@ export function purchaseInvoicePayload(form: InvoiceForm = {}): PurchaseInvoiceP
         date: str(form.date),
         supplierName: str(form.supplierName),
         supplierPhone: str(form.supplierPhone),
-        supplierId:
-            form.supplierId === undefined || form.supplierId === null || form.supplierId === ''
-                ? null
-                : form.supplierId,
+        supplierId: form.supplierId === undefined || form.supplierId === null || form.supplierId === '' ? null : form.supplierId,
         paymentMethod: str(form.paymentMethod) || 'cash',
         notes: str(form.notes),
         discountType: str(form.discountType) || 'none',
@@ -451,11 +448,7 @@ export function invoiceEstimate(form: InvoiceForm = {}, supplierRegistered = fal
     let vat = 0;
     grossLines.forEach((gross, index) => {
         const lineDiscount =
-            index === grossLines.length - 1
-                ? r2(discount - allocated)
-                : subtotal > 0
-                  ? r2((discount * gross) / subtotal)
-                  : 0;
+            index === grossLines.length - 1 ? r2(discount - allocated) : subtotal > 0 ? r2((discount * gross) / subtotal) : 0;
         allocated = r2(allocated + lineDiscount);
         const lineNet = r2(gross - lineDiscount);
         net = r2(net + lineNet);
@@ -624,15 +617,9 @@ export interface VoidInvoiceResult {
 /** POST /api/warehouse/purchase-invoices/:id/void — أدمن فقط. */
 export async function voidPurchaseInvoice(id: string | number): Promise<VoidInvoiceResult> {
     const invoiceId = invoiceIdOf(id);
-    const body = await writeJson(
-        voidResultSchema,
-        `/api/warehouse/purchase-invoices/${String(invoiceId)}/void`,
-        'POST',
-        {},
-    );
+    const body = await writeJson(voidResultSchema, `/api/warehouse/purchase-invoices/${String(invoiceId)}/void`, 'POST', {});
     return {
-        invoiceNumber:
-            body.invoiceNumber === null || body.invoiceNumber === undefined ? '' : String(body.invoiceNumber),
+        invoiceNumber: body.invoiceNumber === null || body.invoiceNumber === undefined ? '' : String(body.invoiceNumber),
         reversedItems: num(body.reversedItems),
         deletedPayments: num(body.deletedPayments),
     };
@@ -702,23 +689,13 @@ export function partialPaymentPayload(invoiceId: string | number, input: Partial
     return payload;
 }
 
-const partialPaymentResultSchema = z
-    .object({ supplierDueTotal: z.union([z.number(), z.string()]).nullish() })
-    .passthrough();
+const partialPaymentResultSchema = z.object({ supplierDueTotal: z.union([z.number(), z.string()]).nullish() }).passthrough();
 
 /**
  * POST /api/procurement/payments — دفعة جزئية مربوطة بالفاتورة.
  * يعيد رصيد المورد إن أعاده الخادم (نصّ نجاح V2 يذيعه).
  */
-export async function payInvoicePartial(
-    invoiceId: string | number,
-    input: PartialPaymentInput,
-): Promise<number | null> {
-    const body = await writeJson(
-        partialPaymentResultSchema,
-        '/api/procurement/payments',
-        'POST',
-        partialPaymentPayload(invoiceId, input),
-    );
+export async function payInvoicePartial(invoiceId: string | number, input: PartialPaymentInput): Promise<number | null> {
+    const body = await writeJson(partialPaymentResultSchema, '/api/procurement/payments', 'POST', partialPaymentPayload(invoiceId, input));
     return body.supplierDueTotal === null || body.supplierDueTotal === undefined ? null : Number(body.supplierDueTotal);
 }

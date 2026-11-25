@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-    canReopenCfo,
-    canWriteCfo,
-    journalTotals,
-    parseAmountCents,
-    periodPath,
-    validateJournalEntry,
-} from './cfo-write';
+import { canReopenCfo, canWriteCfo, journalTotals, parseAmountCents, periodPath, validateJournalEntry } from './cfo-write';
 
 describe('cfo-write', () => {
     it('يحوّل المبالغ إلى سنتات بدقة ويرفض الكسور الأطول', () => {

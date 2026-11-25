@@ -107,17 +107,9 @@ export function SalesInquiry() {
 
             {page ? (
                 <>
-                    <ul
-                        className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4"
-                        aria-label="مؤشرات استعلام المبيعات"
-                    >
+                    <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4" aria-label="مؤشرات استعلام المبيعات">
                         <KpiCard label="أوامر مطابقة" english="Matched" value={intOf(total)} hint="كل الصفحات" />
-                        <KpiCard
-                            label="في الصفحة"
-                            english="Page"
-                            value={intOf(orders.length)}
-                            hint={`${String(PAGE)} لكل صفحة`}
-                        />
+                        <KpiCard label="في الصفحة" english="Page" value={intOf(orders.length)} hint={`${String(PAGE)} لكل صفحة`} />
                         <KpiCard
                             label="الصفحة"
                             english="Page index"
@@ -179,10 +171,7 @@ export function SalesInquiry() {
                                     </thead>
                                     <tbody>
                                         {orders.map((order) => (
-                                            <tr
-                                                key={order.doc_no}
-                                                className="border-b border-hairline hover:bg-surface-hover"
-                                            >
+                                            <tr key={order.doc_no} className="border-b border-hairline hover:bg-surface-hover">
                                                 <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">
                                                     {order.doc_no}
                                                 </td>
@@ -193,9 +182,7 @@ export function SalesInquiry() {
                                                     {textOf(order.cashier_name) || textOf(order.cashier_no) || '—'}
                                                 </td>
                                                 <td className="px-sm py-xxs text-body-sm text-muted">
-                                                    {[textOf(order.table_name), textOf(order.zone_name)]
-                                                        .filter(Boolean)
-                                                        .join(' · ') || '—'}
+                                                    {[textOf(order.table_name), textOf(order.zone_name)].filter(Boolean).join(' · ') || '—'}
                                                 </td>
                                                 <td className="erp-numeric px-sm py-xxs" dir="ltr">
                                                     {moneyOf(order.net)}

@@ -165,9 +165,7 @@ export function RosterWorkbench({ weekStart, today, days, rows, dept, approvalKe
     }
 
     async function handleRequest(): Promise<void> {
-        const answer = await confirm(
-            'إرسال دوامات هذا الأسبوع لاعتماد شؤون العاملين؟ أي تعديل بعد الطلب يلغي الاعتماد.',
-        );
+        const answer = await confirm('إرسال دوامات هذا الأسبوع لاعتماد شؤون العاملين؟ أي تعديل بعد الطلب يلغي الاعتماد.');
         if (!answer) {
             return;
         }
@@ -248,9 +246,7 @@ export function RosterWorkbench({ weekStart, today, days, rows, dept, approvalKe
             >
                 <div className="flex flex-col gap-sm">
                     <p className="text-body-sm text-muted" role="status">
-                        {changed.length
-                            ? ROSTER_WRITE_TEXT.dirty(changed.length)
-                            : 'عدّل وقت الدوام أو ساعاته أو يوم الراحة ثم احفظ.'}
+                        {changed.length ? ROSTER_WRITE_TEXT.dirty(changed.length) : 'عدّل وقت الدوام أو ساعاته أو يوم الراحة ثم احفظ.'}
                     </p>
                     {Object.keys(edits).length === 0 ? (
                         <p className="text-body-sm text-warning-text">
@@ -266,11 +262,7 @@ export function RosterWorkbench({ weekStart, today, days, rows, dept, approvalKe
                                             الموظف
                                         </th>
                                         {days.map((day) => (
-                                            <th
-                                                key={day.date}
-                                                scope="col"
-                                                className="px-sm py-xs text-center font-medium"
-                                            >
+                                            <th key={day.date} scope="col" className="px-sm py-xs text-center font-medium">
                                                 {day.label}
                                                 <small className="erp-numeric block text-caption" dir="ltr">
                                                     {day.date}
@@ -297,10 +289,7 @@ export function RosterWorkbench({ weekStart, today, days, rows, dept, approvalKe
                                                     const cell = cells[index];
                                                     if (!cell) {
                                                         return (
-                                                            <td
-                                                                key={day.date}
-                                                                className="px-sm py-xxs text-center text-caption text-faint"
-                                                            >
+                                                            <td key={day.date} className="px-sm py-xxs text-center text-caption text-faint">
                                                                 مقفل
                                                             </td>
                                                         );
@@ -377,10 +366,7 @@ export function RosterWorkbench({ weekStart, today, days, rows, dept, approvalKe
                     <h2 className="text-heading-sm text-ink">{ROSTER_WRITE_TEXT.pendingTitle}</h2>
                     <ul className="mt-xs flex flex-col gap-xxs text-body-sm">
                         {pendingQuery.data.pending.map((row) => (
-                            <li
-                                key={`${row.dept_key}:${row.week_start}`}
-                                className="flex flex-wrap items-center gap-sm"
-                            >
+                            <li key={`${row.dept_key}:${row.week_start}`} className="flex flex-wrap items-center gap-sm">
                                 <span className="text-ink">{row.dept_key}</span>
                                 <span className="erp-numeric text-muted" dir="ltr">
                                     {row.week_start}
@@ -406,9 +392,7 @@ export function RosterWorkbench({ weekStart, today, days, rows, dept, approvalKe
                             </li>
                         ))}
                     </ul>
-                    <p className="mt-xxs text-caption text-muted">
-                        {formatInt(pendingQuery.data.pending.length)} طلبًا لهذا الأسبوع.
-                    </p>
+                    <p className="mt-xxs text-caption text-muted">{formatInt(pendingQuery.data.pending.length)} طلبًا لهذا الأسبوع.</p>
                 </section>
             ) : null}
         </>

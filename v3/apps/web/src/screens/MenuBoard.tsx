@@ -15,7 +15,7 @@ export function MenuBoard() {
 
     return (
         <div className="erp-premium-screen erp-premium-screen--menu-board flex flex-col gap-md">
-<ScreenHero
+            <ScreenHero
                 title="شاشات المنيو"
                 english="Menu Boards"
                 description="لوحة تحكم شاشات العرض — نفس صفحة الإدارة الحالية داخل الإطار."
@@ -23,9 +23,11 @@ export function MenuBoard() {
                     <>
                         <button
                             type="button"
-                            onClick={() => { () => {
-                    setNonce((value) => value + 1);
-                } }}
+                            onClick={() => {
+                                () => {
+                                    setNonce((value) => value + 1);
+                                };
+                            }}
                             disabled={false}
                             className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
                         >
@@ -34,8 +36,7 @@ export function MenuBoard() {
                     </>
                 }
             />
-            <div className="flex justify-end gap-xs" data-erp-print-hide>
-            </div>
+            <div className="flex justify-end gap-xs" data-erp-print-hide></div>
 
             <SectionCard
                 title="إدارة المنيو"

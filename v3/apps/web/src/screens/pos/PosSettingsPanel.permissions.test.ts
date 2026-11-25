@@ -3,11 +3,7 @@
  * القاعدة: الكاشير = صفر أدوات؛ الأدوات محصورة للأدوار الأعلى منه.
  */
 import { describe, expect, it } from 'vitest';
-import {
-    canEditPosPrices,
-    canManagePosItems,
-    canOpenPosSettings,
-} from './PosSettingsPanel';
+import { canEditPosPrices, canManagePosItems, canOpenPosSettings } from './PosSettingsPanel';
 
 describe('ترس ضبط الكاشير — قفل الصلاحيات', () => {
     it('الكاشير لا يرى الترس ولا الأدوات', () => {

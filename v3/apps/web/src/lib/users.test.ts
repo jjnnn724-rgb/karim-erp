@@ -1,15 +1,6 @@
 import { describe, expect, it } from 'vitest';
 import { employeeSchema } from './employees';
-import {
-    employeeByUserMap,
-    roleCounts,
-    roleLabel,
-    searchUsers,
-    type UserRow,
-    userSchema,
-    userToRow,
-    userTotals,
-} from './users';
+import { employeeByUserMap, roleCounts, roleLabel, searchUsers, type UserRow, userSchema, userToRow, userTotals } from './users';
 
 const employees = [
     employeeSchema.parse({ id: 501, userId: '1', employeeId: 'EMP-001', name: 'مدير النظام' }),

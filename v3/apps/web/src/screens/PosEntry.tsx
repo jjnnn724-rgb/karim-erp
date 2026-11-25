@@ -4,12 +4,10 @@ import './PosEntry.light.css';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useConfirm } from '../components/ConfirmProvider';
-import { StateError, StateLoading } from '../components/TableState';
 import { OfflineConflictBanner } from '../components/OfflineConflictBanner';
+import { StateError, StateLoading } from '../components/TableState';
 import { ApiError } from '../lib/api';
 import { useAuthState } from '../lib/auth';
-import { flushQueuedSales, SaleQueuedOfflineError, submitSaleWithOffline } from '../lib/pos-offline';
-import { isUiFlagOn } from '../lib/ui-flags';
 import { COMPANY_LOGO } from '../lib/company-logo';
 import {
     addBuffetTier,
@@ -28,9 +26,9 @@ import {
     fetchDeptCashierLinks,
     fetchHeldOrders,
     fetchKotHtml,
-    fetchPosOrderReceiptHtml,
     fetchPosDepartments,
     fetchPosOrder,
+    fetchPosOrderReceiptHtml,
     fetchPosOrders,
     fetchPosOrdersExport,
     fetchPosProducts,
@@ -55,6 +53,7 @@ import {
     uploadPosProductImage,
     voidPosOrder,
 } from '../lib/pos';
+import { flushQueuedSales, SaleQueuedOfflineError, submitSaleWithOffline } from '../lib/pos-offline';
 import {
     applyQuoteToPosTotals,
     buildPosSaleItems,
@@ -67,6 +66,7 @@ import {
     parsePosMoney,
 } from '../lib/pos-pricing';
 import { errorMessage, intOf } from '../lib/reporting';
+import { isUiFlagOn } from '../lib/ui-flags';
 import { Badge, Button, Dialog, Input, PageHeader, SearchInput, Textarea, useToast } from '../ui';
 import { PosBuffetPrices, PosBuffetReport } from './pos/PosBuffet';
 import { type PaymentReferenceKey, PosCart } from './pos/PosCart';
@@ -74,12 +74,11 @@ import { PosCatalog } from './pos/PosCatalog';
 import { PosHistory, type PosHistoryFiltersState, PosOrderDetailPanel } from './pos/PosHistory';
 import { PosOpenShift } from './pos/PosOpenShift';
 import { PosPrinters } from './pos/PosPrinters';
-import { PosSettingsPanel, canOpenPosSettings } from './pos/PosSettingsPanel';
 import { PosReceipt } from './pos/PosReceipt';
+import { canOpenPosSettings, PosSettingsPanel } from './pos/PosSettingsPanel';
 import {
     BUFFET_ADMIN_ROLES,
     CATALOG_IMAGE_ROLES,
-    PRODUCT_IMAGE_ROLES,
     type CardMeta,
     type CatalogItem,
     catalogFromProducts,
@@ -95,6 +94,7 @@ import {
     type PaymentKey,
     POS_FAVORITES_LIMIT,
     POS_ROLES,
+    PRODUCT_IMAGE_ROLES,
     readPosFavorites,
     roleIn,
     SELL_ROLES,
@@ -202,7 +202,9 @@ export function PosEntry() {
     const offlineQueueEnabled = isUiFlagOn('posOfflineQueue');
 
     useEffect(() => {
-        if (!offlineQueueEnabled) {return;}
+        if (!offlineQueueEnabled) {
+            return;
+        }
         const onOnline = () => {
             void flushQueuedSales().then((result) => {
                 if (result.processed + result.replayed > 0) {
@@ -1378,7 +1380,8 @@ export function PosEntry() {
                     event.preventDefault();
                     searchInputRef.current?.focus();
                     searchInputRef.current?.select();
-                    break;                case 'F3':
+                    break;
+                case 'F3':
                     event.preventDefault();
                     shortcutActions.current.hold();
                     break;
@@ -1463,7 +1466,12 @@ export function PosEntry() {
         <div
             className={`flex flex-col premium-screen pos-entry pos-entry--workspace${posTheme === 'light' ? ' pos-entry--light' : ''} pos-entry--pane-${mobilePane}`}
         >
-            <h1 className="sr-only">الكاشير — نقطة البيع{' '} <span dir="ltr" lang="en">POS Terminal</span></h1>
+            <h1 className="sr-only">
+                الكاشير — نقطة البيع{' '}
+                <span dir="ltr" lang="en">
+                    POS Terminal
+                </span>
+            </h1>
             {offlineQueueEnabled ? <OfflineConflictBanner /> : null}
             {shift ? (
                 <section className="pos-topbar" aria-label="شريط الكاشير">
@@ -1534,7 +1542,8 @@ export function PosEntry() {
                         <span className="pos-topbar__pod-copy">
                             <time className="erp-numeric" dir="ltr">
                                 {clockText}
-                            </time>                            <small className="erp-numeric" dir="ltr">
+                            </time>{' '}
+                            <small className="erp-numeric" dir="ltr">
                                 {dateText}
                             </small>
                         </span>
@@ -1839,7 +1848,7 @@ export function PosEntry() {
                     {!shiftQuery.isPending && !shiftQuery.isError && !shift ? (
                         <div className="pos-open__wrap">
                             <PosOpenShift
-                    cashierLinks={cashierLinksQuery.data ?? []}
+                                cashierLinks={cashierLinksQuery.data ?? []}
                                 departments={departments}
                                 canSell={canSell}
                                 busy={busy}
@@ -2316,7 +2325,9 @@ export function PosEntry() {
             <Dialog
                 open={receiptPreviewHtml !== null}
                 onOpenChange={(open) => {
-                    if (!open) {setReceiptPreviewHtml(null);}
+                    if (!open) {
+                        setReceiptPreviewHtml(null);
+                    }
                 }}
                 title="معاينة الإيصال (كما يُطبَع)"
                 description="هذه نفس ورقة الإيصال التي تخرج من الطابعة — أبيض وأسود."
@@ -2337,7 +2348,9 @@ export function PosEntry() {
                 onClose={() => setSettingsOpen(false)}
                 departmentId={shift?.departmentId ?? null}
                 role={role}
-                onChanged={() => { void refreshAll(); }}
+                onChanged={() => {
+                    void refreshAll();
+                }}
             />
         </div>
     );

@@ -3,8 +3,8 @@ import { StrictMode } from 'react';
 import { createRoot } from 'react-dom/client';
 import { TooltipProvider } from '@/components/ui/tooltip';
 import { App } from './App';
-import { registerCashierPwa } from './lib/pwa';
 import { LanguageProvider } from './lib/i18n';
+import { registerCashierPwa } from './lib/pwa';
 import { applyInitialTheme } from './ui/theme';
 import './styles.css';
 import './mobile.css';
@@ -39,7 +39,9 @@ registerCashierPwa();
         try {
             const err = error instanceof Error ? error : new Error(String(error));
             const message = String((err as Error).message || error).slice(0, 280);
-            if (!message) { return; }
+            if (!message) {
+                return;
+            }
             const payload = {
                 kind,
                 message,
@@ -48,9 +50,10 @@ registerCashierPwa();
                 version: 'v3',
             };
             const body = JSON.stringify(payload);
-            const sent = typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function'
-                ? navigator.sendBeacon('/api/security/client-error', new Blob([body], { type: 'application/json' }))
-                : false;
+            const sent =
+                typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function'
+                    ? navigator.sendBeacon('/api/security/client-error', new Blob([body], { type: 'application/json' }))
+                    : false;
             if (!sent) {
                 void fetch('/api/security/client-error', {
                     method: 'POST',

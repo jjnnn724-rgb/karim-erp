@@ -81,9 +81,7 @@ export function Combobox({
         if (!needle) {
             return options;
         }
-        return options.filter(
-            (option) => normalize(option.label).includes(needle) || normalize(option.value).includes(needle),
-        );
+        return options.filter((option) => normalize(option.label).includes(needle) || normalize(option.value).includes(needle));
     }, [options, query]);
 
     const activeOption = activeIndex >= 0 ? filtered[activeIndex] : undefined;
@@ -199,10 +197,7 @@ export function Combobox({
                     }}
                     className={cn(controlClassName, controlSizeClassName.md, 'pe-9')}
                 />
-                <span
-                    aria-hidden="true"
-                    className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-muted"
-                >
+                <span aria-hidden="true" className="pointer-events-none absolute end-2.5 top-1/2 -translate-y-1/2 text-muted">
                     <ChevronIcon className="size-4" />
                 </span>
                 {open ? (
@@ -246,9 +241,7 @@ export function Combobox({
                                 >
                                     <span className="flex flex-col">
                                         <span>{option.label}</span>
-                                        {option.hint ? (
-                                            <span className="text-caption text-faint">{option.hint}</span>
-                                        ) : null}
+                                        {option.hint ? <span className="text-caption text-faint">{option.hint}</span> : null}
                                     </span>
                                     {option.value === value ? (
                                         <span aria-hidden="true" className="text-brand-text">

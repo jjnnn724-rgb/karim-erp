@@ -68,11 +68,7 @@ describe('عقد مسح الباركود', () => {
     });
 
     it('يرفض ربط كود مأخوذ، ويطلب تأكيدًا عند خطأ GS1 أو استبدال كود الصنف', () => {
-        const rows = [
-            item(1, 'أرز', { barcode: '4006381333931' }),
-            item(2, 'سكر', { barcode: '96385074' }),
-            item(3, 'ملح'),
-        ];
+        const rows = [item(1, 'أرز', { barcode: '4006381333931' }), item(2, 'سكر', { barcode: '96385074' }), item(3, 'ملح')];
         expect(assignDecision(rows, '4006381333931', 3).state).toBe('taken');
         expect(assignDecision(rows, '4006381333932', 3).state).toBe('suspect');
         expect(assignDecision(rows, '042100005264', 2).state).toBe('duplicate');

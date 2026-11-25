@@ -3,13 +3,21 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { BarList, KpiCard, RangeControls, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
-import { getAppKey, getAccessToken } from '../lib/auth';
+import { getAccessToken, getAppKey } from '../lib/auth';
 import { formatCurrency } from '../lib/format';
 import { errorMessage, intOf, moneyOf, presetRange, qtyOf, rangeProblem, shareOf, shiftIsoDays, textOf } from '../lib/reporting';
-import { fetchItemInvoices, fetchItemSales, fetchOrderDetail, groupItemSales, YARA_MAX_DAYS, type ItemInvoiceRow, type ItemSales } from '../lib/yara-reports';
-import { definedProps } from '../ui/definedProps';
-import type { AnswerItem } from '../ui/AnswerStrip';
+import {
+    fetchItemInvoices,
+    fetchItemSales,
+    fetchOrderDetail,
+    groupItemSales,
+    type ItemInvoiceRow,
+    type ItemSales,
+    YARA_MAX_DAYS,
+} from '../lib/yara-reports';
 import { AnswerStrip, ScreenHero } from '../ui';
+import type { AnswerItem } from '../ui/AnswerStrip';
+import { definedProps } from '../ui/definedProps';
 
 /**
  * تحليل المبيعات — صفحة واحدة بتابين (دمج 2026-11-20، قرار المالك):
@@ -50,7 +58,10 @@ export function SalesAnalyzer() {
     });
     // دلتا الجواب: نفس طول النافذة قبلها — رقمان فقط لا كثافة
     const prevWindow = useMemo(() => {
-        const days = Math.max(1, Math.round((new Date(range.to + 'T12:00:00Z').getTime() - new Date(range.from + 'T12:00:00Z').getTime()) / 86400000));
+        const days = Math.max(
+            1,
+            Math.round((new Date(range.to + 'T12:00:00Z').getTime() - new Date(range.from + 'T12:00:00Z').getTime()) / 86400000),
+        );
         return { from: shiftIsoDays(range.from, -days), to: shiftIsoDays(range.from, -1) };
     }, [range.from, range.to]);
     const prevQuery = useQuery({
@@ -69,9 +80,10 @@ export function SalesAnalyzer() {
 
     const net = itemsQuery.data?.totals?.net;
     const prevNet = prevQuery.data?.totals?.net;
-    const deltaPct = Number.isFinite(net) && Number.isFinite(prevNet) && Number(prevNet) > 0
-        ? Math.round((((Number(net) - Number(prevNet)) / Number(prevNet)) * 100) * 10) / 10
-        : null;
+    const deltaPct =
+        Number.isFinite(net) && Number.isFinite(prevNet) && Number(prevNet) > 0
+            ? Math.round(((Number(net) - Number(prevNet)) / Number(prevNet)) * 100 * 10) / 10
+            : null;
     const groupedCount = itemsQuery.data
         ? new Set((itemsQuery.data.rows ?? []).map((row) => String(row.item_code ?? row.item_name ?? ''))).size
         : 0;
@@ -111,9 +123,7 @@ export function SalesAnalyzer() {
                 title="تحليل المبيعات"
                 english="SALES ANALYZER"
                 description="تحليل الأصناف من مرآة YaraSoft مع تنقيب تفصيلي: فواتير كل صنف وتفاصيل الأمر وإيصاله — في صفحة واحدة."
-                answer={
-                    <AnswerStrip items={heroAggregateItems} />
-                }
+                answer={<AnswerStrip items={heroAggregateItems} />}
                 actions={
                     <button
                         type="button"
@@ -150,7 +160,12 @@ export function SalesAnalyzer() {
                 </div>
             </SectionCard>
 
-            <div role="tablist" aria-label="تبويبات تحليل المبيعات" className="flex gap-xs border-b border-hairline px-sm" data-erp-print-hide>
+            <div
+                role="tablist"
+                aria-label="تبويبات تحليل المبيعات"
+                className="flex gap-xs border-b border-hairline px-sm"
+                data-erp-print-hide
+            >
                 <button
                     type="button"
                     role="tab"
@@ -161,7 +176,9 @@ export function SalesAnalyzer() {
                         setTab('aggregate');
                     }}
                     className={`rounded-t-md px-md py-xs text-button-md ${
-                        tab === 'aggregate' ? 'border-b-2 border-primary font-medium text-primary' : 'text-muted hover:bg-surface-hover hover:text-ink'
+                        tab === 'aggregate'
+                            ? 'border-b-2 border-primary font-medium text-primary'
+                            : 'text-muted hover:bg-surface-hover hover:text-ink'
                     }`}
                 >
                     تحليل مجمّع
@@ -176,7 +193,9 @@ export function SalesAnalyzer() {
                         setTab('inquiry');
                     }}
                     className={`rounded-t-md px-md py-xs text-button-md ${
-                        tab === 'inquiry' ? 'border-b-2 border-primary font-medium text-primary' : 'text-muted hover:bg-surface-hover hover:text-ink'
+                        tab === 'inquiry'
+                            ? 'border-b-2 border-primary font-medium text-primary'
+                            : 'text-muted hover:bg-surface-hover hover:text-ink'
                     }`}
                 >
                     استعلام تفصيلي
@@ -379,9 +398,7 @@ function InquiryPanel({ from, to, initialItem }: { from: string; to: string; ini
                 </div>
             </SectionCard>
 
-            {!item && !code ? (
-                <StateEmpty title="ابدأ باسم صنف" hint="اكتب اسم الصنف أو كوده لعرض فواتيره في الفترة المحددة." />
-            ) : null}
+            {!item && !code ? <StateEmpty title="ابدأ باسم صنف" hint="اكتب اسم الصنف أو كوده لعرض فواتيره في الفترة المحددة." /> : null}
 
             {invoicesQuery.isPending && (item || code) ? <StateLoading label="جارٍ تنقيب فواتير الصنف…" /> : null}
 
@@ -399,7 +416,12 @@ function InquiryPanel({ from, to, initialItem }: { from: string; to: string; ini
                     <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4" aria-label="مؤشرات تنقيب الصنف">
                         <KpiCard label="فواتير الصنف" english="Invoices" value={intOf(total)} hint="كل الصفحات على الخادم" />
                         <KpiCard label="كمية الصنف" english="Item qty" value={qtyOf(totals?.qty)} hint="مجموع الكمية داخل تلك الفواتير" />
-                        <KpiCard label="صافي الصنف" english="Item net" value={moneyOf(totals?.net)} hint={`ضريبة ${moneyOf(totals?.vat)}`} />
+                        <KpiCard
+                            label="صافي الصنف"
+                            english="Item net"
+                            value={moneyOf(totals?.net)}
+                            hint={`ضريبة ${moneyOf(totals?.vat)}`}
+                        />
                         <KpiCard
                             label="نوع المطابقة"
                             english="Match"
@@ -449,7 +471,12 @@ function InquiryPanel({ from, to, initialItem }: { from: string; to: string; ini
                                     </thead>
                                     <tbody>
                                         {invoices.map((invoice) => (
-                                            <InvoiceRow key={invoice.doc_no} invoice={invoice} open={openDoc === invoice.doc_no} onOpen={setOpenDoc} />
+                                            <InvoiceRow
+                                                key={invoice.doc_no}
+                                                invoice={invoice}
+                                                open={openDoc === invoice.doc_no}
+                                                onOpen={setOpenDoc}
+                                            />
                                         ))}
                                     </tbody>
                                 </table>
@@ -599,13 +626,22 @@ function OrderDetailCard({ docNo }: { docNo: string }) {
                             المنطقة: <span className="text-ink">{textOf(order.zone_name) || '—'}</span>
                         </li>
                         <li>
-                            الصافي: <span className="erp-numeric text-ink" dir="ltr">{formatCurrency(Number(order.net ?? 0))}</span>
+                            الصافي:{' '}
+                            <span className="erp-numeric text-ink" dir="ltr">
+                                {formatCurrency(Number(order.net ?? 0))}
+                            </span>
                         </li>
                         <li>
-                            الضريبة: <span className="erp-numeric text-ink" dir="ltr">{formatCurrency(Number(order.vat ?? 0))}</span>
+                            الضريبة:{' '}
+                            <span className="erp-numeric text-ink" dir="ltr">
+                                {formatCurrency(Number(order.vat ?? 0))}
+                            </span>
                         </li>
                         <li>
-                            المدفوع: <span className="erp-numeric text-ink" dir="ltr">{formatCurrency(Number(order.payed ?? 0))}</span>
+                            المدفوع:{' '}
+                            <span className="erp-numeric text-ink" dir="ltr">
+                                {formatCurrency(Number(order.payed ?? 0))}
+                            </span>
                         </li>
                     </ul>
                     {lines.length === 0 ? (
@@ -631,7 +667,10 @@ function OrderDetailCard({ docNo }: { docNo: string }) {
                                 </thead>
                                 <tbody>
                                     {lines.map((line, index) => (
-                                        <tr key={`${textOf(line.code)}-${textOf(line.name)}-${String(index)}`} className="border-b border-hairline">
+                                        <tr
+                                            key={`${textOf(line.code)}-${textOf(line.name)}-${String(index)}`}
+                                            className="border-b border-hairline"
+                                        >
                                             <td className="px-sm py-xxs text-ink">{textOf(line.name) || textOf(line.code) || '—'}</td>
                                             <td className="erp-numeric px-sm py-xxs" dir="ltr">
                                                 {qtyOf(line.qty)}

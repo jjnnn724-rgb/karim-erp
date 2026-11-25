@@ -144,9 +144,7 @@ export const COVERAGE_STATUS_LABEL: Record<CoverageStatus, string> = {
 
 export function buildCoverageRows(summary: ExternalSalesSummary): CoverageRow[] {
     const sold = new Map<string, number>(summary.sold.byItem.map((row) => [String(row.item), Number(row.qty) || 0]));
-    const issued = new Map<string, (typeof summary.issued.byItem)[number]>(
-        summary.issued.byItem.map((row) => [String(row.item), row]),
-    );
+    const issued = new Map<string, (typeof summary.issued.byItem)[number]>(summary.issued.byItem.map((row) => [String(row.item), row]));
     const names = new Set<string>([...sold.keys(), ...issued.keys()]);
     const rows: CoverageRow[] = [];
     for (const item of names) {

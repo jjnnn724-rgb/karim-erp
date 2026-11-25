@@ -1,8 +1,8 @@
-import { render, screen, fireEvent } from '@testing-library/react';
+import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { VIEWS_KEY_PREFIX } from '../lib/saved-views';
 import { RegisterShell } from './RegisterShell';
 import { expectNoAxeViolations, installDomPolyfills } from './test-utils';
-import { VIEWS_KEY_PREFIX } from '../lib/saved-views';
 
 installDomPolyfills();
 
@@ -50,7 +50,12 @@ describe('RegisterShell', () => {
     it('حفظ عرضة: اسم + مرشّحات حالية ⇒ زر باسمها يطبّقها عبر onApplyView', () => {
         const onApplyView = vi.fn();
         render(
-            <RegisterShell viewKey="test-2" storage={storage} currentFilters={{ status: 'pending', dept: 'kitchen' }} onApplyView={onApplyView}>
+            <RegisterShell
+                viewKey="test-2"
+                storage={storage}
+                currentFilters={{ status: 'pending', dept: 'kitchen' }}
+                onApplyView={onApplyView}
+            >
                 <span>المحتوى</span>
             </RegisterShell>,
         );
@@ -82,9 +87,11 @@ describe('RegisterShell', () => {
     });
 
     it('المرشّحات الفارغة تعطّل زر الحفظ', () => {
-        render(<RegisterShell viewKey="test-4" storage={storage}>
-            <span>المحتوى</span>
-        </RegisterShell>);
+        render(
+            <RegisterShell viewKey="test-4" storage={storage}>
+                <span>المحتوى</span>
+            </RegisterShell>,
+        );
         expect((screen.getByRole('button', { name: /حفظ عرضة/ }) as HTMLButtonElement).disabled).toBe(true);
     });
 
@@ -122,7 +129,14 @@ describe('RegisterShell', () => {
 
     it('بلا مخالفات axe', async () => {
         const { container } = render(
-            <RegisterShell viewKey="test-axe" storage={storage} currentFilters={{ q: 'طماطم' }} twin={twin} filters={<span>فلاتر</span>} summary={<span role="status">3</span>}>
+            <RegisterShell
+                viewKey="test-axe"
+                storage={storage}
+                currentFilters={{ q: 'طماطم' }}
+                twin={twin}
+                filters={<span>فلاتر</span>}
+                summary={<span role="status">3</span>}
+            >
                 <span>المحتوى</span>
             </RegisterShell>,
         );

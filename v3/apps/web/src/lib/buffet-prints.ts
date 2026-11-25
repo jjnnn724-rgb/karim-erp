@@ -4,12 +4,11 @@
  * المصادر تُكتب في النسخة «الاحترافية» حصرًا (USDA FDC + EU FIC 1169/2011).
  */
 
-import { printSmart } from './print-viewer';
 import type { BuffetDish, BuffetNutrition } from './buffet';
+import { allergenEn, ingredientEn } from './buffet-en';
 import { CARD_FONT_CSS } from './card-fonts';
 import { COMPANY_LOGO as LOGO } from './company-logo';
-import { ingredientEn, allergenEn } from './buffet-en';
-
+import { printSmart } from './print-viewer';
 
 export interface PrintOptions {
     /** طبعة احترافية — تظهر المصادر أسفل الورقة */
@@ -17,16 +16,32 @@ export interface PrintOptions {
 }
 
 const esc = (v: unknown): string =>
-    String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    String(v ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
 
 const num = (n: number | null | undefined, digits = 1): string =>
-    n == null || Number.isNaN(Number(n)) ? '—' : Number(n).toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
-const numInt = (n: number | null | undefined): string =>
-    n == null || Number.isNaN(Number(n)) ? '—' : String(Math.round(Number(n)));
+    n == null || Number.isNaN(Number(n))
+        ? '—'
+        : Number(n).toLocaleString('en-US', { minimumFractionDigits: digits, maximumFractionDigits: digits });
+const numInt = (n: number | null | undefined): string => (n == null || Number.isNaN(Number(n)) ? '—' : String(Math.round(Number(n))));
 
-function nutritionPerServing(dish: BuffetDish): { kcal: number | null; protein: number | null; carbs: number | null; fat: number | null; fiber: number | null; sodium: number | null; allergens: string[]; unmatched: number } | null {
+function nutritionPerServing(dish: BuffetDish): {
+    kcal: number | null;
+    protein: number | null;
+    carbs: number | null;
+    fat: number | null;
+    fiber: number | null;
+    sodium: number | null;
+    allergens: string[];
+    unmatched: number;
+} | null {
     const n = dish.nutrition as BuffetNutrition | null | undefined;
-    if (!n) {return null;}
+    if (!n) {
+        return null;
+    }
     const low = n.perServing?.low;
     const src = low ?? n.totals; // عند غياب عائد محدد — تُعرض قيم الوعاء كاملًا (موسومة) لا تقدير مفترض
     return {
@@ -40,8 +55,6 @@ function nutritionPerServing(dish: BuffetDish): { kcal: number | null; protein: 
         unmatched: (n.unmatched ?? []).length,
     };
 }
-
-
 
 const CARD_CSS = `
 ${CARD_FONT_CSS}
@@ -120,15 +133,14 @@ function cardHtml(dish: BuffetDish): string {
         ? allergens
               .map((a) => {
                   const en = allergenEn(a);
-                  return en
-                      ? `<span>${esc(a)} · <span lang="en" dir="ltr">${esc(en)}</span></span>`
-                      : `<span>${esc(a)}</span>`;
+                  return en ? `<span>${esc(a)} · <span lang="en" dir="ltr">${esc(en)}</span></span>` : `<span>${esc(a)}</span>`;
               })
               .join(' · ')
         : '<span>لا توجد مسببات حساسية معروفة (حسب المكوّنات المسجّلة) · <span lang="en" dir="ltr">No known allergens (as per recorded ingredients)</span></span>';
-    const unmatchedNote = pp && pp.unmatched > 0
-        ? `<p class="card__unmatched">مكوّنات خارج جدول USDA: ${pp.unmatched} — تُراجع لاحقًا، ولا تُقدَّر بأرقام وهمية.</p>`
-        : '';
+    const unmatchedNote =
+        pp && pp.unmatched > 0
+            ? `<p class="card__unmatched">مكوّنات خارج جدول USDA: ${pp.unmatched} — تُراجع لاحقًا، ولا تُقدَّر بأرقام وهمية.</p>`
+            : '';
     return `<article class="card">
         <div class="card__ribbon">
             <img src="${LOGO}" alt="شعار مطاعم الشرفة العالمي" width="42" height="42">
@@ -195,19 +207,25 @@ ${pages.join('')}
 
 /** ورقة السبورة — غداء أو عشاء — هوية الشرفة العالمي الكربونية الفاخرة (A4) */
 export function buildBoardHtml(day: string, meal: string, dishes: BuffetDish[], opts: PrintOptions = {}): string {
-    const rows = dishes.map((d, i) => {
-        const pp = nutritionPerServing(d);
-        const allergens = pp?.allergens.length ? pp.allergens.join(' · ') : '—';
-        return `<tr>
+    const rows =
+        dishes
+            .map((d, i) => {
+                const pp = nutritionPerServing(d);
+                const allergens = pp?.allergens.length ? pp.allergens.join(' · ') : '—';
+                return `<tr>
             <td class="b-num">${i + 1}</td>
             <td class="b-name">${esc(d.name)}<small>${esc(d.category)} · ${esc(d.yields || '')}</small></td>
             <td class="b-desc">${esc((d.description ?? '').trim() || '—')}</td>
             <td class="b-meta"><b>${numInt(pp?.kcal)}</b><span>سعرات</span></td>
             <td class="b-flag">${esc(allergens)}</td>
         </tr>`;
-    }).join('') || '<tr><td colspan="5" style="text-align:center;color:#a89a68;padding:22px">لا أصناف مجدولة لهذا اليوم — أضف من الخطة الأسبوعية</td></tr>';
+            })
+            .join('') ||
+        '<tr><td colspan="5" style="text-align:center;color:#a89a68;padding:22px">لا أصناف مجدولة لهذا اليوم — أضف من الخطة الأسبوعية</td></tr>';
     const printed = new Date().toLocaleTimeString('ar-SA', { hour: '2-digit', minute: '2-digit' });
-    const sources = opts.pro ? `<p class="board__sources"><b>المصادر:</b> USDA FoodData Central — SR Legacy · EU FIC 1169/2011 · HACCP / ISO 22000 · القيم تقريبية وقد تختلف حسب مصدر الخامات.</p>` : '';
+    const sources = opts.pro
+        ? `<p class="board__sources"><b>المصادر:</b> USDA FoodData Central — SR Legacy · EU FIC 1169/2011 · HACCP / ISO 22000 · القيم تقريبية وقد تختلف حسب مصدر الخامات.</p>`
+        : '';
     return `<!DOCTYPE html>
 <html lang="ar" dir="rtl">
 <head>
@@ -334,20 +352,22 @@ function recipeBody(dish: BuffetDish, opts: PrintOptions = {}): string {
     const englishDesc = (dish.description_en ?? '').trim();
     const englishName = (dish.name_en ?? '').trim();
     const method = (dish.notes ?? '').trim();
-    const nutritionNote = pp?.unmatched && pp.unmatched > 0
-        ? `مكوّنات خارج جدول USDA: ${pp.unmatched} — تُراجع لاحقًا.`
-        : '';
-    const ingredientsRows = dish.lines.map((line, i) => {
-        const en = ingredientEn(line.name);
-        return `
+    const nutritionNote = pp?.unmatched && pp.unmatched > 0 ? `مكوّنات خارج جدول USDA: ${pp.unmatched} — تُراجع لاحقًا.` : '';
+    const ingredientsRows = dish.lines
+        .map((line, i) => {
+            const en = ingredientEn(line.name);
+            return `
         <tr>
             <td class="r-num">${i + 1}</td>
             <td class="r-name">${esc(line.name)}${en ? `<span class="r-name-en" lang="en" dir="ltr">${esc(en)}</span>` : ''}</td>
             <td class="r-qty">${esc(line.qty)}</td>
             <td class="r-unit">${esc(line.unit)}</td>
         </tr>`;
-    }).join('');
-    const sources = opts.pro ? `<p class="recipe__sources"><b>المصادر:</b> USDA FoodData Central — SR Legacy · EU FIC 1169/2011 (القائمة الـ14 لمسببات الحساسية) · HACCP / ISO 22000 · القيم تقديرية وقد تختلف حسب مصدر الخامات.</p>` : '';
+        })
+        .join('');
+    const sources = opts.pro
+        ? `<p class="recipe__sources"><b>المصادر:</b> USDA FoodData Central — SR Legacy · EU FIC 1169/2011 (القائمة الـ14 لمسببات الحساسية) · HACCP / ISO 22000 · القيم تقديرية وقد تختلف حسب مصدر الخامات.</p>`
+        : '';
     return `<section class="recipe">
     <div class="recipe__top">
         <img src="${LOGO}" alt="شعار مطاعم الشرفة العالمي" width="46" height="46">

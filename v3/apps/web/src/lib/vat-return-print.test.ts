@@ -13,7 +13,7 @@ const report: VatReturn = {
     carry_forward_credit: 0,
     payable_balance: 250,
     recoverable_balance: 100,
-    unclassified_vat_movements: { output_debits: 40, output_credits: 0, input_debits: 0, input_credits: 10 },
+    unclassified_vat_movements: { output_debits: 40, input_credits: 10 },
     purchases_crosscheck: { count: 3, net: 800, vat: 120 },
 };
 
@@ -49,8 +49,9 @@ describe('ورقة مراجعة ضريبة القيمة المضافة', () => {
         expect(html).toContain('المحاسب — إعداد');
         expect(html).toContain('المراجع — اعتماد المراجعة الداخلية');
         expect(html).toContain('ليست إقرارًا رسميًا');
-        expect(html).toContain('data-vat-print');
-        expect(html).toContain('data-vat-close');
+        // الشريط الذهبي الموحّد (طباعة/مشاركة/إغلاق) يُحقن في طبقة printSmart — لم يعد جزءًا من محتوى الورقة.
+        expect(html).not.toContain('data-vat-print');
+        expect(html).not.toContain('data-vat-close');
     });
 
     it('تحذّر حين توجد حركات غير مصنّفة', () => {
@@ -61,7 +62,7 @@ describe('ورقة مراجعة ضريبة القيمة المضافة', () => {
     it('تعلن الجاهزية حين لا فرق ولا حركات غير مصنّفة', () => {
         const clean: VatReturn = {
             ...report,
-            unclassified_vat_movements: { output_debits: 0, output_credits: 0, input_debits: 0, input_credits: 0 },
+            unclassified_vat_movements: { output_debits: 0, input_credits: 0 },
         };
         const html = vatReviewPrintHtml(clean, { byName: 'محاسب', currency: 'SAR' });
         expect(html).toContain('الأرقام جاهزة للمراجعة البشرية');
@@ -70,12 +71,21 @@ describe('ورقة مراجعة ضريبة القيمة المضافة', () => {
     it('تهرّب HTML في النصوص القادمة من الخادم', () => {
         const hostile: VatReturn = {
             ...report,
-            unclassified_vat_movements: { output_debits: 0, output_credits: 0, input_debits: 0, input_credits: 0 },
+            unclassified_vat_movements: { output_debits: 0, input_credits: 0 },
             purchases_crosscheck: { count: 1, net: 0, vat: 0 },
         };
         const html = vatReviewPrintHtml(hostile, { byName: '<script>alert(1)</script>', currency: 'SAR' });
         expect(html).not.toContain('<script>alert(1)</script>');
         expect(html).toContain('&lt;script&gt;');
+    });
+
+    it('تضمّن ورقة عمل الإقرار وتعلن غير المسجّل بلا صفر', () => {
+        const html = vatReviewPrintHtml(report, { byName: 'محاسب', currency: 'SAR' });
+        expect(html).toContain('ورقة عمل الإقرار');
+        expect(html).toContain('المبيعات — ضريبة المخرجات');
+        expect(html).toContain('المشتريات — ضريبة المدخلات');
+        expect(html).toContain('غير مسجّلة');
+        expect(html).toContain('الموعد الإرشادي للتقديم');
     });
 });
 
@@ -88,8 +98,13 @@ describe('تصدير ملخص المراجعة', () => {
     });
 
     it('يسمّي الملف بالفترة', () => {
-        expect(vatReviewFilename('2026-10-01', '2026-10-31')).toBe(
-            'مراجعة-ضريبة-القيمة-المضافة-2026-10-01_2026-10-31.csv',
-        );
+        expect(vatReviewFilename('2026-10-01', '2026-10-31')).toBe('مراجعة-ضريبة-القيمة-المضافة-2026-10-01_2026-10-31.csv');
+    });
+
+    it('يصدر خانات الإقرار ويحفظ غير المسجّل صراحةً', () => {
+        const csv = vatReviewCsv(report);
+        expect(csv).toContain('"خانة 1 — مبيعات بالمعدل القياسي');
+        expect(csv).toContain('غير مسجّلة');
+        expect(csv).toContain('"صافي المستندات قبل التسويات","غير متاح"');
     });
 });

@@ -18,12 +18,12 @@ import {
     fetchAllPosProducts,
     fetchPosDepartments,
     fetchPosProducts,
+    type PosProduct,
+    type PosProductPayload,
     removePosProductImage,
     updatePosProduct,
     updatePosProductPrice,
     uploadPosProductImage,
-    type PosProduct,
-    type PosProductPayload,
 } from '../../lib/pos';
 import { Button, Input } from '../../ui';
 import { useToast } from '../../ui/Toast';
@@ -73,19 +73,27 @@ interface ItemFormState {
 }
 
 const EMPTY_FORM: ItemFormState = {
-    name_ar: '', name_en: '', barcode: '', price: '', cost_price: '', vat_rate: '15',
-    category: '', unit: 'قطعة', department_id: '', is_active: true,
+    name_ar: '',
+    name_en: '',
+    barcode: '',
+    price: '',
+    cost_price: '',
+    vat_rate: '15',
+    category: '',
+    unit: 'قطعة',
+    department_id: '',
+    is_active: true,
 };
 
 function formFromProduct(p: PosProduct): ItemFormState {
     return {
         name_ar: p.name_ar ?? '',
-        name_en: (p.name_en ?? '') ?? '',
-        barcode: (p.barcode ?? '') ?? '',
+        name_en: p.name_en ?? '' ?? '',
+        barcode: p.barcode ?? '' ?? '',
         price: String(p.price),
         cost_price: p.cost_price == null ? '' : String(p.cost_price),
         vat_rate: String(p.vat_rate ?? 15),
-        category: (p.category ?? '') ?? '',
+        category: p.category ?? '' ?? '',
         unit: (p.unit ?? '') || 'قطعة',
         department_id: p.department_id == null ? '' : String(p.department_id),
         is_active: p.is_active !== false,
@@ -152,18 +160,19 @@ export function PosSettingsPanel({ open, onClose, departmentId, role, onChanged 
     const products = useMemo(() => productsQuery.data ?? [], [productsQuery.data]);
     const filtered = useMemo(() => {
         const q = search.trim().toLowerCase();
-        if (!q) { return products; }
-        return products.filter((p) =>
-            p.name_ar?.toLowerCase().includes(q)
-            || p.name_en?.toLowerCase().includes(q)
-            || p.barcode?.toLowerCase().includes(q)
-            || p.category?.toLowerCase().includes(q));
+        if (!q) {
+            return products;
+        }
+        return products.filter(
+            (p) =>
+                p.name_ar?.toLowerCase().includes(q) ||
+                p.name_en?.toLowerCase().includes(q) ||
+                p.barcode?.toLowerCase().includes(q) ||
+                p.category?.toLowerCase().includes(q),
+        );
     }, [products, search]);
 
-    const categories = useMemo(
-        () => [...new Set(products.map((p) => p.category).filter(Boolean))] as string[],
-        [products],
-    );
+    const categories = useMemo(() => [...new Set(products.map((p) => p.category).filter(Boolean))] as string[], [products]);
 
     /**
      * ذكاء الصور: صورة واحدة مستخدمة في أكثر من صنف = خطأ مؤكد
@@ -173,7 +182,9 @@ export function PosSettingsPanel({ open, onClose, departmentId, role, onChanged 
         const counts = new Map<string, number>();
         for (const p of allProductsQuery.data ?? []) {
             const url = String(p.image_url ?? '').trim();
-            if (url) { counts.set(url, (counts.get(url) ?? 0) + 1); }
+            if (url) {
+                counts.set(url, (counts.get(url) ?? 0) + 1);
+            }
         }
         return counts;
     }, [allProductsQuery.data]);
@@ -182,24 +193,32 @@ export function PosSettingsPanel({ open, onClose, departmentId, role, onChanged 
         const q = imageSearch.trim().toLowerCase();
         return (allProductsQuery.data ?? []).filter((p) => {
             const url = String(p.image_url ?? '').trim();
-            if (imageFilter === 'none' && url) { return false; }
-            if (imageFilter === 'shared' && (!url || (imageUsage.get(url) ?? 0) < 2)) { return false; }
-            if (!q) { return true; }
-            return p.name_ar?.toLowerCase().includes(q)
-                || p.name_en?.toLowerCase().includes(q)
-                || p.category?.toLowerCase().includes(q);
+            if (imageFilter === 'none' && url) {
+                return false;
+            }
+            if (imageFilter === 'shared' && (!url || (imageUsage.get(url) ?? 0) < 2)) {
+                return false;
+            }
+            if (!q) {
+                return true;
+            }
+            return p.name_ar?.toLowerCase().includes(q) || p.name_en?.toLowerCase().includes(q) || p.category?.toLowerCase().includes(q);
         });
     }, [allProductsQuery.data, imageFilter, imageSearch, imageUsage]);
 
     // قفل: لا ترس، لا تنفيذ — حتى لو استُدعي المكوّن بالخطأ.
-    if (!open) { return null; }
+    if (!open) {
+        return null;
+    }
     if (!canItems && !canPrices && !canImages) {
         return (
             <div className="pos-settings" role="dialog" aria-modal="true" aria-label="غير مصرّح">
                 <div className="pos-settings__panel pos-settings__panel--denied">
                     <h2>صلاحيات غير كافية</h2>
                     <p>ترس الضبط للأدوار الأعلى من الكاشير (مدير / مدير قسم / محاسب). أي تغيير بالأسعار يُسجّل باسمك في سجل التدقيق.</p>
-                    <Button variant="ghost" size="sm" onClick={onClose}>إغلاق</Button>
+                    <Button variant="ghost" size="sm" onClick={onClose}>
+                        إغلاق
+                    </Button>
                 </div>
             </div>
         );
@@ -231,8 +250,14 @@ export function PosSettingsPanel({ open, onClose, departmentId, role, onChanged 
     const submitForm = async () => {
         const name = form.name_ar.trim();
         const price = Number(form.price);
-        if (!name) { setFormError('اسم الصنف مطلوب'); return; }
-        if (!Number.isFinite(price) || price < 0) { setFormError('السعر غير صالح'); return; }
+        if (!name) {
+            setFormError('اسم الصنف مطلوب');
+            return;
+        }
+        if (!Number.isFinite(price) || price < 0) {
+            setFormError('السعر غير صالح');
+            return;
+        }
         setBusy(true);
         try {
             const payload = payloadFromForm(form);
@@ -253,7 +278,9 @@ export function PosSettingsPanel({ open, onClose, departmentId, role, onChanged 
     };
 
     const archive = async (p: PosProduct) => {
-        if (!window.confirm(`أرشفة «${p.name_ar}»؟ الصنف يختفي من الكاشير ولن يُحذف من التاريخ.`)) { return; }
+        if (!window.confirm(`أرشفة «${p.name_ar}»؟ الصنف يختفي من الكاشير ولن يُحذف من التاريخ.`)) {
+            return;
+        }
         setBusy(true);
         try {
             await archivePosProduct(p.id);
@@ -268,21 +295,35 @@ export function PosSettingsPanel({ open, onClose, departmentId, role, onChanged 
 
     const savePrice = async (p: PosProduct) => {
         const draft = priceDrafts[p.id];
-        if (draft === undefined) { return; }
+        if (draft === undefined) {
+            return;
+        }
         const next = Number(draft);
         if (!Number.isFinite(next) || next < 0) {
             toast({ title: 'سعر غير صالح', variant: 'error' });
             return;
         }
         if (next === p.price) {
-            setPriceDrafts((prev) => { const copy = { ...prev }; delete copy[p.id]; return copy; });
+            setPriceDrafts((prev) => {
+                const copy = { ...prev };
+                delete copy[p.id];
+                return copy;
+            });
             return;
         }
         setBusy(true);
         try {
             await updatePosProductPrice(p.id, next);
-            setPriceDrafts((prev) => { const copy = { ...prev }; delete copy[p.id]; return copy; });
-            toast({ title: 'تم تغيير السعر', description: `«${p.name_ar}»: ${moneyText(p.price)} → ${moneyText(next)} — سُجل في audit log`, variant: 'success' });
+            setPriceDrafts((prev) => {
+                const copy = { ...prev };
+                delete copy[p.id];
+                return copy;
+            });
+            toast({
+                title: 'تم تغيير السعر',
+                description: `«${p.name_ar}»: ${moneyText(p.price)} → ${moneyText(next)} — سُجل في audit log`,
+                variant: 'success',
+            });
             refresh();
         } catch (err) {
             toast({ title: 'تعذر تغيير السعر', description: err instanceof Error ? err.message : '', variant: 'error' });
@@ -312,7 +353,9 @@ export function PosSettingsPanel({ open, onClose, departmentId, role, onChanged 
     };
 
     const deleteImageFor = async (productId: string, name: string) => {
-        if (!window.confirm(`حذف صورة «${name}»؟ الصنف هيبقى بالأيقونة البديلة.`)) { return; }
+        if (!window.confirm(`حذف صورة «${name}»؟ الصنف هيبقى بالأيقونة البديلة.`)) {
+            return;
+        }
         setBusy(true);
         try {
             await removePosProductImage(productId);
@@ -328,7 +371,7 @@ export function PosSettingsPanel({ open, onClose, departmentId, role, onChanged 
     };
 
     const showTab = (candidate: Tab) => (candidate === 'items' ? canItems : candidate === 'prices' ? canPrices : canImages);
-    const effectiveTab = showTab(tab) ? tab : (canItems ? 'items' : canPrices ? 'prices' : 'images');
+    const effectiveTab = showTab(tab) ? tab : canItems ? 'items' : canPrices ? 'prices' : 'images';
 
     return (
         <div className="pos-settings" role="dialog" aria-modal="true" aria-label="ترس الضبط — إدارة الأصناف والأسعار">
@@ -336,7 +379,17 @@ export function PosSettingsPanel({ open, onClose, departmentId, role, onChanged 
             <div className="pos-settings__panel">
                 <header className="pos-settings__bar">
                     <div className="pos-settings__title">
-                        <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill="none" stroke="currentColor" strokeWidth="1.7" strokeLinecap="round" strokeLinejoin="round">
+                        <svg
+                            aria-hidden="true"
+                            viewBox="0 0 24 24"
+                            width="18"
+                            height="18"
+                            fill="none"
+                            stroke="currentColor"
+                            strokeWidth="1.7"
+                            strokeLinecap="round"
+                            strokeLinejoin="round"
+                        >
                             <circle cx="12" cy="12" r="3.1" />
                             <path d="M19.4 15a1.65 1.65 0 0 0 .33 1.82l.06.06a2 2 0 1 1-2.83 2.83l-.06-.06a1.65 1.65 0 0 0-1.82-.33 1.65 1.65 0 0 0-1 1.51V21a2 2 0 1 1-4 0v-.09a1.65 1.65 0 0 0-1-1.51 1.65 1.65 0 0 0-1.82.33l-.06.06a2 2 0 1 1-2.83-2.83l.06-.06a1.65 1.65 0 0 0 .33-1.82 1.65 1.65 0 0 0-1.51-1H3a2 2 0 1 1 0-4h.09a1.65 1.65 0 0 0 1.51-1 1.65 1.65 0 0 0-.33-1.82l-.06-.06a2 2 0 1 1 2.83-2.83l.06.06a1.65 1.65 0 0 0 1.82.33h0a1.65 1.65 0 0 0 1-1.51V3a2 2 0 1 1 4 0v.09a1.65 1.65 0 0 0 1 1.51h0a1.65 1.65 0 0 0 1.82-.33l.06-.06a2 2 0 1 1 2.83 2.83l-.06.06a1.65 1.65 0 0 0-.33 1.82v0a1.65 1.65 0 0 0 1.51 1H21a2 2 0 1 1 0 4h-.09a1.65 1.65 0 0 0-1.51 1z" />
                         </svg>
@@ -345,22 +398,49 @@ export function PosSettingsPanel({ open, onClose, departmentId, role, onChanged 
                             <p>إدارة الأصناف والأسعار — صلاحيات إدارية أعلى من الكاشير</p>
                         </div>
                     </div>
-                    <button type="button" className="pos-settings__close" onClick={onClose} aria-label="إغلاق اللوحة">×</button>
+                    <button type="button" className="pos-settings__close" onClick={onClose} aria-label="إغلاق اللوحة">
+                        ×
+                    </button>
                 </header>
 
                 <p className="pos-settings__notice" role="note">
-                    كل تغيير سعر أو صنف يُسجَّل في <b>audit log</b> باسمك ودورك ووقت التنفيذ. صلاحية السعر محصورة بـ admin/accountant، وإدارة الأصناف بـ admin/manager.
+                    كل تغيير سعر أو صنف يُسجَّل في <b>audit log</b> باسمك ودورك ووقت التنفيذ. صلاحية السعر محصورة بـ admin/accountant، وإدارة
+                    الأصناف بـ admin/manager.
                 </p>
 
                 <div className="pos-settings__tabs" role="tablist">
                     {canItems ? (
-                        <button type="button" role="tab" aria-selected={effectiveTab === 'items'} className={`pos-settings__tab${effectiveTab === 'items' ? ' is-active' : ''}`} onClick={() => setTab('items')}>الأصناف</button>
+                        <button
+                            type="button"
+                            role="tab"
+                            aria-selected={effectiveTab === 'items'}
+                            className={`pos-settings__tab${effectiveTab === 'items' ? ' is-active' : ''}`}
+                            onClick={() => setTab('items')}
+                        >
+                            الأصناف
+                        </button>
                     ) : null}
                     {canPrices ? (
-                        <button type="button" role="tab" aria-selected={effectiveTab === 'prices'} className={`pos-settings__tab${effectiveTab === 'prices' ? ' is-active' : ''}`} onClick={() => setTab('prices')}>الأسعار</button>
+                        <button
+                            type="button"
+                            role="tab"
+                            aria-selected={effectiveTab === 'prices'}
+                            className={`pos-settings__tab${effectiveTab === 'prices' ? ' is-active' : ''}`}
+                            onClick={() => setTab('prices')}
+                        >
+                            الأسعار
+                        </button>
                     ) : null}
                     {canImages ? (
-                        <button type="button" role="tab" aria-selected={effectiveTab === 'images'} className={`pos-settings__tab${effectiveTab === 'images' ? ' is-active' : ''}`} onClick={() => setTab('images')}>صور المنيو</button>
+                        <button
+                            type="button"
+                            role="tab"
+                            aria-selected={effectiveTab === 'images'}
+                            className={`pos-settings__tab${effectiveTab === 'images' ? ' is-active' : ''}`}
+                            onClick={() => setTab('images')}
+                        >
+                            صور المنيو
+                        </button>
                     ) : null}
                 </div>
 
@@ -374,7 +454,9 @@ export function PosSettingsPanel({ open, onClose, departmentId, role, onChanged 
                             aria-label="بحث في الأصناف"
                         />
                         {effectiveTab === 'items' && canItems ? (
-                            <Button variant="primary" size="sm" onClick={openNewForm} disabled={busy}>+ إضافة صنف</Button>
+                            <Button variant="primary" size="sm" onClick={openNewForm} disabled={busy}>
+                                + إضافة صنف
+                            </Button>
                         ) : null}
                     </div>
 
@@ -393,14 +475,32 @@ export function PosSettingsPanel({ open, onClose, departmentId, role, onChanged 
                                     aria-label="بحث في صور الأصناف"
                                 />
                                 <div className="pos-settings__filters" role="group" aria-label="تصفية الصور">
-                                    <button type="button" className={`pos-settings__chip${imageFilter === 'all' ? ' is-active' : ''}`} onClick={() => setImageFilter('all')}>الكل</button>
-                                    <button type="button" className={`pos-settings__chip${imageFilter === 'none' ? ' is-active' : ''}`} onClick={() => setImageFilter('none')}>بدون صورة</button>
-                                    <button type="button" className={`pos-settings__chip${imageFilter === 'shared' ? ' is-active' : ''}`} onClick={() => setImageFilter('shared')}>صورة مشتركة (راجعها)</button>
+                                    <button
+                                        type="button"
+                                        className={`pos-settings__chip${imageFilter === 'all' ? ' is-active' : ''}`}
+                                        onClick={() => setImageFilter('all')}
+                                    >
+                                        الكل
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`pos-settings__chip${imageFilter === 'none' ? ' is-active' : ''}`}
+                                        onClick={() => setImageFilter('none')}
+                                    >
+                                        بدون صورة
+                                    </button>
+                                    <button
+                                        type="button"
+                                        className={`pos-settings__chip${imageFilter === 'shared' ? ' is-active' : ''}`}
+                                        onClick={() => setImageFilter('shared')}
+                                    >
+                                        صورة مشتركة (راجعها)
+                                    </button>
                                 </div>
                             </div>
                             <p className="pos-settings__hint">
-                                «صورة مشتركة» = نفس الصورة مستخدمة في أكثر من صنف — سببMost شيوعًا لصورة غلط على صنف.
-                                ارفع صورة كل صنف من هنا لتظهر صح في الكاشير.
+                                «صورة مشتركة» = نفس الصورة مستخدمة في أكثر من صنف — سببMost شيوعًا لصورة غلط على صنف. ارفع صورة كل صنف من هنا
+                                لتظهر صح في الكاشير.
                             </p>
                             {allProductsQuery.isPending ? <p className="pos-settings__state">جاري تحميل الأصناف…</p> : null}
                             <ul className="pos-settings__images-grid">
@@ -420,11 +520,25 @@ export function PosSettingsPanel({ open, onClose, departmentId, role, onChanged 
                                                 ) : null}
                                             </span>
                                             <span className="pos-settings__image-actions">
-                                                <button type="button" className="pos-settings__action" onClick={() => pickImageFile(p.id)} disabled={busy}>
+                                                <button
+                                                    type="button"
+                                                    className="pos-settings__action"
+                                                    onClick={() => pickImageFile(p.id)}
+                                                    disabled={busy}
+                                                >
                                                     {url ? 'تغيير' : 'رفع صورة'}
                                                 </button>
                                                 {url ? (
-                                                    <button type="button" className="pos-settings__action pos-settings__action--danger" onClick={() => { void deleteImageFor(p.id, p.name_ar ?? String(p.id)); }} disabled={busy}>حذف</button>
+                                                    <button
+                                                        type="button"
+                                                        className="pos-settings__action pos-settings__action--danger"
+                                                        onClick={() => {
+                                                            void deleteImageFor(p.id, p.name_ar ?? String(p.id));
+                                                        }}
+                                                        disabled={busy}
+                                                    >
+                                                        حذف
+                                                    </button>
                                                 ) : null}
                                             </span>
                                         </li>
@@ -440,7 +554,9 @@ export function PosSettingsPanel({ open, onClose, departmentId, role, onChanged 
                                     const file = event.target.files?.[0];
                                     const target = imageTarget;
                                     event.target.value = '';
-                                    if (file && target) { void uploadImageFor(target, file); }
+                                    if (file && target) {
+                                        void uploadImageFor(target, file);
+                                    }
                                 }}
                             />
                         </div>
@@ -448,37 +564,115 @@ export function PosSettingsPanel({ open, onClose, departmentId, role, onChanged 
 
                     {/* ── نموذج صنف (جديد/تعديل) ── */}
                     {formMode !== 'closed' && effectiveTab === 'items' && canItems ? (
-                        <form className="pos-settings__form" onSubmit={(e) => { e.preventDefault(); void submitForm(); }}>
+                        <form
+                            className="pos-settings__form"
+                            onSubmit={(e) => {
+                                e.preventDefault();
+                                void submitForm();
+                            }}
+                        >
                             <div className="pos-settings__grid">
-                                <label>الاسم بالعربية *<Input value={form.name_ar} onChange={(e) => setForm({ ...form, name_ar: e.target.value })} autoFocus /></label>
-                                <label>الاسم بالإنجليزية<Input value={form.name_en} onChange={(e) => setForm({ ...form, name_en: e.target.value })} dir="ltr" /></label>
-                                <label>الباركود<Input value={form.barcode} onChange={(e) => setForm({ ...form, barcode: e.target.value })} dir="ltr" inputMode="numeric" /></label>
-                                <label>السعر (شامل الضريبة حسب إعدادات الطلب) *<Input value={form.price} onChange={(e) => setForm({ ...form, price: e.target.value })} inputMode="decimal" dir="ltr" /></label>
-                                <label>سعر التكلفة<Input value={form.cost_price} onChange={(e) => setForm({ ...form, cost_price: e.target.value })} inputMode="decimal" dir="ltr" /></label>
-                                <label>الضريبة
-                                    <select className="erp-control" value={form.vat_rate} onChange={(e) => setForm({ ...form, vat_rate: e.target.value })}>
+                                <label>
+                                    الاسم بالعربية *
+                                    <Input value={form.name_ar} onChange={(e) => setForm({ ...form, name_ar: e.target.value })} autoFocus />
+                                </label>
+                                <label>
+                                    الاسم بالإنجليزية
+                                    <Input value={form.name_en} onChange={(e) => setForm({ ...form, name_en: e.target.value })} dir="ltr" />
+                                </label>
+                                <label>
+                                    الباركود
+                                    <Input
+                                        value={form.barcode}
+                                        onChange={(e) => setForm({ ...form, barcode: e.target.value })}
+                                        dir="ltr"
+                                        inputMode="numeric"
+                                    />
+                                </label>
+                                <label>
+                                    السعر (شامل الضريبة حسب إعدادات الطلب) *
+                                    <Input
+                                        value={form.price}
+                                        onChange={(e) => setForm({ ...form, price: e.target.value })}
+                                        inputMode="decimal"
+                                        dir="ltr"
+                                    />
+                                </label>
+                                <label>
+                                    سعر التكلفة
+                                    <Input
+                                        value={form.cost_price}
+                                        onChange={(e) => setForm({ ...form, cost_price: e.target.value })}
+                                        inputMode="decimal"
+                                        dir="ltr"
+                                    />
+                                </label>
+                                <label>
+                                    الضريبة
+                                    <select
+                                        className="erp-control"
+                                        value={form.vat_rate}
+                                        onChange={(e) => setForm({ ...form, vat_rate: e.target.value })}
+                                    >
                                         <option value="15">15% (قياسي)</option>
                                         <option value="0">0% (معفى/صفري)</option>
                                     </select>
                                 </label>
-                                <label>الفئة<Input value={form.category} onChange={(e) => setForm({ ...form, category: e.target.value })} list="pos-settings-categories" />
-                                    <datalist id="pos-settings-categories">{categories.map((c) => <option key={c} value={c} />)}</datalist>
-                                </label>
-                                <label>الوحدة<Input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} /></label>
-                                <label>القسم
-                                    <select className="erp-control" value={form.department_id} onChange={(e) => setForm({ ...form, department_id: e.target.value })}>
-                                        <option value="">— كل الأقسام —</option>
-                                        {(departmentsQuery.data ?? []).filter((d) => d.is_active !== false).map((d) => (
-                                            <option key={d.id} value={d.id}>{d.name_ar}</option>
+                                <label>
+                                    الفئة
+                                    <Input
+                                        value={form.category}
+                                        onChange={(e) => setForm({ ...form, category: e.target.value })}
+                                        list="pos-settings-categories"
+                                    />
+                                    <datalist id="pos-settings-categories">
+                                        {categories.map((c) => (
+                                            <option key={c} value={c} />
                                         ))}
+                                    </datalist>
+                                </label>
+                                <label>
+                                    الوحدة
+                                    <Input value={form.unit} onChange={(e) => setForm({ ...form, unit: e.target.value })} />
+                                </label>
+                                <label>
+                                    القسم
+                                    <select
+                                        className="erp-control"
+                                        value={form.department_id}
+                                        onChange={(e) => setForm({ ...form, department_id: e.target.value })}
+                                    >
+                                        <option value="">— كل الأقسام —</option>
+                                        {(departmentsQuery.data ?? [])
+                                            .filter((d) => d.is_active !== false)
+                                            .map((d) => (
+                                                <option key={d.id} value={d.id}>
+                                                    {d.name_ar}
+                                                </option>
+                                            ))}
                                     </select>
                                 </label>
-                                <label className="pos-settings__check"><input type="checkbox" checked={form.is_active} onChange={(e) => setForm({ ...form, is_active: e.target.checked })} /> صنف نشط يظهر في الكاشير</label>
+                                <label className="pos-settings__check">
+                                    <input
+                                        type="checkbox"
+                                        checked={form.is_active}
+                                        onChange={(e) => setForm({ ...form, is_active: e.target.checked })}
+                                    />{' '}
+                                    صنف نشط يظهر في الكاشير
+                                </label>
                             </div>
-                            {formError ? <p className="pos-settings__form-error" role="alert">{formError}</p> : null}
+                            {formError ? (
+                                <p className="pos-settings__form-error" role="alert">
+                                    {formError}
+                                </p>
+                            ) : null}
                             <div className="pos-settings__form-actions">
-                                <Button type="submit" variant="primary" size="sm" disabled={busy}>{formMode === 'new' ? 'إضافة الصنف' : 'حفظ التعديلات'}</Button>
-                                <Button type="button" variant="ghost" size="sm" onClick={closeForm} disabled={busy}>إلغاء</Button>
+                                <Button type="submit" variant="primary" size="sm" disabled={busy}>
+                                    {formMode === 'new' ? 'إضافة الصنف' : 'حفظ التعديلات'}
+                                </Button>
+                                <Button type="button" variant="ghost" size="sm" onClick={closeForm} disabled={busy}>
+                                    إلغاء
+                                </Button>
                             </div>
                         </form>
                     ) : null}
@@ -500,8 +694,24 @@ export function PosSettingsPanel({ open, onClose, departmentId, role, onChanged 
                                     {effectiveTab === 'items' ? (
                                         <span className="pos-settings__row-actions">
                                             <span className="pos-settings__price">{moneyText(p.price)}</span>
-                                            <button type="button" className="pos-settings__action" onClick={() => openEditForm(p)} disabled={busy}>تعديل</button>
-                                            <button type="button" className="pos-settings__action pos-settings__action--danger" onClick={() => { void archive(p); }} disabled={busy || p.is_active === false}>أرشفة</button>
+                                            <button
+                                                type="button"
+                                                className="pos-settings__action"
+                                                onClick={() => openEditForm(p)}
+                                                disabled={busy}
+                                            >
+                                                تعديل
+                                            </button>
+                                            <button
+                                                type="button"
+                                                className="pos-settings__action pos-settings__action--danger"
+                                                onClick={() => {
+                                                    void archive(p);
+                                                }}
+                                                disabled={busy || p.is_active === false}
+                                            >
+                                                أرشفة
+                                            </button>
                                         </span>
                                     ) : (
                                         <span className="pos-settings__row-actions">
@@ -515,11 +725,24 @@ export function PosSettingsPanel({ open, onClose, departmentId, role, onChanged 
                                                             step="0.01"
                                                             dir="ltr"
                                                             value={priceDrafts[p.id] ?? String(p.price)}
-                                                            onChange={(e) => setPriceDrafts((prev) => ({ ...prev, [p.id]: e.target.value }))}
+                                                            onChange={(e) =>
+                                                                setPriceDrafts((prev) => ({ ...prev, [p.id]: e.target.value }))
+                                                            }
                                                             aria-label={`سعر ${p.name_ar}`}
                                                         />
                                                     </label>
-                                                    <button type="button" className="pos-settings__action" onClick={() => { void savePrice(p); }} disabled={busy || priceDrafts[p.id] === undefined || Number(priceDrafts[p.id]) === p.price}>حفظ</button>
+                                                    <button
+                                                        type="button"
+                                                        className="pos-settings__action"
+                                                        onClick={() => {
+                                                            void savePrice(p);
+                                                        }}
+                                                        disabled={
+                                                            busy || priceDrafts[p.id] === undefined || Number(priceDrafts[p.id]) === p.price
+                                                        }
+                                                    >
+                                                        حفظ
+                                                    </button>
                                                 </>
                                             ) : (
                                                 <span className="pos-settings__price">{moneyText(p.price)}</span>

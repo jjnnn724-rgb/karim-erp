@@ -76,8 +76,7 @@ function pageHeaderOffenders(): string[] {
     return offenders.sort();
 }
 
-const legacyHeaderOffenders = (): string[] =>
-    SCREEN_FILES.filter((file) => LEGACY_PAGE_HEADER.test(SOURCE.get(file) ?? '')).sort();
+const legacyHeaderOffenders = (): string[] => SCREEN_FILES.filter((file) => LEGACY_PAGE_HEADER.test(SOURCE.get(file) ?? '')).sort();
 
 /* وضع التضييق: يُكتب أساس جديد بالحد الأدنى — لا رفع أبدًا. */
 if (process.env.SCREEN_TABLES_UPDATE === '1') {
@@ -87,10 +86,7 @@ if (process.env.SCREEN_TABLES_UPDATE === '1') {
         const next = Math.min(allowed, current);
         if (next > 0) tightened[file] = next;
     }
-    writeFileSync(
-        BASELINE_PATH,
-        `${JSON.stringify({ _generated: new Date().toISOString(), files: tightened }, null, 4)}\n`,
-    );
+    writeFileSync(BASELINE_PATH, `${JSON.stringify({ _generated: new Date().toISOString(), files: tightened }, null, 4)}\n`);
 }
 
 /* نفس القاعدة للترويسة: التحديث يُنقص ولا يضيف. */

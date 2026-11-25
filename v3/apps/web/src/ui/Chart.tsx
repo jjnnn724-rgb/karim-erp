@@ -78,10 +78,7 @@ export function Chart({ kind, title, description, data, xKey, series, height = 2
     return (
         <figure
             aria-labelledby={titleId}
-            className={cn(
-                'erp-chart flex flex-col gap-sm rounded-lg border border-hairline bg-surface p-md shadow-card',
-                className,
-            )}
+            className={cn('erp-chart flex flex-col gap-sm rounded-lg border border-hairline bg-surface p-md shadow-card', className)}
         >
             <figcaption id={titleId} className="flex flex-col gap-xxs">
                 <span className="text-heading-sm text-ink">{title}</span>

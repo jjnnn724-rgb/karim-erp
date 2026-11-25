@@ -103,11 +103,7 @@ export function rankCommandItems<T extends RankableCommand>(items: readonly T[],
         .map((item, index) => ({
             item,
             index,
-            score: Math.max(
-                fuzzyScore(item.label, needle),
-                fuzzyScore(item.hint, needle),
-                item.to ? fuzzyScore(item.to, needle) : -1,
-            ),
+            score: Math.max(fuzzyScore(item.label, needle), fuzzyScore(item.hint, needle), item.to ? fuzzyScore(item.to, needle) : -1),
         }))
         .filter((entry) => entry.score >= 0)
         .sort((a, b) => b.score - a.score || a.index - b.index)
@@ -311,10 +307,7 @@ export function CommandPalette({
     };
 
     return (
-        <div
-            className="fixed inset-0 z-[60] flex items-start justify-center bg-sidebar/50 p-md pt-[12vh]"
-            data-erp-modal-overlay
-        >
+        <div className="fixed inset-0 z-[60] flex items-start justify-center bg-sidebar/50 p-md pt-[12vh]" data-erp-modal-overlay>
             <button
                 type="button"
                 aria-label="إغلاق البحث"
@@ -380,12 +373,7 @@ export function CommandPalette({
                         إغلاق
                     </button>
                 </div>
-                <div
-                    id="erp-command-results"
-                    role="listbox"
-                    aria-label="نتائج البحث"
-                    className="max-h-80 overflow-auto p-xs"
-                >
+                <div id="erp-command-results" role="listbox" aria-label="نتائج البحث" className="max-h-80 overflow-auto p-xs">
                     {options.length === 0 ? (
                         <div className="px-sm py-xs text-body-sm text-muted">لا شاشة أو إجراء يطابق هذا البحث.</div>
                     ) : (
@@ -425,9 +413,7 @@ export function CommandPalette({
                         ))
                     )}
                 </div>
-                <p className="border-t border-hairline px-sm py-xxs text-caption text-faint">
-                    ↑ ↓ للتنقّل · Enter للفتح · Esc للإغلاق
-                </p>
+                <p className="border-t border-hairline px-sm py-xxs text-caption text-faint">↑ ↓ للتنقّل · Enter للفتح · Esc للإغلاق</p>
             </div>
         </div>
     );

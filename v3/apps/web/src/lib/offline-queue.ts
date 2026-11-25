@@ -58,23 +58,31 @@ export class OfflineQueueCorruptError extends Error {
 }
 
 function isEntry(value: unknown): value is QueueEntry {
-    if (!value || typeof value !== 'object') {return false;}
+    if (!value || typeof value !== 'object') {
+        return false;
+    }
     const row = value as Partial<QueueEntry>;
-    return typeof row.local_transaction_uuid === 'string' && row.local_transaction_uuid.length > 0
-        && typeof row.created_at === 'string'
-        && typeof row.attempts === 'number'
-        && ['pending', 'conflict', 'done', 'discarded'].includes(String(row.status));
+    return (
+        typeof row.local_transaction_uuid === 'string' &&
+        row.local_transaction_uuid.length > 0 &&
+        typeof row.created_at === 'string' &&
+        typeof row.attempts === 'number' &&
+        ['pending', 'conflict', 'done', 'discarded'].includes(String(row.status))
+    );
 }
 
 export function createOfflineQueue<T>(options: OfflineQueueOptions<T>) {
     const now = options.now ?? Date.now;
-    const newUuid = options.newUuid ?? (() => globalThis.crypto?.randomUUID?.() ?? `local-${Date.now()}-${Math.random().toString(36).slice(2)}`);
+    const newUuid =
+        options.newUuid ?? (() => globalThis.crypto?.randomUUID?.() ?? `local-${Date.now()}-${Math.random().toString(36).slice(2)}`);
     const baseDelay = options.baseDelayMs ?? 1000;
     const maxDelay = options.maxDelayMs ?? 60000;
     let entries: QueueEntry[] | null = null;
 
     async function load(): Promise<QueueEntry[]> {
-        if (entries) {return entries;}
+        if (entries) {
+            return entries;
+        }
         const raw = await options.store.read();
         if (raw === null || raw === '') {
             entries = [];
@@ -82,7 +90,9 @@ export function createOfflineQueue<T>(options: OfflineQueueOptions<T>) {
         }
         try {
             const parsed: unknown = JSON.parse(raw);
-            if (!Array.isArray(parsed) || !parsed.every(isEntry)) {throw new Error('invalid shape');}
+            if (!Array.isArray(parsed) || !parsed.every(isEntry)) {
+                throw new Error('invalid shape');
+            }
             entries = parsed as QueueEntry[];
             return entries;
         } catch (error) {
@@ -95,7 +105,7 @@ export function createOfflineQueue<T>(options: OfflineQueueOptions<T>) {
     }
 
     function nextAttemptAfter(attempts: number): string {
-        const delay = Math.min(maxDelay, baseDelay * (2 ** Math.max(0, attempts - 1)));
+        const delay = Math.min(maxDelay, baseDelay * 2 ** Math.max(0, attempts - 1));
         return new Date(now() + delay).toISOString();
     }
 
@@ -103,7 +113,9 @@ export function createOfflineQueue<T>(options: OfflineQueueOptions<T>) {
         const rows = await load();
         const uuid = localTransactionUuid || newUuid();
         const existing = rows.find((row) => row.local_transaction_uuid === uuid);
-        if (existing) {return existing;} // dedupe: نفس العملية لا تُدرج مرتين
+        if (existing) {
+            return existing;
+        } // dedupe: نفس العملية لا تُدرج مرتين
         const stamp = new Date(now()).toISOString();
         const entry: QueueEntry = {
             local_transaction_uuid: uuid,
@@ -139,7 +151,9 @@ export function createOfflineQueue<T>(options: OfflineQueueOptions<T>) {
         const result: FlushResult = { processed: 0, replayed: 0, conflicts: 0, failed: 0, remaining: 0 };
         const current = now();
         for (const entry of rows) {
-            if (entry.status !== 'pending' || Date.parse(entry.next_attempt_at) > current) {continue;}
+            if (entry.status !== 'pending' || Date.parse(entry.next_attempt_at) > current) {
+                continue;
+            }
             entry.attempts += 1;
             entry.updated_at = new Date(now()).toISOString();
             try {
@@ -156,7 +170,9 @@ export function createOfflineQueue<T>(options: OfflineQueueOptions<T>) {
                     const conflict = status >= 400 && status < 500 && status !== 408 && status !== 429;
                     entry.status = conflict ? 'conflict' : 'pending';
                     entry.last_error = `HTTP_${status || 'NETWORK'}`;
-                    if (conflict) {result.conflicts += 1;} else {
+                    if (conflict) {
+                        result.conflicts += 1;
+                    } else {
                         result.failed += 1;
                         entry.next_attempt_at = nextAttemptAfter(entry.attempts);
                     }
@@ -177,7 +193,9 @@ export function createOfflineQueue<T>(options: OfflineQueueOptions<T>) {
     async function resolveConflict(uuid: string, action: 'retry' | 'discard'): Promise<QueueEntry | null> {
         const rows = await load();
         const entry = rows.find((r) => r.local_transaction_uuid === uuid && r.status === 'conflict');
-        if (!entry) {return null;}
+        if (!entry) {
+            return null;
+        }
         if (action === 'retry') {
             entry.status = 'pending';
             entry.attempts = 0;
@@ -209,7 +227,11 @@ export function createOfflineQueue<T>(options: OfflineQueueOptions<T>) {
 /** متجر localStorage — يستمر في userData تحت Electron، ويُستخدم في المتصفح للاختبار. */
 export function localStorageQueueStore(key = KEY): OfflineQueueStore {
     return {
-        async read() { return globalThis.localStorage?.getItem(key) ?? null; },
-        async write(value) { globalThis.localStorage?.setItem(key, value); },
+        async read() {
+            return globalThis.localStorage?.getItem(key) ?? null;
+        },
+        async write(value) {
+            globalThis.localStorage?.setItem(key, value);
+        },
     };
 }

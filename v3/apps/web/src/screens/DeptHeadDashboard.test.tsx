@@ -169,7 +169,12 @@ describe('لوحة رئيس القسم', () => {
                         scope: { deptCode: 'KITCHEN', role: 'dept_head' },
                         department: { code: 'KITCHEN', name: 'المطبخ' },
                         subDepartments: [],
-                        expenses: { total: 1000.5, count: 2, bySource: { dispatch: { total: 1000.5, count: 2 } }, labels: { dispatch: 'صرف مخزني' } },
+                        expenses: {
+                            total: 1000.5,
+                            count: 2,
+                            bySource: { dispatch: { total: 1000.5, count: 2 } },
+                            labels: { dispatch: 'صرف مخزني' },
+                        },
                         dispatches: { total: 1, byStatus: { approved: 1 } },
                         dispatchExpenses: [
                             {

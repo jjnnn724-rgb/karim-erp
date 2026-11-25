@@ -23,6 +23,7 @@ export interface PosCartLine {
     name: string;
     /** سعر الوحدة كما أرسله الخادم (قد يكون نصًّا) — يُقرأ عددًا هنا للعرض فقط. */
     price: number;
+    listPrice?: number;
     vatRate: number;
     quantity: number;
 }
@@ -102,10 +103,7 @@ function parseDiscountValue(value: string): number {
  * توزيع خصم الطلب على البنود تناسبيًّا، والباقي يُحمَّل على آخر بند مؤهّل،
  * والخصم لكل بند لا يتجاوز قيمته — نفس قواعد `calculatePosTotals` في V2.
  */
-export function calculatePosTotals(
-    cart: readonly PosCartLine[],
-    discount: PosDiscount = { type: '', value: '0' },
-): PosTotals {
+export function calculatePosTotals(cart: readonly PosCartLine[], discount: PosDiscount = { type: '', value: '0' }): PosTotals {
     const base = cart.map((row) => ({
         ...row,
         lineCents: divHalfUp(toMilli(row.quantity) * toCentsNumber(Number(row.price)), QUANTITY_SCALE),
@@ -139,8 +137,7 @@ export function calculatePosTotals(
     const items: PosTotalsLine[] = base.map((row) => {
         let lineDiscount = 0;
         if (row.lineCents > 0 && discountCents > 0 && subtotalBeforeCents > 0) {
-            const share =
-                row === lastEligible ? remaining : divHalfUp(row.lineCents * discountCents, subtotalBeforeCents);
+            const share = row === lastEligible ? remaining : divHalfUp(row.lineCents * discountCents, subtotalBeforeCents);
             lineDiscount = Math.min(row.lineCents, remaining, share);
             remaining -= lineDiscount;
         }
@@ -217,11 +214,7 @@ function round2(value: number): number {
  * تقرأ من مصدر واحد. يُرجِع `null` إن كان الرد غير قابل للاستخدام (عدد سطور
  * مختلف، أو فاتورة غير متوازنة) — فيبقى العرض المحلي ويعيد المحاولة.
  */
-export function applyQuoteToPosTotals(
-    quote: PosQuoteLike,
-    cart: readonly PosCartLine[],
-    discount: PosDiscount,
-): PosTotals | null {
+export function applyQuoteToPosTotals(quote: PosQuoteLike, cart: readonly PosCartLine[], discount: PosDiscount): PosTotals | null {
     if (quote.line_items.length !== cart.length) {
         return null;
     }
@@ -274,10 +267,7 @@ export type BarcodeMatch<T> =
     | { status: 'not-found'; product: null };
 
 /** مطابقة حرفية كاملة (لا جزئية) — الباركود مرتبط بأكثر من صنفٍ = رفض. */
-export function matchPosBarcode<T extends { barcode?: string | null }>(
-    products: readonly T[],
-    value: string,
-): BarcodeMatch<T> {
+export function matchPosBarcode<T extends { barcode?: string | null }>(products: readonly T[], value: string): BarcodeMatch<T> {
     const barcode = normalizeBarcode(value);
     if (!barcode) {
         return { status: 'empty', product: null };

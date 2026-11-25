@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-    isValidDate,
-    isValidMonth,
-    parseSignedCents,
-    validateAsset,
-    validateBudget,
-    validateStatement,
-} from './cfo-ops';
+import { isValidDate, isValidMonth, parseSignedCents, validateAsset, validateBudget, validateStatement } from './cfo-ops';
 
 describe('cfo-ops', () => {
     it('يميّز التواريخ والأشهر الصحيحة من غيرها', () => {

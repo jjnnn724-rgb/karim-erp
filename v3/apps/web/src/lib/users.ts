@@ -102,9 +102,7 @@ export function roleLabel(role: string): RolePresentation {
     if (!role) {
         return { label: 'بلا دور', known: true };
     }
-    return Object.hasOwn(ROLE_LABELS, role)
-        ? { label: ROLE_LABELS[role] ?? role, known: true }
-        : { label: role, known: false };
+    return Object.hasOwn(ROLE_LABELS, role) ? { label: ROLE_LABELS[role] ?? role, known: true } : { label: role, known: false };
 }
 
 /* ─── الصفّ ─────────────────────────────────────────────────────────────── */

@@ -7,7 +7,7 @@ import { SectionCard } from '../components/Reports';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { balanceLine, type CfoSnapshot, fetchCfoSnapshot, type JournalEntry, marginText, reconciliationTone } from '../lib/cfo';
 import { errorMessage, intOf, moneyOf, num, presetRange, rangeProblem, textOf } from '../lib/reporting';
-import { FilterBar, StatCard , ScreenHero } from '../ui';
+import { FilterBar, ScreenHero, StatCard } from '../ui';
 
 /**
  * المدير المالي — قراءة فقط. كل رقم يصل جاهزًا من الخادم؛ لا جمع ولا حساب
@@ -80,7 +80,7 @@ export function Cfo() {
 
     return (
         <div className="flex flex-col gap-md">
-<ScreenHero
+            <ScreenHero
                 title="المدير المالي"
                 english="CFO"
                 description="الإيراد والتكلفة والصافي والنقد وميزان المراجعة والفترات — قراءة واحدة من دفتر القيود المرحّلة."
@@ -88,9 +88,11 @@ export function Cfo() {
                     <>
                         <button
                             type="button"
-                            onClick={() => { () => {
-                    void query.refetch();
-                } }}
+                            onClick={() => {
+                                () => {
+                                    void query.refetch();
+                                };
+                            }}
                             disabled={query.isFetching}
                             className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
                         >

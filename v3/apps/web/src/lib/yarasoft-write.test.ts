@@ -123,9 +123,7 @@ describe('تحقق النماذج', () => {
         expect(mappingFormError({ externalCode: '', externalBarcode: '', internalProductId: '' })).toBe(
             'أدخل كود الكاشير أو باركوداً واحداً على الأقل.',
         );
-        expect(mappingFormError({ externalCode: 'X1', externalBarcode: '', internalProductId: 0 })).toBe(
-            'ابحث واختر المنتج الداخلي أولاً.',
-        );
+        expect(mappingFormError({ externalCode: 'X1', externalBarcode: '', internalProductId: 0 })).toBe('ابحث واختر المنتج الداخلي أولاً.');
         expect(mappingFormError({ externalCode: 'X1', externalBarcode: '', internalProductId: 12 })).toBe('');
         expect(mappingFormError({ externalCode: '', externalBarcode: '628', internalProductId: '12' })).toBe('');
     });
@@ -191,11 +189,7 @@ describe('عقود الكتابة — المسار والجسم', () => {
         await saveYarasoftMapping({ externalCode: ' A1 ', externalBarcode: ' 628 ', internalProductId: 15 });
         const { url, init } = lastRequest(fetchMock);
         expect(url).toBe('/api/yarasoft/mappings');
-        expect(JSON.parse(String(init.body))).toEqual({
-            externalCode: 'A1',
-            externalBarcode: '628',
-            internalProductId: 15,
-        });
+        expect(JSON.parse(String(init.body))).toEqual({ externalCode: 'A1', externalBarcode: '628', internalProductId: 15 });
     });
 
     it('تعطيل الربط DELETE على المعرّف', async () => {

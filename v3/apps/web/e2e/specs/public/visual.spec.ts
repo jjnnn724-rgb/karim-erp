@@ -27,7 +27,9 @@ test.describe('G10 visual verification', () => {
             });
             await page.screenshot({ path: path.join(SHOTS, `login-ltr-${name}.png`), fullPage: true });
 
-            await page.evaluate(() => { document.documentElement.dir = 'rtl'; });
+            await page.evaluate(() => {
+                document.documentElement.dir = 'rtl';
+            });
             await page.keyboard.press('Tab');
             const focused = await page.evaluate(() => ({
                 tag: document.activeElement?.tagName,

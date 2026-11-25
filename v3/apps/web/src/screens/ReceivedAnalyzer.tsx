@@ -1,11 +1,11 @@
 import './ReceivedAnalyzer.premium.css';
-import { ScreenHero } from '../ui';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { KpiCard, RangeControls, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { errorMessage, intOf, presetRange, qtyOf, rangeProblem, textOf } from '../lib/reporting';
 import { DISPATCH_STATUS_AR, fetchReceivedDispatches, fetchReceivedItems, receivedLabel, YARA_MAX_DAYS } from '../lib/yara-reports';
+import { ScreenHero } from '../ui';
 
 const numOf = (value: unknown): number => {
     const parsed = Number(value ?? 0);
@@ -47,7 +47,7 @@ export function ReceivedAnalyzer() {
 
     return (
         <div className="screen-premium flex flex-col gap-md">
-<ScreenHero
+            <ScreenHero
                 title="تحليل المستلَم"
                 english="Received Analyzer"
                 description="بنود الاستلام وأذونها في الفترة: الكمية المرسلة والمستلمة والفرق، بحالة كل إذن."
@@ -55,10 +55,12 @@ export function ReceivedAnalyzer() {
                     <>
                         <button
                             type="button"
-                            onClick={() => { () => {
-                    void itemsQuery.refetch();
-                    void dispatchesQuery.refetch();
-                } }}
+                            onClick={() => {
+                                () => {
+                                    void itemsQuery.refetch();
+                                    void dispatchesQuery.refetch();
+                                };
+                            }}
                             disabled={itemsQuery.isFetching || dispatchesQuery.isFetching}
                             className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
                         >

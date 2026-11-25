@@ -40,15 +40,7 @@ const numberish = z
 
 /* ── الأدوار (مطابقة حرفية لقوائم الخادم) ────────────────────────────────── */
 
-export const KITCHEN_READ_ROLES: readonly string[] = [
-    'admin',
-    'manager',
-    'warehouse',
-    'kitchen',
-    'sous_chef',
-    'auditor',
-    'cashier',
-];
+export const KITCHEN_READ_ROLES: readonly string[] = ['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef', 'auditor', 'cashier'];
 export const KITCHEN_WRITE_ROLES: readonly string[] = ['admin', 'manager', 'warehouse', 'kitchen', 'sous_chef'];
 export const KITCHEN_REVIEW_ROLES: readonly string[] = ['admin', 'manager', 'auditor'];
 
@@ -162,21 +154,11 @@ export const kitchenDestinationSchema = z
 export type KitchenDestination = z.infer<typeof kitchenDestinationSchema>;
 
 export async function fetchKitchenMaterials(signal?: AbortSignal): Promise<KitchenMaterial[]> {
-    return fetchJson(
-        z.array(kitchenMaterialSchema),
-        `${BASE}/production-materials`,
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    return fetchJson(z.array(kitchenMaterialSchema), `${BASE}/production-materials`, getAccessToken(), signal ? { signal } : {});
 }
 
 export async function fetchKitchenDestinations(signal?: AbortSignal): Promise<KitchenDestination[]> {
-    return fetchJson(
-        z.array(kitchenDestinationSchema),
-        `${BASE}/production-destinations`,
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    return fetchJson(z.array(kitchenDestinationSchema), `${BASE}/production-destinations`, getAccessToken(), signal ? { signal } : {});
 }
 
 /** جهات التوزيع غير القسمية — نفس خريطة الخادم. */
@@ -450,20 +432,14 @@ export function validateKitchenProduction(input: {
     }
     if (
         input.materials.some(
-            (line) =>
-                !Number.isFinite(line.quantity) ||
-                line.quantity <= 0 ||
-                line.wastePercent < 0 ||
-                line.wastePercent > 100,
+            (line) => !Number.isFinite(line.quantity) || line.quantity <= 0 || line.wastePercent < 0 || line.wastePercent > 100,
         )
     ) {
         errors.push('تحقق من كميات المكونات ونسب الهالك (0–100).');
     }
     const allocated = input.distributions.reduce((sum, line) => sum + (Number(line.quantity) || 0), 0);
     if (input.distributions.length > 0 && Math.abs(allocated - input.producedQty) > 0.0001) {
-        errors.push(
-            `إجمالي التوزيع ${formatKitchenQty(allocated)} لا يساوي الإنتاج ${formatKitchenQty(input.producedQty)}.`,
-        );
+        errors.push(`إجمالي التوزيع ${formatKitchenQty(allocated)} لا يساوي الإنتاج ${formatKitchenQty(input.producedQty)}.`);
     }
     return { ok: errors.length === 0, errors };
 }

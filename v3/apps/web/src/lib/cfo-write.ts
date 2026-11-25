@@ -69,16 +69,9 @@ export const draftsSchema = z
     .passthrough();
 
 const entrySchema = z.object({ id: idValue }).passthrough();
-const createSchema = z
-    .object({ entry: entrySchema, lines: z.array(z.object({}).passthrough()).optional() })
-    .passthrough();
+const createSchema = z.object({ entry: entrySchema, lines: z.array(z.object({}).passthrough()).optional() }).passthrough();
 const actionSchema = z
-    .object({
-        ok: z.boolean().optional(),
-        entry: entrySchema.optional(),
-        period: z.string().optional(),
-        closed: z.boolean().optional(),
-    })
+    .object({ ok: z.boolean().optional(), entry: entrySchema.optional(), period: z.string().optional(), closed: z.boolean().optional() })
     .passthrough();
 
 export interface JournalLineInput {
@@ -151,11 +144,7 @@ export function journalTotals(lines: readonly JournalLineInput[]): JournalTotals
 
 export type JournalValidation = { ok: true; payload: JournalEntryPayload } | { ok: false; error: string };
 
-export function validateJournalEntry(
-    date: string,
-    lines: readonly JournalLineInput[],
-    status: 'draft' | 'posted',
-): JournalValidation {
+export function validateJournalEntry(date: string, lines: readonly JournalLineInput[], status: 'draft' | 'posted'): JournalValidation {
     const day = String(date ?? '').trim();
     if (!DATE_PATTERN.test(day)) {
         return { ok: false, error: 'التاريخ بصيغة YYYY-MM-DD' };

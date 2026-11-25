@@ -20,8 +20,8 @@ import { MaintenanceSection } from './settings/MaintenanceSection';
 import { NavSection } from './settings/NavSection';
 import { PunchSection } from './settings/PunchSection';
 import { ServerControlSection } from './settings/ServerControlSection';
-import { ZatcaSection } from './settings/ZatcaSection';
 import { TenantZatcaSection } from './settings/TenantZatcaSection';
+import { ZatcaSection } from './settings/ZatcaSection';
 
 /**
  * إعدادات النظام — شاشة واحدة بثمانية أقسام تعادل V2 كاملًا:

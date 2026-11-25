@@ -202,10 +202,7 @@ export function rosterApprovalKey(depts: readonly string[]): string {
     return (list.length ? list.join(',') : '*').toLowerCase();
 }
 
-export type RosterApproval =
-    | { key: 'none' }
-    | { key: 'pending'; by: string; at: string }
-    | { key: 'approved'; by: string; at: string };
+export type RosterApproval = { key: 'none' } | { key: 'pending'; by: string; at: string } | { key: 'approved'; by: string; at: string };
 
 /** `roster-repo.js:61-69` حرفيًا: ثلاث حالات — لا شيء / بانتظار / معتمد. */
 export function rosterApprovalState(approval: RosterApprovalRow | null): RosterApproval {

@@ -17,10 +17,11 @@ import {
 } from './attendance-write';
 
 describe('attendance-write', () => {
-    it('يقصر الكتابة على أدوار الخادم admin/hr/manager', () => {
+    it('يقصر الكتابة على admin/owner (قرار المالك 2026-11-17)', () => {
         expect(canWriteAttendance('admin')).toBe(true);
-        expect(canWriteAttendance('hr')).toBe(true);
-        expect(canWriteAttendance('manager')).toBe(true);
+        expect(canWriteAttendance('owner')).toBe(true);
+        expect(canWriteAttendance('hr')).toBe(false);
+        expect(canWriteAttendance('manager')).toBe(false);
         expect(canWriteAttendance('dept_head')).toBe(false);
         expect(canWriteAttendance(null)).toBe(false);
     });
@@ -50,9 +51,7 @@ describe('attendance-write', () => {
     });
 
     it('يبني جسم البصمة بمفاتيح whitelist الخادم فقط', () => {
-        expect(
-            buildPunchPayload({ checkIn: '08:00', checkOut: '', late: 1 as unknown as boolean, notes: 'x' }),
-        ).toEqual({
+        expect(buildPunchPayload({ checkIn: '08:00', checkOut: '', late: 1 as unknown as boolean, notes: 'x' })).toEqual({
             checkIn: '08:00',
             checkOut: null,
             workMinutes: null,
@@ -100,10 +99,9 @@ describe('attendance-write', () => {
             requestedBy: '1',
             approvedBy: '1',
         });
-        expect(
-            buildExcusePayload({ employeeId: 7, date: '2026-11-01', reason: 'تبديل', kind: 'swap', withName: 'سامي' })
-                .reason,
-        ).toBe('تبديل وردية مع سامي: تبديل');
+        expect(buildExcusePayload({ employeeId: 7, date: '2026-11-01', reason: 'تبديل', kind: 'swap', withName: 'سامي' }).reason).toBe(
+            'تبديل وردية مع سامي: تبديل',
+        );
         expect(() => buildExcusePayload({ employeeId: 7, date: '2026-11-01', reason: ' ' })).toThrow('اكتب السبب');
     });
 
@@ -131,12 +129,8 @@ describe('attendance-write', () => {
     });
 
     it('سطر التدقيق والصق الملاحظات كما في V2', () => {
-        expect(auditNote('correct', { who: 'منى', reason: 'نسي', date: '2026-11-11' })).toBe(
-            '[تصحيح يدوي 2026-11-11 بواسطة منى: نسي]',
-        );
-        expect(auditNote('fill', { who: 'منى', reason: 'نسي', date: '2026-11-11' })).toBe(
-            '[تعبئة 2026-11-11 بواسطة منى: نسي]',
-        );
+        expect(auditNote('correct', { who: 'منى', reason: 'نسي', date: '2026-11-11' })).toBe('[تصحيح يدوي 2026-11-11 بواسطة منى: نسي]');
+        expect(auditNote('fill', { who: 'منى', reason: 'نسي', date: '2026-11-11' })).toBe('[تعبئة 2026-11-11 بواسطة منى: نسي]');
         expect(auditNote('swap', { who: 'منى', reason: 'اتفاق', date: '2026-11-11', withName: 'سامي' })).toBe(
             '[تبديل وردية 2026-11-11 مع سامي بواسطة منى: اتفاق]',
         );
@@ -160,16 +154,7 @@ describe('attendance-write', () => {
                     karimHours: 40.5,
                     reviewDays: 1,
                 },
-                {
-                    id: 2,
-                    name: 'ب',
-                    days: 4,
-                    present: 3,
-                    completeWorkDays: 2,
-                    shortDays: 1,
-                    deficitMinutes: 30,
-                    karimHours: 20.25,
-                },
+                { id: 2, name: 'ب', days: 4, present: 3, completeWorkDays: 2, shortDays: 1, deficitMinutes: 30, karimHours: 20.25 },
             ],
         });
         expect(sheet.employees).toBe(2);

@@ -1,7 +1,6 @@
 import { toCents } from '@karim/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import {
@@ -42,7 +41,6 @@ import {
 import { fetchDepartments, firstOfMonth, riyadhToday } from '../lib/finance';
 import { formatMoney } from '../lib/format';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
-import { PageHeader } from '../ui';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
@@ -141,16 +139,9 @@ function matches(row: TransferRow, needle: string): boolean {
     if (!needle) {
         return true;
     }
-    const haystack = [
-        row.number,
-        row.fromName,
-        row.fromCode,
-        row.toName,
-        row.toCode,
-        row.itemsText,
-        row.notes,
-        row.rejectionReason,
-    ].join(' ');
+    const haystack = [row.number, row.fromName, row.fromCode, row.toName, row.toCode, row.itemsText, row.notes, row.rejectionReason].join(
+        ' ',
+    );
     return haystack.toLocaleLowerCase('ar').includes(needle.toLocaleLowerCase('ar'));
 }
 
@@ -176,10 +167,7 @@ function MixList({
             ) : (
                 <ul className="divide-y divide-hairline">
                     {rows.map((row) => (
-                        <li
-                            key={row.label}
-                            className="flex flex-wrap items-baseline justify-between gap-xs px-sm py-xxs"
-                        >
+                        <li key={row.label} className="flex flex-wrap items-baseline justify-between gap-xs px-sm py-xxs">
                             <span className="text-body-sm text-ink">{row.label}</span>
                             <span className="text-caption text-muted" dir="ltr">
                                 {`${row.value} · ${row.qty} · ${formatInt(row.transfers)} تحويل`}
@@ -204,10 +192,7 @@ function DailyList({ rows }: { rows: readonly TransferDaily[] }) {
             ) : (
                 <ul className="divide-y divide-hairline">
                     {rows.map((row) => (
-                        <li
-                            key={String(row.day)}
-                            className="flex flex-wrap items-baseline justify-between gap-xs px-sm py-xxs"
-                        >
+                        <li key={String(row.day)} className="flex flex-wrap items-baseline justify-between gap-xs px-sm py-xxs">
                             <span className="erp-numeric text-body-sm text-ink" dir="ltr">
                                 {String(row.day ?? '') || '—'}
                             </span>
@@ -239,8 +224,7 @@ function TopItemsList({ rows }: { rows: readonly TransferTopItem[] }) {
                             className="flex flex-wrap items-baseline justify-between gap-xs px-sm py-xxs"
                         >
                             <span className="text-body-sm text-ink">
-                                {String(row.item_name ?? '—')}{' '}
-                                <span className="text-caption text-muted">{String(row.unit ?? '')}</span>
+                                {String(row.item_name ?? '—')} <span className="text-caption text-muted">{String(row.unit ?? '')}</span>
                             </span>
                             <span className="text-caption text-muted" dir="ltr">
                                 {`${summaryQty(row.qty)} · ${formatMoney(summaryValue(row.value))}`}
@@ -271,10 +255,7 @@ export function DeptTransfers() {
     const mayApprove = transferApproveVisible(role);
     const mayExternal = transferExternalVisible(role);
     const mayChooseSource = canChooseSourceDept(role);
-    const mySrc = mySourceDeptCode({
-        role,
-        deptCode: (auth.user as { dept_code?: string | null | undefined } | null)?.dept_code ?? null,
-    });
+    const mySrc = mySourceDeptCode({ role, deptCode: (auth.user as { dept_code?: string | null | undefined } | null)?.dept_code ?? null });
 
     const [status, setStatus] = useState('all');
     const [search, setSearch] = useState('');
@@ -288,10 +269,7 @@ export function DeptTransfers() {
     const [actionMessage, setActionMessage] = useState('');
     const [pageError, setPageError] = useState('');
 
-    const invalidateTransfers: readonly (readonly string[])[] = [
-        ['dept-transfers'],
-        ['dept-transfers', 'summary', range.from, range.to],
-    ];
+    const invalidateTransfers: readonly (readonly string[])[] = [['dept-transfers'], ['dept-transfers', 'summary', range.from, range.to]];
 
     const createMutation = useWriteMutation<
         { sourceDeptCode: string; destDeptCode: string; items: TransferItemInput[]; notes: string },
@@ -374,10 +352,7 @@ export function DeptTransfers() {
     }, [departmentsQuery.data]);
 
     const visibleRows = useMemo(
-        () =>
-            (transfersQuery.data ?? [])
-                .map((transfer) => transferToRow(transfer, deptNames))
-                .filter((row) => !row.test),
+        () => (transfersQuery.data ?? []).map((transfer) => transferToRow(transfer, deptNames)).filter((row) => !row.test),
         [transfersQuery.data, deptNames],
     );
     const totals = useMemo(() => summarizeTransfers(visibleRows), [visibleRows]);
@@ -406,9 +381,7 @@ export function DeptTransfers() {
 
     function toggleSort(key: SortKey) {
         setPage(1);
-        setSort((previous) =>
-            previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' },
-        );
+        setSort((previous) => (previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
     }
 
     function chooseStatus(next: string) {
@@ -418,43 +391,42 @@ export function DeptTransfers() {
 
     return (
         <div className="flex flex-col gap-md">
-            <PageHeader
-                title="التحويلات الداخلية"
-                english="Internal Transfers"
-                description="تحويل البضاعة بين الأقسام ومنافذ البيع الخارجية — طلبٌ واعتماد الشيف وتنفيذٌ فوري بالتكلفة الفعلية، وتحويل مباشر للبيع الخارجي."
-                actions={
-                    <>
-                        <div className="flex items-center gap-xs" data-erp-print-hide>
-                            {mayCreate ? (
-                                <Button type="button" size="sm" onClick={() => setCreateMode('internal')}>
-                                    طلب تحويل جديد
-                                </Button>
-                            ) : null}
-                            {mayExternal ? (
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="secondary"
-                                    onClick={() => setCreateMode('external')}
-                                >
-                                    تحويل للبيع الخارجي
-                                </Button>
-                            ) : null}
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    void transfersQuery.refetch();
-                                    void summaryQuery.refetch();
-                                }}
-                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                            >
-                                تحديث
-                            </button>
-                            <PrintActions title="التحويلات الداخلية" />
-                        </div>
-                    </>
-                }
-            />
+            <header className="flex flex-wrap items-end justify-between gap-sm">
+                <div>
+                    <h1 className="text-display-lg text-ink">
+                        التحويلات الداخلية{' '}
+                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
+                            Internal Transfers
+                        </span>
+                    </h1>
+                    <p className="text-body-sm text-muted">
+                        تحويل البضاعة بين الأقسام ومنافذ البيع الخارجية — طلبٌ واعتماد الشيف وتنفيذٌ فوري بالتكلفة الفعلية، وتحويل مباشر للبيع
+                        الخارجي.
+                    </p>
+                </div>
+                <div className="flex items-center gap-xs" data-erp-print-hide>
+                    {mayCreate ? (
+                        <Button type="button" size="sm" onClick={() => setCreateMode('internal')}>
+                            طلب تحويل جديد
+                        </Button>
+                    ) : null}
+                    {mayExternal ? (
+                        <Button type="button" size="sm" variant="secondary" onClick={() => setCreateMode('external')}>
+                            تحويل للبيع الخارجي
+                        </Button>
+                    ) : null}
+                    <button
+                        type="button"
+                        onClick={() => {
+                            void transfersQuery.refetch();
+                            void summaryQuery.refetch();
+                        }}
+                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                    >
+                        تحديث
+                    </button>
+                </div>
+            </header>
             {pageError ? (
                 <p role="alert" className="text-body-sm text-danger-text">
                     {pageError}
@@ -480,12 +452,7 @@ export function DeptTransfers() {
                     value={formatInt(totals.done)}
                     hint={`${formatInt(totals.rejected)} مرفوضة · ${formatInt(totals.cancelled)} ملغاة`}
                 />
-                <Kpi
-                    label="قيمة المنفَّذ (تكلفة فعلية)"
-                    english="Value"
-                    value={formatMoney(totals.value)}
-                    hint="مجموع التحويلات المنفَّذة"
-                />
+                <Kpi label="قيمة المنفَّذ (تكلفة فعلية)" english="Value" value={formatMoney(totals.value)} hint="مجموع التحويلات المنفَّذة" />
             </div>
 
             <Card>
@@ -514,8 +481,7 @@ export function DeptTransfers() {
 
                 {summaryQuery.isError ? (
                     <p className="px-sm py-sm text-body-sm text-danger-text" role="alert">
-                        تعذّر تحميل ملخص التحويلات —{' '}
-                        {summaryQuery.error instanceof Error ? summaryQuery.error.message : 'خطأ غير معروف'}
+                        تعذّر تحميل ملخص التحويلات — {summaryQuery.error instanceof Error ? summaryQuery.error.message : 'خطأ غير معروف'}
                     </p>
                 ) : null}
 
@@ -655,11 +621,7 @@ export function DeptTransfers() {
                 {transfersQuery.isSuccess && sorted.length === 0 ? (
                     <StateEmpty
                         title={visibleRows.length === 0 ? 'لا تحويلات مسجلة' : 'لا تحويلات مطابقة'}
-                        hint={
-                            visibleRows.length === 0
-                                ? 'الإنشاء والبيع الخارجي غير متاحين من هذه الشاشة.'
-                                : 'غيّر الحالة أو امسح البحث.'
-                        }
+                        hint={visibleRows.length === 0 ? 'الإنشاء والبيع الخارجي غير متاحين من هذه الشاشة.' : 'غيّر الحالة أو امسح البحث.'}
                     />
                 ) : null}
 
@@ -681,13 +643,7 @@ export function DeptTransfers() {
                                         <th scope="col" className="px-sm py-xs text-start font-medium">
                                             الأصناف
                                         </th>
-                                        <SortableTh
-                                            label="الكمية"
-                                            sortKey="qty"
-                                            sort={sort}
-                                            onToggle={toggleSort}
-                                            align="end"
-                                        />
+                                        <SortableTh label="الكمية" sortKey="qty" sort={sort} onToggle={toggleSort} align="end" />
                                         <SortableTh
                                             label="القيمة (تكلفة فعلية)"
                                             sortKey="value"
@@ -699,18 +655,8 @@ export function DeptTransfers() {
                                         <th scope="col" className="px-sm py-xs text-start font-medium">
                                             طلبها
                                         </th>
-                                        <SortableTh
-                                            label="التاريخ"
-                                            sortKey="date"
-                                            sort={sort}
-                                            onToggle={toggleSort}
-                                            align="center"
-                                        />
-                                        <th
-                                            scope="col"
-                                            className="px-sm py-xs text-start font-medium"
-                                            data-erp-print-hide
-                                        >
+                                        <SortableTh label="التاريخ" sortKey="date" sort={sort} onToggle={toggleSort} align="center" />
+                                        <th scope="col" className="px-sm py-xs text-start font-medium" data-erp-print-hide>
                                             إجراءات
                                         </th>
                                     </tr>
@@ -730,16 +676,10 @@ export function DeptTransfers() {
                                             </td>
                                             <td className="px-sm py-xxs text-ink">{row.fromName}</td>
                                             <td className="px-sm py-xxs text-ink">{row.toName}</td>
-                                            <td
-                                                className="px-sm py-xxs text-body-sm text-ink-secondary"
-                                                title={row.itemsText}
-                                            >
+                                            <td className="px-sm py-xxs text-body-sm text-ink-secondary" title={row.itemsText}>
                                                 {row.itemsText}
                                             </td>
-                                            <td
-                                                className="erp-numeric px-sm py-xxs text-end text-body-sm text-muted"
-                                                dir="ltr"
-                                            >
+                                            <td className="erp-numeric px-sm py-xxs text-end text-body-sm text-muted" dir="ltr">
                                                 {row.qtyText}
                                             </td>
                                             <td className="erp-numeric px-sm py-xxs text-end text-ink">
@@ -751,9 +691,7 @@ export function DeptTransfers() {
                                                 ) : null}
                                             </td>
                                             <td className="px-sm py-xxs text-body-sm">
-                                                <span className={STATUS_TONE[row.status] ?? 'text-muted'}>
-                                                    {row.statusLabel}
-                                                </span>
+                                                <span className={STATUS_TONE[row.status] ?? 'text-muted'}>{row.statusLabel}</span>
                                                 {row.status && !row.statusKnown ? (
                                                     <span className="text-caption text-faint" dir="ltr">
                                                         {' '}
@@ -761,31 +699,21 @@ export function DeptTransfers() {
                                                     </span>
                                                 ) : null}
                                                 {row.status === 'rejected' && row.rejectionReason ? (
-                                                    <span
-                                                        className="block text-caption text-muted"
-                                                        title={row.rejectionReason}
-                                                    >
+                                                    <span className="block text-caption text-muted" title={row.rejectionReason}>
                                                         {row.rejectionReason}
                                                     </span>
                                                 ) : null}
                                             </td>
-                                            <td
-                                                className="erp-numeric px-sm py-xxs text-start text-body-sm text-muted"
-                                                dir="ltr"
-                                            >
+                                            <td className="erp-numeric px-sm py-xxs text-start text-body-sm text-muted" dir="ltr">
                                                 {row.requestedBy ? `#${row.requestedBy}` : '—'}
                                             </td>
-                                            <td
-                                                className="erp-numeric px-sm py-xxs text-center text-body-sm text-muted"
-                                                dir="ltr"
-                                            >
+                                            <td className="erp-numeric px-sm py-xxs text-center text-body-sm text-muted" dir="ltr">
                                                 {row.createdAt || '—'}
                                             </td>
                                             <td className="px-sm py-xxs" data-erp-print-hide>
                                                 {(() => {
                                                     const mine = String(row.requestedBy) === String(userId);
-                                                    const showApprove =
-                                                        mayApprove && row.status === 'requested' && !mine;
+                                                    const showApprove = mayApprove && row.status === 'requested' && !mine;
                                                     const showCancel =
                                                         row.status === 'requested' &&
                                                         (mine || roleText === 'admin' || roleText === 'manager');
@@ -914,12 +842,7 @@ interface CreateDialogProps {
     fixedSource: string | null;
     pending: boolean;
     onClose: () => void;
-    onSubmit: (input: {
-        sourceDeptCode: string;
-        destDeptCode: string;
-        items: TransferItemInput[];
-        notes: string;
-    }) => Promise<void>;
+    onSubmit: (input: { sourceDeptCode: string; destDeptCode: string; items: TransferItemInput[]; notes: string }) => Promise<void>;
 }
 
 const CREATE_FORM_ID = 'erp-transfer-create-form';
@@ -932,9 +855,7 @@ function CreateTransferDialog({ open, mode, departments, fixedSource, pending, o
     const [stockLoading, setStockLoading] = useState(false);
     const [itemId, setItemId] = useState('');
     const [itemQty, setItemQty] = useState('1');
-    const [lines, setLines] = useState<
-        { inventory_id: string; name: string; unit: string; qty: number; avgCost: number }[]
-    >([]);
+    const [lines, setLines] = useState<{ inventory_id: string; name: string; unit: string; qty: number; avgCost: number }[]>([]);
     const [error, setError] = useState('');
 
     const isExternal = mode === 'external';
@@ -1096,8 +1017,7 @@ function CreateTransferDialog({ open, mode, departments, fixedSource, pending, o
                         <div className="flex flex-col gap-xxs">
                             <span className="text-label-md text-ink-secondary">من قسم</span>
                             <span className="text-body-md text-ink">
-                                {departments.find((d) => d.code.toLowerCase() === fixedSource.toLowerCase())?.name ??
-                                    fixedSource}
+                                {departments.find((d) => d.code.toLowerCase() === fixedSource.toLowerCase())?.name ?? fixedSource}
                             </span>
                         </div>
                     ) : (
@@ -1165,11 +1085,7 @@ function CreateTransferDialog({ open, mode, departments, fixedSource, pending, o
                                 </span>
                                 <button
                                     type="button"
-                                    onClick={() =>
-                                        setLines((previous) =>
-                                            previous.filter((l) => l.inventory_id !== line.inventory_id),
-                                        )
-                                    }
+                                    onClick={() => setLines((previous) => previous.filter((l) => l.inventory_id !== line.inventory_id))}
                                     className="text-danger-text"
                                 >
                                     إزالة
@@ -1179,20 +1095,11 @@ function CreateTransferDialog({ open, mode, departments, fixedSource, pending, o
                     </ul>
                 ) : (
                     <p className="text-body-sm text-muted">
-                        {from
-                            ? 'لم تُضَف أصناف بعد — اختر صنفًا من بضاعة القسم ثم اضغط «إضافة».'
-                            : 'حدد القسم المرسل لتظهر أصناف رصيده.'}
+                        {from ? 'لم تُضَف أصناف بعد — اختر صنفًا من بضاعة القسم ثم اضغط «إضافة».' : 'حدد القسم المرسل لتظهر أصناف رصيده.'}
                     </p>
                 )}
-                {lines.length ? (
-                    <p className="text-body-sm text-muted">القيمة التقديرية: {formatMoney(String(total))}</p>
-                ) : null}
-                <Input
-                    label="ملاحظات (اختياري)"
-                    name="notes"
-                    value={notes}
-                    onChange={(e) => setNotes(e.target.value)}
-                />
+                {lines.length ? <p className="text-body-sm text-muted">القيمة التقديرية: {formatMoney(String(total))}</p> : null}
+                <Input label="ملاحظات (اختياري)" name="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
                 {error ? (
                     <p role="alert" className="text-body-sm text-danger-text">
                         {error}

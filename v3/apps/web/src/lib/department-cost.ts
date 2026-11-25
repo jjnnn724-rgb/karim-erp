@@ -11,18 +11,25 @@ import { getAccessToken } from './auth';
  */
 
 const numLike = z.union([z.string(), z.number()]);
-const num = numLike.nullable().optional().transform((v) => Number(v ?? 0));
+const num = numLike
+    .nullable()
+    .optional()
+    .transform((v) => Number(v ?? 0));
 const text = z.string().nullable().optional();
 
 /* ─── قائمة الأقسام من أذونات الصرف ─── */
 export const issueDepartmentsSchema = z
     .object({
-        departments: z.array(z.object({
-            dept: text,
-            code: text,
-            requests: num,
-            received: num,
-        }).passthrough()),
+        departments: z.array(
+            z
+                .object({
+                    dept: text,
+                    code: text,
+                    requests: num,
+                    received: num,
+                })
+                .passthrough(),
+        ),
     })
     .passthrough();
 
@@ -56,21 +63,27 @@ export const departmentIssuesSchema = z
         department: text,
         from: text,
         to: text,
-        totals: z.object({
-            items: num,
-            moves: num,
-            dispatches: num,
-            cost: num,
-            grams: num,
-            weight_items: num,
-            packed_items: num,
-        }).passthrough(),
+        totals: z
+            .object({
+                items: num,
+                moves: num,
+                dispatches: num,
+                cost: num,
+                grams: num,
+                weight_items: num,
+                packed_items: num,
+            })
+            .passthrough(),
         items: z.array(issueItemSchema),
-        veg: z.object({
-            requests: num,
-            items_count: num,
-            qty_kg: num,
-        }).passthrough().nullable().optional(),
+        veg: z
+            .object({
+                requests: num,
+                items_count: num,
+                qty_kg: num,
+            })
+            .passthrough()
+            .nullable()
+            .optional(),
     })
     .passthrough();
 
@@ -144,34 +157,44 @@ export const breakfastCostSchema = z
         full_cost_pct: num.nullable().optional(),
         full_verdict: z.object({ tone: text, text: text }).passthrough().nullable().optional(),
         groups: z.array(basketGroupSchema),
-        top_items: z.array(z.object({
-            item_id: text,
-            name: text,
-            unit: text,
-            qty: num,
-            grams: num.nullable(),
-            cost: num,
-        }).passthrough()),
-        veg: z.object({
-            requests: num,
-            items_count: num,
-            qty_kg: num,
-        }).passthrough(),
+        top_items: z.array(
+            z
+                .object({
+                    item_id: text,
+                    name: text,
+                    unit: text,
+                    qty: num,
+                    grams: num.nullable(),
+                    cost: num,
+                })
+                .passthrough(),
+        ),
+        veg: z
+            .object({
+                requests: num,
+                items_count: num,
+                qty_kg: num,
+            })
+            .passthrough(),
         notes: z.array(z.string()),
-        market_estimates: z.object({
-            meat_lines: z.array(marketLineSchema),
-            veg_lines: z.array(marketLineSchema),
-            daily_lines: z.array(marketLineSchema).nullable().optional(),
-            total: num,
-            veg_total: num,
-            oil_total: num.nullable().optional(),
-            meat_carton_total: num,
-            liver_total: num,
-            flour_total: num,
-            cost_pct_of_revenue: num,
-            day_span: num,
-            notes: z.array(z.string()),
-        }).passthrough().nullable().optional(),
+        market_estimates: z
+            .object({
+                meat_lines: z.array(marketLineSchema),
+                veg_lines: z.array(marketLineSchema),
+                daily_lines: z.array(marketLineSchema).nullable().optional(),
+                total: num,
+                veg_total: num,
+                oil_total: num.nullable().optional(),
+                meat_carton_total: num,
+                liver_total: num,
+                flour_total: num,
+                cost_pct_of_revenue: num,
+                day_span: num,
+                notes: z.array(z.string()),
+            })
+            .passthrough()
+            .nullable()
+            .optional(),
     })
     .passthrough();
 
@@ -181,15 +204,19 @@ export type BreakfastCost = z.infer<typeof breakfastCostSchema>;
 /* ─── بحث أصناف المخزن ─── */
 export const searchItemsSchema = z
     .object({
-        items: z.array(z.object({
-            id: text,
-            name: text,
-            unit: text,
-            category: text,
-            qty: num,
-            avg_cost: num,
-            barcode: text,
-        }).passthrough()),
+        items: z.array(
+            z
+                .object({
+                    id: text,
+                    name: text,
+                    unit: text,
+                    category: text,
+                    qty: num,
+                    avg_cost: num,
+                    barcode: text,
+                })
+                .passthrough(),
+        ),
     })
     .passthrough();
 
@@ -210,8 +237,12 @@ export async function fetchBreakfastCost(
     dept?: 'المطبخ' | 'بوفيه الافطار',
 ): Promise<BreakfastCost> {
     const qs = new URLSearchParams({ from: range.from, to: range.to });
-    if (extraIds && extraIds.length) { qs.set('extra_ids', extraIds.join(',')); }
-    if (dept) { qs.set('dept', dept); }
+    if (extraIds && extraIds.length) {
+        qs.set('extra_ids', extraIds.join(','));
+    }
+    if (dept) {
+        qs.set('dept', dept);
+    }
     const token = getAccessToken();
     return fetchJson(breakfastCostSchema, `/api/pos/reports/breakfast-cost?${qs}`, token, signal ? { signal } : {});
 }

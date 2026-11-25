@@ -218,7 +218,12 @@ export async function fetchItemInvoices(query: ItemInvoicesQuery, signal?: Abort
     }
     params.set('limit', String(query.limit ?? 100));
     params.set('offset', String(query.offset ?? 0));
-    return fetchJson(itemInvoicesSchema, `/api/yara-reports/item-invoices?${params.toString()}`, getAccessToken(), signal ? { signal } : {});
+    return fetchJson(
+        itemInvoicesSchema,
+        `/api/yara-reports/item-invoices?${params.toString()}`,
+        getAccessToken(),
+        signal ? { signal } : {},
+    );
 }
 
 const orderLineSchema = z
@@ -268,7 +273,12 @@ export type OrderDetail = z.infer<typeof orderDetailSchema>;
 
 /** تفاصيل أوردر واحد — باب الخادم `/order-detail/:docNo`. */
 export async function fetchOrderDetail(docNo: string, signal?: AbortSignal): Promise<OrderDetail> {
-    return fetchJson(orderDetailSchema, `/api/yara-reports/order-detail/${encodeURIComponent(docNo)}`, getAccessToken(), signal ? { signal } : {});
+    return fetchJson(
+        orderDetailSchema,
+        `/api/yara-reports/order-detail/${encodeURIComponent(docNo)}`,
+        getAccessToken(),
+        signal ? { signal } : {},
+    );
 }
 
 /* ── المستلَم ───────────────────────────────────────────────────────────── */

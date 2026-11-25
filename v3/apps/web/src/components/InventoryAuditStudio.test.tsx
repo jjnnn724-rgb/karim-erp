@@ -76,13 +76,7 @@ const detail = {
         },
     ],
     progress: { total: 2, counted: 1, remaining: 1, percent: 50 },
-    summary: {
-        items_with_variance: 1,
-        shortage_items: 1,
-        surplus_items: 0,
-        projected_variance_value: -20,
-        stale_items: 0,
-    },
+    summary: { items_with_variance: 1, shortage_items: 1, surplus_items: 0, projected_variance_value: -20, stale_items: 0 },
     events: [],
     location_name: 'المخزن الرئيسي',
 };
@@ -148,11 +142,7 @@ beforeEach(() => {
             if (url.endsWith('/inventory/audits')) {
                 if (init?.method === 'POST') {
                     return json(
-                        {
-                            audit: list[0],
-                            itemCount: 2,
-                            location: { id: '1', code: 'MAIN-WAREHOUSE', name_ar: 'المخزن الرئيسي' },
-                        },
+                        { audit: list[0], itemCount: 2, location: { id: '1', code: 'MAIN-WAREHOUSE', name_ar: 'المخزن الرئيسي' } },
                         201,
                     );
                 }
@@ -302,11 +292,7 @@ describe('استوديو الجرد — نطاق الجرد (تصنيف/بحث)'
         fireEvent.change(categoryInput, { target: { value: 'خضروات' } });
 
         await waitFor(() => {
-            expect(
-                callsTo('/preview').some(
-                    (call) => call.url.includes('mode=category') && call.url.includes('category='),
-                ),
-            ).toBe(true);
+            expect(callsTo('/preview').some((call) => call.url.includes('mode=category') && call.url.includes('category='))).toBe(true);
         });
         expect(await screen.findByText(/النطاق يغطي 2 صنف/)).toBeTruthy();
 

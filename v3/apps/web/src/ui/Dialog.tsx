@@ -62,16 +62,9 @@ export function Dialog({
                 <div className="erp-dialog__head">
                     <div className="erp-dialog__titles">
                         <ShadcnTitle className="text-heading-lg text-ink">{title}</ShadcnTitle>
-                        {description ? (
-                            <ShadcnDescription className="text-body-sm text-muted">{description}</ShadcnDescription>
-                        ) : null}
+                        {description ? <ShadcnDescription className="text-body-sm text-muted">{description}</ShadcnDescription> : null}
                     </div>
-                    <button
-                        type="button"
-                        aria-label={closeLabel}
-                        onClick={() => onOpenChange(false)}
-                        className="erp-dialog__close"
-                    >
+                    <button type="button" aria-label={closeLabel} onClick={() => onOpenChange(false)} className="erp-dialog__close">
                         <XIcon className="size-4" />
                     </button>
                 </div>

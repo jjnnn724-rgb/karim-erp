@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { ScreenHero } from '../ui';
 import { useState } from 'react';
 import { KpiCard, RangeControls, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { ADJUSTMENT_AR, BUCKET_AR, fetchCostAnalysis, fetchDeptCostDetail, selectableDepts } from '../lib/cost-analysis';
 import { errorMessage, intOf, moneyOf, presetRange, rangeProblem, textOf } from '../lib/reporting';
+import { ScreenHero } from '../ui';
 
 /** حد نافذة بنود القسم على الخادم (`LIMIT 800`) — يُعلَن لا يُخفى. */
 const ITEM_WINDOW = 800;
@@ -54,7 +54,7 @@ export function CostCenter() {
 
     return (
         <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-lg">
-<ScreenHero
+            <ScreenHero
                 title="مركز التكلفة"
                 english="Cost Center"
                 description="بنود قسمٍ واحد خلف رقمه — صرف مخزني وتحويلات وتسوية جرد وتشغيلية، بأحدث 800 بند من الخادم."
@@ -62,12 +62,14 @@ export function CostCenter() {
                     <>
                         <button
                             type="button"
-                            onClick={() => { () => {
-                    void analysisQuery.refetch();
-                    if (activeCode) {
-                        void detailQuery.refetch();
-                    }
-                } }}
+                            onClick={() => {
+                                () => {
+                                    void analysisQuery.refetch();
+                                    if (activeCode) {
+                                        void detailQuery.refetch();
+                                    }
+                                };
+                            }}
                             disabled={detailQuery.isFetching || analysisQuery.isFetching}
                             className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
                         >

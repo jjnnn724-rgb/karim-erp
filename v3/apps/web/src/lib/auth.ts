@@ -1,13 +1,7 @@
 import { NUMERIC_ID_PATTERN } from '@karim/shared';
 import { useSyncExternalStore } from 'react';
 import { z } from 'zod';
-import {
-    type AssertionJSON,
-    describeWebAuthnError,
-    isWebAuthnSupported,
-    serializeAssertion,
-    toRequestOptions,
-} from './webauthn';
+import { type AssertionJSON, describeWebAuthnError, isWebAuthnSupported, serializeAssertion, toRequestOptions } from './webauthn';
 
 /**
  * الجلسة — توكن الوصول مع رمز التحديث، بنفس اسمٍ ومفتاحٍ في القديم.
@@ -18,8 +12,6 @@ import {
  *    الأصل نفسه.
  *  · توكن الوصول في الذاكرة فقط: لا يُكتب في التخزين الدائم — توكنٌ في
  *    `localStorage` يقرأه أي سكربتٍ محمَّل.
- *  · حالة الدخول وتوكن الوصول يُزامنان بين تبويبات V3 عبر `BroadcastChannel`
- *    في الذاكرة فقط؛ تسجيل الدخول والخروج ينعكسان فورًا دون إعادة تحميل.
  *  · عند الإقلاع: إن وُجد رمز تحديث، نُجدّده ونحصل على توكن وصول؛ وإلّا
  *    فشاشة الدخول.
  *
@@ -54,16 +46,6 @@ const sessionResponseSchema = z.object({
     app_key: z.string().nullable().optional(),
     user: sessionUserSchema,
 });
-
-const authChannelMessageSchema = z.discriminatedUnion('type', [
-    z.object({
-        type: z.literal('session'),
-        access_token: z.string().min(1),
-        app_key: z.string().nullable(),
-        user: sessionUserSchema,
-    }),
-    z.object({ type: z.literal('logout') }),
-]);
 
 /**
  * رد `/api/auth/login` متعدد الأشكال: جلسة كاملة، أو تذكرة عامل ثانٍ، أو
@@ -150,8 +132,6 @@ export class AuthError extends Error {
 let state: AuthState = { status: 'anonymous', token: null, user: null };
 let appKey: string | null = null;
 const listeners = new Set<(next: AuthState) => void>();
-let authChannel: BroadcastChannel | null = null;
-let sessionVersion = 0;
 
 function readStorage(key: string): string {
     try {
@@ -178,14 +158,10 @@ function writeStorage(key: string, value: string): void {
  * فكائنٌ جديد كل قراءة (= `getSnapshot` غير مستقر) يسبّب إعادة رسمٍ لا
  * تنتهي. فالحالة تُبنى مرّة عند كل تغيير وتُعاد كما هي حتى ذلك الحين.
  */
-function setSession(token: string | null, user: SessionUser | null, force = false): void {
+function setSession(token: string | null, user: SessionUser | null): void {
     if (state.token === token && state.user?.id === user?.id) {
-        if (force) {
-            sessionVersion += 1;
-        }
         return;
     }
-    sessionVersion += 1;
     state = { status: token ? 'authenticated' : 'anonymous', token, user };
     for (const listener of listeners) {
         listener(state);
@@ -197,7 +173,6 @@ export function getAuthState(): AuthState {
 }
 
 export function subscribeAuth(listener: (next: AuthState) => void): () => void {
-    getAuthChannel();
     listeners.add(listener);
     return () => {
         listeners.delete(listener);
@@ -209,12 +184,11 @@ export function getAccessToken(): string | null {
 }
 
 /**
- * هل يوجد رمز تحديث للمحاولة؟ قناة التمهيد (`karim_access_v1`) توكنٌ بلا
- * رمز تحديث، فلا مسار تجديد لها — الاستجابة التفاعلية لـ401 تتخطّاها وتترك
- * الخطأ لطبقة العرض (سلوك ما قبلها محفوظ)، بدل إخراج جلسة لا تستطيع تجديدها.
+ * هل يوجد رمز تحديث محفوظ؟ قناة التمهيد قد تحمل توكن وصول بلا رمز تحديث،
+ * فغيابه يعني «لا مسار تجديد» لا «جلسة منتهية» — نفرّق بينهما في استجابة 401.
  */
 export function hasRefreshToken(): boolean {
-    return readStorage(RT_KEY) !== '';
+    return readStorage(RT_KEY).trim() !== '';
 }
 
 /**
@@ -232,55 +206,12 @@ function setAppKey(value: string | null | undefined): void {
     appKey = next;
 }
 
-/** قناة مؤقتة؛ لا تُحفظ رسائل الجلسة في التخزين الدائم. */
-function getAuthChannel(): BroadcastChannel | null {
-    if (typeof BroadcastChannel === 'undefined') {
-        return null;
-    }
-    if (!authChannel) {
-        authChannel = new BroadcastChannel('karim-erp-auth-v1');
-        authChannel.addEventListener('message', (event: MessageEvent<unknown>) => {
-            const parsed = authChannelMessageSchema.safeParse(event.data);
-            if (!parsed.success) {
-                return;
-            }
-            if (parsed.data.type === 'session') {
-                setAppKey(parsed.data.app_key);
-                setSession(parsed.data.access_token, parsed.data.user, true);
-                return;
-            }
-            setAppKey(null);
-            setSession(null, null, true);
-        });
-    }
-    return authChannel;
-}
-
-function broadcastSession(): void {
-    if (state.token && state.user) {
-        getAuthChannel()?.postMessage({
-            type: 'session',
-            access_token: state.token,
-            app_key: appKey,
-            user: state.user,
-        });
-    }
-}
-
-function broadcastLogout(): void {
-    getAuthChannel()?.postMessage({ type: 'logout' });
-}
-
 /** حالة الجلسة للقاعدة (React) — اشتراكٌ على مخزن الحالة نفسه. */
 export function useAuthState(): AuthState {
     return useSyncExternalStore(subscribeAuth, getAuthState, getAuthState);
 }
 
-async function requestJson(
-    path: string,
-    body: unknown,
-    ticket?: string | null,
-): Promise<{ ok: boolean; status: number; data: unknown }> {
+async function requestJson(path: string, body: unknown, ticket?: string | null): Promise<{ ok: boolean; status: number; data: unknown }> {
     const headers: Record<string, string> = {
         'Content-Type': 'application/json',
         Accept: 'application/json',
@@ -313,8 +244,7 @@ async function errorFrom(data: unknown, fallback: string): Promise<AuthError> {
 export function applySession(session: AuthSession): void {
     writeStorage(RT_KEY, session.refresh_token);
     setAppKey(session.app_key);
-    setSession(session.access_token, session.user, true);
-    broadcastSession();
+    setSession(session.access_token, session.user);
 }
 
 function parseSession(data: unknown): AuthSession {
@@ -323,15 +253,9 @@ function parseSession(data: unknown): AuthSession {
 
 /** يبدّل رمز التحديث بتوكن وصول جديد ويحفظ الرمز المدوَّر. */
 export async function refreshSession(): Promise<boolean> {
-    const requestVersion = sessionVersion;
     const refreshToken = readStorage(RT_KEY);
     if (!refreshToken) {
-        const hadSession = state.token !== null;
-        setAppKey(null);
-        setSession(null, null, true);
-        if (hadSession) {
-            broadcastLogout();
-        }
+        setSession(null, null);
         return false;
     }
     let response: Response;
@@ -345,28 +269,18 @@ export async function refreshSession(): Promise<boolean> {
             body: JSON.stringify({ refresh_token: refreshToken }),
         });
     } catch (error) {
-        if (sessionVersion !== requestVersion) {
-            return state.token !== null;
-        }
         console.warn('[auth] Session refresh unavailable; keeping the current session for retry.', error);
         return false;
-    }
-
-    if (sessionVersion !== requestVersion) {
-        return state.token !== null;
     }
 
     if (!response.ok) {
         if (response.status === 401) {
             writeStorage(RT_KEY, '');
             setAppKey(null);
-            setSession(null, null, true);
-            broadcastLogout();
+            setSession(null, null);
             return false;
         }
-        console.warn(
-            `[auth] Session refresh failed with HTTP ${response.status}; keeping the current session for retry.`,
-        );
+        console.warn(`[auth] Session refresh failed with HTTP ${response.status}; keeping the current session for retry.`);
         return false;
     }
 
@@ -374,10 +288,7 @@ export async function refreshSession(): Promise<boolean> {
         applySession(parseSession(await response.json()));
         return true;
     } catch (error) {
-        console.error(
-            '[auth] Session refresh returned an invalid response; keeping the current session for retry.',
-            error,
-        );
+        console.error('[auth] Session refresh returned an invalid response; keeping the current session for retry.', error);
         return false;
     }
 }
@@ -480,10 +391,7 @@ export async function setupMfa(ticket: string): Promise<MfaSetup> {
  * تأكيد التسجيل — الجلسة صادرة بالفعل، لكن لا نُدخلها قبل حفظ رموز
  * الاسترداد. تُعاد للمستدعي كي يعرضها ثم يستدعي `applySession`.
  */
-export async function confirmMfa(
-    ticket: string,
-    code: string,
-): Promise<{ session: AuthSession; recoveryCodes: string[] }> {
+export async function confirmMfa(ticket: string, code: string): Promise<{ session: AuthSession; recoveryCodes: string[] }> {
     const { ok, data } = await requestJson('/api/auth/mfa/confirm', { code }, ticket);
     if (!ok) {
         throw await errorFrom(data, 'تعذّر تأكيد رمز المصادقة');
@@ -533,11 +441,7 @@ export async function loginWithPasskey(ticket: string): Promise<void> {
  * تغيير كلمة المرور. تذكرة `PASSWORD_CHANGE_REQUIRED` جلسةٌ مقيدة: بعد
  * التغيير قد يعيد الخادم بوابة عامل ثانٍ (MFA) بدل جلسة كاملة.
  */
-export async function changePassword(
-    ticket: string,
-    currentPassword: string,
-    newPassword: string,
-): Promise<AuthOutcome> {
+export async function changePassword(ticket: string, currentPassword: string, newPassword: string): Promise<AuthOutcome> {
     const { ok, data } = await requestJson(
         '/api/auth/change-password',
         { current_password: currentPassword, new_password: newPassword },
@@ -587,8 +491,7 @@ export function logout(): void {
     }
     writeStorage(RT_KEY, '');
     setAppKey(null);
-    setSession(null, null, true);
-    broadcastLogout();
+    setSession(null, null);
 }
 
 /**
@@ -598,7 +501,7 @@ export function logout(): void {
 export async function bootstrapSession(): Promise<boolean> {
     const seeded = readStorage(ACCESS_KEY);
     if (seeded) {
-        setSession(seeded, null, true);
+        setSession(seeded, null);
         return true;
     }
     return refreshSession();

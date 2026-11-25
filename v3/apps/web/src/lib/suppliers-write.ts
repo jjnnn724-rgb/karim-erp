@@ -48,29 +48,12 @@ export const SUPPLIER_TEXT = {
 
 /* ── مخططات التحقق ────────────────────────────────────────────────────── */
 
-/**
- * الحالة الضريبية — نفس قيم `backend/procurement-routes.js` وV2
- * (`procurement-repo.js`). كانت الواجهة ترسل `tax_number` قديمًا كان الخادم
- * يتجاهله، فكان كل مورد يُنشأ «غير مسجل» حتى لو أدخل المشغّل رقمًا ضريبيًا —
- * ومن ثمّ صفر ضريبة في فواتيره. الاسم الصحيح هو `vat_number` مع الحالة.
- */
-export const TAX_STATUS_VALUES = ['REGISTERED', 'NOT_REGISTERED', 'EXEMPT'] as const;
-export type TaxStatus = (typeof TAX_STATUS_VALUES)[number];
-
-const taxFields = {
-    tax_registration_status: z.enum(TAX_STATUS_VALUES).default('NOT_REGISTERED'),
-    vat_number: z.string().nullable().optional(),
-    commercial_register: z.string().nullable().optional(),
-};
-
 export const supplierCreateSchema = z.object({
     name: z.string().min(1, SUPPLIER_TEXT.nameRequired),
     phone: z.string().min(1, SUPPLIER_TEXT.phoneRequired),
     address: z.string().optional().nullable(),
-    name_en: z.string().optional().nullable(),
-    category: z.string().optional().nullable(),
-    ...taxFields,
-    is_active: z.boolean().default(true),
+    tax_number: z.string().optional().nullable(),
+    active: z.boolean().default(true),
 });
 
 export type SupplierCreateInput = z.infer<typeof supplierCreateSchema>;
@@ -79,16 +62,14 @@ export const supplierUpdateSchema = z.object({
     name: z.string().min(1, SUPPLIER_TEXT.nameRequired),
     phone: z.string().min(1, SUPPLIER_TEXT.phoneRequired),
     address: z.string().optional().nullable(),
-    name_en: z.string().optional().nullable(),
-    category: z.string().optional().nullable(),
-    ...taxFields,
-    is_active: z.boolean().optional(),
+    tax_number: z.string().optional().nullable(),
+    active: z.boolean().optional(),
 });
 
 export type SupplierUpdateInput = z.infer<typeof supplierUpdateSchema>;
 
 export const supplierActiveSchema = z.object({
-    is_active: z.boolean(),
+    active: z.boolean(),
 });
 
 export type SupplierActiveInput = z.infer<typeof supplierActiveSchema>;
@@ -96,63 +77,30 @@ export type SupplierActiveInput = z.infer<typeof supplierActiveSchema>;
 const supplierResultSchema = z.object({ id: z.union([z.string(), z.number()]) }).passthrough();
 export type SupplierResult = z.infer<typeof supplierResultSchema>;
 
-/** تحقق محلي مطابق للخادم — يمنع إرسال زوج (حالة، رقم) مرفوض فيُسكت الخطأ. */
-export function supplierTaxError(input: {
-    tax_registration_status?: string | null;
-    vat_number?: string | null;
-}): string {
-    const status = String(input.tax_registration_status || 'NOT_REGISTERED').toUpperCase();
-    const vat = String(input.vat_number ?? '').trim();
-    const digits = vat.replace(/\D/g, '');
-    if (status === 'REGISTERED' && !/^\d{15}$/.test(digits)) {
-        return 'المورد المسجل ضريبيًا يحتاج رقمًا ضريبيًا (15 رقمًا)';
-    }
-    if (status === 'NOT_REGISTERED' && vat) {
-        return 'المورد غير المسجل لا يقبل رقمًا ضريبيًا — اتركه فارغًا';
-    }
-    if (vat && !/^\d{15}$/.test(digits)) {
-        return 'الرقم الضريبي يجب أن يكون 15 رقمًا';
-    }
-    return '';
-}
-
 /* ── العمليات ─────────────────────────────────────────────────────────── */
 
-export function supplierBody(input: SupplierCreateInput | SupplierUpdateInput): Record<string, unknown> {
-    const body: Record<string, unknown> = {
+export async function createSupplier(input: SupplierCreateInput): Promise<SupplierResult> {
+    return writeJson(supplierResultSchema, '/api/procurement/suppliers', 'POST', {
         name: input.name.trim(),
         phone: input.phone.trim(),
         address: input.address?.trim() || null,
-        name_en: input.name_en?.trim() || null,
-        category: input.category?.trim() || null,
-        tax_registration_status: input.tax_registration_status || 'NOT_REGISTERED',
-        vat_number: input.vat_number?.trim() || null,
-        commercial_register: input.commercial_register?.trim() || null,
-    };
-    if ('is_active' in input && input.is_active !== undefined) {
-        // الخادم يقرأ `is_active` لا `active` — الاسم القديم كان يُتجاهل.
-        body.is_active = input.is_active;
-    }
-    return body;
-}
-
-export async function createSupplier(input: SupplierCreateInput): Promise<SupplierResult> {
-    return writeJson(supplierResultSchema, '/api/procurement/suppliers', 'POST', supplierBody(input));
+        tax_number: input.tax_number?.trim() || null,
+        active: input.active ?? true,
+    });
 }
 
 export async function updateSupplier(id: string | number, input: SupplierUpdateInput): Promise<SupplierResult> {
-    return writeJson(
-        supplierResultSchema,
-        `/api/procurement/suppliers/${encodeURIComponent(String(id))}`,
-        'PUT',
-        supplierBody(input),
-    );
+    return writeJson(supplierResultSchema, `/api/procurement/suppliers/${encodeURIComponent(String(id))}`, 'PUT', {
+        name: input.name.trim(),
+        phone: input.phone.trim(),
+        address: input.address?.trim() || null,
+        tax_number: input.tax_number?.trim() || null,
+        ...(input.active !== undefined ? { active: input.active } : {}),
+    });
 }
 
 export async function setSupplierActive(id: string | number, active: boolean): Promise<SupplierResult> {
-    return writeJson(supplierResultSchema, `/api/procurement/suppliers/${encodeURIComponent(String(id))}`, 'PUT', {
-        is_active: active,
-    });
+    return writeJson(supplierResultSchema, `/api/procurement/suppliers/${encodeURIComponent(String(id))}`, 'PUT', { active });
 }
 
 export async function deleteSupplier(id: string | number): Promise<void> {

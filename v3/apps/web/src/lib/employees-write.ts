@@ -143,7 +143,26 @@ export type EmployeeProfileInput = z.infer<typeof employeeProfileSchema>;
 /** تحديث موسّع بأي مجموعة حقول (نموذج بطاقة الموظف بالأقسام). */
 export async function updateEmployeeProfile(id: string | number, input: EmployeeProfileInput): Promise<EmployeeResult> {
     const payload: Record<string, unknown> = {};
-    const nullable = ['department', 'position', 'phone', 'email', 'joinDate', 'salary', 'iqamaNumber', 'iqamaExpiry', 'healthCertExpiry', 'healthEduExpiry', 'nationality', 'iban', 'gosi_number', 'cardId', 'deviceUserId', 'shift_start', 'day_off', 'photo'];
+    const nullable = [
+        'department',
+        'position',
+        'phone',
+        'email',
+        'joinDate',
+        'salary',
+        'iqamaNumber',
+        'iqamaExpiry',
+        'healthCertExpiry',
+        'healthEduExpiry',
+        'nationality',
+        'iban',
+        'gosi_number',
+        'cardId',
+        'deviceUserId',
+        'shift_start',
+        'day_off',
+        'photo',
+    ];
     for (const [key, value] of Object.entries(input)) {
         if (value === undefined) {
             continue;

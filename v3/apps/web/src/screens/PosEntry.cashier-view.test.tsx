@@ -74,11 +74,21 @@ function json(body: unknown, status = 200): Response {
 function stubFetch() {
     const mock = vi.fn(async (input: RequestInfo | URL) => {
         const href = String(input);
-        if (href.includes('/api/pos/departments')) { return json([DEPARTMENT]); }
-        if (href.includes('/api/pos/shifts/active')) { return json(SHIFT); }
-        if (href.includes('/api/pos/products')) { return json([TEA]); }
-        if (href.includes('/api/pos/held-orders')) { return json([]); }
-        if (href.includes('/api/sales')) { return json([]); }
+        if (href.includes('/api/pos/departments')) {
+            return json([DEPARTMENT]);
+        }
+        if (href.includes('/api/pos/shifts/active')) {
+            return json(SHIFT);
+        }
+        if (href.includes('/api/pos/products')) {
+            return json([TEA]);
+        }
+        if (href.includes('/api/pos/held-orders')) {
+            return json([]);
+        }
+        if (href.includes('/api/sales')) {
+            return json([]);
+        }
         return json({ error: 'NOT_FOUND' }, 404);
     });
     vi.stubGlobal('fetch', mock);

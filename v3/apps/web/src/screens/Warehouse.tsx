@@ -1,11 +1,11 @@
 import './Warehouse.premium.css';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useMemo, useState } from 'react';
 import { BulkReceiptDialog } from '../components/BulkReceiptDialog';
 import { useConfirm } from '../components/ConfirmProvider';
 import { InventoryAuditStudio } from '../components/InventoryAuditStudio';
-import { PrintActions } from '../components/PrintActions';
-import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
+import { Card, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { canReadAudit } from '../lib/inventory-audits';
 import {
@@ -56,7 +56,7 @@ import {
     receiveInventoryItem,
 } from '../lib/inventory-write';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
-import { PageHeader } from '../ui';
+import { AnswerStrip, EmptyState, ScreenHero } from '../ui';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
@@ -89,20 +89,7 @@ const TONE_CLASS: Record<string, string> = {
     neutral: 'text-muted',
 };
 
-function Kpi({ label, english, value, hint }: { label: string; english: string; value: string; hint: string }) {
-    return (
-        <div className="rounded-lg border border-hairline bg-surface p-md shadow-card">
-            <p className="text-label-md text-muted">
-                {label}{' '}
-                <span className="text-caption text-faint" dir="ltr" lang="en">
-                    {english}
-                </span>
-            </p>
-            <p className="erp-numeric mt-xs text-heading-lg text-ink">{value}</p>
-            <p className="mt-xxs text-caption text-muted">{hint}</p>
-        </div>
-    );
-}
+/* Kpi المحلي أُزيل (لغة كريم 2026-11-21) — جواب البطل عبر AnswerStrip. */
 
 /* ── نموذج الوارد السريع (وارد) ─────────────────────────────────────────── */
 
@@ -447,14 +434,9 @@ function MergeDialog({ open, rows, registerTotal, truncated, pending, onClose, o
         >
             <div className="flex flex-col gap-sm">
                 {groups.length === 0 ? (
-                    <div
-                        role="status"
-                        className="flex flex-col gap-xxs rounded-md border border-hairline bg-surface-sunken p-sm"
-                    >
+                    <div role="status" className="flex flex-col gap-xxs rounded-md border border-hairline bg-surface-sunken p-sm">
                         <p className="text-body-md text-ink">{INVENTORY_TEXT.mergeNoDuplicates}</p>
-                        <p className="text-body-sm text-muted">
-                            {mergeScopeNote(rows.length, registerTotal, truncated)}
-                        </p>
+                        <p className="text-body-sm text-muted">{mergeScopeNote(rows.length, registerTotal, truncated)}</p>
                     </div>
                 ) : (
                     <>
@@ -462,10 +444,7 @@ function MergeDialog({ open, rows, registerTotal, truncated, pending, onClose, o
                             {INVENTORY_TEXT.mergeIntro}
                         </p>
                         {groups.map((group, index) => (
-                            <div
-                                key={group.key}
-                                className="flex flex-col gap-xs rounded-md border border-hairline p-sm"
-                            >
+                            <div key={group.key} className="flex flex-col gap-xs rounded-md border border-hairline p-sm">
                                 <p className="text-body-sm text-ink">
                                     «{group.items[0]?.name ?? ''}» — {formatInt(group.items.length)} نسخ
                                 </p>
@@ -482,9 +461,7 @@ function MergeDialog({ open, rows, registerTotal, truncated, pending, onClose, o
                                         />
                                         <span className="text-ink-secondary">
                                             {item.name} — رصيد {formatQty(item.qty)} {item.unit ?? ''}
-                                            {Number(item.minQty) > 0
-                                                ? ` · حد أدنى ${formatQty(Number(item.minQty))}`
-                                                : ''}{' '}
+                                            {Number(item.minQty) > 0 ? ` · حد أدنى ${formatQty(Number(item.minQty))}` : ''}{' '}
                                             <span className="erp-numeric text-faint" dir="ltr">
                                                 (id: {String(item.id)})
                                             </span>
@@ -492,21 +469,13 @@ function MergeDialog({ open, rows, registerTotal, truncated, pending, onClose, o
                                     </label>
                                 ))}
                                 <div>
-                                    <Button
-                                        type="button"
-                                        variant="danger"
-                                        size="sm"
-                                        loading={pending}
-                                        onClick={() => void submit(group)}
-                                    >
+                                    <Button type="button" variant="danger" size="sm" loading={pending} onClick={() => void submit(group)}>
                                         {INVENTORY_TEXT.mergeAction}
                                     </Button>
                                 </div>
                             </div>
                         ))}
-                        <p className="text-body-sm text-muted">
-                            {mergeScopeNote(rows.length, registerTotal, truncated)}
-                        </p>
+                        <p className="text-body-sm text-muted">{mergeScopeNote(rows.length, registerTotal, truncated)}</p>
                     </>
                 )}
                 {error ? (
@@ -546,6 +515,9 @@ export function Warehouse() {
     const confirm = useConfirm();
     const { toast } = useToast();
     const queryClient = useQueryClient();
+    const navigate = useNavigate();
+    // حوكمة المخزن نزلت من القائمة الجانبية (2026-11-20) — تُفتح من هنا كما في V2.
+    const canGov = role === 'admin' || role === 'manager' || role === 'warehouse' || role === 'accountant';
 
     // البحث نداء خادم — الانتظار 300ms يجمع ضربات المفتاح بدل طلب لكل حرف.
     useEffect(() => {
@@ -689,61 +661,110 @@ export function Warehouse() {
 
     return (
         <div className="flex flex-col gap-md erp-premium-Warehouse">
-            <PageHeader
+            <ScreenHero
                 title="المخزون"
-                english="Inventory"
+                english="INVENTORY"
                 description="سجل الأصناف وأرصدتها — وارد سريع وتعديل مباشر وحذف ودمج للمكرر وصلاحياتها."
+                answer={
+                    <AnswerStrip
+                        items={[
+                            {
+                                label: 'الأصناف المعروضة',
+                                english: 'Items',
+                                value: rows.length,
+                                format: formatInt,
+                                hint: truncated
+                                    ? `أول ${formatInt(rows.length)} من ${formatInt(total)} — سقف الجلب`
+                                    : `من ${formatInt(total)} في السجل`,
+                            },
+                            {
+                                label: 'تحت الحد',
+                                english: 'Below minimum',
+                                value: counts.low,
+                                format: formatInt,
+                                hint: 'الرصيد عند حد إعادة الطلب أو تحته',
+                                tone: 'warning',
+                            },
+                            {
+                                label: 'نفد',
+                                english: 'Out of stock',
+                                value: counts.out,
+                                format: formatInt,
+                                hint: 'رصيد صفر أو أقل',
+                                tone: counts.out > 0 ? 'danger' : 'neutral',
+                            },
+                            {
+                                label: 'متوفر',
+                                english: 'In stock',
+                                value: counts.ok,
+                                format: formatInt,
+                                hint: 'الرصيد أعلى من الحد المسجّل',
+                                tone: 'success',
+                            },
+                        ]}
+                        columns={4}
+                    />
+                }
                 actions={
                     <>
-                        <div className="flex items-center gap-xs" data-erp-print-hide>
-                            {canWrite ? (
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="secondary"
-                                    onClick={() => {
-                                        setBulkOpen(true);
-                                    }}
-                                >
-                                    استلام مجمّع
-                                </Button>
-                            ) : null}
-                            {canAudit ? (
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="secondary"
-                                    onClick={() => {
-                                        setAuditsOpen(true);
-                                    }}
-                                >
-                                    الجرد الفعلي
-                                </Button>
-                            ) : null}
-                            {canMerge ? (
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="secondary"
-                                    onClick={() => {
-                                        setPageError('');
-                                        setMergeOpen(true);
-                                    }}
-                                >
-                                    دمج أصناف مكررة
-                                </Button>
-                            ) : null}
-                            <button
+                        {canGov ? (
+                            <Button
                                 type="button"
+                                size="sm"
+                                variant="secondary"
                                 onClick={() => {
-                                    void inventoryQuery.refetch();
+                                    void navigate({ to: '/warehouse-gov' });
                                 }}
-                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
                             >
-                                تحديث
-                            </button>
-                            <PrintActions title="المخزون" />
-                        </div>
+                                حوكمة المخزن
+                            </Button>
+                        ) : null}
+                        {canWrite ? (
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => {
+                                    setBulkOpen(true);
+                                }}
+                            >
+                                استلام مجمّع
+                            </Button>
+                        ) : null}
+                        {canAudit ? (
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => {
+                                    setAuditsOpen(true);
+                                }}
+                            >
+                                الجرد الفعلي
+                            </Button>
+                        ) : null}
+                        {canMerge ? (
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => {
+                                    setPageError('');
+                                    setMergeOpen(true);
+                                }}
+                            >
+                                دمج أصناف مكررة
+                            </Button>
+                        ) : null}
+                        <button
+                            type="button"
+                            onClick={() => {
+                                void inventoryQuery.refetch();
+                            }}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                        >
+                            تحديث
+                        </button>
                     </>
                 }
             />
@@ -753,27 +774,6 @@ export function Warehouse() {
                     {pageError}
                 </p>
             ) : null}
-
-            <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
-                <Kpi
-                    label="الأصناف المعروضة"
-                    english="Items"
-                    value={formatInt(rows.length)}
-                    hint={
-                        truncated
-                            ? `أول ${formatInt(rows.length)} من ${formatInt(total)} — سقف الجلب`
-                            : `من ${formatInt(total)} في السجل`
-                    }
-                />
-                <Kpi
-                    label="تحت الحد"
-                    english="Below minimum"
-                    value={formatInt(counts.low)}
-                    hint="الرصيد عند حد إعادة الطلب أو تحته"
-                />
-                <Kpi label="نفد" english="Out of stock" value={formatInt(counts.out)} hint="رصيد صفر أو أقل" />
-                <Kpi label="متوفر" english="In stock" value={formatInt(counts.ok)} hint="الرصيد أعلى من الحد المسجّل" />
-            </div>
 
             <Card className="p-sm">
                 <div className="flex flex-wrap items-end gap-sm">
@@ -794,10 +794,7 @@ export function Warehouse() {
                             className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
                         />
                     </label>
-                    <label
-                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-inventory-category"
-                    >
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-inventory-category">
                         الفئة
                         <select
                             id="erp-inventory-category"
@@ -818,10 +815,7 @@ export function Warehouse() {
                                 ))}
                         </select>
                     </label>
-                    <label
-                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-inventory-stock"
-                    >
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-inventory-stock">
                         حالة المخزون
                         <select
                             id="erp-inventory-stock"
@@ -895,25 +889,15 @@ export function Warehouse() {
                                         {shortages.map((row) => (
                                             <tr key={`short-${row.id}`} className="border-b border-hairline">
                                                 <td className="px-sm py-xxs text-ink">{row.name}</td>
-                                                <td className="px-sm py-xxs text-body-sm text-muted">
-                                                    {row.category || '—'}
-                                                </td>
+                                                <td className="px-sm py-xxs text-body-sm text-muted">{row.category || '—'}</td>
                                                 <td className="erp-numeric px-sm py-xxs text-center text-ink" dir="ltr">
                                                     {formatQty(row.qty)}
-                                                    {row.unit ? (
-                                                        <span className="text-caption text-muted"> {row.unit}</span>
-                                                    ) : null}
+                                                    {row.unit ? <span className="text-caption text-muted"> {row.unit}</span> : null}
                                                 </td>
-                                                <td
-                                                    className="erp-numeric px-sm py-xxs text-center text-muted"
-                                                    dir="ltr"
-                                                >
+                                                <td className="erp-numeric px-sm py-xxs text-center text-muted" dir="ltr">
                                                     {row.minQty === null ? '—' : formatQty(row.minQty)}
                                                 </td>
-                                                <td
-                                                    className="erp-numeric px-sm py-xxs text-center text-danger-text"
-                                                    dir="ltr"
-                                                >
+                                                <td className="erp-numeric px-sm py-xxs text-center text-danger-text" dir="ltr">
                                                     {formatQty(row.short)}
                                                 </td>
                                             </tr>
@@ -933,13 +917,8 @@ export function Warehouse() {
                             <ul className="flex flex-col gap-xs">
                                 {categories.map((entry) => (
                                     <li key={entry.value || '(none)'} className="flex items-center gap-sm">
-                                        <span className="w-40 shrink-0 truncate text-body-sm text-ink">
-                                            {entry.value || 'بلا فئة'}
-                                        </span>
-                                        <span
-                                            className="h-2 flex-1 overflow-hidden rounded-full bg-surface-sunken"
-                                            aria-hidden="true"
-                                        >
+                                        <span className="w-40 shrink-0 truncate text-body-sm text-ink">{entry.value || 'بلا فئة'}</span>
+                                        <span className="h-2 flex-1 overflow-hidden rounded-full bg-surface-sunken" aria-hidden="true">
                                             <span
                                                 className="block h-full rounded-full bg-primary"
                                                 style={{
@@ -976,9 +955,24 @@ export function Warehouse() {
                 ) : null}
 
                 {!inventoryQuery.isPending && !inventoryQuery.isError && rows.length === 0 ? (
-                    <StateEmpty
+                    <EmptyState
                         title="لا أصناف"
-                        hint="لا صنف يطابق البحث أو الفئة أو حالة المخزون — امسح المرشّحات أو غيّر كلمة البحث."
+                        description="لا صنف يطابق البحث أو الفئة أو حالة المخزون."
+                        action={
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => {
+                                    setSearchInput('');
+                                    setCategory('');
+                                    setStock('all');
+                                    setPage(1);
+                                }}
+                            >
+                                مسح المرشّحات
+                            </Button>
+                        }
                     />
                 ) : null}
 
@@ -1025,22 +1019,15 @@ export function Warehouse() {
                                             <td className="px-sm py-xxs text-ink">
                                                 <span className={row.nameResolved ? '' : 'text-muted'}>{row.name}</span>
                                                 {row.barcode ? (
-                                                    <span
-                                                        className="block erp-numeric text-caption text-faint"
-                                                        dir="ltr"
-                                                    >
+                                                    <span className="block erp-numeric text-caption text-faint" dir="ltr">
                                                         {row.barcode}
                                                     </span>
                                                 ) : null}
                                             </td>
-                                            <td className="px-sm py-xxs text-body-sm text-muted">
-                                                {row.category || '—'}
-                                            </td>
+                                            <td className="px-sm py-xxs text-body-sm text-muted">{row.category || '—'}</td>
                                             <td className="erp-numeric px-sm py-xxs text-center text-ink" dir="ltr">
                                                 {formatQty(row.qty)}
-                                                {row.unit ? (
-                                                    <span className="text-caption text-muted"> {row.unit}</span>
-                                                ) : null}
+                                                {row.unit ? <span className="text-caption text-muted"> {row.unit}</span> : null}
                                             </td>
                                             <td className="erp-numeric px-sm py-xxs text-center text-ink" dir="ltr">
                                                 {formatQty(row.mainQty)}
@@ -1063,23 +1050,16 @@ export function Warehouse() {
                                                 {!row.shelfId ? (
                                                     <span className="text-muted">بلا رف مسجّل</span>
                                                 ) : row.shelfResolved ? (
-                                                    <span className="text-ink-secondary">
-                                                        {row.shelf || row.shelfName || '—'}
-                                                    </span>
+                                                    <span className="text-ink-secondary">{row.shelf || row.shelfName || '—'}</span>
                                                 ) : (
-                                                    <span
-                                                        className="text-muted"
-                                                        title="رقم الرف كما هو في السجل — لم يُحلّ إلى اسم"
-                                                    >
+                                                    <span className="text-muted" title="رقم الرف كما هو في السجل — لم يُحلّ إلى اسم">
                                                         #{row.shelfId}
                                                     </span>
                                                 )}
                                             </td>
                                             <td className="px-sm py-xxs text-body-sm">
                                                 <span className={TONE_CLASS[row.state.tone]}>{row.state.label}</span>
-                                                {row.untracked ? (
-                                                    <span className="block text-caption text-faint">بلا حد أدنى</span>
-                                                ) : null}
+                                                {row.untracked ? <span className="block text-caption text-faint">بلا حد أدنى</span> : null}
                                             </td>
                                             {canWrite || canDirect ? (
                                                 <td className="px-sm py-xxs" data-erp-print-hide>

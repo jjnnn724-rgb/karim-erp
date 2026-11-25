@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-    isIsoDay,
-    zkDaySpan,
-    zkIgnoreReasonError,
-    zkPunchStateName,
-    zkRebuildErrors,
-    zkScanDeviceName,
-} from './zkteco-admin';
+import { isIsoDay, zkDaySpan, zkIgnoreReasonError, zkPunchStateName, zkRebuildErrors, zkScanDeviceName } from './zkteco-admin';
 
 describe('zkteco-admin', () => {
     it('isIsoDay يقبل التواريخ الحقيقية ويرفض المدحرجة', () => {
@@ -31,9 +24,7 @@ describe('zkteco-admin', () => {
         expect(zkRebuildErrors(valid)).toEqual([]);
         expect(zkRebuildErrors({ ...valid, employeeId: '' })).toContain('اختر الموظف أولًا');
         expect(zkRebuildErrors({ ...valid, from: '2026-02-31' })).toContain('التاريخ بصيغة YYYY-MM-DD');
-        expect(zkRebuildErrors({ ...valid, from: '2026-11-10', to: '2026-11-01' })).toContain(
-            'تاريخ البداية بعد النهاية',
-        );
+        expect(zkRebuildErrors({ ...valid, from: '2026-11-10', to: '2026-11-01' })).toContain('تاريخ البداية بعد النهاية');
         expect(zkRebuildErrors({ ...valid, to: '2026-12-31' })[0]).toContain('31');
         expect(zkRebuildErrors({ ...valid, reason: 'قصير' })).toContain('سبب إعادة البناء مطلوب (5 أحرف على الأقل)');
         expect(zkRebuildErrors(valid, 7)[0]).toContain('7');

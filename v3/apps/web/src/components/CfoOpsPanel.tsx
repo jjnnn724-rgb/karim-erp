@@ -11,7 +11,6 @@ import {
     createBudget,
     deleteBudget,
     disposeAsset,
-    type FixedAsset,
     fetchAssets,
     fetchBankRec,
     fetchBudgets,
@@ -26,9 +25,8 @@ import {
     validateStatement,
 } from '../lib/cfo-ops';
 import { canWriteCfo, todayIso } from '../lib/cfo-write';
-import { intOf, moneyOf, num, textOf } from '../lib/reporting';
+import { intOf, moneyOf, textOf } from '../lib/reporting';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
-import { DataTable } from '../ui';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
@@ -54,8 +52,7 @@ const TABS: { key: OpsTab; label: string }[] = [
     { key: 'alerts', label: CFO_OPS_TEXT.alerts },
 ];
 
-const TH =
-    'border-b border-hairline bg-surface-sunken px-sm py-xs text-start text-label-md font-medium text-ink-secondary';
+const TH = 'border-b border-hairline bg-surface-sunken px-sm py-xs text-start text-label-md font-medium text-ink-secondary';
 const TD = 'border-b border-hairline px-sm py-xxs text-ink';
 
 function stateLine(pending: boolean, error: unknown, empty: string, hasData: boolean) {
@@ -363,11 +360,7 @@ export function CfoOpsPanel({ from, to }: { from: string; to: string }) {
                     {tab === 'bank' ? (
                         <section className="flex flex-col gap-sm">
                             <div className="grid gap-sm sm:grid-cols-3">
-                                <Input
-                                    label={CFO_OPS_TEXT.account}
-                                    value={account}
-                                    onChange={(event) => setAccount(event.target.value)}
-                                />
+                                <Input label={CFO_OPS_TEXT.account} value={account} onChange={(event) => setAccount(event.target.value)} />
                                 <Input
                                     label={CFO_OPS_TEXT.from}
                                     type="date"
@@ -560,98 +553,72 @@ export function CfoOpsPanel({ from, to }: { from: string; to: string }) {
                                 </Button>
                             </div>
 
-                            {/* جدول الأصول DataTable بعقد الحالات الأربع — قائمة الأصول
-                                بسقف خادم 500 صف، وفوق 200 يتكفّل بالتمرير الافتراضي
-                                (PLAN §3.4). زر الاستبعاد يبقى بنفس التأكيد والصلاحيات. */}
-                            <DataTable<FixedAsset>
-                                caption="جدول الأصول الثابتة"
-                                columns={[
-                                    {
-                                        key: 'name',
-                                        header: 'الأصل',
-                                        className: 'text-ink',
-                                        cell: (asset) => textOf(asset.name) || '—',
-                                        sortValue: (asset) => textOf(asset.name) || null,
-                                    },
-                                    {
-                                        key: 'cost',
-                                        header: 'التكلفة',
-                                        numeric: true,
-                                        className: 'text-ink',
-                                        cell: (asset) => <span dir="ltr">{moneyOf(asset.cost)}</span>,
-                                        sortValue: (asset) => num(asset.cost),
-                                    },
-                                    {
-                                        key: 'monthly',
-                                        header: 'شهري',
-                                        numeric: true,
-                                        className: 'text-ink',
-                                        cell: (asset) => <span dir="ltr">{moneyOf(asset.monthly)}</span>,
-                                        sortValue: (asset) => num(asset.monthly),
-                                    },
-                                    {
-                                        key: 'remaining',
-                                        header: 'المتبقي',
-                                        numeric: true,
-                                        className: 'text-ink',
-                                        cell: (asset) => <span dir="ltr">{moneyOf(asset.remaining)}</span>,
-                                        sortValue: (asset) => num(asset.remaining),
-                                    },
-                                    {
-                                        key: 'status',
-                                        header: 'الحالة',
-                                        className: 'text-ink',
-                                        cell: (asset) => (textOf(asset.status) === 'disposed' ? 'مستبعد' : 'نشط'),
-                                        sortValue: (asset) => textOf(asset.status) || null,
-                                    },
-                                    {
-                                        key: 'action',
-                                        header: 'إجراء',
-                                        cell: (asset) =>
-                                            textOf(asset.status) !== 'disposed' ? (
-                                                <Button
-                                                    type="button"
-                                                    size="sm"
-                                                    variant="danger"
-                                                    disabled={disposeMutation.isPending}
-                                                    onClick={() =>
-                                                        void handleDispose(asset.id, textOf(asset.name) || '—')
-                                                    }
-                                                >
-                                                    {CFO_OPS_TEXT.dispose}
-                                                </Button>
-                                            ) : null,
-                                    },
-                                ]}
-                                rows={assets}
-                                rowKey={(asset) => asset.id}
-                                state={
-                                    assetsQuery.isPending
-                                        ? 'loading'
-                                        : assetsQuery.isError
-                                          ? 'error'
-                                          : assets.length === 0
-                                            ? 'empty'
-                                            : 'data'
-                                }
-                                emptyTitle="لا أصول مسجلة."
-                                emptyDescription="أضف أصلًا من النموذج أعلاه — التكلفة والعمر والقيمة التخريدية."
-                                errorMessage={writeErrorMessage(assetsQuery.error, CFO_OPS_TEXT.loadFailed)}
-                                onRetry={() => {
-                                    void assetsQuery.refetch();
-                                }}
-                                // سقف الخادم 500 أصل — عتبة 50 لمنطقة تمرير ثابتة الارتفاع.
-                                virtualizeThreshold={50}
-                                loadingRows={15}
-                            />
+                            {stateLine(assetsQuery.isPending, assetsQuery.error, 'لا أصول مسجلة.', assets.length > 0)}
+
+                            {assets.length ? (
+                                <TableScroll label="جدول الأصول الثابتة">
+                                    <table className="w-full border-collapse text-body-sm">
+                                        <thead>
+                                            <tr>
+                                                <th scope="col" className={TH}>
+                                                    الأصل
+                                                </th>
+                                                <th scope="col" className={`${TH} text-end`}>
+                                                    التكلفة
+                                                </th>
+                                                <th scope="col" className={`${TH} text-end`}>
+                                                    شهري
+                                                </th>
+                                                <th scope="col" className={`${TH} text-end`}>
+                                                    المتبقي
+                                                </th>
+                                                <th scope="col" className={TH}>
+                                                    الحالة
+                                                </th>
+                                                <th scope="col" className={TH} />
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {assets.map((asset) => (
+                                                <tr key={asset.id}>
+                                                    <td className={TD}>{textOf(asset.name) || '—'}</td>
+                                                    <td className={`${TD} erp-numeric text-end`} dir="ltr">
+                                                        {moneyOf(asset.cost)}
+                                                    </td>
+                                                    <td className={`${TD} erp-numeric text-end`} dir="ltr">
+                                                        {moneyOf(asset.monthly)}
+                                                    </td>
+                                                    <td className={`${TD} erp-numeric text-end`} dir="ltr">
+                                                        {moneyOf(asset.remaining)}
+                                                    </td>
+                                                    <td className={TD}>{textOf(asset.status) === 'disposed' ? 'مستبعد' : 'نشط'}</td>
+                                                    <td className={TD}>
+                                                        {textOf(asset.status) !== 'disposed' ? (
+                                                            <Button
+                                                                type="button"
+                                                                size="sm"
+                                                                variant="danger"
+                                                                disabled={disposeMutation.isPending}
+                                                                onClick={() => void handleDispose(asset.id, textOf(asset.name) || '—')}
+                                                            >
+                                                                {CFO_OPS_TEXT.dispose}
+                                                            </Button>
+                                                        ) : null}
+                                                    </td>
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </TableScroll>
+                            ) : null}
                         </section>
                     ) : null}
 
                     {tab === 'payroll' ? (
                         <section className="flex flex-col gap-sm">
                             <p className="text-body-sm text-muted">
-                                يقرأ الخادم صافي رواتب الشهر من مسير الرواتب ويرحّل قيدًا واحدًا (مصروف/مستحق). التشغيل
-                                الثاني لنفس الشهر يعيد 409 بلا ازدواج.
+                                يقرأ الخادم صافي رواتب الشهر من مسير الرواتب ويرحّل قيدًا واحدًا (مصروف/مستحق). التشغيل الثاني لنفس الشهر يعيد
+                                409 بلا ازدواج.
                             </p>
                             <div className="flex flex-wrap items-end gap-sm">
                                 <Input
@@ -660,12 +627,7 @@ export function CfoOpsPanel({ from, to }: { from: string; to: string }) {
                                     value={payMonth}
                                     onChange={(event) => setPayMonth(event.target.value)}
                                 />
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    disabled={payrollMutation.isPending}
-                                    onClick={() => void handlePayroll()}
-                                >
+                                <Button type="button" size="sm" disabled={payrollMutation.isPending} onClick={() => void handlePayroll()}>
                                     {CFO_OPS_TEXT.postPayroll}
                                 </Button>
                             </div>
@@ -712,12 +674,7 @@ export function CfoOpsPanel({ from, to }: { from: string; to: string }) {
                                 </Button>
                             </div>
 
-                            {stateLine(
-                                budgetsQuery.isPending,
-                                budgetsQuery.error,
-                                'لا موازنات لهذا الشهر.',
-                                budgets.length > 0,
-                            )}
+                            {stateLine(budgetsQuery.isPending, budgetsQuery.error, 'لا موازنات لهذا الشهر.', budgets.length > 0)}
 
                             {budgets.length ? (
                                 <TableScroll label="جدول الموازنات">
@@ -755,9 +712,7 @@ export function CfoOpsPanel({ from, to }: { from: string; to: string }) {
                                                             onClick={() =>
                                                                 void handleDeleteBudget(
                                                                     budget.id,
-                                                                    textOf(budget.label) ||
-                                                                        textOf(budget.account_code) ||
-                                                                        budget.id,
+                                                                    textOf(budget.label) || textOf(budget.account_code) || budget.id,
                                                                 )
                                                             }
                                                         >
@@ -785,12 +740,7 @@ export function CfoOpsPanel({ from, to }: { from: string; to: string }) {
                                 {CFO_OPS_TEXT.custodyPending}: {intOf(custody?.myPending)}
                             </p>
 
-                            {stateLine(
-                                custodyQuery.isPending,
-                                custodyQuery.error,
-                                CFO_OPS_TEXT.noCustody,
-                                Boolean(custody?.rows?.length),
-                            )}
+                            {stateLine(custodyQuery.isPending, custodyQuery.error, CFO_OPS_TEXT.noCustody, Boolean(custody?.rows?.length))}
 
                             {custody?.rows?.length ? (
                                 <TableScroll label="جدول العهد النقدية">
@@ -851,8 +801,7 @@ export function CfoOpsPanel({ from, to }: { from: string; to: string }) {
                     {tab === 'alerts' ? (
                         <section className="flex flex-col gap-sm">
                             <p className="text-body-sm text-muted">
-                                يفحص الخادم تجاوز الموازنات والذمم المتأخرة ويرسل ما لم يُرسل مسبقًا فقط (منع التكرار
-                                بمفتاح يومي/شهري).
+                                يفحص الخادم تجاوز الموازنات والذمم المتأخرة ويرسل ما لم يُرسل مسبقًا فقط (منع التكرار بمفتاح يومي/شهري).
                             </p>
                             <div>
                                 <Button

@@ -55,6 +55,75 @@ export const posDepartmentSchema = z
 
 export type PosDepartment = z.infer<typeof posDepartmentSchema>;
 
+// ─── النظرة التنفيذية /api/pos/reports/executive ───
+export const executiveSchema = z.object({
+    from: text,
+    to: text,
+    previous: z.object({ from: text, to: text }),
+    department_id: text.nullable(),
+    current: z.object({
+        invoices: num,
+        revenue: text,
+        gross: text,
+        vat: text,
+        discount: text,
+        cash: text,
+        card: text,
+        other: text,
+        average_ticket: text,
+    }),
+    previous_period: z.object({
+        invoices: num,
+        revenue: text,
+        gross: text,
+        vat: text,
+        discount: text,
+        cash: text,
+        card: text,
+        other: text,
+        average_ticket: text,
+    }),
+    daily: z.array(z.object({ day: text, invoices: num, revenue: text })),
+    previous_daily: z.array(z.object({ day: text, invoices: num, revenue: text })),
+    by_department: z.array(
+        z.object({
+            id: text,
+            name: text,
+            legacy_code: text,
+            invoices: num,
+            revenue: text,
+            share: num,
+        }),
+    ),
+    top_products: z.array(
+        z.object({
+            code: text,
+            name: text,
+            qty: text,
+            revenue: text,
+        }),
+    ),
+    payments: z.object({
+        cash: text,
+        card: text,
+        other: text,
+    }),
+});
+
+export type ExecutiveReport = z.infer<typeof executiveSchema>;
+
+/** النظرة التنفيذية: إيرادات/فواتير/ضريبة/مقارنة بالفترة السابقة + توزيع القسم/المنتج. */
+export async function fetchExecutiveReport(
+    range: { from: string; to: string; departmentId?: string },
+    signal?: AbortSignal,
+): Promise<ExecutiveReport> {
+    const qs = new URLSearchParams({ from: range.from, to: range.to });
+    if (range.departmentId) {
+        qs.set('department_id', range.departmentId);
+    }
+    return fetchJson(executiveSchema, `/api/pos/reports/executive?${qs}`, token(), opts(signal));
+}
+
 export const posProductSchema = z
     .object({
         id: idText,
@@ -402,10 +471,18 @@ export const saleResultSchema = z
 
 export type PosSaleResult = z.infer<typeof saleResultSchema>;
 
+/** بيانات إضافية للدفع بالكريدت — تُرسل كما هي في `payer_info` للخادم. */
+export interface PosPaymentMeta {
+    brand?: string;
+    last4?: string;
+}
+
 export interface PosPaymentInput {
     method: 'cash' | 'card' | 'wallet' | 'bank_transfer';
     amount: number;
     reference: string | null;
+    /** يُسجَّل في عمود `payer_info` jsonb — العميل لا يعبئه يدويًا. */
+    payer_info?: PosPaymentMeta | null;
 }
 
 export interface CompleteSaleInput {
@@ -414,6 +491,8 @@ export interface CompleteSaleInput {
     items: PosSaleItem[];
     payments: PosPaymentInput[];
     idempotencyKey: string;
+    /** اسم العميل اختياري — يُطبع على الإيصال وتُسجَّل الملاحظة على الأوردر. */
+    partyName?: string | null | undefined;
 }
 
 /* ─── البوفيه ──────────────────────────────────────────────────────────── */
@@ -570,9 +649,7 @@ export const buffetInvoiceRowSchema = z
         covers: z
             .object({
                 covers_total: numOrNull,
-                tiers: z
-                    .record(z.string(), z.object({ name: text, covers: numOrNull, amount: numOrNull }).passthrough())
-                    .optional(),
+                tiers: z.record(z.string(), z.object({ name: text, covers: numOrNull, amount: numOrNull }).passthrough()).optional(),
             })
             .passthrough()
             .nullable()
@@ -601,13 +678,7 @@ function deviceName(departmentId?: string): string {
     let device = 'POS terminal';
     try {
         const ua = typeof navigator === 'undefined' ? '' : navigator.userAgent;
-        device = /Android/i.test(ua)
-            ? 'Android'
-            : /iPhone|iPad/i.test(ua)
-              ? 'iOS'
-              : /Windows/i.test(ua)
-                ? 'Windows PC'
-                : device;
+        device = /Android/i.test(ua) ? 'Android' : /iPhone|iPad/i.test(ua) ? 'iOS' : /Windows/i.test(ua) ? 'Windows PC' : device;
     } catch {
         // webview بلا navigator
     }
@@ -617,6 +688,24 @@ function deviceName(departmentId?: string): string {
 
 function deviceHeaders(departmentId?: string): Record<string, string> {
     return { 'x-device-name': deviceName(departmentId) };
+}
+
+/**
+ * روابط القسم ↔ الكاشير (من جدول dept_cashier_links) — مرجع اختيار الكاشير
+ * حتى لا يختلط الكاشير: كل قسم يعرض أرقام كاشيراته مرتبة وواضحة.
+ */
+export const deptCashierLinkSchema = z.object({
+    id: idText,
+    dept_code: text,
+    cashier_no: text,
+    is_primary: z.union([z.boolean(), z.string(), z.number()]).optional(),
+    notes: text.nullable().optional(),
+});
+
+export type DeptCashierLink = z.infer<typeof deptCashierLinkSchema>;
+
+export async function fetchDeptCashierLinks(signal?: AbortSignal): Promise<DeptCashierLink[]> {
+    return fetchJson(z.array(deptCashierLinkSchema), '/api/dept_cashier_links', token(), opts(signal));
 }
 
 export async function fetchPosDepartments(signal?: AbortSignal): Promise<PosDepartment[]> {
@@ -632,10 +721,129 @@ export async function fetchPosProducts(departmentId: string, signal?: AbortSigna
 }
 
 /** كميات الأصناف المباعة برمز Yara خلال نافذة أيام — أساس الترتيب الذكي للكتالوج. */
+// ─── تقارير المنشأة (pos/reports/*) — admin/manager/accountant فقط ───
+export const reportDepartmentRowSchema = z.object({
+    department_id: text,
+    code: text,
+    name: text,
+    legacy_code: text,
+    cashiers: z.array(text),
+    invoices: num,
+    net: text,
+    total: text,
+    vat: text,
+    discount: text,
+    cash: text,
+    card: text,
+    other: text,
+    average_ticket: text,
+    accounting_revenue: text,
+    revenue_entries: num,
+});
+
+export const reportProductRowSchema = z.object({
+    code: text,
+    name: text,
+    qty: text,
+    revenue: text,
+    vat: text,
+    discount: text,
+    invoices: num,
+    average_price: text,
+});
+
+export const reportInventoryRowSchema = z.object({
+    id: text,
+    date: text,
+    type: text,
+    reference_type: text,
+    reason: text,
+    item_id: text,
+    item_name: text,
+    item_category: text,
+    unit: text,
+    quantity: text,
+    direction: z.enum(['in', 'out']),
+    unit_cost: text,
+    value: text,
+});
+
+export const reportDepartmentSchema = z.object({
+    from: text,
+    to: text,
+    rows: z.array(reportDepartmentRowSchema),
+    totals: z.record(z.string(), z.union([z.string(), z.number()])),
+});
+export type ReportDepartment = z.infer<typeof reportDepartmentSchema>;
+
+export const reportProductSchema = z.object({
+    from: text,
+    to: text,
+    rows: z.array(reportProductRowSchema),
+    daily: z.array(z.object({ day: text, revenue: text, qty: text })),
+    totals: z.record(z.string(), z.union([z.string(), z.number()])),
+});
+export type ReportProduct = z.infer<typeof reportProductSchema>;
+
+export const reportInventorySchema = z.object({
+    from: text,
+    to: text,
+    rows: z.array(reportInventoryRowSchema),
+    totals: z.record(z.string(), z.union([z.string(), z.number()])),
+});
+export type ReportInventory = z.infer<typeof reportInventorySchema>;
+
+/** تقرير الأقسام: إيرادات/فواتير/متوسط فاتورة/ضريبة/نقدي/شبكة لكل قسم وفترة. */
+export async function fetchDepartmentReport(
+    range: { from: string; to: string; departmentId?: string },
+    signal?: AbortSignal,
+): Promise<ReportDepartment> {
+    const qs = new URLSearchParams({ from: range.from, to: range.to });
+    if (range.departmentId) {
+        qs.set('department_id', range.departmentId);
+    }
+    return fetchJson(reportDepartmentSchema, `/api/pos/reports/department?${qs}`, token(), opts(signal));
+}
+
+/** تقرير صنف: كمية/إيراد/ضريبة/خصومات/فواتير/متوسط سعر — من خطوط الفواتير الحقيقية. */
+export async function fetchProductReport(
+    range: { from: string; to: string; productCode?: string; productName?: string },
+    signal?: AbortSignal,
+): Promise<ReportProduct> {
+    const qs = new URLSearchParams({ from: range.from, to: range.to });
+    if (range.productCode) {
+        qs.set('product_code', range.productCode);
+    }
+    if (range.productName) {
+        qs.set('product_name', range.productName);
+    }
+    return fetchJson(reportProductSchema, `/api/pos/reports/product?${qs}`, token(), opts(signal));
+}
+
+/** تقرير المخزن: كل حركة بكمية وقيمة وسببها — للفترة المحددة. */
+export async function fetchInventoryReport(
+    range: { from: string; to: string; search?: string },
+    signal?: AbortSignal,
+): Promise<ReportInventory> {
+    const qs = new URLSearchParams({ from: range.from, to: range.to });
+    if (range.search) {
+        qs.set('search', range.search);
+    }
+    return fetchJson(reportInventorySchema, `/api/pos/reports/inventory?${qs}`, token(), opts(signal));
+}
+
+/**
+ * كل أصناف المنيو (كل الأقسام) — لإدارة الصور من ترس الضبط.
+ * department_id اختياري في الـbackend: بدونه يرجّع الكتالوج كاملًا.
+ */
+export async function fetchAllPosProducts(includeInactive = false, signal?: AbortSignal): Promise<PosProduct[]> {
+    const query = includeInactive ? '?include_inactive=true' : '';
+    return fetchJson(z.array(posProductSchema), `/api/pos/products${query}`, token(), opts(signal));
+}
+
 export async function fetchSalesQuantities(days: number, signal?: AbortSignal): Promise<Record<string, number>> {
     const span = Math.max(1, Math.min(31, Math.trunc(days)));
-    const day = (d: Date) =>
-        `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+    const day = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
     const to = day(new Date());
     const from = day(new Date(Date.now() - (span - 1) * 86_400_000));
     const result = await fetchJson(
@@ -762,15 +970,10 @@ export async function deleteHeldOrder(orderId: string, sessionId: string): Promi
     if (!id || !Number.isInteger(shift) || shift <= 0) {
         throw new Error('الطلب أو الوردية غير صالح');
     }
-    await fetchJson(
-        z.object({}).passthrough(),
-        `/api/pos/held-orders/${encodeURIComponent(id)}?session_id=${String(shift)}`,
-        token(),
-        {
-            method: 'DELETE',
-            headers: deviceHeaders(),
-        },
-    );
+    await fetchJson(z.object({}).passthrough(), `/api/pos/held-orders/${encodeURIComponent(id)}?session_id=${String(shift)}`, token(), {
+        method: 'DELETE',
+        headers: deviceHeaders(),
+    });
 }
 
 export interface PosOrderFilters {
@@ -813,6 +1016,25 @@ export async function fetchPosOrders(filters: PosOrderFilters, signal?: AbortSig
     return fetchJson(orderPageSchema, `/api/pos/orders?${query.toString()}`, token(), opts(signal));
 }
 
+/**
+ * إيصال البيع HTML من الخادم — المصدر الوحيد لقالب الإيصال في كل المسارات
+ * (الشراء، إعادة الطباعة من السجل، الطباعة من شاشة الإتمام). يعود الخادم
+ * بوثيقة كاملة؛ لا تُغلف بمستند آخر.
+ */
+export async function fetchPosOrderReceiptHtml(orderId: string): Promise<string> {
+    const id = String(orderId).trim();
+    if (!UUID_PATTERN.test(id)) {
+        throw new Error('معرّف الفاتورة غير صالح');
+    }
+    const body = await fetchJson(
+        z.object({ html: z.string().min(1) }).passthrough(),
+        `/api/pos/orders/${encodeURIComponent(id)}/receipt-html`,
+        token(),
+        opts(),
+    );
+    return body.html;
+}
+
 export async function fetchPosOrder(orderId: string, signal?: AbortSignal): Promise<PosOrderDetail> {
     const id = String(orderId).trim();
     if (!UUID_PATTERN.test(id)) {
@@ -824,9 +1046,7 @@ export async function fetchPosOrder(orderId: string, signal?: AbortSignal): Prom
 const reprintAckSchema = z.object({ message: z.string().optional() }).passthrough();
 export type ReprintAck = z.infer<typeof reprintAckSchema>;
 
-const voidAckSchema = z
-    .object({ message: z.string().optional(), status: z.string().optional(), refund_total: numOrNull })
-    .passthrough();
+const voidAckSchema = z.object({ message: z.string().optional(), status: z.string().optional(), refund_total: numOrNull }).passthrough();
 export type VoidAck = z.infer<typeof voidAckSchema>;
 
 export async function reprintPosOrder(orderId: string): Promise<ReprintAck> {
@@ -904,11 +1124,7 @@ export const posQuoteSchema = z.object({
 
 export type PosQuote = z.infer<typeof posQuoteSchema>;
 
-export async function fetchPosQuote(
-    departmentId: string | number,
-    items: PosSaleItem[],
-    signal?: AbortSignal,
-): Promise<PosQuote> {
+export async function fetchPosQuote(departmentId: string | number, items: PosSaleItem[], signal?: AbortSignal): Promise<PosQuote> {
     const dept = Number(departmentId);
     return fetchJson(posQuoteSchema, '/api/sales/quote', token(), {
         method: 'POST',
@@ -944,6 +1160,7 @@ export async function completePosSale(input: CompleteSaleInput): Promise<PosSale
             items: input.items,
             payments: input.payments,
             printer_id: `pos-${String(dept)}`,
+            ...(input.partyName ? { party_name: input.partyName } : {}),
         },
     });
 }
@@ -955,10 +1172,7 @@ export interface PosOrderExportFilters {
     search?: string;
 }
 
-export async function fetchPosOrdersExport(
-    filters: PosOrderExportFilters,
-    signal?: AbortSignal,
-): Promise<{ data: PosOrderRow[] }> {
+export async function fetchPosOrdersExport(filters: PosOrderExportFilters, signal?: AbortSignal): Promise<{ data: PosOrderRow[] }> {
     const query = new URLSearchParams();
     if (filters.dateFrom) {
         query.set('date_from', filters.dateFrom);
@@ -1029,6 +1243,86 @@ export async function execDayClose(date: string): Promise<DayCloseResult> {
     return fetchJson(dayCloseResultSchema, '/api/pos/day-close', token(), {
         method: 'POST',
         body: { date, counts: {}, manager_approve: true },
+    });
+}
+
+/** تعديل سعر البيع لكتالوج المنتجات — manager/admin فقط، ويُسجَّل في سجل التدقيق. */
+export async function updatePosProductPrice(productId: string, price: number): Promise<{ id: string; name_ar: string; price: number }> {
+    const id = Number(productId);
+    if (!Number.isInteger(id) || id <= 0 || !Number.isFinite(price) || price < 0) {
+        throw new Error('سعر البيع غير صالح');
+    }
+    return fetchJson(z.object({ id: idText, name_ar: z.string(), price: num }), `/api/pos/products/${String(id)}/price`, token(), {
+        method: 'POST',
+        body: { price },
+    });
+}
+
+// ─── إدارة الأصناف من داخل الكاشير (ترس الضبط) — للأدوار الأعلى من الكاشير فقط ───
+// الـباك-إند نفسه لا يوافق إلا manager/admin/kitchen/sous_chef على POST/PUT/DELETE
+// والمسعر admin/accountant فقط. هذه الدوال لا تتجاوز أي صلاحية؛ هي فقط واجهة.
+export interface PosProductPayload {
+    name_ar: string;
+    name_en?: string;
+    barcode?: string;
+    price: number;
+    cost_price?: number | null;
+    vat_rate?: number;
+    category?: string;
+    unit?: string;
+    department_id?: number | null;
+    is_active?: boolean;
+}
+
+function productBody(payload: PosProductPayload) {
+    const deptId = payload.department_id ?? null;
+    return {
+        ...payload,
+        department_id: deptId,
+        department_ids: deptId != null ? [deptId] : [],
+    };
+}
+
+function parseProductId(productId: string | number): number {
+    const id = Number(productId);
+    if (!Number.isInteger(id) || id <= 0) {
+        throw new Error('معرّف الصنف غير صحيح');
+    }
+    return id;
+}
+
+export async function createPosProduct(payload: PosProductPayload): Promise<PosProduct> {
+    if (!payload.name_ar?.trim()) {
+        throw new Error('اسم الصنف مطلوب');
+    }
+    if (!Number.isFinite(Number(payload.price)) || Number(payload.price) < 0) {
+        throw new Error('سعر الصنف غير صالح');
+    }
+    return fetchJson(posProductSchema, '/api/pos/products', token(), {
+        method: 'POST',
+        body: productBody(payload),
+    });
+}
+
+export async function updatePosProduct(productId: string | number, payload: PosProductPayload): Promise<PosProduct> {
+    const id = parseProductId(productId);
+    if (!payload.name_ar?.trim()) {
+        throw new Error('اسم الصنف مطلوب');
+    }
+    if (!Number.isFinite(Number(payload.price)) || Number(payload.price) < 0) {
+        throw new Error('سعر الصنف غير صالح');
+    }
+    return fetchJson(posProductSchema, `/api/pos/products/${String(id)}`, token(), {
+        method: 'PUT',
+        body: productBody(payload),
+    });
+}
+
+/** أرشفة (soft-delete) — لا حذف مادي: يفصل المنتج من القوائم مع بقاء التاريخ. */
+export async function archivePosProduct(productId: string | number): Promise<{ id: string; status: string }> {
+    const id = parseProductId(productId);
+    return fetchJson(z.object({ id: idText, status: z.string() }).passthrough(), `/api/pos/products/${String(id)}`, token(), {
+        method: 'DELETE',
     });
 }
 
@@ -1148,11 +1442,7 @@ export async function disableBuffetTier(tierId: string): Promise<BuffetConfig> {
     });
 }
 
-export async function fetchBuffetLive(
-    date: string,
-    sessionId: string | null,
-    signal?: AbortSignal,
-): Promise<BuffetLive> {
+export async function fetchBuffetLive(date: string, sessionId: string | null, signal?: AbortSignal): Promise<BuffetLive> {
     const query = new URLSearchParams();
     if (date) {
         query.set('date', date);
@@ -1170,12 +1460,7 @@ export async function fetchBuffetInvoices(date: string, limit = 200, signal?: Ab
 }
 
 export async function fetchBuffetReport(date: string, signal?: AbortSignal): Promise<BuffetReport> {
-    return fetchJson(
-        buffetReportSchema,
-        `/api/pos/buffet/report?date=${encodeURIComponent(date)}`,
-        token(),
-        opts(signal),
-    );
+    return fetchJson(buffetReportSchema, `/api/pos/buffet/report?date=${encodeURIComponent(date)}`, token(), opts(signal));
 }
 
 /** أرقام الشاشة: لاتينية دائمًا، بلا وحدة عملة إن لم يرسلها الخادم. */
@@ -1212,6 +1497,8 @@ const localQueueSchema = z
         status: text,
         is_default: flag,
         thermal: flag,
+        /** طابعة افتراضية (OneNote/Evernote/PDF/Fax) — لا ورق حقيقي */
+        virtual: z.boolean().optional(),
     })
     .passthrough();
 
@@ -1277,12 +1564,7 @@ export async function fetchPosPrinters(signal?: AbortSignal): Promise<PosPrinter
 
 /** الاكتشاف التلقائي: طوابير ويندوز المثبتة + طابعات الشبكة على 9100. */
 export async function discoverPosPrinters(scan = true, signal?: AbortSignal): Promise<PosPrinterDiscovery> {
-    return fetchJson(
-        printerDiscoverySchema,
-        `/api/pos/printers/discover${scan ? '' : '?scan=0'}`,
-        token(),
-        opts(signal),
-    );
+    return fetchJson(printerDiscoverySchema, `/api/pos/printers/discover${scan ? '' : '?scan=0'}`, token(), opts(signal));
 }
 
 export async function probePosPrinter(printerId: string): Promise<PosPrinterProbe> {

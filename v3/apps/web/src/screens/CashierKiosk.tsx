@@ -78,7 +78,13 @@ export function CashierKiosk() {
                     <PosEntry />
                 ) : (
                     <section className="pos-kiosk__denied" role="alert">
-                        <h1>هذا الكشك مخصّص للكاشير{' '} <span className="text-body-sm text-muted" dir="ltr" lang="en"> Cashier Kiosk </span> </h1>
+                        <h1>
+                            هذا الكشك مخصّص للكاشير{' '}
+                            <span className="text-body-sm text-muted" dir="ltr" lang="en">
+                                {' '}
+                                Cashier Kiosk{' '}
+                            </span>{' '}
+                        </h1>
                         <p>دور حسابك الحالي للقراءة فقط. سجّل الخروج واستخدم حساب كاشير لبدء الوردية.</p>
                     </section>
                 )}

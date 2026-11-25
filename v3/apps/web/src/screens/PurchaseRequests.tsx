@@ -1,8 +1,6 @@
-import './PurchaseRequests.premium.css';
 import { useQuery } from '@tanstack/react-query';
-import { type ReactNode, useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useConfirm } from '../components/ConfirmProvider';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { fetchDepartments } from '../lib/finance';
@@ -55,10 +53,7 @@ import {
     revertVisible,
 } from '../lib/purchase-requests-write';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
-import { PageHeader } from '../ui';
-import { Badge } from '../ui/Badge';
 import { Dialog } from '../ui/Dialog';
-import { AlertCircleIcon, CheckCircleIcon, InfoIcon, ListTreeIcon, XIcon } from '../ui/icons';
 import { SignaturePad } from '../ui/SignaturePad';
 import { useToast } from '../ui/Toast';
 
@@ -79,25 +74,17 @@ const PAGE_SIZE = 20;
 
 type SortKey = 'number' | 'status' | 'by' | 'created';
 
-const SORT_LABELS: Record<SortKey, string> = {
-    number: 'الطلب',
-    status: 'الحالة',
-    by: 'أنشأها',
-    created: 'التاريخ',
+const STATUS_TONE: Record<string, string> = {
+    pending: 'text-ink-secondary',
+    chef_approved: 'text-ink-secondary',
+    approved: 'text-success-text',
+    partially_fulfilled: 'text-ink-secondary',
+    fulfilled: 'text-success-text',
+    rejected: 'text-danger-text',
+    cancelled: 'text-danger-text',
 };
 
-const STATUS_VARIANT: Record<string, 'success' | 'warning' | 'danger' | 'info' | 'neutral'> = {
-    pending: 'warning',
-    chef_approved: 'info',
-    approved: 'success',
-    partially_fulfilled: 'info',
-    fulfilled: 'success',
-    rejected: 'danger',
-    cancelled: 'danger',
-};
-
-const INPUT_CLASS =
-    'h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink aria-[invalid=true]:border-danger';
+const INPUT_CLASS = 'h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink aria-[invalid=true]:border-danger';
 const BUTTON_CLASS =
     'rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover disabled:opacity-50';
 const PRIMARY_BUTTON_CLASS =
@@ -113,63 +100,20 @@ function formatQty(value: number): string {
     return value.toLocaleString('en-US', { maximumFractionDigits: 3 });
 }
 
-type KpiTone = 'neutral' | 'success' | 'warning' | 'info';
-
-function Kpi({
-    label,
-    english,
-    value,
-    hint,
-    tone = 'neutral',
-    icon,
-    loading = false,
-}: {
-    label: string;
-    english: string;
-    value: string;
-    hint: string;
-    tone?: KpiTone;
-    icon: ReactNode;
-    loading?: boolean;
-}) {
+function Kpi({ label, english, value, hint }: { label: string; english: string; value: string; hint: string }) {
     return (
-        <div className={`erp-pr-kpi erp-pr-kpi--${tone}`} aria-busy={loading}>
-            <div className="erp-pr-kpi__top">
-                <p className="text-label-md text-muted">
-                    {label}{' '}
-                    <span className="text-caption text-faint" dir="ltr" lang="en">
-                        {english}
-                    </span>
-                </p>
-                <span className="erp-pr-kpi__icon" aria-hidden="true">
-                    {icon}
+        <div className="rounded-lg border border-hairline bg-surface p-md shadow-card">
+            <p className="text-label-md text-muted">
+                {label}{' '}
+                <span className="text-caption text-faint" dir="ltr" lang="en">
+                    {english}
                 </span>
-            </div>
-            {loading ? (
-                <>
-                    <span className="sr-only">جارٍ تحميل {label}</span>
-                    <span className="erp-pr-kpi__skeleton" aria-hidden="true" />
-                </>
-            ) : (
-                <p className="erp-numeric erp-pr-kpi__value" dir="ltr">
-                    {value}
-                </p>
-            )}
+            </p>
+            <p className="erp-numeric mt-xs text-heading-lg text-ink" dir="ltr">
+                {value}
+            </p>
             <p className="mt-xxs text-caption text-muted">{hint}</p>
         </div>
-    );
-}
-
-/** شارة مرشّح الترتيب — إزالة بضغطة واحدة. */
-function SortChip({ label, onRemove }: { label: string; onRemove: () => void }) {
-    return (
-        <li className="erp-pr-chip">
-            <span className="text-faint">الترتيب</span>
-            <span className="font-medium text-ink">{label}</span>
-            <button type="button" className="erp-pr-chip__remove" onClick={onRemove} aria-label="إزالة مرشّح الترتيب">
-                <XIcon className="size-3" />
-            </button>
-        </li>
     );
 }
 
@@ -496,9 +440,7 @@ function CreateRequestDialog({
                 }}
                 className="flex flex-col gap-sm"
             >
-                <p className="rounded-md border border-hairline bg-surface-sunken p-sm text-body-sm text-ink-secondary">
-                    {banner}
-                </p>
+                <p className="rounded-md border border-hairline bg-surface-sunken p-sm text-body-sm text-ink-secondary">{banner}</p>
                 {error || localError ? (
                     <p role="alert" className="text-body-sm text-danger-text">
                         {error || localError}
@@ -556,10 +498,7 @@ function CreateRequestDialog({
                                             </td>
                                             <td className="px-sm py-xxs text-ink">{draft.itemName}</td>
                                             <td className="px-sm py-xxs text-muted">{draft.unit}</td>
-                                            <td
-                                                className="erp-numeric px-sm py-xxs text-end text-danger-text"
-                                                dir="ltr"
-                                            >
+                                            <td className="erp-numeric px-sm py-xxs text-end text-danger-text" dir="ltr">
                                                 {formatQty(shortages[index]?.currentQty ?? 0)}
                                             </td>
                                             <td className="erp-numeric px-sm py-xxs text-end text-muted" dir="ltr">
@@ -703,11 +642,7 @@ function DecisionDialog({
     pending: boolean;
     error: string;
     onClose: () => void;
-    onSubmit: (
-        kind: PRDecisionKind,
-        raw: PurchaseRequest,
-        fields: { notes: string; reason: string; signatureData: string },
-    ) => void;
+    onSubmit: (kind: PRDecisionKind, raw: PurchaseRequest, fields: { notes: string; reason: string; signatureData: string }) => void;
 }) {
     const [notes, setNotes] = useState('');
     const [reason, setReason] = useState('');
@@ -802,9 +737,7 @@ function DecisionDialog({
                     </p>
                 ) : null}
                 {note ? (
-                    <p className="rounded-md border border-hairline bg-surface-sunken p-sm text-body-sm text-ink-secondary">
-                        {note}
-                    </p>
+                    <p className="rounded-md border border-hairline bg-surface-sunken p-sm text-body-sm text-ink-secondary">{note}</p>
                 ) : null}
                 {items.length > 0 ? (
                     <ul className="flex flex-col gap-xxs text-body-sm">
@@ -843,9 +776,7 @@ function DecisionDialog({
                         <textarea
                             rows={2}
                             value={notes}
-                            aria-label={
-                                isChefDecision || isRevert ? PR_WRITE_TEXT.chefNotesLabel : PR_WRITE_TEXT.gmNotesLabel
-                            }
+                            aria-label={isChefDecision || isRevert ? PR_WRITE_TEXT.chefNotesLabel : PR_WRITE_TEXT.gmNotesLabel}
                             onChange={(event) => {
                                 setNotes(event.target.value);
                             }}
@@ -924,15 +855,9 @@ export function PurchaseRequests() {
 
     const allRows = useMemo(() => (requestsQuery.data ?? []).map(purchaseRequestToRow), [requestsQuery.data]);
     const counts = useMemo(() => summarizePR(allRows), [allRows]);
-    const rawById = useMemo(
-        () => new Map((requestsQuery.data ?? []).map((entry) => [String(entry.id), entry])),
-        [requestsQuery.data],
-    );
+    const rawById = useMemo(() => new Map((requestsQuery.data ?? []).map((entry) => [String(entry.id), entry])), [requestsQuery.data]);
 
-    const rows = useMemo(
-        () => (status === 'all' ? allRows : allRows.filter((row) => row.status === status)),
-        [allRows, status],
-    );
+    const rows = useMemo(() => (status === 'all' ? allRows : allRows.filter((row) => row.status === status)), [allRows, status]);
 
     const sorted = useMemo(() => {
         if (!sort) {
@@ -983,13 +908,7 @@ export function PurchaseRequests() {
         | ({ kind: 'chef-reject'; id: string } & PRRejectPayload)
         | ({ kind: 'gm-approve'; id: string } & PRNotesPayload)
         | ({ kind: 'gm-reject'; id: string } & PRRejectPayload)
-        | ({
-              kind: 'revert-to-chef-approved';
-              id: string;
-              notes?: string;
-              signatureData?: string;
-              signerName?: string;
-          } & {
+        | ({ kind: 'revert-to-chef-approved'; id: string; notes?: string; signatureData?: string; signerName?: string } & {
               kind: 'revert-to-chef-approved';
               id: string;
           });
@@ -1064,14 +983,11 @@ export function PurchaseRequests() {
         },
     });
 
-    const pending =
-        createMutation.isPending || decisionMutation.isPending || cancelMutation.isPending || deleteMutation.isPending;
+    const pending = createMutation.isPending || decisionMutation.isPending || cancelMutation.isPending || deleteMutation.isPending;
 
     function toggleSort(key: SortKey) {
         setPage(1);
-        setSort((previous) =>
-            previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' },
-        );
+        setSort((previous) => (previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
     }
 
     function chooseStatus(next: string) {
@@ -1139,86 +1055,57 @@ export function PurchaseRequests() {
 
     return (
         <div className="mx-auto flex w-full min-w-0 flex-col gap-lg">
-            <PageHeader
-                title="طلبات شراء النواقص"
-                english="Purchase Requests"
-                description="طلبات النواقص: إنشاء، توقيع الشيف، اعتماد المدير العام، ثم إلغاء أو حذف."
-                actions={
-                    <div className="flex flex-wrap items-center gap-xs" data-erp-print-hide>
-                        {canCreate ? (
-                            <button type="button" onClick={openCreate} className={PRIMARY_BUTTON_CLASS}>
-                                {PR_WRITE_TEXT.createButton}
-                            </button>
-                        ) : null}
-                        <PrintActions title="طلبات شراء النواقص" />
-                        <button
-                            type="button"
-                            onClick={() => {
-                                void requestsQuery.refetch();
-                                void shortagesQuery.refetch();
-                            }}
-                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                        >
-                            تحديث
+            <header className="flex flex-wrap items-end justify-between gap-md border-b border-hairline pb-md">
+                <div>
+                    <h1 className="text-display-lg text-ink">
+                        طلبات شراء النواقص{' '}
+                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
+                            Purchase Requests
+                        </span>
+                    </h1>
+                    <p className="text-body-sm text-muted">طلبات النواقص: إنشاء، توقيع الشيف، اعتماد المدير العام، ثم إلغاء أو حذف.</p>
+                </div>
+                <div className="flex flex-wrap items-center gap-xs" data-erp-print-hide>
+                    {canCreate ? (
+                        <button type="button" onClick={openCreate} className={PRIMARY_BUTTON_CLASS}>
+                            {PR_WRITE_TEXT.createButton}
                         </button>
-                    </div>
-                }
-            />
+                    ) : null}
+                    <button
+                        type="button"
+                        onClick={() => {
+                            void requestsQuery.refetch();
+                            void shortagesQuery.refetch();
+                        }}
+                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                    >
+                        تحديث
+                    </button>
+                </div>
+            </header>
 
             <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
-                <Kpi
-                    label="الطلبات"
-                    english="Requests"
-                    value={formatInt(counts.total)}
-                    hint={`أحدث ${formatInt(PR_LIST_CAP)} طلبًا`}
-                    icon={<ListTreeIcon className="size-4" />}
-                    loading={requestsQuery.isPending}
-                />
-                <Kpi
-                    label="بانتظار الشيف"
-                    english="Pending"
-                    value={formatInt(counts.pending)}
-                    hint={PR_STATUS_LABELS.pending ?? ''}
-                    tone="warning"
-                    icon={<AlertCircleIcon className="size-4" />}
-                    loading={requestsQuery.isPending}
-                />
+                <Kpi label="الطلبات" english="Requests" value={formatInt(counts.total)} hint={`أحدث ${formatInt(PR_LIST_CAP)} طلبًا`} />
+                <Kpi label="بانتظار الشيف" english="Pending" value={formatInt(counts.pending)} hint={PR_STATUS_LABELS.pending ?? ''} />
                 <Kpi
                     label="موقّع من الشيف"
                     english="Chef Signed"
                     value={formatInt(counts.chefApproved)}
                     hint={PR_STATUS_LABELS.chef_approved ?? ''}
-                    tone="info"
-                    icon={<InfoIcon className="size-4" />}
-                    loading={requestsQuery.isPending}
                 />
-                <Kpi
-                    label="معتمد نهائيًا"
-                    english="Approved"
-                    value={formatInt(counts.approved)}
-                    hint={PR_STATUS_LABELS.approved ?? ''}
-                    tone="success"
-                    icon={<CheckCircleIcon className="size-4" />}
-                    loading={requestsQuery.isPending}
-                />
+                <Kpi label="معتمد نهائيًا" english="Approved" value={formatInt(counts.approved)} hint={PR_STATUS_LABELS.approved ?? ''} />
             </div>
 
-            <Card className="erp-pr-filters">
-                <div className="erp-pr-filters__head">
-                    <div>
-                        <p className="text-label-md font-medium text-ink">تصفية الطلبات</p>
-                        <p className="text-caption text-muted">اختر حالة لتضييق السجل، واضغط رأس عمود للترتيب.</p>
-                    </div>
-                </div>
-                <fieldset className="erp-pr-status-filters">
-                    <legend className="sr-only">حالة الطلب</legend>
+            <Card className="p-sm">
+                <fieldset className="flex flex-wrap items-center gap-xs">
+                    <legend className="pb-2 text-label-md text-ink-secondary">حالة الطلب</legend>
                     <button
                         type="button"
                         aria-pressed={status === 'all'}
                         onClick={() => {
                             chooseStatus('all');
                         }}
-                        className={`erp-pr-status rounded-md border border-hairline-strong px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover ${
+                        className={`rounded-md border border-hairline-strong px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover ${
                             status === 'all' ? 'bg-surface-sunken font-medium' : 'bg-surface'
                         }`}
                     >
@@ -1234,7 +1121,7 @@ export function PurchaseRequests() {
                                 onClick={() => {
                                     chooseStatus(key);
                                 }}
-                                className={`erp-pr-status rounded-md border border-hairline-strong px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover ${
+                                className={`rounded-md border border-hairline-strong px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover ${
                                     status === key ? 'bg-surface-sunken font-medium' : 'bg-surface'
                                 }`}
                             >
@@ -1244,17 +1131,6 @@ export function PurchaseRequests() {
                     })}
                     <span className="text-body-sm text-muted">{formatInt(sorted.length)} طلبًا</span>
                 </fieldset>
-                {sort ? (
-                    <ul className="erp-pr-chips" aria-label="المرشّحات النشطة">
-                        <SortChip
-                            label={`${SORT_LABELS[sort.key]} (${sort.dir === 'asc' ? 'تصاعدي' : 'تنازلي'})`}
-                            onRemove={() => {
-                                setSort(null);
-                                setPage(1);
-                            }}
-                        />
-                    </ul>
-                ) : null}
                 {capped ? (
                     <p className="mt-sm text-body-sm text-muted">
                         {`السجل يسقف عند أحدث ${formatInt(PR_LIST_CAP)} طلبًا — ما قبلها خارج هذه النافذة.`}
@@ -1262,14 +1138,7 @@ export function PurchaseRequests() {
                 ) : null}
             </Card>
 
-            <Card className="erp-pr-tablewrap">
-                <div className="erp-pr-tablebar">
-                    <div className="flex items-center gap-sm">
-                        <h2 className="text-heading-md text-ink">سجل الطلبات</h2>
-                        <Badge variant="neutral">{formatInt(sorted.length)}</Badge>
-                    </div>
-                    <p className="text-caption text-muted">التوقيعات موثّقة — المراحل تظهر في أعمدة السجل.</p>
-                </div>
+            <Card>
                 {requestsQuery.isPending ? (
                     <div aria-busy="true">
                         <StateLoading label="جارٍ تحميل طلبات الشراء" />
@@ -1308,13 +1177,7 @@ export function PurchaseRequests() {
                                         </th>
                                         <SortableTh label="الحالة" sortKey="status" sort={sort} onToggle={toggleSort} />
                                         <SortableTh label="أنشأها" sortKey="by" sort={sort} onToggle={toggleSort} />
-                                        <SortableTh
-                                            label="التاريخ"
-                                            sortKey="created"
-                                            sort={sort}
-                                            onToggle={toggleSort}
-                                            align="center"
-                                        />
+                                        <SortableTh label="التاريخ" sortKey="created" sort={sort} onToggle={toggleSort} align="center" />
                                         <th scope="col" className="px-sm py-xs text-start font-medium">
                                             توقيع الشيف
                                         </th>
@@ -1333,46 +1196,27 @@ export function PurchaseRequests() {
                                     {pageRows.map((row) => {
                                         const raw = rawById.get(row.id);
                                         return (
-                                            <tr
-                                                key={row.id}
-                                                className="border-b border-hairline hover:bg-surface-hover"
-                                            >
+                                            <tr key={row.id} className="border-b border-hairline hover:bg-surface-hover">
                                                 <td className="erp-numeric px-sm py-xxs text-start text-ink" dir="ltr">
                                                     {row.number}
                                                 </td>
-                                                <td className="px-sm py-xxs text-body-sm text-ink-secondary">
-                                                    {row.itemsText}
-                                                </td>
+                                                <td className="px-sm py-xxs text-body-sm text-ink-secondary">{row.itemsText}</td>
                                                 <td className="px-sm py-xxs text-body-sm">
-                                                    <Badge
-                                                        variant={STATUS_VARIANT[row.status] ?? 'neutral'}
-                                                        dot
-                                                        unknown={!row.statusKnown}
-                                                    >
-                                                        <span>{row.statusLabel}</span>
-                                                        {row.status && !row.statusKnown ? (
-                                                            <span className="text-caption text-faint" dir="ltr">
-                                                                ({row.status})
-                                                            </span>
-                                                        ) : null}
-                                                    </Badge>
+                                                    <span className={STATUS_TONE[row.status] ?? 'text-muted'}>{row.statusLabel}</span>
+                                                    {row.status && !row.statusKnown ? (
+                                                        <span className="text-caption text-faint" dir="ltr">
+                                                            {' '}
+                                                            ({row.status})
+                                                        </span>
+                                                    ) : null}
                                                 </td>
                                                 <td className="px-sm py-xxs text-body-sm text-muted">{row.by}</td>
-                                                <td
-                                                    className="erp-numeric px-sm py-xxs text-center text-body-sm text-muted"
-                                                    dir="ltr"
-                                                >
+                                                <td className="erp-numeric px-sm py-xxs text-center text-body-sm text-muted" dir="ltr">
                                                     {row.created || '—'}
                                                 </td>
-                                                <td className="px-sm py-xxs text-body-sm text-muted">
-                                                    {row.chefSigned || '—'}
-                                                </td>
-                                                <td className="px-sm py-xxs text-body-sm text-muted">
-                                                    {row.gmSigned || '—'}
-                                                </td>
-                                                <td className="px-sm py-xxs text-body-sm text-muted">
-                                                    {row.whReceived || '—'}
-                                                </td>
+                                                <td className="px-sm py-xxs text-body-sm text-muted">{row.chefSigned || '—'}</td>
+                                                <td className="px-sm py-xxs text-body-sm text-muted">{row.gmSigned || '—'}</td>
+                                                <td className="px-sm py-xxs text-body-sm text-muted">{row.whReceived || '—'}</td>
                                                 <td className="px-sm py-xxs">
                                                     {raw ? (
                                                         <RowActions
@@ -1430,17 +1274,12 @@ export function PurchaseRequests() {
             <Card>
                 <div className="border-b border-hairline px-sm py-xs">
                     <h2 className="text-heading-sm text-ink">
-                        النواقص الحالية (استشاري){' '}
-                        <span className="text-caption text-muted">{`(${formatInt(shortages.length)})`}</span>
+                        النواقص الحالية (استشاري) <span className="text-caption text-muted">{`(${formatInt(shortages.length)})`}</span>
                     </h2>
-                    <p className="text-caption text-muted">
-                        أصناف المخزن عند الحد الأدنى أو تحته — من قائمة الخادم الاستشارية.
-                    </p>
+                    <p className="text-caption text-muted">أصناف المخزن عند الحد الأدنى أو تحته — من قائمة الخادم الاستشارية.</p>
                 </div>
                 {shortages.length === 0 ? (
-                    <p className="px-sm py-xs text-body-sm text-muted">
-                        لا توجد نواقص حاليًا (كل الأصناف فوق الحد الأدنى).
-                    </p>
+                    <p className="px-sm py-xs text-body-sm text-muted">لا توجد نواقص حاليًا (كل الأصناف فوق الحد الأدنى).</p>
                 ) : (
                     <TableScroll label="جدول النواقص الحالية">
                         <table className="w-full border-collapse text-body-md">

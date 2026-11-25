@@ -165,11 +165,7 @@ export async function fetchIntegrationHealth(signal?: AbortSignal): Promise<Inte
     return fetchJson(integrationHealthSchema, '/api/integration/health?live=1', getAccessToken(), authOptions(signal));
 }
 
-export async function fetchIntegrationOutbox(
-    status: OutboxStatus | '',
-    signal?: AbortSignal,
-    provider?: string,
-): Promise<OutboxRow[]> {
+export async function fetchIntegrationOutbox(status: OutboxStatus | '', signal?: AbortSignal, provider?: string): Promise<OutboxRow[]> {
     const params = new URLSearchParams({ live: '1', limit: '50' });
     if (status) {
         params.set('status', status);
@@ -199,10 +195,7 @@ export async function fetchIntegrationEvents(limit = 20, signal?: AbortSignal): 
 
 /* ─── الكتابة ──────────────────────────────────────────────────────────── */
 
-export async function setIntegrationProviderEnabled(
-    code: string,
-    enabled: boolean,
-): Promise<z.infer<typeof writeAckLooseSchema>> {
+export async function setIntegrationProviderEnabled(code: string, enabled: boolean): Promise<z.infer<typeof writeAckLooseSchema>> {
     return writeJson(writeAckLooseSchema, `/api/integration/providers/${encodeURIComponent(code)}/settings`, 'PUT', {
         enabled,
     });

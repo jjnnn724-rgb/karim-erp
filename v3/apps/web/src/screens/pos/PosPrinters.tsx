@@ -67,8 +67,12 @@ export function PosPrinters({ open, departmentId, onClose }: PosPrintersProps) {
     const localQueues = [...(discovery?.local ?? [])].sort((a, b) => {
         const av = a.virtual ? 1 : 0;
         const bv = b.virtual ? 1 : 0;
-        if (av !== bv) { return av - bv; }
-        if (!!a.thermal !== !!b.thermal) { return a.thermal ? -1 : 1; }
+        if (av !== bv) {
+            return av - bv;
+        }
+        if (!!a.thermal !== !!b.thermal) {
+            return a.thermal ? -1 : 1;
+        }
         return a.name.localeCompare(b.name, 'ar');
     });
     const targetId = departmentId ? `pos-${String(departmentId)}` : '';
@@ -83,9 +87,7 @@ export function PosPrinters({ open, departmentId, onClose }: PosPrintersProps) {
                 const result = await discoverPosPrinters(scan);
                 setDiscovery(result);
                 if (result.local_error) {
-                    setNote(
-                        `تعذّر سرد طابعات ويندوز (${result.local_error})؛ يمكنك ربط طابعة الشبكة بالعنوان أو تشغيل النظام كمسؤول.`,
-                    );
+                    setNote(`تعذّر سرد طابعات ويندوز (${result.local_error})؛ يمكنك ربط طابعة الشبكة بالعنوان أو تشغيل النظام كمسؤول.`);
                 }
                 queryClient.setQueryData(['pos-printers'], result.registered);
             } catch (error) {
@@ -184,12 +186,7 @@ export function PosPrinters({ open, departmentId, onClose }: PosPrintersProps) {
                     <Button size="sm" variant="secondary" onClick={onClose}>
                         إغلاق
                     </Button>
-                    <Button
-                        size="sm"
-                        loading={busyId === 'auto'}
-                        disabled={discovering}
-                        onClick={() => void autoLink()}
-                    >
+                    <Button size="sm" loading={busyId === 'auto'} disabled={discovering} onClick={() => void autoLink()}>
                         ربط تلقائي
                     </Button>
                 </>
@@ -197,10 +194,7 @@ export function PosPrinters({ open, departmentId, onClose }: PosPrintersProps) {
         >
             <div className="pos-printers">
                 <div className="pos-printer-status">
-                    <span
-                        className={`pos-printer-status__dot${target?.is_online ? ' is-on' : ''}`}
-                        aria-hidden="true"
-                    />
+                    <span className={`pos-printer-status__dot${target?.is_online ? ' is-on' : ''}`} aria-hidden="true" />
                     <div className="pos-printer-status__copy">
                         <strong>{target ? printerLabel(target) : 'لا طابعة مرتبطة بهذا القسم'}</strong>
                         <small>
@@ -229,9 +223,7 @@ export function PosPrinters({ open, departmentId, onClose }: PosPrintersProps) {
                     </Button>
                 </div>
 
-                {discovering && !discovery ? (
-                    <p className="text-body-sm text-muted">جارٍ قراءة طوابير الطباعة…</p>
-                ) : null}
+                {discovering && !discovery ? <p className="text-body-sm text-muted">جارٍ قراءة طوابير الطباعة…</p> : null}
 
                 {localQueues.length ? (
                     <ul className="pos-printers__list">
@@ -240,9 +232,7 @@ export function PosPrinters({ open, departmentId, onClose }: PosPrintersProps) {
                                 <div className="pos-printer-row__copy">
                                     <strong>
                                         {queue.name}
-                                        {queue.virtual ? (
-                                            <Badge variant="warning">افتراضية — لا ورق</Badge>
-                                        ) : null}
+                                        {queue.virtual ? <Badge variant="warning">افتراضية — لا ورق</Badge> : null}
                                     </strong>
                                     <small>
                                         {queue.driver || 'سائق غير معروف'}
@@ -275,21 +265,16 @@ export function PosPrinters({ open, departmentId, onClose }: PosPrintersProps) {
                     <>
                         <div className="pos-printers__head">
                             <strong>طابعات الشبكة</strong>
-                            <small className="text-muted">
-                                {discovery?.subnet ? `${discovery.subnet} على المنفذ 9100` : ''}
-                            </small>
+                            <small className="text-muted">{discovery?.subnet ? `${discovery.subnet} على المنفذ 9100` : ''}</small>
                         </div>
                         <ul className="pos-printers__list">
                             {networkPrinters.map((candidate) => {
-                                const address =
-                                    candidate.address || `${candidate.ip ?? ''}:${String(candidate.port ?? 9100)}`;
+                                const address = candidate.address || `${candidate.ip ?? ''}:${String(candidate.port ?? 9100)}`;
                                 return (
                                     <li key={address} className="pos-printer-row">
                                         <div className="pos-printer-row__copy">
                                             <strong dir="ltr">{address}</strong>
-                                            <small>
-                                                {candidate.latency_ms ? `${String(candidate.latency_ms)}ms` : 'متصلة'}
-                                            </small>
+                                            <small>{candidate.latency_ms ? `${String(candidate.latency_ms)}ms` : 'متصلة'}</small>
                                         </div>
                                         <Button
                                             size="sm"
@@ -326,8 +311,7 @@ export function PosPrinters({ open, departmentId, onClose }: PosPrintersProps) {
                                             {printer.id === targetId ? <Badge variant="info">هذا القسم</Badge> : null}
                                         </strong>
                                         <small>
-                                            {connectionLabel(printer.connection_type)} ·{' '}
-                                            <span dir="ltr">{printer.address}</span>
+                                            {connectionLabel(printer.connection_type)} · <span dir="ltr">{printer.address}</span>
                                         </small>
                                     </div>
                                     <Button
@@ -350,8 +334,8 @@ export function PosPrinters({ open, departmentId, onClose }: PosPrintersProps) {
                 </section>
 
                 <p className="pos-printers__hint">
-                    الطابعة المحلية تُرسل إليها ESC/POS خام عبر طابور ويندوز، فلا حاجة لمشاركة الشبكة. تحتاج إلى عامل
-                    الطباعة <code dir="ltr">npm run print-worker</code> ليخرج الإيصال تلقائيًا بعد كل بيع.
+                    الطابعة المحلية تُرسل إليها ESC/POS خام عبر طابور ويندوز، فلا حاجة لمشاركة الشبكة. تحتاج إلى عامل الطباعة{' '}
+                    <code dir="ltr">npm run print-worker</code> ليخرج الإيصال تلقائيًا بعد كل بيع.
                 </p>
             </div>
         </Dialog>

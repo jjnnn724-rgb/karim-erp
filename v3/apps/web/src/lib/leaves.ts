@@ -145,12 +145,7 @@ export function leaveTypesPath(page: number): string {
 
 /** `leaves-repo.js:127-130` حرفيًا: الباب يرسل مصفوفة، والغلاف `{data}` مقبول. */
 export async function fetchLeaveWorkflow(signal?: AbortSignal): Promise<LeaveWorkflowRow[]> {
-    const body = await fetchJson(
-        leaveWorkflowListSchema,
-        leaveWorkflowPath(),
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    const body = await fetchJson(leaveWorkflowListSchema, leaveWorkflowPath(), getAccessToken(), signal ? { signal } : {});
     return Array.isArray(body) ? body : body.data;
 }
 
@@ -166,12 +161,7 @@ export async function fetchLeaveTypes(signal?: AbortSignal): Promise<LeaveTypesR
     let total = 0;
     let capped = false;
     for (let page = 1; page <= LEAVES_TYPE_PAGES; page += 1) {
-        const body = await fetchJson(
-            leaveTypeListSchema,
-            leaveTypesPath(page),
-            getAccessToken(),
-            signal ? { signal } : {},
-        );
+        const body = await fetchJson(leaveTypeListSchema, leaveTypesPath(page), getAccessToken(), signal ? { signal } : {});
         const batch = Array.isArray(body) ? body : body.data;
         const pagination = Array.isArray(body) ? undefined : body.pagination;
         const parsedTotal = Number(pagination?.total ?? 0);
@@ -448,9 +438,7 @@ export function summarizeLeaves(rows: readonly LeaveRequestRow[]): LeaveSummary 
     }
     summary.employees = employees.size;
     summary.avgDaysOf = durations.length;
-    summary.avgDays = durations.length
-        ? Math.round((durations.reduce((a, b) => a + b, 0) / durations.length) * 10) / 10
-        : null;
+    summary.avgDays = durations.length ? Math.round((durations.reduce((a, b) => a + b, 0) / durations.length) * 10) / 10 : null;
     return summary;
 }
 
@@ -517,9 +505,7 @@ export function buildLeavesKpis(summary: LeaveSummary, typeCount: number, paidTy
             en: 'Leave Types',
             value: typeCount,
             unit: '',
-            hint: paidTypes
-                ? `${paidTypes} مدفوعة الأجر من ${typeCount} نوعًا مخزّنًا`
-                : `لا نوع مدفوع من ${typeCount} مخزّنًا`,
+            hint: paidTypes ? `${paidTypes} مدفوعة الأجر من ${typeCount} نوعًا مخزّنًا` : `لا نوع مدفوع من ${typeCount} مخزّنًا`,
         },
     ];
 }

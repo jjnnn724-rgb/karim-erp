@@ -233,12 +233,7 @@ export function CfoWorkbench({ periods }: CfoWorkbenchProps) {
             >
                 <div className="flex flex-col gap-sm">
                     <div className="grid gap-sm sm:grid-cols-2">
-                        <Input
-                            label={CFO_WRITE_TEXT.date}
-                            type="date"
-                            value={date}
-                            onChange={(event) => setDate(event.target.value)}
-                        />
+                        <Input label={CFO_WRITE_TEXT.date} type="date" value={date} onChange={(event) => setDate(event.target.value)} />
                         <Input
                             label={CFO_WRITE_TEXT.memo}
                             value={memo}
@@ -281,9 +276,7 @@ export function CfoWorkbench({ periods }: CfoWorkbenchProps) {
                                                 onChange={(event) =>
                                                     setLines((current) =>
                                                         current.map((row) =>
-                                                            row.key === line.key
-                                                                ? { ...row, accountCode: event.target.value }
-                                                                : row,
+                                                            row.key === line.key ? { ...row, accountCode: event.target.value } : row,
                                                         ),
                                                     )
                                                 }
@@ -305,9 +298,7 @@ export function CfoWorkbench({ periods }: CfoWorkbenchProps) {
                                                 onChange={(event) =>
                                                     setLines((current) =>
                                                         current.map((row) =>
-                                                            row.key === line.key
-                                                                ? { ...row, debit: event.target.value, credit: '' }
-                                                                : row,
+                                                            row.key === line.key ? { ...row, debit: event.target.value, credit: '' } : row,
                                                         ),
                                                     )
                                                 }
@@ -323,9 +314,7 @@ export function CfoWorkbench({ periods }: CfoWorkbenchProps) {
                                                 onChange={(event) =>
                                                     setLines((current) =>
                                                         current.map((row) =>
-                                                            row.key === line.key
-                                                                ? { ...row, credit: event.target.value, debit: '' }
-                                                                : row,
+                                                            row.key === line.key ? { ...row, credit: event.target.value, debit: '' } : row,
                                                         ),
                                                     )
                                                 }
@@ -340,9 +329,7 @@ export function CfoWorkbench({ periods }: CfoWorkbenchProps) {
                                                 variant="secondary"
                                                 className="text-danger-text"
                                                 disabled={lines.length <= 2}
-                                                onClick={() =>
-                                                    setLines((current) => current.filter((row) => row.key !== line.key))
-                                                }
+                                                onClick={() => setLines((current) => current.filter((row) => row.key !== line.key))}
                                             >
                                                 {CFO_WRITE_TEXT.removeLine}
                                             </Button>
@@ -361,9 +348,7 @@ export function CfoWorkbench({ periods }: CfoWorkbenchProps) {
                                     <td className="erp-numeric px-sm py-xs" dir="ltr">
                                         {money(totals.credit)}
                                     </td>
-                                    <td
-                                        className={`px-sm py-xs ${totals.balanced ? 'text-success-text' : 'text-danger-text'}`}
-                                    >
+                                    <td className={`px-sm py-xs ${totals.balanced ? 'text-success-text' : 'text-danger-text'}`}>
                                         {totals.balanced ? CFO_WRITE_TEXT.balanced : CFO_WRITE_TEXT.unbalanced}
                                     </td>
                                 </tr>
@@ -374,10 +359,7 @@ export function CfoWorkbench({ periods }: CfoWorkbenchProps) {
                     <div className="flex flex-col gap-sm sm:hidden" data-testid="entry-lines-mobile">
                         {lines.map((line) => (
                             <div key={line.key} className="flex flex-col gap-xs rounded-md border border-hairline p-sm">
-                                <label
-                                    className="text-label-md text-ink-secondary"
-                                    htmlFor={`cfo-mobile-account-${String(line.key)}`}
-                                >
+                                <label className="text-label-md text-ink-secondary" htmlFor={`cfo-mobile-account-${String(line.key)}`}>
                                     {CFO_WRITE_TEXT.account}
                                 </label>
                                 <select
@@ -386,9 +368,7 @@ export function CfoWorkbench({ periods }: CfoWorkbenchProps) {
                                     onChange={(event) =>
                                         setLines((current) =>
                                             current.map((row) =>
-                                                row.key === line.key
-                                                    ? { ...row, accountCode: event.target.value }
-                                                    : row,
+                                                row.key === line.key ? { ...row, accountCode: event.target.value } : row,
                                             ),
                                         )
                                     }
@@ -409,9 +389,7 @@ export function CfoWorkbench({ periods }: CfoWorkbenchProps) {
                                         onChange={(event) =>
                                             setLines((current) =>
                                                 current.map((row) =>
-                                                    row.key === line.key
-                                                        ? { ...row, debit: event.target.value, credit: '' }
-                                                        : row,
+                                                    row.key === line.key ? { ...row, debit: event.target.value, credit: '' } : row,
                                                 ),
                                             )
                                         }
@@ -425,9 +403,7 @@ export function CfoWorkbench({ periods }: CfoWorkbenchProps) {
                                         onChange={(event) =>
                                             setLines((current) =>
                                                 current.map((row) =>
-                                                    row.key === line.key
-                                                        ? { ...row, credit: event.target.value, debit: '' }
-                                                        : row,
+                                                    row.key === line.key ? { ...row, credit: event.target.value, debit: '' } : row,
                                                 ),
                                             )
                                         }
@@ -442,9 +418,7 @@ export function CfoWorkbench({ periods }: CfoWorkbenchProps) {
                                         variant="secondary"
                                         className="text-danger-text"
                                         disabled={lines.length <= 2}
-                                        onClick={() =>
-                                            setLines((current) => current.filter((row) => row.key !== line.key))
-                                        }
+                                        onClick={() => setLines((current) => current.filter((row) => row.key !== line.key))}
                                     >
                                         {CFO_WRITE_TEXT.removeLine}
                                     </Button>
@@ -463,12 +437,7 @@ export function CfoWorkbench({ periods }: CfoWorkbenchProps) {
                     </div>
 
                     <div className="flex items-center justify-between gap-sm">
-                        <Button
-                            type="button"
-                            size="sm"
-                            variant="ghost"
-                            onClick={() => setLines((current) => [...current, newLine()])}
-                        >
+                        <Button type="button" size="sm" variant="ghost" onClick={() => setLines((current) => [...current, newLine()])}>
                             {CFO_WRITE_TEXT.addLine}
                         </Button>
                         {error ? (
@@ -581,9 +550,7 @@ export function CfoWorkbench({ periods }: CfoWorkbenchProps) {
                                 {row.period}
                             </span>
                             <span className="flex items-center gap-xs">
-                                <span className={row.closed ? 'text-success-text' : 'text-muted'}>
-                                    {row.closed ? 'مقفلة' : 'مفتوحة'}
-                                </span>
+                                <span className={row.closed ? 'text-success-text' : 'text-muted'}>{row.closed ? 'مقفلة' : 'مفتوحة'}</span>
                                 {row.closed ? (
                                     reopener ? (
                                         <Button

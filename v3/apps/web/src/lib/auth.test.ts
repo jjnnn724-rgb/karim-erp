@@ -12,7 +12,6 @@ import {
     refreshSession,
     resetPassword,
     setupMfa,
-    subscribeAuth,
     verifyMfa,
 } from './auth';
 
@@ -45,98 +44,6 @@ const SESSION = {
     app_key: 'test-app-key-1',
     user: { id: '7', name: 'قارئ', role: 'accountant', username: 'reader' },
 };
-
-describe('مزامنة الجلسة بين التبويبات', () => {
-    it('ينشر الدخول والخروج ويحدّث حالة التبويب عند استقبال رسالة موثوقة شكليًا', () => {
-        const channels: TestAuthBroadcastChannel[] = [];
-        class TestAuthBroadcastChannel extends EventTarget {
-            readonly messages: unknown[] = [];
-
-            constructor() {
-                super();
-                channels.push(this);
-            }
-
-            postMessage(message: unknown): void {
-                this.messages.push(message);
-            }
-
-            close(): void {}
-        }
-        vi.stubGlobal('BroadcastChannel', TestAuthBroadcastChannel);
-
-        const unsubscribe = subscribeAuth(() => {});
-        applySession(SESSION);
-        const channel = channels[0];
-        if (!channel) {
-            throw new Error('قناة المصادقة لم تُنشأ');
-        }
-        expect(channel.messages).toEqual([
-            {
-                type: 'session',
-                access_token: SESSION.access_token,
-                app_key: SESSION.app_key,
-                user: SESSION.user,
-            },
-        ]);
-
-        channel.dispatchEvent(
-            new MessageEvent('message', {
-                data: {
-                    type: 'session',
-                    access_token: 'remote-access',
-                    app_key: null,
-                    user: { id: '8', name: 'مدير', role: 'admin', username: 'admin' },
-                },
-            }),
-        );
-        expect(getAuthState()).toMatchObject({
-            status: 'authenticated',
-            token: 'remote-access',
-            user: { id: '8', role: 'admin' },
-        });
-        expect(getAppKey()).toBeNull();
-
-        channel.dispatchEvent(
-            new MessageEvent('message', {
-                data: { type: 'session', access_token: '', app_key: null, user: {} },
-            }),
-        );
-        expect(getAuthState().token).toBe('remote-access');
-
-        channel.dispatchEvent(new MessageEvent('message', { data: { type: 'logout' } }));
-        expect(getAuthState()).toEqual({ status: 'anonymous', token: null, user: null });
-        logout();
-        expect(channel.messages.at(-1)).toEqual({ type: 'logout' });
-        unsubscribe();
-    });
-
-    it('يتجاهل نتيجة تجديد قديمة إذا وصلت جلسة أحدث من تبويب آخر', async () => {
-        window.localStorage.setItem('karim_rt_v1', 'old-refresh');
-        let resolveRefresh: (response: Response) => void = () => {
-            throw new Error('طلب التجديد لم يبدأ');
-        };
-        const pendingResponse = new Promise<Response>((resolve) => {
-            resolveRefresh = resolve;
-        });
-        vi.stubGlobal(
-            'fetch',
-            vi.fn(() => pendingResponse),
-        );
-
-        const refresh = refreshSession();
-        applySession({
-            ...SESSION,
-            access_token: 'new-access',
-            refresh_token: 'new-refresh',
-        });
-        resolveRefresh(jsonResponse({ error: 'REFRESH_TOKEN_INVALID' }, 401));
-
-        expect(await refresh).toBe(true);
-        expect(getAuthState().token).toBe('new-access');
-        expect(window.localStorage.getItem('karim_rt_v1')).toBe('new-refresh');
-    });
-});
 
 describe('مفتاح التطبيق', () => {
     it('يُحفظ في الذاكرة عند الدخول — ولا يُكتب في التخزين الدائم', async () => {
@@ -428,9 +335,7 @@ describe('العامل الثاني', () => {
             configurable: true,
         });
         const fetchMock = vi.fn(async (url: string) =>
-            String(url).endsWith('/options')
-                ? jsonResponse({ options: { challenge: 'AQID', rpId: 'localhost' } })
-                : jsonResponse(SESSION),
+            String(url).endsWith('/options') ? jsonResponse({ options: { challenge: 'AQID', rpId: 'localhost' } }) : jsonResponse(SESSION),
         );
         vi.stubGlobal('fetch', fetchMock);
 

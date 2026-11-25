@@ -1,10 +1,9 @@
 import { useQuery } from '@tanstack/react-query';
-import { ScreenHero } from '../ui';
 import { useMemo, useState } from 'react';
+import { ScreenHero } from '../ui';
 import './ExternalSales.premium.css';
 import { KpiCard, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
-import { errorMessage, intOf, moneyOf, qtyOf, textOf } from '../lib/reporting';
 import {
     buildCoverageRows,
     COVERAGE_STATUS_LABEL,
@@ -17,6 +16,7 @@ import {
     toCsv,
 } from '../lib/external-sales';
 import { printExternalSalesReport } from '../lib/external-sales-print';
+import { errorMessage, intOf, moneyOf, qtyOf, textOf } from '../lib/reporting';
 import { Button } from '../ui/Button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/Tabs';
 import { useToast } from '../ui/Toast';
@@ -51,7 +51,10 @@ export function ExternalSales() {
     const [salesQuery, setSalesQuery] = useState('');
     const [issuedQuery, setIssuedQuery] = useState('');
     const [coverageQuery, setCoverageQuery] = useState('');
-    const [coverageSort, setCoverageSort] = useState<{ key: 'value' | 'coverage' | 'name'; dir: 'asc' | 'desc' }>({ key: 'value', dir: 'desc' });
+    const [coverageSort, setCoverageSort] = useState<{ key: 'value' | 'coverage' | 'name'; dir: 'asc' | 'desc' }>({
+        key: 'value',
+        dir: 'desc',
+    });
     const [lossOnly, setLossOnly] = useState(false);
     const [salesSort, setSalesSort] = useState<{ key: 'name' | 'qty'; dir: 'asc' | 'desc' }>({ key: 'qty', dir: 'desc' });
     const [issuedSort, setIssuedSort] = useState<{ key: 'date' | 'value' | 'item'; dir: 'asc' | 'desc' }>({ key: 'date', dir: 'desc' });
@@ -150,18 +153,56 @@ export function ExternalSales() {
         if (!summary) {
             return;
         }
-        const rows: (string | number)[][] = summary.sold.rows.map((row) => [row.date, row.ref, row.customer ?? '', row.items, row.qty, row.amount]);
-        rows.push(['الإجمالي', `${summary.sold.totals?.invoices ?? 0} فاتورة`, '', summary.sold.totals?.lines ?? 0, summary.sold.totals?.qty ?? 0, soldAmount]);
-        downloadCsv(`external-sales-sold-${from}-${to}.csv`, toCsv(['التاريخ', 'المرجع', 'العميل', 'عدد البنود', 'الكمية', 'المبلغ'], rows));
+        const rows: (string | number)[][] = summary.sold.rows.map((row) => [
+            row.date,
+            row.ref,
+            row.customer ?? '',
+            row.items,
+            row.qty,
+            row.amount,
+        ]);
+        rows.push([
+            'الإجمالي',
+            `${summary.sold.totals?.invoices ?? 0} فاتورة`,
+            '',
+            summary.sold.totals?.lines ?? 0,
+            summary.sold.totals?.qty ?? 0,
+            soldAmount,
+        ]);
+        downloadCsv(
+            `external-sales-sold-${from}-${to}.csv`,
+            toCsv(['التاريخ', 'المرجع', 'العميل', 'عدد البنود', 'الكمية', 'المبلغ'], rows),
+        );
     }
 
     function exportIssuedCsv() {
         if (!summary) {
             return;
         }
-        const rows: (string | number)[][] = summary.issued.rows.map((row) => [row.date, row.doc, row.item, row.unit ?? '', row.qty, row.cost, row.value, row.status ?? '']);
-        rows.push(['الإجمالي', `${summary.issued.totals?.docs ?? 0} إذن صرف`, '', '', summary.issued.totals?.qty ?? 0, '', issuedValue, '']);
-        downloadCsv(`external-sales-issued-${from}-${to}.csv`, toCsv(['التاريخ', 'إذن الصرف', 'الصنف', 'الوحدة', 'الكمية', 'التكلفة', 'القيمة', 'الحالة'], rows));
+        const rows: (string | number)[][] = summary.issued.rows.map((row) => [
+            row.date,
+            row.doc,
+            row.item,
+            row.unit ?? '',
+            row.qty,
+            row.cost,
+            row.value,
+            row.status ?? '',
+        ]);
+        rows.push([
+            'الإجمالي',
+            `${summary.issued.totals?.docs ?? 0} إذن صرف`,
+            '',
+            '',
+            summary.issued.totals?.qty ?? 0,
+            '',
+            issuedValue,
+            '',
+        ]);
+        downloadCsv(
+            `external-sales-issued-${from}-${to}.csv`,
+            toCsv(['التاريخ', 'إذن الصرف', 'الصنف', 'الوحدة', 'الكمية', 'التكلفة', 'القيمة', 'الحالة'], rows),
+        );
     }
 
     function exportCoverageCsv() {
@@ -179,7 +220,10 @@ export function ExternalSales() {
                     COVERAGE_STATUS_LABEL[row.status],
                 ] as const,
         );
-        downloadCsv(`external-sales-coverage-${from}-${to}.csv`, toCsv(['الصنف', 'مباع (وحدة)', 'مسحوب (وحدة)', 'التغطية', 'القيمة المسحوبة', 'الحالة'], rows));
+        downloadCsv(
+            `external-sales-coverage-${from}-${to}.csv`,
+            toCsv(['الصنف', 'مباع (وحدة)', 'مسحوب (وحدة)', 'التغطية', 'القيمة المسحوبة', 'الحالة'], rows),
+        );
     }
 
     const totalIssued = summary?.issued.totals ?? null;
@@ -191,9 +235,7 @@ export function ExternalSales() {
             return [];
         }
         const needle = salesQuery.trim().toLowerCase();
-        const base = needle
-            ? summary.sold.byItem.filter((row) => row.item.toLowerCase().includes(needle))
-            : summary.sold.byItem;
+        const base = needle ? summary.sold.byItem.filter((row) => row.item.toLowerCase().includes(needle)) : summary.sold.byItem;
         return [...base].sort((a, b) => {
             const sign = salesSort.dir === 'asc' ? 1 : -1;
             if (salesSort.key === 'name') {
@@ -209,9 +251,7 @@ export function ExternalSales() {
         }
         const needle = issuedQuery.trim().toLowerCase();
         const rows = needle
-            ? summary.issued.rows.filter((row) =>
-                  `${row.item} ${row.doc} ${row.date} ${row.status ?? ''}`.toLowerCase().includes(needle),
-              )
+            ? summary.issued.rows.filter((row) => `${row.item} ${row.doc} ${row.date} ${row.status ?? ''}`.toLowerCase().includes(needle))
             : summary.issued.rows;
         const sorted = [...rows];
         const sign = issuedSort.dir === 'asc' ? 1 : -1;
@@ -249,8 +289,7 @@ export function ExternalSales() {
 
     return (
         <div className="erp-premium-screen ext-sales flex flex-col gap-md">
-
-<ScreenHero
+            <ScreenHero
                 title="البيع الخارجي — المبيعات مقابل المسحوبات"
                 english="External sales — issued cost vs real sales"
                 description="كل صنف كم اتباع من مرآة Oracle، وكل وحدة خرجت من المخزن على إذن صرف — بنفس الفترة."
@@ -258,9 +297,11 @@ export function ExternalSales() {
                     <>
                         <button
                             type="button"
-                            onClick={() => { () => {
-                    void query.refetch();
-                } }}
+                            onClick={() => {
+                                () => {
+                                    void query.refetch();
+                                };
+                            }}
                             disabled={query.isFetching}
                             className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
                         >
@@ -273,26 +314,71 @@ export function ExternalSales() {
             <div className="ext-filters" role="group" aria-label="فترة التقرير">
                 <label className="ext-filters__date">
                     <span>من</span>
-                    <input type="date" value={from} max={to} onChange={(e) => setFrom(e.target.value)} className="erp-control" dir="ltr" aria-label="من تاريخ" />
+                    <input
+                        type="date"
+                        value={from}
+                        max={to}
+                        onChange={(e) => setFrom(e.target.value)}
+                        className="erp-control"
+                        dir="ltr"
+                        aria-label="من تاريخ"
+                    />
                 </label>
                 <label className="ext-filters__date">
                     <span>إلى</span>
-                    <input type="date" value={to} min={from} onChange={(e) => setTo(e.target.value)} className="erp-control" dir="ltr" aria-label="إلى تاريخ" />
+                    <input
+                        type="date"
+                        value={to}
+                        min={from}
+                        onChange={(e) => setTo(e.target.value)}
+                        className="erp-control"
+                        dir="ltr"
+                        aria-label="إلى تاريخ"
+                    />
                 </label>
                 <div className="ext-presets" role="group" aria-label="فترات سريعة">
-                    <button type="button" className="ext-preset" onClick={() => applyPreset(1)}>اليوم</button>
-                    <button type="button" className="ext-preset" onClick={() => applyPreset(7)}>٧ أيام</button>
-                    <button type="button" className="ext-preset" onClick={() => applyPreset(30)}>٣٠ يومًا</button>
-                    <button type="button" className="ext-preset" onClick={() => applyPreset(90)}>٣ أشهر</button>
+                    <button type="button" className="ext-preset" onClick={() => applyPreset(1)}>
+                        اليوم
+                    </button>
+                    <button type="button" className="ext-preset" onClick={() => applyPreset(7)}>
+                        ٧ أيام
+                    </button>
+                    <button type="button" className="ext-preset" onClick={() => applyPreset(30)}>
+                        ٣٠ يومًا
+                    </button>
+                    <button type="button" className="ext-preset" onClick={() => applyPreset(90)}>
+                        ٣ أشهر
+                    </button>
                 </div>
                 <div className="ext-filters__actions">
-                    <Button type="button" size="sm" variant="secondary" onClick={exportSalesCsv} disabled={!summary || query.isFetching} title="تصدير المبيعات لكل فاتورة CSV">
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={exportSalesCsv}
+                        disabled={!summary || query.isFetching}
+                        title="تصدير المبيعات لكل فاتورة CSV"
+                    >
                         مبيعات CSV
                     </Button>
-                    <Button type="button" size="sm" variant="secondary" onClick={exportIssuedCsv} disabled={!summary || query.isFetching} title="تصدير كل حركة مسحوبات من إذن الصرف CSV">
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={exportIssuedCsv}
+                        disabled={!summary || query.isFetching}
+                        title="تصدير كل حركة مسحوبات من إذن الصرف CSV"
+                    >
                         مسحوبات CSV
                     </Button>
-                    <Button type="button" size="sm" variant="secondary" onClick={exportCoverageCsv} disabled={coverageRows.length === 0 || query.isFetching} title="تصدير مطابقة الأصناف (مباع مقابل مسحوب) CSV">
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        onClick={exportCoverageCsv}
+                        disabled={coverageRows.length === 0 || query.isFetching}
+                        title="تصدير مطابقة الأصناف (مباع مقابل مسحوب) CSV"
+                    >
                         الأصناف CSV
                     </Button>
                     <Button type="button" size="sm" variant="secondary" onClick={() => void query.refetch()} disabled={rangeInvalid}>
@@ -311,9 +397,7 @@ export function ExternalSales() {
             ) : null}
 
             {headerPending ? <StateLoading label="جارٍ قراءة بيانات البيع الخارجي والمسحوبات…" /> : null}
-            {query.isError ? (
-                <StateError message={errorMessage(query.error)} onRetry={() => void query.refetch()} />
-            ) : null}
+            {query.isError ? <StateError message={errorMessage(query.error)} onRetry={() => void query.refetch()} /> : null}
             {query.isPending && !query.isError ? (
                 <SectionCard title="البيانات" english="Loading">
                     <TableSkeleton rows={5} columns={6} />
@@ -354,13 +438,16 @@ export function ExternalSales() {
 
                     {comparisons ? (
                         <div className="ext-compare" role="status" aria-label="مقارنة بالفترة السابقة">
-                            <span className="ext-compare__title">مقارنة بالفترة السابقة ({prevFrom} ← {prevTo})</span>
+                            <span className="ext-compare__title">
+                                مقارنة بالفترة السابقة ({prevFrom} ← {prevTo})
+                            </span>
                             {comparisons.map((item) => (
                                 <span
                                     key={item.label}
                                     className={`ext-compare__item${item.good === null ? '' : item.good ? ' ext-compare__item--up' : ' ext-compare__item--down'}`}
                                 >
-                                    {item.label} {item.pct === null ? '—' : `${item.pct >= 0 ? '▲' : '▼'} ${Math.abs(item.pct).toFixed(1)}%`}
+                                    {item.label}{' '}
+                                    {item.pct === null ? '—' : `${item.pct >= 0 ? '▲' : '▼'} ${Math.abs(item.pct).toFixed(1)}%`}
                                 </span>
                             ))}
                         </div>
@@ -382,30 +469,59 @@ export function ExternalSales() {
                                     </p>
                                     <label className="ext-search" htmlFor="ext-sales-search">
                                         <span className="sr-only">بحث باسم الصنف</span>
-                                        <input id="ext-sales-search" type="search" className="erp-control" placeholder="ابحث باسم الصنف…" value={salesQuery} onChange={(e) => setSalesQuery(e.target.value)} />
+                                        <input
+                                            id="ext-sales-search"
+                                            type="search"
+                                            className="erp-control"
+                                            placeholder="ابحث باسم الصنف…"
+                                            value={salesQuery}
+                                            onChange={(e) => setSalesQuery(e.target.value)}
+                                        />
                                     </label>
                                     <div className="ext-sort" role="group" aria-label="ترتيب المبيعات">
-                                        <button type="button" aria-pressed={salesSort.key === 'qty' && salesSort.dir === 'desc'} className="ext-sort-btn" onClick={() => setSalesSort({ key: 'qty', dir: 'desc' })}>
+                                        <button
+                                            type="button"
+                                            aria-pressed={salesSort.key === 'qty' && salesSort.dir === 'desc'}
+                                            className="ext-sort-btn"
+                                            onClick={() => setSalesSort({ key: 'qty', dir: 'desc' })}
+                                        >
                                             الكمية ↓
                                         </button>
-                                        <button type="button" aria-pressed={salesSort.key === 'qty' && salesSort.dir === 'asc'} className="ext-sort-btn" onClick={() => setSalesSort({ key: 'qty', dir: 'asc' })}>
+                                        <button
+                                            type="button"
+                                            aria-pressed={salesSort.key === 'qty' && salesSort.dir === 'asc'}
+                                            className="ext-sort-btn"
+                                            onClick={() => setSalesSort({ key: 'qty', dir: 'asc' })}
+                                        >
                                             الكمية ↑
                                         </button>
-                                        <button type="button" aria-pressed={salesSort.key === 'name' && salesSort.dir === 'asc'} className="ext-sort-btn" onClick={() => setSalesSort({ key: 'name', dir: 'asc' })}>
+                                        <button
+                                            type="button"
+                                            aria-pressed={salesSort.key === 'name' && salesSort.dir === 'asc'}
+                                            className="ext-sort-btn"
+                                            onClick={() => setSalesSort({ key: 'name', dir: 'asc' })}
+                                        >
                                             أ–ي
                                         </button>
                                     </div>
                                 </div>
                                 {filteredSold.length === 0 ? (
-                                    <StateEmpty title="لا مبيعات مطابقة" hint={salesQuery ? 'غيّر كلمة البحث.' : 'لا توجد فواتير بيع خارجي في الفترة.'} />
+                                    <StateEmpty
+                                        title="لا مبيعات مطابقة"
+                                        hint={salesQuery ? 'غيّر كلمة البحث.' : 'لا توجد فواتير بيع خارجي في الفترة.'}
+                                    />
                                 ) : (
                                     <TableScroll label="جدول المبيعات حسب الصنف">
                                         <table className="ext-table">
                                             <thead>
                                                 <tr>
                                                     <th scope="col">الصنف</th>
-                                                    <th scope="col" className="text-end">الكمية المباعة</th>
-                                                    <th scope="col" className="text-end">النسبة</th>
+                                                    <th scope="col" className="text-end">
+                                                        الكمية المباعة
+                                                    </th>
+                                                    <th scope="col" className="text-end">
+                                                        النسبة
+                                                    </th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -414,9 +530,14 @@ export function ExternalSales() {
                                                     return (
                                                         <tr key={row.item}>
                                                             <td className="ext-table__item">{row.item}</td>
-                                                            <td className="erp-numeric text-end" dir="ltr">{qtyOf(row.qty)}</td>
+                                                            <td className="erp-numeric text-end" dir="ltr">
+                                                                {qtyOf(row.qty)}
+                                                            </td>
                                                             <td className="ext-table__share">
-                                                                <span className="ext-bar" style={{ ['--share' as string]: `${String(pct)}%` }} />
+                                                                <span
+                                                                    className="ext-bar"
+                                                                    style={{ ['--share' as string]: `${String(pct)}%` }}
+                                                                />
                                                                 <span className="erp-numeric" dir="ltr">{`${pct.toFixed(1)}%`}</span>
                                                             </td>
                                                         </tr>
@@ -426,7 +547,9 @@ export function ExternalSales() {
                                             <tfoot>
                                                 <tr className="ext-table__total">
                                                     <td>الإجمالي (المعروض)</td>
-                                                    <td className="erp-numeric text-end" dir="ltr">{qtyOf(sumQty(filteredSold))}</td>
+                                                    <td className="erp-numeric text-end" dir="ltr">
+                                                        {qtyOf(sumQty(filteredSold))}
+                                                    </td>
                                                     <td className="text-end text-caption text-muted">{`من ${intOf(totalSold?.qty ?? 0)} وحدة`}</td>
                                                 </tr>
                                             </tfoot>
@@ -445,13 +568,48 @@ export function ExternalSales() {
                                     </p>
                                     <label className="ext-search" htmlFor="ext-issued-search">
                                         <span className="sr-only">بحث في المسحوبات</span>
-                                        <input id="ext-issued-search" type="search" className="erp-control" placeholder="ابحث بالصنف أو رقم الإذن أو الحالة…" value={issuedQuery} onChange={(e) => setIssuedQuery(e.target.value)} />
+                                        <input
+                                            id="ext-issued-search"
+                                            type="search"
+                                            className="erp-control"
+                                            placeholder="ابحث بالصنف أو رقم الإذن أو الحالة…"
+                                            value={issuedQuery}
+                                            onChange={(e) => setIssuedQuery(e.target.value)}
+                                        />
                                     </label>
                                     <div className="ext-sort" role="group" aria-label="ترتيب المسحوبات">
-                                        <button type="button" aria-pressed={issuedSort.key === 'date' && issuedSort.dir === 'desc'} className="ext-sort-btn" onClick={() => setIssuedSort({ key: 'date', dir: 'desc' })}>التاريخ ↓</button>
-                                        <button type="button" aria-pressed={issuedSort.key === 'date' && issuedSort.dir === 'asc'} className="ext-sort-btn" onClick={() => setIssuedSort({ key: 'date', dir: 'asc' })}>التاريخ ↑</button>
-                                        <button type="button" aria-pressed={issuedSort.key === 'value' && issuedSort.dir === 'desc'} className="ext-sort-btn" onClick={() => setIssuedSort({ key: 'value', dir: 'desc' })}>القيمة ↓</button>
-                                        <button type="button" aria-pressed={issuedSort.key === 'item' && issuedSort.dir === 'asc'} className="ext-sort-btn" onClick={() => setIssuedSort({ key: 'item', dir: 'asc' })}>الصنف أ–ي</button>
+                                        <button
+                                            type="button"
+                                            aria-pressed={issuedSort.key === 'date' && issuedSort.dir === 'desc'}
+                                            className="ext-sort-btn"
+                                            onClick={() => setIssuedSort({ key: 'date', dir: 'desc' })}
+                                        >
+                                            التاريخ ↓
+                                        </button>
+                                        <button
+                                            type="button"
+                                            aria-pressed={issuedSort.key === 'date' && issuedSort.dir === 'asc'}
+                                            className="ext-sort-btn"
+                                            onClick={() => setIssuedSort({ key: 'date', dir: 'asc' })}
+                                        >
+                                            التاريخ ↑
+                                        </button>
+                                        <button
+                                            type="button"
+                                            aria-pressed={issuedSort.key === 'value' && issuedSort.dir === 'desc'}
+                                            className="ext-sort-btn"
+                                            onClick={() => setIssuedSort({ key: 'value', dir: 'desc' })}
+                                        >
+                                            القيمة ↓
+                                        </button>
+                                        <button
+                                            type="button"
+                                            aria-pressed={issuedSort.key === 'item' && issuedSort.dir === 'asc'}
+                                            className="ext-sort-btn"
+                                            onClick={() => setIssuedSort({ key: 'item', dir: 'asc' })}
+                                        >
+                                            الصنف أ–ي
+                                        </button>
                                     </div>
                                 </div>
                                 {filteredIssued.length === 0 ? (
@@ -464,34 +622,66 @@ export function ExternalSales() {
                                                     <th scope="col">التاريخ</th>
                                                     <th scope="col">رقم الإذن</th>
                                                     <th scope="col">الصنف</th>
-                                                    <th scope="col" className="text-end">الكمية</th>
+                                                    <th scope="col" className="text-end">
+                                                        الكمية
+                                                    </th>
                                                     <th scope="col">الوحدة</th>
-                                                    <th scope="col" className="text-end">تكلفة الوحدة</th>
-                                                    <th scope="col" className="text-end">القيمة</th>
+                                                    <th scope="col" className="text-end">
+                                                        تكلفة الوحدة
+                                                    </th>
+                                                    <th scope="col" className="text-end">
+                                                        القيمة
+                                                    </th>
                                                     <th scope="col">الحالة</th>
                                                 </tr>
                                             </thead>
                                             <tbody>
                                                 {filteredIssued.map((row, index) => (
                                                     <tr key={`${row.doc}-${row.item}-${index}`}>
-                                                        <td className="ext-table__date" dir="ltr">{row.date}</td>
-                                                        <td className="ext-table__doc" dir="ltr">{row.doc}</td>
+                                                        <td className="ext-table__date" dir="ltr">
+                                                            {row.date}
+                                                        </td>
+                                                        <td className="ext-table__doc" dir="ltr">
+                                                            {row.doc}
+                                                        </td>
                                                         <td className="ext-table__item">{row.item}</td>
-                                                        <td className="erp-numeric text-end" dir="ltr">{qtyOf(row.qty)}</td>
+                                                        <td className="erp-numeric text-end" dir="ltr">
+                                                            {qtyOf(row.qty)}
+                                                        </td>
                                                         <td>{row.unit ?? '—'}</td>
-                                                        <td className="erp-numeric text-end" dir="ltr">{moneyOf(row.cost)}</td>
-                                                        <td className="erp-numeric text-end" dir="ltr">{moneyOf(row.value)}</td>
-                                                        <td><span className={`ext-pill ext-pill--${row.status === 'received' ? 'ok' : row.status === 'partially_received' ? 'warn' : 'mix'}`}>{row.status === 'received' ? 'مستلم' : row.status === 'partially_received' ? 'جزئي' : row.status === 'approved' ? 'معتمد' : textOf(row.status)}</span></td>
+                                                        <td className="erp-numeric text-end" dir="ltr">
+                                                            {moneyOf(row.cost)}
+                                                        </td>
+                                                        <td className="erp-numeric text-end" dir="ltr">
+                                                            {moneyOf(row.value)}
+                                                        </td>
+                                                        <td>
+                                                            <span
+                                                                className={`ext-pill ext-pill--${row.status === 'received' ? 'ok' : row.status === 'partially_received' ? 'warn' : 'mix'}`}
+                                                            >
+                                                                {row.status === 'received'
+                                                                    ? 'مستلم'
+                                                                    : row.status === 'partially_received'
+                                                                      ? 'جزئي'
+                                                                      : row.status === 'approved'
+                                                                        ? 'معتمد'
+                                                                        : textOf(row.status)}
+                                                            </span>
+                                                        </td>
                                                     </tr>
                                                 ))}
                                             </tbody>
                                             <tfoot>
                                                 <tr className="ext-table__total">
                                                     <td colSpan={3}>الإجمالي</td>
-                                                    <td className="erp-numeric text-end" dir="ltr">{qtyOf(sumQty(filteredIssued))}</td>
+                                                    <td className="erp-numeric text-end" dir="ltr">
+                                                        {qtyOf(sumQty(filteredIssued))}
+                                                    </td>
                                                     <td />
                                                     <td />
-                                                    <td className="erp-numeric text-end" dir="ltr">{moneyOf(filteredIssued.reduce((s, r) => s + r.value, 0))}</td>
+                                                    <td className="erp-numeric text-end" dir="ltr">
+                                                        {moneyOf(filteredIssued.reduce((s, r) => s + r.value, 0))}
+                                                    </td>
                                                     <td />
                                                 </tr>
                                             </tfoot>
@@ -509,32 +699,71 @@ export function ExternalSales() {
                                     </p>
                                     <label className="ext-search" htmlFor="ext-coverage-search">
                                         <span className="sr-only">ابحث باسم الصنف</span>
-                                        <input id="ext-coverage-search" type="search" className="erp-control" placeholder="ابحث باسم الصنف…" value={coverageQuery} onChange={(e) => setCoverageQuery(e.target.value)} />
+                                        <input
+                                            id="ext-coverage-search"
+                                            type="search"
+                                            className="erp-control"
+                                            placeholder="ابحث باسم الصنف…"
+                                            value={coverageQuery}
+                                            onChange={(e) => setCoverageQuery(e.target.value)}
+                                        />
                                     </label>
                                     <div className="ext-sort" role="group" aria-label="ترتيب مطابقة الأصناف">
-                                        <button type="button" aria-pressed={coverageSort.key === 'value' && coverageSort.dir === 'desc'} className="ext-sort-btn" onClick={() => setCoverageSort({ key: 'value', dir: 'desc' })}>
+                                        <button
+                                            type="button"
+                                            aria-pressed={coverageSort.key === 'value' && coverageSort.dir === 'desc'}
+                                            className="ext-sort-btn"
+                                            onClick={() => setCoverageSort({ key: 'value', dir: 'desc' })}
+                                        >
                                             الأعلى قيمة ↓
                                         </button>
-                                        <button type="button" aria-pressed={coverageSort.key === 'value' && coverageSort.dir === 'asc'} className="ext-sort-btn" onClick={() => setCoverageSort({ key: 'value', dir: 'asc' })}>
+                                        <button
+                                            type="button"
+                                            aria-pressed={coverageSort.key === 'value' && coverageSort.dir === 'asc'}
+                                            className="ext-sort-btn"
+                                            onClick={() => setCoverageSort({ key: 'value', dir: 'asc' })}
+                                        >
                                             الأعلى قيمة ↑
                                         </button>
-                                        <button type="button" aria-pressed={coverageSort.key === 'coverage' && coverageSort.dir === 'desc'} className="ext-sort-btn" onClick={() => setCoverageSort({ key: 'coverage', dir: 'desc' })}>
+                                        <button
+                                            type="button"
+                                            aria-pressed={coverageSort.key === 'coverage' && coverageSort.dir === 'desc'}
+                                            className="ext-sort-btn"
+                                            onClick={() => setCoverageSort({ key: 'coverage', dir: 'desc' })}
+                                        >
                                             التغطية ↓
                                         </button>
-                                        <button type="button" aria-pressed={coverageSort.key === 'coverage' && coverageSort.dir === 'asc'} className="ext-sort-btn" onClick={() => setCoverageSort({ key: 'coverage', dir: 'asc' })}>
+                                        <button
+                                            type="button"
+                                            aria-pressed={coverageSort.key === 'coverage' && coverageSort.dir === 'asc'}
+                                            className="ext-sort-btn"
+                                            onClick={() => setCoverageSort({ key: 'coverage', dir: 'asc' })}
+                                        >
                                             التغطية ↑
                                         </button>
-                                        <button type="button" aria-pressed={coverageSort.key === 'name' && coverageSort.dir === 'asc'} className="ext-sort-btn" onClick={() => setCoverageSort({ key: 'name', dir: 'asc' })}>
+                                        <button
+                                            type="button"
+                                            aria-pressed={coverageSort.key === 'name' && coverageSort.dir === 'asc'}
+                                            className="ext-sort-btn"
+                                            onClick={() => setCoverageSort({ key: 'name', dir: 'asc' })}
+                                        >
                                             الاسم أ→ي
                                         </button>
                                     </div>
-                                    <button type="button" aria-pressed={lossOnly} className="ext-toggle" onClick={() => setLossOnly((value) => !value)}>
+                                    <button
+                                        type="button"
+                                        aria-pressed={lossOnly}
+                                        className="ext-toggle"
+                                        onClick={() => setLossOnly((value) => !value)}
+                                    >
                                         تشخيص الخسارة فقط
                                     </button>
                                 </div>
                                 {lossOnly && noSalesTop.length > 0 ? (
                                     <div className="ext-loss-banner" role="alert">
-                                        <p className="ext-loss-banner__title">أصناف صُرفت من المخزن ولم تُباع في الفترة ({intOf(covTotals.noSalesCount)})</p>
+                                        <p className="ext-loss-banner__title">
+                                            أصناف صُرفت من المخزن ولم تُباع في الفترة ({intOf(covTotals.noSalesCount)})
+                                        </p>
                                         <p>
                                             قيمة {moneyOf(covTotals.noSalesValue)} — الأعلى قيمة:{' '}
                                             {noSalesTop.map((row) => row.item).join(' · ')}
@@ -552,10 +781,18 @@ export function ExternalSales() {
                                             <thead>
                                                 <tr>
                                                     <th scope="col">الصنف</th>
-                                                    <th scope="col" className="text-end">مباع (وحدة)</th>
-                                                    <th scope="col" className="text-end">مسحوب (وحدة)</th>
-                                                    <th scope="col" className="text-end">التغطية</th>
-                                                    <th scope="col" className="text-end">القيمة المسحوبة</th>
+                                                    <th scope="col" className="text-end">
+                                                        مباع (وحدة)
+                                                    </th>
+                                                    <th scope="col" className="text-end">
+                                                        مسحوب (وحدة)
+                                                    </th>
+                                                    <th scope="col" className="text-end">
+                                                        التغطية
+                                                    </th>
+                                                    <th scope="col" className="text-end">
+                                                        القيمة المسحوبة
+                                                    </th>
                                                     <th scope="col">الحالة</th>
                                                 </tr>
                                             </thead>
@@ -563,12 +800,22 @@ export function ExternalSales() {
                                                 {filteredCoverage.map((row) => (
                                                     <tr key={row.item}>
                                                         <td className="ext-table__item">{row.item}</td>
-                                                        <td className="erp-numeric text-end" dir="ltr">{qtyOf(row.soldQty)}</td>
-                                                        <td className="erp-numeric text-end" dir="ltr">{qtyOf(row.issuedQty)}</td>
-                                                        <td className="erp-numeric text-end" dir="ltr">{row.coverage === null ? '—' : `${(row.coverage * 100).toFixed(1)}%`}</td>
-                                                        <td className="erp-numeric text-end" dir="ltr">{moneyOf(row.issuedValue)}</td>
+                                                        <td className="erp-numeric text-end" dir="ltr">
+                                                            {qtyOf(row.soldQty)}
+                                                        </td>
+                                                        <td className="erp-numeric text-end" dir="ltr">
+                                                            {qtyOf(row.issuedQty)}
+                                                        </td>
+                                                        <td className="erp-numeric text-end" dir="ltr">
+                                                            {row.coverage === null ? '—' : `${(row.coverage * 100).toFixed(1)}%`}
+                                                        </td>
+                                                        <td className="erp-numeric text-end" dir="ltr">
+                                                            {moneyOf(row.issuedValue)}
+                                                        </td>
                                                         <td>
-                                                            <span className={`ext-pill ext-pill--${row.status === 'covered' ? 'ok' : row.status === 'partial' ? 'warn' : row.status === 'no-sales' ? 'danger' : 'info'}`}>
+                                                            <span
+                                                                className={`ext-pill ext-pill--${row.status === 'covered' ? 'ok' : row.status === 'partial' ? 'warn' : row.status === 'no-sales' ? 'danger' : 'info'}`}
+                                                            >
                                                                 {COVERAGE_STATUS_LABEL[row.status]}
                                                             </span>
                                                         </td>
@@ -578,10 +825,16 @@ export function ExternalSales() {
                                             <tfoot>
                                                 <tr className="ext-table__total">
                                                     <td>الإجمالي</td>
-                                                    <td className="erp-numeric text-end" dir="ltr">{qtyOf(visibleCoverageTotals.soldQty)}</td>
-                                                    <td className="erp-numeric text-end" dir="ltr">{qtyOf(visibleCoverageTotals.issuedQty)}</td>
+                                                    <td className="erp-numeric text-end" dir="ltr">
+                                                        {qtyOf(visibleCoverageTotals.soldQty)}
+                                                    </td>
+                                                    <td className="erp-numeric text-end" dir="ltr">
+                                                        {qtyOf(visibleCoverageTotals.issuedQty)}
+                                                    </td>
                                                     <td className="text-end text-caption text-muted">مباع ÷ مسحوب</td>
-                                                    <td className="erp-numeric text-end" dir="ltr">{moneyOf(visibleCoverageTotals.issuedValue)}</td>
+                                                    <td className="erp-numeric text-end" dir="ltr">
+                                                        {moneyOf(visibleCoverageTotals.issuedValue)}
+                                                    </td>
                                                     <td />
                                                 </tr>
                                             </tfoot>
@@ -589,7 +842,9 @@ export function ExternalSales() {
                                     </TableScroll>
                                 )}
                                 <p className="ext-section__foot">
-                                    «مباع» من مرآة Oracle (الكمية فقط — الفاتورة المسجلة لا تخزّن سعر البند، فالربح لكل صنف غير متاح من هذا المصدر) · «مسحوب» من حركات الخروج على أذون الصرف · «بلا مبيعات» = صُرفت الكمية من المخزن ولم يُبع منها شيء في الفترة — اقرأه كتسريب/هالك أو بضاعة لم تصل للمورد.
+                                    «مباع» من مرآة Oracle (الكمية فقط — الفاتورة المسجلة لا تخزّن سعر البند، فالربح لكل صنف غير متاح من هذا
+                                    المصدر) · «مسحوب» من حركات الخروج على أذون الصرف · «بلا مبيعات» = صُرفت الكمية من المخزن ولم يُبع منها شيء
+                                    في الفترة — اقرأه كتسريب/هالك أو بضاعة لم تصل للمورد.
                                 </p>
                             </div>
                         </TabsContent>

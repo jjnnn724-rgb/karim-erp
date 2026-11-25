@@ -26,9 +26,7 @@ const HIDDEN_LOCKED = new Set(['settings']);
 const NAV_ROWS = NAV_GROUPS.map((group) => ({
     id: group.id,
     label: group.label,
-    items: group.keys
-        .filter((key) => !HIDDEN_LOCKED.has(key))
-        .map((key) => ({ key, label: NAV_TITLES[`/${key}`] ?? key })),
+    items: group.keys.filter((key) => !HIDDEN_LOCKED.has(key)).map((key) => ({ key, label: NAV_TITLES[`/${key}`] ?? key })),
 }));
 
 export function NavSection() {
@@ -84,9 +82,7 @@ export function NavSection() {
         } else {
             selected.delete(key);
         }
-        const ordered = NAV_ROWS.flatMap((group) => group.items.map((item) => item.key)).filter((entry) =>
-            selected.has(entry),
-        );
+        const ordered = NAV_ROWS.flatMap((group) => group.items.map((item) => item.key)).filter((entry) => selected.has(entry));
         draft.set('hidden', ordered);
     };
 

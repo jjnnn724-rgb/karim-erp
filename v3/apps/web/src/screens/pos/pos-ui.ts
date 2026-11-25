@@ -17,8 +17,27 @@ export const SELL_ROLES = ['admin', 'manager', 'accountant', 'cashier'] as const
 export const HISTORY_ROLES = ['admin', 'manager', 'accountant'] as const;
 export const VOID_ROLES = ['admin', 'manager', 'accountant'] as const;
 export const CATALOG_IMAGE_ROLES = ['admin', 'manager'] as const;
+/**
+ * رفع/حذف صورة الصنف من شاشة الكاشير — أدوار إدارية فقط (طلب المالك 2026-11-14):
+ * مدير النظام، المدير، المحاسب. موظف الكاشير لا يرى الأزرار ولا الشريط الأبيض
+ * الناتج عنها إطلاقًا. (الـbackend يقبل نفس الأدوار على /products/:id/image.)
+ */
+export const PRODUCT_IMAGE_ROLES = ['admin', 'manager', 'accountant'] as const;
 export const DAY_CLOSE_ROLES = ['admin', 'manager', 'accountant'] as const;
 export const BUFFET_ADMIN_ROLES = ['admin', 'manager', 'accountant'] as const;
+
+/** بطاقة الدفع — الماركة وآخر 4 أرقام؛ كل حالة تُعلَن صراحة في الإيصال. */
+export interface CardMeta {
+    brand: 'mada' | 'visa' | 'mastercard' | 'amex' | '';
+    last4: string;
+}
+
+export const CARD_BRANDS = [
+    { value: 'mada', label: 'مدى' },
+    { value: 'visa', label: 'فيزا' },
+    { value: 'mastercard', label: 'ماستركارد' },
+    { value: 'amex', label: 'أمريكان إكسبريس' },
+] as const;
 
 export const PAYMENT_FIELDS = [
     { key: 'cash', label: 'نقدي' },
@@ -67,18 +86,14 @@ export function safeProductImageUrl(value: string | null | undefined, productId?
 /** حالة الفاتورة → تسمية عربية (نفس خريطة القديم). */
 export function orderStatusLabel(status: string | null | undefined): string {
     return (
-        ({ issued: 'صادرة', reported: 'مبلّغ عنها', cancelled: 'ملغاة' } as Record<string, string>)[
-            String(status ?? '')
-        ] ??
+        ({ issued: 'صادرة', reported: 'مبلّغ عنها', cancelled: 'ملغاة' } as Record<string, string>)[String(status ?? '')] ??
         (String(status ?? '') || 'غير محددة')
     );
 }
 
 export function paymentMethodLabel(method: string | null | undefined): string {
     return (
-        ({ cash: 'نقدي', card: 'بطاقة', wallet: 'محفظة', bank_transfer: 'تحويل بنكي' } as Record<string, string>)[
-            String(method ?? '')
-        ] ??
+        ({ cash: 'نقدي', card: 'بطاقة', wallet: 'محفظة', bank_transfer: 'تحويل بنكي' } as Record<string, string>)[String(method ?? '')] ??
         (String(method ?? '') || '—')
     );
 }
@@ -100,6 +115,8 @@ export function newIdempotencyKey(sessionId: string): string {
 export interface CatalogItem {
     id: string;
     name: string;
+    /** الاسم بالإنجليزية كما خُزّن في الكتالوج — عرض ثنائي اللغة عند توفره. */
+    nameEn?: string | undefined;
     price: number;
     vatRate: number;
     unit: string;
@@ -120,23 +137,19 @@ export function catalogFromProducts(products: readonly PosProduct[]): CatalogIte
     const active = products.filter(
         (product) => Number.isInteger(Number(product.id)) && Number(product.id) > 0 && product.is_active !== false,
     );
-    const imageUses = new Map<string, number>();
-    for (const product of active) {
-        const url = String(product.image_url ?? '').trim();
-        if (url) imageUses.set(url, (imageUses.get(url) ?? 0) + 1);
-    }
     return active.map((product) => {
         const rawCode = product.metadata?.yara_code;
         const imageUrl = String(product.image_url ?? '').trim();
         return {
             id: String(product.id),
             name: String(product.name_ar || product.name_en || 'صنف'),
+            nameEn: String(product.name_en ?? '').trim() || undefined,
             price: Number.isFinite(product.price) ? product.price : 0,
             vatRate: Number.isFinite(product.vat_rate) ? product.vat_rate : 15,
             unit: String(product.unit ?? ''),
             barcode: String(product.barcode ?? ''),
             stock: product.stock_quantity,
-            imageUrl: (imageUses.get(imageUrl) ?? 0) > 1 ? '' : safeProductImageUrl(imageUrl, String(product.id)),
+            imageUrl: safeProductImageUrl(imageUrl, String(product.id)),
             hasImage: Boolean(imageUrl),
             category: String(product.category ?? '').trim(),
             tier: '',
@@ -154,6 +167,7 @@ export function catalogFromTiers(tiers: readonly BuffetTier[]): CatalogItem[] {
         .map((tier) => ({
             id: String(tier.id),
             name: String(tier.name_ar ?? '').trim() || 'فئة بوفيه',
+            nameEn: undefined,
             price: Number.isFinite(tier.price) ? tier.price : 0,
             vatRate: Number.isFinite(tier.vat_rate) ? tier.vat_rate : 15,
             unit: String(tier.unit ?? '').trim() || 'فرد',
@@ -250,10 +264,7 @@ export function groupCatalog(items: readonly CatalogItem[], options: CatalogOrde
 }
 
 /** أعلى الأصناف مبيعًا (بلا مفضلة — لها شريطها) لشريط «الأكثر مبيعًا». */
-export function bestSellers(
-    items: readonly CatalogItem[],
-    options: CatalogOrderOptions & { limit?: number },
-): CatalogItem[] {
+export function bestSellers(items: readonly CatalogItem[], options: CatalogOrderOptions & { limit?: number }): CatalogItem[] {
     if (!options.sales) return [];
     const pinned = new Set(options.favorites);
     const limit = options.limit ?? 8;
@@ -297,9 +308,12 @@ export function openPrintWindow(title: string, html: string): boolean {
     return true;
 }
 
-/** صفحة HTML كاملة أرسلها الخادم (تذاكر المطبخ) — تُعرض كما هي بلا تغليف. */
-export function openServerHtmlWindow(html: string, title = ''): boolean {
-    const win = window.open('', '_blank', 'noopener');
+/**
+ * صفحة HTML كاملة أرسلها الخادم (تذاكر المطبخ) — تُعرض كما هي بلا تغليف.
+ * autoPrint = true تُطلق أمر الطباعة فور رسم المحتوى (الكاشير لا يضغط شيئًا).
+ */
+export function openServerHtmlWindow(html: string, title = '', features = '', autoPrint = false): boolean {
+    const win = window.open('', '_blank', features || 'noopener');
     if (!win) {
         return false;
     }
@@ -310,16 +324,23 @@ export function openServerHtmlWindow(html: string, title = ''): boolean {
         win.document.title = title;
     }
     win.focus();
+    if (autoPrint) {
+        // مهلة قصيرة: الخطوط والـQR يحتاجون لحظة ليرسموا قبل الطباعة
+        win.setTimeout(() => {
+            try {
+                win.print();
+            } catch (_) {
+                /* المتصفح منع الطباعة — الكاشير يطبع يدويًا */
+            }
+        }, 350);
+    }
     return true;
 }
 
 /* ─── رمز QR الضريبي: نفس ملف V2 المخزَّن والمخبَّأ ──────────────────────── */
 
 interface QrGlobal {
-    toDataURL?: (
-        text: string,
-        options?: { width?: number; margin?: number; errorCorrectionLevel?: string },
-    ) => Promise<string>;
+    toDataURL?: (text: string, options?: { width?: number; margin?: number; errorCorrectionLevel?: string }) => Promise<string>;
 }
 
 let qrPromise: Promise<boolean> | null = null;
@@ -399,10 +420,7 @@ export function writePosFavorites(departmentId: string, ids: readonly string[]):
         return;
     }
     try {
-        window.localStorage.setItem(
-            posFavoritesKey(departmentId),
-            JSON.stringify([...ids].slice(0, POS_FAVORITES_LIMIT)),
-        );
+        window.localStorage.setItem(posFavoritesKey(departmentId), JSON.stringify([...ids].slice(0, POS_FAVORITES_LIMIT)));
     } catch {
         // تخزين محلي محظور: تبقى المفضلة في الذاكرة للجلسة الحالية.
     }

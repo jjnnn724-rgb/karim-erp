@@ -2,14 +2,13 @@
  * external-sales-print.ts — «تقرير البيع الخارجي: المبيعات والمسحوبات»
  * ورق A4 رسمي بنفس هوية «شركة محترمة» (كربون × ذهبي) — يُطبع عبر printSmart.
  */
-import { printSmart } from './print-viewer';
-import { buildOfficialSheetHtml, type OfficialSheetSection } from './official-print';
-import type { ExternalSalesSummary } from './external-sales';
 
-const fmtNumber = (value: number) =>
-    Number(value || 0).toLocaleString('en-US', { maximumFractionDigits: 3 });
-const fmtMoney = (value: number) =>
-    Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+import type { ExternalSalesSummary } from './external-sales';
+import { buildOfficialSheetHtml, type OfficialSheetSection } from './official-print';
+import { printSmart } from './print-viewer';
+
+const fmtNumber = (value: number) => Number(value || 0).toLocaleString('en-US', { maximumFractionDigits: 3 });
+const fmtMoney = (value: number) => Number(value || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
 export function printExternalSalesReport(summary: ExternalSalesSummary): boolean {
     const issuedByItem: OfficialSheetSection = {
@@ -27,7 +26,12 @@ export function printExternalSalesReport(summary: ExternalSalesSummary): boolean
             value: fmtMoney(row.value ?? 0),
         })),
         totalsRow: [
-            { item: 'الإجمالي', lines: String(summary.issued.totals.docs), qty: fmtNumber(summary.issued.totals.qty), value: fmtMoney(summary.issued.totals.value) },
+            {
+                item: 'الإجمالي',
+                lines: String(summary.issued.totals.docs),
+                qty: fmtNumber(summary.issued.totals.qty),
+                value: fmtMoney(summary.issued.totals.value),
+            },
         ],
     };
 
@@ -90,9 +94,17 @@ export function printExternalSalesReport(summary: ExternalSalesSummary): boolean
         to: summary.to,
         stamp: 'للمبيعات',
         kpis: [
-            { label: 'الكمية المصروفة', value: fmtNumber(summary.issued.totals.qty), hint: `${String(summary.issued.totals.docs)} إذن صرف · ${String(summary.issued.totals.lines)} بند` },
+            {
+                label: 'الكمية المصروفة',
+                value: fmtNumber(summary.issued.totals.qty),
+                hint: `${String(summary.issued.totals.docs)} إذن صرف · ${String(summary.issued.totals.lines)} بند`,
+            },
             { label: 'قيمة المسحوبات', value: fmtMoney(summary.issued.totals.value), hint: 'بتكلفة المخزن' },
-            { label: 'فواتير البيع', value: String(summary.sold.totals.invoices), hint: `${fmtNumber(summary.sold.totals.lines)} صنف مُباع` },
+            {
+                label: 'فواتير البيع',
+                value: String(summary.sold.totals.invoices),
+                hint: `${fmtNumber(summary.sold.totals.lines)} صنف مُباع`,
+            },
             { label: 'إيرادات البيع', value: fmtMoney(summary.sold.totals.amount), hint: `${fmtNumber(summary.sold.totals.qty)} وحدة` },
         ],
         sections: [soldByItem, issuedByItem, invoiceSummary, issuedDetail],
@@ -102,11 +114,7 @@ export function printExternalSalesReport(summary: ExternalSalesSummary): boolean
             'المبيعات تُقرأ من مرآة Oracle BILLS4 — كل وحدة مباعة مُجمعّة لكل صنف بإنتاج 100% من 540 فاتورة حقيقية في الإنتاج.',
             'الأرقام التفصيلية بالكامل تظهر على الشاشة — المطبوعة تقتصر على أول 200 حركة/فاتورة لكل قسم.',
         ],
-        signatures: [
-            { role: 'اعتماد المستودع' },
-            { role: 'مراجعة المدير' },
-            { role: 'التوقيع' },
-        ],
+        signatures: [{ role: 'اعتماد المستودع' }, { role: 'مراجعة المدير' }, { role: 'التوقيع' }],
     });
     return printSmart(html, { autoPrint: true, printDelayMs: 350 });
 }

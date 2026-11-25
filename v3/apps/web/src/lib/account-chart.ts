@@ -30,10 +30,7 @@ export interface AccountChartPage {
     availableLevels: number[];
 }
 
-export type AccountChartPageService = (
-    request: AccountChartPageRequest,
-    signal?: AbortSignal,
-) => Promise<AccountChartPage>;
+export type AccountChartPageService = (request: AccountChartPageRequest, signal?: AbortSignal) => Promise<AccountChartPage>;
 
 function buildAccountTree(accounts: readonly V3ChartAccount[]): AccountChartNode[] {
     const nodes = new Map<string, AccountChartNode>();
@@ -111,9 +108,7 @@ function matchesFilters(node: AccountChartNode, filters: AccountChartFilters): b
 }
 
 function filterNode(node: AccountChartNode, filters: AccountChartFilters): AccountChartNode | null {
-    const children = node.children
-        .map((child) => filterNode(child, filters))
-        .filter((child): child is AccountChartNode => child !== null);
+    const children = node.children.map((child) => filterNode(child, filters)).filter((child): child is AccountChartNode => child !== null);
     if (!matchesFilters(node, filters) && children.length === 0) {
         return null;
     }
@@ -125,16 +120,10 @@ function countNodes(nodes: readonly AccountChartNode[]): number {
 }
 
 function countMatches(nodes: readonly AccountChartNode[], filters: AccountChartFilters): number {
-    return nodes.reduce(
-        (count, node) => count + (matchesFilters(node, filters) ? 1 : 0) + countMatches(node.children, filters),
-        0,
-    );
+    return nodes.reduce((count, node) => count + (matchesFilters(node, filters) ? 1 : 0) + countMatches(node.children, filters), 0);
 }
 
-export function paginateAccountChartMock(
-    accounts: readonly V3ChartAccount[],
-    request: AccountChartPageRequest,
-): AccountChartPage {
+export function paginateAccountChartMock(accounts: readonly V3ChartAccount[], request: AccountChartPageRequest): AccountChartPage {
     if (!Number.isInteger(request.page) || request.page < 1) {
         throw new RangeError('Account chart page must be a positive integer.');
     }
@@ -148,9 +137,7 @@ export function paginateAccountChartMock(
         type: request.type,
         level: request.level,
     };
-    const filteredRoots = roots
-        .map((root) => filterNode(root, filters))
-        .filter((root): root is AccountChartNode => root !== null);
+    const filteredRoots = roots.map((root) => filterNode(root, filters)).filter((root): root is AccountChartNode => root !== null);
     const start = (request.page - 1) * request.pageSize;
     const availableLevels = new Set<number>();
     const collectLevels = (nodes: readonly AccountChartNode[]) => {

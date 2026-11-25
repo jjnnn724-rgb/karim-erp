@@ -55,60 +55,28 @@ describe('fetchJson', () => {
         expect(init?.headers).not.toHaveProperty('x-api-key');
     });
 
-    it('يرفق مفتاح idempotency تلقائيًا لكتابات المخزون', async () => {
+    it('يدعم POST/PUT JSON للأبواب القديمة مع ترويسات المصادقة', async () => {
         const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => jsonResponse({ ok: true }));
         vi.stubGlobal('fetch', fetchMock);
 
-        await fetchJson(z.unknown(), '/api/warehouse/inventory/7', 'token-abc', {
+        await fetchJson(z.unknown(), '/api/inventory/7', 'token-abc', {
             method: 'PUT',
             body: { barcode: '4006381333931' },
         });
 
         const init = fetchMock.mock.calls[0]?.[1];
         expect(init?.method).toBe('PUT');
-        expect(init?.headers).toMatchObject({
-            'Content-Type': 'application/json',
-            'X-Idempotency-Key': expect.stringMatching(
-                /^[0-9a-f]{8}-[0-9a-f]{4}-4[0-9a-f]{3}-[89ab][0-9a-f]{3}-[0-9a-f]{12}$/i,
-            ),
-        });
+        expect(init?.headers).toMatchObject({ 'Content-Type': 'application/json' });
         expect(JSON.parse(String(init?.body))).toEqual({ barcode: '4006381333931' });
     });
 
-    it('يحافظ على مفتاح idempotency الصريح بدل استبداله', async () => {
+    it('يدعم DELETE مع المصادقة دون جسم JSON', async () => {
         const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => jsonResponse({ ok: true }));
         vi.stubGlobal('fetch', fetchMock);
-        await fetchJson(z.unknown(), '/api/warehouse/dispatches/7/receive', 'token-abc', {
-            method: 'POST',
-            body: { signatureData: 'signature' },
-            headers: { 'X-Idempotency-Key': 'receive:7:submission-1' },
-        });
-        const init = fetchMock.mock.calls[0]?.[1];
-        expect(init?.headers).toMatchObject({ 'X-Idempotency-Key': 'receive:7:submission-1' });
-    });
-
-    it('لا يضيف مفتاح idempotency لقراءات أو كتابات خارج warehouse', async () => {
-        const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => jsonResponse({ ok: true }));
-        vi.stubGlobal('fetch', fetchMock);
-        await fetchJson(z.unknown(), '/api/warehouse/inventory', 'token-abc');
-        await fetchJson(z.unknown(), '/api/inventory/7', 'token-abc', {
-            method: 'PUT',
-            body: { barcode: '4006381333931' },
-        });
-
-        for (const [, init] of fetchMock.mock.calls) {
-            expect(init?.headers).not.toHaveProperty('X-Idempotency-Key');
-        }
-    });
-
-    it('يدعم DELETE مع المصادقة دون جسم JSON ويضيف المفتاح لمسار warehouse', async () => {
-        const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => jsonResponse({ ok: true }));
-        vi.stubGlobal('fetch', fetchMock);
-        await fetchJson(z.unknown(), '/api/warehouse/items/7', 'token-abc', { method: 'DELETE' });
+        await fetchJson(z.unknown(), '/api/hrDepartments/7', 'token-abc', { method: 'DELETE' });
         const init = fetchMock.mock.calls[0]?.[1];
         expect(init?.method).toBe('DELETE');
         expect(init?.headers).not.toHaveProperty('Content-Type');
-        expect(init?.headers).toHaveProperty('X-Idempotency-Key');
         expect(init?.body).toBeUndefined();
     });
 
@@ -118,9 +86,7 @@ describe('fetchJson', () => {
             vi.fn(async () => jsonResponse([{ code: '1' }])),
         );
 
-        await expect(fetchJson(v3ChartResponseSchema, '/api/v3/accounting/chart', null)).rejects.toBeInstanceOf(
-            ApiError,
-        );
+        await expect(fetchJson(v3ChartResponseSchema, '/api/v3/accounting/chart', null)).rejects.toBeInstanceOf(ApiError);
     });
 
     it('يحمل رمز الخطأ ورسالته من جسم {error, message}', async () => {
@@ -129,9 +95,7 @@ describe('fetchJson', () => {
             vi.fn(async () => jsonResponse({ error: 'UNAUTHORIZED', message: 'Missing Bearer token.' }, 401)),
         );
 
-        const failure = await fetchJson(v3ChartResponseSchema, '/api/v3/accounting/chart', null).catch(
-            (error: unknown) => error,
-        );
+        const failure = await fetchJson(v3ChartResponseSchema, '/api/v3/accounting/chart', null).catch((error: unknown) => error);
 
         expect(failure).toBeInstanceOf(ApiError);
         expect((failure as ApiError).status).toBe(401);
@@ -144,43 +108,13 @@ describe('fetchJson', () => {
         const message = 'ربط يارا سوفت المباشر غير مفعّل؛ لم تُستخدم أرقام بديلة من النظام المحلي.';
         vi.stubGlobal(
             'fetch',
-            vi.fn(async () =>
-                jsonResponse(
-                    { error: 'YARASOFT_REVENUE_UNAVAILABLE', code: 'YARASOFT_REVENUE_UNAVAILABLE', message },
-                    503,
-                ),
-            ),
+            vi.fn(async () => jsonResponse({ error: 'YARASOFT_REVENUE_UNAVAILABLE', code: 'YARASOFT_REVENUE_UNAVAILABLE', message }, 503)),
         );
 
-        const failure = await fetchJson(v3ChartResponseSchema, '/api/finance/monthly-comparison', null).catch(
-            (error: unknown) => error,
-        );
+        const failure = await fetchJson(v3ChartResponseSchema, '/api/finance/monthly-comparison', null).catch((error: unknown) => error);
 
         expect(failure).toBeInstanceOf(ApiError);
         expect((failure as ApiError).code).toBe('YARASOFT_REVENUE_UNAVAILABLE');
         expect((failure as ApiError).message).toBe(message);
-    });
-
-    it('يدعم أخطاء AppError المتداخلة ويحفظ تفاصيل الاستجابة للواجهات', async () => {
-        const body = {
-            error: {
-                code: 'VALIDATION_ERROR',
-                message: 'يجب إدخال معرّف صحيح.',
-                details: { field: 'transactions' },
-            },
-        };
-        vi.stubGlobal(
-            'fetch',
-            vi.fn(async () => jsonResponse(body, 400)),
-        );
-
-        const failure = await fetchJson(v3ChartResponseSchema, '/api/v3/compliance', null).catch(
-            (error: unknown) => error,
-        );
-
-        expect(failure).toBeInstanceOf(ApiError);
-        expect((failure as ApiError).code).toBe('VALIDATION_ERROR');
-        expect((failure as ApiError).message).toBe('يجب إدخال معرّف صحيح.');
-        expect((failure as ApiError).payload).toEqual(body);
     });
 });

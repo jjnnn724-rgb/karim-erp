@@ -2,7 +2,6 @@ import { useQuery } from '@tanstack/react-query';
 import { SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import {
-    type ApAging as ApAgingData,
     type FixedAsset,
     fetchAlertsLog,
     fetchApAging,
@@ -13,17 +12,11 @@ import {
     fetchProfitByCc,
 } from '../lib/cfo-growth';
 import { errorMessage, intOf, moneyOf, num, pctOf, textOf } from '../lib/reporting';
-import { DataTable, type DataTableColumn } from '../ui';
 
 /**
  * تبويبات نمو المدير المالي السبعة (مرآة `cfo.js` في v2) — قراءة فقط.
  * كل جدول يعرض أرقام الخادم كما هي، وله حالاته الأربع (DESIGN.md):
  * تحميل/خطأ بإعادة المحاولة/فراغ بتلميح/بيانات.
- *
- * جدولا أعمار الذمم والأصول غير مقيّدين بعدد صفوف صغير (الخادم بلا سقف
- * للذمم، وسقف الأصول 500) — DataTable يتكفّل بالتمرير الافتراضي فوق 200 صف
- * (PLAN §3.4). بقية الجداول محدودة بسقف خادم ≤ 100 أو ببنية البيانات نفسها
- * (مراكز التكلفة/الموازنات/التنبيهات) وتبقى كما هي.
  */
 
 export type CfoGrowthView = 'cc' | 'aging' | 'bank' | 'assets' | 'custody' | 'budgets' | 'alerts';
@@ -38,137 +31,10 @@ export const CFO_GROWTH_TABS: { key: CfoGrowthView; label: string; english: stri
     { key: 'alerts', label: 'سجل التنبيهات', english: 'Alerts' },
 ];
 
-const TH =
-    'border-b border-hairline bg-surface-sunken px-sm py-xs text-start text-label-md font-medium text-ink-secondary';
+const TH = 'border-b border-hairline bg-surface-sunken px-sm py-xs text-start text-label-md font-medium text-ink-secondary';
 const TH_END = `${TH} text-end`;
 const TD = 'border-b border-hairline px-sm py-xxs text-ink';
 const TD_NUM = `${TD} erp-numeric`;
-
-type AgingRow = NonNullable<ApAgingData['aging']>[number];
-
-/** أعمدة أعمار الذمم — المبالغ لاتينية معزولة الاتجاه، والمتأخر > 90 يومًا بلون الخطر كما كان. */
-const AGING_COLUMNS: DataTableColumn<AgingRow>[] = [
-    {
-        key: 'supplier',
-        header: 'المورد',
-        className: 'text-ink',
-        cell: (row) => textOf(row.supplier) || 'غير محدد',
-        sortValue: (row) => textOf(row.supplier) || null,
-    },
-    {
-        key: 'total',
-        header: 'الإجمالي',
-        numeric: true,
-        className: 'text-ink',
-        cell: (row) => <span dir="ltr">{moneyOf(row.total)}</span>,
-        sortValue: (row) => num(row.total),
-    },
-    {
-        key: 'current',
-        header: 'غير مؤرخ',
-        numeric: true,
-        className: 'text-ink',
-        cell: (row) => <span dir="ltr">{moneyOf(row.current)}</span>,
-        sortValue: (row) => num(row.current),
-    },
-    {
-        key: 'd30',
-        header: '0-30',
-        numeric: true,
-        className: 'text-ink',
-        cell: (row) => <span dir="ltr">{moneyOf(row.d30)}</span>,
-        sortValue: (row) => num(row.d30),
-    },
-    {
-        key: 'd60',
-        header: '31-60',
-        numeric: true,
-        className: 'text-ink',
-        cell: (row) => <span dir="ltr">{moneyOf(row.d60)}</span>,
-        sortValue: (row) => num(row.d60),
-    },
-    {
-        key: 'd90',
-        header: '61-90',
-        numeric: true,
-        className: 'text-ink',
-        cell: (row) => (
-            <span dir="ltr" className={num(row.d90) > 0 ? 'text-danger-text' : undefined}>
-                {moneyOf(row.d90)}
-            </span>
-        ),
-        sortValue: (row) => num(row.d90),
-    },
-    {
-        key: 'over90',
-        header: '+90',
-        numeric: true,
-        className: 'text-ink',
-        cell: (row) => (
-            <span dir="ltr" className={num(row.over90) > 0 ? 'text-danger-text' : undefined}>
-                {moneyOf(row.over90)}
-            </span>
-        ),
-        sortValue: (row) => num(row.over90),
-    },
-];
-
-/** أعمدة الأصول — الاسم مع التصنيف سطرًا ثانويًا، والمبالغ لاتينية معزولة الاتجاه. */
-const ASSET_COLUMNS: DataTableColumn<FixedAsset>[] = [
-    {
-        key: 'name',
-        header: 'الأصل',
-        className: 'text-ink',
-        cell: (asset) => (
-            <>
-                {textOf(asset.name) || '—'}
-                {asset.category ? (
-                    <span className="block text-caption text-muted">{textOf(asset.category)}</span>
-                ) : null}
-            </>
-        ),
-        sortValue: (asset) => textOf(asset.name) || null,
-    },
-    {
-        key: 'cost',
-        header: 'التكلفة',
-        numeric: true,
-        className: 'text-ink',
-        cell: (asset) => <span dir="ltr">{moneyOf(asset.cost)}</span>,
-        sortValue: (asset) => num(asset.cost),
-    },
-    {
-        key: 'monthly',
-        header: 'الشهري',
-        numeric: true,
-        className: 'text-ink',
-        cell: (asset) => <span dir="ltr">{moneyOf(asset.monthly)}</span>,
-        sortValue: (asset) => num(asset.monthly),
-    },
-    {
-        key: 'accumulated',
-        header: 'المتراكم',
-        numeric: true,
-        className: 'text-ink',
-        cell: (asset) => <span dir="ltr">{moneyOf(asset.accumulated)}</span>,
-        sortValue: (asset) => num(asset.accumulated),
-    },
-    {
-        key: 'remaining',
-        header: 'المتبقي',
-        numeric: true,
-        className: 'text-ink',
-        cell: (asset) => <span dir="ltr">{moneyOf(asset.remaining)}</span>,
-        sortValue: (asset) => num(asset.remaining),
-    },
-    {
-        key: 'lastMonth',
-        header: 'آخر إهلاك',
-        className: 'erp-numeric text-muted',
-        cell: (asset) => <span dir="ltr">{textOf(asset.last_month) || '—'}</span>,
-        sortValue: (asset) => textOf(asset.last_month) || null,
-    },
-];
 
 function Pending({ label }: { label: string }) {
     return (
@@ -224,10 +90,7 @@ function CostCenters({ from, to }: { from: string; to: string }) {
             {query.isPending ? <Pending label="جارٍ جلب ربحية المراكز…" /> : null}
             {query.isError ? <Failed error={query.error} retry={() => void query.refetch()} /> : null}
             {query.data && centers.length === 0 ? (
-                <StateEmpty
-                    title="لا حركة على المراكز"
-                    hint="وزّع القيود على مراكز التكلفة من شاشة القيد في v2 — حقلٌ اختياري."
-                />
+                <StateEmpty title="لا حركة على المراكز" hint="وزّع القيود على مراكز التكلفة من شاشة القيد في v2 — حقلٌ اختياري." />
             ) : null}
             {centers.length > 0 ? (
                 <TableScroll label="جدول ربحية مراكز التكلفة">
@@ -259,9 +122,7 @@ function CostCenters({ from, to }: { from: string; to: string }) {
                                             {textOf(center.cc) || '—'}
                                         </span>
                                         {center.cc_name ? (
-                                            <span className="block text-caption text-muted">
-                                                {textOf(center.cc_name)}
-                                            </span>
+                                            <span className="block text-caption text-muted">{textOf(center.cc_name)}</span>
                                         ) : null}
                                     </td>
                                     <td className={`${TD_NUM} text-end`} dir="ltr">
@@ -305,20 +166,65 @@ function ApAging() {
                 </span>
             }
         >
-            <DataTable<AgingRow>
-                caption="جدول أعمار ذمم الموردين"
-                columns={AGING_COLUMNS}
-                rows={rows}
-                rowKey={(row) => textOf(row.supplier)}
-                state={query.isPending ? 'loading' : query.isError ? 'error' : rows.length === 0 ? 'empty' : 'data'}
-                emptyTitle="لا ذمم مستحقة"
-                emptyDescription="كل فواتير الموردين مسددة حتى تاريخ اليوم."
-                errorMessage={errorMessage(query.error)}
-                onRetry={() => void query.refetch()}
-                // الذمم بلا سقف خادم — عتبة 50 لمنطقة تمرير ثابتة الارتفاع.
-                virtualizeThreshold={50}
-                loadingRows={15}
-            />
+            {query.isPending ? <Pending label="جارٍ جلب أعمار الذمم…" /> : null}
+            {query.isError ? <Failed error={query.error} retry={() => void query.refetch()} /> : null}
+            {query.data && rows.length === 0 ? <StateEmpty title="لا ذمم مستحقة" hint="كل فواتير الموردين مسددة حتى تاريخ اليوم." /> : null}
+            {rows.length > 0 ? (
+                <TableScroll label="جدول أعمار ذمم الموردين">
+                    <table className="w-full border-collapse text-body-md">
+                        <thead>
+                            <tr>
+                                <th scope="col" className={TH}>
+                                    المورد
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    الإجمالي
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    غير مؤرخ
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    0-30
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    31-60
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    61-90
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    +90
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {rows.map((row) => (
+                                <tr key={textOf(row.supplier)} className="hover:bg-surface-hover">
+                                    <td className={TD}>{textOf(row.supplier) || 'غير محدد'}</td>
+                                    <td className={`${TD_NUM} text-end`} dir="ltr">
+                                        {moneyOf(row.total)}
+                                    </td>
+                                    <td className={`${TD_NUM} text-end`} dir="ltr">
+                                        {moneyOf(row.current)}
+                                    </td>
+                                    <td className={`${TD_NUM} text-end`} dir="ltr">
+                                        {moneyOf(row.d30)}
+                                    </td>
+                                    <td className={`${TD_NUM} text-end`} dir="ltr">
+                                        {moneyOf(row.d60)}
+                                    </td>
+                                    <td className={`${TD_NUM} text-end ${num(row.d90) > 0 ? 'text-danger-text' : 'text-ink'}`} dir="ltr">
+                                        {moneyOf(row.d90)}
+                                    </td>
+                                    <td className={`${TD_NUM} text-end ${num(row.over90) > 0 ? 'text-danger-text' : 'text-ink'}`} dir="ltr">
+                                        {moneyOf(row.over90)}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </TableScroll>
+            ) : null}
         </SectionCard>
     );
 }
@@ -359,10 +265,7 @@ function BankRec({ from, to }: { from: string; to: string }) {
                         </div>
                         <div>
                             <dt className="text-muted">الفرق</dt>
-                            <dd
-                                className={`erp-numeric ${num(data.diff) === 0 ? 'text-success-text' : 'text-danger-text'}`}
-                                dir="ltr"
-                            >
+                            <dd className={`erp-numeric ${num(data.diff) === 0 ? 'text-success-text' : 'text-danger-text'}`} dir="ltr">
                                 {moneyOf(data.diff)}
                             </dd>
                         </div>
@@ -437,22 +340,66 @@ function Assets() {
             english="Fixed assets"
             actions={<span className="text-body-sm text-muted">{createMessage(assets)}</span>}
         >
-            <DataTable<FixedAsset>
-                caption="جدول الأصول الثابتة"
-                columns={ASSET_COLUMNS}
-                rows={active}
-                rowKey={(asset) => String(asset.id)}
-                state={query.isPending ? 'loading' : query.isError ? 'error' : active.length === 0 ? 'empty' : 'data'}
-                emptyTitle="لا أصول نشطة"
-                emptyDescription="سجّل معدات المطبخ والتجهيزات من الأصول في v2 — الإهلاك الشهري يعمل من هناك."
-                errorMessage={errorMessage(query.error)}
-                onRetry={() => void query.refetch()}
-                // خلية الاسم سطران (الاسم + التصنيف) — ارتفاع صف يحجز مكانه.
-                rowHeight={52}
-                // سقف الخادم 500 أصل — عتبة 50 تُبقي منطقة التمرير ثابتة الارتفاع.
-                virtualizeThreshold={50}
-                loadingRows={10}
-            />
+            {query.isPending ? <Pending label="جارٍ جلب الأصول الثابتة…" /> : null}
+            {query.isError ? <Failed error={query.error} retry={() => void query.refetch()} /> : null}
+            {query.data && active.length === 0 ? (
+                <StateEmpty title="لا أصول نشطة" hint="سجّل معدات المطبخ والتجهيزات من الأصول في v2 — الإهلاك الشهري يعمل من هناك." />
+            ) : null}
+            {active.length > 0 ? (
+                <TableScroll label="جدول الأصول الثابتة">
+                    <table className="w-full border-collapse text-body-md">
+                        <thead>
+                            <tr>
+                                <th scope="col" className={TH}>
+                                    الأصل
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    التكلفة
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    الشهري
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    المتراكم
+                                </th>
+                                <th scope="col" className={TH_END}>
+                                    المتبقي
+                                </th>
+                                <th scope="col" className={TH}>
+                                    آخر إهلاك
+                                </th>
+                            </tr>
+                        </thead>
+                        <tbody>
+                            {active.map((asset) => (
+                                <tr key={String(asset.id)} className="hover:bg-surface-hover">
+                                    <td className={TD}>
+                                        {textOf(asset.name) || '—'}
+                                        {asset.category ? (
+                                            <span className="block text-caption text-muted">{textOf(asset.category)}</span>
+                                        ) : null}
+                                    </td>
+                                    <td className={`${TD_NUM} text-end`} dir="ltr">
+                                        {moneyOf(asset.cost)}
+                                    </td>
+                                    <td className={`${TD_NUM} text-end`} dir="ltr">
+                                        {moneyOf(asset.monthly)}
+                                    </td>
+                                    <td className={`${TD_NUM} text-end`} dir="ltr">
+                                        {moneyOf(asset.accumulated)}
+                                    </td>
+                                    <td className={`${TD_NUM} text-end`} dir="ltr">
+                                        {moneyOf(asset.remaining)}
+                                    </td>
+                                    <td className={`${TD_NUM} text-muted`} dir="ltr">
+                                        {textOf(asset.last_month) || '—'}
+                                    </td>
+                                </tr>
+                            ))}
+                        </tbody>
+                    </table>
+                </TableScroll>
+            ) : null}
         </SectionCard>
     );
 }
@@ -476,9 +423,7 @@ function Custody() {
         >
             {query.isPending ? <Pending label="جارٍ جلب العهد…" /> : null}
             {query.isError ? <Failed error={query.error} retry={() => void query.refetch()} /> : null}
-            {data && rows.length === 0 ? (
-                <StateEmpty title="لا عهد اليوم" hint="تُسجَّل عهد الكاشير من شاشة العهد في v2." />
-            ) : null}
+            {data && rows.length === 0 ? <StateEmpty title="لا عهد اليوم" hint="تُسجَّل عهد الكاشير من شاشة العهد في v2." /> : null}
             {rows.length > 0 ? (
                 <TableScroll label="جدول عهد الكاشير">
                     <table className="w-full border-collapse text-body-md">
@@ -547,10 +492,7 @@ function Budgets({ from, to }: { from: string; to: string }) {
             {query.isPending ? <Pending label="جارٍ جلب الموازنات…" /> : null}
             {query.isError ? <Failed error={query.error} retry={() => void query.refetch()} /> : null}
             {query.data && rows.length === 0 ? (
-                <StateEmpty
-                    title="لا موازنات لهذا الشهر"
-                    hint="أضف سقوف المصروفات من شاشة الموازنات في v2 — التجاوز يُنبَّه تلقائيًا."
-                />
+                <StateEmpty title="لا موازنات لهذا الشهر" hint="أضف سقوف المصروفات من شاشة الموازنات في v2 — التجاوز يُنبَّه تلقائيًا." />
             ) : null}
             {rows.length > 0 ? (
                 <TableScroll label="جدول الموازنات مقابل الفعلي">
@@ -581,10 +523,7 @@ function Budgets({ from, to }: { from: string; to: string }) {
                             {rows.map((row) => (
                                 <tr key={String(row.id)} className="hover:bg-surface-hover">
                                     <td className={TD}>
-                                        {textOf(row.label) ||
-                                            textOf(row.account_name) ||
-                                            textOf(row.account_code) ||
-                                            '—'}
+                                        {textOf(row.label) || textOf(row.account_name) || textOf(row.account_code) || '—'}
                                     </td>
                                     <td className={`${TD} erp-numeric text-muted`} dir="ltr">
                                         {textOf(row.account_code) || '—'}
@@ -595,10 +534,7 @@ function Budgets({ from, to }: { from: string; to: string }) {
                                     <td className={`${TD_NUM} text-end`} dir="ltr">
                                         {moneyOf(row.actual)}
                                     </td>
-                                    <td
-                                        className={`${TD_NUM} text-end ${row.alert ? 'text-danger-text' : 'text-success-text'}`}
-                                        dir="ltr"
-                                    >
+                                    <td className={`${TD_NUM} text-end ${row.alert ? 'text-danger-text' : 'text-success-text'}`} dir="ltr">
                                         {moneyOf(row.variance)}
                                     </td>
                                     <td className={`${TD_NUM} text-end text-muted`} dir="ltr">
@@ -627,9 +563,7 @@ function Alerts() {
             </p>
             {query.isPending ? <Pending label="جارٍ جلب سجل التنبيهات…" /> : null}
             {query.isError ? <Failed error={query.error} retry={() => void query.refetch()} /> : null}
-            {query.data && rows.length === 0 ? (
-                <StateEmpty title="لا تنبيهات مُرسلة" hint="كل القواعد داخل الحدود — الوضع هادئ." />
-            ) : null}
+            {query.data && rows.length === 0 ? <StateEmpty title="لا تنبيهات مُرسلة" hint="كل القواعد داخل الحدود — الوضع هادئ." /> : null}
             {rows.length > 0 ? (
                 <TableScroll label="جدول سجل التنبيهات">
                     <table className="w-full border-collapse text-body-md">

@@ -136,17 +136,8 @@ export async function generatePayrollRun(month: string, includeOvertime: boolean
 }
 
 /** معاينة الخصومات — قراءة لا تكتب شيئًا. */
-export async function previewDeductions(
-    month: string,
-    skipFridays: boolean,
-    signal?: AbortSignal,
-): Promise<DeductionPreview> {
-    return fetchJson(
-        deductionPreviewSchema,
-        deductionPreviewPath(month, skipFridays),
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+export async function previewDeductions(month: string, skipFridays: boolean, signal?: AbortSignal): Promise<DeductionPreview> {
+    return fetchJson(deductionPreviewSchema, deductionPreviewPath(month, skipFridays), getAccessToken(), signal ? { signal } : {});
 }
 
 /** تطبيق الخصومات — يستبدل البنود الآلية السابقة ولا يمسّ اليدوية. */
@@ -171,10 +162,8 @@ export const PAYROLL_WRITE_TEXT = {
     apply: 'تطبيق الخصومات',
     applyConfirm: (month: string, total: string, rows: number) =>
         `تطبيق الخصومات الآلية لشهر ${month}؟ سيُستبدل ${String(rows)} بندًا آليًّا سابقًا بإجمالي ${total}.`,
-    applied: (month: string, rows: number, total: string) =>
-        `طُبّقت خصومات ${month}: ${String(rows)} بندًا بإجمالي ${total}`,
-    generated: (month: string, employees: number, net: string) =>
-        `وُلّد مسير ${month}: ${String(employees)} موظفًا بصافي ${net}`,
+    applied: (month: string, rows: number, total: string) => `طُبّقت خصومات ${month}: ${String(rows)} بندًا بإجمالي ${total}`,
+    generated: (month: string, employees: number, net: string) => `وُلّد مسير ${month}: ${String(employees)} موظفًا بصافي ${net}`,
     generateFailed: 'تعذر توليد المسير',
     previewFailed: 'تعذر حساب معاينة الخصومات',
     applyFailed: 'تعذر تطبيق الخصومات',

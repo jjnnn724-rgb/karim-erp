@@ -3,8 +3,8 @@ import { useState } from 'react';
 import { RangeControls, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { buildPnlLines, fetchPnl } from '../lib/pnl';
-import { printRegisterTwin } from '../lib/screen-document';
 import { errorMessage, intOf, moneyOf, pctOf, presetRange, rangeProblem, textOf } from '../lib/reporting';
+import { printRegisterTwin } from '../lib/screen-document';
 import { AnswerStrip, ScreenHero } from '../ui';
 
 /**

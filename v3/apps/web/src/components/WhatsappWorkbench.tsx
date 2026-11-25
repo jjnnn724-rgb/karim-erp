@@ -102,17 +102,7 @@ const WA_KEYS = {
     queryCategories: ['whatsapp', 'query-categories'],
 } as const;
 
-type TabKey =
-    | 'connection'
-    | 'inbox'
-    | 'outbox'
-    | 'templates'
-    | 'campaigns'
-    | 'rules'
-    | 'managers'
-    | 'automation'
-    | 'logs'
-    | 'query';
+type TabKey = 'connection' | 'inbox' | 'outbox' | 'templates' | 'campaigns' | 'rules' | 'managers' | 'automation' | 'logs' | 'query';
 
 const TABS: readonly { key: TabKey; label: string; adminOnly?: boolean }[] = [
     { key: 'connection', label: 'الربط وQR' },
@@ -276,11 +266,7 @@ function ConnectionPanel({
     });
 
     const requestLogout = async () => {
-        if (
-            !(await confirm('سيتم تسجيل خروج WhatsApp وإبطال الجلسة الحالية. هل تريد المتابعة؟', {
-                confirmLabel: 'تسجيل الخروج',
-            }))
-        ) {
+        if (!(await confirm('سيتم تسجيل خروج WhatsApp وإبطال الجلسة الحالية. هل تريد المتابعة؟', { confirmLabel: 'تسجيل الخروج' }))) {
             return;
         }
         action.mutate('logout');
@@ -384,10 +370,7 @@ function ConnectionPanel({
                     <p className="text-body-sm text-muted">المشاهدة متاحة لهذا الدور؛ إدارة الربط تتطلب صلاحية مدير.</p>
                 )}
 
-                <div
-                    className="rounded-lg border border-hairline bg-surface-sunken p-sm text-center"
-                    aria-live="polite"
-                >
+                <div className="rounded-lg border border-hairline bg-surface-sunken p-sm text-center" aria-live="polite">
                     {whatsappIsConnected(status) ? (
                         <p className="text-body-md text-success">الجهاز متصل — لا حاجة إلى QR</p>
                     ) : !qrWanted ? (
@@ -403,9 +386,7 @@ function ConnectionPanel({
                     ) : qrImage ? (
                         <div className="flex flex-col items-center gap-xs">
                             <img src={qrImage} alt="رمز ربط واتساب مؤقت" className="size-60 rounded-md bg-white p-xs" />
-                            <p className="text-body-sm text-muted">
-                                امسح الرمز من واتساب ← الأجهزة المرتبطة. الرمز مؤقت ويتجدد تلقائيًا.
-                            </p>
+                            <p className="text-body-sm text-muted">امسح الرمز من واتساب ← الأجهزة المرتبطة. الرمز مؤقت ويتجدد تلقائيًا.</p>
                             {qrQuery.data?.at ? (
                                 <time className="erp-numeric text-caption text-muted" dir="ltr">
                                     {qrQuery.data.at}
@@ -536,12 +517,10 @@ function InboxPanel() {
                                         </span>
                                     </td>
                                     <td className="px-sm py-xs text-muted">
-                                        {CHAT_STATUS_OPTIONS.find((option) => option.value === message.chat_status)
-                                            ?.label ?? '—'}
+                                        {CHAT_STATUS_OPTIONS.find((option) => option.value === message.chat_status)?.label ?? '—'}
                                     </td>
                                     <td className="px-sm py-xs text-muted">
-                                        {CHAT_PRIORITY_OPTIONS.find((option) => option.value === message.chat_priority)
-                                            ?.label ?? '—'}
+                                        {CHAT_PRIORITY_OPTIONS.find((option) => option.value === message.chat_priority)?.label ?? '—'}
                                     </td>
                                     {canWrite ? (
                                         <td className="px-sm py-xs text-start">
@@ -595,17 +574,13 @@ function InboxPanel() {
                         label="حالة المحادثة"
                         options={CHAT_STATUS_OPTIONS}
                         value={target?.status ?? 'open'}
-                        onValueChange={(value) =>
-                            setTarget((current) => (current ? { ...current, status: value } : current))
-                        }
+                        onValueChange={(value) => setTarget((current) => (current ? { ...current, status: value } : current))}
                     />
                     <Select
                         label="الأولوية"
                         options={CHAT_PRIORITY_OPTIONS}
                         value={target?.priority ?? 'normal'}
-                        onValueChange={(value) =>
-                            setTarget((current) => (current ? { ...current, priority: value } : current))
-                        }
+                        onValueChange={(value) => setTarget((current) => (current ? { ...current, priority: value } : current))}
                     />
                     <FormError message={error} />
                 </div>
@@ -655,10 +630,7 @@ function OutboxPanel() {
             {query.isPending ? (
                 <StateLoading label="جارٍ تحميل صندوق الصادر…" />
             ) : query.isError ? (
-                <StateError
-                    message={query.error?.message || 'تعذّر جلب صندوق الصادر'}
-                    onRetry={() => void query.refetch()}
-                />
+                <StateError message={query.error?.message || 'تعذّر جلب صندوق الصادر'} onRetry={() => void query.refetch()} />
             ) : rows.length === 0 ? (
                 <StateEmpty title="صندوق الصادر فارغ" hint="لا توجد رسائل معلقة أو في انتظار الإرسال." />
             ) : (
@@ -716,13 +688,7 @@ function OutboxPanel() {
                         onChange={(event) => setTo(event.target.value)}
                         containerClassName="w-full sm:w-80"
                     />
-                    <Textarea
-                        label="نص الرسالة"
-                        rows={4}
-                        maxLength={4000}
-                        value={body}
-                        onChange={(event) => setBody(event.target.value)}
-                    />
+                    <Textarea label="نص الرسالة" rows={4} maxLength={4000} value={body} onChange={(event) => setBody(event.target.value)} />
                     <FormError message={error} />
                     <div>
                         <Button onClick={submit} loading={send.isPending}>
@@ -825,9 +791,7 @@ function TemplatesPanel() {
                                 </span>
                             </div>
                             {whatsappTemplateText(tpl) ? (
-                                <p className="mt-xs whitespace-pre-wrap text-body-md text-ink">
-                                    {whatsappTemplateText(tpl)}
-                                </p>
+                                <p className="mt-xs whitespace-pre-wrap text-body-md text-ink">{whatsappTemplateText(tpl)}</p>
                             ) : null}
                             {tpl.en ? (
                                 <p className="mt-xs whitespace-pre-wrap text-body-sm text-muted" dir="ltr">
@@ -1065,9 +1029,7 @@ function CampaignsPanel() {
                                     <td className="erp-numeric px-sm py-xs text-ink" dir="ltr">
                                         {campaign.template_name || '—'}
                                     </td>
-                                    <td className="px-sm py-xs text-muted">
-                                        {CAMPAIGN_STATUS_AR[campaign.status] ?? campaign.status}
-                                    </td>
+                                    <td className="px-sm py-xs text-muted">{CAMPAIGN_STATUS_AR[campaign.status] ?? campaign.status}</td>
                                     <td className="erp-numeric px-sm py-xs text-muted" dir="ltr">
                                         {formatInt(campaign.consented)} / {formatInt(campaign.recipients)}
                                     </td>
@@ -1088,20 +1050,12 @@ function CampaignsPanel() {
                                                     </Button>
                                                 ) : null}
                                                 {['approved', 'running'].includes(campaign.status) ? (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="secondary"
-                                                        onClick={() => void runAction(campaign, 'pause')}
-                                                    >
+                                                    <Button size="sm" variant="secondary" onClick={() => void runAction(campaign, 'pause')}>
                                                         إيقاف
                                                     </Button>
                                                 ) : null}
                                                 {!['completed', 'cancelled'].includes(campaign.status) ? (
-                                                    <Button
-                                                        size="sm"
-                                                        variant="danger"
-                                                        onClick={() => void runAction(campaign, 'cancel')}
-                                                    >
+                                                    <Button size="sm" variant="danger" onClick={() => void runAction(campaign, 'cancel')}>
                                                         إلغاء
                                                     </Button>
                                                 ) : null}
@@ -1129,17 +1083,13 @@ function CampaignsPanel() {
                             label="اسم القالب"
                             maxLength={120}
                             value={form.templateName}
-                            onChange={(event) =>
-                                setForm((current) => ({ ...current, templateName: event.target.value }))
-                            }
+                            onChange={(event) => setForm((current) => ({ ...current, templateName: event.target.value }))}
                         />
                         <Input
                             label="موعد الإرسال (اختياري)"
                             type="datetime-local"
                             value={form.scheduledAt}
-                            onChange={(event) =>
-                                setForm((current) => ({ ...current, scheduledAt: event.target.value }))
-                            }
+                            onChange={(event) => setForm((current) => ({ ...current, scheduledAt: event.target.value }))}
                         />
                     </div>
                     <Textarea
@@ -1257,8 +1207,7 @@ function RulesPanel() {
                                 <tr key={rule.id} className="border-b border-hairline hover:bg-surface-hover">
                                     <td className="px-sm py-xs font-medium text-ink">{rule.name || '—'}</td>
                                     <td className="px-sm py-xs text-muted">
-                                        {RULE_MATCH_OPTIONS.find((option) => option.value === rule.match_type)?.label ??
-                                            rule.match_type}
+                                        {RULE_MATCH_OPTIONS.find((option) => option.value === rule.match_type)?.label ?? rule.match_type}
                                     </td>
                                     <td className="px-sm py-xs text-ink">{rule.pattern || '—'}</td>
                                     <td className="px-sm py-xs text-ink">{rule.response || '—'}</td>
@@ -1396,12 +1345,7 @@ function ManagersPanel() {
         return <StateLoading label="جارٍ تحميل أرقام الإدارة…" />;
     }
     if (query.isError) {
-        return (
-            <StateError
-                message={query.error?.message || 'تعذّر جلب أرقام الإدارة'}
-                onRetry={() => void query.refetch()}
-            />
-        );
+        return <StateError message={query.error?.message || 'تعذّر جلب أرقام الإدارة'} onRetry={() => void query.refetch()} />;
     }
 
     return (
@@ -1438,10 +1382,7 @@ function ManagersPanel() {
             ) : (
                 <ul className="flex list-none flex-col gap-xxs">
                     {numbers.map((item) => (
-                        <li
-                            key={item}
-                            className="flex items-center justify-between gap-sm rounded-md border border-hairline px-sm py-xs"
-                        >
+                        <li key={item} className="flex items-center justify-between gap-sm rounded-md border border-hairline px-sm py-xs">
                             <span className="erp-numeric text-body-md text-ink" dir="ltr">
                                 {item}
                             </span>
@@ -1519,9 +1460,7 @@ function AutomationPanel() {
         return <StateLoading label="جارٍ تحميل إعدادات التنبيهات…" />;
     }
     if (query.isError) {
-        return (
-            <StateError message={query.error?.message || 'تعذّر جلب التنبيهات'} onRetry={() => void query.refetch()} />
-        );
+        return <StateError message={query.error?.message || 'تعذّر جلب التنبيهات'} onRetry={() => void query.refetch()} />;
     }
 
     return (
@@ -1539,9 +1478,7 @@ function AutomationPanel() {
                         key={toggle.key}
                         label={toggle.label}
                         checked={draft[toggle.key] !== false}
-                        onCheckedChange={(checked) =>
-                            setDraft((current) => ({ ...current, [toggle.key]: checked === true }))
-                        }
+                        onCheckedChange={(checked) => setDraft((current) => ({ ...current, [toggle.key]: checked === true }))}
                     />
                 ))}
             </div>
@@ -1746,11 +1683,7 @@ export function WhatsappWorkbench({
 
     return (
         <>
-            <div
-                role="tablist"
-                aria-label="أقسام واتساب"
-                className="flex overflow-x-auto border-b border-hairline px-sm py-xs"
-            >
+            <div role="tablist" aria-label="أقسام واتساب" className="flex overflow-x-auto border-b border-hairline px-sm py-xs">
                 <div className="flex min-w-max gap-xs">
                     {tabs.map((item) => (
                         <button
@@ -1760,9 +1693,7 @@ export function WhatsappWorkbench({
                             aria-selected={tab === item.key}
                             onClick={() => setTab(item.key)}
                             className={`rounded-md px-md py-xs text-button-md ${
-                                tab === item.key
-                                    ? 'bg-primary text-on-primary'
-                                    : 'bg-surface text-ink hover:bg-surface-hover'
+                                tab === item.key ? 'bg-primary text-on-primary' : 'bg-surface text-ink hover:bg-surface-hover'
                             }`}
                         >
                             {item.label}

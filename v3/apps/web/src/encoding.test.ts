@@ -17,9 +17,7 @@ import { describe, expect, it } from 'vitest';
 
 const HERE = dirname(fileURLToPath(import.meta.url));
 const PUNCT = [0x00a7, 0x201a, 0x201e];
-const MARKER = new RegExp(
-    `[\\u0600-\\u06ff][${PUNCT.map((code) => `\\u${code.toString(16).padStart(4, '0')}`).join('')}]`,
-);
+const MARKER = new RegExp(`[\\u0600-\\u06ff][${PUNCT.map((code) => `\\u${code.toString(16).padStart(4, '0')}`).join('')}]`);
 
 function collect(dir: string, out: string[] = []): string[] {
     for (const entry of readdirSync(dir, { withFileTypes: true })) {

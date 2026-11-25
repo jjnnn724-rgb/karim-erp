@@ -1,7 +1,6 @@
 import './Leaves.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { fetchEmployees } from '../lib/employees';
@@ -29,7 +28,6 @@ import {
 import { createLeaveRequest, decideLeaveRequest, LEAVE_TEXT, type LeaveActionKind } from '../lib/leaves-write';
 import { roleLabel } from '../lib/users';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
-import { PageHeader } from '../ui';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
@@ -83,19 +81,7 @@ function clockNow(): string {
     return `${pad(now.getHours())}:${pad(now.getMinutes())}`;
 }
 
-function Kpi({
-    label,
-    english,
-    value,
-    suffix,
-    hint,
-}: {
-    label: string;
-    english: string;
-    value: string;
-    suffix?: string;
-    hint: string;
-}) {
+function Kpi({ label, english, value, suffix, hint }: { label: string; english: string; value: string; suffix?: string; hint: string }) {
     return (
         <li className="rounded-lg border border-hairline bg-surface p-md shadow-card">
             <p className="text-label-md text-muted">
@@ -199,11 +185,7 @@ function compareType(a: LeaveTypeRow, b: LeaveTypeRow, key: TypeSortKey): number
     return a.name.localeCompare(b.name, 'ar');
 }
 
-function sortRows<K extends string, T>(
-    rows: readonly T[],
-    sort: SortState<K>,
-    compare: (a: T, b: T, key: K) => number,
-): T[] {
+function sortRows<K extends string, T>(rows: readonly T[], sort: SortState<K>, compare: (a: T, b: T, key: K) => number): T[] {
     if (!sort) {
         return [...rows];
     }
@@ -276,10 +258,7 @@ export function Leaves() {
 
     const typeList = useMemo(() => typesQuery.data?.rows ?? [], [typesQuery.data]);
     const typeById = useMemo(() => leaveTypeMap(typeList), [typeList]);
-    const allRows = useMemo(
-        () => (workflowQuery.data ?? []).map((raw) => leaveToRow(raw, typeById)),
-        [workflowQuery.data, typeById],
-    );
+    const allRows = useMemo(() => (workflowQuery.data ?? []).map((raw) => leaveToRow(raw, typeById)), [workflowQuery.data, typeById]);
     const summary = useMemo(() => summarizeLeaves(allRows), [allRows]);
 
     const stateRows = useMemo(
@@ -287,27 +266,18 @@ export function Leaves() {
         [allRows, stateFilter],
     );
     const search = useMemo(() => searchLeaveRequests(stateRows, query), [stateRows, query]);
-    const sortedRequests = useMemo(
-        () => sortRows(search.rows, requestSort, compareRequest),
-        [search.rows, requestSort],
-    );
+    const sortedRequests = useMemo(() => sortRows(search.rows, requestSort, compareRequest), [search.rows, requestSort]);
 
     const events = useMemo(() => flattenEvents(allRows), [allRows]);
     const sortedEvents = useMemo(() => sortRows(events, eventSort, compareEvent), [events, eventSort]);
 
     const typeCounts = useMemo(() => requestsByType(allRows), [allRows]);
-    const typeRows = useMemo(
-        () => typeList.map((type) => typeToRow(type, typeCounts.get(String(type.id)) ?? 0)),
-        [typeList, typeCounts],
-    );
+    const typeRows = useMemo(() => typeList.map((type) => typeToRow(type, typeCounts.get(String(type.id)) ?? 0)), [typeList, typeCounts]);
     const sortedTypes = useMemo(() => sortRows(typeRows, typeSort, compareType), [typeRows, typeSort]);
 
     const requestPageCount = Math.max(1, Math.ceil(sortedRequests.length / REQUEST_PAGE_SIZE));
     const safeRequestPage = Math.min(requestPage, requestPageCount);
-    const requestPageRows = sortedRequests.slice(
-        (safeRequestPage - 1) * REQUEST_PAGE_SIZE,
-        safeRequestPage * REQUEST_PAGE_SIZE,
-    );
+    const requestPageRows = sortedRequests.slice((safeRequestPage - 1) * REQUEST_PAGE_SIZE, safeRequestPage * REQUEST_PAGE_SIZE);
 
     const eventPageCount = Math.max(1, Math.ceil(sortedEvents.length / EVENT_PAGE_SIZE));
     const safeEventPage = Math.min(eventPage, eventPageCount);
@@ -319,10 +289,7 @@ export function Leaves() {
 
     const readAt = useMemo(() => (workflowQuery.isSuccess ? clockNow() : ''), [workflowQuery.isSuccess]);
     const paidTypes = typeList.filter((type) => type.paid).length;
-    const kpis = useMemo(
-        () => buildLeavesKpis(summary, typeList.length, paidTypes),
-        [summary, typeList.length, paidTypes],
-    );
+    const kpis = useMemo(() => buildLeavesKpis(summary, typeList.length, paidTypes), [summary, typeList.length, paidTypes]);
     const top = useMemo(() => topRequesters(allRows, TOP_PORTLET), [allRows]);
     const topMax = top.length > 0 ? (top[0]?.count ?? 0) : 0;
 
@@ -340,23 +307,17 @@ export function Leaves() {
 
     function toggleRequestSort(key: RequestSortKey) {
         setRequestPage(1);
-        setRequestSort((previous) =>
-            previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' },
-        );
+        setRequestSort((previous) => (previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
     }
 
     function toggleEventSort(key: EventSortKey) {
         setEventPage(1);
-        setEventSort((previous) =>
-            previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' },
-        );
+        setEventSort((previous) => (previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
     }
 
     function toggleTypeSort(key: TypeSortKey) {
         setTypePage(1);
-        setTypeSort((previous) =>
-            previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' },
-        );
+        setTypeSort((previous) => (previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
     }
 
     function resetFilters() {
@@ -388,32 +349,36 @@ export function Leaves() {
 
     return (
         <div className="flex flex-col gap-md leaves-premium">
-            <PageHeader
-                title="الإجازات"
-                english="Leave Requests"
-                description="سلسلة اعتماد الطلبات في نطاق صلاحيتك: إنشاء طلب، واعتماد/رفض/إعادة داخل السلسلة مثل الشاشة القديمة، والخادم هو صاحب القرار في كل الحالات."
-                actions={
-                    <>
-                        <div className="flex items-center gap-xs" data-erp-print-hide>
-                            <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
-                                طلب إجازة جديد
-                            </Button>
-                            <PrintActions title="الإجازات" />
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    void workflowQuery.refetch();
-                                    void typesQuery.refetch();
-                                }}
-                                data-erp-print-hide
-                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                            >
-                                تحديث
-                            </button>
-                        </div>
-                    </>
-                }
-            />
+            <header className="flex flex-wrap items-end justify-between gap-sm">
+                <div>
+                    <h1 className="text-display-lg text-ink">
+                        الإجازات{' '}
+                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
+                            Leave Requests
+                        </span>
+                    </h1>
+                    <p className="text-body-sm text-muted">
+                        سلسلة اعتماد الطلبات في نطاق صلاحيتك: إنشاء طلب، واعتماد/رفض/إعادة داخل السلسلة مثل الشاشة القديمة، والخادم هو صاحب
+                        القرار في كل الحالات.
+                    </p>
+                </div>
+                <div className="flex items-center gap-xs" data-erp-print-hide>
+                    <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
+                        طلب إجازة جديد
+                    </Button>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            void workflowQuery.refetch();
+                            void typesQuery.refetch();
+                        }}
+                        data-erp-print-hide
+                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                    >
+                        تحديث
+                    </button>
+                </div>
+            </header>
 
             <p className="text-body-sm text-muted" role="status" aria-live="polite">
                 {scopeLine}
@@ -424,14 +389,7 @@ export function Leaves() {
                 aria-label="مؤشرات الإجازات — كل رقم معدود على السجل الذي أرسله الخادم لهذا الحساب"
             >
                 {kpis.map((kpi) => (
-                    <Kpi
-                        key={kpi.id}
-                        label={kpi.label}
-                        english={kpi.en}
-                        value={formatInt(kpi.value)}
-                        suffix={kpi.unit}
-                        hint={kpi.hint}
-                    />
+                    <Kpi key={kpi.id} label={kpi.label} english={kpi.en} value={formatInt(kpi.value)} suffix={kpi.unit} hint={kpi.hint} />
                 ))}
             </ul>
 
@@ -499,9 +457,7 @@ export function Leaves() {
                     </span>
                 </div>
                 {search.folded ? (
-                    <p className="mt-sm text-body-sm text-muted">
-                        بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.
-                    </p>
+                    <p className="mt-sm text-body-sm text-muted">بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.</p>
                 ) : null}
                 {windowNote ? <p className="mt-sm text-body-sm text-muted">{windowNote}</p> : null}
             </Card>
@@ -554,48 +510,13 @@ export function Leaves() {
                             <table className="w-full border-collapse text-body-md">
                                 <thead>
                                     <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                        <SortableTh
-                                            label="الموظف"
-                                            sortKey="employee"
-                                            sort={requestSort}
-                                            onToggle={toggleRequestSort}
-                                        />
-                                        <SortableTh
-                                            label="النوع"
-                                            sortKey="type"
-                                            sort={requestSort}
-                                            onToggle={toggleRequestSort}
-                                        />
-                                        <SortableTh
-                                            label="من"
-                                            sortKey="start"
-                                            sort={requestSort}
-                                            onToggle={toggleRequestSort}
-                                        />
-                                        <SortableTh
-                                            label="إلى"
-                                            sortKey="end"
-                                            sort={requestSort}
-                                            onToggle={toggleRequestSort}
-                                        />
-                                        <SortableTh
-                                            label="المدة (يوم)"
-                                            sortKey="days"
-                                            sort={requestSort}
-                                            onToggle={toggleRequestSort}
-                                        />
-                                        <SortableTh
-                                            label="لدى من الآن"
-                                            sortKey="stage"
-                                            sort={requestSort}
-                                            onToggle={toggleRequestSort}
-                                        />
-                                        <SortableTh
-                                            label="الحالة"
-                                            sortKey="state"
-                                            sort={requestSort}
-                                            onToggle={toggleRequestSort}
-                                        />
+                                        <SortableTh label="الموظف" sortKey="employee" sort={requestSort} onToggle={toggleRequestSort} />
+                                        <SortableTh label="النوع" sortKey="type" sort={requestSort} onToggle={toggleRequestSort} />
+                                        <SortableTh label="من" sortKey="start" sort={requestSort} onToggle={toggleRequestSort} />
+                                        <SortableTh label="إلى" sortKey="end" sort={requestSort} onToggle={toggleRequestSort} />
+                                        <SortableTh label="المدة (يوم)" sortKey="days" sort={requestSort} onToggle={toggleRequestSort} />
+                                        <SortableTh label="لدى من الآن" sortKey="stage" sort={requestSort} onToggle={toggleRequestSort} />
+                                        <SortableTh label="الحالة" sortKey="state" sort={requestSort} onToggle={toggleRequestSort} />
                                         <th scope="col" className="px-sm py-xs text-start font-medium">
                                             الملاحظة/السبب
                                         </th>
@@ -605,11 +526,7 @@ export function Leaves() {
                                             sort={requestSort}
                                             onToggle={toggleRequestSort}
                                         />
-                                        <th
-                                            scope="col"
-                                            className="px-sm py-xs text-start font-medium"
-                                            data-erp-print-hide
-                                        >
+                                        <th scope="col" className="px-sm py-xs text-start font-medium" data-erp-print-hide>
                                             إجراءات
                                         </th>
                                     </tr>
@@ -618,18 +535,10 @@ export function Leaves() {
                                     {requestPageRows.map((row) => (
                                         <tr key={row.id} className="border-b border-hairline hover:bg-surface-hover">
                                             <td className="px-sm py-xxs text-ink">
-                                                {row.employeeResolved ? (
-                                                    row.employee
-                                                ) : (
-                                                    <span className="text-muted">{row.employee}</span>
-                                                )}
+                                                {row.employeeResolved ? row.employee : <span className="text-muted">{row.employee}</span>}
                                             </td>
                                             <td className="px-sm py-xxs text-ink">
-                                                {row.typeResolved ? (
-                                                    row.type
-                                                ) : (
-                                                    <span className="text-muted">{row.type}</span>
-                                                )}
+                                                {row.typeResolved ? row.type : <span className="text-muted">{row.type}</span>}
                                             </td>
                                             <td className="erp-numeric px-sm py-xxs text-body-sm text-ink" dir="ltr">
                                                 {row.start || '—'}
@@ -638,11 +547,7 @@ export function Leaves() {
                                                 {row.end || '—'}
                                             </td>
                                             <td className="erp-numeric px-sm py-xxs text-body-sm text-ink" dir="ltr">
-                                                {row.days === null ? (
-                                                    <span className="text-muted">—</span>
-                                                ) : (
-                                                    formatInt(row.days)
-                                                )}
+                                                {row.days === null ? <span className="text-muted">—</span> : formatInt(row.days)}
                                             </td>
                                             <td className="px-sm py-xxs text-ink">
                                                 {!row.stage ? (
@@ -654,11 +559,7 @@ export function Leaves() {
                                                 )}
                                             </td>
                                             <td className="px-sm py-xxs text-body-sm text-ink">
-                                                {row.stateKnown ? (
-                                                    row.stateLabel
-                                                ) : (
-                                                    <span className="text-muted">{row.stateKey}</span>
-                                                )}
+                                                {row.stateKnown ? row.stateLabel : <span className="text-muted">{row.stateKey}</span>}
                                             </td>
                                             <td className="px-sm py-xxs text-body-sm text-muted">{row.note || '—'}</td>
                                             <td className="erp-numeric px-sm py-xxs text-body-sm text-ink" dir="ltr">
@@ -731,9 +632,7 @@ export function Leaves() {
                             {top.map((person) => (
                                 <li key={`${person.name}-${person.count}`} className="flex items-center gap-sm">
                                     <span
-                                        className={
-                                            person.resolved ? 'text-body-sm text-ink' : 'text-body-sm text-muted'
-                                        }
+                                        className={person.resolved ? 'text-body-sm text-ink' : 'text-body-sm text-muted'}
                                         title={`${person.name}: ${person.count} طلبًا، منها ${person.open} قيد الاعتماد`}
                                     >
                                         {person.name}
@@ -775,9 +674,7 @@ export function Leaves() {
                     </div>
                 ) : null}
 
-                {workflowQuery.isSuccess && events.length === 0 ? (
-                    <StateEmpty title="لا أحداث بعد" hint="لا أحداث اعتماد بعد." />
-                ) : null}
+                {workflowQuery.isSuccess && events.length === 0 ? <StateEmpty title="لا أحداث بعد" hint="لا أحداث اعتماد بعد." /> : null}
 
                 {workflowQuery.isSuccess && events.length > 0 ? (
                     <>
@@ -785,45 +682,15 @@ export function Leaves() {
                             <table className="w-full border-collapse text-body-md">
                                 <thead>
                                     <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                        <SortableTh
-                                            label="الموظف"
-                                            sortKey="employee"
-                                            sort={eventSort}
-                                            onToggle={toggleEventSort}
-                                        />
-                                        <SortableTh
-                                            label="الطلب"
-                                            sortKey="requestId"
-                                            sort={eventSort}
-                                            onToggle={toggleEventSort}
-                                        />
-                                        <SortableTh
-                                            label="المرحلة"
-                                            sortKey="stage"
-                                            sort={eventSort}
-                                            onToggle={toggleEventSort}
-                                        />
-                                        <SortableTh
-                                            label="الحدث"
-                                            sortKey="action"
-                                            sort={eventSort}
-                                            onToggle={toggleEventSort}
-                                        />
+                                        <SortableTh label="الموظف" sortKey="employee" sort={eventSort} onToggle={toggleEventSort} />
+                                        <SortableTh label="الطلب" sortKey="requestId" sort={eventSort} onToggle={toggleEventSort} />
+                                        <SortableTh label="المرحلة" sortKey="stage" sort={eventSort} onToggle={toggleEventSort} />
+                                        <SortableTh label="الحدث" sortKey="action" sort={eventSort} onToggle={toggleEventSort} />
                                         <th scope="col" className="px-sm py-xs text-start font-medium">
                                             الملاحظة
                                         </th>
-                                        <SortableTh
-                                            label="دور الفاعل"
-                                            sortKey="actorRole"
-                                            sort={eventSort}
-                                            onToggle={toggleEventSort}
-                                        />
-                                        <SortableTh
-                                            label="التوقيت"
-                                            sortKey="at"
-                                            sort={eventSort}
-                                            onToggle={toggleEventSort}
-                                        />
+                                        <SortableTh label="دور الفاعل" sortKey="actorRole" sort={eventSort} onToggle={toggleEventSort} />
+                                        <SortableTh label="التوقيت" sortKey="at" sort={eventSort} onToggle={toggleEventSort} />
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -853,11 +720,7 @@ export function Leaves() {
                                             </td>
                                             <td className="px-sm py-xxs text-body-sm text-muted">{row.note || '—'}</td>
                                             <td className="px-sm py-xxs text-body-sm text-ink">
-                                                {row.actorRole ? (
-                                                    roleLabel(row.actorRole).label
-                                                ) : (
-                                                    <span className="text-muted">—</span>
-                                                )}
+                                                {row.actorRole ? roleLabel(row.actorRole).label : <span className="text-muted">—</span>}
                                             </td>
                                             <td className="erp-numeric px-sm py-xxs text-body-sm text-ink" dir="ltr">
                                                 {row.at || '—'}
@@ -909,30 +772,10 @@ export function Leaves() {
                             <table className="w-full border-collapse text-body-md">
                                 <thead>
                                     <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                        <SortableTh
-                                            label="النوع"
-                                            sortKey="name"
-                                            sort={typeSort}
-                                            onToggle={toggleTypeSort}
-                                        />
-                                        <SortableTh
-                                            label="الأيام المرصودة"
-                                            sortKey="days"
-                                            sort={typeSort}
-                                            onToggle={toggleTypeSort}
-                                        />
-                                        <SortableTh
-                                            label="مدفوعة الأجر"
-                                            sortKey="paid"
-                                            sort={typeSort}
-                                            onToggle={toggleTypeSort}
-                                        />
-                                        <SortableTh
-                                            label="طلباتها في السجل"
-                                            sortKey="requests"
-                                            sort={typeSort}
-                                            onToggle={toggleTypeSort}
-                                        />
+                                        <SortableTh label="النوع" sortKey="name" sort={typeSort} onToggle={toggleTypeSort} />
+                                        <SortableTh label="الأيام المرصودة" sortKey="days" sort={typeSort} onToggle={toggleTypeSort} />
+                                        <SortableTh label="مدفوعة الأجر" sortKey="paid" sort={typeSort} onToggle={toggleTypeSort} />
+                                        <SortableTh label="طلباتها في السجل" sortKey="requests" sort={typeSort} onToggle={toggleTypeSort} />
                                         <th scope="col" className="px-sm py-xs text-start font-medium">
                                             الأيقونة
                                         </th>
@@ -943,15 +786,9 @@ export function Leaves() {
                                         <tr key={row.id} className="border-b border-hairline hover:bg-surface-hover">
                                             <td className="px-sm py-xxs text-ink">{row.name}</td>
                                             <td className="erp-numeric px-sm py-xxs text-body-sm text-ink" dir="ltr">
-                                                {row.days === null ? (
-                                                    <span className="text-muted">—</span>
-                                                ) : (
-                                                    formatInt(row.days)
-                                                )}
+                                                {row.days === null ? <span className="text-muted">—</span> : formatInt(row.days)}
                                             </td>
-                                            <td className="px-sm py-xxs text-body-sm text-ink">
-                                                {row.paid ? 'نعم' : 'لا'}
-                                            </td>
+                                            <td className="px-sm py-xxs text-body-sm text-ink">{row.paid ? 'نعم' : 'لا'}</td>
                                             <td className="erp-numeric px-sm py-xxs text-body-sm text-ink" dir="ltr">
                                                 {formatInt(row.requests)}
                                             </td>
@@ -1004,13 +841,7 @@ interface CreateLeaveDialogProps {
     types: readonly { id: string; name?: string | null }[];
     pending: boolean;
     onClose: () => void;
-    onSubmit: (input: {
-        employeeId: string;
-        leaveTypeId: string;
-        startDate: string;
-        endDate: string;
-        reason: string;
-    }) => Promise<void>;
+    onSubmit: (input: { employeeId: string; leaveTypeId: string; startDate: string; endDate: string; reason: string }) => Promise<void>;
 }
 
 const CREATE_LEAVE_FORM_ID = 'erp-leave-create-form';

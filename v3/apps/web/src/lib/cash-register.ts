@@ -210,10 +210,7 @@ export interface CashRegisterFilters {
     dir?: 'asc' | 'desc';
 }
 
-export async function fetchCashRegister(
-    filters: CashRegisterFilters = {},
-    signal?: AbortSignal,
-): Promise<CashRegisterResponse> {
+export async function fetchCashRegister(filters: CashRegisterFilters = {}, signal?: AbortSignal): Promise<CashRegisterResponse> {
     const params = new URLSearchParams();
     for (const [key, value] of Object.entries(filters)) {
         if (value !== undefined && value !== null && String(value) !== '') {
@@ -448,9 +445,7 @@ export function multiReportHtml(options: MultiReportOptions): string {
 
     for (const token of tokens) {
         const query = needle(token);
-        const hits = rows.filter(
-            (row) => needle(row.desc).includes(query) || needle(row.request_dept ?? row.deptId).includes(query),
-        );
+        const hits = rows.filter((row) => needle(row.desc).includes(query) || needle(row.request_dept ?? row.deptId).includes(query));
         if (!hits.length) {
             missing.push(token);
             continue;
@@ -497,11 +492,8 @@ h3.sec{font-size:14px;color:#102a43;border-bottom:2px solid #eaf0f5;padding-bott
 table{width:100%;border-collapse:collapse;margin-bottom:10px}th,td{border:1px solid #dce5ec;padding:6px;text-align:right;font-size:12px}
 th{background:#eaf0f5;color:#102a43}td.c,th.c{text-align:center}td.n{direction:ltr;unicode-bidi:embed}
 .note{border:1px solid #e6c98c;background:#fef3e2;border-radius:8px;padding:8px 12px;font-size:12px;color:#8f4308}
-.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#0f766e;color:#fff}
-.controls button.secondary{background:#31485a}
-@media print{body{padding:0}.controls{display:none!important}@page{size:A4;margin:11mm}}
+@media print{body{padding:0}@page{size:A4;margin:11mm}}
 </style></head><body>
-<div class="controls"><button type="button" data-report-print>طباعة</button><button type="button" class="secondary" data-report-close>إغلاق</button></div>
 <main class="sheet"><header class="head"><h1>تقرير مفصل — سجلّ الصرف</h1>
 <p>الفترة: ${escapeHtml(from || 'البداية')} ← ${escapeHtml(to || 'اليوم')} — تاريخ التقرير: ${escapeHtml(generatedAt)}</p>
 <p>الأصناف المطلوبة: ${escapeHtml(tokens.join('، '))}</p></header>

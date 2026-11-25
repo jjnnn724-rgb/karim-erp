@@ -1,20 +1,8 @@
 import { ApiError, fetchJson } from './api';
 import { getAccessToken } from './auth';
-import {
-    type BriefingResponse,
-    briefingResponseSchema,
-    type PosStatsResponse,
-    parseNumericVal,
-    posStatsResponseSchema,
-} from './briefing';
+import { type BriefingResponse, briefingResponseSchema, type PosStatsResponse, parseNumericVal, posStatsResponseSchema } from './briefing';
 import { type AccountantView, fetchAccountantSnapshot, fetchWarehouseSnapshot, type WarehouseView } from './dashboards';
-import {
-    alertTone,
-    buildExecutiveKpis,
-    type ExecutiveSummary,
-    fetchExecutiveSummary,
-    severityLabel,
-} from './executive';
+import { alertTone, buildExecutiveKpis, type ExecutiveSummary, fetchExecutiveSummary, severityLabel } from './executive';
 import { formatCurrency, formatInt } from './format';
 import { titleForPath } from './navigation';
 import { buildPnlLines, type PnlResponse } from './pnl';
@@ -169,13 +157,9 @@ function kpisFromBriefing(briefing: BriefingResponse | null, posStats: PosStatsR
     if (!briefing && !posStats) {
         return [];
     }
-    const totalSales = parseNumericVal(
-        firstValue(briefing?.pos.total, briefing?.cashiersTotal.total, posStats?.total_sales),
-    );
+    const totalSales = parseNumericVal(firstValue(briefing?.pos.total, briefing?.cashiersTotal.total, posStats?.total_sales));
     const totalExpenses = parseNumericVal(firstValue(briefing?.expenses.total));
-    const ordersCount =
-        (posStats?.orders_count ?? 0) ||
-        parseNumericVal(firstValue(briefing?.pos.count, briefing?.cashiersTotal.count));
+    const ordersCount = (posStats?.orders_count ?? 0) || parseNumericVal(firstValue(briefing?.pos.count, briefing?.cashiersTotal.count));
     const averageTicket = parseNumericVal(firstValue(posStats?.avg_ticket));
     return [
         {
@@ -587,20 +571,23 @@ export interface HomeQuickAction {
 }
 
 const ROLE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
-    owner: ['executive', 'briefing', 'cfo', 'reports', 'users', 'settings'],
-    admin: ['executive', 'briefing', 'cfo', 'reports', 'users', 'settings'],
-    manager: ['executive', 'briefing', 'reports', 'warehouse-dashboard', 'hr-dashboard', 'cashier-monitor'],
-    accountant: ['cfo', 'pnl', 'monthly-comparison', 'cost-analysis', 'revenues', 'expenses'],
-    auditor: ['briefing', 'reports', 'pnl', 'monthly-comparison', 'accounts', 'journal'],
+    // تنظيف 2026-11-20: briefing/reports/shelves/weight أُزيلوا؛ المالك والإدارة
+    // يحصلون على sales-analyzer (بوابة yara: sous_chef/admin/owner) والمدير على
+    // pos-reports (مركز التقارير).
+    owner: ['command-center', 'executive', 'cfo', 'sales-analyzer', 'settings'],
+    admin: ['command-center', 'executive', 'cfo', 'sales-analyzer', 'settings'],
+    manager: ['command-center', 'executive', 'pos-reports', 'warehouse-dashboard', 'cashier-monitor'],
+    accountant: ['command-center', 'cfo', 'pnl', 'monthly-comparison', 'cost-analysis', 'revenues', 'expenses'],
+    auditor: ['command-center', 'pnl', 'monthly-comparison', 'journal'],
     hr: ['hr-dashboard', 'employees', 'attendance', 'leaves', 'payroll', 'roster'],
-    dept_head: ['dept-head-dashboard', 'dept-employees', 'dispatch', 'cost-center', 'reports'],
+    dept_head: ['dept-head-dashboard', 'dept-employees', 'dispatch', 'dept-transfers', 'cost-center'],
     warehouse: ['warehouse', 'warehouse-dashboard', 'dispatch', 'wh-prs', 'inventory-inquiry', 'wh-moves'],
-    kitchen: ['kitchen', 'recipes', 'menu-board', 'dispatch', 'wh-returns', 'weight'],
+    kitchen: ['kitchen', 'recipes', 'menu-board', 'dispatch', 'wh-returns'],
     // قوائم الكاشير في V2 لا تشمل المالية ولا التقارير — الإجراءات من قوائمه الفعلية فقط.
-    cashier: ['pos-entry', 'attendance', 'leaves', 'employee-portal'],
+    cashier: ['pos-entry', 'leaves', 'employee-portal'],
     // الموظف لا يرى payroll/roster في V2؛ نبقي ما يُسمح به فعلًا.
-    employee: ['employee-portal', 'attendance', 'leaves'],
-    default: ['executive', 'reports', 'warehouse', 'employees', 'settings', 'briefing'],
+    employee: ['employee-portal', 'leaves'],
+    default: ['executive', 'warehouse', 'employees', 'settings'],
 };
 
 /**
@@ -608,11 +595,7 @@ const ROLE_ACTIONS: Readonly<Record<string, readonly string[]>> = {
  * وقوائم الدور المسموحة (`allowedMenus`: أساس الدور + المنح − الممنوعات).
  * `allowed = null` تعني «لا جلسة/لا دور» — عندها لا نفلتر بالقوائم.
  */
-export function quickActionsForRole(
-    role: string,
-    enabled: ReadonlySet<string>,
-    allowed?: readonly string[] | null,
-): HomeQuickAction[] {
+export function quickActionsForRole(role: string, enabled: ReadonlySet<string>, allowed?: readonly string[] | null): HomeQuickAction[] {
     const keys = ROLE_ACTIONS[role] ?? ROLE_ACTIONS.default ?? [];
     const allowedSet = allowed ? new Set(allowed) : null;
     return keys

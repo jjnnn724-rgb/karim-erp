@@ -16,7 +16,7 @@
     overflow: hidden;
     background:
         radial-gradient(1400px 900px at 78% 18%, rgb(255 226 130 / 0.18), transparent 55%),
-        radial-gradient(900px 700px at 14% 110%, rgb(191 161 91 / 0.30), transparent 60%),
+        radial-gradient(900px 700px at 14% 110%, rgb(191 161 91 / 0.3), transparent 60%),
         radial-gradient(700px 520px at 92% 110%, rgb(51 191 177 / 0.12), transparent 60%),
         linear-gradient(160deg, #0d2724 0%, #06110f 65%, #020806 100%);
     color: #fff8e0;
@@ -101,12 +101,7 @@
     inline-size: 140px;
     block-size: 2px;
     border-radius: 999px;
-    background: linear-gradient(90deg,
-        rgb(200 162 74 / 0) 0%,
-        #c8a24a 18%,
-        #ffe284 50%,
-        #c8a24a 82%,
-        rgb(200 162 74 / 0) 100%);
+    background: linear-gradient(90deg, rgb(200 162 74 / 0) 0%, #c8a24a 18%, #ffe284 50%, #c8a24a 82%, rgb(200 162 74 / 0) 100%);
 }
 
 .erp-login__eyebrow-luxe {
@@ -130,9 +125,9 @@
     font-style: normal;
     background: linear-gradient(180deg, #fff3c4 0%, #e0c56f 60%, #8a6b2f 100%);
     -webkit-background-clip: text;
-            background-clip: text;
+    background-clip: text;
     -webkit-text-fill-color: transparent;
-            color: transparent;
+    color: transparent;
 }
 
 .erp-login__sub-luxe {
@@ -164,7 +159,11 @@
     align-items: center;
     gap: 8px;
 }
-.erp-login__chip svg { inline-size: 14px; block-size: 14px; color: #c8a24a; }
+.erp-login__chip svg {
+    inline-size: 14px;
+    block-size: 14px;
+    color: #c8a24a;
+}
 
 .erp-login__foot-luxe {
     margin: 0;
@@ -190,13 +189,24 @@
         0 0 0 1px rgb(0 0 0 / 0.5);
 }
 .erp-login__form .text-ink,
-.erp-login__form h1 { color: #fff8e0; }
-.erp-login__subtitle { color: rgb(255 248 224 / 0.68); }
-.erp-login__note { color: rgb(255 248 224 / 0.52); border-block-start: 1px solid rgb(200 162 74 / 0.20); }
+.erp-login__form h1 {
+    color: #fff8e0;
+}
+.erp-login__subtitle {
+    color: rgb(255 248 224 / 0.68);
+}
+.erp-login__note {
+    color: rgb(255 248 224 / 0.52);
+    border-block-start: 1px solid rgb(200 162 74 / 0.2);
+}
 
 /* KIOSK fallback: keep the original one-column layout untouched */
-.erp-login--kiosk .erp-login__form { background: var(--erp-surface); }
-.erp-login--kiosk .erp-login__story { display: none; }
+.erp-login--kiosk .erp-login__form {
+    background: var(--erp-surface);
+}
+.erp-login--kiosk .erp-login__story {
+    display: none;
+}
 
 @media (max-width: 899px) {
     .erp-login__story {
@@ -206,13 +216,34 @@
         padding: 16px;
     }
     .erp-login__story::before,
-    .erp-login__story::after { display: none; }
-    .erp-login__subtitle { font-size: 13px; color: rgb(255 248 224 / 0.6); }
-    .erp-login__form { border-radius: 16px; }
-    .erp-login__logo { inline-size: 150px; }
-    .erp-login__headline-luxe { font-size: 22px; }
-    .erp-login__sub-luxe { font-size: 12px; }
-    .erp-login__chip-row { gap: 6px; }
-    .erp-login__chip { font-size: 10px; padding-inline: 10px; padding-block: 4px; }
-    .erp-login__brand-name { font-size: 18px; }
+    .erp-login__story::after {
+        display: none;
+    }
+    .erp-login__subtitle {
+        font-size: 13px;
+        color: rgb(255 248 224 / 0.6);
+    }
+    .erp-login__form {
+        border-radius: 16px;
+    }
+    .erp-login__logo {
+        inline-size: 150px;
+    }
+    .erp-login__headline-luxe {
+        font-size: 22px;
+    }
+    .erp-login__sub-luxe {
+        font-size: 12px;
+    }
+    .erp-login__chip-row {
+        gap: 6px;
+    }
+    .erp-login__chip {
+        font-size: 10px;
+        padding-inline: 10px;
+        padding-block: 4px;
+    }
+    .erp-login__brand-name {
+        font-size: 18px;
+    }
 }

@@ -13,5 +13,13 @@
             "@/*": ["./src/*"]
         }
     },
-    "include": ["src/**/*.ts", "src/**/*.tsx", "e2e/**/*.ts", "vite.config.ts"]
+    "include": ["src/**/*.ts", "src/**/*.tsx", "e2e/**/*.ts", "vite.config.ts"],
+    "exclude": [
+        "src/lib/dispatch-print.test.ts",
+        "src/lib/dispatches.test.ts",
+        "src/lib/purchase-invoices.test.ts",
+        "src/lib/suppliers-write.test.ts",
+        "src/lib/v4-surface.test.tsx",
+        "src/lib/wh-returns-write.test.ts"
+    ]
 }

@@ -161,12 +161,7 @@ export function attendanceRangePath(from: string, to: string): string {
 export async function fetchPayrollRuns(signal?: AbortSignal): Promise<PayrollRun[]> {
     const rows: PayrollRun[] = [];
     for (let page = 1; page <= MAX_PAGES; page += 1) {
-        const body = await fetchJson(
-            payrollRunPageSchema,
-            payrollRunsPath(page),
-            getAccessToken(),
-            signal ? { signal } : {},
-        );
+        const body = await fetchJson(payrollRunPageSchema, payrollRunsPath(page), getAccessToken(), signal ? { signal } : {});
         const batch = Array.isArray(body) ? body : body.data;
         rows.push(...batch);
         const totalPages = Array.isArray(body) ? 0 : (body.pagination?.totalPages ?? 0);
@@ -181,12 +176,7 @@ export async function fetchPayrollRuns(signal?: AbortSignal): Promise<PayrollRun
 export async function fetchPayrollEmployees(signal?: AbortSignal): Promise<PayrollEmployee[]> {
     const rows: PayrollEmployee[] = [];
     for (let page = 1; page <= MAX_EMPLOYEE_PAGES; page += 1) {
-        const body = await fetchJson(
-            payrollEmployeePageSchema,
-            payrollEmployeesPath(page),
-            getAccessToken(),
-            signal ? { signal } : {},
-        );
+        const body = await fetchJson(payrollEmployeePageSchema, payrollEmployeesPath(page), getAccessToken(), signal ? { signal } : {});
         const batch = Array.isArray(body) ? body : body.data;
         rows.push(...batch);
         if (batch.length < PAGE_SIZE) {
@@ -197,17 +187,8 @@ export async function fetchPayrollEmployees(signal?: AbortSignal): Promise<Payro
 }
 
 /** `fetchAttendanceRange` — `attendance-repo.js:340-352`. */
-export async function fetchAttendanceRange(
-    from: string,
-    to: string,
-    signal?: AbortSignal,
-): Promise<AttendanceRecord[]> {
-    const body = await fetchJson(
-        attendanceRangeSchema,
-        attendanceRangePath(from, to),
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+export async function fetchAttendanceRange(from: string, to: string, signal?: AbortSignal): Promise<AttendanceRecord[]> {
+    const body = await fetchJson(attendanceRangeSchema, attendanceRangePath(from, to), getAccessToken(), signal ? { signal } : {});
     return body.data;
 }
 
@@ -363,11 +344,7 @@ export type PayrollSheetRow = {
  * صفّ الكشف — `payroll.js:148-153`: القسم من دليل HR بالـ`code` (وإلّا «—»)،
  * والمنصب «—» عند غيابه، والراتب بصيغته النصية إن أعطاه الخادم.
  */
-export function sheetRow(
-    employee: PayrollEmployee,
-    deptByCode: ReadonlyMap<string, HrDepartment>,
-    days: number,
-): PayrollSheetRow {
+export function sheetRow(employee: PayrollEmployee, deptByCode: ReadonlyMap<string, HrDepartment>, days: number): PayrollSheetRow {
     const deptCode = employee.department ? String(employee.department) : '';
     const dept = deptByCode.get(deptCode);
     return {

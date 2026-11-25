@@ -17,7 +17,6 @@
  */
 
 @layer theme, base, components, utilities;
-@import "./screens/_polish-shared.css" layer(components);
 @import "tailwindcss";
 @import "tw-animate-css";
 @import "@heroui/styles/base" layer(base);
@@ -58,19 +57,19 @@
     --erp-c-brand-text: oklch(0.47687 0.08024 187.92); /* #0B6B65 */
     /*
      * `brass`/`copper` أسماء تاريخية محفوظة للتوافق مع الشاشات القائمة:
-     * تشير الآن إلى الإجراء الأساسي (#0F766E) والمعلومات (#1D4ED8)، فلا كود
+     * تشير الآن إلى الإجراء الأساسي (#0F766E) والمعلومات (#243B53)، فلا كود
      * جديد يستخدمها — `bg-primary`/`text-brand-text`/`bg-info` هي الأسماء
      * الدلالية (COMPONENTS.md).
      */
     --erp-c-brass: oklch(0.51094 0.08606 186.39); /* #0F766E */
     --erp-c-brass-text: oklch(0.47687 0.08024 187.92); /* #0B6B65 */
     --erp-c-brass-bright: oklch(0.72927 0.11693 184.99); /* #33BFB1 */
-    --erp-c-copper: oklch(0.4882 0.21717 264.38); /* #1D4ED8 */
+    --erp-c-copper: oklch(0.51094 0.08606 186.39); /* #0F766E — مطابق للنحاسي (brass) لا أزرق */
     /* سلّم الرسوم: تركواز ← كحلي ← أخضر ← أزرق ← عنبري ← رمادي. */
     --erp-c-chart-1: oklch(0.51094 0.08606 186.39); /* #0F766E */
     --erp-c-chart-2: oklch(0.28012 0.03945 244); /* #172B3B */
     --erp-c-chart-3: oklch(0.5383 0.1284 153.99); /* #16834A */
-    --erp-c-chart-4: oklch(0.4882 0.21717 264.38); /* #1D4ED8 */
+    --erp-c-chart-4: oklch(0.72979 0.11508 85.76); /* #C8A24A — الذهب الرسمي للعلامة */
     --erp-c-chart-5: oklch(0.5553 0.1455 49); /* #B45309 */
     --erp-c-chart-6: oklch(0.554 0.032 263.3); /* #697386 */
     --erp-c-overlay: rgb(18 20 24 / 55%);
@@ -80,8 +79,8 @@
     --erp-c-warning-text: oklch(0.473 0.1204 50.27); /* #8F4308 */
     --erp-c-danger: oklch(0.5013 0.1783 28.7); /* #B3261E */
     --erp-c-danger-text: oklch(0.4254 0.148 29.38); /* #8E1F16 */
-    --erp-c-info: oklch(0.4882 0.2172 264.38); /* #1D4ED8 */
-    --erp-c-info-text: oklch(0.4367 0.2035 265.38); /* #1A3FBF */
+    --erp-c-info: oklch(0.34489 0.05132 250.5); /* #243B53 — slate مطابق للهوية (كان أزرق) */
+    --erp-c-info-text: oklch(0.28012 0.03945 244); /* #172B3B — نفس slate-2 (chart-2) */
     --erp-c-neutral: oklch(0.5006 0.025 259.18); /* #5B6472 */
     --erp-c-neutral-text: oklch(0.3958 0.0244 260.11); /* #3F4754 */
     --erp-c-sidebar: oklch(0.27848 0.05638 249.75); /* #102A43 */
@@ -95,6 +94,44 @@
     --erp-shadow-pop: 0 4px 12px -2px rgb(16 35 50 / 10%), 0 2px 6px -2px rgb(16 35 50 / 6%);
     --erp-shadow-drawer: 0 18px 40px -12px rgb(16 35 50 / 22%);
     --erp-focus-ring: 2px solid var(--erp-c-primary);
+
+    /*
+     * شݟ رموز shadcn/ui — جسر يستند إلى الدلالات (`--erp-*`) فتنعكس في الوضع
+     * الداكن تلقائيًا (قاعدة DESIGN.md: الداكن يبدّل البدائيات فقط).
+     */
+    --background: var(--erp-canvas);
+    --foreground: var(--erp-ink);
+    --card: var(--erp-surface);
+    --card-foreground: var(--erp-ink);
+    --popover: var(--erp-surface-raised);
+    --popover-foreground: var(--erp-ink);
+    --primary: var(--erp-primary);
+    --primary-foreground: var(--erp-on-primary);
+    --secondary: var(--erp-surface-sunken);
+    --secondary-foreground: var(--erp-ink);
+    --muted: var(--erp-surface-sunken);
+    --muted-foreground: var(--erp-muted);
+    --accent: var(--erp-surface-hover);
+    --accent-foreground: var(--erp-ink);
+    --destructive: var(--erp-danger);
+    --destructive-foreground: var(--erp-on-primary);
+    --border: var(--erp-hairline);
+    --input: var(--erp-field-border);
+    --ring: var(--erp-primary);
+    --radius: 0.625rem;
+    --chart-1: var(--erp-chart-1);
+    --chart-2: var(--erp-chart-2);
+    --chart-3: var(--erp-chart-3);
+    --chart-4: var(--erp-chart-4);
+    --chart-5: var(--erp-chart-5);
+    --sidebar: var(--erp-sidebar);
+    --sidebar-foreground: var(--erp-sidebar-ink);
+    --sidebar-primary: var(--erp-sidebar-accent);
+    --sidebar-primary-foreground: var(--erp-sidebar-plaque-ink);
+    --sidebar-accent: var(--erp-accent-soft);
+    --sidebar-accent-foreground: var(--erp-sidebar-ink);
+    --sidebar-border: var(--erp-hairline);
+    --sidebar-ring: var(--erp-sidebar-accent);
 
     /*
      * الحركة والتراصف — رموز لا تعتمد على الوضع (لا تكرار في `.dark`).
@@ -140,11 +177,11 @@
     --erp-c-brass: oklch(0.79238 0.11403 185.16); /* #53D3C5 */
     --erp-c-brass-text: oklch(0.84093 0.10385 186.15); /* #72E1D5 */
     --erp-c-brass-bright: oklch(0.88154 0.10123 186.13); /* #83EEE2 */
-    --erp-c-copper: oklch(0.73539 0.13684 260.38); /* #76A9FF */
+    --erp-c-copper: oklch(0.79238 0.11403 185.16); /* #53D3C5 — مطابق brass الداكن لا أزرق فاتح */
     --erp-c-chart-1: oklch(0.79238 0.11403 185.16); /* #53D3C5 */
     --erp-c-chart-2: oklch(0.87453 0.02321 241.92); /* #C9D8E4 */
     --erp-c-chart-3: oklch(0.7359 0.1642 155.38); /* #34C77B */
-    --erp-c-chart-4: oklch(0.73539 0.13684 260.38); /* #76A9FF */
+    --erp-c-chart-4: oklch(0.82839 0.11044 92.42); /* #E0C56F — الذهب الداكن للعلامة */
     --erp-c-chart-5: oklch(0.7734 0.1373 66.02); /* #F0A24B */
     --erp-c-chart-6: oklch(0.716 0.0228 259.19); /* #9BA4B2 */
     --erp-c-overlay: rgb(0 0 0 / 62%);
@@ -154,8 +191,8 @@
     --erp-c-warning-text: oklch(0.8396 0.1025 68.03); /* #F7BE80 */
     --erp-c-danger: oklch(0.7318 0.165 28.31); /* #FF7A6B */
     --erp-c-danger-text: oklch(0.8119 0.1066 28.79); /* #FFA79A */
-    --erp-c-info: oklch(0.7237 0.1425 265.75); /* #7BA2FF */
-    --erp-c-info-text: oklch(0.8375 0.0803 263.66); /* #AFCAFF */
+    --erp-c-info: oklch(0.41411 0.04269 260.21); /* #3E4C63 — steel مطابق للهوية (كان أزرق فاتح) */
+    --erp-c-info-text: oklch(0.86984 0.0218 245.88); /* #C9D6E2 — فاتح على info-soft الداكن */
     --erp-c-neutral: oklch(0.6609 0.0246 260.7); /* #8A93A2 */
     --erp-c-neutral-text: oklch(0.7996 0.0217 261.76); /* #B6BECC */
     --erp-c-sidebar: oklch(0.19861 0.03355 246.44); /* #081724 */
@@ -171,14 +208,8 @@
 }
 
 /* ─── الدلالات ─── */
-/*
- * الدلالات تُصرَّح أيضًا داخل سمة الكاشير: متغيّرات CSS تُحسب حيث تُصرَّح،
- * فإعادة التصريح تحت `body.pos-cashier-fullscreen` تجعل `var(--erp-c-*)`
- * تُحلّ ضد بدائيات السمة لا بدائيات الجذر — بلا أي قيمة خام.
- */
 :root,
-.dark,
-body.pos-cashier-fullscreen {
+.dark {
     --erp-canvas: var(--erp-c-canvas);
     --erp-surface: var(--erp-c-surface);
     --erp-surface-raised: var(--erp-c-surface-raised);
@@ -368,6 +399,43 @@ body.pos-cashier-fullscreen {
     --radius: 0.625rem;
 
     /*
+     * شݟ رموز shadcn/ui — جسر يستند إلى الدلالات (`--erp-*`) فتنعكس في الوضع
+     * الداكن تلقائيًا (قاعدة DESIGN.md: الداكن يبدّل البدائيات فقط).
+     */
+    --background: var(--erp-canvas);
+    --foreground: var(--erp-ink);
+    --card: var(--erp-surface);
+    --card-foreground: var(--erp-ink);
+    --popover: var(--erp-surface-raised);
+    --popover-foreground: var(--erp-ink);
+    --primary: var(--erp-primary);
+    --primary-foreground: var(--erp-on-primary);
+    --secondary: var(--erp-surface-sunken);
+    --secondary-foreground: var(--erp-ink);
+    --muted: var(--erp-surface-sunken);
+    --muted-foreground: var(--erp-muted);
+    --accent: var(--erp-surface-hover);
+    --accent-foreground: var(--erp-ink);
+    --destructive: var(--erp-danger);
+    --destructive-foreground: var(--erp-on-primary);
+    --border: var(--erp-hairline);
+    --input: var(--erp-field-border);
+    --ring: var(--erp-primary);
+    --chart-1: var(--erp-chart-1);
+    --chart-2: var(--erp-chart-2);
+    --chart-3: var(--erp-chart-3);
+    --chart-4: var(--erp-chart-4);
+    --chart-5: var(--erp-chart-5);
+    --sidebar: var(--erp-sidebar);
+    --sidebar-foreground: var(--erp-sidebar-ink);
+    --sidebar-primary: var(--erp-sidebar-accent);
+    --sidebar-primary-foreground: var(--erp-sidebar-plaque-ink);
+    --sidebar-accent: var(--erp-accent-soft);
+    --sidebar-accent-foreground: var(--erp-sidebar-ink);
+    --sidebar-border: var(--erp-hairline);
+    --sidebar-ring: var(--erp-sidebar-accent);
+
+    /*
      * منحنيات الحركة — تولّد أدوات `ease-standard` / `ease-enter`.
      * (المدد تُستهلك كقيم اعتباطية `duration-[var(--erp-motion-base)]` لأن
      * Tailwind v4 لا يملك فضاء أسماء للمدد.)
@@ -414,8 +482,7 @@ body.pos-cashier-fullscreen {
     font-display: swap;
     src: url("./assets/fonts/tajawal-normal-400-arabic.woff2") format("woff2");
     unicode-range:
-        U+0600-06ff, U+0750-077f, U+0870-088e, U+0890-0891, U+08a0-08ff, U+200c-200e, U+2010-2011, U+204f, U+2e41,
-        U+fb50-fdff, U+fe70-feff;
+        U+0600-06ff, U+0750-077f, U+0870-088e, U+0890-0891, U+08a0-08ff, U+200c-200e, U+2010-2011, U+204f, U+2e41, U+fb50-fdff, U+fe70-feff;
 }
 @font-face {
     font-family: "Tajawal";
@@ -434,8 +501,7 @@ body.pos-cashier-fullscreen {
     font-display: swap;
     src: url("./assets/fonts/tajawal-normal-500-arabic.woff2") format("woff2");
     unicode-range:
-        U+0600-06ff, U+0750-077f, U+0870-088e, U+0890-0891, U+08a0-08ff, U+200c-200e, U+2010-2011, U+204f, U+2e41,
-        U+fb50-fdff, U+fe70-feff;
+        U+0600-06ff, U+0750-077f, U+0870-088e, U+0890-0891, U+08a0-08ff, U+200c-200e, U+2010-2011, U+204f, U+2e41, U+fb50-fdff, U+fe70-feff;
 }
 @font-face {
     font-family: "Tajawal";
@@ -454,8 +520,7 @@ body.pos-cashier-fullscreen {
     font-display: swap;
     src: url("./assets/fonts/tajawal-normal-700-arabic.woff2") format("woff2");
     unicode-range:
-        U+0600-06ff, U+0750-077f, U+0870-088e, U+0890-0891, U+08a0-08ff, U+200c-200e, U+2010-2011, U+204f, U+2e41,
-        U+fb50-fdff, U+fe70-feff;
+        U+0600-06ff, U+0750-077f, U+0870-088e, U+0890-0891, U+08a0-08ff, U+200c-200e, U+2010-2011, U+204f, U+2e41, U+fb50-fdff, U+fe70-feff;
 }
 @font-face {
     font-family: "Tajawal";
@@ -474,8 +539,7 @@ body.pos-cashier-fullscreen {
     font-display: swap;
     src: url("./assets/fonts/tajawal-normal-800-arabic.woff2") format("woff2");
     unicode-range:
-        U+0600-06ff, U+0750-077f, U+0870-088e, U+0890-0891, U+08a0-08ff, U+200c-200e, U+2010-2011, U+204f, U+2e41,
-        U+fb50-fdff, U+fe70-feff;
+        U+0600-06ff, U+0750-077f, U+0870-088e, U+0890-0891, U+08a0-08ff, U+200c-200e, U+2010-2011, U+204f, U+2e41, U+fb50-fdff, U+fe70-feff;
 }
 @font-face {
     font-family: "Tajawal";
@@ -869,8 +933,8 @@ body.pos-cashier-fullscreen {
     }
 }
 
-/* HeroUI v3 and shadcn/ui share one bridge to ERP tokens, including nested dark
- * previews. Selective imports above avoid shipping unused HeroUI component styles.
+/* HeroUI v3: bridge the library to ERP tokens, including nested dark previews.
+ * Selective imports above avoid shipping styles for components not yet adopted.
  */
 :root,
 .dark {
@@ -903,7 +967,7 @@ body.pos-cashier-fullscreen {
     --sidebar-foreground: var(--erp-sidebar-ink);
     --sidebar-primary: var(--erp-sidebar-accent);
     --sidebar-primary-foreground: var(--erp-sidebar-plaque-ink);
-    --sidebar-accent: var(--accent-soft);
+    --sidebar-accent: var(--erp-accent-soft, var(--erp-surface-hover));
     --sidebar-accent-foreground: var(--erp-sidebar-ink);
     --sidebar-border: var(--erp-hairline);
     --sidebar-ring: var(--erp-sidebar-accent);
@@ -1264,70 +1328,4 @@ body.pos-cashier-fullscreen {
         transition-duration: 0.01ms !important;
         scroll-behavior: auto !important;
     }
-}
-
-/* ─── البدائيات: سمة الكاشير «Midnight & Emerald» ─── */
-/*
- * سمة ثالثة معلنة — مثل `.dark` تمامًا: تعيد تعيين البدائيات (`--erp-c-*`)
- * وحدها تحت جسم الكاشير، ولا تكتب أي دلالة (`--erp-*`) بقيمة خام. الدلالات
- * تُعاد تصريحها في طبقة الدلالات أعلاه فتُحلّ ضد هذه البدائيات، وجسر shadcn/ui
- * يُعاد ربطه هنا بمراجع الدلالات نفسها. هكذا تبقى هوية الكاشير ثابتة
- * (كحلي ليلي + زمردي) مهما كان وضع التبديل، وتبقى تحت عقد التباين نفسه.
- *
- * القيم OKLCH مشتقة من مراسي HEX الأصلية وتُثبتها الاختبارات (ذهابًا وعودةً).
- * استثناء وحيد مقصود: حدّ الحقول رُفع من #475569 إلى #64748B (slate-500)
- * لأن الأول لا يحقق 3:1 على أسطح السمة (WCAG 1.4.11) — الدرجة محفوظة.
- */
-body.pos-cashier-fullscreen {
-    --erp-c-canvas: oklch(0.1802 0.03246 266.62); /* #0B1120 */
-    --erp-c-surface: oklch(0.21008 0.03176 264.66); /* #111827 */
-    --erp-c-surface-raised: oklch(0.2795 0.03685 260.03); /* #1E293B */
-    --erp-c-surface-sunken: oklch(0.20058 0.03263 262.35); /* #0E1625 */
-    --erp-c-surface-hover: oklch(0.32244 0.04212 258.3); /* #263449 */
-    --erp-c-ink: oklch(0.92758 0.00581 264.53); /* #E5E7EB */
-    --erp-c-ink-secondary: oklch(0.86898 0.01985 252.89); /* #CBD5E1 */
-    --erp-c-muted: oklch(0.71366 0.01918 261.32); /* #9CA3AF */
-    --erp-c-faint: oklch(0.65557 0.03397 257.26); /* #8492A6 */
-    --erp-c-hairline: oklch(0.30774 0.03985 260.39); /* #243044 */
-    --erp-c-hairline-strong: oklch(0.3717 0.03916 257.29); /* #334155 */
-    --erp-c-field-border: oklch(0.55439 0.04072 257.42); /* #64748B (رُفع من #475569 لأجل 3:1) */
-    --erp-c-primary: oklch(0.69587 0.14907 162.48); /* #10B981 */
-    --erp-c-primary-hover: oklch(0.77294 0.15349 163.22); /* #34D399 */
-    --erp-c-primary-active: oklch(0.59597 0.12742 163.23); /* #059669 */
-    --erp-c-on-primary: oklch(0.27081 0.04719 174.42); /* #052E25 */
-    --erp-c-brand-text: oklch(0.84519 0.12995 164.98); /* #6EE7B7 */
-    --erp-c-brass: oklch(0.76859 0.16466 70.08); /* #F59E0B */
-    --erp-c-brass-text: oklch(0.83686 0.16442 84.43); /* #FBBF24 */
-    --erp-c-copper: oklch(0.83686 0.16442 84.43); /* #FBBF24 */
-    --erp-c-success: oklch(0.69587 0.14907 162.48); /* #10B981 */
-    --erp-c-success-text: oklch(0.84519 0.12995 164.98); /* #6EE7B7 */
-    --erp-c-warning: oklch(0.76859 0.16466 70.08); /* #F59E0B */
-    --erp-c-warning-text: oklch(0.87897 0.15342 91.61); /* #FCD34D */
-    --erp-c-danger: oklch(0.63683 0.20785 25.33); /* #EF4444 */
-    --erp-c-danger-text: oklch(0.80769 0.10349 19.57); /* #FCA5A5 */
-    color-scheme: dark;
-
-    /*
-     * جسر shadcn/ui داخل السمة: الجذر يحسب `var(--erp-*)` ضد بدائياته هو،
-     * فيُعاد الربط هنا بمراجع الدلالات لتُحلّ ضد بدائيات الكاشير. لا قيم خام.
-     */
-    --background: var(--erp-canvas);
-    --foreground: var(--erp-ink);
-    --card: var(--erp-surface);
-    --card-foreground: var(--erp-ink);
-    --popover: var(--erp-surface);
-    --popover-foreground: var(--erp-ink);
-    --primary: var(--erp-primary);
-    --primary-foreground: var(--erp-on-primary);
-    --secondary: var(--erp-surface-raised);
-    --secondary-foreground: var(--erp-ink);
-    --muted: var(--erp-surface-raised);
-    --muted-foreground: var(--erp-muted);
-    --accent: var(--erp-surface-raised);
-    --accent-foreground: var(--erp-ink);
-    --destructive: var(--erp-danger);
-    --destructive-foreground: var(--erp-on-primary);
-    --border: var(--erp-hairline);
-    --input: var(--erp-hairline-strong);
-    --ring: var(--erp-primary);
 }

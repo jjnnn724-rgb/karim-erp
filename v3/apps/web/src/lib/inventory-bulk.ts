@@ -9,7 +9,6 @@ import { writeJson } from './write';
  *   POST /api/warehouse/inventory/bulk-receipt
  *   الأدوار: admin|manager|warehouse (requireRole).
  *   الجسم: {items:[{name|itemName, category, unit, qty, price, minQty, expiryDate}]}
- *   كل طلب يحمل `X-Idempotency-Key` ثابتًا لإعادة المحاولة دون تكرار المخزون.
  *   الرد 201: {inventory, transactions, batchId} — والدفعة ذرّية (BEGIN/COMMIT)،
  *   فأي خطأ في صف يُسقط الدفعة كلها.
  *
@@ -42,10 +41,6 @@ export interface BulkReceiptRow {
     price: string;
     minQty: string;
     expiryDate: string;
-    /** تجميع داخلي يحافظ على حدود الدفعة عند إعادة محاولة الجزء الفاشل. */
-    submissionGroup?: string;
-    /** مفتاح خادم ثابت للدفعة؛ يُحذف فقط بعد رفض معروف بلا أثر. */
-    submissionKey?: string;
 }
 
 let rowSeq = 0;
@@ -158,45 +153,18 @@ export interface BulkReceiptOutcome {
     batches: string[];
     /** الدفعات الفاشلة مع سببها. */
     failures: BulkReceiptFailure[];
-    /** صفوف الدفعات الفاشلة فقط، مع مفاتيح إعادة المحاولة الآمنة. */
-    retryRows: BulkReceiptRow[];
 }
 
-function createSubmissionId(): string {
-    const cryptoApi = globalThis.crypto;
-    if (!cryptoApi?.getRandomValues) {
-        throw new Error('المتصفح لا يدعم مفاتيح إعادة المحاولة الآمنة');
+export class BulkReceiptError extends Error {
+    readonly code: string;
+    readonly names: string[];
+
+    constructor(message: string, code: string, names: string[] = []) {
+        super(message);
+        this.name = 'BulkReceiptError';
+        this.code = code;
+        this.names = names;
     }
-    const bytes = cryptoApi.getRandomValues(new Uint8Array(16));
-    return Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
-}
-
-function receiptChunks(rows: readonly BulkReceiptRow[]): BulkReceiptRow[][] {
-    const chunks: BulkReceiptRow[][] = [];
-    let ungrouped: BulkReceiptRow[] = [];
-
-    const flushUngrouped = (): void => {
-        chunks.push(...chunkBulkRows(ungrouped));
-        ungrouped = [];
-    };
-
-    for (const row of rows) {
-        if (!row.submissionGroup) {
-            ungrouped.push(row);
-            continue;
-        }
-
-        flushUngrouped();
-        const previous = chunks[chunks.length - 1];
-        if (previous?.[0]?.submissionGroup === row.submissionGroup && previous.length < BULK_CHUNK_SIZE) {
-            previous.push(row);
-        } else {
-            chunks.push([row]);
-        }
-    }
-
-    flushUngrouped();
-    return chunks;
 }
 
 /**
@@ -205,24 +173,13 @@ function receiptChunks(rows: readonly BulkReceiptRow[]): BulkReceiptRow[][] {
  */
 export async function submitBulkReceipt(rows: readonly BulkReceiptRow[]): Promise<BulkReceiptOutcome> {
     const ready = validBulkRows(rows);
-    const outcome: BulkReceiptOutcome = { imported: 0, total: ready.length, batches: [], failures: [], retryRows: [] };
-    for (const sourceChunk of receiptChunks(ready)) {
-        const submissionGroup = sourceChunk[0]?.submissionGroup ?? createSubmissionId();
-        const submissionKey = sourceChunk[0]?.submissionKey ?? `bulk-receipt-${createSubmissionId()}`;
-        const chunk = sourceChunk.map((row) => ({ ...row, submissionGroup, submissionKey }));
+    const outcome: BulkReceiptOutcome = { imported: 0, total: ready.length, batches: [], failures: [] };
+    for (const chunk of chunkBulkRows(ready)) {
         const names = chunk.map((row) => String(row.name ?? '').trim()).filter(Boolean);
         try {
-            const response = await writeJson(
-                bulkReceiptSchema,
-                '/api/warehouse/inventory/bulk-receipt',
-                'POST',
-                {
-                    items: chunk.map(bulkRowPayload),
-                },
-                {
-                    'X-Idempotency-Key': submissionKey,
-                },
-            );
+            const response = await writeJson(bulkReceiptSchema, '/api/warehouse/inventory/bulk-receipt', 'POST', {
+                items: chunk.map(bulkRowPayload),
+            });
             const batchId = String(response.batchId ?? '').trim();
             if (batchId) {
                 outcome.batches.push(batchId);
@@ -230,19 +187,14 @@ export async function submitBulkReceipt(rows: readonly BulkReceiptRow[]): Promis
             outcome.imported += chunk.length;
         } catch (error) {
             const api = error instanceof ApiError ? error : null;
+            const code = String(api?.code ?? '');
             const message = api?.message || (error instanceof Error ? error.message : 'تعذّر تسجيل الدفعة');
             outcome.failures.push({ names, message });
-            // A definite client rejection did not commit inventory; allow a
-            // corrected retry with a fresh key. Keep the key for uncertain
-            // transport/server failures so a committed request can be replayed.
-            const safeToRetryWithNewBody = api !== null && api.status >= 400 && api.status < 500 && api.status !== 409;
-            outcome.retryRows.push(
-                ...chunk.map((row) => {
-                    const retryRow: BulkReceiptRow = { ...row };
-                    if (safeToRetryWithNewBody) delete retryRow.submissionKey;
-                    return retryRow;
-                }),
-            );
+            // رفض دفعة بسبب صف واحد (صلاحية فاسدة أو وحدة مختلفة) لا يُصلح
+            // بتكرار الدفعة — يُبلَّغ المستخدم برفض الخادم مع أسماء الدفعة.
+            if (code === 'UNIT_MISMATCH' || code === 'INVALID_EXPIRY_DATE' || code === 'EMPTY_BULK_RECEIPT') {
+                throw new BulkReceiptError(message, code, names);
+            }
         }
     }
     return outcome;

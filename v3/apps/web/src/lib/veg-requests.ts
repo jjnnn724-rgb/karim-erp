@@ -4,7 +4,7 @@ import { getAccessToken } from './auth';
 import { arSearchKey } from './employees';
 
 /**
- * طلبات شراء الخضار — القراءة والتحليل من `/api/veg-requests`
+ * طلبات شراء الخضار — قراءة فقط من `/api/veg-requests`
  * (backend/veg-requests-routes.js:141).
  *
  * العقد منسوخ من الخادم كما في `frontend/app/js/v2/data/veg-repo.js`:
@@ -17,9 +17,9 @@ import { arSearchKey } from './employees';
  *        items_count, total, notes, received_by_name, priced_by_name,
  *        print_count, created_at — نفس أعمدة SELECT عند الخادم :173-176.
  *
- * التحليل يقرأ الاستلام من الطلبات والاستهلاك من inventory_ledger، ويُظهر
- * الأصناف غير المرتبطة بالاسم والوحدة كقيمة مجهولة لا كصفر.
- * الخادم هو من يقرّر أدوار القراءة (sous_chef|admin|owner|warehouse).
+ * الشاشة سجلٌ فقط: الإنشاء والاستلام والتسعير وتعديل الكميات والإلغاء
+ * والطباعة تبقى في V2. الخادم هو من يقرّر أدوار القراءة
+ * (sous_chef|admin|owner|warehouse) ويُعرض رفضه كما هو.
  */
 
 const idValue = z.union([z.string(), z.number()]).transform((value) => String(value));
@@ -57,7 +57,6 @@ export const vegRequestSchema = z
         notes: optionalText,
         received_by_name: optionalText,
         priced_by_name: optionalText,
-        expense_id: optionalId,
         print_count: countValue,
         created_at: optionalText,
     })
@@ -126,76 +125,8 @@ export async function fetchVegRequests(
     status: VegStatusFilter = 'all',
     signal?: AbortSignal,
 ): Promise<{ requests: VegRequest[]; summary: VegSummary }> {
-    const body = await fetchJson(
-        vegRequestsResponseSchema,
-        vegListPath(status),
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    const body = await fetchJson(vegRequestsResponseSchema, vegListPath(status), getAccessToken(), signal ? { signal } : {});
     return { requests: body.requests, summary: body.summary };
-}
-
-const nullableNumber = z.number().nullable();
-
-const vegConsumptionItemSchema = z
-    .object({
-        name: z.string(),
-        unit: z.string(),
-        inventoryId: z.number().nullable(),
-        inventoryLinked: z.boolean(),
-        receivedQty: z.number(),
-        receivedValue: nullableNumber,
-        consumedQty: nullableNumber,
-        consumedValue: nullableNumber,
-        onHand: nullableNumber,
-        avgCost: nullableNumber,
-        requests: z.number(),
-    })
-    .passthrough();
-
-const vegConsumptionResponseSchema = z
-    .object({
-        from: z.string(),
-        to: z.string(),
-        rows: z.array(vegConsumptionItemSchema),
-        totals: z
-            .object({
-                receivedQtyByUnit: z.array(z.object({ unit: z.string(), quantity: z.number() })),
-                receivedValue: nullableNumber,
-                consumedQtyByUnit: z.array(z.object({ unit: z.string(), quantity: z.number() })),
-                consumedValue: z.number(),
-                items: z.number(),
-            })
-            .passthrough(),
-        meta: z
-            .object({
-                receivedSource: z.string(),
-                consumedSource: z.string(),
-                inventoryMatch: z.string(),
-            })
-            .passthrough(),
-    })
-    .passthrough();
-
-export type VegConsumptionItem = z.infer<typeof vegConsumptionItemSchema>;
-export type VegConsumption = z.infer<typeof vegConsumptionResponseSchema>;
-
-export async function fetchVegConsumption(
-    from: string,
-    to: string,
-    query: string,
-    signal?: AbortSignal,
-): Promise<VegConsumption> {
-    const params = new URLSearchParams({ from, to });
-    if (query.trim()) {
-        params.set('q', query.trim());
-    }
-    return fetchJson(
-        vegConsumptionResponseSchema,
-        `/api/veg-requests/consumption?${params.toString()}`,
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
 }
 
 /* ─── الصفّ ─────────────────────────────────────────────────────────────── */
@@ -231,7 +162,6 @@ export type VegRequestRow = {
     pricedBy: string;
     notes: string;
     printCount: number;
-    canHide: boolean;
 };
 
 /** `veg-repo.js:166-182` حرفيًا، مع تسمية الحالة من `status.js`. */
@@ -247,17 +177,12 @@ export function vegRequestToRow(request: VegRequest): VegRequestRow {
         status,
         statusLabel: vegStatusLabel(status),
         total: request.total,
-        by: request.created_by_name
-            ? String(request.created_by_name)
-            : request.created_by
-              ? `#${request.created_by}`
-              : '—',
+        by: request.created_by_name ? String(request.created_by_name) : request.created_by ? `#${request.created_by}` : '—',
         created: request.created_at ? String(request.created_at).slice(0, 10) : '',
         receivedBy: request.received_by_name ? String(request.received_by_name) : '',
         pricedBy: request.priced_by_name ? String(request.priced_by_name) : '',
         notes: request.notes ? String(request.notes) : '',
         printCount: request.print_count,
-        canHide: ['pending', 'cancelled'].includes(status) && request.expense_id === null,
     };
 }
 
@@ -354,4 +279,54 @@ export function vegStatusCounts(rows: readonly VegRequestRow[]): VegStatusCounts
         cancelled: rows.filter((row) => row.status === 'cancelled').length,
         urgent: rows.filter((row) => row.urgent).length,
     };
+}
+
+/* ─── تحليل الخضار (2026-11-21) — المستلم/المستهلك/الرصيد لكل صنف ───────── */
+
+const consumptionRowSchema = z
+    .object({
+        name: z.string(),
+        unit: optionalText,
+        inventoryId: z.union([z.string(), z.number()]).nullable().optional(),
+        onHand: z.number(),
+        avgCost: z.number(),
+        receivedQty: z.number(),
+        receivedValue: z.number(),
+        requests: z.number(),
+        consumedQty: z.number(),
+        consumedValue: z.number(),
+    })
+    .passthrough();
+
+export type VegConsumptionRow = z.infer<typeof consumptionRowSchema>;
+
+const consumptionResponseSchema = z
+    .object({
+        ok: z.unknown().optional(),
+        from: z.string(),
+        to: z.string(),
+        rows: z.array(consumptionRowSchema),
+        totals: z.object({
+            receivedQty: z.number(),
+            receivedValue: z.number(),
+            consumedQty: z.number(),
+            items: z.number(),
+        }),
+    })
+    .passthrough();
+
+export type VegConsumption = z.infer<typeof consumptionResponseSchema>;
+
+/** تحليل الخضار للفترة — باب الخادم `/api/veg-requests/consumption`. */
+export async function fetchVegConsumption(from: string, to: string, q: string, signal?: AbortSignal): Promise<VegConsumption> {
+    const params = new URLSearchParams({ from, to });
+    if (q.trim()) {
+        params.set('q', q.trim().slice(0, 60));
+    }
+    return fetchJson(
+        consumptionResponseSchema,
+        `/api/veg-requests/consumption?${params.toString()}`,
+        getAccessToken(),
+        signal ? { signal } : {},
+    );
 }

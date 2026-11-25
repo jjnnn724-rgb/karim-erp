@@ -55,9 +55,7 @@ export function Drawer({
                         <div className="flex min-w-0 flex-col gap-xxs">
                             <SheetPrimitive.Title className="text-heading-lg text-ink">{title}</SheetPrimitive.Title>
                             {description ? (
-                                <SheetPrimitive.Description className="text-body-sm text-muted">
-                                    {description}
-                                </SheetPrimitive.Description>
+                                <SheetPrimitive.Description className="text-body-sm text-muted">{description}</SheetPrimitive.Description>
                             ) : null}
                         </div>
                         <SheetPrimitive.Close asChild>

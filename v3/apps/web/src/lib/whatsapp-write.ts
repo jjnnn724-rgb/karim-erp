@@ -90,12 +90,7 @@ export function fetchWhatsappOutbox(signal?: AbortSignal) {
 }
 
 export function fetchWhatsappTemplates(signal?: AbortSignal) {
-    return fetchJson(
-        whatsappTemplatesResponseSchema,
-        '/api/whatsapp/templates',
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    return fetchJson(whatsappTemplatesResponseSchema, '/api/whatsapp/templates', getAccessToken(), signal ? { signal } : {});
 }
 
 export function fetchWhatsappRules(signal?: AbortSignal) {
@@ -103,30 +98,15 @@ export function fetchWhatsappRules(signal?: AbortSignal) {
 }
 
 export function fetchWhatsappManagers(signal?: AbortSignal) {
-    return fetchJson(
-        whatsappManagersResponseSchema,
-        '/api/whatsapp/managers',
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    return fetchJson(whatsappManagersResponseSchema, '/api/whatsapp/managers', getAccessToken(), signal ? { signal } : {});
 }
 
 export function fetchWhatsappAutomation(signal?: AbortSignal) {
-    return fetchJson(
-        whatsappAutomationResponseSchema,
-        '/api/whatsapp/automation',
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    return fetchJson(whatsappAutomationResponseSchema, '/api/whatsapp/automation', getAccessToken(), signal ? { signal } : {});
 }
 
 export function fetchWhatsappCampaigns(signal?: AbortSignal) {
-    return fetchJson(
-        whatsappCampaignsResponseSchema,
-        '/api/whatsapp/campaigns',
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    return fetchJson(whatsappCampaignsResponseSchema, '/api/whatsapp/campaigns', getAccessToken(), signal ? { signal } : {});
 }
 
 export function fetchWhatsappLogs(signal?: AbortSignal) {
@@ -134,12 +114,7 @@ export function fetchWhatsappLogs(signal?: AbortSignal) {
 }
 
 export function fetchWhatsappQueryCategories(signal?: AbortSignal) {
-    return fetchJson(
-        whatsappQueryCategoriesResponseSchema,
-        '/api/whatsapp/query/categories',
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    return fetchJson(whatsappQueryCategoriesResponseSchema, '/api/whatsapp/query/categories', getAccessToken(), signal ? { signal } : {});
 }
 
 /* ─── محرك الاتصال ─────────────────────────────────────────────────────── */
@@ -242,12 +217,7 @@ export function saveWhatsappTemplate(form: WhatsappTemplateForm) {
     });
 }
 
-export function sendWhatsappTemplate(input: {
-    to: string;
-    name: string;
-    lang?: 'ar' | 'en';
-    vars?: readonly string[];
-}) {
+export function sendWhatsappTemplate(input: { to: string; name: string; lang?: 'ar' | 'en'; vars?: readonly string[] }) {
     const to = String(input.to ?? '').trim();
     const name = String(input.name ?? '').trim();
     if (!to) {
@@ -331,11 +301,7 @@ export function addWhatsappManager(number: string) {
 }
 
 export function deleteWhatsappManager(number: string) {
-    return writeJson(
-        whatsappAckSchema,
-        `/api/whatsapp/managers/${encodeURIComponent(String(number ?? '').replace(/\D/g, ''))}`,
-        'DELETE',
-    );
+    return writeJson(whatsappAckSchema, `/api/whatsapp/managers/${encodeURIComponent(String(number ?? '').replace(/\D/g, ''))}`, 'DELETE');
 }
 
 /* ─── التنبيهات المجدولة (admin) ──────────────────────────────────────── */
@@ -536,10 +502,7 @@ export function waAnswerText(html: string): string {
 /* ─── QR: نفس ملف V2 المخزَّن والمخبَّأ ────────────────────────────────── */
 
 interface QrGlobal {
-    toDataURL?: (
-        text: string,
-        options?: { width?: number; margin?: number; errorCorrectionLevel?: string },
-    ) => Promise<string>;
+    toDataURL?: (text: string, options?: { width?: number; margin?: number; errorCorrectionLevel?: string }) => Promise<string>;
 }
 
 let qrPromise: Promise<boolean> | null = null;

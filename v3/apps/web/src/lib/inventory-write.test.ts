@@ -118,9 +118,7 @@ describe('المخزون — تحقق الوارد وحمولته', () => {
         expect(receiptError('أرز', '2', '', '')).toBe(INVENTORY_TEXT.priceInvalid);
         expect(receiptError('أرز', '2', '-1', '')).toBe(INVENTORY_TEXT.priceInvalid);
         expect(receiptError('أرز', '2', 'abc', '')).toBe(INVENTORY_TEXT.priceInvalid);
-        expect(receiptError('أرز', '2', '1', '30/11/2026')).toBe(
-            'تاريخ الصلاحية غير صحيح للصنف أرز — الصيغة المطلوبة YYYY-MM-DD',
-        );
+        expect(receiptError('أرز', '2', '1', '30/11/2026')).toBe('تاريخ الصلاحية غير صحيح للصنف أرز — الصيغة المطلوبة YYYY-MM-DD');
         expect(receiptError('أرز', '2', '1', '2026-11-30')).toBe('');
         expect(receiptError('أرز', '2', '1', '')).toBe('');
     });
@@ -195,9 +193,7 @@ describe('المخزون — كشف ودمج المكرر', () => {
 describe('المخزون — نصوص V2 الحرفية', () => {
     it('تأكيد الحذف والحذف النهائي', () => {
         expect(deleteConfirm('أرز')).toBe('حذف الصنف "أرز"؟');
-        expect(forceDeleteConfirm('أرز')).toBe(
-            '"أرز" له حركات مخزون.\nهل تريد الحذف النهائي مع كل حركاته وسجلاته؟ (لا يمكن التراجع)',
-        );
+        expect(forceDeleteConfirm('أرز')).toBe('"أرز" له حركات مخزون.\nهل تريد الحذف النهائي مع كل حركاته وسجلاته؟ (لا يمكن التراجع)');
         expect(INVENTORY_TEXT.deleteSuccess).toBe('تم الحذف');
         expect(INVENTORY_TEXT.forceDeleteSuccess).toBe('تم الحذف النهائي مع الحركات');
         expect(INVENTORY_TEXT.deleteBlocked).toBe(

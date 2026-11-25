@@ -1,18 +1,18 @@
 import { useQuery } from '@tanstack/react-query';
-import { ScreenHero } from '../ui';
 import { useMemo } from 'react';
+import { ScreenHero } from '../ui';
 import './Zkteco.premium.css';
+import { AttendanceFixPanel } from '../components/AttendanceFixPanel';
 import { SectionCard } from '../components/Reports';
 import { StateError, StateLoading } from '../components/TableState';
-import { AttendanceFixPanel } from '../components/AttendanceFixPanel';
 import { ZktecoAdmin } from '../components/ZktecoAdmin';
 import { ZktecoControl } from '../components/ZktecoControl';
 import { ZktecoWorkbench } from '../components/ZktecoWorkbench';
-import { getAccessToken } from '../lib/auth';
 import { fetchJson } from '../lib/api';
+import { getAccessToken } from '../lib/auth';
 import { errorMessage, intOf, num } from '../lib/reporting';
-import { deviceToRow, fetchZkStatus, summarizeDevices } from '../lib/zkteco';
 import { punchAttemptsSchema } from '../lib/settings';
+import { deviceToRow, fetchZkStatus, summarizeDevices } from '../lib/zkteco';
 import { PunchSection } from './settings/PunchSection';
 
 /**
@@ -30,8 +30,7 @@ export function PunchControl() {
     });
     const attemptsQuery = useQuery({
         queryKey: ['settings', 'punch-attempts'],
-        queryFn: ({ signal }) =>
-            fetchJson(punchAttemptsSchema, '/api/attendance/portal/attempts?limit=1', getAccessToken(), { signal }),
+        queryFn: ({ signal }) => fetchJson(punchAttemptsSchema, '/api/attendance/portal/attempts?limit=1', getAccessToken(), { signal }),
         refetchOnWindowFocus: false,
     });
 
@@ -43,7 +42,7 @@ export function PunchControl() {
 
     return (
         <div className="flex flex-col gap-md erp-premium erp-premium-zkteco">
-<ScreenHero
+            <ScreenHero
                 title="مركز التحكم بالبصمة والحضور"
                 english="Fingerprint & Attendance Control"
                 description="جهاز البصمة، كاميرا الموبايل، والموقع الجغرافي — كل التحكم هنا، كتابةً بتمرير السبب وخلفيها بوابات الخادم."
@@ -51,9 +50,11 @@ export function PunchControl() {
                     <>
                         <button
                             type="button"
-                            onClick={() => { () => {
-                    void statusQuery.refetch();
-                } }}
+                            onClick={() => {
+                                () => {
+                                    void statusQuery.refetch();
+                                };
+                            }}
                             disabled={statusQuery.isFetching}
                             className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
                         >
@@ -77,17 +78,26 @@ export function PunchControl() {
                     </div>
                     <div className="rounded-lg border border-hairline bg-surface p-sm">
                         <p className="text-caption text-muted">بصمات اليوم (بوابة الكاميرا)</p>
-                        <p className="mt-xxs text-heading-md text-ink" dir="ltr">{intOf(attemptsQuery.data?.summary.accepted_24h ?? 0)}</p>
-                        <p className="text-caption text-faint">مقبول/مرفوض: {intOf(attemptsQuery.data?.summary.accepted_24h ?? 0)} / {intOf(attemptsQuery.data?.summary.rejected_24h ?? 0)}</p>
+                        <p className="mt-xxs text-heading-md text-ink" dir="ltr">
+                            {intOf(attemptsQuery.data?.summary.accepted_24h ?? 0)}
+                        </p>
+                        <p className="text-caption text-faint">
+                            مقبول/مرفوض: {intOf(attemptsQuery.data?.summary.accepted_24h ?? 0)} /{' '}
+                            {intOf(attemptsQuery.data?.summary.rejected_24h ?? 0)}
+                        </p>
                     </div>
                     <div className="rounded-lg border border-hairline bg-surface p-sm">
                         <p className="text-caption text-muted">خارج النطاق (٧ أيام)</p>
-                        <p className="mt-xxs text-heading-md text-warning-text" dir="ltr">{intOf(attemptsQuery.data?.summary.out_of_range_7d ?? 0)}</p>
+                        <p className="mt-xxs text-heading-md text-warning-text" dir="ltr">
+                            {intOf(attemptsQuery.data?.summary.out_of_range_7d ?? 0)}
+                        </p>
                         <p className="text-caption text-faint">جهاز مختلف: {intOf(attemptsQuery.data?.summary.device_mismatch_7d ?? 0)}</p>
                     </div>
                     <div className="rounded-lg border border-hairline bg-surface p-sm">
                         <p className="text-caption text-muted">بلا ربط</p>
-                        <p className="mt-xxs text-heading-md text-warning-text" dir="ltr">{intOf(num(totals.unlinkedEmployees))}</p>
+                        <p className="mt-xxs text-heading-md text-warning-text" dir="ltr">
+                            {intOf(num(totals.unlinkedEmployees))}
+                        </p>
                         <p className="text-caption text-faint">أرقام تحتاج ربطًا بموظف</p>
                     </div>
                 </ul>

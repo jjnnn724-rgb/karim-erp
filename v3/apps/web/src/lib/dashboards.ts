@@ -1,7 +1,7 @@
 import { z } from 'zod';
 import { ApiError, fetchJson } from './api';
 import { getAccessToken } from './auth';
-import { dispatchSchema, type Dispatch } from './dispatches';
+import { type Dispatch, dispatchSchema } from './dispatches';
 import { fetchPnl, type PnlResponse } from './pnl';
 
 /**
@@ -226,15 +226,17 @@ const panelSchema = z
             .optional(),
         dispatchExpenses: z
             .array(
-                z.object({
-                    id: text,
-                    date: text.nullable().optional(),
-                    desc: text.optional(),
-                    amount: numLike.optional(),
-                    adjustmentType: text.optional(),
-                    dispatchId: text.nullable().optional(),
-                    notes: text.optional(),
-                }).passthrough(),
+                z
+                    .object({
+                        id: text,
+                        date: text.nullable().optional(),
+                        desc: text.optional(),
+                        amount: numLike.optional(),
+                        adjustmentType: text.optional(),
+                        dispatchId: text.nullable().optional(),
+                        notes: text.optional(),
+                    })
+                    .passthrough(),
             )
             .optional(),
         /** أذون قسمه من مصدر مقفول بالنطاق على الخادم — للطباعة والاستلام. */

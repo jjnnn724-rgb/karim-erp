@@ -12,18 +12,13 @@ describe('users-write optional password update', () => {
         expect(userUpdateSchema.parse({ ...input, password }).password).toBe(password);
     });
 
-    it.each(['short1', 'abcdefghijkl', '123456789012', '            '])(
-        'rejects a weak nonempty password: %s',
-        (password) => {
-            const result = userUpdateSchema.safeParse({ ...input, password });
-            expect(result.success).toBe(false);
-            if (!result.success) {
-                expect(result.error.issues).toContainEqual(
-                    expect.objectContaining({ path: ['password'], message: USER_TEXT.passwordWeak }),
-                );
-            }
-        },
-    );
+    it.each(['short1', 'abcdefghijkl', '123456789012', '            '])('rejects a weak nonempty password: %s', (password) => {
+        const result = userUpdateSchema.safeParse({ ...input, password });
+        expect(result.success).toBe(false);
+        if (!result.success) {
+            expect(result.error.issues).toContainEqual(expect.objectContaining({ path: ['password'], message: USER_TEXT.passwordWeak }));
+        }
+    });
 
     it.each([undefined, '', 'TestPassword123'])('sends a password only when nonempty: %s', async (password) => {
         const fetchMock = vi.fn(

@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ToastProvider } from '../ui/Toast';
 import { ConfirmProvider } from '../components/ConfirmProvider';
+import { ToastProvider } from '../ui/Toast';
 import { Kitchen } from './Kitchen';
 
 function json(body: unknown, status = 200): Response {

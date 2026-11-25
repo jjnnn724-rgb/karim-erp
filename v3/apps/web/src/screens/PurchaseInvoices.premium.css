@@ -131,7 +131,3 @@
 .dark .erp-premium-screen > header {
     border-color: var(--hairline, #29404f);
 }
-.erp-inv-danger {
-    border-color: var(--erp-danger);
-    background: var(--erp-danger-soft);
-}

@@ -121,26 +121,8 @@ const BUFFET_SHIFT = {
 const BUFFET_TIERS = [
     { id: 11, tier: 'adult', name_ar: 'بالغ', price: 60, vat_rate: 15, unit: 'فرد', is_core: true, is_active: true },
     { id: 12, tier: 'child', name_ar: 'طفل', price: 30, vat_rate: 15, unit: 'فرد', is_core: true, is_active: true },
-    {
-        id: 13,
-        tier: 'hospitality',
-        name_ar: 'ضيافة',
-        price: 0,
-        vat_rate: 15,
-        unit: 'فرد',
-        is_core: true,
-        is_active: true,
-    },
-    {
-        id: 14,
-        tier: null,
-        name_ar: 'بوفيه عائلي',
-        price: 100,
-        vat_rate: 15,
-        unit: 'فرد',
-        is_core: false,
-        is_active: true,
-    },
+    { id: 13, tier: 'hospitality', name_ar: 'ضيافة', price: 0, vat_rate: 15, unit: 'فرد', is_core: true, is_active: true },
+    { id: 14, tier: null, name_ar: 'بوفيه عائلي', price: 100, vat_rate: 15, unit: 'فرد', is_core: false, is_active: true },
 ];
 
 const BUFFET_LIVE = {
@@ -262,9 +244,7 @@ function stubFetch(options: StubOptions = {}) {
             return json(options.departments ?? [DEPARTMENT]);
         }
         if (href.includes('/api/pos/shifts/active')) {
-            return options.activeShift
-                ? json(options.activeShift)
-                : json({ error: 'NOT_FOUND', message: 'لا توجد وردية مفتوحة' }, 404);
+            return options.activeShift ? json(options.activeShift) : json({ error: 'NOT_FOUND', message: 'لا توجد وردية مفتوحة' }, 404);
         }
         if (/\/api\/pos\/shifts\/[0-9]+\/summary/.test(href)) {
             return json(options.shiftSummary ?? SHIFT_SUMMARY);
@@ -298,6 +278,10 @@ function stubFetch(options: StubOptions = {}) {
                 },
             );
         }
+        if (href.includes('/api/pos/products/501/price') && init?.method === 'POST') {
+            const payload = typeof init?.body === 'string' ? (JSON.parse(init.body) as { price?: number }) : {};
+            return json({ id: 501, name_ar: 'شاي', price: Number(payload.price ?? 0) });
+        }
         if (href.includes('/api/pos/products')) {
             return json(options.products ?? [TEA, COFFEE]);
         }
@@ -327,12 +311,7 @@ function stubFetch(options: StubOptions = {}) {
                           items?: Array<{ product_id: number; quantity: number; unit_price: number; discount: number }>;
                       })
                     : {};
-            const catalog = (options.products ?? [TEA, COFFEE]) as Array<{
-                id: number;
-                name_ar: string;
-                price: number;
-                vat_rate: number;
-            }>;
+            const catalog = (options.products ?? [TEA, COFFEE]) as Array<{ id: number; name_ar: string; price: number; vat_rate: number }>;
             const lines: PosCartLine[] = (payload.items ?? []).map((item) => ({
                 id: String(item.product_id),
                 name: catalog.find((row) => Number(row.id) === Number(item.product_id))?.name_ar ?? '',
@@ -379,10 +358,6 @@ function renderScreen() {
             </ToastProvider>
         </QueryClientProvider>,
     );
-}
-
-async function openShiftMenu() {
-    fireEvent.click(await screen.findByText('إدارة الوردية'));
 }
 
 function saleCalls(mock: ReturnType<typeof stubFetch>) {
@@ -442,7 +417,7 @@ describe('نقطة البيع', () => {
         renderScreen();
 
         fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
-        fireEvent.click(screen.getByRole('button', { name: 'إتمام البيع' }));
+        fireEvent.click(screen.getByRole('button', { name: /إتمام البيع/ }));
 
         expect(await screen.findByText('وردية الأمس ما زالت مفتوحة؛ أغلقها أولًا ثم افتح وردية اليوم.')).toBeTruthy();
         await waitFor(() => {
@@ -457,7 +432,7 @@ describe('نقطة البيع', () => {
 
         const tea = await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' });
         expect(screen.getByText('الكاشير الرئيسي')).toBeTruthy();
-        expect(screen.getByText(/وردية #44/)).toBeTruthy();
+        expect(screen.getAllByText(/وردية #44/).length).toBeGreaterThan(0);
         expect(screen.getByRole('button', { name: 'إضافة قهوة إلى السلة' })).toBeTruthy();
 
         fireEvent.click(tea);
@@ -478,7 +453,7 @@ describe('نقطة البيع', () => {
         renderScreen();
 
         fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
-        fireEvent.click(screen.getByRole('button', { name: 'إتمام البيع' }));
+        fireEvent.click(screen.getByRole('button', { name: /إتمام البيع/ }));
 
         await waitFor(() => {
             expect(saleCalls(mock)).toHaveLength(1);
@@ -532,7 +507,7 @@ describe('نقطة البيع', () => {
         fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
         expect(await screen.findByRole('alert')).toBeTruthy();
 
-        fireEvent.click(screen.getByRole('button', { name: 'إتمام البيع' }));
+        fireEvent.click(screen.getByRole('button', { name: /إتمام البيع/ }));
         await waitFor(() => {
             expect(saleCalls(mock)).toHaveLength(0);
         });
@@ -543,7 +518,7 @@ describe('نقطة البيع', () => {
         renderScreen();
 
         fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
-        fireEvent.click(screen.getByRole('button', { name: 'إتمام البيع' }));
+        fireEvent.click(screen.getByRole('button', { name: /إتمام البيع/ }));
 
         await waitFor(() => {
             expect(saleCalls(mock)).toHaveLength(1);
@@ -554,7 +529,7 @@ describe('نقطة البيع', () => {
         // السلة باقية بعد الفشل.
         expect(screen.getByRole('heading', { name: /السلة/ })).toBeTruthy();
 
-        fireEvent.click(screen.getByRole('button', { name: 'إتمام البيع' }));
+        fireEvent.click(screen.getByRole('button', { name: /إتمام البيع/ }));
         await waitFor(() => {
             expect(saleCalls(mock)).toHaveLength(2);
         });
@@ -584,24 +559,8 @@ describe('نقطة البيع', () => {
                 return json({
                     id: '3f2a1b0c-9d8e-4f7a-8b6c-5d4e3f2a1b0c',
                     items: [
-                        {
-                            product_id: 501,
-                            name: 'شاي',
-                            barcode: '',
-                            quantity: 1,
-                            unit_price: 10,
-                            discount: 0,
-                            vat_rate: 15,
-                        },
-                        {
-                            product_id: 502,
-                            name: 'قهوة',
-                            barcode: '',
-                            quantity: 1,
-                            unit_price: 20,
-                            discount: 0,
-                            vat_rate: 15,
-                        },
+                        { product_id: 501, name: 'شاي', barcode: '', quantity: 1, unit_price: 10, discount: 0, vat_rate: 15 },
+                        { product_id: 502, name: 'قهوة', barcode: '', quantity: 1, unit_price: 20, discount: 0, vat_rate: 15 },
                     ],
                     cart_discount: null,
                     total_amount: 23,
@@ -649,7 +608,6 @@ describe('نقطة البيع', () => {
         expect(within(cart).getByText('بالغ')).toBeTruthy();
         expect(within(cart).getByText(/فرد/)).toBeTruthy();
 
-        await openShiftMenu();
         fireEvent.click(screen.getByRole('button', { name: 'أسعار البوفيه' }));
         expect(screen.getByRole('heading', { name: 'قائمة أسعار البوفيه' })).toBeTruthy();
         expect(screen.getByDisplayValue('بوفيه عائلي')).toBeTruthy();
@@ -662,7 +620,6 @@ describe('نقطة البيع', () => {
         stubFetch({ activeShift: BUFFET_SHIFT });
         renderScreen();
 
-        await openShiftMenu();
         fireEvent.click(await screen.findByRole('button', { name: 'تقرير البوفيه' }));
 
         expect(await screen.findByRole('heading', { name: 'تقرير البوفيه المفتوح' })).toBeTruthy();
@@ -681,7 +638,6 @@ describe('نقطة البيع', () => {
         const mock = stubFetch({ activeShift: SHIFT });
         renderScreen();
 
-        await openShiftMenu();
         fireEvent.click(await screen.findByRole('button', { name: 'سجل الفواتير' }));
 
         expect(await screen.findByRole('heading', { name: 'سجل فواتير الكاشير' })).toBeTruthy();
@@ -713,7 +669,6 @@ describe('نقطة البيع', () => {
         renderScreen();
 
         await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' });
-        await openShiftMenu();
         fireEvent.click(screen.getByRole('button', { name: 'إغلاق الوردية' }));
 
         expect(await screen.findByRole('heading', { name: 'إغلاق الوردية' })).toBeTruthy();
@@ -745,9 +700,7 @@ describe('نقطة البيع', () => {
         expect(screen.getByRole('tab', { name: /طلب 1/ }).getAttribute('aria-selected')).toBe('true');
 
         fireEvent.click(screen.getByRole('button', { name: '+ طلب جديد' }));
-        const addTabDialog = await screen.findByRole('dialog', { name: 'تأكيد الإجراء' });
-        fireEvent.click(within(addTabDialog).getByRole('button', { name: 'التبديل مع الاحتفاظ بالطلب' }));
-        const secondTab = await screen.findByRole('tab', { name: /طلب 2/ });
+        const secondTab = screen.getByRole('tab', { name: /طلب 2/ });
         expect(secondTab.getAttribute('aria-selected')).toBe('true');
         expect(screen.getByText('السلة فارغة — اختر صنفًا للبدء.')).toBeTruthy();
 
@@ -758,8 +711,6 @@ describe('نقطة البيع', () => {
 
         // Ctrl+1 يعود للطلب الأول دون فقدان سلته.
         fireEvent.keyDown(window, { key: '1', ctrlKey: true });
-        const switchTabDialog = await screen.findByRole('dialog', { name: 'تأكيد الإجراء' });
-        fireEvent.click(within(switchTabDialog).getByRole('button', { name: 'التبديل مع الاحتفاظ بالطلب' }));
         await waitFor(() => {
             expect(screen.getByRole('tab', { name: /طلب 1/ }).getAttribute('aria-selected')).toBe('true');
         });
@@ -773,7 +724,6 @@ describe('نقطة البيع', () => {
         renderScreen();
 
         fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
-        fireEvent.click(screen.getByText('تعديل'));
         const cash = screen.getByLabelText('نقدي') as HTMLInputElement;
         await waitFor(() => {
             expect(cash.value).toBe('11.50');
@@ -797,6 +747,8 @@ describe('نقطة البيع', () => {
 
         fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى المفضلة' }));
 
+        // الأدوات الجانبية: افتح لوحة الفئات والمفضلة ثم تحقق من سريع الإضافة.
+        fireEvent.click(screen.getByRole('button', { name: 'الأصناف المفضلة والأكثر مبيعًا' }));
         const strip = screen.getByRole('group', { name: 'الأصناف المفضلة' });
         expect(within(strip).getByRole('button', { name: 'إضافة شاي إلى السلة من المفضلة' })).toBeTruthy();
         expect(window.localStorage.getItem('v3-pos-favorites:7')).toBe(JSON.stringify([String(TEA.id)]));
@@ -821,6 +773,113 @@ describe('نقطة البيع', () => {
         });
     });
 
+    it('بطاقة غير مكتملة تمنع البيع حتى اكتمال الماركة وآخر 4 والمرجع', async () => {
+        const mock = stubFetch({ activeShift: SHIFT });
+        renderScreen();
+
+        fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
+        fireEvent.change(screen.getByLabelText('نقدي'), { target: { value: '5' } });
+        fireEvent.change(screen.getByLabelText('بطاقة'), { target: { value: '6.5' } });
+        fireEvent.change(screen.getByLabelText('مرجع / رقم الموافقة'), { target: { value: 'AUTH-1234' } });
+
+        // لا ماركة ولا آخر 4 → لا بيع، والرسالة تظهر بعد الضغط على إتمام البيع.
+        fireEvent.click(screen.getByRole('button', { name: /إتمام البيع/ }));
+        expect(await screen.findByText(/أكمل بيانات البطاقة/)).toBeTruthy();
+        await waitFor(() => {
+            expect(saleCalls(mock)).toHaveLength(0);
+        });
+
+        // اكتمل → الزر يشتغل.
+        fireEvent.click(screen.getByRole('button', { name: 'مدى' }));
+        fireEvent.change(screen.getByLabelText('آخر 4 أرقام'), { target: { value: '8899' } });
+        fireEvent.click(screen.getByRole('button', { name: /إتمام البيع/ }));
+        await waitFor(() => {
+            expect(saleCalls(mock)).toHaveLength(1);
+        });
+        const body = JSON.parse(String(callInit(saleCalls(mock)[0] as unknown[]).body)) as {
+            payments: Array<{ method: string; amount: number; payer_info?: { brand?: string; last4?: string } }>;
+        };
+        expect(body.payments[1]).toEqual({
+            method: 'card',
+            amount: 6.5,
+            reference: 'AUTH-1234',
+            payer_info: { brand: 'mada', last4: '8899' },
+        });
+    });
+
+    it('الأدمن يعدّل سعر بند من السلة وينعكس في الإرسال، بينما الكاشير لا يرى الزر', async () => {
+        // قرار المالك 2026-11: تعديل السعر = admin وaccountant فقط.
+        mocks.role = 'admin';
+        const mock = stubFetch({ activeShift: SHIFT });
+        renderScreen();
+
+        fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
+
+        // زر السلة للأدمن يفتح محرر سطر السلة — السعر الجديد يُرسل للخادم في نفس الفاتورة.
+        fireEvent.click(screen.getByRole('button', { name: /تعديل سعر شاي — السعر الحالي/ }));
+        fireEvent.change(screen.getByLabelText('سعر الوحدة'), { target: { value: '3' } });
+        fireEvent.click(screen.getByRole('button', { name: 'حفظ السعر' }));
+        expect(screen.getByText('معدّل')).toBeTruthy();
+
+        fireEvent.click(screen.getByRole('button', { name: /إتمام البيع/ }));
+        await waitFor(() => {
+            expect(saleCalls(mock)).toHaveLength(1);
+        });
+        const body = JSON.parse(String(callInit(saleCalls(mock)[0] as unknown[]).body)) as {
+            items: Array<{ product_id: number; unit_price: number }>;
+        };
+        expect(body.items[0]!.unit_price).toBe(3);
+    });
+
+    it('الأدمن يعدّل سعر المنتج من الكتالوج — يُرسل للخادم ويُحدِّث البطاقة', async () => {
+        // قرار المالك 2026-11: تعديل السعر = admin وaccountant فقط.
+        mocks.role = 'admin';
+        const mock = stubFetch({ activeShift: SHIFT });
+        renderScreen();
+
+        // الزر موجود على بطاقة المنتج للأدمن — يفتح محرر السعر.
+        fireEvent.click(await screen.findByRole('button', { name: 'تعديل سعر شاي' }));
+        fireEvent.change(screen.getByLabelText('السعر الجديد'), { target: { value: '15' } });
+        fireEvent.click(screen.getByRole('button', { name: 'حفظ السعر' }));
+
+        // طلب POST للمسار الجديد مسجل بالسعر الجديد.
+        await waitFor(() => {
+            expect(
+                mock.mock.calls.some(
+                    (call) =>
+                        String(call[0]).includes('/api/pos/products/501/price') &&
+                        (call[1] as RequestInit | undefined)?.method === 'POST' &&
+                        JSON.parse(String((call[1] as RequestInit | undefined)?.body ?? '{}')).price === 15,
+                ),
+            ).toBe(true);
+        });
+
+        // البطاقة تعكس السعر الجديد بدون إعادة تحميل.
+        expect(await screen.findByText('15.00')).toBeTruthy();
+    });
+
+    it('الكاشير لا يرى زر تعديل السعر في السلة', async () => {
+        mocks.role = 'cashier';
+        stubFetch({ activeShift: SHIFT });
+        renderScreen();
+
+        fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
+
+        expect(screen.queryByRole('button', { name: /تعديل سعر/ })).toBeNull();
+    });
+
+    it('المدير لا يرى زر تعديل السعر — السياسة admin/accountant فقط (قرار المالك 2026-11)', async () => {
+        mocks.role = 'manager';
+        stubFetch({ activeShift: SHIFT });
+        renderScreen();
+
+        fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
+
+        expect(screen.queryByRole('button', { name: /تعديل سعر/ })).toBeNull();
+        // لا زر قلم السعر على بطاقة المنتج أيضًا
+        expect(screen.queryByRole('button', { name: 'تعديل سعر شاي' })).toBeNull();
+    });
+
     it('F5 من لوحة المفاتيح يُتمم البيع بنفس عقد الزر', async () => {
         const mock = stubFetch({ activeShift: SHIFT });
         renderScreen();
@@ -834,38 +893,11 @@ describe('نقطة البيع', () => {
         expect(callInit(saleCalls(mock)[0] as unknown[]).headers).toMatchObject({ 'X-Shift-Session-Id': '44' });
     });
 
-    it('F4 من لوحة المفاتيح يُتمم البيع من اختصار الشاشة الجديد', async () => {
-        const mock = stubFetch({ activeShift: SHIFT });
-        renderScreen();
-
-        fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
-        fireEvent.keyDown(window, { key: 'F4' });
-
-        await waitFor(() => {
-            expect(saleCalls(mock)).toHaveLength(1);
-        });
-        expect(callInit(saleCalls(mock)[0] as unknown[]).headers).toMatchObject({ 'X-Shift-Session-Id': '44' });
-    });
-
-    it('F2 يركّز البحث وF9 يفتح سجل الفواتير للمخول', async () => {
-        mocks.role = 'manager';
-        stubFetch({ activeShift: SHIFT });
-        renderScreen();
-
-        const search = await screen.findByPlaceholderText(/F2/);
-        fireEvent.keyDown(window, { key: 'F2' });
-        expect(search).toHaveFocus();
-
-        fireEvent.keyDown(window, { key: 'F9' });
-        expect(await screen.findByRole('heading', { name: 'سجل فواتير الكاشير' })).toBeTruthy();
-    });
-
     it('خصم نسبي يُوزَّع على البنود، واللقطة المعروضة هي ما يُرسل للخادم', async () => {
         const mock = stubFetch({ activeShift: SHIFT });
         renderScreen();
 
         fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
-        fireEvent.click(screen.getByText('تعديل'));
 
         fireEvent.click(screen.getByRole('combobox', { name: 'نوع الخصم' }));
         fireEvent.click(await screen.findByRole('option', { name: 'نسبة مئوية' }));
@@ -876,7 +908,7 @@ describe('نقطة البيع', () => {
         expect(within(cart).getByText('−1.00')).toBeTruthy();
         expect(within(cart).getAllByText('10.35').length).toBeGreaterThan(0);
 
-        fireEvent.click(screen.getByRole('button', { name: 'إتمام البيع' }));
+        fireEvent.click(screen.getByRole('button', { name: /إتمام البيع/ }));
         await waitFor(() => {
             expect(saleCalls(mock)).toHaveLength(1);
         });
@@ -891,13 +923,12 @@ describe('نقطة البيع', () => {
         renderScreen();
 
         fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
-        fireEvent.click(screen.getByText('تعديل'));
         fireEvent.click(screen.getByRole('combobox', { name: 'نوع الخصم' }));
         fireEvent.click(await screen.findByRole('option', { name: 'نسبة مئوية' }));
         fireEvent.change(screen.getByLabelText('قيمة الخصم'), { target: { value: '140' } });
 
         expect(await screen.findByText('قيمة الخصم غير صالحة؛ النسبة من 0 إلى 100.')).toBeTruthy();
-        const complete = screen.getByRole('button', { name: 'إتمام البيع' });
+        const complete = screen.getByRole('button', { name: /إتمام البيع/ });
         expect(complete.hasAttribute('disabled')).toBe(true);
         expect(saleCalls(mock)).toHaveLength(0);
     });
@@ -907,25 +938,26 @@ describe('نقطة البيع', () => {
         renderScreen();
 
         fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
-        fireEvent.click(screen.getByText('تعديل'));
 
         fireEvent.change(screen.getByLabelText('نقدي'), { target: { value: '5' } });
         fireEvent.change(screen.getByLabelText('بطاقة'), { target: { value: '6.5' } });
-        fireEvent.change(screen.getByLabelText('مرجع بطاقة'), { target: { value: 'AUTH-9911' } });
+        fireEvent.click(screen.getByRole('button', { name: 'مدى' }));
+        fireEvent.change(screen.getByLabelText('آخر 4 أرقام'), { target: { value: '1234' } });
+        fireEvent.change(screen.getByLabelText('مرجع / رقم الموافقة'), { target: { value: 'AUTH-9911' } });
         expect(screen.getByText('المبلغ المدفوع مطابق للإجمالي.')).toBeTruthy();
 
-        fireEvent.click(screen.getByRole('button', { name: 'إتمام البيع' }));
+        fireEvent.click(screen.getByRole('button', { name: /إتمام البيع/ }));
         await waitFor(() => {
             expect(saleCalls(mock)).toHaveLength(1);
         });
         // لا نافذة تأكيد: المبلغ مطابق.
         expect(screen.queryByRole('dialog', { name: 'تأكيد الإجراء' })).toBeNull();
         const body = JSON.parse(String(callInit(saleCalls(mock)[0] as unknown[]).body)) as {
-            payments: Array<{ method: string; amount: number; reference: string | null }>;
+            payments: Array<{ method: string; amount: number; reference: string | null; payer_info?: { brand?: string; last4?: string } }>;
         };
         expect(body.payments).toEqual([
             { method: 'cash', amount: 5, reference: null },
-            { method: 'card', amount: 6.5, reference: 'AUTH-9911' },
+            { method: 'card', amount: 6.5, reference: 'AUTH-9911', payer_info: { brand: 'mada', last4: '1234' } },
         ]);
     });
 
@@ -934,10 +966,9 @@ describe('نقطة البيع', () => {
         renderScreen();
 
         fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
-        fireEvent.click(screen.getByText('تعديل'));
         fireEvent.change(screen.getByLabelText('نقدي'), { target: { value: '5' } });
 
-        fireEvent.click(screen.getByRole('button', { name: 'إتمام البيع' }));
+        fireEvent.click(screen.getByRole('button', { name: /إتمام البيع/ }));
 
         const alert = await screen.findByRole('alert');
         expect(alert.textContent).toContain('المبلغ المدفوع أقل من إجمالي الفاتورة.');
@@ -954,9 +985,7 @@ describe('نقطة البيع', () => {
         fireEvent.click(screen.getByRole('button', { name: 'تعليق الطلب الحالي' }));
 
         await waitFor(() => {
-            const call = mock.mock.calls.find(
-                (entry) => String(entry[0]).includes('/api/pos/held-orders') && entry[1]?.method === 'POST',
-            );
+            const call = mock.mock.calls.find((entry) => String(entry[0]).includes('/api/pos/held-orders') && entry[1]?.method === 'POST');
             expect(call).toBeTruthy();
             const init = callInit(call as unknown[]);
             const headers = init.headers as Record<string, string>;
@@ -981,7 +1010,7 @@ describe('نقطة البيع', () => {
         renderScreen();
 
         fireEvent.click(await screen.findByRole('button', { name: 'إضافة شاي إلى السلة' }));
-        fireEvent.click(screen.getByRole('button', { name: 'إتمام البيع' }));
+        fireEvent.click(screen.getByRole('button', { name: /إتمام البيع/ }));
 
         fireEvent.click(await screen.findByRole('button', { name: 'إعادة طباعة الإيصال' }));
 

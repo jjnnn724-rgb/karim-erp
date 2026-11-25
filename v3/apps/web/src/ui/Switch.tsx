@@ -21,17 +21,7 @@ export interface SwitchProps {
     className?: string;
 }
 
-export function Switch({
-    label,
-    description,
-    checked,
-    onCheckedChange,
-    disabled = false,
-    name,
-    value,
-    id,
-    className,
-}: SwitchProps) {
+export function Switch({ label, description, checked, onCheckedChange, disabled = false, name, value, id, className }: SwitchProps) {
     const autoId = useId();
     const switchId = id ?? autoId;
     const descriptionId = description ? `${switchId}-description` : undefined;

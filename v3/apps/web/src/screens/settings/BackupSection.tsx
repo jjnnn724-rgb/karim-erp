@@ -206,11 +206,7 @@ export function BackupSection() {
                                 <tbody>
                                     {files.map((file) => (
                                         <tr key={file.file}>
-                                            <td
-                                                className="max-w-72 truncate font-mono text-body-sm"
-                                                dir="ltr"
-                                                title={file.file}
-                                            >
+                                            <td className="max-w-72 truncate font-mono text-body-sm" dir="ltr" title={file.file}>
                                                 {file.file}
                                             </td>
                                             <td dir="ltr">{formatBytes(file.bytes)}</td>

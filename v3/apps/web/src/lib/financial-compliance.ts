@@ -128,12 +128,7 @@ export async function fetchComplianceDashboard(signal?: AbortSignal): Promise<Co
 
 export async function fetchVatStatus(signal?: AbortSignal): Promise<VatStatus> {
     try {
-        const data = await fetchJson(
-            vatSuccessSchema,
-            '/api/v3/vat/status',
-            getAccessToken(),
-            signal ? { signal } : {},
-        );
+        const data = await fetchJson(vatSuccessSchema, '/api/v3/vat/status', getAccessToken(), signal ? { signal } : {});
         return { ok: true, data };
     } catch (error) {
         if (error instanceof ApiError && error.status === 422) {

@@ -5,7 +5,7 @@ import { BarList, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { cashierLabel, deltaText, fetchCashierSales } from '../lib/cashier-sales';
 import { errorMessage, intOf, moneyOf, num, pctOf, presetRange, rangeProblem, textOf } from '../lib/reporting';
-import { FilterBar, StatCard , ScreenHero } from '../ui';
+import { FilterBar, ScreenHero, StatCard } from '../ui';
 
 /**
  * مبيعات الكاشير — ملخّص الفترة من مرآة YaraSoft. المحصّل والصافي والضريبة
@@ -48,7 +48,7 @@ export function CashierSales() {
 
     return (
         <div className="flex flex-col gap-md premium-screen premium-cashiersales">
-<ScreenHero
+            <ScreenHero
                 title="مبيعات الكاشير"
                 english="Cashier Sales"
                 description="محصّل الفترة وفواتيرها وطرق الدفع والكاشيريات وأعلى الأصناف — من مرآة الكاشير، بلا إعادة حساب."
@@ -56,9 +56,11 @@ export function CashierSales() {
                     <>
                         <button
                             type="button"
-                            onClick={() => { () => {
-                    void summaryQuery.refetch();
-                } }}
+                            onClick={() => {
+                                () => {
+                                    void summaryQuery.refetch();
+                                };
+                            }}
                             disabled={summaryQuery.isFetching}
                             className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
                         >

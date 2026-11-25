@@ -64,14 +64,10 @@ describe('applyQuoteToPosTotals', () => {
     });
 
     it('يضيف الخصم مرة أخرى للوصول إلى ما قبل الخصم', () => {
-        const totals = applyQuoteToPosTotals(
-            quote({ subtotal: 55.87, discount_total: 5, tax_total: 9.13, total_amount: 65 }),
-            cart,
-            {
-                type: 'fixed',
-                value: '5',
-            },
-        );
+        const totals = applyQuoteToPosTotals(quote({ subtotal: 55.87, discount_total: 5, tax_total: 9.13, total_amount: 65 }), cart, {
+            type: 'fixed',
+            value: '5',
+        });
         expect(totals!.subtotalBeforeDiscount).toBe(60.87);
         expect(totals!.discount).toBe(5);
         expect(totals!.total).toBe(65);

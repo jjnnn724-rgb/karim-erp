@@ -1,5 +1,4 @@
 import './EmployeePortal.premium.css';
-import { ScreenHero } from '../ui';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useMemo, useRef, useState } from 'react';
 import { useConfirm } from '../components/ConfirmProvider';
@@ -48,6 +47,7 @@ import { usePrintBrand } from '../lib/print';
 import { printSmart } from '../lib/print-viewer';
 import { errorMessage, intOf, num, qtyOf, textOf, todayIso } from '../lib/reporting';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
+import { ScreenHero } from '../ui';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Select } from '../ui/Select';
@@ -346,16 +346,18 @@ export function EmployeePortal() {
         setPrinting(kind);
         try {
             const report = await fetchAttendanceReport(selectedEmployee.id, range.from, range.to);
-            printSmart(portalRegisterHtml({
-                title,
-                from: range.from,
-                to: range.to,
-                report,
-                employeeName: textOf(selectedEmployee.name) || textOf(status?.employeeName) || '—',
-                employeeId: textOf(selectedEmployee.employeeId),
-                brandName: brand.name,
-                logoSrc: brand.logoSrc,
-            }));
+            printSmart(
+                portalRegisterHtml({
+                    title,
+                    from: range.from,
+                    to: range.to,
+                    report,
+                    employeeName: textOf(selectedEmployee.name) || textOf(status?.employeeName) || '—',
+                    employeeId: textOf(selectedEmployee.employeeId),
+                    brandName: brand.name,
+                    logoSrc: brand.logoSrc,
+                }),
+            );
         } catch (error) {
             toast({
                 variant: 'error',
@@ -458,7 +460,7 @@ export function EmployeePortal() {
 
     return (
         <div className="flex flex-col gap-md employeeportal-premium">
-<ScreenHero
+            <ScreenHero
                 title="بوابة الموظف"
                 english="Employee Portal"
                 description="بصمة ذاتية، وربط الحساب بالموظف، وقوالب الوجه، وسجل البصمات."
@@ -466,9 +468,11 @@ export function EmployeePortal() {
                     <>
                         <button
                             type="button"
-                            onClick={() => { () => {
-                    void snapshotQuery.refetch();
-                } }}
+                            onClick={() => {
+                                () => {
+                                    void snapshotQuery.refetch();
+                                };
+                            }}
                             disabled={snapshotQuery.isFetching}
                             className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
                         >
@@ -502,51 +506,84 @@ export function EmployeePortal() {
                                         بوابة <em>البصمة الذاتية</em>
                                     </h2>
                                     <p className="portal-punch__desc">
-                                        بصمتك دليل حضورك — الموقع من هاتفك لحظة البصمة فقط، والوقت من ساعة الخادم. لا شيء يُسجَّل بدون وجهك وموقعك الحالي.
+                                        بصمتك دليل حضورك — الموقع من هاتفك لحظة البصمة فقط، والوقت من ساعة الخادم. لا شيء يُسجَّل بدون وجهك
+                                        وموقعك الحالي.
                                     </p>
                                     <div className="portal-punch__orb">
-                                        <div className="portal-punch__orb-mark" aria-hidden="true">ب</div>
+                                        <div className="portal-punch__orb-mark" aria-hidden="true">
+                                            ب
+                                        </div>
                                         <div className="portal-punch__orb-copy">
                                             <span className="portal-punch__orb-title">كاميرا التطبيق — بوابة السيرفر</span>
-                                            <span className="portal-punch__orb-sub" dir="ltr">SOURCE: APP · TIME: SERVER</span>
+                                            <span className="portal-punch__orb-sub" dir="ltr">
+                                                SOURCE: APP · TIME: SERVER
+                                            </span>
                                         </div>
                                     </div>
                                     <ol className="portal-punch__steps" aria-label="خطوات البصمة">
-                                        <li className="portal-punch__step"><b>١</b>قارب الوجه للشاشة</li>
-                                        <li className="portal-punch__step"><b>٢</b>تسمح بتأكيد الوجه</li>
-                                        <li className="portal-punch__step"><b>٣</b>نقرأ موقعك لحظة البصمة</li>
-                                        <li className="portal-punch__step"><b>٤</b>الوقت من ساعة الخادم</li>
+                                        <li className="portal-punch__step">
+                                            <b>١</b>قارب الوجه للشاشة
+                                        </li>
+                                        <li className="portal-punch__step">
+                                            <b>٢</b>تسمح بتأكيد الوجه
+                                        </li>
+                                        <li className="portal-punch__step">
+                                            <b>٣</b>نقرأ موقعك لحظة البصمة
+                                        </li>
+                                        <li className="portal-punch__step">
+                                            <b>٤</b>الوقت من ساعة الخادم
+                                        </li>
                                     </ol>
                                 </div>
                                 <div className="portal-punch__cta">
                                     {!status ? (
                                         <>
-                                            <span className="portal-punch__status" data-tone="neutral">تعذر القراءة</span>
-                                            <p className="portal-punch__result" data-kind="error" role="alert">تعذر قراءة حالة البوابة — أعد التحديث.</p>
+                                            <span className="portal-punch__status" data-tone="neutral">
+                                                تعذر القراءة
+                                            </span>
+                                            <p className="portal-punch__result" data-kind="error" role="alert">
+                                                تعذر قراءة حالة البوابة — أعد التحديث.
+                                            </p>
                                         </>
                                     ) : !isOn(status.enabled) ? (
                                         <>
-                                            <span className="portal-punch__status" data-tone="neutral">مغلق</span>
-                                            <p className="portal-punch__result" data-kind="neutral">البصمة الذاتية غير مفعّلة من الإدارة بعد.</p>
+                                            <span className="portal-punch__status" data-tone="neutral">
+                                                مغلق
+                                            </span>
+                                            <p className="portal-punch__result" data-kind="neutral">
+                                                البصمة الذاتية غير مفعّلة من الإدارة بعد.
+                                            </p>
                                         </>
                                     ) : status.hasEmployeeProfile === false ? (
                                         <>
-                                            <span className="portal-punch__status" data-tone="warning">غير مكتمل</span>
-                                            <p className="portal-punch__result" data-kind="error">لم يتم ربط حسابك بملف موظف — تواصل مع الموارد البشرية.</p>
+                                            <span className="portal-punch__status" data-tone="warning">
+                                                غير مكتمل
+                                            </span>
+                                            <p className="portal-punch__result" data-kind="error">
+                                                لم يتم ربط حسابك بملف موظف — تواصل مع الموارد البشرية.
+                                            </p>
                                         </>
                                     ) : isOn(status.faceEnabled) && status.faceEnrolled === false ? (
                                         <>
-                                            <span className="portal-punch__status" data-tone="warning">بانتظار الوجه</span>
-                                            <p className="portal-punch__result" data-kind="error">لم يتم تسجيل وجهك بعد — راجع الموارد البشرية لتسجيله.</p>
+                                            <span className="portal-punch__status" data-tone="warning">
+                                                بانتظار الوجه
+                                            </span>
+                                            <p className="portal-punch__result" data-kind="error">
+                                                لم يتم تسجيل وجهك بعد — راجع الموارد البشرية لتسجيله.
+                                            </p>
                                         </>
                                     ) : (
                                         <>
-                                            <span className="portal-punch__status" data-tone="success">{chip.label}</span>
+                                            <span className="portal-punch__status" data-tone="success">
+                                                {chip.label}
+                                            </span>
                                             <button
                                                 type="button"
                                                 className="portal-punch__button"
                                                 disabled={punch.isPending}
-                                                onClick={() => { void doPunch(); }}
+                                                onClick={() => {
+                                                    void doPunch();
+                                                }}
                                                 data-testid="punch-button"
                                             >
                                                 {punch.isPending ? 'جارٍ تسجيل البصمة…' : 'تسجيل البصمة الآن'}
@@ -557,16 +594,23 @@ export function EmployeePortal() {
                                         </>
                                     )}
                                     {punchStage ? (
-                                        <p className="portal-punch__cta-note" role="status" aria-live="polite">{punchStage}</p>
+                                        <p className="portal-punch__cta-note" role="status" aria-live="polite">
+                                            {punchStage}
+                                        </p>
                                     ) : null}
-                                    <p className="portal-punch__result" data-kind={punchResult?.kind ?? 'neutral'} role="status" aria-live="polite" data-testid="punch-result">
+                                    <p
+                                        className="portal-punch__result"
+                                        data-kind={punchResult?.kind ?? 'neutral'}
+                                        role="status"
+                                        aria-live="polite"
+                                        data-testid="punch-result"
+                                    >
                                         {punchResult?.text ?? 'جاهز — استعد لتسجيل بصمتك'}
                                     </p>
                                 </div>
                             </div>
                         </div>
                     ) : null}
-
 
                     <SectionCard
                         title="ملف الموظف"

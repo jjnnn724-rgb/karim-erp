@@ -8,7 +8,7 @@
  * بحيث كل مطور يحافظ على اثنين من النص جنبًا إلى جانب عند أي تعديل مستقبلي.
  * عادًا ما نستخدم setDirection على <html> للتبديل الفوري.
  */
-import { createContext, useContext, useEffect, useMemo, useState, type ReactNode } from 'react';
+import { createContext, type ReactNode, useContext, useEffect, useMemo, useState } from 'react';
 
 export type Lang = 'ar' | 'en';
 
@@ -26,7 +26,9 @@ const LanguageContext = createContext<LanguageContextValue | null>(null);
 function readInitial(): Lang {
     try {
         const stored = window.localStorage.getItem(STORAGE_KEY);
-        if (stored === 'ar' || stored === 'en') { return stored; }
+        if (stored === 'ar' || stored === 'en') {
+            return stored;
+        }
         // Server-side default always Arabic — V3 Arabic-only audience today.
         return 'ar';
     } catch {
@@ -39,7 +41,11 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
 
     const setLang = (next: Lang) => {
         setLangState(next);
-        try { window.localStorage.setItem(STORAGE_KEY, next); } catch { /* best effort persist */ }
+        try {
+            window.localStorage.setItem(STORAGE_KEY, next);
+        } catch {
+            /* best effort persist */
+        }
     };
 
     useEffect(() => {
@@ -48,18 +54,17 @@ export function LanguageProvider({ children }: { children: ReactNode }) {
         document.documentElement.dir = dir;
     }, [lang]);
 
-    const value = useMemo<LanguageContextValue>(() => ({
-        lang,
-        dir: lang === 'en' ? 'ltr' : 'rtl',
-        setLang,
-        t: (ar, en) => (lang === 'en' ? en : ar),
-    }), [lang]);
-
-    return (
-        <LanguageContext.Provider value={value}>
-            {children}
-        </LanguageContext.Provider>
+    const value = useMemo<LanguageContextValue>(
+        () => ({
+            lang,
+            dir: lang === 'en' ? 'ltr' : 'rtl',
+            setLang,
+            t: (ar, en) => (lang === 'en' ? en : ar),
+        }),
+        [lang],
     );
+
+    return <LanguageContext.Provider value={value}>{children}</LanguageContext.Provider>;
 }
 
 const FALLBACK_CONTEXT: LanguageContextValue = {

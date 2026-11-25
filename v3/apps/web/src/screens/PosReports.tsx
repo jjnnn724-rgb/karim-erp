@@ -10,46 +10,76 @@
  *
  * الأرقام كلها لحظية من الخادم (لا بيانات وهمية)، والفترة السابقة تُحسب تلقائيًا.
  */
-import { useMemo, useState } from 'react';
+
 import { useQuery } from '@tanstack/react-query';
+import { useMemo, useState } from 'react';
 import {
-    Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, Legend,
-    Pie, PieChart, ResponsiveContainer, Tooltip, XAxis, YAxis,
+    Area,
+    AreaChart,
+    Bar,
+    BarChart,
+    CartesianGrid,
+    Cell,
+    Legend,
+    Pie,
+    PieChart,
+    ResponsiveContainer,
+    Tooltip,
+    XAxis,
+    YAxis,
 } from 'recharts';
 import {
-    fetchDepartmentReport, fetchExecutiveReport, fetchInventoryReport,
-    fetchPosDepartments, fetchProductReport,
-    type ReportDepartment, type ReportInventory, type ReportProduct,
+    fetchDepartmentReport,
+    fetchExecutiveReport,
+    fetchInventoryReport,
+    fetchPosDepartments,
+    fetchProductReport,
+    type ReportDepartment,
+    type ReportInventory,
+    type ReportProduct,
 } from '../lib/pos';
 import { Badge, Button, Input } from '../ui';
 import '../styles/pos-reports.css';
-import { errorMessage } from '../lib/reporting';
-import { printSmart } from '../lib/print-viewer';
 import { COMPANY_LOGO } from '../lib/company-logo';
+import { printSmart } from '../lib/print-viewer';
+import { errorMessage } from '../lib/reporting';
 
 type ReportTab = 'overview' | 'department' | 'product' | 'inventory';
 
-function todayIso(): string { return new Date().toISOString().slice(0, 10); }
-function daysAgoIso(days: number): string { return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10); }
-const money = (v: string | number | null | undefined) => Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+function todayIso(): string {
+    return new Date().toISOString().slice(0, 10);
+}
+function daysAgoIso(days: number): string {
+    return new Date(Date.now() - days * 86400000).toISOString().slice(0, 10);
+}
+const money = (v: string | number | null | undefined) =>
+    Number(v || 0).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 const int = (v: number) => Number(v || 0).toLocaleString('en-US');
 
 function deltaPct(current: number, previous: number): number | null {
-    if (!Number.isFinite(previous) || previous === 0) { return null; }
+    if (!Number.isFinite(previous) || previous === 0) {
+        return null;
+    }
     return ((current - previous) / Math.abs(previous)) * 100;
 }
 
 function trendArrow(delta: number | null): string {
-    if (delta === null) { return '—'; }
+    if (delta === null) {
+        return '—';
+    }
     return delta >= 0 ? '▲' : '▼';
 }
 function trendClass(delta: number | null): string {
-    if (delta === null) { return 'pos-reports__trend pos-reports__trend--flat'; }
+    if (delta === null) {
+        return 'pos-reports__trend pos-reports__trend--flat';
+    }
     return delta >= 0 ? 'pos-reports__trend pos-reports__trend--up' : 'pos-reports__trend pos-reports__trend--down';
 }
 
 function deltaText(delta: number | null): string {
-    if (delta === null) { return 'لا مقارنة'; }
+    if (delta === null) {
+        return 'لا مقارنة';
+    }
     const sign = delta >= 0 ? '+' : '';
     return `${sign}${delta.toFixed(1)}%`;
 }
@@ -105,7 +135,8 @@ export function PosReports() {
 
     const productQuery = useQuery({
         queryKey: ['pos-report-product', from, to, productCode, productName],
-        queryFn: ({ signal }) => fetchProductReport({ from, to, ...(productCode ? { productCode } : {}), ...(productName ? { productName } : {}) }, signal),
+        queryFn: ({ signal }) =>
+            fetchProductReport({ from, to, ...(productCode ? { productCode } : {}), ...(productName ? { productName } : {}) }, signal),
         enabled: tab === 'product',
         staleTime: 30_000,
         retry: 0,
@@ -119,62 +150,82 @@ export function PosReports() {
         retry: 0,
     });
 
-    const active = tab === 'overview' ? executiveQuery : tab === 'department' ? departmentQuery : tab === 'product' ? productQuery : inventoryQuery;
+    const active =
+        tab === 'overview' ? executiveQuery : tab === 'department' ? departmentQuery : tab === 'product' ? productQuery : inventoryQuery;
     void active;
 
     const summary = useMemo(() => {
         if (tab === 'department') {
             const t = departmentQuery.data?.totals;
-            return t ? [
-                { label: 'عدد الفواتير', value: String(t.invoices ?? 0) },
-                { label: 'إجمالي المبيعات', value: money(t.total as string) },
-                { label: 'الضريبة', value: money(t.vat as string) },
-                { label: 'الخصومات', value: money(t.discount as string) },
-                { label: 'نقدي', value: money(t.cash as string) },
-                { label: 'شبكة', value: money(t.card as string) },
-                { label: 'متوسط الفاتورة', value: money(t.average_ticket as string) },
-            ] : [];
+            return t
+                ? [
+                      { label: 'عدد الفواتير', value: String(t.invoices ?? 0) },
+                      { label: 'إجمالي المبيعات', value: money(t.total as string) },
+                      { label: 'الضريبة', value: money(t.vat as string) },
+                      { label: 'الخصومات', value: money(t.discount as string) },
+                      { label: 'نقدي', value: money(t.cash as string) },
+                      { label: 'شبكة', value: money(t.card as string) },
+                      { label: 'متوسط الفاتورة', value: money(t.average_ticket as string) },
+                  ]
+                : [];
         }
         if (tab === 'product') {
             const t = productQuery.data?.totals;
-            return t ? [
-                { label: 'عدد الأصناف', value: String(productQuery.data?.rows.length ?? 0) },
-                { label: 'الكمية المباعة', value: String(t.qty ?? 0) },
-                { label: 'الإيراد', value: money(t.revenue as string) },
-                { label: 'الضريبة', value: money(t.vat as string) },
-                { label: 'الفواتير', value: String(t.invoices ?? 0) },
-                { label: 'متوسط السعر', value: money(t.average_price as string) },
-            ] : [];
+            return t
+                ? [
+                      { label: 'عدد الأصناف', value: String(productQuery.data?.rows.length ?? 0) },
+                      { label: 'الكمية المباعة', value: String(t.qty ?? 0) },
+                      { label: 'الإيراد', value: money(t.revenue as string) },
+                      { label: 'الضريبة', value: money(t.vat as string) },
+                      { label: 'الفواتير', value: String(t.invoices ?? 0) },
+                      { label: 'متوسط السعر', value: money(t.average_price as string) },
+                  ]
+                : [];
         }
         if (tab === 'inventory') {
             const t = inventoryQuery.data?.totals;
-            return t ? [
-                { label: 'عدد الحركات', value: String(t.movements ?? 0) },
-                { label: 'وارد (كمية)', value: String(t.in_qty ?? 0) },
-                { label: 'منصرف (كمية)', value: String(t.out_qty ?? 0) },
-                { label: 'قيمة الوارد', value: money(t.in_value as string) },
-                { label: 'قيمة المنصرف', value: money(t.out_value as string) },
-            ] : [];
+            return t
+                ? [
+                      { label: 'عدد الحركات', value: String(t.movements ?? 0) },
+                      { label: 'وارد (كمية)', value: String(t.in_qty ?? 0) },
+                      { label: 'منصرف (كمية)', value: String(t.out_qty ?? 0) },
+                      { label: 'قيمة الوارد', value: money(t.in_value as string) },
+                      { label: 'قيمة المنصرف', value: money(t.out_value as string) },
+                  ]
+                : [];
         }
         return [];
     }, [tab, departmentQuery.data, productQuery.data, inventoryQuery.data]);
 
     const exec = executiveQuery.data;
     const compareDaily = useMemo(() => {
-        if (!exec) { return []; }
+        if (!exec) {
+            return [];
+        }
         const map = new Map<string, { day: string; current: number; previous: number }>();
-        for (const d of exec.daily) { if (d.day) { map.set(d.day, { day: d.day, current: Number(d.revenue ?? 0), previous: 0 }); } }
+        for (const d of exec.daily) {
+            if (d.day) {
+                map.set(d.day, { day: d.day, current: Number(d.revenue ?? 0), previous: 0 });
+            }
+        }
         for (const d of exec.previous_daily) {
-            if (!d.day) { continue; }
+            if (!d.day) {
+                continue;
+            }
             const existing = map.get(d.day);
-            if (existing) { existing.previous = Number(d.revenue ?? 0); }
-            else { map.set(d.day, { day: d.day, current: 0, previous: Number(d.revenue ?? 0) }); }
+            if (existing) {
+                existing.previous = Number(d.revenue ?? 0);
+            } else {
+                map.set(d.day, { day: d.day, current: 0, previous: Number(d.revenue ?? 0) });
+            }
         }
         return [...map.values()].sort((a, b) => a.day.localeCompare(b.day));
     }, [exec]);
 
     const kpis = useMemo(() => {
-        if (!exec) { return []; }
+        if (!exec) {
+            return [];
+        }
         const curRev = Number(exec.current.revenue);
         const prevRev = Number(exec.previous_period.revenue);
         const curTicket = Number(exec.current.average_ticket);
@@ -192,7 +243,9 @@ export function PosReports() {
     }, [exec]);
 
     const paymentData = useMemo(() => {
-        if (!exec) { return []; }
+        if (!exec) {
+            return [];
+        }
         return [
             { name: 'نقدي', value: Number(exec.payments.cash) },
             { name: 'شبكة', value: Number(exec.payments.card) },
@@ -204,28 +257,65 @@ export function PosReports() {
     const topProducts = useMemo(() => exec?.top_products.slice(0, 6) ?? [], [exec]);
 
     const printReport = () => {
-        const title = tab === 'department' ? 'تقرير الأقسام' : tab === 'product' ? 'تقرير الأصناف' : tab === 'inventory' ? 'تقرير حركة المخزن' : 'النظرة التنفيذية';
-        const titleEn = tab === 'department' ? 'Departments Report' : tab === 'product' ? 'Products Report' : tab === 'inventory' ? 'Inventory Movement Report' : 'Executive Overview';
-        const escape = (v: unknown) => String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+        const title =
+            tab === 'department'
+                ? 'تقرير الأقسام'
+                : tab === 'product'
+                  ? 'تقرير الأصناف'
+                  : tab === 'inventory'
+                    ? 'تقرير حركة المخزن'
+                    : 'النظرة التنفيذية';
+        const titleEn =
+            tab === 'department'
+                ? 'Departments Report'
+                : tab === 'product'
+                  ? 'Products Report'
+                  : tab === 'inventory'
+                    ? 'Inventory Movement Report'
+                    : 'Executive Overview';
+        const escape = (v: unknown) =>
+            String(v ?? '')
+                .replace(/&/g, '&amp;')
+                .replace(/</g, '&lt;')
+                .replace(/>/g, '&gt;')
+                .replace(/"/g, '&quot;');
         const rowsHtml = (() => {
             if (tab === 'department' && departmentQuery.data) {
-                return departmentQuery.data.rows.map((r: ReportDepartment["rows"][number]) =>
-                    `<tr><td>${escape(r.name)}</td><td>${escape(r.cashiers.join('، ') || '—')}</td><td>${r.invoices}</td><td>${escape(r.total)}</td><td>${escape(r.vat)}</td><td>${escape(r.discount)}</td><td>${escape(r.cash)}</td><td>${escape(r.card)}</td><td>${escape(r.average_ticket)}</td><td>${escape(r.accounting_revenue)}</td></tr>`,
-                ).join('');
+                return departmentQuery.data.rows
+                    .map(
+                        (r: ReportDepartment['rows'][number]) =>
+                            `<tr><td>${escape(r.name)}</td><td>${escape(r.cashiers.join('، ') || '—')}</td><td>${r.invoices}</td><td>${escape(r.total)}</td><td>${escape(r.vat)}</td><td>${escape(r.discount)}</td><td>${escape(r.cash)}</td><td>${escape(r.card)}</td><td>${escape(r.average_ticket)}</td><td>${escape(r.accounting_revenue)}</td></tr>`,
+                    )
+                    .join('');
             }
             if (tab === 'product' && productQuery.data) {
-                return productQuery.data.rows.map((r: ReportProduct["rows"][number]) =>
-                    `<tr><td>${escape(r.code)}</td><td>${escape(r.name)}</td><td>${escape(r.qty)}</td><td>${escape(r.revenue)}</td><td>${escape(r.vat)}</td><td>${escape(r.discount)}</td><td>${r.invoices}</td><td>${escape(r.average_price)}</td></tr>`,
-                ).join('');
+                return productQuery.data.rows
+                    .map(
+                        (r: ReportProduct['rows'][number]) =>
+                            `<tr><td>${escape(r.code)}</td><td>${escape(r.name)}</td><td>${escape(r.qty)}</td><td>${escape(r.revenue)}</td><td>${escape(r.vat)}</td><td>${escape(r.discount)}</td><td>${r.invoices}</td><td>${escape(r.average_price)}</td></tr>`,
+                    )
+                    .join('');
             }
             if (tab === 'inventory' && inventoryQuery.data) {
-                return inventoryQuery.data.rows.map((r: ReportInventory["rows"][number]) =>
-                    `<tr><td>${escape(r.date)}</td><td>${escape(r.item_name)}</td><td>${r.direction === 'in' ? 'إضافة' : 'سحب'}</td><td>${escape(r.quantity)}</td><td>${escape(r.value)}</td><td>${escape(r.reason || r.reference_type || '—')}</td></tr>`,
-                ).join('');
+                return inventoryQuery.data.rows
+                    .map(
+                        (r: ReportInventory['rows'][number]) =>
+                            `<tr><td>${escape(r.date)}</td><td>${escape(r.item_name)}</td><td>${r.direction === 'in' ? 'إضافة' : 'سحب'}</td><td>${escape(r.quantity)}</td><td>${escape(r.value)}</td><td>${escape(r.reason || r.reference_type || '—')}</td></tr>`,
+                    )
+                    .join('');
             }
             if (exec) {
-                const deptRows = exec.by_department.map((d) => `<tr><td>${escape(d.name)}</td><td>${d.invoices}</td><td>${escape(d.revenue)}</td><td>${d.share}%</td></tr>`).join('');
-                const productRows = exec.top_products.map((p) => `<tr><td>${escape(p.code)}</td><td>${escape(p.name)}</td><td>${escape(p.qty)}</td><td>${escape(p.revenue)}</td></tr>`).join('');
+                const deptRows = exec.by_department
+                    .map(
+                        (d) => `<tr><td>${escape(d.name)}</td><td>${d.invoices}</td><td>${escape(d.revenue)}</td><td>${d.share}%</td></tr>`,
+                    )
+                    .join('');
+                const productRows = exec.top_products
+                    .map(
+                        (p) =>
+                            `<tr><td>${escape(p.code)}</td><td>${escape(p.name)}</td><td>${escape(p.qty)}</td><td>${escape(p.revenue)}</td></tr>`,
+                    )
+                    .join('');
                 return `
                   <table><thead><tr><th>القسم</th><th>الفواتير</th><th>الإيراد</th><th>الحصة</th></tr></thead><tbody>${deptRows}</tbody></table>
                   <h2 style="margin-top:22px">الأصناف الأكثر مبيعًا</h2>
@@ -234,17 +324,30 @@ export function PosReports() {
             return '';
         })();
 
-        const head = tab === 'department'
-            ? ['القسم', 'الكاشيرون', 'الفواتير', 'المبيعات', 'الضريبة', 'الخصومات', 'نقدي', 'شبكة', 'متوسط الفاتورة', 'الإيراد المحاسبي']
-            : tab === 'product'
-                ? ['الكود', 'الصنف', 'الكمية', 'الإيراد', 'الضريبة', 'الخصومات', 'الفواتير', 'متوسط السعر']
-                : tab === 'inventory'
+        const head =
+            tab === 'department'
+                ? [
+                      'القسم',
+                      'الكاشيرون',
+                      'الفواتير',
+                      'المبيعات',
+                      'الضريبة',
+                      'الخصومات',
+                      'نقدي',
+                      'شبكة',
+                      'متوسط الفاتورة',
+                      'الإيراد المحاسبي',
+                  ]
+                : tab === 'product'
+                  ? ['الكود', 'الصنف', 'الكمية', 'الإيراد', 'الضريبة', 'الخصومات', 'الفواتير', 'متوسط السعر']
+                  : tab === 'inventory'
                     ? ['التاريخ', 'الصنف', 'الحركة', 'الكمية', 'القيمة', 'المرجع']
                     : [];
 
-        const tableHtml = tab !== 'overview' && head.length
-            ? `<table><thead><tr>${head.map((h) => `<th>${escape(h)}</th>`).join('')}</tr></thead><tbody>${rowsHtml}</tbody></table>`
-            : rowsHtml;
+        const tableHtml =
+            tab !== 'overview' && head.length
+                ? `<table><thead><tr>${head.map((h) => `<th>${escape(h)}</th>`).join('')}</tr></thead><tbody>${rowsHtml}</tbody></table>`
+                : rowsHtml;
 
         const kpisHtml = kpis.length
             ? `<div class="kpis">${kpis.map((k) => `<div class="kpi"><span>${escape(k.label)}</span><strong>${escape(k.value)} <small>${escape(k.unit)}</small></strong></div>`).join('')}</div>`
@@ -291,7 +394,9 @@ export function PosReports() {
             <div className="erp-card__body pos-reports__body">
                 <header className="pos-reports__head">
                     <div className="pos-reports__title-block">
-                        <h2 id="pos-reports-title" className="erp-card__title">مركز التقارير</h2>
+                        <h2 id="pos-reports-title" className="erp-card__title">
+                            مركز التقارير
+                        </h2>
                         <p className="pos-reports__subtitle">
                             نظرة تنفيذية + تقارير تفصيلية + طباعة ورقة رسمية — كل الأرقام من بيانات KARIM الحقيقية
                         </p>
@@ -302,18 +407,36 @@ export function PosReports() {
                 </header>
 
                 <div className="pos-reports__filters">
-                    <label className="pos-reports__field">من<input type="date" value={from} onChange={(e) => setFrom(e.target.value)} /></label>
-                    <label className="pos-reports__field">إلى<input type="date" value={to} onChange={(e) => setTo(e.target.value)} /></label>
-                    <label className="pos-reports__field">القسم
+                    <label className="pos-reports__field">
+                        من
+                        <input type="date" value={from} onChange={(e) => setFrom(e.target.value)} />
+                    </label>
+                    <label className="pos-reports__field">
+                        إلى
+                        <input type="date" value={to} onChange={(e) => setTo(e.target.value)} />
+                    </label>
+                    <label className="pos-reports__field">
+                        القسم
                         <select value={departmentId} onChange={(e) => setDepartmentId(e.target.value)}>
                             <option value="">كل الأقسام</option>
-                            {(departmentsQuery.data ?? []).map((d) => <option key={d.id} value={d.id}>{d.name_ar}</option>)}
+                            {(departmentsQuery.data ?? []).map((d) => (
+                                <option key={d.id} value={d.id}>
+                                    {d.name_ar}
+                                </option>
+                            ))}
                         </select>
                     </label>
                 </div>
 
                 <div className="pos-reports__tabs" role="tablist">
-                    {([['overview', 'النظرة التنفيذية'], ['department', 'تقرير قسم'], ['product', 'تقرير صنف'], ['inventory', 'تقرير المخزن']] as const).map(([key, label]) => (
+                    {(
+                        [
+                            ['overview', 'النظرة التنفيذية'],
+                            ['department', 'تقرير قسم'],
+                            ['product', 'تقرير صنف'],
+                            ['inventory', 'تقرير المخزن'],
+                        ] as const
+                    ).map(([key, label]) => (
                         <button
                             key={key}
                             type="button"
@@ -329,7 +452,9 @@ export function PosReports() {
 
                 {execTabActive && executiveQuery.isPending ? <p className="text-body-sm text-muted">جارٍ إعداد النظرة التنفيذية…</p> : null}
                 {execTabActive && executiveQuery.isError ? (
-                    <p className="text-body-sm text-danger" role="alert">{errorMessage(executiveQuery.error)}</p>
+                    <p className="text-body-sm text-danger" role="alert">
+                        {errorMessage(executiveQuery.error)}
+                    </p>
                 ) : null}
 
                 {/* ═══════ النظرة التنفيذية ═══════ */}
@@ -344,10 +469,17 @@ export function PosReports() {
                                             <div key={kpi.label} className="pos-reports__kpi">
                                                 <span className="pos-reports__kpi-label">{kpi.label}</span>
                                                 <div className="pos-reports__kpi-row">
-                                                    <strong className="pos-reports__kpi-value">{kpi.value}<small> {kpi.unit}</small></strong>
-                                                    <span className={trendClass(delta)}>{trendArrow(delta)} {deltaText(delta)}</span>
+                                                    <strong className="pos-reports__kpi-value">
+                                                        {kpi.value}
+                                                        <small> {kpi.unit}</small>
+                                                    </strong>
+                                                    <span className={trendClass(delta)}>
+                                                        {trendArrow(delta)} {deltaText(delta)}
+                                                    </span>
                                                 </div>
-                                                <span className="pos-reports__kpi-hint">مقابل {exec.previous.from} — {exec.previous.to}</span>
+                                                <span className="pos-reports__kpi-hint">
+                                                    مقابل {exec.previous.from} — {exec.previous.to}
+                                                </span>
                                             </div>
                                         );
                                     })}
@@ -359,12 +491,42 @@ export function PosReports() {
                                         <ResponsiveContainer width="100%" height={210}>
                                             <AreaChart data={compareDaily} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
                                                 <CartesianGrid stroke={CHART_GRID} vertical={false} strokeDasharray="3 3" />
-                                                <XAxis dataKey="day" tick={{ fontSize: 10, fill: CHART_MUTED }} tickLine={false} axisLine={false} />
-                                                <YAxis tick={{ fontSize: 10, fill: CHART_MUTED }} tickLine={false} axisLine={false} width={56} tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}K`} />
-                                                <Tooltip contentStyle={tooltipStyle} formatter={(value) => [`${money(Number(value ?? 0))} ر.س`, 'الإيراد']} />
+                                                <XAxis
+                                                    dataKey="day"
+                                                    tick={{ fontSize: 10, fill: CHART_MUTED }}
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                />
+                                                <YAxis
+                                                    tick={{ fontSize: 10, fill: CHART_MUTED }}
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                    width={56}
+                                                    tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}K`}
+                                                />
+                                                <Tooltip
+                                                    contentStyle={tooltipStyle}
+                                                    formatter={(value) => [`${money(Number(value ?? 0))} ر.س`, 'الإيراد']}
+                                                />
                                                 <Legend />
-                                                <Area type="monotone" dataKey="current" name="هذه الفترة" stroke={CHART_GREEN} strokeWidth={2.5} fill={CHART_GREEN} fillOpacity={0.18} />
-                                                <Area type="monotone" dataKey="previous" name="الفترة السابقة" stroke={CHART_MUTED} strokeWidth={1.5} strokeDasharray="5 4" fill="transparent" />
+                                                <Area
+                                                    type="monotone"
+                                                    dataKey="current"
+                                                    name="هذه الفترة"
+                                                    stroke={CHART_GREEN}
+                                                    strokeWidth={2.5}
+                                                    fill={CHART_GREEN}
+                                                    fillOpacity={0.18}
+                                                />
+                                                <Area
+                                                    type="monotone"
+                                                    dataKey="previous"
+                                                    name="الفترة السابقة"
+                                                    stroke={CHART_MUTED}
+                                                    strokeWidth={1.5}
+                                                    strokeDasharray="5 4"
+                                                    fill="transparent"
+                                                />
                                             </AreaChart>
                                         </ResponsiveContainer>
                                     </figure>
@@ -372,11 +534,25 @@ export function PosReports() {
                                     <figure className="pos-reports__chart">
                                         <figcaption>توزيع الإيرادات على الأقسام</figcaption>
                                         <ResponsiveContainer width="100%" height={210}>
-                                            <BarChart data={topDepartments} layout="vertical" margin={{ left: 8, right: 4, top: 4, bottom: 0 }}>
+                                            <BarChart
+                                                data={topDepartments}
+                                                layout="vertical"
+                                                margin={{ left: 8, right: 4, top: 4, bottom: 0 }}
+                                            >
                                                 <CartesianGrid stroke={CHART_GRID} horizontal={false} strokeDasharray="3 3" />
                                                 <XAxis type="number" hide />
-                                                <YAxis dataKey="name" type="category" width={110} tick={{ fontSize: 10, fill: CHART_MUTED }} tickLine={false} axisLine={false} />
-                                                <Tooltip contentStyle={tooltipStyle} formatter={(value) => [`${money(Number(value ?? 0))} ر.س`, 'الإيراد']} />
+                                                <YAxis
+                                                    dataKey="name"
+                                                    type="category"
+                                                    width={110}
+                                                    tick={{ fontSize: 10, fill: CHART_MUTED }}
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                />
+                                                <Tooltip
+                                                    contentStyle={tooltipStyle}
+                                                    formatter={(value) => [`${money(Number(value ?? 0))} ر.س`, 'الإيراد']}
+                                                />
                                                 <Bar dataKey="revenue" radius={[0, 8, 8, 0]} fill={CHART_GREEN} barSize={16} />
                                             </BarChart>
                                         </ResponsiveContainer>
@@ -386,12 +562,26 @@ export function PosReports() {
                                         <figcaption>توزيع طرق الدفع</figcaption>
                                         <ResponsiveContainer width="100%" height={210}>
                                             <PieChart>
-                                                <Pie data={paymentData} dataKey="value" nameKey="name" innerRadius={48} outerRadius={76} paddingAngle={3} strokeWidth={2}>
+                                                <Pie
+                                                    data={paymentData}
+                                                    dataKey="value"
+                                                    nameKey="name"
+                                                    innerRadius={48}
+                                                    outerRadius={76}
+                                                    paddingAngle={3}
+                                                    strokeWidth={2}
+                                                >
                                                     {paymentData.map((entry, index) => (
-                                                        <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length] ?? CHART_GREEN} />
+                                                        <Cell
+                                                            key={entry.name}
+                                                            fill={PIE_COLORS[index % PIE_COLORS.length] ?? CHART_GREEN}
+                                                        />
                                                     ))}
                                                 </Pie>
-                                                <Tooltip contentStyle={tooltipStyle} formatter={(value) => [`${money(Number(value ?? 0))} ر.س`, 'المبلغ']} />
+                                                <Tooltip
+                                                    contentStyle={tooltipStyle}
+                                                    formatter={(value) => [`${money(Number(value ?? 0))} ر.س`, 'المبلغ']}
+                                                />
                                                 <Legend />
                                             </PieChart>
                                         </ResponsiveContainer>
@@ -404,9 +594,26 @@ export function PosReports() {
                                         <ResponsiveContainer width="100%" height={230}>
                                             <BarChart data={topProducts} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
                                                 <CartesianGrid stroke={CHART_GRID} vertical={false} strokeDasharray="3 3" />
-                                                <XAxis dataKey="name" tick={{ fontSize: 9, fill: CHART_MUTED }} tickLine={false} axisLine={false} interval={0} />
-                                                <YAxis tick={{ fontSize: 10, fill: CHART_MUTED }} tickLine={false} axisLine={false} width={52} />
-                                                <Tooltip contentStyle={tooltipStyle} formatter={(value, name) => [name === 'revenue' ? `${money(Number(value ?? 0))} ر.س` : `${value} قطعة`, name === 'revenue' ? 'الإيراد' : 'الكمية']} />
+                                                <XAxis
+                                                    dataKey="name"
+                                                    tick={{ fontSize: 9, fill: CHART_MUTED }}
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                    interval={0}
+                                                />
+                                                <YAxis
+                                                    tick={{ fontSize: 10, fill: CHART_MUTED }}
+                                                    tickLine={false}
+                                                    axisLine={false}
+                                                    width={52}
+                                                />
+                                                <Tooltip
+                                                    contentStyle={tooltipStyle}
+                                                    formatter={(value, name) => [
+                                                        name === 'revenue' ? `${money(Number(value ?? 0))} ر.س` : `${value} قطعة`,
+                                                        name === 'revenue' ? 'الإيراد' : 'الكمية',
+                                                    ]}
+                                                />
                                                 <Bar dataKey="revenue" radius={[8, 8, 0, 0]} fill={CHART_AMBER} barSize={34} />
                                             </BarChart>
                                         </ResponsiveContainer>
@@ -448,24 +655,61 @@ export function PosReports() {
                         <div className="pos-reports__detail-filters">
                             {tab === 'product' ? (
                                 <>
-                                    <label className="pos-reports__field">كود الصنف<Input value={productCode} onChange={(e) => setProductCode(e.target.value)} dir="ltr" placeholder="010403" /></label>
-                                    <label className="pos-reports__field">اسم الصنف<Input value={productName} onChange={(e) => setProductName(e.target.value)} placeholder="ربع دجاج" /></label>
+                                    <label className="pos-reports__field">
+                                        كود الصنف
+                                        <Input
+                                            value={productCode}
+                                            onChange={(e) => setProductCode(e.target.value)}
+                                            dir="ltr"
+                                            placeholder="010403"
+                                        />
+                                    </label>
+                                    <label className="pos-reports__field">
+                                        اسم الصنف
+                                        <Input
+                                            value={productName}
+                                            onChange={(e) => setProductName(e.target.value)}
+                                            placeholder="ربع دجاج"
+                                        />
+                                    </label>
                                 </>
                             ) : null}
                             {tab === 'inventory' ? (
-                                <label className="pos-reports__field">بحث في المخزن<Input value={itemSearch} onChange={(e) => setItemSearch(e.target.value)} placeholder="اسم الصنف أو الفئة" /></label>
+                                <label className="pos-reports__field">
+                                    بحث في المخزن
+                                    <Input
+                                        value={itemSearch}
+                                        onChange={(e) => setItemSearch(e.target.value)}
+                                        placeholder="اسم الصنف أو الفئة"
+                                    />
+                                </label>
                             ) : null}
                         </div>
 
-                        {departmentQuery.isPending || productQuery.isPending || inventoryQuery.isPending ? <p className="text-body-sm text-muted">جارٍ إعداد التقرير…</p> : null}
+                        {departmentQuery.isPending || productQuery.isPending || inventoryQuery.isPending ? (
+                            <p className="text-body-sm text-muted">جارٍ إعداد التقرير…</p>
+                        ) : null}
                         {departmentQuery.isError || productQuery.isError || inventoryQuery.isError ? (
-                            <p className="text-body-sm text-danger" role="alert">تعذر إعداد التقرير — تحقق من الاتصال</p>
+                            <p className="text-body-sm text-danger" role="alert">
+                                تعذر إعداد التقرير — تحقق من الاتصال
+                            </p>
                         ) : null}
 
                         {tab === 'department' && departmentQuery.data ? (
                             <table className="pos-reports__table">
                                 <thead>
-                                    <tr><th>القسم</th><th>الكاشيرون</th><th>الفواتير</th><th>المبيعات</th><th>الضريبة</th><th>الخصومات</th><th>نقدي</th><th>شبكة</th><th>متوسط الفاتورة</th><th>الإيراد المحاسبي</th></tr>
+                                    <tr>
+                                        <th>القسم</th>
+                                        <th>الكاشيرون</th>
+                                        <th>الفواتير</th>
+                                        <th>المبيعات</th>
+                                        <th>الضريبة</th>
+                                        <th>الخصومات</th>
+                                        <th>نقدي</th>
+                                        <th>شبكة</th>
+                                        <th>متوسط الفاتورة</th>
+                                        <th>الإيراد المحاسبي</th>
+                                    </tr>
                                 </thead>
                                 <tbody>
                                     {departmentQuery.data.rows.map((row) => (
@@ -489,7 +733,16 @@ export function PosReports() {
                         {tab === 'product' && productQuery.data ? (
                             <table className="pos-reports__table">
                                 <thead>
-                                    <tr><th>الكود</th><th>الصنف</th><th>الكمية</th><th>الإيراد</th><th>الضريبة</th><th>الخصومات</th><th>الفواتير</th><th>متوسط السعر</th></tr>
+                                    <tr>
+                                        <th>الكود</th>
+                                        <th>الصنف</th>
+                                        <th>الكمية</th>
+                                        <th>الإيراد</th>
+                                        <th>الضريبة</th>
+                                        <th>الخصومات</th>
+                                        <th>الفواتير</th>
+                                        <th>متوسط السعر</th>
+                                    </tr>
                                 </thead>
                                 <tbody>
                                     {productQuery.data.rows.map((row) => (
@@ -511,7 +764,14 @@ export function PosReports() {
                         {tab === 'inventory' && inventoryQuery.data ? (
                             <table className="pos-reports__table">
                                 <thead>
-                                    <tr><th>التاريخ</th><th>الصنف</th><th>الحركة</th><th>الكمية</th><th>القيمة</th><th>المرجع</th></tr>
+                                    <tr>
+                                        <th>التاريخ</th>
+                                        <th>الصنف</th>
+                                        <th>الحركة</th>
+                                        <th>الكمية</th>
+                                        <th>القيمة</th>
+                                        <th>المرجع</th>
+                                    </tr>
                                 </thead>
                                 <tbody>
                                     {inventoryQuery.data.rows.map((row) => (

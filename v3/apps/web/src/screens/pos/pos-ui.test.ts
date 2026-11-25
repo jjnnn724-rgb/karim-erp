@@ -68,10 +68,7 @@ describe('ترتيب كتالوج الكاشير الذكي', () => {
             item({ id: '3', name: 'شاي', yaraCode: 'C' }),
             item({ id: '4', name: 'ماء' }),
         ];
-        expect(bestSellers(items, { favorites: ['1'], sales: SALES, limit: 2 }).map((row) => row.id)).toEqual([
-            '2',
-            '3',
-        ]);
+        expect(bestSellers(items, { favorites: ['1'], sales: SALES, limit: 2 }).map((row) => row.id)).toEqual(['2', '3']);
         expect(bestSellers(items, { favorites: [] })).toEqual([]);
     });
 });

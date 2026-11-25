@@ -1,7 +1,7 @@
-import { useCallback, useMemo, useState, type ReactNode } from 'react';
-import { cn } from './cn';
-import { readSavedViews, writeSavedViews, type SavedView, type ViewStorage } from '../lib/saved-views';
+import { type ReactNode, useCallback, useMemo, useState } from 'react';
+import { readSavedViews, type SavedView, type ViewStorage, writeSavedViews } from '../lib/saved-views';
 import { printRegisterTwin, type RegisterTwinInput } from '../lib/screen-document';
+import { cn } from './cn';
 
 /**
  * RegisterShell — غلاف السجل الموحّد (نمط توقيعي، 2026-11-21).

@@ -53,9 +53,7 @@ describe('supplierTaxError — مرآة تحقق الخادم', () => {
     });
 
     it('غير مسجل وله رقم ⇒ خطأ', () => {
-        expect(supplierTaxError({ tax_registration_status: 'NOT_REGISTERED', vat_number: '302212427200003' })).toMatch(
-            /اتركه فارغًا/,
-        );
+        expect(supplierTaxError({ tax_registration_status: 'NOT_REGISTERED', vat_number: '302212427200003' })).toMatch(/اتركه فارغًا/);
         expect(supplierTaxError({ tax_registration_status: 'NOT_REGISTERED', vat_number: null })).toBe('');
     });
 

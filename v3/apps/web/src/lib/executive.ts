@@ -56,9 +56,7 @@ export const executiveSummarySchema = z
         postedToday: numLike,
         kpi: kpiSchema.optional(),
         series: z.array(seriesRowSchema).optional(),
-        topDepts: z
-            .array(z.object({ name: z.string().nullable().optional(), total: numLike }).passthrough())
-            .optional(),
+        topDepts: z.array(z.object({ name: z.string().nullable().optional(), total: numLike }).passthrough()).optional(),
         topItems: z
             .array(
                 z

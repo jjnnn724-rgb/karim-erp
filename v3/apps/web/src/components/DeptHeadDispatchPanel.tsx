@@ -1,15 +1,14 @@
 import { ClipboardCheck, Printer } from 'lucide-react';
 import { useMemo, useState } from 'react';
+import { printDispatchDocument } from '../lib/dispatch-print';
 import type { Dispatch } from '../lib/dispatches';
 import { itemsSummary, statusOf } from '../lib/dispatches';
-import { printDispatchDocument } from '../lib/dispatch-print';
-import { type GateUser, dispatchGate, receiveDispatch, receiveVisible } from '../lib/dispatches-write';
-import { DISPATCH_TEXT } from '../lib/dispatches-write';
+import { DISPATCH_TEXT, dispatchGate, type GateUser, receiveDispatch, receiveVisible } from '../lib/dispatches-write';
 import { isUiFlagOn } from '../lib/ui-flags';
 import { useWriteMutation } from '../lib/write';
 import { Button } from '../ui/Button';
+import { type DispatchReceiveBody, DispatchReceiveDialog } from './DispatchReceiveDialog';
 import { StateEmpty, StateError, TableScroll, TableSkeleton } from './TableState';
-import { DispatchReceiveDialog, type DispatchReceiveBody } from './DispatchReceiveDialog';
 
 const TONE: Record<string, string> = {
     warning: 'text-warning-text',
@@ -57,11 +56,7 @@ export function DeptHeadDispatchPanel({
     const receiveMutation = useWriteMutation<{ dispatch: Dispatch; body: DispatchReceiveBody }, void>({
         mutationFn: ({ dispatch, body }) => receiveDispatch(dispatch.id, body),
         successTitle: DISPATCH_TEXT.received,
-        invalidate: [
-            ['dashboard', 'dept-head'],
-            ['dispatches'],
-            ['inventory'],
-        ],
+        invalidate: [['dashboard', 'dept-head'], ['dispatches'], ['inventory']],
         silentError: true,
         onSuccess: () => {
             setActive(null);
@@ -108,12 +103,7 @@ export function DeptHeadDispatchPanel({
                     طباعة
                 </Button>
                 {canReceive ? (
-                    <Button
-                        type="button"
-                        size="sm"
-                        aria-label={`استلام إذن الصرف DIS-${row.id}`}
-                        onClick={() => setActive(row)}
-                    >
+                    <Button type="button" size="sm" aria-label={`استلام إذن الصرف DIS-${row.id}`} onClick={() => setActive(row)}>
                         <ClipboardCheck aria-hidden="true" />
                         استلام
                     </Button>
@@ -123,7 +113,10 @@ export function DeptHeadDispatchPanel({
     }
 
     return (
-        <section className="flex flex-col gap-sm rounded-lg border border-hairline bg-surface p-md shadow-card" aria-labelledby="dept-head-dispatch-title">
+        <section
+            className="flex flex-col gap-sm rounded-lg border border-hairline bg-surface p-md shadow-card"
+            aria-labelledby="dept-head-dispatch-title"
+        >
             <div className="flex flex-wrap items-end justify-between gap-sm">
                 <div className="min-w-0">
                     <h2 id="dept-head-dispatch-title" className="text-heading-sm text-ink">
@@ -160,47 +153,59 @@ export function DeptHeadDispatchPanel({
 
             {!loading && !error && visible.length > 0 ? (
                 <div className={cardLayout ? 'hidden md:block' : undefined}>
-                <TableScroll label="أذون قسمي">
-                    <table className="w-full border-collapse text-body-md">
-                        <thead>
-                            <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                <th scope="col" className="px-sm py-xs text-start font-medium">الإذن</th>
-                                <th scope="col" className="px-sm py-xs text-start font-medium">التاريخ</th>
-                                <th scope="col" className="px-sm py-xs text-start font-medium">الأصناف</th>
-                                <th scope="col" className="px-sm py-xs text-center font-medium">الحالة</th>
-                                <th scope="col" className="px-sm py-xs text-start font-medium">المستلم</th>
-                                <th scope="col" className="px-sm py-xs text-center font-medium" data-erp-print-hide>الإجراءات</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {visible.map((row) => {
-                                const status = statusOf(String(row.status ?? ''));
-                                const canReceive = receiveVisible(role, dispatchGate(row), gateUser);
-                                return (
-                                    <tr key={row.id} className="border-b border-hairline hover:bg-surface-hover">
-                                        <td className="erp-numeric px-sm py-xxs text-body-sm text-ink" dir="ltr">
-                                            DIS-{row.id}
-                                        </td>
-                                        <td className="erp-numeric px-sm py-xxs whitespace-nowrap text-body-sm text-muted" dir="ltr">
-                                            {String(row.date ?? '—').slice(0, 10)}
-                                        </td>
-                                        <td className="px-sm py-xxs text-body-sm text-ink">
-                                            <span className="line-clamp-2">{itemsSummary(row.items) || '—'}</span>
-                                            <span className="mt-xxs block text-caption text-muted">
-                                                {row.items?.length ?? 0} صنف
-                                            </span>
-                                        </td>
-                                        <td className={`px-sm py-xxs text-center text-body-sm font-medium ${TONE[status.tone] ?? 'text-ink'}`}>
-                                            {status.label}
-                                        </td>
-                                        <td className="px-sm py-xxs text-body-sm text-muted">{row.kitchenReceivedBy || '—'}</td>
-                                        <td className="px-sm py-xxs">{actions(row, canReceive)}</td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                    </table>
-                </TableScroll>
+                    <TableScroll label="أذون قسمي">
+                        <table className="w-full border-collapse text-body-md">
+                            <thead>
+                                <tr className="bg-surface-sunken text-label-md text-ink-secondary">
+                                    <th scope="col" className="px-sm py-xs text-start font-medium">
+                                        الإذن
+                                    </th>
+                                    <th scope="col" className="px-sm py-xs text-start font-medium">
+                                        التاريخ
+                                    </th>
+                                    <th scope="col" className="px-sm py-xs text-start font-medium">
+                                        الأصناف
+                                    </th>
+                                    <th scope="col" className="px-sm py-xs text-center font-medium">
+                                        الحالة
+                                    </th>
+                                    <th scope="col" className="px-sm py-xs text-start font-medium">
+                                        المستلم
+                                    </th>
+                                    <th scope="col" className="px-sm py-xs text-center font-medium" data-erp-print-hide>
+                                        الإجراءات
+                                    </th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {visible.map((row) => {
+                                    const status = statusOf(String(row.status ?? ''));
+                                    const canReceive = receiveVisible(role, dispatchGate(row), gateUser);
+                                    return (
+                                        <tr key={row.id} className="border-b border-hairline hover:bg-surface-hover">
+                                            <td className="erp-numeric px-sm py-xxs text-body-sm text-ink" dir="ltr">
+                                                DIS-{row.id}
+                                            </td>
+                                            <td className="erp-numeric px-sm py-xxs whitespace-nowrap text-body-sm text-muted" dir="ltr">
+                                                {String(row.date ?? '—').slice(0, 10)}
+                                            </td>
+                                            <td className="px-sm py-xxs text-body-sm text-ink">
+                                                <span className="line-clamp-2">{itemsSummary(row.items) || '—'}</span>
+                                                <span className="mt-xxs block text-caption text-muted">{row.items?.length ?? 0} صنف</span>
+                                            </td>
+                                            <td
+                                                className={`px-sm py-xxs text-center text-body-sm font-medium ${TONE[status.tone] ?? 'text-ink'}`}
+                                            >
+                                                {status.label}
+                                            </td>
+                                            <td className="px-sm py-xxs text-body-sm text-muted">{row.kitchenReceivedBy || '—'}</td>
+                                            <td className="px-sm py-xxs">{actions(row, canReceive)}</td>
+                                        </tr>
+                                    );
+                                })}
+                            </tbody>
+                        </table>
+                    </TableScroll>
                 </div>
             ) : null}
 
@@ -217,14 +222,14 @@ export function DeptHeadDispatchPanel({
                             >
                                 <div className="flex items-start justify-between gap-sm">
                                     <div className="min-w-0">
-                                        <p className="erp-numeric text-body-md text-ink" dir="ltr">DIS-{row.id}</p>
+                                        <p className="erp-numeric text-body-md text-ink" dir="ltr">
+                                            DIS-{row.id}
+                                        </p>
                                         <p className="erp-numeric text-caption text-muted" dir="ltr">
                                             {String(row.date ?? '—').slice(0, 10)}
                                         </p>
                                     </div>
-                                    <span className={`text-body-sm font-medium ${TONE[status.tone] ?? 'text-ink'}`}>
-                                        {status.label}
-                                    </span>
+                                    <span className={`text-body-sm font-medium ${TONE[status.tone] ?? 'text-ink'}`}>{status.label}</span>
                                 </div>
                                 <p className="mt-xs text-body-sm text-ink">{itemsSummary(row.items) || '—'}</p>
                                 <p className="mt-xxs text-caption text-muted">

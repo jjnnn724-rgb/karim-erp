@@ -14,13 +14,13 @@ import {
     updateAttendance,
     validatePunchForm,
 } from '../lib/attendance-write';
-import { fetchEmployees } from '../lib/employees';
 import { useAuthState } from '../lib/auth';
+import { fetchEmployees } from '../lib/employees';
 import { todayIso } from '../lib/reporting';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
-import { Select } from '../ui/Select';
-import { Input } from '../ui/Input';
 import { Button } from '../ui/Button';
+import { Input } from '../ui/Input';
+import { Select } from '../ui/Select';
 import { useToast } from '../ui/Toast';
 
 const DATE_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -97,10 +97,7 @@ export function AttendanceFixPanel() {
                         checkOut: punch.checkOut,
                         workMinutes: punch.checkIn && punch.checkOut ? calc.workMinutes : record.workMinutes,
                         late,
-                        notes: joinNotes(
-                            record.notes,
-                            auditNote('correct', { who, reason: punch.reason, date }),
-                        ),
+                        notes: joinNotes(record.notes, auditNote('correct', { who, reason: punch.reason, date })),
                     }),
                 );
                 return;
@@ -129,11 +126,7 @@ export function AttendanceFixPanel() {
     });
 
     if (!writable) {
-        return (
-            <p className="text-body-sm text-muted">
-                هذه اللوحة متاحة للأدمن والمالك فقط — صلاحيات الكتابة على الحضور مقصورة عليهما.
-            </p>
-        );
+        return <p className="text-body-sm text-muted">هذه اللوحة متاحة للأدمن والمالك فقط — صلاحيات الكتابة على الحضور مقصورة عليهما.</p>;
     }
 
     const employees = (employeesQuery.data ?? [])
@@ -144,8 +137,8 @@ export function AttendanceFixPanel() {
     return (
         <div className="flex flex-col gap-sm">
             <p className="text-body-sm text-muted">
-                أي موظف، أي تاريخ — استعلم عن سجل اليوم المطلوب وعدّله، أو أنشئه إن لم يكن موجودًا.
-                كل حفظ يكتب سطر تدقيق يحمل التاريخ والمنفّذ، والسبب إجباري دائمًا.
+                أي موظف، أي تاريخ — استعلم عن سجل اليوم المطلوب وعدّله، أو أنشئه إن لم يكن موجودًا. كل حفظ يكتب سطر تدقيق يحمل التاريخ
+                والمنفّذ، والسبب إجباري دائمًا.
             </p>
             <div className="grid gap-sm sm:grid-cols-2">
                 <Select
@@ -155,19 +148,18 @@ export function AttendanceFixPanel() {
                     placeholder={employeesQuery.isPending ? 'جارٍ تحميل الموظفين…' : 'اختر الموظف…'}
                     options={employees}
                 />
-                <Input
-                    label="التاريخ (أي يوم)"
-                    type="date"
-                    value={date}
-                    onChange={(event) => setDate(event.target.value)}
-                />
+                <Input label="التاريخ (أي يوم)" type="date" value={date} onChange={(event) => setDate(event.target.value)} />
             </div>
 
             {dayQuery.isFetching ? (
-                <p className="text-body-sm text-muted" role="status">جارٍ قراءة سجل اليوم…</p>
+                <p className="text-body-sm text-muted" role="status">
+                    جارٍ قراءة سجل اليوم…
+                </p>
             ) : null}
             {dayQuery.isError ? (
-                <p className="text-body-sm text-danger-text" role="alert">تعذرت قراءة سجل اليوم — أعد المحاولة.</p>
+                <p className="text-body-sm text-danger-text" role="alert">
+                    تعذرت قراءة سجل اليوم — أعد المحاولة.
+                </p>
             ) : null}
 
             {employeeId && dayValid && !dayQuery.isFetching ? (
@@ -177,34 +169,29 @@ export function AttendanceFixPanel() {
                             <p className="text-label-md text-muted">السجل المخزَّن</p>
                             <p className="mt-xxs text-ink">
                                 حضور{' '}
-                                <b className="erp-numeric" dir="ltr">{record.checkIn ?? '—'}</b>
+                                <b className="erp-numeric" dir="ltr">
+                                    {record.checkIn ?? '—'}
+                                </b>
                                 {' · '}انصراف{' '}
-                                <b className="erp-numeric" dir="ltr">{record.checkOut ?? '—'}</b>
+                                <b className="erp-numeric" dir="ltr">
+                                    {record.checkOut ?? '—'}
+                                </b>
                                 {record.late ? ' · متأخر' : ''}
                                 {record.checkoutInferred ? ' · انصراف مُقدَّر' : ''}
                             </p>
-                            {record.notes ? (
-                                <p className="mt-xxs text-caption text-muted">آخر ملاحظة: {record.notes}</p>
-                            ) : null}
+                            {record.notes ? <p className="mt-xxs text-caption text-muted">آخر ملاحظة: {record.notes}</p> : null}
                         </div>
                     ) : (
-                        <p className="rounded-md border border-warning/30 bg-warning-soft p-sm text-body-sm text-warning-text" role="status">
+                        <p
+                            className="rounded-md border border-warning/30 bg-warning-soft p-sm text-body-sm text-warning-text"
+                            role="status"
+                        >
                             لا توجد بصمة لهذا الموظف في هذا اليوم — احفظ «إنشاء السجل» وسيُسجَّل كتعبئة معتمدة.
                         </p>
                     )}
                     <div className="grid grid-cols-2 gap-sm">
-                        <Input
-                            label="الحضور"
-                            type="time"
-                            value={checkIn}
-                            onChange={(event) => setCheckIn(event.target.value)}
-                        />
-                        <Input
-                            label="الانصراف"
-                            type="time"
-                            value={checkOut}
-                            onChange={(event) => setCheckOut(event.target.value)}
-                        />
+                        <Input label="الحضور" type="time" value={checkIn} onChange={(event) => setCheckIn(event.target.value)} />
+                        <Input label="الانصراف" type="time" value={checkOut} onChange={(event) => setCheckOut(event.target.value)} />
                     </div>
                     <Input
                         label="سبب التصحيح (إجباري)"
@@ -213,7 +200,9 @@ export function AttendanceFixPanel() {
                         placeholder="مثال: الموظف نسي يبصم / جهاز البصمة كان معطلًا…"
                     />
                     {error ? (
-                        <p role="alert" className="text-body-sm text-danger-text">{error}</p>
+                        <p role="alert" className="text-body-sm text-danger-text">
+                            {error}
+                        </p>
                     ) : null}
                     <div className="flex flex-wrap items-center gap-sm">
                         <Button

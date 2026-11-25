@@ -28,9 +28,7 @@ describe('roster-write', () => {
     });
 
     it('يرفض الماضي بنص الخادم نفسه', () => {
-        expect(rosterCellError(edit({ date: '2026-11-09' }), WEEK, TODAY)).toBe(
-            'لا يمكن تعديل ماضٍ (2026-11-09) — القديم محمي',
-        );
+        expect(rosterCellError(edit({ date: '2026-11-09' }), WEEK, TODAY)).toBe('لا يمكن تعديل ماضٍ (2026-11-09) — القديم محمي');
     });
 
     it('يرفض تاريخًا خارج الأسبوع', () => {

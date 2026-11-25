@@ -1,7 +1,6 @@
 import './Branches.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import {
@@ -18,7 +17,6 @@ import {
     validateBranchForm,
 } from '../lib/branches';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
-import { PageHeader } from '../ui';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
@@ -144,15 +142,7 @@ function BranchFormDialog({ open, onClose, pending, editing, onSave }: BranchFor
                 address: editing.address ?? '',
             });
         } else {
-            setForm({
-                code: '',
-                name_ar: '',
-                name_en: '',
-                currency: 'SAR',
-                timezone: 'Asia/Riyadh',
-                phone: '',
-                address: '',
-            });
+            setForm({ code: '', name_ar: '', name_en: '', currency: 'SAR', timezone: 'Asia/Riyadh', phone: '', address: '' });
         }
         setFormError('');
     }, [open, editing]);
@@ -283,15 +273,7 @@ interface BranchActionDialogProps {
     confirmLabel: string;
 }
 
-function BranchActionDialog({
-    open,
-    title,
-    message,
-    onConfirm,
-    onClose,
-    pending,
-    confirmLabel,
-}: BranchActionDialogProps) {
+function BranchActionDialog({ open, title, message, onConfirm, onClose, pending, confirmLabel }: BranchActionDialogProps) {
     return (
         <Dialog
             open={open}
@@ -366,9 +348,7 @@ export function Branches() {
 
     function toggleSort(key: SortKey) {
         setPage(1);
-        setSort((previous) =>
-            previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' },
-        );
+        setSort((previous) => (previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
     }
 
     function resetFilters() {
@@ -403,14 +383,9 @@ export function Branches() {
         },
     });
 
-    const changeBranchStatusMutation = useWriteMutation<
-        { id: string; active: boolean },
-        { id: string; active: boolean }
-    >({
+    const changeBranchStatusMutation = useWriteMutation<{ id: string; active: boolean }, { id: string; active: boolean }>({
         mutationFn: ({ id, active }) =>
-            active
-                ? reactivateBranch(id).then(() => ({ id, active: true }))
-                : deactivateBranch(id).then(() => ({ id, active: false })),
+            active ? reactivateBranch(id).then(() => ({ id, active: true })) : deactivateBranch(id).then(() => ({ id, active: false })),
         successTitle: ({ active }) => (active ? BRANCH_TEXT.activateSuccess : BRANCH_TEXT.deactivateSuccess),
         invalidate: [['branches']],
         silentError: true,
@@ -430,9 +405,7 @@ export function Branches() {
         setActionType(activate ? 'activate' : 'deactivate');
         setActionTitle(activate ? 'تفعيل الفرع' : 'إيقاف الفرع');
         setActionMessage(
-            activate
-                ? BRANCH_TEXT.confirmActivate.replace('%s', row.nameAr)
-                : BRANCH_TEXT.confirmDeactivate.replace('%s', row.nameAr),
+            activate ? BRANCH_TEXT.confirmActivate.replace('%s', row.nameAr) : BRANCH_TEXT.confirmDeactivate.replace('%s', row.nameAr),
         );
         setActionOpen(true);
     }
@@ -444,32 +417,36 @@ export function Branches() {
 
     return (
         <div className="flex flex-col gap-lg erp-premium erp-premium-branches">
-            <PageHeader
-                title="فروع المنشأة"
-                english="Branches"
-                description="الفروع وأكوادها وعملاتها ومناطقها الزمنية — إضافة وتعديل وإيقاف وتفعيل. القراءة متاحة لأي حساب مصادق، والكتابة والإدارة محجوزة للأدمن. الفرع الرئيسي لا يُوقف."
-                actions={
-                    <>
-                        <div className="flex items-center gap-xs" data-erp-print-hide>
-                            {canManage ? (
-                                <Button type="button" size="sm" onClick={() => openForm()}>
-                                    إضافة فرع
-                                </Button>
-                            ) : null}
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    void branchesQuery.refetch();
-                                }}
-                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                            >
-                                تحديث
-                            </button>
-                            <PrintActions title="فروع المنشأة" />
-                        </div>
-                    </>
-                }
-            />
+            <header className="flex flex-wrap items-end justify-between gap-sm">
+                <div>
+                    <h1 className="text-display-lg text-ink">
+                        فروع المنشأة{' '}
+                        <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted" dir="ltr" lang="en">
+                            Branches
+                        </span>
+                    </h1>
+                    <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
+                        الفروع وأكوادها وعملاتها ومناطقها الزمنية — إضافة وتعديل وإيقاف وتفعيل. القراءة متاحة لأي حساب مصادق، والكتابة
+                        والإدارة محجوزة للأدمن. الفرع الرئيسي لا يُوقف.
+                    </p>
+                </div>
+                <div className="flex items-center gap-xs" data-erp-print-hide>
+                    {canManage ? (
+                        <Button type="button" size="sm" onClick={() => openForm()}>
+                            إضافة فرع
+                        </Button>
+                    ) : null}
+                    <button
+                        type="button"
+                        onClick={() => {
+                            void branchesQuery.refetch();
+                        }}
+                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                    >
+                        تحديث
+                    </button>
+                </div>
+            </header>
 
             <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4" aria-label="مؤشرات الفروع">
                 <Kpi
@@ -514,10 +491,7 @@ export function Branches() {
                             className="h-10 w-full min-w-0 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:w-64"
                         />
                     </label>
-                    <label
-                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-branches-status"
-                    >
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-branches-status">
                         الحالة
                         <select
                             id="erp-branches-status"
@@ -533,10 +507,7 @@ export function Branches() {
                             <option value="inactive">موقوف</option>
                         </select>
                     </label>
-                    <label
-                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-branches-currency"
-                    >
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-branches-currency">
                         العملة
                         <select
                             id="erp-branches-currency"
@@ -567,9 +538,7 @@ export function Branches() {
                     </span>
                 </div>
                 {search.folded ? (
-                    <p className="mt-sm text-body-sm text-muted">
-                        بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.
-                    </p>
+                    <p className="mt-sm text-body-sm text-muted">بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.</p>
                 ) : null}
             </Card>
 
@@ -649,12 +618,7 @@ export function Branches() {
                                         <th scope="col" className="px-sm py-xs text-start font-medium">
                                             الاسم الإنجليزي
                                         </th>
-                                        <SortableTh
-                                            label="العملة"
-                                            sortKey="currency"
-                                            sort={sort}
-                                            onToggle={toggleSort}
-                                        />
+                                        <SortableTh label="العملة" sortKey="currency" sort={sort} onToggle={toggleSort} />
                                         <th scope="col" className="px-sm py-xs text-start font-medium">
                                             المنطقة الزمنية
                                         </th>
@@ -666,11 +630,7 @@ export function Branches() {
                                         </th>
                                         <SortableTh label="الحالة" sortKey="status" sort={sort} onToggle={toggleSort} />
                                         {canManage ? (
-                                            <th
-                                                scope="col"
-                                                className="px-sm py-xs text-start font-medium"
-                                                data-erp-print-hide
-                                            >
+                                            <th scope="col" className="px-sm py-xs text-start font-medium" data-erp-print-hide>
                                                 إجراءات
                                             </th>
                                         ) : null}
@@ -701,13 +661,9 @@ export function Branches() {
                                             <td className="erp-numeric px-sm py-xxs text-body-sm text-muted" dir="ltr">
                                                 {row.phone || '—'}
                                             </td>
-                                            <td className="px-sm py-xxs text-body-sm text-muted">
-                                                {row.address || '—'}
-                                            </td>
+                                            <td className="px-sm py-xxs text-body-sm text-muted">{row.address || '—'}</td>
                                             <td className="px-sm py-xxs text-body-sm">
-                                                <span className={row.active ? 'text-success-text' : 'text-muted'}>
-                                                    {row.statusLabel}
-                                                </span>
+                                                <span className={row.active ? 'text-success-text' : 'text-muted'}>{row.statusLabel}</span>
                                             </td>
                                             {canManage ? (
                                                 <td className="px-sm py-xxs" data-erp-print-hide>

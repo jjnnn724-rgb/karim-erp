@@ -2,7 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { type ReactNode, useMemo, useState } from 'react';
 import { useAuthState } from '../lib/auth';
 import { formatInt } from '../lib/format';
-import { openBlankTab, printHtmlDocument } from '../lib/print-document';
+import { printSmart } from '../lib/print-viewer';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import {
     approveSectionError,
@@ -237,10 +237,7 @@ function Row({ children }: { children: ReactNode }) {
 
 function Cell({ children, ltr = false, numeric = false }: { children: ReactNode; ltr?: boolean; numeric?: boolean }) {
     return (
-        <td
-            className={numeric ? 'erp-numeric px-sm py-xxs text-end text-ink' : 'px-sm py-xxs text-ink'}
-            dir={ltr ? 'ltr' : undefined}
-        >
+        <td className={numeric ? 'erp-numeric px-sm py-xxs text-end text-ink' : 'px-sm py-xxs text-ink'} dir={ltr ? 'ltr' : undefined}>
             {children}
         </td>
     );
@@ -329,10 +326,7 @@ function StatusPanel() {
 
             {status ? (
                 <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-3">
-                    <Metric
-                        label="حالة المحرك"
-                        value={engine?.enabled ? (engine.running ? 'يعمل' : 'متوقف') : 'معطّل'}
-                    />
+                    <Metric label="حالة المحرك" value={engine?.enabled ? (engine.running ? 'يعمل' : 'متوقف') : 'معطّل'} />
                     <Metric label="الفواتير المكتملة" value={intText(counts?.completed)} />
                     <Metric label="تحتاج مراجعة" value={intText(status.openReviewItems ?? counts?.review)} />
                     <Metric label="أقسام بانتظار الربط" value={intText(status.openSections ?? counts?.needs_mapping)} />
@@ -372,15 +366,12 @@ function StatusPanel() {
                                 <Cell>{entry.error_message || '—'}</Cell>
                                 <Cell>
                                     <div className="flex flex-wrap gap-xs">
-                                        {canWrite &&
-                                        ['FAILED', 'REQUIRES_REVIEW'].includes(String(entry.status ?? '')) ? (
+                                        {canWrite && ['FAILED', 'REQUIRES_REVIEW'].includes(String(entry.status ?? '')) ? (
                                             <Button
                                                 size="sm"
                                                 variant="secondary"
                                                 onClick={() => reprocess.mutate(String(entry.id))}
-                                                loading={
-                                                    reprocess.isPending && reprocess.variables === String(entry.id)
-                                                }
+                                                loading={reprocess.isPending && reprocess.variables === String(entry.id)}
                                             >
                                                 إعادة المعالجة
                                             </Button>
@@ -405,9 +396,7 @@ function StatusPanel() {
                     }
                 }}
                 title={detailQuery.data?.external_invoice_number || 'تفاصيل الفاتورة'}
-                {...(detailQuery.data?.status
-                    ? { description: yarasoftStatusBadge(detailQuery.data.status).label }
-                    : {})}
+                {...(detailQuery.data?.status ? { description: yarasoftStatusBadge(detailQuery.data.status).label } : {})}
                 size="lg"
             >
                 {detailQuery.isPending ? <StateLoading label="جارٍ جلب تفاصيل الفاتورة…" /> : null}
@@ -568,8 +557,8 @@ function ReviewPanel() {
         <>
             <div className="flex flex-wrap items-center justify-between gap-xs">
                 <p className="text-body-sm text-muted">
-                    لا تُطابق الأصناف تلقائياً بمنتج مختلف. اختر المنتج الداخلي الصحيح؛ بعد اكتمال ربط عناصر الفاتورة يعيد
-                    الخادم محاولة استيرادها.
+                    لا تُطابق الأصناف تلقائياً بمنتج مختلف. اختر المنتج الداخلي الصحيح؛ بعد اكتمال ربط عناصر الفاتورة يعيد الخادم محاولة
+                    استيرادها.
                 </p>
                 <Button
                     size="sm"
@@ -652,12 +641,9 @@ function UnmappedRow({ item, map }: { item: YarasoftUnmappedSection; map: readon
         setError('');
         const target = map.find((entry) => String(entry.id) === merge);
         const targetText = target ? ` ودمجه في "${target.display_ar}"` : '';
-        const ok = await confirm(
-            `اعتماد "${item.src_name}"${targetText}؟ سيعيد الخادم معالجة الفواتير المعلقة لهذا القسم.`,
-            {
-                confirmLabel: 'اعتماد القسم',
-            },
-        );
+        const ok = await confirm(`اعتماد "${item.src_name}"${targetText}؟ سيعيد الخادم معالجة الفواتير المعلقة لهذا القسم.`, {
+            confirmLabel: 'اعتماد القسم',
+        });
         if (!ok) {
             return;
         }
@@ -680,13 +666,7 @@ function UnmappedRow({ item, map }: { item: YarasoftUnmappedSection; map: readon
                     )
                 ) : (
                     <div className="flex flex-col gap-xs">
-                        <Input
-                            label="اسم العرض"
-                            size="sm"
-                            value={name}
-                            maxLength={255}
-                            onChange={(event) => setName(event.target.value)}
-                        />
+                        <Input label="اسم العرض" size="sm" value={name} maxLength={255} onChange={(event) => setName(event.target.value)} />
                         <Select
                             label="دمج اختياري في قسم موجود"
                             size="sm"
@@ -771,18 +751,8 @@ function RenameDialog({ row, onClose }: { row: YarasoftSectionMapRow | null; onC
             }
         >
             <div className="flex flex-col gap-sm">
-                <Input
-                    label="الاسم العربي"
-                    value={nameAr}
-                    maxLength={255}
-                    onChange={(event) => setNameAr(event.target.value)}
-                />
-                <Input
-                    label="الاسم الإنجليزي"
-                    value={nameEn}
-                    maxLength={255}
-                    onChange={(event) => setNameEn(event.target.value)}
-                />
+                <Input label="الاسم العربي" value={nameAr} maxLength={255} onChange={(event) => setNameAr(event.target.value)} />
+                <Input label="الاسم الإنجليزي" value={nameEn} maxLength={255} onChange={(event) => setNameEn(event.target.value)} />
                 {error ? <p className="text-caption text-danger-text">{error}</p> : null}
             </div>
         </Dialog>
@@ -809,15 +779,7 @@ function SectionInvoicesDrill({
     const [detailRef, setDetailRef] = useState<string | null>(null);
 
     const invoicesQuery = useQuery({
-        queryKey: [
-            'yarasoft',
-            'section-invoices',
-            String(section.id),
-            applied.page,
-            applied.dateFrom,
-            applied.dateTo,
-            applied.query,
-        ],
+        queryKey: ['yarasoft', 'section-invoices', String(section.id), applied.page, applied.dateFrom, applied.dateTo, applied.query],
         queryFn: ({ signal }) => fetchYarasoftSectionInvoices(Number(section.id), applied, signal),
         retry: false,
     });
@@ -885,13 +847,7 @@ function SectionInvoicesDrill({
                         value={fromDraft}
                         onChange={(event) => setFromDraft(event.target.value)}
                     />
-                    <Input
-                        label="إلى تاريخ"
-                        type="date"
-                        size="sm"
-                        value={toDraft}
-                        onChange={(event) => setToDraft(event.target.value)}
-                    />
+                    <Input label="إلى تاريخ" type="date" size="sm" value={toDraft} onChange={(event) => setToDraft(event.target.value)} />
                     <Input
                         label="بحث في رقم الفاتورة أو الملاحظات"
                         size="sm"
@@ -925,14 +881,7 @@ function SectionInvoicesDrill({
                     <>
                         <DataGrid
                             label="فواتير القسم"
-                            headers={[
-                                ...(canWrite ? ['تحديد'] : []),
-                                'المرجع',
-                                'التاريخ',
-                                'المبلغ',
-                                'ملاحظات',
-                                'حالة الاستيراد',
-                            ]}
+                            headers={[...(canWrite ? ['تحديد'] : []), 'المرجع', 'التاريخ', 'المبلغ', 'ملاحظات', 'حالة الاستيراد']}
                             rows={rows.length}
                             empty="لا توجد فواتير مطابقة."
                         >
@@ -959,9 +908,7 @@ function SectionInvoicesDrill({
                                     <Cell ltr>{invoice.date || '—'}</Cell>
                                     <Cell numeric>{moneyText(invoice.amount)}</Cell>
                                     <Cell>{invoice.notes || '—'}</Cell>
-                                    <Cell>
-                                        {invoice.import_status ? <StatusBadge status={invoice.import_status} /> : '—'}
-                                    </Cell>
+                                    <Cell>{invoice.import_status ? <StatusBadge status={invoice.import_status} /> : '—'}</Cell>
                                 </Row>
                             ))}
                         </DataGrid>
@@ -1123,8 +1070,8 @@ function SectionsPanel() {
     return (
         <>
             <p className="text-body-sm text-muted">
-                دخل القسم يأتي من مبيعات الكاشير CC أو البيع الخارجي BILLS4. أقسام BILLS4 موحّدة ولا تُعتمد منفصلة. نقل
-                الفواتير يسجل التغيير في النظام وبصلاحية المدير أو مدير النظام.
+                دخل القسم يأتي من مبيعات الكاشير CC أو البيع الخارجي BILLS4. أقسام BILLS4 موحّدة ولا تُعتمد منفصلة. نقل الفواتير يسجل التغيير
+                في النظام وبصلاحية المدير أو مدير النظام.
             </p>
             {canWrite ? (
                 <Section title="إضافة قسم يدوي">
@@ -1189,14 +1136,7 @@ function SectionsPanel() {
                 {mapQuery.data && unmappedQuery.data ? (
                     <DataGrid
                         label="أقسام بانتظار الاعتماد"
-                        headers={[
-                            'مصدر البيانات',
-                            'اسم القسم الوارد',
-                            'الفواتير',
-                            'الإجمالي',
-                            'آخر ظهور',
-                            'الاعتماد أو الدمج',
-                        ]}
+                        headers={['مصدر البيانات', 'اسم القسم الوارد', 'الفواتير', 'الإجمالي', 'آخر ظهور', 'الاعتماد أو الدمج']}
                         rows={unmapped.length}
                         empty="لا توجد أقسام معلقة."
                     >
@@ -1242,9 +1182,7 @@ function SectionsPanel() {
                                     <Cell numeric>{moneyText(item.posted_expenses)}</Cell>
                                     <Cell numeric>{moneyText(net)}</Cell>
                                     <Cell>
-                                        <Badge variant={item.active ? 'success' : 'neutral'}>
-                                            {item.active ? 'نشط' : 'معطل'}
-                                        </Badge>
+                                        <Badge variant={item.active ? 'success' : 'neutral'}>{item.active ? 'نشط' : 'معطل'}</Badge>
                                     </Cell>
                                     <Cell>
                                         <div className="flex flex-wrap gap-xs">
@@ -1290,8 +1228,7 @@ function MappingsPanel() {
         queryFn: ({ signal }) => fetchYarasoftMappings(signal),
     });
     const save = useWriteMutation<null, unknown>({
-        mutationFn: () =>
-            saveYarasoftMapping({ externalCode: code, externalBarcode: barcode, internalProductId: Number(picked) }),
+        mutationFn: () => saveYarasoftMapping({ externalCode: code, externalBarcode: barcode, internalProductId: Number(picked) }),
         invalidate: [YS_KEYS.mappings],
         successTitle: 'تم حفظ الربط الصريح.',
         onSuccess: () => {
@@ -1364,19 +1301,13 @@ function MappingsPanel() {
     return (
         <>
             <p className="text-body-sm text-muted">
-                ترتيب المطابقة التلقائي لدى الخادم يبدأ بالباركود ثم الكود الخارجي ثم الروابط الصريحة. التعطيل لا يحذف
-                سجل الربط.
+                ترتيب المطابقة التلقائي لدى الخادم يبدأ بالباركود ثم الكود الخارجي ثم الروابط الصريحة. التعطيل لا يحذف سجل الربط.
             </p>
 
             {canWrite ? (
                 <Section title="إضافة ربط صريح">
                     <div className="grid items-end gap-sm sm:grid-cols-2 xl:grid-cols-3">
-                        <Input
-                            label="كود الكاشير"
-                            value={code}
-                            maxLength={120}
-                            onChange={(event) => setCode(event.target.value)}
-                        />
+                        <Input label="كود الكاشير" value={code} maxLength={120} onChange={(event) => setCode(event.target.value)} />
                         <Input
                             label="باركود الكاشير"
                             value={barcode}
@@ -1480,9 +1411,7 @@ function MappingsPanel() {
                                                     mapping.external_code || mapping.external_barcode || 'المنتج',
                                                 )
                                             }
-                                            loading={
-                                                deactivate.isPending && deactivate.variables === String(mapping.id)
-                                            }
+                                            loading={deactivate.isPending && deactivate.variables === String(mapping.id)}
                                         >
                                             تعطيل الربط
                                         </Button>
@@ -1600,12 +1529,9 @@ function OraclePanel() {
         if (count <= 0) {
             return;
         }
-        const ok = await confirm(
-            `استيراد ${formatInt(count)} صنف جديد فقط إلى المخزون؟ تُنشأ الأصناف بكمية صفر، والموجود يُتخطى.`,
-            {
-                confirmLabel: 'استيراد الأصناف',
-            },
-        );
+        const ok = await confirm(`استيراد ${formatInt(count)} صنف جديد فقط إلى المخزون؟ تُنشأ الأصناف بكمية صفر، والموجود يُتخطى.`, {
+            confirmLabel: 'استيراد الأصناف',
+        });
         if (ok) {
             importItems.mutate(null);
         }
@@ -1668,20 +1594,15 @@ function OraclePanel() {
                             <bdi dir="ltr">
                                 {connection.host || '—'}:{String(connection.port ?? '—')}/{connection.service || '—'}
                             </bdi>{' '}
-                            · اسم المستخدم {flag(connection.hasUser)} · بيانات الاعتماد {flag(connection.hasPassword)} ·
-                            SQL {flag(connection.hasSql)} · آخر نجاح: {connection.lastOk || 'لا يوجد'}
+                            · اسم المستخدم {flag(connection.hasUser)} · بيانات الاعتماد {flag(connection.hasPassword)} · SQL{' '}
+                            {flag(connection.hasSql)} · آخر نجاح: {connection.lastOk || 'لا يوجد'}
                         </p>
                         {connection.lastError ? <Notice>آخر خطأ اتصال: {connection.lastError}</Notice> : null}
                     </>
                 ) : null}
                 {canWrite ? (
                     <div className="flex flex-wrap gap-xs">
-                        <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => test.mutate(null)}
-                            loading={test.isPending}
-                        >
+                        <Button size="sm" variant="secondary" onClick={() => test.mutate(null)} loading={test.isPending}>
                             فحص الاتصال
                         </Button>
                         <Button
@@ -1694,12 +1615,7 @@ function OraclePanel() {
                         >
                             سحب الآن
                         </Button>
-                        <Button
-                            size="sm"
-                            variant="secondary"
-                            onClick={() => preview.mutate(null)}
-                            loading={preview.isPending}
-                        >
+                        <Button size="sm" variant="secondary" onClick={() => preview.mutate(null)} loading={preview.isPending}>
                             معاينة استيراد الأصناف
                         </Button>
                     </div>
@@ -1712,16 +1628,13 @@ function OraclePanel() {
                     action={<StatusBadge status={previewData.ok === false ? 'FAILED' : 'COMPLETED'} />}
                 >
                     {previewData.ok === false ? (
-                        <Notice>
-                            تعذرت المعاينة: {previewData.error || previewData.message || 'تعذر قراءة قائمة الأصناف.'}
-                        </Notice>
+                        <Notice>تعذرت المعاينة: {previewData.error || previewData.message || 'تعذر قراءة قائمة الأصناف.'}</Notice>
                     ) : (
                         <>
                             <p className="text-body-sm text-ink">
                                 الإجمالي: {formatInt(Number(previewData.total) || 0)} · أصناف جديدة:{' '}
-                                {formatInt(Number(previewData.fresh) || 0)} · موجودة/متخطاة:{' '}
-                                {formatInt(Number(previewData.skipped) || 0)} · مجموعات مستبعدة:{' '}
-                                {formatInt(Number(previewData.groups) || 0)}
+                                {formatInt(Number(previewData.fresh) || 0)} · موجودة/متخطاة: {formatInt(Number(previewData.skipped) || 0)} ·
+                                مجموعات مستبعدة: {formatInt(Number(previewData.groups) || 0)}
                             </p>
                             {canWrite && Number(previewData.fresh) > 0 ? (
                                 <Button
@@ -1786,8 +1699,7 @@ function OraclePanel() {
                                     : 'توجد فجوات حسب نتيجة الخادم'}
                             </Badge>{' '}
                             · قاعدة الكاشير: {formatInt(Number(reconcileData.totalOra) || 0)} · محلي:{' '}
-                            {formatInt(Number(reconcileData.totalLocal) || 0)} ·{' '}
-                            {formatInt(Number(reconcileData.days) || 0)} يوم
+                            {formatInt(Number(reconcileData.totalLocal) || 0)} · {formatInt(Number(reconcileData.days) || 0)} يوم
                         </p>
                         <DataGrid
                             label="مقارنة المزامنة"
@@ -1814,9 +1726,8 @@ function OraclePanel() {
                     <p className="text-body-sm text-muted">المقارنة لم تُشغّل — شغّلها لطلب النتيجة المباشرة من الخادم.</p>
                 )}
                 <p className="text-body-sm text-muted">
-                    حالة مهمة اللحاق:{' '}
-                    {job?.running ? 'قيد التنفيذ' : job?.finishedAt ? `انتهت ${job.finishedAt}` : 'لا توجد مهمة'} ·
-                    أُرسلت {formatInt(Number(job?.posted) || 0)} · مكررات {formatInt(Number(job?.dups) || 0)}
+                    حالة مهمة اللحاق: {job?.running ? 'قيد التنفيذ' : job?.finishedAt ? `انتهت ${job.finishedAt}` : 'لا توجد مهمة'} · أُرسلت{' '}
+                    {formatInt(Number(job?.posted) || 0)} · مكررات {formatInt(Number(job?.dups) || 0)}
                     {job?.error ? ` · ${job.error}` : ''}
                 </p>
             </Section>
@@ -1905,12 +1816,7 @@ function QualityPanel() {
     }
 
     function printQuarantine() {
-        const printWindow = openBlankTab('الحجر الصحي لقيم مخازن الكاشير');
-        if (!printWindow) {
-            toast({ title: 'تعذّر فتح نافذة الطباعة. اسمح بالنوافذ المنبثقة ثم أعد المحاولة.', variant: 'error' });
-            return;
-        }
-        printHtmlDocument(printWindow, quarantineReportHtml(quarantine));
+        printSmart(quarantineReportHtml(quarantine), { autoPrint: true });
     }
 
     return (
@@ -1930,12 +1836,10 @@ function QualityPanel() {
                 }
             >
                 <p className="text-body-sm text-muted">
-                    مؤشرات قراءة فقط من دليل الأصناف في قاعدة الكاشير. البنود التي يتعذر ترحيلها تُحجز هنا بدل إسقاطها
-                    بصمت؛ راجعها ثم أعد معالجة الفواتير من تبويب الحالة.
+                    مؤشرات قراءة فقط من دليل الأصناف في قاعدة الكاشير. البنود التي يتعذر ترحيلها تُحجز هنا بدل إسقاطها بصمت؛ راجعها ثم أعد
+                    معالجة الفواتير من تبويب الحالة.
                 </p>
-                {catalogQuery.isPending || quarantineQuery.isPending ? (
-                    <StateLoading label="جارٍ فحص جودة البيانات…" />
-                ) : null}
+                {catalogQuery.isPending || quarantineQuery.isPending ? <StateLoading label="جارٍ فحص جودة البيانات…" /> : null}
                 {catalogQuery.isError ? (
                     <QueryError
                         message={writeErrorMessage(catalogQuery.error)}
@@ -1954,10 +1858,7 @@ function QualityPanel() {
                             label="عملاء / أصول"
                             value={`${formatInt(Number(catalog?.customers) || 0)} / ${formatInt(Number(catalog?.assets) || 0)}`}
                         />
-                        <Metric
-                            label="بنود الحجر (قيمة)"
-                            value={`${formatInt(quarantine.length)} · ${moneyText(quarantinedValue)}`}
-                        />
+                        <Metric label="بنود الحجر (قيمة)" value={`${formatInt(quarantine.length)} · ${moneyText(quarantinedValue)}`} />
                     </div>
                 ) : null}
                 {canWrite ? (
@@ -2011,12 +1912,7 @@ function QualityPanel() {
                             onChange={(event) => setNeedle(event.target.value)}
                             containerClassName="w-56"
                         />
-                        <Button
-                            size="sm"
-                            variant="secondary"
-                            disabled={quarantineQuery.isPending}
-                            onClick={printQuarantine}
-                        >
+                        <Button size="sm" variant="secondary" disabled={quarantineQuery.isPending} onClick={printQuarantine}>
                             طباعة بنود الحجر
                         </Button>
                     </div>
@@ -2099,8 +1995,8 @@ function ToolsPanel() {
         <>
             <Section title="معاينة الصيغة">
                 <p className="text-body-sm text-ink">
-                    أداة تحليل ومطابقة قراءة فقط. المحتوى يُرسل إلى خادم النظام لتحليله ومقارنته بالمخزون؛ لا تُرحّل فواتير
-                    ولا تُعدّل بيانات المخزون.
+                    أداة تحليل ومطابقة قراءة فقط. المحتوى يُرسل إلى خادم النظام لتحليله ومقارنته بالمخزون؛ لا تُرحّل فواتير ولا تُعدّل بيانات
+                    المخزون.
                 </p>
                 {canWrite ? (
                     <>
@@ -2131,9 +2027,8 @@ function ToolsPanel() {
                     {invoice ? (
                         <>
                             <p className="text-body-sm text-ink">
-                                الفاتورة: {invoice.invoiceNumber || 'لم يُكتشف الرقم'} · التاريخ: {invoice.date || '—'} ·
-                                طريقة الدفع: {invoice.paymentMethod || '—'} · عدد الأصناف:{' '}
-                                {formatInt(invoice.items?.length ?? 0)}
+                                الفاتورة: {invoice.invoiceNumber || 'لم يُكتشف الرقم'} · التاريخ: {invoice.date || '—'} · طريقة الدفع:{' '}
+                                {invoice.paymentMethod || '—'} · عدد الأصناف: {formatInt(invoice.items?.length ?? 0)}
                             </p>
                             <div className="grid gap-sm sm:grid-cols-2">
                                 <Metric label="مطابق" value={formatInt(resolved.length)} />
@@ -2177,13 +2072,8 @@ function ToolsPanel() {
                     )}
                     {result.suggestedProfile ? (
                         <details>
-                            <summary className="cursor-pointer text-body-sm text-ink">
-                                ملف تعريف مقترح (للمراجعة فقط)
-                            </summary>
-                            <pre
-                                dir="ltr"
-                                className="mt-xs max-h-64 overflow-auto rounded-md bg-surface-sunken p-sm text-caption"
-                            >
+                            <summary className="cursor-pointer text-body-sm text-ink">ملف تعريف مقترح (للمراجعة فقط)</summary>
+                            <pre dir="ltr" className="mt-xs max-h-64 overflow-auto rounded-md bg-surface-sunken p-sm text-caption">
                                 {JSON.stringify(result.suggestedProfile, null, 2)}
                             </pre>
                         </details>
@@ -2294,11 +2184,7 @@ function MirrorPanel() {
                 }
             >
                 <div className="flex flex-wrap gap-xs">
-                    <Button
-                        size="sm"
-                        variant={cashier === '' ? 'primary' : 'secondary'}
-                        onClick={() => pickCashier('')}
-                    >
+                    <Button size="sm" variant={cashier === '' ? 'primary' : 'secondary'} onClick={() => pickCashier('')}>
                         كل الكاشيرات
                     </Button>
                     {cashiers.map((entry) => (
@@ -2323,10 +2209,7 @@ function MirrorPanel() {
                 ) : null}
                 <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-3">
                     {cashiers.map((entry) => (
-                        <div
-                            key={String(entry.cashier_no)}
-                            className="rounded-lg border border-hairline bg-surface-sunken p-sm"
-                        >
+                        <div key={String(entry.cashier_no)} className="rounded-lg border border-hairline bg-surface-sunken p-sm">
                             <p className="text-label-md text-muted">كاشير {String(entry.cashier_no)}</p>
                             <p className="erp-numeric mt-xxs text-heading-md text-ink">{moneyText(entry.revenue)}</p>
                             <p className="mt-xxs text-caption text-muted">
@@ -2394,17 +2277,12 @@ function MirrorPanel() {
                         </DataGrid>
                         <div className="flex flex-wrap items-center gap-xs">
                             {offset > 0 ? (
-                                <Button
-                                    size="sm"
-                                    variant="secondary"
-                                    onClick={() => setOffset(Math.max(0, offset - 50))}
-                                >
+                                <Button size="sm" variant="secondary" onClick={() => setOffset(Math.max(0, offset - 50))}>
                                     السابق
                                 </Button>
                             ) : null}
                             <span className="text-body-sm text-muted">
-                                عرض {formatInt(offset + (orders.length ? 1 : 0))}–{formatInt(offset + orders.length)} من{' '}
-                                {formatInt(total)}
+                                عرض {formatInt(offset + (orders.length ? 1 : 0))}–{formatInt(offset + orders.length)} من {formatInt(total)}
                             </span>
                             {offset + orders.length < total ? (
                                 <Button size="sm" variant="secondary" onClick={() => setOffset(offset + 50)}>
@@ -2445,9 +2323,9 @@ function MirrorPanel() {
                                 <Metric label="المتبقي" value={moneyText(close.open)} />
                             </div>
                             <p className="text-body-sm text-ink">
-                                نقدي {moneyText(close.pay_split?.cash)} · شبكة {moneyText(close.pay_split?.network)} ·
-                                آجل {moneyText(close.pay_split?.credit)} · جوال {moneyText(close.pay_split?.mobile)} ·
-                                متوسط الفاتورة {moneyText(close.avg)}
+                                نقدي {moneyText(close.pay_split?.cash)} · شبكة {moneyText(close.pay_split?.network)} · آجل{' '}
+                                {moneyText(close.pay_split?.credit)} · جوال {moneyText(close.pay_split?.mobile)} · متوسط الفاتورة{' '}
+                                {moneyText(close.avg)}
                             </p>
                             <DataGrid
                                 label="الحركة بالساعة"
@@ -2504,9 +2382,8 @@ function MirrorPanel() {
                 {detail ? (
                     <>
                         <p className="text-body-sm text-ink">
-                            الكاشير {detail.cashier_no == null ? '—' : String(detail.cashier_no)} · التاريخ{' '}
-                            {detail.doc_date || '—'} {detail.doc_time || ''} · الإجمالي {moneyText(detail.total)} ·
-                            الصافي {moneyText(detail.net)}
+                            الكاشير {detail.cashier_no == null ? '—' : String(detail.cashier_no)} · التاريخ {detail.doc_date || '—'}{' '}
+                            {detail.doc_time || ''} · الإجمالي {moneyText(detail.total)} · الصافي {moneyText(detail.net)}
                         </p>
                         <DataGrid
                             label="أصناف الأوردر"
@@ -2552,9 +2429,7 @@ export function YarasoftWorkbench() {
                             aria-selected={tab === item.key}
                             onClick={() => setTab(item.key)}
                             className={`rounded-md px-md py-xs text-button-md ${
-                                tab === item.key
-                                    ? 'bg-primary text-on-primary'
-                                    : 'bg-surface text-ink hover:bg-surface-hover'
+                                tab === item.key ? 'bg-primary text-on-primary' : 'bg-surface text-ink hover:bg-surface-hover'
                             }`}
                         >
                             {item.label}

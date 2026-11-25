@@ -103,11 +103,7 @@ export function MaintenanceSection() {
             const total = Object.values(bundle.totals).reduce((sum, count) => sum + count, 0);
             const stamp = bundle.exportDate.slice(0, 10);
             downloadJson(`karim-erp-export-${stamp}.json`, bundle);
-            toast({
-                variant: 'success',
-                title: 'تم تجهيز التصدير',
-                description: `${total.toLocaleString('en-US')} صفًا`,
-            });
+            toast({ variant: 'success', title: 'تم تجهيز التصدير', description: `${total.toLocaleString('en-US')} صفًا` });
         } catch (cause) {
             setExportError(writeErrorMessage(cause, 'تعذّر التصدير'));
         } finally {
@@ -189,11 +185,7 @@ export function MaintenanceSection() {
                     </Button>
                 }
             >
-                <QueryBoundary
-                    pending={stateQuery.isPending}
-                    error={stateQuery.error}
-                    onRetry={() => void stateQuery.refetch()}
-                >
+                <QueryBoundary pending={stateQuery.isPending} error={stateQuery.error} onRetry={() => void stateQuery.refetch()}>
                     <p className="text-body-sm text-muted" dir="ltr">
                         {stateGroups} groups — {formatBytes(stateBytes)}
                     </p>
@@ -221,9 +213,7 @@ export function MaintenanceSection() {
                     </Button>
                 }
             >
-                <p className="text-body-sm text-muted">
-                    يُفرّغ حركات المستودع والأرصدة ويُعيد الترقيم — البيانات المالية والفواتير تبقى.
-                </p>
+                <p className="text-body-sm text-muted">يُفرّغ حركات المستودع والأرصدة ويُعيد الترقيم — البيانات المالية والفواتير تبقى.</p>
             </SectionCard>
 
             <Dialog

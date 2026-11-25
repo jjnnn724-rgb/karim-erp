@@ -41,10 +41,7 @@ export function ErrorScreen({
             aria-live="assertive"
             className="mx-auto flex max-w-xl flex-col items-center gap-md rounded-lg border border-line bg-surface p-xl text-center text-ink"
         >
-            <span
-                className="grid size-11 place-items-center rounded-full bg-surface-sunken text-danger"
-                aria-hidden="true"
-            >
+            <span className="grid size-11 place-items-center rounded-full bg-surface-sunken text-danger" aria-hidden="true">
                 <AlertTriangleIcon className="size-5" />
             </span>
             <div className="flex flex-col gap-xxs">

@@ -188,13 +188,7 @@ beforeEach(() => {
     mocks.deleteInventoryItem.mockResolvedValue(undefined);
     mocks.forceDeleteInventoryItem.mockResolvedValue(undefined);
     mocks.mergeInventoryItems.mockResolvedValue({ mergedCount: 1, movedQty: 2 });
-    mocks.submitBulkReceipt.mockResolvedValue({
-        imported: 2,
-        total: 2,
-        batches: ['BULK-1'],
-        failures: [],
-        retryRows: [],
-    });
+    mocks.submitBulkReceipt.mockResolvedValue({ imported: 2, total: 2, batches: ['BULK-1'], failures: [] });
 });
 
 afterEach(() => {
@@ -408,9 +402,7 @@ describe('المخزون — وارد سريع', () => {
     });
 
     it('يعرض خطأ الخادم داخل النموذج ويُبقيه مفتوحًا', async () => {
-        mocks.receiveInventoryItem.mockRejectedValueOnce(
-            new ApiError(500, 'MANUAL_RECEIPT_FAILED', 'تعذر تسجيل حركة الإضافة المخزنية'),
-        );
+        mocks.receiveInventoryItem.mockRejectedValueOnce(new ApiError(500, 'MANUAL_RECEIPT_FAILED', 'تعذر تسجيل حركة الإضافة المخزنية'));
         stubFetch();
         renderScreen();
         await waitFor(() => {
@@ -525,9 +517,7 @@ describe('المخزون — حذف وحذف نهائي', () => {
         await screen.findByText('حذف الصنف "باذنجان"؟');
         fireEvent.click(screen.getByRole('button', { name: 'تأكيد' }));
 
-        expect(
-            await screen.findByText((content) => content.includes('هل تريد الحذف النهائي مع كل حركاته وسجلاته؟')),
-        ).toBeTruthy();
+        expect(await screen.findByText((content) => content.includes('هل تريد الحذف النهائي مع كل حركاته وسجلاته؟'))).toBeTruthy();
         fireEvent.click(screen.getByRole('button', { name: 'تأكيد' }));
 
         await waitFor(() => {
@@ -571,9 +561,7 @@ describe('المخزون — دمج المكرر (أدمن)', () => {
         expect(screen.getByText('«باذنجان» — 2 نسخ')).toBeTruthy();
 
         fireEvent.click(screen.getByRole('button', { name: 'دمج في الصنف المحدد' }));
-        expect(
-            await screen.findByText((content) => content.includes('تأكيد الدمج: سيُنقل رصيد 1 صنفًا مكررًا')),
-        ).toBeTruthy();
+        expect(await screen.findByText((content) => content.includes('تأكيد الدمج: سيُنقل رصيد 1 صنفًا مكررًا'))).toBeTruthy();
         fireEvent.click(screen.getByRole('button', { name: 'تأكيد' }));
 
         await waitFor(() => {
@@ -689,12 +677,7 @@ describe('المخزون — الاستلام المجمّع', () => {
         await waitFor(() => {
             expect(mocks.submitBulkReceipt).toHaveBeenCalledTimes(1);
         });
-        const rows = mocks.submitBulkReceipt.mock.calls[0]?.[0] as {
-            name: string;
-            qty: string;
-            price: string;
-            minQty: string;
-        }[];
+        const rows = mocks.submitBulkReceipt.mock.calls[0]?.[0] as { name: string; qty: string; price: string; minQty: string }[];
         expect(rows[0]).toMatchObject({ name: 'أرز', qty: '10', price: '25', minQty: '5' });
 
         expect(await screen.findByText('تم الاستلام المجمّع')).toBeTruthy();
@@ -709,18 +692,6 @@ describe('المخزون — الاستلام المجمّع', () => {
             total: 2,
             batches: ['BULK-1'],
             failures: [{ names: ['زيت'], message: 'الوحدة غير مطابقة' }],
-            retryRows: [
-                {
-                    id: 'bulk-retry-row',
-                    name: 'زيت',
-                    category: 'عام',
-                    unit: 'قطعة',
-                    qty: '1',
-                    price: '0',
-                    minQty: '5',
-                    expiryDate: '',
-                },
-            ],
         });
         stubFetch();
         renderScreen();
@@ -736,7 +707,6 @@ describe('المخزون — الاستلام المجمّع', () => {
 
         expect(await screen.findByText('اكتمل الاستيراد جزئيًا')).toBeTruthy();
         expect(screen.getByText('زيت — الوحدة غير مطابقة')).toBeTruthy();
-        expect(screen.getByLabelText('الصنف — صف 1')).toHaveValue('زيت');
     });
 
     it('فشل الاستلام كله يبقي النافذة مفتوحة ويعرض رسالة الخادم', async () => {

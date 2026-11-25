@@ -1,6 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
-import { ScreenHero } from '../ui';
 import { useMemo, useState } from 'react';
+import { ScreenHero } from '../ui';
 import './Kitchen.premium.css';
 import { KitchenStudio } from '../components/KitchenStudio';
 import { BarList, KpiCard, SectionCard } from '../components/Reports';
@@ -12,15 +12,15 @@ import {
     costRatioTone,
     fetchKitchenCostCards,
     fetchKitchenOverview,
+    type KitchenCostCard,
     POLICY_MODE_AR,
     riyadhMonthStart,
     riyadhToday,
     summarizeKitchen,
-    type KitchenCostCard,
     topDistributions,
 } from '../lib/kitchen';
 import { canReviewKitchenExceptions, canWriteKitchenOps, reviewKitchenException } from '../lib/kitchen-ops';
-import { printOfficialSheet, type OfficialSheetSection } from '../lib/official-print';
+import { type OfficialSheetSection, printOfficialSheet } from '../lib/official-print';
 import { errorMessage, intOf, moneyOf, pctOf, qtyOf, shareOf, textOf } from '../lib/reporting';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
@@ -155,13 +155,18 @@ export function Kitchen() {
             })),
         };
         if (lines.length > 0) {
-            productionSection.totalsRow = [{
-                name: lines.length > printedLines.length ? `الإجمالي (أول ${String(printedLines.length)} من ${String(lines.length)} بند)` : 'الإجمالي',
-                allocated: '',
-                batchCost: '',
-                cost: moneyOf(productionCost),
-                date: '',
-            }];
+            productionSection.totalsRow = [
+                {
+                    name:
+                        lines.length > printedLines.length
+                            ? `الإجمالي (أول ${String(printedLines.length)} من ${String(lines.length)} بند)`
+                            : 'الإجمالي',
+                    allocated: '',
+                    batchCost: '',
+                    cost: moneyOf(productionCost),
+                    date: '',
+                },
+            ];
         } else {
             productionSection.note = 'لا توجد بنود إنتاج موزّعة خلال الفترة.';
         }
@@ -185,14 +190,19 @@ export function Kitchen() {
             })),
         };
         if (items.length > 0) {
-            consumptionSection.totalsRow = [{
-                name: items.length > printedItems.length ? `الإجمالي (أول ${String(printedItems.length)} من ${String(items.length)} بند)` : 'الإجمالي',
-                qty: '',
-                cost: '',
-                value: moneyOf(itemsTotal),
-                date: '',
-                dispatch: '',
-            }];
+            consumptionSection.totalsRow = [
+                {
+                    name:
+                        items.length > printedItems.length
+                            ? `الإجمالي (أول ${String(printedItems.length)} من ${String(items.length)} بند)`
+                            : 'الإجمالي',
+                    qty: '',
+                    cost: '',
+                    value: moneyOf(itemsTotal),
+                    date: '',
+                    dispatch: '',
+                },
+            ];
         } else {
             consumptionSection.note = 'لا توجد أصناف مصروفة خلال الفترة.';
         }
@@ -223,8 +233,7 @@ export function Kitchen() {
 
     return (
         <div className="erp-premium-screen erp-premium-screen--kitchen flex flex-col gap-md">
-
-<ScreenHero
+            <ScreenHero
                 title="المطبخ"
                 english="Kitchen Overview"
                 description="أوامر الإنتاج والاستثناءات والتوزيعات والسياسات — على نافذة الخادم المعلنة، لا ادعاء اكتمال خارجها."
@@ -232,12 +241,14 @@ export function Kitchen() {
                     <>
                         <button
                             type="button"
-                            onClick={() => { () => {
-                    void overviewQuery.refetch();
-                    if (!costRangeInvalid) {
-                        void costCardsQuery.refetch();
-                    }
-                } }}
+                            onClick={() => {
+                                () => {
+                                    void overviewQuery.refetch();
+                                    if (!costRangeInvalid) {
+                                        void costCardsQuery.refetch();
+                                    }
+                                };
+                            }}
                             disabled={overviewQuery.isFetching || costCardsQuery.isFetching}
                             className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
                         >
@@ -489,7 +500,10 @@ export function Kitchen() {
                                         {policies.map((policy, policyIndex) => {
                                             const mode = String(policy.operation_mode ?? '');
                                             return (
-                                                <tr key={String(policy.id ?? policyIndex)} className="border-b border-hairline hover:bg-surface-hover">
+                                                <tr
+                                                    key={String(policy.id ?? policyIndex)}
+                                                    className="border-b border-hairline hover:bg-surface-hover"
+                                                >
                                                     <td className="px-sm py-xxs text-ink">
                                                         {textOf(policy.department_name) || `#${String(policy.department_id ?? '—')}`}
                                                     </td>
@@ -658,24 +672,44 @@ export function Kitchen() {
                                                         <table className="w-full border-collapse text-body-md">
                                                             <thead>
                                                                 <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                                                    <th scope="col" className="px-sm py-xs text-start font-medium">الصنف</th>
-                                                                    <th scope="col" className="px-sm py-xs text-start font-medium">مخصص / مخطط</th>
-                                                                    <th scope="col" className="px-sm py-xs text-start font-medium">تكلفة الخطة</th>
-                                                                    <th scope="col" className="px-sm py-xs text-start font-medium">التكلفة المخصصة</th>
-                                                                    <th scope="col" className="px-sm py-xs text-start font-medium">التاريخ</th>
+                                                                    <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                                        الصنف
+                                                                    </th>
+                                                                    <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                                        مخصص / مخطط
+                                                                    </th>
+                                                                    <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                                        تكلفة الخطة
+                                                                    </th>
+                                                                    <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                                        التكلفة المخصصة
+                                                                    </th>
+                                                                    <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                                        التاريخ
+                                                                    </th>
                                                                 </tr>
                                                             </thead>
                                                             <tbody>
                                                                 {lines.map((line, lineIndex) => (
-                                                                    <tr key={String(line.batch_id ?? lineIndex)} className="border-b border-hairline">
+                                                                    <tr
+                                                                        key={String(line.batch_id ?? lineIndex)}
+                                                                        className="border-b border-hairline"
+                                                                    >
                                                                         <td className="px-sm py-xxs text-ink">
-                                                                            {String(line.product_name ?? `دفعة #${String(line.batch_id ?? '—')}`)}
+                                                                            {String(
+                                                                                line.product_name ??
+                                                                                    `دفعة #${String(line.batch_id ?? '—')}`,
+                                                                            )}
                                                                         </td>
                                                                         <td className="erp-numeric px-sm py-xxs" dir="ltr">
                                                                             {`${qtyOf(line.allocated_qty)} / ${qtyOf(line.planned_qty)}`}
                                                                         </td>
-                                                                        <td className="erp-numeric px-sm py-xxs" dir="ltr">{moneyOf(line.batch_cost)}</td>
-                                                                        <td className="erp-numeric px-sm py-xxs" dir="ltr">{moneyOf(line.cost)}</td>
+                                                                        <td className="erp-numeric px-sm py-xxs" dir="ltr">
+                                                                            {moneyOf(line.batch_cost)}
+                                                                        </td>
+                                                                        <td className="erp-numeric px-sm py-xxs" dir="ltr">
+                                                                            {moneyOf(line.cost)}
+                                                                        </td>
                                                                         <td className="px-sm py-xxs text-body-sm text-muted" dir="ltr">
                                                                             {String(line.prod_date ?? '').slice(0, 10)}
                                                                         </td>
@@ -693,28 +727,51 @@ export function Kitchen() {
                                                             <table className="w-full border-collapse text-body-md">
                                                                 <thead>
                                                                     <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                                                        <th scope="col" className="px-sm py-xs text-start font-medium">الصنف</th>
-                                                                        <th scope="col" className="px-sm py-xs text-start font-medium">الكمية</th>
-                                                                        <th scope="col" className="px-sm py-xs text-start font-medium">تكلفة الوحدة</th>
-                                                                        <th scope="col" className="px-sm py-xs text-start font-medium">القيمة</th>
-                                                                        <th scope="col" className="px-sm py-xs text-start font-medium">التاريخ</th>
-                                                                        <th scope="col" className="px-sm py-xs text-start font-medium">رقم الطلب</th>
+                                                                        <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                                            الصنف
+                                                                        </th>
+                                                                        <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                                            الكمية
+                                                                        </th>
+                                                                        <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                                            تكلفة الوحدة
+                                                                        </th>
+                                                                        <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                                            القيمة
+                                                                        </th>
+                                                                        <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                                            التاريخ
+                                                                        </th>
+                                                                        <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                                            رقم الطلب
+                                                                        </th>
                                                                     </tr>
                                                                 </thead>
                                                                 <tbody>
                                                                     {items.slice(0, 25).map((item, itemIndex) => (
-                                                                        <tr key={`${String(item.dispatch_no ?? '')}-${String(item.date ?? '')}-${String(itemIndex)}`} className="border-b border-hairline">
-                                                                            <td className="px-sm py-xxs text-ink">{String(item.name ?? '—')}</td>
+                                                                        <tr
+                                                                            key={`${String(item.dispatch_no ?? '')}-${String(item.date ?? '')}-${String(itemIndex)}`}
+                                                                            className="border-b border-hairline"
+                                                                        >
+                                                                            <td className="px-sm py-xxs text-ink">
+                                                                                {String(item.name ?? '—')}
+                                                                            </td>
                                                                             <td className="erp-numeric px-sm py-xxs" dir="ltr">
                                                                                 {`${qtyOf(item.qty)} ${String(item.unit ?? '')}`}
                                                                             </td>
-                                                                            <td className="erp-numeric px-sm py-xxs" dir="ltr">{moneyOf(item.cost)}</td>
-                                                                            <td className="erp-numeric px-sm py-xxs" dir="ltr">{moneyOf(item.value)}</td>
+                                                                            <td className="erp-numeric px-sm py-xxs" dir="ltr">
+                                                                                {moneyOf(item.cost)}
+                                                                            </td>
+                                                                            <td className="erp-numeric px-sm py-xxs" dir="ltr">
+                                                                                {moneyOf(item.value)}
+                                                                            </td>
                                                                             <td className="px-sm py-xxs text-body-sm text-muted" dir="ltr">
                                                                                 {String(item.date ?? '').slice(0, 10)}
                                                                             </td>
                                                                             <td className="px-sm py-xxs text-body-sm text-muted" dir="ltr">
-                                                                                {item.dispatch_no != null ? `#${String(item.dispatch_no)}` : '—'}
+                                                                                {item.dispatch_no != null
+                                                                                    ? `#${String(item.dispatch_no)}`
+                                                                                    : '—'}
                                                                             </td>
                                                                         </tr>
                                                                     ))}

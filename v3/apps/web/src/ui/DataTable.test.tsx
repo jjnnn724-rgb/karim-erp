@@ -78,45 +78,6 @@ describe('DataTable', () => {
         expect(within(cards).getByText('980.50')).toBeTruthy();
     });
 
-    it('على سطح المكتب لا تُرسم بطاقات الجوال المكررة (DOM أنظف)', () => {
-        // matchMedia حقيقي غير موجود في jsdom — نحاكي عرض سطح المكتب (≥768px).
-        const listeners = new Set<(event: { matches: boolean }) => void>();
-        vi.stubGlobal(
-            'matchMedia',
-            vi.fn((query: string) => ({
-                matches: query.includes('min-width'),
-                media: query,
-                addEventListener: (_: string, listener: (event: { matches: boolean }) => void) => {
-                    listeners.add(listener);
-                },
-                removeEventListener: (_: string, listener: (event: { matches: boolean }) => void) => {
-                    listeners.delete(listener);
-                },
-            })),
-        );
-        const { unmount } = render(<DataTable<Invoice> {...BASE} rows={rows} />);
-        expect(screen.getByRole('table', { name: 'فواتير المبيعات' })).toBeTruthy();
-        expect(screen.queryByRole('list', { name: 'فواتير المبيعات — بطاقات' })).toBeNull();
-        unmount();
-        expect(listeners.size).toBe(0);
-        vi.unstubAllGlobals();
-    });
-
-    it('rowClassName يضيف أصناف الصف المختار دون المساس بالافتراضي', () => {
-        render(
-            <DataTable<Invoice>
-                {...BASE}
-                rows={rows}
-                rowClassName={(row) => (row.id === 'INV-2' ? 'bg-surface-hover' : '')}
-            />,
-        );
-        const rendered = screen.getAllByTestId('datatable-row');
-        const classes = (el: Element | undefined) => (el?.className ?? '').split(/\s+/);
-        expect(classes(rendered[0])).not.toContain('bg-surface-hover');
-        expect(classes(rendered[1])).toContain('bg-surface-hover');
-        expect(classes(rendered[1])).toContain('border-hairline');
-    });
-
     it('حالة loading: الرؤوس تبقى وaria-busy ورسالة حالة', () => {
         render(<DataTable<Invoice> {...BASE} rows={[]} state="loading" />);
 
@@ -135,9 +96,7 @@ describe('DataTable', () => {
 
     it('حالة error: role=alert وإعادة المحاولة', () => {
         const onRetry = vi.fn();
-        render(
-            <DataTable<Invoice> {...BASE} rows={[]} state="error" errorMessage="تعذّر جلب الفواتير" onRetry={onRetry} />,
-        );
+        render(<DataTable<Invoice> {...BASE} rows={[]} state="error" errorMessage="تعذّر جلب الفواتير" onRetry={onRetry} />);
 
         expect(screen.getByRole('alert')).toBeTruthy();
         expect(screen.getByText('تعذّر جلب الفواتير')).toBeTruthy();
@@ -147,13 +106,7 @@ describe('DataTable', () => {
 
     it('يضيف ترقيم الصفحات عند تمريره', () => {
         const onPageChange = vi.fn();
-        render(
-            <DataTable<Invoice>
-                {...BASE}
-                rows={rows}
-                pagination={{ page: 1, pageSize: 10, total: 57, onPageChange }}
-            />,
-        );
+        render(<DataTable<Invoice> {...BASE} rows={rows} pagination={{ page: 1, pageSize: 10, total: 57, onPageChange }} />);
 
         fireEvent.click(screen.getByRole('button', { name: 'الصفحة 2' }));
         expect(onPageChange).toHaveBeenCalledWith(2);
@@ -187,9 +140,7 @@ describe('DataTable', () => {
         fireEvent.click(screen.getByRole('button', { name: 'فرز حسب العميل' }));
 
         expect(onSortingChange).toHaveBeenCalledWith({ key: 'customer', direction: 'asc' });
-        const renderedRows = within(screen.getByRole('table', { name: 'فواتير المبيعات' })).getAllByTestId(
-            'datatable-row',
-        );
+        const renderedRows = within(screen.getByRole('table', { name: 'فواتير المبيعات' })).getAllByTestId('datatable-row');
         expect(renderedRows[0]?.textContent).toContain('شركة النخيل');
     });
 
@@ -211,12 +162,7 @@ describe('DataTable', () => {
     it('ينشئ CSV مقتبسًا ويحمي القيم النصية التي قد تُفسّر كصيغ', () => {
         const csv = dataTableCsv(
             [
-                {
-                    key: 'customer',
-                    header: 'العميل',
-                    cell: (row: Invoice) => row.customer,
-                    exportValue: (row: Invoice) => row.customer,
-                },
+                { key: 'customer', header: 'العميل', cell: (row: Invoice) => row.customer, exportValue: (row: Invoice) => row.customer },
                 { key: 'total', header: 'الإجمالي', cell: (row: Invoice) => row.total, exportValue: () => -4 },
             ],
             [{ id: 'INV-3', customer: '=1+1,"x"', total: '-4' }],
@@ -309,12 +255,7 @@ describe('DataTable', () => {
                     rowCount: 2,
                     renderToggle: ({ row, canExpand, expanded, toggle }) =>
                         canExpand ? (
-                            <button
-                                type="button"
-                                aria-expanded={expanded}
-                                aria-label={`فتح الحساب ${row.id}`}
-                                onClick={toggle}
-                            >
+                            <button type="button" aria-expanded={expanded} aria-label={`فتح الحساب ${row.id}`} onClick={toggle}>
                                 فتح
                             </button>
                         ) : (

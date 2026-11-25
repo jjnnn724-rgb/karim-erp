@@ -112,8 +112,7 @@ export async function fetchHrSnapshot(signal?: AbortSignal): Promise<HrSnapshot>
             failures.push(`${names[index] ?? 'مصدر'}: ${reason}`);
         }
     });
-    const value = <T>(index: number, fallback: T): T =>
-        settled[index]?.status === 'fulfilled' ? (settled[index].value as T) : fallback;
+    const value = <T>(index: number, fallback: T): T => (settled[index]?.status === 'fulfilled' ? (settled[index].value as T) : fallback);
     return {
         employees: value<{ data: HrEmployee[] }>(0, { data: [] }).data,
         attendance: value<{ data: HrAttendance[] }>(1, { data: [] }).data,
@@ -141,8 +140,7 @@ export function buildHrKpis(snapshot: HrSnapshot): HrKpi[] {
     const present = todays.filter((record) => Boolean(record.checkIn));
     const late = present.filter(
         (record) =>
-            (record.lateMinutes !== null && record.lateMinutes !== undefined && num(record.lateMinutes) > 0) ||
-            record.late === true,
+            (record.lateMinutes !== null && record.lateMinutes !== undefined && num(record.lateMinutes) > 0) || record.late === true,
     );
     const pending = snapshot.leaves.filter((leave) => String(leave.status ?? '') === 'pending');
     const salaries = snapshot.employees.reduce((sum, employee) => sum + num(employee.salary), 0);
@@ -216,10 +214,7 @@ export function weeklyAttendance(attendance: HrAttendance[], today: string): { d
 }
 
 /** توزيع الموظفين على الأقسام — الأكواد المجهولة تبقى ظاهرة بكودها. */
-export function departmentDistribution(
-    employees: HrEmployee[],
-    departments: HrDepartmentLite[],
-): { label: string; value: number }[] {
+export function departmentDistribution(employees: HrEmployee[], departments: HrDepartmentLite[]): { label: string; value: number }[] {
     const names = new Map<string, string>();
     for (const department of departments) {
         const code = String(department.code ?? '');

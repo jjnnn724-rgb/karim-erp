@@ -42,12 +42,7 @@ export interface DeptEmployeesPayload {
 }
 
 export async function fetchDeptEmployees(signal?: AbortSignal): Promise<DeptEmployeesPayload> {
-    const body = await fetchJson(
-        deptEmployeesResponseSchema,
-        '/api/hr/dept-employees',
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    const body = await fetchJson(deptEmployeesResponseSchema, '/api/hr/dept-employees', getAccessToken(), signal ? { signal } : {});
     return {
         depts: (body.depts ?? []).map((dept) => String(dept)),
         employees: body.employees ?? [],
@@ -122,11 +117,7 @@ function normalizeDeptEmployeeForm(form: DeptEmployeeForm) {
         phone: cut(form.phone, 50) || null,
     };
 }
-async function writeDeptEmployee(
-    path: string,
-    method: 'POST' | 'PUT' | 'DELETE',
-    form?: DeptEmployeeForm,
-): Promise<unknown> {
+async function writeDeptEmployee(path: string, method: 'POST' | 'PUT' | 'DELETE', form?: DeptEmployeeForm): Promise<unknown> {
     const response = await fetch(`/api${path}`, {
         method,
         headers: {

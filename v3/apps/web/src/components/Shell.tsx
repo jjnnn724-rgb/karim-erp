@@ -1,14 +1,12 @@
-import { useQueryClient } from '@tanstack/react-query';
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
-import { getAccessToken, logout, useAuthState } from '../lib/auth';
+import { logout, useAuthState } from '../lib/auth';
 import { useHiddenNavKeys } from '../lib/hidden-nav';
+import { useLanguage } from '../lib/i18n';
 import { useAllowedMenus } from '../lib/my-menus';
+import { enLabel } from '../lib/nav-en';
 import {
-    ALL_SCREENS_TITLE,
     APP_NAME,
-    DAILY_KEYS,
-    DAILY_TITLE,
     groupForPath,
     HOME_PATH,
     HOME_TITLE,
@@ -20,9 +18,9 @@ import {
     writeNavPrefs,
 } from '../lib/navigation';
 import { useDocumentMeta } from '../lib/page-meta';
-import { startRealtime, stopRealtime } from '../lib/realtime';
+import { exportElementPdf } from '../lib/pdf-share';
 import { isV3Preview } from '../lib/rollout';
-import { enabledScreens, featureScreenForRoute, LEGACY_APP_URL } from '../lib/screens';
+import { enabledScreens, LEGACY_APP_URL } from '../lib/screens';
 import { ThemeProvider, useTheme } from '../ui/ThemeProvider';
 import { Breadcrumbs } from './Breadcrumbs';
 import { type CommandAction, CommandPalette } from './CommandPalette';
@@ -38,7 +36,7 @@ import './shell-premium.css';
  * في التنقّل أو البحث. الدرج مستقل عن الوضع المضغوط للشريط المكتبي.
  */
 
-// كتلة التنقّل الـ64 — نصّ صريح يحرسه registration.test.ts (لا تُولَّد آليًا).
+// كتلة التنقّل الـ63 — نصّ صريح يحرسه registration.test.ts (لا تُولَّد آليًا).
 export const NAV_ITEMS = [
     { to: '/accounts', label: 'شجرة الحسابات', hint: 'AccountsTree' },
     { to: '/journal', label: 'القيود اليومية', hint: 'JournalViewer' },
@@ -55,10 +53,7 @@ export const NAV_ITEMS = [
     { to: '/dispatch', label: 'أذون الصرف', hint: 'Dispatch' },
     { to: '/warehouse', label: 'المخزون', hint: 'Inventory' },
     { to: '/item-prices', label: 'أسعار الأصناف', hint: 'Item Prices' },
-    { to: '/warehouse-gov', label: 'حوكمة المخزن', hint: 'Governance' },
     { to: '/goods-scan', label: 'مسح البضاعة', hint: 'Barcode' },
-    { to: '/shelves', label: 'الرفوف', hint: 'Shelves' },
-    { to: '/weight', label: 'الميزان', hint: 'Scale' },
     { to: '/wh-returns', label: 'مرتجعات المطبخ', hint: 'Returns' },
     { to: '/wh-prs', label: 'طلبات الشراء', hint: 'PRs' },
     { to: '/dept-transfers', label: 'التحويلات الداخلية', hint: 'Transfers' },
@@ -74,7 +69,12 @@ export const NAV_ITEMS = [
     { to: '/permissions', label: 'الصلاحيات', hint: 'Permissions' },
     { to: '/veg-requests', label: 'طلبات الخضار', hint: 'Vegetables' },
     { to: '/recipes', label: 'الوصفات', hint: 'Recipes' },
-    { to: '/briefing', label: 'موجز المدير', hint: 'Briefing' },
+    { to: '/buffet', label: 'كوست البوفيه', hint: 'Buffet Cost' },
+    { to: '/command-center', label: 'مركز القيادة الموحّد', hint: 'Command Center' },
+    { to: '/bank-rec', label: 'مطابقة البنك', hint: 'Bank Reconciliation' },
+    { to: '/compliance-center', label: 'لوحة الامتثال الشهري', hint: 'Compliance Center' },
+    { to: '/balance-sheet', label: 'قائمة المركز المالي', hint: 'Balance Sheet' },
+    { to: '/cash-flow', label: 'قائمة التدفقات النقدية', hint: 'Cash Flow' },
     { to: '/sessions', label: 'الأجهزة والجلسات', hint: 'Sessions' },
     { to: '/whatsapp', label: 'واتساب والتنبيهات', hint: 'WhatsApp' },
     { to: '/settings', label: 'إعدادات النظام', hint: 'Settings' },
@@ -83,67 +83,40 @@ export const NAV_ITEMS = [
     { to: '/dept-employees', label: 'موظفو القسم', hint: 'Dept Employees' },
     { to: '/employee-portal', label: 'بوابة الموظف', hint: 'Employee Portal' },
     { to: '/zkteco', label: 'أجهزة البصمة', hint: 'ZKTeco' },
+    { to: '/punch-control', label: 'مركز التحكم بالبصمة والحضور', hint: 'Fingerprint Control' },
     { to: '/kitchen', label: 'المطبخ', hint: 'Kitchen' },
     { to: '/menu-board', label: 'شاشة القائمة', hint: 'Menu Board' },
     { to: '/warehouse-dashboard', label: 'لوحة المخزن', hint: 'WH Dashboard' },
     { to: '/inventory-inquiry', label: 'محرك الاستعلامات', hint: 'Inventory Query' },
-    { to: '/inventory-inquiry-pro', label: 'البطاقة الفاخرة', hint: 'Item Card' },
-    { to: '/accountant-dashboard', label: 'لوحة المحاسب', hint: 'Accountant' },
     { to: '/cfo', label: 'المدير المالي', hint: 'CFO' },
+    { to: '/dept-cost', label: 'وضع القسم', hint: 'Department Cost' },
     { to: '/dept-head-dashboard', label: 'لوحة رئيس القسم', hint: 'Dept Head' },
     { to: '/cost-analysis', label: 'تحليل التكلفة', hint: 'Cost Analysis' },
     { to: '/cost-center', label: 'مركز التكلفة', hint: 'Cost Center' },
     { to: '/pnl', label: 'الأرباح والخسائر', hint: 'P&L' },
     { to: '/monthly-comparison', label: 'المقارنة الشهرية', hint: 'Monthly' },
-    { to: '/reports', label: 'تقارير المبيعات', hint: 'Reports' },
+    { to: '/ext-sales', label: 'البيع الخارجي — المبيعات والمسحوبات', hint: 'External Sales' },
     {
         to: '/vat-return',
         label: 'مسودة مراجعة ضريبة القيمة المضافة',
         hint: 'VAT Review',
     },
-    { to: '/financial-compliance', label: 'مركز الامتثال المالي', hint: 'Compliance · VAT · GOSI · Bank' },
     { to: '/cashier-sales', label: 'مبيعات الكاشير', hint: 'Cashier Sales' },
     { to: '/cashier-monitor', label: 'متابعة الكاشير', hint: 'Cashier Monitor' },
     { to: '/pos-entry', label: 'نقطة البيع', hint: 'POS' },
+    { to: '/pos-reports', label: 'مركز التقارير', hint: 'Reports Hub' },
     { to: '/cashier', label: 'واجهة الكاشير', hint: 'Cashier Page' },
     { to: '/integrations', label: 'مصدر البيانات', hint: 'Data Source' },
     { to: '/sales-analyzer', label: 'تحليل المبيعات', hint: 'Sales Analyzer' },
-    { to: '/sales-inquiry', label: 'استعلام المبيعات', hint: 'Sales Inquiry' },
     { to: '/received-analyzer', label: 'تحليل المستلَم', hint: 'Received' },
     { to: '/wh-vs-pos', label: 'المخزن مقابل نقطة البيع', hint: 'WH vs POS' },
     { to: '/yarasoft', label: 'تكامل قاعدة الكاشير', hint: 'YaraSoft' },
 ] as const;
 
 type NavItem = (typeof NAV_ITEMS)[number];
-const UTILITY_NAV_KEYS = new Set(['cashier', 'integrations']);
-
-/**
- * مزامنة لحظية — مُسرِّع دفعٍ فوق الاستطلاع الدوري (مواقع `refetchInterval`
- * تبقى كما هي). تبدأ مع الجلسة وتتوقف عند الخروج/إزالة القشرة. الإبطال خشن
- * ومجمّع (~500ms) لامتصاص انفجارات الأحداث. انظر `lib/realtime.ts`.
- */
-function useRealtimeSync(): void {
-    const queryClient = useQueryClient();
-    const token = useAuthState().token;
-    useEffect(() => {
-        if (!token) {
-            return;
-        }
-        startRealtime({
-            getToken: getAccessToken,
-            onEntityChanged: () => {
-                void queryClient.invalidateQueries();
-            },
-        });
-        return () => {
-            stopRealtime();
-        };
-    }, [token, queryClient]);
-}
 
 /** القشرة مع مزوّد الثيم — نقطة واحدة، بلا اعتماد على مزوّد خارجي. */
 export function Shell() {
-    useRealtimeSync();
     return (
         <ThemeProvider>
             <ShellRoute />
@@ -170,6 +143,8 @@ function ShellLayout() {
     const [prefs, setPrefs] = useState<NavPrefs>(() => readNavPrefs());
     const [drawerOpen, setDrawerOpen] = useState(false);
     const [paletteOpen, setPaletteOpen] = useState(false);
+    const paletteOpenRef = useRef(paletteOpen);
+    paletteOpenRef.current = paletteOpen;
     const mainRef = useRef<HTMLElement>(null);
     const drawerRef = useRef<HTMLDivElement>(null);
     const drawerCloseRef = useRef<HTMLButtonElement>(null);
@@ -182,6 +157,43 @@ function ShellLayout() {
     const currentGroup = groupForPath(currentPath);
     // AccountsTree exposes only fetchChart; never infer access for other screens.
     const chartReadOnly = currentPath.replace(/\/+$/, '') === '/accounts';
+
+    // الطباعة الموحدة (2026-11-21): زر واحد في الشريط العلوي بدل أزرار رؤوس
+    // الصفحات — طباعة الصفحة (print.css مؤطر A4) أو PDF للصفحة الحالية.
+    const [printMenuOpen, setPrintMenuOpen] = useState(false);
+    const [printBusy, setPrintBusy] = useState<'download' | 'share' | null>(null);
+    const printMenuRef = useRef<HTMLDivElement>(null);
+
+    useEffect(() => {
+        if (!printMenuOpen) {
+            return undefined;
+        }
+        const onDocClick = (event: MouseEvent) => {
+            if (!printMenuRef.current?.contains(event.target as Node)) {
+                setPrintMenuOpen(false);
+            }
+        };
+        document.addEventListener('click', onDocClick);
+        return () => {
+            document.removeEventListener('click', onDocClick);
+        };
+    }, [printMenuOpen]);
+
+    const runPagePdf = useCallback(
+        async (mode: 'download' | 'share') => {
+            setPrintBusy(mode);
+            setPrintMenuOpen(false);
+            try {
+                const target = document.getElementById('erp-v3-main') ?? document.body;
+                await exportElementPdf(target, currentTitle ?? 'Karim ERP', { mode });
+            } catch {
+                /* فشل التجهيز لا يُسقط الواجهة — المستخدم يعيد المحاولة */
+            } finally {
+                setPrintBusy(null);
+            }
+        },
+        [currentTitle],
+    );
 
     useDocumentMeta(currentTitle);
 
@@ -201,6 +213,30 @@ function ShellLayout() {
                 hint: 'POS',
                 run: () => {
                     void navigate({ to: '/pos-entry' });
+                },
+            },
+            {
+                id: 'print-page',
+                label: 'طباعة الصفحة الحالية',
+                hint: currentTitle ?? 'Print',
+                run: () => {
+                    window.print();
+                },
+            },
+            {
+                id: 'print-pdf',
+                label: 'تحميل الصفحة PDF',
+                hint: currentTitle ?? 'PDF',
+                run: () => {
+                    void runPagePdf('download');
+                },
+            },
+            {
+                id: 'print-share',
+                label: 'مشاركة الصفحة PDF',
+                hint: currentTitle ?? 'Share',
+                run: () => {
+                    void runPagePdf('share');
                 },
             },
             {
@@ -227,6 +263,13 @@ function ShellLayout() {
     useEffect(() => {
         const onKeyDown = (event: KeyboardEvent) => {
             if ((event.ctrlKey || event.metaKey) && event.key.toLowerCase() === 'k') {
+                // داخل حقول الكتابة لا نختطف Ctrl+K — يتصرف المتصفح طبيعيًا (بحث شريط العنوان)
+                // والباليتة لا تقفز على الشاشة أثناء إدخال الطلبات.
+                const target = event.target as HTMLElement | null;
+                const editable = !!target?.closest('input, textarea, select, [contenteditable="true"]');
+                if (editable && !paletteOpenRef.current) {
+                    return;
+                }
                 event.preventDefault();
                 if (drawerOpen) {
                     setDrawerOpen(false);
@@ -271,8 +314,7 @@ function ShellLayout() {
         const drawer = drawerRef.current;
         if (!drawer) return;
         const restoreTarget =
-            drawerReturnFocusRef.current ??
-            (document.activeElement instanceof HTMLElement ? document.activeElement : null);
+            drawerReturnFocusRef.current ?? (document.activeElement instanceof HTMLElement ? document.activeElement : null);
         drawerReturnFocusRef.current = null;
         const openedPath = previousPathRef.current;
         const previousOverflow = document.body.style.overflow;
@@ -280,9 +322,7 @@ function ShellLayout() {
         drawerCloseRef.current?.focus();
 
         const focusable = () =>
-            Array.from(
-                drawer.querySelectorAll<HTMLElement>('a[href], button, input, select, textarea, [tabindex]'),
-            ).filter((element) => {
+            Array.from(drawer.querySelectorAll<HTMLElement>('a[href], button, input, select, textarea, [tabindex]')).filter((element) => {
                 const style = window.getComputedStyle(element);
                 return (
                     element.tabIndex >= 0 &&
@@ -305,16 +345,10 @@ function ShellLayout() {
             if (!first || !last) {
                 event.preventDefault();
                 drawer.focus();
-            } else if (
-                event.shiftKey &&
-                (document.activeElement === first || !drawer.contains(document.activeElement))
-            ) {
+            } else if (event.shiftKey && (document.activeElement === first || !drawer.contains(document.activeElement))) {
                 event.preventDefault();
                 last.focus();
-            } else if (
-                !event.shiftKey &&
-                (document.activeElement === last || !drawer.contains(document.activeElement))
-            ) {
+            } else if (!event.shiftKey && (document.activeElement === last || !drawer.contains(document.activeElement))) {
                 event.preventDefault();
                 first.focus();
             }
@@ -364,16 +398,10 @@ function ShellLayout() {
     const allowedMenusSet = useAllowedMenus();
     const hiddenNav = new Set(useHiddenNavKeys());
     const navItems = NAV_ITEMS.filter((item) => {
-        const key = item.to.slice(1);
-        // Source switching stays hidden until its server-side control API exists.
-        if (key === 'integrations') {
+        if (!screens.has(item.to.slice(1))) {
             return false;
         }
-        const featureKey = featureScreenForRoute(key);
-        if (!screens.has(featureKey)) {
-            return false;
-        }
-        if (hiddenNav.has(key) || hiddenNav.has(featureKey)) {
+        if (hiddenNav.has(item.to.slice(1))) {
             return false;
         }
         // مرآة V2 (nav-model.js allowedMenus): ما ليس في قوائم الدور + المنح − الممنوع
@@ -382,62 +410,27 @@ function ShellLayout() {
         if (!allowedMenusSet) {
             return true;
         }
-        return allowedMenusSet.includes(featureKey);
+        return allowedMenusSet.includes(item.to.slice(1));
     });
-    const utilityNavItems = navItems.filter((item) => UTILITY_NAV_KEYS.has(item.to.slice(1)));
 
-    const renderNavLink = (item: NavItem, compact: boolean) => (
-        <li key={item.to}>
-            <Link
-                to={item.to}
-                activeOptions={{ exact: false }}
-                title={compact ? item.label : undefined}
-                aria-label={compact ? item.label : undefined}
-                onClick={() => {
-                    setDrawerOpen(false);
-                }}
-                className="erp-nav-item erp-shell__nav-link"
-            >
-                <ShellIcon name={shellIconForPath(item.to)} />
-                <span className={compact ? 'sr-only' : 'erp-shell__nav-label'}>{item.label}</span>
-            </Link>
-        </li>
+    /* اللغة النشطة — تتحول النصوص في العربية/الإنجليزية فعليًا. */
+    const { lang, setLang } = useLanguage();
+    const localizedNavItems = useMemo(
+        () => (lang === 'en' ? navItems.map((item) => ({ ...item, label: enLabel(item.to) })) : navItems),
+        [lang, navItems],
     );
-
-    // «شاشاتي اليومية» أولًا: نفس الـ64 شاشة، لكن ما يُفتح كل يوم قبل الباقي.
-    const renderDaily = (compact: boolean, suffix: string) => {
-        const items = DAILY_KEYS.map((key) => navItems.find((item) => item.to === `/${key}`)).filter(
-            (item): item is NavItem => Boolean(item),
-        );
-        if (items.length === 0) return null;
-        const labelId = `erp-nav-daily-${suffix}`;
-        return (
-            <nav aria-labelledby={labelId} className="erp-shell__nav erp-shell__nav-daily">
-                <p id={labelId} className={compact ? 'sr-only' : 'erp-shell__section-label'}>
-                    {DAILY_TITLE}
-                </p>
-                <ul className="erp-shell__nav-list">{items.map((item) => renderNavLink(item, compact))}</ul>
-            </nav>
-        );
-    };
 
     const renderNav = (compact: boolean, suffix: string) => (
         <nav aria-label="أقسام النظام" className="erp-shell__nav">
-            <p className={compact ? 'sr-only' : 'erp-shell__section-label'}>{ALL_SCREENS_TITLE}</p>
             {NAV_GROUPS.map((group) => {
                 const items = group.keys
-                    .filter((key) => !DAILY_KEYS.includes(key))
-                    .map((key) => navItems.find((item) => item.to === `/${key}`))
+                    .map((key) => localizedNavItems.find((item) => item.to === `/${key}`))
                     .filter((item): item is NavItem => Boolean(item));
                 if (items.length === 0) return null;
                 const isCollapsed = prefs.collapsed.includes(group.id);
                 const listId = `erp-nav-group-${group.id}-${suffix}`;
                 return (
-                    <div
-                        key={group.id}
-                        className="erp-shell__nav-group"
-                        data-current={currentGroup?.id === group.id || undefined}
-                    >
+                    <div key={group.id} className="erp-shell__nav-group" data-current={currentGroup?.id === group.id || undefined}>
                         <button
                             type="button"
                             aria-expanded={!isCollapsed}
@@ -450,26 +443,32 @@ function ShellLayout() {
                         >
                             <ShellIcon name={SHELL_GROUP_ICONS[group.id]} />
                             <span className={compact ? 'sr-only' : 'erp-shell__group-label'}>{group.label}</span>
-                            {compact ? null : (
-                                <ChevronIcon className={`erp-shell__chevron ${isCollapsed ? '-rotate-90' : ''}`} />
-                            )}
+                            {compact ? null : <ChevronIcon className={`erp-shell__chevron ${isCollapsed ? '-rotate-90' : ''}`} />}
                         </button>
                         {isCollapsed ? null : (
                             <ul id={listId} className="erp-shell__nav-list">
-                                {items.map((item) => renderNavLink(item, compact))}
+                                {items.map((item) => (
+                                    <li key={item.to}>
+                                        <Link
+                                            to={item.to}
+                                            activeOptions={{ exact: false }}
+                                            title={compact ? item.label : undefined}
+                                            aria-label={compact ? item.label : undefined}
+                                            onClick={() => {
+                                                setDrawerOpen(false);
+                                            }}
+                                            className="erp-nav-item erp-shell__nav-link"
+                                        >
+                                            <ShellIcon name={shellIconForPath(item.to)} />
+                                            <span className={compact ? 'sr-only' : 'erp-shell__nav-label'}>{item.label}</span>
+                                        </Link>
+                                    </li>
+                                ))}
                             </ul>
                         )}
                     </div>
                 );
             })}
-            {utilityNavItems.length ? (
-                <div className="erp-shell__nav-group">
-                    <p className={compact ? 'sr-only' : 'erp-shell__section-label'}>أدوات النظام</p>
-                    <ul className="erp-shell__nav-list">
-                        {utilityNavItems.map((item) => renderNavLink(item, compact))}
-                    </ul>
-                </div>
-            ) : null}
         </nav>
     );
 
@@ -541,7 +540,6 @@ function ShellLayout() {
                     <div className="erp-shell__sidebar-head">{renderBrand(prefs.compact)}</div>
                     <div className="erp-shell__nav-scroll">
                         {homeLink(prefs.compact)}
-                        {renderDaily(prefs.compact, 'aside')}
                         {renderNav(prefs.compact, 'aside')}
                     </div>
                     <div className="erp-shell__sidebar-foot">
@@ -557,9 +555,7 @@ function ShellLayout() {
                                 className="erp-shell__compact-toggle"
                             >
                                 <ShellIcon name="panel" />
-                                <span className={prefs.compact ? 'sr-only' : undefined}>
-                                    {prefs.compact ? 'توسيع' : 'وضع مضغوط'}
-                                </span>
+                                <span className={prefs.compact ? 'sr-only' : undefined}>{prefs.compact ? 'توسيع' : 'وضع مضغوط'}</span>
                             </button>
                         </div>
                         {renderUser(prefs.compact)}
@@ -605,7 +601,6 @@ function ShellLayout() {
                     </div>
                     <div className="erp-shell__nav-scroll">
                         {homeLink(false)}
-                        {renderDaily(false, 'drawer')}
                         {renderNav(false, 'drawer')}
                     </div>
                     <div className="erp-shell__sidebar-foot">
@@ -644,10 +639,7 @@ function ShellLayout() {
                                     <strong>{currentTitle ?? APP_NAME}</strong>
                                 </span>
                                 {chartReadOnly ? (
-                                    <span
-                                        className="erp-shell__screen-access"
-                                        title="صلاحية شاشة شجرة الحسابات: للقراءة فقط — بلا كتابة"
-                                    >
+                                    <span className="erp-shell__screen-access" title="صلاحية شاشة شجرة الحسابات: للقراءة فقط — بلا كتابة">
                                         للقراءة فقط — بلا كتابة
                                     </span>
                                 ) : null}
@@ -665,11 +657,59 @@ function ShellLayout() {
                                 ) : null}
                             </div>
                         </div>
-                        <Link
-                            to="/pos-entry"
-                            title="فتح نقطة البيع داخل النظام"
-                            className="erp-shell__command-trigger erp-shell__pos-link"
-                        >
+                        <div className="erp-shell__print-wrap" ref={printMenuRef}>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    setPrintMenuOpen((open) => !open);
+                                }}
+                                aria-expanded={printMenuOpen}
+                                aria-haspopup="menu"
+                                title="طباعة وتصدير الصفحة الحالية"
+                                className="erp-shell__print-btn"
+                                data-erp-print-hide
+                            >
+                                <ShellIcon name="print" />
+                            </button>
+                            {printMenuOpen ? (
+                                <div className="erp-shell__print-menu" role="menu" aria-label="طباعة وتصدير الصفحة الحالية">
+                                    <button
+                                        type="button"
+                                        role="menuitem"
+                                        onClick={() => {
+                                            setPrintMenuOpen(false);
+                                            window.print();
+                                        }}
+                                        className="erp-shell__print-item"
+                                    >
+                                        طباعة الصفحة
+                                    </button>
+                                    <button
+                                        type="button"
+                                        role="menuitem"
+                                        disabled={printBusy !== null}
+                                        onClick={() => {
+                                            void runPagePdf('download');
+                                        }}
+                                        className="erp-shell__print-item"
+                                    >
+                                        {printBusy === 'download' ? 'جارٍ التجهيز…' : 'تحميل PDF'}
+                                    </button>
+                                    <button
+                                        type="button"
+                                        role="menuitem"
+                                        disabled={printBusy !== null}
+                                        onClick={() => {
+                                            void runPagePdf('share');
+                                        }}
+                                        className="erp-shell__print-item"
+                                    >
+                                        {printBusy === 'share' ? 'جارٍ التجهيز…' : 'مشاركة PDF'}
+                                    </button>
+                                </div>
+                            ) : null}
+                        </div>
+                        <Link to="/pos-entry" title="فتح نقطة البيع داخل النظام" className="erp-shell__command-trigger erp-shell__pos-link">
                             <ShellIcon name="monitor" />
                             <span>الكاشير</span>
                         </Link>
@@ -687,6 +727,18 @@ function ShellLayout() {
                             </span>
                             <kbd dir="ltr">Ctrl K</kbd>
                         </button>
+                        <button
+                            type="button"
+                            className="erp-shell__lang-toggle"
+                            aria-pressed={lang === 'en'}
+                            aria-label={lang === 'ar' ? 'التبديل إلى الإنجليزية' : 'Switch to Arabic'}
+                            onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
+                        >
+                            <span aria-hidden="true" className="erp-shell__lang-toggle-code">
+                                {lang === 'ar' ? 'EN' : 'ع'}
+                            </span>
+                            <span className="erp-shell__lang-toggle-word">{lang === 'ar' ? 'English' : 'العربية'}</span>
+                        </button>
                         <div className="erp-shell__session-context">
                             <span className="erp-shell__session-icon" aria-hidden="true">
                                 <ShellIcon name="users" />
@@ -694,8 +746,7 @@ function ShellLayout() {
                             <div>
                                 <span className="erp-shell__session-name">{auth.user?.name ?? APP_NAME}</span>
                                 <span className="erp-shell__session-role">
-                                    {auth.user?.role ??
-                                        (auth.status === 'authenticated' ? 'جلسة مسجّلة' : 'إدارة المطاعم')}
+                                    {auth.user?.role ?? (auth.status === 'authenticated' ? 'جلسة مسجّلة' : 'إدارة المطاعم')}
                                 </span>
                             </div>
                         </div>
@@ -727,7 +778,7 @@ function ShellLayout() {
                                         <span>{entry.label}</span>
                                     </Link>
                                 );
-                            const item = navItems.find((candidate) => candidate.to === `/${entry.key}`);
+                            const item = localizedNavItems.find((candidate) => candidate.to === `/${entry.key}`);
                             if (!item) return null;
                             return (
                                 <Link
@@ -766,7 +817,7 @@ function ShellLayout() {
                 actions={paletteActions}
                 items={[
                     { to: HOME_PATH, label: HOME_TITLE, hint: 'Home' },
-                    ...navItems.map((item) => ({ to: item.to, label: item.label, hint: item.hint })),
+                    ...localizedNavItems.map((item) => ({ to: item.to, label: item.label, hint: item.hint })),
                 ]}
                 onClose={() => {
                     setPaletteOpen(false);
@@ -776,7 +827,7 @@ function ShellLayout() {
                         void navigate({ to: HOME_PATH });
                         return;
                     }
-                    const target = navItems.find((item) => item.to === to);
+                    const target = localizedNavItems.find((item) => item.to === to);
                     if (target) {
                         void navigate({ to: target.to });
                     }

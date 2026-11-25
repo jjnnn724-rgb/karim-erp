@@ -122,15 +122,7 @@ export {
     PaginationNext,
     PaginationPrevious,
 } from './pagination';
-export {
-    Popover,
-    PopoverAnchor,
-    PopoverContent,
-    PopoverDescription,
-    PopoverHeader,
-    PopoverTitle,
-    PopoverTrigger,
-} from './popover';
+export { Popover, PopoverAnchor, PopoverContent, PopoverDescription, PopoverHeader, PopoverTitle, PopoverTrigger } from './popover';
 export { Progress } from './progress';
 export { RadioGroup, RadioGroupItem } from './radio-group';
 export { ScrollArea, ScrollBar } from './scroll-area';
@@ -147,16 +139,7 @@ export {
     SelectValue,
 } from './select';
 export { Separator } from './separator';
-export {
-    Sheet,
-    SheetClose,
-    SheetContent,
-    SheetDescription,
-    SheetFooter,
-    SheetHeader,
-    SheetTitle,
-    SheetTrigger,
-} from './sheet';
+export { Sheet, SheetClose, SheetContent, SheetDescription, SheetFooter, SheetHeader, SheetTitle, SheetTrigger } from './sheet';
 export { Skeleton } from './skeleton';
 export { Slider } from './slider';
 export { Switch } from './switch';

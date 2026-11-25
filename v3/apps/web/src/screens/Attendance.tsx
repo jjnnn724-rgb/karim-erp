@@ -1,18 +1,12 @@
 import './Attendance.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
-import {
-    AttendanceCorrectButton,
-    AttendanceResolveButton,
-    AttendanceWorkbench,
-} from '../components/AttendanceWorkbench';
-import { PrintActions } from '../components/PrintActions';
+import { AttendanceCorrectButton, AttendanceResolveButton, AttendanceWorkbench } from '../components/AttendanceWorkbench';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { ApiError } from '../lib/api';
 import {
     ATTENDANCE_STATE_AR,
     type AttendancePeriodKind,
-    type AttendanceRow,
     type AttendanceState,
     applyAttendanceFilters,
     attendanceCsv,
@@ -36,35 +30,10 @@ import { useAuthState } from '../lib/auth';
 import { fetchEmployees, fetchHrDepartments } from '../lib/employees';
 import { formatInt } from '../lib/inventory-register';
 import { downloadBlob } from '../lib/pdf-share';
-import { DataTable, type DataTableColumn, type DataTableSorting, PageHeader } from '../ui';
 import { StatCard } from '../ui/StatCard';
 
 const STATE_KEYS = Object.keys(ATTENDANCE_STATE_AR) as AttendanceState[];
 const PAGE_SIZE = 20;
-
-/**
- * فرز السجلات — مسؤولية الشاشة لا الجدول: الترتيب يُطبَّق على **كل** النتائج
- * المرشّحة قبل التقطيع إلى صفحات، فلا يُعاد ترتيب صفحة واحدة على أنها كامل
- * النتائج (نفس عقد DataTable للفرز اليدوي). المقارنة تطابق مقارنة DataTable:
- * الفارغ في النهاية، والأرقام رقميًا، والنص بمقارن عربي رقمي.
- */
-const SORT_COLLATOR = new Intl.Collator('ar', { numeric: true, sensitivity: 'base' });
-type SortValue = string | number | Date | null | undefined;
-function compareSortValues(left: SortValue, right: SortValue): number {
-    if (left == null || right == null) {
-        if (left == null && right == null) {
-            return 0;
-        }
-        return left == null ? 1 : -1;
-    }
-    if (typeof left === 'number' && typeof right === 'number') {
-        return left - right;
-    }
-    if (left instanceof Date && right instanceof Date) {
-        return left.getTime() - right.getTime();
-    }
-    return SORT_COLLATOR.compare(String(left), String(right));
-}
 
 function Kpi({
     id,
@@ -83,14 +52,7 @@ function Kpi({
     hint: string;
     share: { text: string; aria: string };
 }) {
-    const tone =
-        id === 'late' || id === 'early'
-            ? 'warning'
-            : id === 'missing'
-              ? 'info'
-              : id === 'present'
-                ? 'success'
-                : 'neutral';
+    const tone = id === 'late' || id === 'early' ? 'warning' : id === 'missing' ? 'info' : id === 'present' ? 'success' : 'neutral';
     return (
         <StatCard
             label={label}
@@ -135,7 +97,6 @@ export function Attendance() {
     const [dept, setDept] = useState('');
     const [state, setState] = useState('');
     const [page, setPage] = useState(1);
-    const [sorting, setSorting] = useState<DataTableSorting | null>(null);
 
     const attendanceQuery = useQuery({
         queryKey: ['attendance-range', range.from, range.to],
@@ -175,111 +136,14 @@ export function Attendance() {
         [todayQuery.data],
     );
     const rows = useMemo(
-        () =>
-            (attendanceQuery.data?.rows ?? []).map((record) => attendanceToRow(record, employeeById, departmentByCode)),
+        () => (attendanceQuery.data?.rows ?? []).map((record) => attendanceToRow(record, employeeById, departmentByCode)),
         [attendanceQuery.data, employeeById, departmentByCode],
     );
     const search = useMemo(() => searchAttendanceRows(rows, query), [rows, query]);
     const visibleRows = useMemo(() => applyAttendanceFilters(search.rows, { dept, state }), [search.rows, dept, state]);
-    const writable = canWriteAttendance(role);
-    /**
-     * أعمدة السجل — عمود الإجراء محكوم بالدور (`canWriteAttendance`) ويُخفى
-     * في الطباعة (`print:hidden`) كما كان `data-erp-print-hide` على خلاياه.
-     */
-    const columns = useMemo<DataTableColumn<AttendanceRow>[]>(() => {
-        const base: DataTableColumn<AttendanceRow>[] = [
-            {
-                key: 'employee',
-                header: 'الموظف',
-                className: 'text-ink',
-                cell: (row) => (row.nameResolved ? row.employee : <span className="text-muted">{row.employee}</span>),
-                sortValue: (row) => row.employee,
-            },
-            {
-                key: 'dept',
-                header: 'القسم',
-                className: 'text-ink',
-                cell: (row) => (row.deptResolved ? row.dept : <span className="text-muted">{row.dept}</span>),
-                sortValue: (row) => row.dept,
-            },
-            {
-                key: 'date',
-                header: 'التاريخ',
-                className: 'erp-numeric text-ink',
-                cell: (row) => <span dir="ltr">{row.date || '—'}</span>,
-                sortValue: (row) => row.date || null,
-            },
-            {
-                key: 'in',
-                header: 'الدخول',
-                className: 'erp-numeric text-ink',
-                cell: (row) => <span dir="ltr">{row.in}</span>,
-                sortValue: (row) => (row.in === '—' ? null : row.in),
-            },
-            {
-                key: 'out',
-                header: 'الانصراف',
-                className: 'erp-numeric text-ink',
-                cell: (row) => <span dir="ltr">{row.out}</span>,
-                sortValue: (row) => (row.out === '—' ? null : row.out),
-            },
-            {
-                key: 'minutes',
-                header: 'العمل',
-                className: 'erp-numeric text-ink',
-                cell: (row) => <span dir="ltr">{minutesText(row.minutes)}</span>,
-                sortValue: (row) => row.minutes,
-            },
-            {
-                key: 'state',
-                header: 'الحالة',
-                cell: (row) => <span className={stateTone(row.state)}>{row.stateLabel}</span>,
-                sortValue: (row) => row.stateLabel,
-            },
-            {
-                key: 'source',
-                header: 'المصدر',
-                className: 'text-muted',
-                cell: (row) => row.sourceLabel,
-                sortValue: (row) => row.sourceLabel,
-            },
-        ];
-        if (writable) {
-            base.push({
-                key: 'action',
-                header: 'إجراء',
-                className: 'print:hidden',
-                cell: (row) => {
-                    const record = recordById.get(row.id);
-                    return record ? (
-                        <AttendanceCorrectButton record={record} employee={employeeById.get(row.employeeId)} />
-                    ) : null;
-                },
-            });
-        }
-        return base;
-    }, [writable, recordById, employeeById]);
-    // الفرز على كامل النتائج المرشّحة قبل التقطيع — الصفحة الحالية وحدها لا تُرتَّب.
-    const sortedRows = useMemo(() => {
-        if (!sorting) {
-            return visibleRows;
-        }
-        const column = columns.find((candidate) => candidate.key === sorting.key && candidate.sortValue);
-        if (!column?.sortValue) {
-            return visibleRows;
-        }
-        return visibleRows
-            .map((row, index) => ({ row, index, value: column.sortValue?.(row) }))
-            .sort(
-                (left, right) =>
-                    compareSortValues(left.value, right.value) * (sorting.direction === 'asc' ? 1 : -1) ||
-                    left.index - right.index,
-            )
-            .map(({ row }) => row);
-    }, [visibleRows, sorting, columns]);
-    const pageCount = Math.max(1, Math.ceil(sortedRows.length / PAGE_SIZE));
+    const pageCount = Math.max(1, Math.ceil(visibleRows.length / PAGE_SIZE));
     const safePage = Math.min(page, pageCount);
-    const pageRows = sortedRows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
+    const pageRows = visibleRows.slice((safePage - 1) * PAGE_SIZE, safePage * PAGE_SIZE);
     const kpis = useMemo(() => buildAttendanceKpis(visibleRows), [visibleRows]);
     const legend = useMemo(() => buildAttendanceLegend(visibleRows), [visibleRows]);
     const bars = useMemo(() => buildPunchBars(visibleRows), [visibleRows]);
@@ -338,46 +202,47 @@ export function Attendance() {
 
     return (
         <div className="flex flex-col gap-md attendance-premium">
-            <PageHeader
-                title="الحضور والانصراف"
-                english="Attendance"
-                description="سجل البصمات ومؤشرات الفترة."
-                actions={
-                    <>
-                        <PrintActions title="الحضور والانصراف" />
-                        <AttendanceWorkbench employees={employeesQuery.data ?? []} todayStr={today} />
-                        <button
-                            type="button"
-                            data-erp-print-hide
-                            disabled={visibleRows.length === 0}
-                            onClick={() => {
-                                const csv = attendanceCsv(sortedRows);
-                                downloadBlob(
-                                    new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }),
-                                    `attendance_${range.from}_${range.to}.csv`,
-                                );
-                            }}
-                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
-                        >
-                            تصدير CSV
-                        </button>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                void attendanceQuery.refetch();
-                                void todayQuery.refetch();
-                                void employeesQuery.refetch();
-                                void departmentsQuery.refetch();
-                                void leavesQuery.refetch();
-                            }}
-                            data-erp-print-hide
-                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                        >
-                            تحديث
-                        </button>
-                    </>
-                }
-            />
+            <header className="flex flex-wrap items-end justify-between gap-sm">
+                <div>
+                    <h1 className="text-display-lg text-ink">
+                        الحضور والانصراف{' '}
+                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
+                            Attendance
+                        </span>
+                    </h1>
+                    <p className="text-body-sm text-muted">سجل البصمات ومؤشرات الفترة.</p>
+                </div>
+                <AttendanceWorkbench employees={employeesQuery.data ?? []} todayStr={today} />
+                <button
+                    type="button"
+                    data-erp-print-hide
+                    disabled={visibleRows.length === 0}
+                    onClick={() => {
+                        const csv = attendanceCsv(visibleRows);
+                        downloadBlob(
+                            new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }),
+                            `attendance_${range.from}_${range.to}.csv`,
+                        );
+                    }}
+                    className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                >
+                    تصدير CSV
+                </button>
+                <button
+                    type="button"
+                    onClick={() => {
+                        void attendanceQuery.refetch();
+                        void todayQuery.refetch();
+                        void employeesQuery.refetch();
+                        void departmentsQuery.refetch();
+                        void leavesQuery.refetch();
+                    }}
+                    data-erp-print-hide
+                    className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                >
+                    تحديث
+                </button>
+            </header>
 
             <Card className="p-sm">
                 <div className="flex flex-wrap items-end gap-sm">
@@ -453,19 +318,11 @@ export function Attendance() {
             ) : null}
             {attendanceQuery.isError ? (
                 <Card>
-                    {attendanceQuery.error instanceof ApiError &&
-                    attendanceQuery.error.code === 'NOT_LINKED_TO_EMPLOYEE' ? (
-                        <StateEmpty
-                            title="حسابك غير مرتبط بسجل موظف"
-                            hint="الحضور الذاتي يظهر بعد ربط حساب الدخول ببطاقة الموظف."
-                        />
+                    {attendanceQuery.error instanceof ApiError && attendanceQuery.error.code === 'NOT_LINKED_TO_EMPLOYEE' ? (
+                        <StateEmpty title="حسابك غير مرتبط بسجل موظف" hint="الحضور الذاتي يظهر بعد ربط حساب الدخول ببطاقة الموظف." />
                     ) : (
                         <StateError
-                            message={
-                                attendanceQuery.error instanceof Error
-                                    ? attendanceQuery.error.message
-                                    : 'تعذّر تحميل سجل الحضور'
-                            }
+                            message={attendanceQuery.error instanceof Error ? attendanceQuery.error.message : 'تعذّر تحميل سجل الحضور'}
                             onRetry={() => {
                                 void attendanceQuery.refetch();
                             }}
@@ -483,10 +340,7 @@ export function Attendance() {
                             : ''}
                     </p>
 
-                    <ul
-                        className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-3"
-                        aria-label="مؤشرات الحضور على السجلات الظاهرة"
-                    >
+                    <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-3" aria-label="مؤشرات الحضور على السجلات الظاهرة">
                         {kpis.map((item) => (
                             <Kpi
                                 key={item.id}
@@ -512,10 +366,7 @@ export function Attendance() {
                             <span className="text-body-sm text-muted">آخر {formatInt(bars.length)} يومًا مرسلًا</span>
                         </div>
                         {bars.length ? (
-                            <section
-                                className="mt-sm flex min-h-36 items-end gap-xs overflow-x-auto"
-                                aria-label="مخطط البصمات اليومية"
-                            >
+                            <section className="mt-sm flex min-h-36 items-end gap-xs overflow-x-auto" aria-label="مخطط البصمات اليومية">
                                 {bars.map((bar) => (
                                     <div key={bar.date} className="flex min-w-12 flex-col items-center gap-xxs">
                                         <span className="erp-numeric text-caption text-muted" dir="ltr">
@@ -537,10 +388,7 @@ export function Attendance() {
                         )}
                         <div className="mt-sm flex flex-wrap gap-sm">
                             {legend.map((item) => (
-                                <span
-                                    key={item.key}
-                                    className="rounded-full bg-surface-sunken px-sm py-xxs text-body-sm text-muted"
-                                >
+                                <span key={item.key} className="rounded-full bg-surface-sunken px-sm py-xxs text-body-sm text-muted">
                                     {item.label}: {formatInt(item.count)} · {item.pill.text}
                                 </span>
                             ))}
@@ -607,43 +455,127 @@ export function Attendance() {
                                 مسح المرشّحات
                             </button>
                             {search.folded ? (
-                                <span className="text-caption text-muted">
-                                    بعض النتائج ظهرت بعد تطبيع الحروف العربية.
-                                </span>
+                                <span className="text-caption text-muted">بعض النتائج ظهرت بعد تطبيع الحروف العربية.</span>
                             ) : null}
                         </div>
                         <p className="mt-sm text-body-sm text-muted" role="status" aria-live="polite">
                             {formatInt(visibleRows.length)} نتيجة
                             {search.matched ? ` من ${formatInt(rows.length)} بعد البحث` : ''}
                         </p>
-                        {!visibleRows.length ? (
+                        {visibleRows.length ? (
+                            <>
+                                <TableScroll label="سجل الحضور والانصراف">
+                                    <table className="w-full border-collapse text-body-md">
+                                        <caption className="sr-only">سجل الحضور بالفترة المحددة — عرض فقط</caption>
+                                        <thead>
+                                            <tr className="bg-surface-sunken text-label-md text-ink-secondary">
+                                                <th scope="col" className="px-sm py-xs text-start">
+                                                    الموظف
+                                                </th>
+                                                <th scope="col" className="px-sm py-xs text-start">
+                                                    القسم
+                                                </th>
+                                                <th scope="col" className="px-sm py-xs text-start">
+                                                    التاريخ
+                                                </th>
+                                                <th scope="col" className="px-sm py-xs text-start">
+                                                    الدخول
+                                                </th>
+                                                <th scope="col" className="px-sm py-xs text-start">
+                                                    الانصراف
+                                                </th>
+                                                <th scope="col" className="px-sm py-xs text-start">
+                                                    العمل
+                                                </th>
+                                                <th scope="col" className="px-sm py-xs text-start">
+                                                    الحالة
+                                                </th>
+                                                <th scope="col" className="px-sm py-xs text-start">
+                                                    المصدر
+                                                </th>
+                                                {canWriteAttendance(role) ? (
+                                                    <th scope="col" className="px-sm py-xs text-start" data-erp-print-hide>
+                                                        إجراء
+                                                    </th>
+                                                ) : null}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {pageRows.map((row) => (
+                                                <tr key={row.id} className="border-b border-hairline hover:bg-surface-hover">
+                                                    <td className="px-sm py-xxs text-ink">
+                                                        {row.nameResolved ? (
+                                                            row.employee
+                                                        ) : (
+                                                            <span className="text-muted">{row.employee}</span>
+                                                        )}
+                                                    </td>
+                                                    <td className="px-sm py-xxs text-ink">
+                                                        {row.deptResolved ? row.dept : <span className="text-muted">{row.dept}</span>}
+                                                    </td>
+                                                    <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">
+                                                        {row.date || '—'}
+                                                    </td>
+                                                    <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">
+                                                        {row.in}
+                                                    </td>
+                                                    <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">
+                                                        {row.out}
+                                                    </td>
+                                                    <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">
+                                                        {minutesText(row.minutes)}
+                                                    </td>
+                                                    <td className={`px-sm py-xxs ${stateTone(row.state)}`}>{row.stateLabel}</td>
+                                                    <td className="px-sm py-xxs text-muted">{row.sourceLabel}</td>
+                                                    {canWriteAttendance(role) ? (
+                                                        <td className="px-sm py-xxs" data-erp-print-hide>
+                                                            {recordById.get(row.id) ? (
+                                                                <AttendanceCorrectButton
+                                                                    record={recordById.get(row.id)!}
+                                                                    employee={employeeById.get(row.employeeId)}
+                                                                />
+                                                            ) : null}
+                                                        </td>
+                                                    ) : null}
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </TableScroll>
+                                <div
+                                    className="flex items-center justify-between gap-sm border-t border-hairline px-sm py-xs"
+                                    data-erp-print-hide
+                                >
+                                    <span className="text-body-sm text-muted">
+                                        صفحة {formatInt(safePage)} من {formatInt(pageCount)}
+                                    </span>
+                                    <div className="flex gap-xs">
+                                        <button
+                                            type="button"
+                                            onClick={() => setPage((value) => Math.max(1, value - 1))}
+                                            disabled={safePage <= 1}
+                                            className="rounded-md border border-hairline-strong px-sm py-xxs text-body-sm disabled:opacity-50"
+                                        >
+                                            السابق
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => setPage((value) => Math.min(pageCount, value + 1))}
+                                            disabled={safePage >= pageCount}
+                                            className="rounded-md border border-hairline-strong px-sm py-xxs text-body-sm disabled:opacity-50"
+                                        >
+                                            التالي
+                                        </button>
+                                    </div>
+                                </div>
+                            </>
+                        ) : (
                             <StateEmpty
                                 title={rows.length ? 'لا نتائج مطابقة' : 'لا سجلات في الفترة'}
                                 hint={rows.length ? 'لا نتائج مطابقة؛ عدّل المرشّحات.' : 'لا بصمات في هذه الفترة.'}
                             />
-                        ) : null}
+                        )}
                     </Card>
-                    {visibleRows.length ? (
-                        <DataTable<AttendanceRow>
-                            caption="سجل الحضور والانصراف"
-                            columns={columns}
-                            rows={pageRows}
-                            rowKey={(row) => row.id}
-                            manualFiltering
-                            manualPagination
-                            sorting={sorting}
-                            onSortingChange={(next) => {
-                                setSorting(next);
-                                setPage(1);
-                            }}
-                            pagination={{
-                                page: safePage,
-                                pageSize: PAGE_SIZE,
-                                total: sortedRows.length,
-                                onPageChange: setPage,
-                            }}
-                        />
-                    ) : null}
                 </>
             ) : null}
 
@@ -708,9 +640,7 @@ export function Attendance() {
                                             <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">
                                                 {item.hours}
                                             </td>
-                                            <td className="px-sm py-xxs text-ink">
-                                                {item.excused ? 'معذور' : 'غير معذور'}
-                                            </td>
+                                            <td className="px-sm py-xxs text-ink">{item.excused ? 'معذور' : 'غير معذور'}</td>
                                             {canWriteAttendance(role) ? (
                                                 <td className="px-sm py-xxs" data-erp-print-hide>
                                                     {!item.excused && employeeById.get(item.employeeId) ? (

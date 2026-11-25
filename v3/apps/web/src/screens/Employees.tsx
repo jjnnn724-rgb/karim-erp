@@ -1,14 +1,13 @@
 import './Employees.premium.css';
 import { useQuery } from '@tanstack/react-query';
+import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useMemo, useState } from 'react';
-import { PrintActions } from '../components/PrintActions';
-import { Card, StateEmpty, StateError, StateLoading, TableSkeleton } from '../components/TableState';
+import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { attendanceMinutes, fetchAttendanceRange, todayIso, weekdayAr } from '../lib/attendance';
 import { useAuthState } from '../lib/auth';
 import {
     ATT_STATE,
     employeeAttendancePrintHtml,
-    fetchEmployeeLuxCardHtml,
     fetchAttendanceReport,
     minutesCell,
     type RangeModel,
@@ -47,9 +46,8 @@ import {
     setEmployeeActive,
     updateEmployee,
 } from '../lib/employees-write';
-import { openBlankTab, writeHtmlDocument } from '../lib/print-document';
+import { printSmart } from '../lib/print-viewer';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
-import { DataTable, type DataTableColumn, FilterBar, PageHeader } from '../ui';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
@@ -91,9 +89,6 @@ function readRosterView(): RosterView {
 
 type SortKey = 'code' | 'name' | 'dept' | 'status';
 
-/** صفّ يوم واحد من كشف الحضور — نفس نوع `rangeReportRows`. */
-type AttendanceDayRow = RangeModel['rows'][number];
-
 function formatInt(value: number): string {
     return value.toLocaleString('en-US');
 }
@@ -112,6 +107,27 @@ function Kpi({ label, english, value, hint }: { label: string; english: string; 
             </p>
             <p className="mt-xxs text-caption text-muted">{hint}</p>
         </div>
+    );
+}
+
+function SortableTh({
+    label,
+    sortKey,
+    sort,
+    onToggle,
+}: {
+    label: string;
+    sortKey: SortKey;
+    sort: { key: SortKey; dir: 'asc' | 'desc' } | null;
+    onToggle: (key: SortKey) => void;
+}) {
+    const ariaSort = sort?.key !== sortKey ? 'none' : sort.dir === 'asc' ? 'ascending' : 'descending';
+    return (
+        <th scope="col" aria-sort={ariaSort} className="px-sm py-xs text-start font-medium">
+            <button type="button" onClick={() => onToggle(sortKey)}>
+                {label}
+            </button>
+        </th>
     );
 }
 
@@ -328,16 +344,7 @@ interface EmployeeActionDialogProps {
     variant: 'secondary' | 'danger';
 }
 
-function EmployeeActionDialog({
-    open,
-    title,
-    message,
-    onConfirm,
-    onClose,
-    pending,
-    confirmLabel,
-    variant,
-}: EmployeeActionDialogProps) {
+function EmployeeActionDialog({ open, title, message, onConfirm, onClose, pending, confirmLabel, variant }: EmployeeActionDialogProps) {
     return (
         <Dialog
             open={open}
@@ -411,6 +418,11 @@ function EmployeeCard({
     index: number;
     onOpen: (row: EmployeeRow) => void;
 }) {
+    const navigate = useNavigate();
+    // فتح البطاقة الكاملة للأدمن وHR فقط (قرار المالك 2026-11-21) — البطاقة
+    // تحمل كل بيانات الموظف وحقول تحريرها، فزرها بنفس الصلاحية.
+    const auth = useAuthState();
+    const canOpenCard = auth.user?.role === 'admin' || auth.user?.role === 'hr';
     const photo = validPhotoSrc(extras?.photo ?? '');
     const sh = extras
         ? shiftSummary({
@@ -466,9 +478,7 @@ function EmployeeCard({
             return { label: `${label}: ${day}`, tone: null };
         }
         const now = new Intl.DateTimeFormat('en-CA', { timeZone: 'Asia/Riyadh' }).format(new Date());
-        const diffDays = Math.round(
-            (new Date(`${day}T00:00:00Z`).getTime() - new Date(`${now}T00:00:00Z`).getTime()) / 86400000,
-        );
+        const diffDays = Math.round((new Date(`${day}T00:00:00Z`).getTime() - new Date(`${now}T00:00:00Z`).getTime()) / 86400000);
         if (diffDays < 0) {
             return { label: `${label} منتهي (${day})`, tone: 'danger' };
         }
@@ -491,10 +501,12 @@ function EmployeeCard({
             data-status={row.status === 'active' ? 'active' : 'inactive'}
             style={{ ['--erp-card-i' as string]: index }}
         >
-            <button type="button" className="erp-person__head erp-person__open" onClick={() => onOpen(row)}>
-                {/* الاسم المرئي يجب أن يدخل في الاسم المسموع (WCAG 2.5.3):
-                    sr-only بدل aria-label يستبدل النص المرئي. */}
-                <span className="sr-only">فتح كشف</span>
+            <button
+                type="button"
+                className="erp-person__head erp-person__open"
+                onClick={() => onOpen(row)}
+                aria-label={`فتح كشف ${row.name}`}
+            >
                 {photo ? (
                     <span className="erp-avatar" aria-hidden="true">
                         <img src={photo} alt="" loading="lazy" />
@@ -622,6 +634,26 @@ function EmployeeCard({
                     </div>
                 ) : null}
             </div>
+            {canOpenCard ? (
+                <div className="erp-person__meta" data-erp-print-hide>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            void navigate({
+                                to: '/employee-card',
+                                search: {
+                                    id: String(row.id ?? '')
+                                        .replace(/^['"]+|['"]+$/g, '')
+                                        .trim(),
+                                },
+                            });
+                        }}
+                        className="rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-button-md text-ink hover:bg-surface-hover"
+                    >
+                        🪪 فتح البطاقة الكاملة
+                    </button>
+                </div>
+            ) : null}
         </li>
     );
 }
@@ -690,14 +722,7 @@ function AttendanceRangeSection({
             setNote('حمّل كشف اليوم أو الفترة قبل الطباعة');
             return;
         }
-        const title = `كشف حضور وانصراف — ${employeeName}`;
-        const win = openBlankTab(title);
-        if (!win) {
-            setNote('تعذّر فتح نافذة الطباعة؛ اسمح بالنوافذ المنبثقة ثم أعد المحاولة');
-            return;
-        }
-        writeHtmlDocument(
-            win,
+        printSmart(
             employeeAttendancePrintHtml({
                 employeeName,
                 employeeCode,
@@ -706,8 +731,6 @@ function AttendanceRangeSection({
                 report: model,
             }),
         );
-        win.document.querySelector<HTMLButtonElement>('[data-print]')?.addEventListener('click', () => win.print());
-        win.print();
     }
 
     // biome-ignore lint/correctness/useExhaustiveDependencies: auto-reload only when the employee changes; load uses the latest range values.
@@ -729,12 +752,7 @@ function AttendanceRangeSection({
             {minutesCell(v)}
         </span>
     );
-    const delayCell = (r: {
-        arrivalLateRaw: number;
-        earlyLeaveRaw: number;
-        lateMinutes: number;
-        withinGrace: boolean;
-    }) => {
+    const delayCell = (r: { arrivalLateRaw: number; earlyLeaveRaw: number; lateMinutes: number; withinGrace: boolean }) => {
         const parts: React.ReactNode[] = [];
         if (r.arrivalLateRaw > 0) {
             parts.push(<span key="in">دخول {minutesCellHtml(r.arrivalLateRaw)}</span>);
@@ -759,75 +777,6 @@ function AttendanceRangeSection({
             </span>
         );
     };
-
-    // أعمدة كشف الحضور — نفس بيانات الجدول السابق، بعقد DataTable الموحّد.
-    // biome-ignore lint/correctness/useExhaustiveDependencies: delayCell دالة عرض نقية تُقرأ من إغلاق ثابت.
-    const attendanceColumns = useMemo<DataTableColumn<AttendanceDayRow>[]>(
-        () => [
-            {
-                key: 'date',
-                header: 'التاريخ',
-                numeric: true,
-                sortValue: (day) => day.date,
-                cell: (day) => (
-                    <span className="erp-numeric" dir="ltr">
-                        {day.date}
-                    </span>
-                ),
-            },
-            {
-                key: 'weekday',
-                header: 'اليوم',
-                hideOnMobile: true,
-                cell: (day) => <span className="text-muted">{weekdayAr(day.date)}</span>,
-            },
-            {
-                key: 'check-in',
-                header: 'الحضور',
-                numeric: true,
-                cell: (day) => (
-                    <span className="erp-numeric" dir="ltr">
-                        {day.checkIn || '—'}
-                    </span>
-                ),
-            },
-            {
-                key: 'check-out',
-                header: 'الانصراف',
-                numeric: true,
-                cell: (day) => (
-                    <span className="erp-numeric" dir="ltr">
-                        {day.checkOut || '—'}
-                    </span>
-                ),
-            },
-            {
-                key: 'minutes',
-                header: 'الساعات',
-                numeric: true,
-                sortValue: (day) => day.minutes,
-                cell: (day) => (
-                    <span className="erp-numeric" dir="ltr">
-                        {minutesToHM(day.minutes)}
-                    </span>
-                ),
-            },
-            { key: 'delay', header: 'التأخير', cell: (day) => delayCell(day) },
-            {
-                key: 'state',
-                header: 'الحالة',
-                cell: (day) => {
-                    const state = ATT_STATE[day.state] ?? ATT_STATE.review;
-                    return (
-                        <span className="erp-badge" data-tone={state.tone}>
-                            {state.label}
-                        </span>
-                    );
-                },
-            },
-        ],
-        [],
-    );
 
     return (
         <section className="erp-emp-sec-block" aria-label="أيام الحضور والانصراف">
@@ -863,22 +812,10 @@ function AttendanceRangeSection({
                 <Button type="button" size="sm" variant="secondary" loading={loading} onClick={() => void load('day')}>
                     كشف اليوم
                 </Button>
-                <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    loading={loading}
-                    onClick={() => void load('range')}
-                >
+                <Button type="button" size="sm" variant="secondary" loading={loading} onClick={() => void load('range')}>
                     كشف الفترة
                 </Button>
-                <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    disabled={loading || !model}
-                    onClick={printAttendance}
-                >
+                <Button type="button" size="sm" variant="secondary" disabled={loading || !model} onClick={printAttendance}>
                     طباعة الكشف
                 </Button>
             </div>
@@ -910,18 +847,67 @@ function AttendanceRangeSection({
                         {stat('تأخير محسوب', s.totalLateMinutes > 0 ? minutesToHM(s.totalLateMinutes) : '—')}
                         {stat('إجمالي الساعات', String(s.totalKarim))}
                     </div>
-                    {model.truncated ? (
-                        <p className="text-body-sm text-muted">الكشف مقترب على 62 يومًا كحدّ أعلى.</p>
-                    ) : null}
-                    <DataTable<AttendanceDayRow>
-                        caption={`كشف حضور ${employeeName} — ${s.from} إلى ${s.to}`}
-                        columns={attendanceColumns}
-                        rows={model.rows}
-                        rowKey={(day) => day.date}
-                        maxHeight={320}
-                        emptyTitle="لا أيام في هذه الفترة"
-                        emptyDescription="غيّر الفترة لعرض أيام أخرى."
-                    />
+                    {model.truncated ? <p className="text-body-sm text-muted">الكشف مقترب على 62 يومًا كحدّ أعلى.</p> : null}
+                    {/* biome-ignore lint/a11y/noNoninteractiveTabindex: the attendance table scroll region must remain keyboard reachable. */}
+                    <div className="erp-table__scroll erp-emp-att__scroll" tabIndex={0}>
+                        <table className="erp-table__grid">
+                            <thead>
+                                <tr>
+                                    <th scope="col">التاريخ</th>
+                                    <th scope="col">اليوم</th>
+                                    <th scope="col">الحضور</th>
+                                    <th scope="col">الانصراف</th>
+                                    <th scope="col">الساعات</th>
+                                    <th scope="col">التأخير</th>
+                                    <th scope="col">الحالة</th>
+                                </tr>
+                            </thead>
+                            <tbody>
+                                {model.rows.length ? (
+                                    model.rows.map((r) => {
+                                        const st = ATT_STATE[r.state] ?? ATT_STATE.review;
+                                        return (
+                                            <tr key={r.date}>
+                                                <td>
+                                                    <span className="erp-numeric" dir="ltr">
+                                                        {r.date}
+                                                    </span>
+                                                </td>
+                                                <td className="text-muted">{weekdayAr(r.date)}</td>
+                                                <td>
+                                                    <span className="erp-numeric" dir="ltr">
+                                                        {r.checkIn || '—'}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span className="erp-numeric" dir="ltr">
+                                                        {r.checkOut || '—'}
+                                                    </span>
+                                                </td>
+                                                <td>
+                                                    <span className="erp-numeric" dir="ltr">
+                                                        {minutesToHM(r.minutes)}
+                                                    </span>
+                                                </td>
+                                                <td>{delayCell(r)}</td>
+                                                <td>
+                                                    <span className="erp-badge" data-tone={st.tone}>
+                                                        {st.label}
+                                                    </span>
+                                                </td>
+                                            </tr>
+                                        );
+                                    })
+                                ) : (
+                                    <tr>
+                                        <td colSpan={7} className="text-muted">
+                                            لا أيام في هذه الفترة
+                                        </td>
+                                    </tr>
+                                )}
+                            </tbody>
+                        </table>
+                    </div>
                     {loaded && model.rows.length > 0 ? (
                         <p className="text-caption text-muted" hidden>
                             كشف {s.from} — {s.to}
@@ -945,9 +931,6 @@ interface EmployeeProfileDialogProps {
     onEdit: () => void;
     onChangeStatus: (activate: boolean) => void;
     onDelete: () => void;
-    cardPrinting: boolean;
-    cardError: string;
-    onPrintCard: () => void;
 }
 
 function EmployeeProfileDialog({
@@ -960,9 +943,6 @@ function EmployeeProfileDialog({
     onEdit,
     onChangeStatus,
     onDelete,
-    cardPrinting,
-    cardError,
-    onPrintCard,
 }: EmployeeProfileDialogProps) {
     const photo = validPhotoSrc(extras?.photo ?? '');
     const sh = extras
@@ -1007,16 +987,6 @@ function EmployeeProfileDialog({
                             </span>
                         </div>
                     </div>
-                    <div className="flex flex-wrap items-center gap-xs" data-erp-print-hide>
-                        <Button type="button" size="sm" variant="secondary" loading={cardPrinting} onClick={onPrintCard}>
-                            بطاقة الموظف الرسمية
-                        </Button>
-                    </div>
-                    {cardError ? (
-                        <p role="alert" className="text-body-sm text-danger-text">
-                            {cardError}
-                        </p>
-                    ) : null}
                     <dl className="grid gap-sm sm:grid-cols-2">
                         <div>
                             <dt className="text-caption text-muted">القسم</dt>
@@ -1064,31 +1034,18 @@ function EmployeeProfileDialog({
                         dayOff={extras?.day_off ?? null}
                     />
                     {(canWrite || canDelete) && (
-                        <div
-                            className="flex flex-wrap items-center gap-xs border-t border-hairline pt-sm"
-                            data-erp-print-hide
-                        >
+                        <div className="flex flex-wrap items-center gap-xs border-t border-hairline pt-sm" data-erp-print-hide>
                             {canWrite ? (
                                 <>
                                     <Button type="button" size="sm" variant="secondary" onClick={onEdit}>
                                         تعديل
                                     </Button>
                                     {row.status === 'active' ? (
-                                        <Button
-                                            type="button"
-                                            size="sm"
-                                            variant="secondary"
-                                            onClick={() => onChangeStatus(false)}
-                                        >
+                                        <Button type="button" size="sm" variant="secondary" onClick={() => onChangeStatus(false)}>
                                             إيقاف
                                         </Button>
                                     ) : (
-                                        <Button
-                                            type="button"
-                                            size="sm"
-                                            variant="secondary"
-                                            onClick={() => onChangeStatus(true)}
-                                        >
+                                        <Button type="button" size="sm" variant="secondary" onClick={() => onChangeStatus(true)}>
                                             تفعيل
                                         </Button>
                                     )}
@@ -1117,8 +1074,6 @@ export function Employees() {
 
     const [view, setView] = useState<RosterView>(() => readRosterView());
     const [profileRow, setProfileRow] = useState<EmployeeRow | null>(null);
-    const [cardPrintingId, setCardPrintingId] = useState<string | null>(null);
-    const [cardError, setCardError] = useState('');
 
     useEffect(() => {
         try {
@@ -1224,6 +1179,11 @@ export function Employees() {
     const capped = (employeesQuery.data?.length ?? 0) >= SERVER_PAGE_SIZE * MAX_PAGES;
     const filtered = Boolean(query || dept || status);
 
+    function toggleSort(key: SortKey) {
+        setPage(1);
+        setSort((previous) => (previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
+    }
+
     function resetFilters() {
         setQuery('');
         setDept('');
@@ -1232,147 +1192,7 @@ export function Employees() {
         setPage(1);
     }
 
-    async function printEmployeeCard(employee: EmployeeRow): Promise<void> {
-        const win = openBlankTab(`بطاقة الموظف — ${employee.name}`);
-        if (!win) {
-            setCardError('تعذّر فتح البطاقة؛ اسمح بالنوافذ المنبثقة ثم أعد المحاولة.');
-            return;
-        }
-        setCardError('');
-        setCardPrintingId(employee.id);
-        try {
-            const html = await fetchEmployeeLuxCardHtml(employee.id);
-            writeHtmlDocument(win, html);
-        } catch (cause) {
-            win.close();
-            setCardError(writeErrorMessage(cause, 'تعذّر تجهيز بطاقة الموظف الرسمية'));
-        } finally {
-            setCardPrintingId(null);
-        }
-    }
-
     const activeCount = statuses.find((entry) => entry.value === 'active')?.count ?? 0;
-
-    // أعمدة جدول الدليل — نفس بيانات الجدول السابق، بعقد DataTable الموحّد.
-    const employeeColumns: DataTableColumn<EmployeeRow>[] = [
-        {
-            key: 'code',
-            header: 'الكود',
-            numeric: true,
-            sortValue: (employee) => employee.code,
-            cell: (employee) => (
-                <span className="erp-numeric" dir="ltr">
-                    {employee.code || '—'}
-                </span>
-            ),
-        },
-        {
-            key: 'name',
-            header: 'الاسم',
-            sortValue: (employee) => employee.name,
-            cell: (employee) => employee.name,
-        },
-        {
-            key: 'dept',
-            header: 'القسم',
-            cell: (employee) => <span className="text-muted">{employee.deptCode || '—'}</span>,
-        },
-        {
-            key: 'position',
-            header: 'الوظيفة',
-            cell: (employee) => <span className="text-muted">{employee.position || '—'}</span>,
-        },
-        {
-            key: 'phone',
-            header: 'الهاتف',
-            numeric: true,
-            cell: (employee) => (
-                <span className="erp-numeric" dir="ltr">
-                    {employee.phone || '—'}
-                </span>
-            ),
-        },
-        {
-            key: 'status',
-            header: 'الحالة',
-            sortValue: (employee) => employee.statusLabel,
-            cell: (employee) => (
-                <span className={employee.status === 'active' ? 'text-success-text' : 'text-muted'}>
-                    {employee.statusLabel}
-                </span>
-            ),
-        },
-        {
-            key: 'profile',
-            header: 'كشف الموظف',
-            cell: (employee) => (
-                <Button
-                    type="button"
-                    size="sm"
-                    variant="secondary"
-                    aria-label={`فتح البطاقة الكاملة — ${employee.name}`}
-                    onClick={() => setProfileRow(employee)}
-                >
-                    فتح البطاقة
-                </Button>
-            ),
-        },
-    ];
-    if (canWrite || canDelete) {
-        employeeColumns.push({
-            key: 'actions',
-            header: 'إجراءات',
-            cell: (employee) => (
-                <div className="flex flex-wrap items-center gap-xs" data-erp-print-hide>
-                    {canWrite ? (
-                        <>
-                            <Button
-                                type="button"
-                                size="sm"
-                                variant="secondary"
-                                title="تعديل البيانات"
-                                onClick={() => openForm(employee)}
-                            >
-                                تعديل
-                            </Button>
-                            {employee.status === 'active' ? (
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="secondary"
-                                    title="إيقاف الموظف"
-                                    onClick={() => handleChangeStatus(employee, false)}
-                                >
-                                    إيقاف
-                                </Button>
-                            ) : (
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    variant="secondary"
-                                    title="تفعيل الموظف"
-                                    onClick={() => handleChangeStatus(employee, true)}
-                                >
-                                    تفعيل
-                                </Button>
-                            )}
-                        </>
-                    ) : null}
-                    {canDelete ? (
-                        <Button
-                            type="button"
-                            size="sm"
-                            variant="danger"
-                            title="حذف الموظف"
-                            onClick={() => handleDelete(employee)}
-                        >
-                            حذف
-                        </Button>
-                    ) : null}
-                </div>
-            ),
-        });
-    }
 
     /* ── الكتبات عبر useWriteMutation ────────────────────────────────── */
 
@@ -1387,10 +1207,7 @@ export function Employees() {
         },
     });
 
-    const updateEmployeeMutation = useWriteMutation<
-        { id: string | number; input: EmployeeUpdateInput },
-        { id: string | number }
-    >({
+    const updateEmployeeMutation = useWriteMutation<{ id: string | number; input: EmployeeUpdateInput }, { id: string | number }>({
         mutationFn: ({ id, input }) => updateEmployee(id, input).then((r) => ({ id: r.id })),
         successTitle: () => EMPLOYEE_TEXT.updateSuccess,
         invalidate: [['employees'], ['hr-departments']],
@@ -1401,10 +1218,7 @@ export function Employees() {
         },
     });
 
-    const setEmployeeActiveMutation = useWriteMutation<
-        { id: string | number; active: boolean },
-        { id: string | number; active: boolean }
-    >({
+    const setEmployeeActiveMutation = useWriteMutation<{ id: string | number; active: boolean }, { id: string | number; active: boolean }>({
         mutationFn: ({ id, active }) => setEmployeeActive(id, active).then((r) => ({ id: r.id, active })),
         successTitle: ({ active }) => (active ? EMPLOYEE_TEXT.activateSuccess : EMPLOYEE_TEXT.deactivateSuccess),
         invalidate: [['employees'], ['hr-departments']],
@@ -1465,41 +1279,40 @@ export function Employees() {
 
     return (
         <div className="flex flex-col gap-lg erp-premium erp-premium-employees">
-            <PageHeader
-                title="دليل الموظفين"
-                english="Employees"
-                description="من في الدليل، وفي أي قسم، وبأي حالة — الإضافة والتعديل والإيقاف والتفعيل والحذف مثل الشاشة القديمة. الراتب والإقامة والبصمة لا تُعرض في أي صفّ. القراءة محجوزة في الخادم للأدوار الإدارية، والكتابة لـ admin|manager|hr والحذف للأدمن فقط."
-                actions={
-                    <>
-                        <div className="flex items-center gap-xs" data-erp-print-hide>
-                            {canWrite ? (
-                                <Button type="button" size="sm" onClick={() => openForm()}>
-                                    إضافة موظف
-                                </Button>
-                            ) : null}
-                            <PrintActions title="دليل الموظفين" />
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    void employeesQuery.refetch();
-                                    void departmentsQuery.refetch();
-                                }}
-                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                            >
-                                تحديث
-                            </button>
-                        </div>
-                    </>
-                }
-            />
+            <header className="flex flex-wrap items-end justify-between gap-sm">
+                <div>
+                    <h1 className="text-display-lg text-ink">
+                        دليل الموظفين{' '}
+                        <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted" dir="ltr" lang="en">
+                            Employees
+                        </span>
+                    </h1>
+                    <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
+                        من في الدليل، وفي أي قسم، وبأي حالة — الإضافة والتعديل والإيقاف والتفعيل والحذف مثل الشاشة القديمة. الراتب والإقامة
+                        والبصمة لا تُعرض في أي صفّ. القراءة محجوزة في الخادم للأدوار الإدارية، والكتابة لـ admin|manager|hr والحذف للأدمن فقط.
+                    </p>
+                </div>
+                <div className="flex items-center gap-xs" data-erp-print-hide>
+                    {canWrite ? (
+                        <Button type="button" size="sm" onClick={() => openForm()}>
+                            إضافة موظف
+                        </Button>
+                    ) : null}
+                    <button
+                        type="button"
+                        onClick={() => {
+                            void employeesQuery.refetch();
+                            void departmentsQuery.refetch();
+                        }}
+                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                    >
+                        تحديث
+                    </button>
+                </div>
+            </header>
 
             <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
-                <Kpi
-                    label="إجمالي الدليل"
-                    english="Roster"
-                    value={formatInt(totals.total)}
-                    hint="بلا تكرار ولا تصفية"
-                />
+                <Kpi label="إجمالي الدليل" english="Roster" value={formatInt(totals.total)} hint="بلا تكرار ولا تصفية" />
                 <Kpi
                     label="نشط"
                     english="Active"
@@ -1525,97 +1338,94 @@ export function Employees() {
             </div>
 
             <Card className="p-sm">
-                <FilterBar
-                    bare
-                    searchLabel="بحث"
-                    searchPlaceholder="اسم، كود، وظيفة، قسم، هاتف"
-                    searchValue={query}
-                    onSearchChange={(value) => {
-                        setQuery(value);
-                        setPage(1);
-                    }}
-                    onReset={resetFilters}
-                    resetDisabled={!filtered}
-                    advancedFilters={
-                        <>
-                            <div className="flex flex-col gap-xxs text-label-md text-ink-secondary">
-                                <span>طريقة العرض</span>
-                                <fieldset className="m-0 flex min-w-0 gap-xxs border-0 p-0" aria-label="طريقة العرض">
-                                    <button
-                                        type="button"
-                                        aria-pressed={view === 'cards'}
-                                        onClick={() => setView('cards')}
-                                        className={`rounded-md border border-hairline-strong px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover ${
-                                            view === 'cards' ? 'bg-surface-sunken font-medium' : 'bg-surface'
-                                        }`}
-                                    >
-                                        بطاقات
-                                    </button>
-                                    <button
-                                        type="button"
-                                        aria-pressed={view === 'table'}
-                                        onClick={() => setView('table')}
-                                        className={`rounded-md border border-hairline-strong px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover ${
-                                            view === 'table' ? 'bg-surface-sunken font-medium' : 'bg-surface'
-                                        }`}
-                                    >
-                                        جدول
-                                    </button>
-                                </fieldset>
-                            </div>
-                            <label
-                                className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                                htmlFor="erp-employees-dept"
+                <div className="flex flex-wrap items-end gap-sm">
+                    <div className="flex flex-col gap-xxs text-label-md text-ink-secondary">
+                        <span>طريقة العرض</span>
+                        <fieldset className="m-0 flex min-w-0 gap-xxs border-0 p-0" aria-label="طريقة العرض">
+                            <button
+                                type="button"
+                                aria-pressed={view === 'cards'}
+                                onClick={() => setView('cards')}
+                                className={`rounded-md border border-hairline-strong px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover ${
+                                    view === 'cards' ? 'bg-surface-sunken font-medium' : 'bg-surface'
+                                }`}
                             >
-                                القسم
-                                <select
-                                    id="erp-employees-dept"
-                                    value={dept}
-                                    onChange={(event) => {
-                                        setDept(event.target.value);
-                                        setPage(1);
-                                    }}
-                                    className="h-10 w-full min-w-0 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:w-auto"
-                                >
-                                    <option value="">كل الأقسام</option>
-                                    {departments.map((entry) => (
-                                        <option key={entry.code || '—'} value={entry.code || '—'}>
-                                            {entry.code ? entry.label : 'بلا قسم'}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-                            <label
-                                className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                                htmlFor="erp-employees-status"
+                                بطاقات
+                            </button>
+                            <button
+                                type="button"
+                                aria-pressed={view === 'table'}
+                                onClick={() => setView('table')}
+                                className={`rounded-md border border-hairline-strong px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover ${
+                                    view === 'table' ? 'bg-surface-sunken font-medium' : 'bg-surface'
+                                }`}
                             >
-                                الحالة
-                                <select
-                                    id="erp-employees-status"
-                                    value={status}
-                                    onChange={(event) => {
-                                        setStatus(event.target.value);
-                                        setPage(1);
-                                    }}
-                                    className="h-10 w-full min-w-0 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:w-auto"
-                                >
-                                    <option value="">كل الحالات</option>
-                                    <option value="active">نشط</option>
-                                    <option value="inactive">موقوف</option>
-                                </select>
-                            </label>
-                        </>
-                    }
-                    footer={
-                        <span className="text-body-sm text-muted" role="status">
-                            {formatInt(sorted.length)} موظفًا معروضًا من {formatInt(totals.total)}
-                        </span>
-                    }
-                />
+                                جدول
+                            </button>
+                        </fieldset>
+                    </div>
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-employees-q">
+                        بحث
+                        <input
+                            id="erp-employees-q"
+                            type="search"
+                            value={query}
+                            onChange={(event) => {
+                                setQuery(event.target.value);
+                                setPage(1);
+                            }}
+                            placeholder="اسم، كود، وظيفة، قسم، هاتف"
+                            className="h-10 w-full min-w-0 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:w-64"
+                        />
+                    </label>
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-employees-dept">
+                        القسم
+                        <select
+                            id="erp-employees-dept"
+                            value={dept}
+                            onChange={(event) => {
+                                setDept(event.target.value);
+                                setPage(1);
+                            }}
+                            className="h-10 w-full min-w-0 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:w-auto"
+                        >
+                            <option value="">كل الأقسام</option>
+                            {departments.map((entry) => (
+                                <option key={entry.code || '—'} value={entry.code || '—'}>
+                                    {entry.code ? entry.label : 'بلا قسم'}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-employees-status">
+                        الحالة
+                        <select
+                            id="erp-employees-status"
+                            value={status}
+                            onChange={(event) => {
+                                setStatus(event.target.value);
+                                setPage(1);
+                            }}
+                            className="h-10 w-full min-w-0 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink focus-visible:outline focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-primary sm:w-auto"
+                        >
+                            <option value="">كل الحالات</option>
+                            <option value="active">نشط</option>
+                            <option value="inactive">موقوف</option>
+                        </select>
+                    </label>
+                    <button
+                        type="button"
+                        onClick={resetFilters}
+                        className="rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover"
+                    >
+                        مسح المرشّحات
+                    </button>
+                    <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted" role="status">
+                        {formatInt(sorted.length)} موظفًا معروضًا من {formatInt(totals.total)}
+                    </span>
+                </div>
                 {search.folded ? (
-                    <p className="mt-sm text-body-sm text-muted">
-                        بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.
-                    </p>
+                    <p className="mt-sm text-body-sm text-muted">بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.</p>
                 ) : null}
             </Card>
 
@@ -1667,9 +1477,7 @@ export function Employees() {
 
                     {employeesQuery.isError ? (
                         <StateError
-                            message={
-                                employeesQuery.error instanceof Error ? employeesQuery.error.message : 'خطأ غير معروف'
-                            }
+                            message={employeesQuery.error instanceof Error ? employeesQuery.error.message : 'خطأ غير معروف'}
                             onRetry={() => {
                                 void employeesQuery.refetch();
                             }}
@@ -1688,9 +1496,7 @@ export function Employees() {
                             <p className="border-b border-hairline px-sm py-xs text-body-sm text-muted" role="status">
                                 {`${formatInt(sorted.length)} موظفًا`}
                                 {search.exact ? ` · ${formatInt(search.exact)} مطابقة تامة` : ''}
-                                {capped
-                                    ? ` · الخادم أعاد أول ${formatInt(SERVER_PAGE_SIZE * MAX_PAGES)} موظفًا فقط`
-                                    : ''}
+                                {capped ? ` · الخادم أعاد أول ${formatInt(SERVER_PAGE_SIZE * MAX_PAGES)} موظفًا فقط` : ''}
                             </p>
                             <ul className="erp-cards erp-cards--grid p-sm" aria-label="بطاقات الموظفين">
                                 {cardPageRows.map((row, cardIndex) => (
@@ -1708,8 +1514,7 @@ export function Employees() {
                             <div className="flex items-center justify-between gap-sm border-t border-hairline px-sm py-xs">
                                 <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
                                     بطاقة {formatInt((safeCardPage - 1) * CARD_PAGE_SIZE + 1)}–
-                                    {formatInt(Math.min(safeCardPage * CARD_PAGE_SIZE, sorted.length))} من{' '}
-                                    {formatInt(sorted.length)}
+                                    {formatInt(Math.min(safeCardPage * CARD_PAGE_SIZE, sorted.length))} من {formatInt(sorted.length)}
                                 </span>
                                 <div className="flex items-center gap-xs">
                                     <button
@@ -1771,9 +1576,7 @@ export function Employees() {
 
                     {employeesQuery.isError ? (
                         <StateError
-                            message={
-                                employeesQuery.error instanceof Error ? employeesQuery.error.message : 'خطأ غير معروف'
-                            }
+                            message={employeesQuery.error instanceof Error ? employeesQuery.error.message : 'خطأ غير معروف'}
                             onRetry={() => {
                                 void employeesQuery.refetch();
                             }}
@@ -1792,27 +1595,132 @@ export function Employees() {
                             <p className="border-b border-hairline px-sm py-xs text-body-sm text-muted" role="status">
                                 {`${formatInt(sorted.length)} موظفًا`}
                                 {search.exact ? ` · ${formatInt(search.exact)} مطابقة تامة` : ''}
-                                {capped
-                                    ? ` · الخادم أعاد أول ${formatInt(SERVER_PAGE_SIZE * MAX_PAGES)} موظفًا فقط`
-                                    : ''}
+                                {capped ? ` · الخادم أعاد أول ${formatInt(SERVER_PAGE_SIZE * MAX_PAGES)} موظفًا فقط` : ''}
                             </p>
-                            <DataTable<EmployeeRow>
-                                caption="جدول دليل الموظفين"
-                                columns={employeeColumns}
-                                rows={pageRows}
-                                rowKey={(employee) => employee.id}
-                                sorting={sort ? { key: sort.key, direction: sort.dir } : null}
-                                onSortingChange={(next) => {
-                                    setPage(1);
-                                    setSort(next ? { key: next.key as SortKey, dir: next.direction } : null);
-                                }}
-                                pagination={{
-                                    page: safePage,
-                                    pageSize: PAGE_SIZE_LOCAL,
-                                    total: sorted.length,
-                                    onPageChange: setPage,
-                                }}
-                            />
+                            <TableScroll label="جدول دليل الموظفين">
+                                <table className="w-full min-w-[760px] border-collapse text-body-md">
+                                    <thead>
+                                        <tr className="bg-surface-sunken text-label-md text-ink-secondary">
+                                            <SortableTh label="الكود" sortKey="code" sort={sort} onToggle={toggleSort} />
+                                            <SortableTh label="الاسم" sortKey="name" sort={sort} onToggle={toggleSort} />
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                القسم
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الوظيفة
+                                            </th>
+                                            <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                الهاتف
+                                            </th>
+                                            <SortableTh label="الحالة" sortKey="status" sort={sort} onToggle={toggleSort} />
+                                            {(canWrite || canDelete) && (
+                                                <th scope="col" className="px-sm py-xs text-start font-medium" data-erp-print-hide>
+                                                    إجراءات
+                                                </th>
+                                            )}
+                                        </tr>
+                                    </thead>
+                                    <tbody>
+                                        {pageRows.map((row) => (
+                                            <tr key={row.id} className="border-b border-hairline hover:bg-surface-hover">
+                                                <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">
+                                                    {row.code || '—'}
+                                                </td>
+                                                <td className="px-sm py-xxs text-ink">{row.name}</td>
+                                                <td className="px-sm py-xxs text-body-sm text-muted">{row.deptCode || '—'}</td>
+                                                <td className="px-sm py-xxs text-body-sm text-muted">{row.position || '—'}</td>
+                                                <td className="erp-numeric px-sm py-xxs text-body-sm text-muted" dir="ltr">
+                                                    {row.phone || '—'}
+                                                </td>
+                                                <td className="px-sm py-xxs text-body-sm">
+                                                    <span className={row.status === 'active' ? 'text-success-text' : 'text-muted'}>
+                                                        {row.statusLabel}
+                                                    </span>
+                                                </td>
+                                                {(canWrite || canDelete) && (
+                                                    <td className="px-sm py-xxs" data-erp-print-hide>
+                                                        <div className="flex flex-wrap items-center gap-xs">
+                                                            {canWrite ? (
+                                                                <>
+                                                                    <Button
+                                                                        type="button"
+                                                                        size="sm"
+                                                                        variant="secondary"
+                                                                        title="تعديل البيانات"
+                                                                        onClick={() => openForm(row)}
+                                                                    >
+                                                                        تعديل
+                                                                    </Button>
+                                                                    {row.status === 'active' ? (
+                                                                        <Button
+                                                                            type="button"
+                                                                            size="sm"
+                                                                            variant="secondary"
+                                                                            title="إيقاف الموظف"
+                                                                            onClick={() => handleChangeStatus(row, false)}
+                                                                        >
+                                                                            إيقاف
+                                                                        </Button>
+                                                                    ) : (
+                                                                        <Button
+                                                                            type="button"
+                                                                            size="sm"
+                                                                            variant="secondary"
+                                                                            title="تفعيل الموظف"
+                                                                            onClick={() => handleChangeStatus(row, true)}
+                                                                        >
+                                                                            تفعيل
+                                                                        </Button>
+                                                                    )}
+                                                                </>
+                                                            ) : null}
+                                                            {canDelete ? (
+                                                                <Button
+                                                                    type="button"
+                                                                    size="sm"
+                                                                    variant="danger"
+                                                                    title="حذف الموظف"
+                                                                    onClick={() => handleDelete(row)}
+                                                                >
+                                                                    حذف
+                                                                </Button>
+                                                            ) : null}
+                                                        </div>
+                                                    </td>
+                                                )}
+                                            </tr>
+                                        ))}
+                                    </tbody>
+                                </table>
+                            </TableScroll>
+
+                            <div className="flex items-center justify-between gap-sm border-t border-hairline px-sm py-xs">
+                                <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
+                                    صفحة {formatInt(safePage)} من {formatInt(pageCount)}
+                                </span>
+                                <div className="flex gap-xs">
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setPage(safePage - 1);
+                                        }}
+                                        disabled={safePage <= 1}
+                                        className="rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover disabled:opacity-50"
+                                    >
+                                        السابق
+                                    </button>
+                                    <button
+                                        type="button"
+                                        onClick={() => {
+                                            setPage(safePage + 1);
+                                        }}
+                                        disabled={safePage >= pageCount}
+                                        className="rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover disabled:opacity-50"
+                                    >
+                                        التالي
+                                    </button>
+                                </div>
+                            </div>
                         </>
                     ) : null}
                 </Card>
@@ -1827,10 +1735,7 @@ export function Employees() {
                 departments={deptOptions}
                 onSave={async (input, isEditing) => {
                     if (isEditing && editing) {
-                        await updateEmployeeMutation.mutateAsync({
-                            id: editing.id,
-                            input: input as EmployeeUpdateInput,
-                        });
+                        await updateEmployeeMutation.mutateAsync({ id: editing.id, input: input as EmployeeUpdateInput });
                     } else {
                         await createEmployeeMutation.mutateAsync(input as EmployeeCreateInput);
                     }
@@ -1855,11 +1760,6 @@ export function Employees() {
                 showSalary={showSalary}
                 canWrite={canWrite}
                 canDelete={canDelete}
-                cardPrinting={Boolean(profileRow && cardPrintingId === profileRow.id)}
-                cardError={cardError}
-                onPrintCard={() => {
-                    if (profileRow) void printEmployeeCard(profileRow);
-                }}
                 onClose={() => setProfileRow(null)}
                 onEdit={() => {
                     if (profileRow) {

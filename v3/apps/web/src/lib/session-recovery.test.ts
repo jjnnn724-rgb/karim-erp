@@ -79,11 +79,7 @@ describe('استجابة 401', () => {
         const client = new QueryClient();
 
         // أخطاء متزامنة تشترك محاولة واحدة ⇒ توست واحد لا ثلاثة.
-        await Promise.all([
-            handleAuthError(err401(), client),
-            handleAuthError(err401(), client),
-            handleAuthError(err401(), client),
-        ]);
+        await Promise.all([handleAuthError(err401(), client), handleAuthError(err401(), client), handleAuthError(err401(), client)]);
 
         expect(getAuthState().status).toBe('anonymous');
         expect(window.localStorage.getItem('karim_rt_v1')).toBeNull();

@@ -30,9 +30,7 @@ describe('payroll-suite', () => {
     });
 
     it('يرفض عقدًا معكوس التواريخ ويحسب حالته', () => {
-        expect(validateContract({ employeeId: 4, startDate: '2026-12-01', endDate: '2026-11-01', salary: 0 })).not.toBe(
-            '',
-        );
+        expect(validateContract({ employeeId: 4, startDate: '2026-12-01', endDate: '2026-11-01', salary: 0 })).not.toBe('');
         expect(validateContract({ employeeId: 4, startDate: '2026-01-01', endDate: '2026-12-31', salary: 0 })).toBe('');
         const today = new Date(Date.UTC(2026, 10, 11));
         expect(contractState('2026-10-01', today)).toEqual({ label: 'منتهٍ', tone: 'danger' });

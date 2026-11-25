@@ -1,7 +1,7 @@
-import { StatCard } from './StatCard';
+import { useCountUp } from '../lib/use-count-up';
 import { cn } from './cn';
 import { definedProps } from './definedProps';
-import { useCountUp } from '../lib/use-count-up';
+import { StatCard } from './StatCard';
 
 /**
  * AnswerStrip — شريط الجواب (نمط توقيعي، 2026-11-21): 1–4 مؤشرات تجيب سؤال
@@ -43,11 +43,7 @@ const COLUMN_CLASS: Record<2 | 3 | 4, string> = {
 function AnswerCard({ item }: { item: AnswerItem }) {
     const isNumber = typeof item.value === 'number' && Number.isFinite(item.value);
     const animated = useCountUp(isNumber ? (item.value as number) : 0);
-    const displayValue = isNumber
-        ? item.format
-            ? item.format(animated)
-            : String(Math.round(animated * 100) / 100)
-        : item.value;
+    const displayValue = isNumber ? (item.format ? item.format(animated) : String(Math.round(animated * 100) / 100)) : item.value;
     return (
         <StatCard
             {...definedProps({

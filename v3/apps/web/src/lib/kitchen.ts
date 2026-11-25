@@ -190,11 +190,7 @@ export function riyadhMonthStart(): string {
     return `${year}-${month}-01`;
 }
 
-export async function fetchKitchenCostCards(
-    from: string,
-    to: string,
-    signal?: AbortSignal,
-): Promise<KitchenCostCardsResult> {
+export async function fetchKitchenCostCards(from: string, to: string, signal?: AbortSignal): Promise<KitchenCostCardsResult> {
     const params = new URLSearchParams();
     if (from) {
         params.set('from', from);

@@ -72,11 +72,7 @@ function pageRows<T>(response: Paged<T>): {
     return { rows: response.data, totalPages: response.pagination?.totalPages ?? 0 };
 }
 
-async function fetchPages<T>(
-    url: (page: number) => string,
-    schema: z.ZodType<Paged<T>>,
-    signal?: AbortSignal,
-): Promise<T[]> {
+async function fetchPages<T>(url: (page: number) => string, schema: z.ZodType<Paged<T>>, signal?: AbortSignal): Promise<T[]> {
     const rows: T[] = [];
     for (let page = 1; page <= HR_DEPARTMENT_PAGE_LIMIT; page += 1) {
         const response = await fetchJson(schema, url(page), getAccessToken(), signal ? { signal } : {});

@@ -40,7 +40,6 @@ export const purchaseInvoiceSchema = z
             .transform((value) => (value === null || value === undefined || value === '' ? null : String(value))),
         supplierName: optionalText,
         supplier_name_snapshot: optionalText,
-        vat_total: moneyValue,
         totalAmount: moneyValue,
         paidAmount: moneyValue,
         paymentStatus: optionalText,
@@ -130,7 +129,6 @@ export type PurchaseInvoiceRow = {
     supplierId: string | null;
     supplier: string;
     supplierResolved: boolean;
-    vat: string;
     total: string;
     paid: string;
     remaining: string;
@@ -145,16 +143,10 @@ export type PurchaseInvoiceRow = {
  * صفّ السجل. اسم المورد بالأفضلية نفسها: الدليل الحيّ ← لقطة الفاتورة ←
  * الاسم المكتوب ← المعرّف. الصفّ يعرض ما قرأه، لا يخمّن.
  */
-export function invoiceToRow(
-    invoice: PurchaseInvoice,
-    supplierById: ReadonlyMap<string, string> = new Map(),
-): PurchaseInvoiceRow {
+export function invoiceToRow(invoice: PurchaseInvoice, supplierById: ReadonlyMap<string, string> = new Map()): PurchaseInvoiceRow {
     const live = invoice.supplierId ? supplierById.get(invoice.supplierId) : undefined;
     const supplier =
-        live ||
-        invoice.supplier_name_snapshot ||
-        invoice.supplierName ||
-        (invoice.supplierId ? `#${invoice.supplierId}` : '—');
+        live || invoice.supplier_name_snapshot || invoice.supplierName || (invoice.supplierId ? `#${invoice.supplierId}` : '—');
     const status = invoice.paymentStatus ? String(invoice.paymentStatus) : 'unpaid';
     const method = invoice.paymentMethod ? String(invoice.paymentMethod) : '';
     return {
@@ -164,7 +156,6 @@ export function invoiceToRow(
         supplierId: invoice.supplierId,
         supplier,
         supplierResolved: Boolean(live),
-        vat: moneyOf(invoice.vat_total),
         total: moneyOf(invoice.totalAmount),
         paid: moneyOf(invoice.paidAmount),
         remaining: invoiceRemaining(invoice),

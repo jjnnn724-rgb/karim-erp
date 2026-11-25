@@ -130,42 +130,8 @@ export interface DataTableProps<T> {
     virtualizeThreshold?: number;
     rowHeight?: number;
     maxHeight?: number;
-    /** صفوف إضافية تُرسم خارج منطقة الرؤية لاستباق التمرير (افتراضي 10). */
-    overscan?: number;
-    /** أصناف CSS إضافية لصف البيانات — مثل تظليل الصف المختار في شاشة الاستعلامات. */
-    rowClassName?: (row: T) => string;
     footer?: ReactNode;
     className?: string;
-}
-
-/**
- * هل العرض الحالي سطح مكتب (≥ 768px حيث `md:hidden`)؟ بطاقات الجوال مكرار
- * بصري للجدول نفسه، وعلى سطح المكتب كانت تُرسم ثم تُخفى بـCSS — آلاف العقد
- * الميتة في DOM مع البيانات الغنية. هنا لا تُرسم أصلًا على سطح المكتب،
- * وتبقى على الجوال كما هي. عند غياب `matchMedia` (jsdom/SSR) تُرسم البطاقات
- * دائمًا حفاظًا على سلوك الاختبارات والعرض الأولي.
- */
-function useDesktopViewport(): boolean {
-    const [desktop, setDesktop] = useState<boolean>(() =>
-        typeof window !== 'undefined' && typeof window.matchMedia === 'function'
-            ? window.matchMedia('(min-width: 768px)').matches
-            : false,
-    );
-    useEffect(() => {
-        if (typeof window === 'undefined' || typeof window.matchMedia !== 'function') {
-            return;
-        }
-        const query = window.matchMedia('(min-width: 768px)');
-        const onChange = (event: MediaQueryListEvent) => {
-            setDesktop(event.matches);
-        };
-        setDesktop(query.matches);
-        query.addEventListener('change', onChange);
-        return () => {
-            query.removeEventListener('change', onChange);
-        };
-    }, []);
-    return desktop;
 }
 
 interface TableScrollRegionProps {
@@ -178,18 +144,9 @@ interface TableScrollRegionProps {
     children: ReactNode;
 }
 
-function TableScrollRegion({
-    caption,
-    state,
-    virtualized,
-    rowCount,
-    maxHeight,
-    scrollRef,
-    children,
-}: TableScrollRegionProps) {
+function TableScrollRegion({ caption, state, virtualized, rowCount, maxHeight, scrollRef, children }: TableScrollRegionProps) {
     return (
         <section
-            // biome-ignore lint/a11y/noNoninteractiveTabindex: منطقة تمرير يجب أن تكون قابلة للتركيز بلوحة المفاتيح (WCAG 2.1.1) — النمط الموصى به للمحتوى القابل للتمرير، والاسم من aria-label.
             tabIndex={0}
             ref={scrollRef}
             aria-label={caption}
@@ -227,9 +184,7 @@ function columnAlign<T>(column: DataTableColumn<T>): string {
 }
 
 function defaultColumnKeys(columns: readonly ColumnVisibilityMetadata[]): string[] {
-    const visible = columns
-        .filter((column) => !column.hideable || column.visibleByDefault !== false)
-        .map((column) => column.key);
+    const visible = columns.filter((column) => !column.hideable || column.visibleByDefault !== false).map((column) => column.key);
     return visible.length > 0 ? visible : columns.map((column) => column.key);
 }
 
@@ -252,9 +207,7 @@ function readColumnVisibility(
             throw new Error('Stored column preferences must be an array of column keys.');
         }
         const selected = new Set(parsed);
-        const visible = columns
-            .filter((column) => !column.hideable || selected.has(column.key))
-            .map((column) => column.key);
+        const visible = columns.filter((column) => !column.hideable || selected.has(column.key)).map((column) => column.key);
         if (visible.length === 0) {
             throw new Error('Stored column preferences cannot hide every column.');
         }
@@ -265,10 +218,7 @@ function readColumnVisibility(
     }
 }
 
-function compareSortValues(
-    left: string | number | Date | null | undefined,
-    right: string | number | Date | null | undefined,
-): number {
+function compareSortValues(left: string | number | Date | null | undefined, right: string | number | Date | null | undefined): number {
     if (left == null || right == null) {
         if (left == null && right == null) {
             return 0;
@@ -286,8 +236,7 @@ function compareSortValues(
 
 function csvCell(value: string | number | boolean | Date | null | undefined): string {
     const text = value instanceof Date ? value.toISOString() : value == null ? '' : String(value);
-    const safeText =
-        typeof value === 'number' || typeof value === 'boolean' || !/^\s*[=+\-@]/.test(text) ? text : `'${text}`;
+    const safeText = typeof value === 'number' || typeof value === 'boolean' || !/^\s*[=+\-@]/.test(text) ? text : `'${text}`;
     return `"${safeText.replace(/"/g, '""')}"`;
 }
 
@@ -331,18 +280,13 @@ export function DataTable<T>({
     virtualizeThreshold = 200,
     rowHeight = 34,
     maxHeight = 520,
-    overscan = 10,
-    rowClassName,
     footer,
     className,
 }: DataTableProps<T>) {
     const scrollRef = useRef<HTMLElement | null>(null);
-    const desktop = useDesktopViewport();
     const effectiveState: DataTableState = state ?? (rows.length === 0 ? 'empty' : 'data');
     const preferenceSignature = `${columnPreferenceKey ?? ''}:${columns
-        .map(
-            (column) => `${column.key}:${column.hideable ? '1' : '0'}:${column.visibleByDefault === false ? '0' : '1'}`,
-        )
+        .map((column) => `${column.key}:${column.hideable ? '1' : '0'}:${column.visibleByDefault === false ? '0' : '1'}`)
         .join('|')}`;
     // biome-ignore lint/correctness/useExhaustiveDependencies: preferenceSignature tracks every metadata value used by this projection.
     const preferenceColumns = useMemo(
@@ -373,16 +317,12 @@ export function DataTable<T>({
             .map((row, index) => ({ row, index, value: column.sortValue?.(row) }))
             .sort(
                 (left, right) =>
-                    compareSortValues(left.value, right.value) * (currentSorting.direction === 'asc' ? 1 : -1) ||
-                    left.index - right.index,
+                    compareSortValues(left.value, right.value) * (currentSorting.direction === 'asc' ? 1 : -1) || left.index - right.index,
             )
             .map(({ row }) => row);
     }, [columns, currentSorting, onSortingChange, rows]);
     const tableData = useMemo(() => Array.from(visibleRows), [visibleRows]);
-    const tableColumns = useMemo<ColumnDef<T, unknown>[]>(
-        () => columns.map((column) => ({ id: column.key })),
-        [columns],
-    );
+    const tableColumns = useMemo<ColumnDef<T, unknown>[]>(() => columns.map((column) => ({ id: column.key })), [columns]);
     const [internalExpanded, setInternalExpanded] = useState<ExpandedState>(() => tree?.defaultExpanded ?? {});
     const expanded = tree?.expanded ?? internalExpanded;
 
@@ -444,7 +384,7 @@ export function DataTable<T>({
         count: tableRows.length,
         getScrollElement: () => scrollRef.current,
         estimateSize: () => rowHeight,
-        overscan,
+        overscan: 10,
         enabled: virtualized,
         initialRect: { width: 0, height: Math.min(maxHeight, rowHeight * 12) },
     });
@@ -470,9 +410,7 @@ export function DataTable<T>({
     }
 
     function toggleColumn(key: string): void {
-        const nextKeys = visibleKeySet.has(key)
-            ? visibility.keys.filter((visibleKey) => visibleKey !== key)
-            : [...visibility.keys, key];
+        const nextKeys = visibleKeySet.has(key) ? visibility.keys.filter((visibleKey) => visibleKey !== key) : [...visibility.keys, key];
         if (currentSorting?.key === key) {
             if (onSortingChange) {
                 onSortingChange(null);
@@ -487,11 +425,7 @@ export function DataTable<T>({
         try {
             window.localStorage.setItem(
                 `karim:datatable:${columnPreferenceKey}`,
-                JSON.stringify(
-                    nextKeys.filter((visibleKey) =>
-                        columns.some((column) => column.key === visibleKey && column.hideable),
-                    ),
-                ),
+                JSON.stringify(nextKeys.filter((visibleKey) => columns.some((column) => column.key === visibleKey && column.hideable))),
             );
         } catch (error) {
             console.error('[DataTable] Failed to save column preferences', error);
@@ -508,8 +442,7 @@ export function DataTable<T>({
         const blob = new Blob([csv], { type: 'text/csv;charset=utf-8' });
         const url = URL.createObjectURL(blob);
         const link = document.createElement('a');
-        const filename =
-            (exportFilename || caption || 'karim-export').replace(/[\\/:*?"<>|]+/g, '-').trim() || 'karim-export';
+        const filename = (exportFilename || caption || 'karim-export').replace(/[\\/:*?"<>|]+/g, '-').trim() || 'karim-export';
         link.href = url;
         link.download = `${filename}.csv`;
         try {
@@ -525,10 +458,7 @@ export function DataTable<T>({
             return content;
         }
         return (
-            <div
-                className="flex items-center gap-xxs"
-                style={{ paddingInlineStart: `${String(row.depth * (tree.indentSize ?? 18))}px` }}
-            >
+            <div className="flex items-center gap-xxs" style={{ paddingInlineStart: `${String(row.depth * (tree.indentSize ?? 18))}px` }}>
                 {tree.renderToggle({
                     row: row.original,
                     depth: row.depth,
@@ -548,21 +478,13 @@ export function DataTable<T>({
                 data-testid="datatable-row"
                 data-row-index={index}
                 aria-rowindex={index + 2}
-                className={cn(
-                    'border-b border-hairline transition-colors duration-[var(--erp-motion-fast)] hover:bg-surface-hover last:border-b-0',
-                    rowClassName?.(row.original),
-                )}
+                className="border-b border-hairline transition-colors duration-[var(--erp-motion-fast)] hover:bg-surface-hover last:border-b-0"
                 style={virtualized ? { height: rowHeight } : undefined}
             >
                 {visibleColumns.map((column) => (
                     <td
                         key={column.key}
-                        className={cn(
-                            'px-sm py-xs align-middle',
-                            columnAlign(column),
-                            column.numeric && 'erp-numeric',
-                            column.className,
-                        )}
+                        className={cn('px-sm py-xs align-middle', columnAlign(column), column.numeric && 'erp-numeric', column.className)}
                     >
                         {renderTreeCell(row, column)}
                     </td>
@@ -656,11 +578,7 @@ export function DataTable<T>({
                 </div>
             ) : null}
             {hideableColumns.length > 0 || (effectiveState === 'data' && (onExport || exportColumns.length > 0)) ? (
-                // أدوات الجدول (الأعمدة/التصدير) تحكّم لا بيانات — تُخفى في الطباعة بعقد print.css نفسه.
-                <div
-                    data-erp-print-hide
-                    className="flex flex-wrap items-start justify-between gap-sm border-b border-hairline px-md py-sm"
-                >
+                <div className="flex flex-wrap items-start justify-between gap-sm border-b border-hairline px-md py-sm">
                     {hideableColumns.length > 0 ? (
                         <details>
                             <summary className="cursor-pointer text-label-md text-ink">الأعمدة</summary>
@@ -691,12 +609,7 @@ export function DataTable<T>({
                             onClick={exportRows}
                             className="rounded-md border border-hairline px-sm py-xs text-label-md text-ink hover:bg-surface-hover focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                         >
-                            {exportLabel ??
-                                (onExport
-                                    ? 'تصدير CSV'
-                                    : pagination
-                                      ? 'تصدير الصفحة الحالية CSV'
-                                      : 'تصدير الصفوف الحالية CSV')}
+                            {exportLabel ?? (onExport ? 'تصدير CSV' : pagination ? 'تصدير الصفحة الحالية CSV' : 'تصدير الصفوف الحالية CSV')}
                         </button>
                     ) : null}
                     {visibility.error ? (
@@ -743,11 +656,7 @@ export function DataTable<T>({
                                                         : 'none'
                                                     : undefined
                                             }
-                                            className={cn(
-                                                'px-sm py-xs text-label-md font-medium',
-                                                columnAlign(column),
-                                                column.className,
-                                            )}
+                                            className={cn('px-sm py-xs text-label-md font-medium', columnAlign(column), column.className)}
                                         >
                                             {sortable ? (
                                                 <button
@@ -757,11 +666,7 @@ export function DataTable<T>({
                                                     className="inline-flex items-center gap-xs text-inherit hover:text-ink focus-visible:outline-2 focus-visible:outline-offset-2 focus-visible:outline-focus"
                                                 >
                                                     {column.header}
-                                                    {sorted
-                                                        ? currentSorting?.direction === 'asc'
-                                                            ? ' ↑'
-                                                            : ' ↓'
-                                                        : null}
+                                                    {sorted ? (currentSorting?.direction === 'asc' ? ' ↑' : ' ↓') : null}
                                                 </button>
                                             ) : (
                                                 column.header
@@ -775,7 +680,7 @@ export function DataTable<T>({
                     </table>
                 </TableScrollRegion>
             </div>
-            {effectiveState === 'data' && !desktop ? (
+            {effectiveState === 'data' ? (
                 <ul aria-label={`${caption} — بطاقات`} className="flex flex-col divide-y divide-hairline md:hidden">
                     {tableRows.map((row) => (
                         <li key={row.id} className="flex flex-col gap-xs p-sm">
@@ -784,12 +689,7 @@ export function DataTable<T>({
                                 .map((column) => (
                                     <div key={column.key} className="flex items-start justify-between gap-sm">
                                         <span className="text-caption text-muted">{column.header}</span>
-                                        <div
-                                            className={cn(
-                                                'text-end text-body-sm text-ink',
-                                                column.numeric && 'erp-numeric',
-                                            )}
-                                        >
+                                        <div className={cn('text-end text-body-sm text-ink', column.numeric && 'erp-numeric')}>
                                             {renderTreeCell(row, column)}
                                         </div>
                                     </div>
@@ -799,8 +699,7 @@ export function DataTable<T>({
                 </ul>
             ) : null}
             {pagination ? (
-                // ترقيم الصفحات تنقّل لا بيانات — لا يُطبع (عقد print.css: أدوات الشاشة مخفية).
-                <div data-erp-print-hide className="border-t border-hairline p-sm">
+                <div className="border-t border-hairline p-sm">
                     <Pagination
                         page={pagination.page}
                         pageSize={pagination.pageSize}

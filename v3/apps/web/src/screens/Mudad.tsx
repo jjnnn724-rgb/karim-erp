@@ -415,14 +415,16 @@ export function Mudad() {
         if (!readiness) {
             return;
         }
-        printSmart(mudadReviewPrintHtml(readiness, {
-            month,
-            byName: auth.user?.name ?? '—',
-            requirements,
-            preview: preview ?? null,
-            rateSet: selectedRateSet,
-            qiwaChecks: qiwa?.checks ?? [],
-        }));
+        printSmart(
+            mudadReviewPrintHtml(readiness, {
+                month,
+                byName: auth.user?.name ?? '—',
+                requirements,
+                preview: preview ?? null,
+                rateSet: selectedRateSet,
+                qiwaChecks: qiwa?.checks ?? [],
+            }),
+        );
     }
 
     function exportReviewCsv() {

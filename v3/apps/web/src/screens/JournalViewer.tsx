@@ -2,13 +2,10 @@ import './JournalViewer.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { Fragment, useState } from 'react';
 import { ChevronIcon } from '../components/icons';
-import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { formatMoney, statusLabel, totalCredit, totalDebit } from '../lib/format';
 import { fetchJournal } from '../lib/queries';
 import { queryKeys } from '../lib/queryKeys';
-
-import { PageHeader } from '../ui';
 
 /**
  * عارض القيود — قراءة فقط (`/api/v3/accounting/journal`).
@@ -32,38 +29,39 @@ export function JournalViewer() {
 
     return (
         <div className="journal-premium flex flex-col gap-md">
-            <PageHeader
-                title="القيود اليومية"
-                description={query.isSuccess ? `${String(entries.length)} قيدًا معروضًا` : 'دفتر القيود'}
-                actions={
-                    <>
-                        <div className="flex items-center gap-xs" data-erp-print-hide>
-                            <PrintActions title="القيود اليومية" />
-                            <label
-                                className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                                htmlFor="erp-v3-journal-limit"
-                            >
-                                عدد القيود
-                                <select
-                                    id="erp-v3-journal-limit"
-                                    value={limit}
-                                    onChange={(event) => {
-                                        setLimit(Number(event.target.value));
-                                        setOpenEntry(null);
-                                    }}
-                                    className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
-                                >
-                                    {LIMITS.map((option) => (
-                                        <option key={option} value={option}>
-                                            {option}
-                                        </option>
-                                    ))}
-                                </select>
-                            </label>
-                        </div>
-                    </>
-                }
-            />
+            <header className="flex flex-wrap items-end justify-between gap-sm">
+                <div>
+                    <h1 className="text-display-lg text-ink">
+                        {' '}
+                        القيود اليومية{' '}
+                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
+                            {' '}
+                            Journal Entries{' '}
+                        </span>{' '}
+                    </h1>
+                    <p className="text-body-sm text-muted">{query.isSuccess ? `${String(entries.length)} قيدًا معروضًا` : 'دفتر القيود'}</p>
+                </div>
+                <div className="flex items-center gap-xs" data-erp-print-hide>
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-v3-journal-limit">
+                        عدد القيود
+                        <select
+                            id="erp-v3-journal-limit"
+                            value={limit}
+                            onChange={(event) => {
+                                setLimit(Number(event.target.value));
+                                setOpenEntry(null);
+                            }}
+                            className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
+                        >
+                            {LIMITS.map((option) => (
+                                <option key={option} value={option}>
+                                    {option}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
+                </div>
+            </header>
 
             <Card>
                 {query.isPending ? (
@@ -126,27 +124,15 @@ export function JournalViewer() {
                                                         aria-expanded={isOpen}
                                                         className="flex items-center gap-xxs text-start"
                                                     >
-                                                        <ChevronIcon
-                                                            className={`size-4 text-muted ${isOpen ? '' : 'rotate-90'}`}
-                                                        />
-                                                        <span className="erp-numeric text-body-md text-ink">
-                                                            {entry.entry_no}
-                                                        </span>
+                                                        <ChevronIcon className={`size-4 text-muted ${isOpen ? '' : 'rotate-90'}`} />
+                                                        <span className="erp-numeric text-body-md text-ink">{entry.entry_no}</span>
                                                     </button>
                                                 </td>
-                                                <td className="erp-numeric px-sm py-xxs text-body-sm text-muted">
-                                                    {entry.date}
-                                                </td>
+                                                <td className="erp-numeric px-sm py-xxs text-body-sm text-muted">{entry.date}</td>
                                                 <td className="px-sm py-xxs text-ink">{entry.memo ?? '—'}</td>
-                                                <td className="px-sm py-xxs text-body-sm text-muted">
-                                                    {statusLabel(entry.status)}
-                                                </td>
-                                                <td className="erp-numeric px-sm py-xxs text-end">
-                                                    {formatMoney(totalDebit(entry))}
-                                                </td>
-                                                <td className="erp-numeric px-sm py-xxs text-end">
-                                                    {formatMoney(totalCredit(entry))}
-                                                </td>
+                                                <td className="px-sm py-xxs text-body-sm text-muted">{statusLabel(entry.status)}</td>
+                                                <td className="erp-numeric px-sm py-xxs text-end">{formatMoney(totalDebit(entry))}</td>
+                                                <td className="erp-numeric px-sm py-xxs text-end">{formatMoney(totalCredit(entry))}</td>
                                             </tr>
                                             {isOpen ? (
                                                 <tr className="border-b border-hairline bg-surface-sunken">
@@ -157,9 +143,7 @@ export function JournalViewer() {
                                                                     key={`${entry.id}-${String(index)}`}
                                                                     className="grid grid-cols-[minmax(0,1fr)_auto_auto] items-center gap-sm"
                                                                 >
-                                                                    <dt className="erp-numeric text-ink-secondary">
-                                                                        {line.account_code}
-                                                                    </dt>
+                                                                    <dt className="erp-numeric text-ink-secondary">{line.account_code}</dt>
                                                                     <dd className="erp-numeric text-end text-ink">
                                                                         {formatMoney(line.debit)}
                                                                     </dd>

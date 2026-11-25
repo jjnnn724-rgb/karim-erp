@@ -184,9 +184,7 @@ describe('بوابة الموظف', () => {
         await waitFor(() => {
             expect(screen.getByTestId('punch-result').textContent).toContain('تم تسجيل الحضور');
         });
-        const posted = calls.find(
-            (call) => call.url.includes('/api/attendance/portal/punch') && call.init.method === 'POST',
-        );
+        const posted = calls.find((call) => call.url.includes('/api/attendance/portal/punch') && call.init.method === 'POST');
         if (!posted) {
             throw new Error('لم يُرسل طلب البصمة');
         }

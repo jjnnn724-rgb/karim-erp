@@ -45,12 +45,8 @@ describe('رفوف — التحقق ونفس رسائل V2', () => {
         expect(validateShelfForm({ name: 'رف', code: 'A', location: 'م'.repeat(256) })[0]?.message).toBe(
             'الحقل "location" أطول من المسموح (الحد الأقصى 255 حرفًا)',
         );
-        expect(validateShelfForm({ name: 'رف', code: 'A', capacity: 'abc' })[0]?.message).toBe(
-            'الحقل "capacity" يجب أن يكون رقمًا',
-        );
-        expect(validateShelfForm({ name: 'رف', code: 'A', capacity: '-1' })[0]?.message).toBe(
-            'الحقل "capacity" يجب أن يكون رقمًا',
-        );
+        expect(validateShelfForm({ name: 'رف', code: 'A', capacity: 'abc' })[0]?.message).toBe('الحقل "capacity" يجب أن يكون رقمًا');
+        expect(validateShelfForm({ name: 'رف', code: 'A', capacity: '-1' })[0]?.message).toBe('الحقل "capacity" يجب أن يكون رقمًا');
         expect(validateShelfForm({ name: 'رف', code: 'A', capacity: '0' })).toEqual([]);
         expect(validateShelfForm({ name: 'رف', code: 'A', capacity: '' })).toEqual([]);
     });
@@ -96,9 +92,7 @@ describe('رفوف — رسائل النجاح والتأكيد الحرفية',
         expect(addShelfSuccess('رف أ')).toBe('تمت إضافة الرف «رف أ»');
         expect(updateShelfSuccess('رف أ')).toBe('تم تحديث الرف «رف أ»');
         expect(deleteShelfSuccess('رف أ')).toBe('تم حذف الرف «رف أ»');
-        expect(deleteShelfConfirm('رف أ', 3)).toBe(
-            'حذف الرف «رف أ»؟ ستُزال تعيينات أصنافه (3 صنفًا) ولن تُحذف الأصناف نفسها.',
-        );
+        expect(deleteShelfConfirm('رف أ', 3)).toBe('حذف الرف «رف أ»؟ ستُزال تعيينات أصنافه (3 صنفًا) ولن تُحذف الأصناف نفسها.');
     });
 });
 

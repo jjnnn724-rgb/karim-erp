@@ -9,8 +9,9 @@
  *
  * الورقة تظل نظيفة من أي كود وتنسيق فقط — والشريط (3 أيقونات فقط) يُحقن بعد الكتابة.
  */
-import { writeHtmlDocument } from './print-document';
+
 import { exportElementPdf } from './pdf-share';
+import { writeHtmlDocument } from './print-document';
 
 export interface PrintViewerOptions {
     autoPrint?: boolean;
@@ -20,7 +21,9 @@ export interface PrintViewerOptions {
 const OVERLAY_ID = 'erp-print-overlay';
 
 function isNativeBridge(): boolean {
-    if (typeof window === 'undefined') { return false; }
+    if (typeof window === 'undefined') {
+        return false;
+    }
     const w = window as typeof window & { Capacitor?: { isNativePlatform?: () => boolean; getPlatform?: () => string } };
     const platform = w.Capacitor?.getPlatform?.();
     return Boolean(w.Capacitor?.isNativePlatform?.()) || platform === 'android' || platform === 'ios';
@@ -29,7 +32,9 @@ function isNativeBridge(): boolean {
 /* ── الغطاء للأجهزة الأصلية (full-screen iframe فوق الشاشة الحالية) ── */
 function openNativeOverlay(html: string, opts: PrintViewerOptions): boolean {
     let root = document.getElementById(OVERLAY_ID);
-    if (root) { root.remove(); }
+    if (root) {
+        root.remove();
+    }
     root = document.createElement('div');
     root.id = OVERLAY_ID;
     root.setAttribute('role', 'dialog');
@@ -61,7 +66,12 @@ function openNativeOverlay(html: string, opts: PrintViewerOptions): boolean {
     document.body.append(root);
 
     toolbar.querySelector<HTMLButtonElement>('[data-erp-pt="print"]')?.addEventListener('click', () => {
-        try { frame.contentWindow?.focus(); frame.contentWindow?.print(); } catch { /* لا يدعم الطباعة */ }
+        try {
+            frame.contentWindow?.focus();
+            frame.contentWindow?.print();
+        } catch {
+            /* لا يدعم الطباعة */
+        }
     });
     toolbar.querySelector<HTMLButtonElement>('[data-erp-pt="share"]')?.addEventListener('click', () => {
         void shareInnerAsPdf(frame.contentDocument);
@@ -70,45 +80,79 @@ function openNativeOverlay(html: string, opts: PrintViewerOptions): boolean {
 
     if (opts.autoPrint !== false) {
         // طباعة متزامنة افتراضية — يتيح للمستخدم الكشف من نفس دورة النقرة ويمنح المتصفح وقتًا للتحميل قبل الطباعة فقط للأوراق المبنية من العناصر الداخلية.
-        try { frame.contentWindow?.focus(); frame.contentWindow?.print(); } catch { /* لا يدعم الطباعة */ }
+        try {
+            frame.contentWindow?.focus();
+            frame.contentWindow?.print();
+        } catch {
+            /* لا يدعم الطباعة */
+        }
     }
     return true;
 }
 
 async function shareInnerAsPdf(doc: Document | null | undefined): Promise<void> {
-    if (!doc) { return; }
+    if (!doc) {
+        return;
+    }
     const target = (doc.querySelector('.sheet') as HTMLElement | null) ?? doc.body ?? null;
-    if (!target) { return; }
+    if (!target) {
+        return;
+    }
     const title = String(doc.querySelector('title')?.textContent ?? doc.title ?? 'Karim ERP').trim() || 'Karim ERP';
     try {
         await exportElementPdf(target, title, { mode: 'share' });
-    } catch { /* noop للمستخدم */ }
+    } catch {
+        /* noop للمستخدم */
+    }
 }
 
 /** سواقة الورقة المستقلة لالمتصفح: حقن الشريط + ربطه من النافذة الخارجية. */
 export function printViewerDocument(win: Window, html: string, opts: PrintViewerOptions = {}): boolean {
-    if (!win || win.closed) { return openNativeOverlay(html, opts); }
+    if (!win || win.closed) {
+        return openNativeOverlay(html, opts);
+    }
     const autoPrint = opts.autoPrint !== false;
     const delay = typeof opts.printDelayMs === 'number' ? opts.printDelayMs : 0;
     writeHtmlDocument(win, injectViewer(html));
     try {
         const doc = win.document;
         doc?.querySelector('[data-erp-pt="print"]')?.addEventListener('click', () => {
-            try { win.print(); } catch { void shareInnerAsPdf(win.document); }
+            try {
+                win.print();
+            } catch {
+                void shareInnerAsPdf(win.document);
+            }
         });
         doc?.querySelector('[data-erp-pt="share"]')?.addEventListener('click', () => {
             void shareInnerAsPdf(win.document);
         });
         doc?.querySelector('[data-erp-pt="close"]')?.addEventListener('click', () => {
-            try { win.close(); } catch { /* noop */ }
+            try {
+                win.close();
+            } catch {
+                /* noop */
+            }
         });
-    } catch { /* نافذة غير قابلة للوصول */ }
+    } catch {
+        /* نافذة غير قابلة للوصول */
+    }
     if (autoPrint) {
         if (delay > 0) {
-            window.setTimeout(() => { try { win.print(); } catch { /* noop */ } }, delay);
+            window.setTimeout(() => {
+                try {
+                    win.print();
+                } catch {
+                    /* noop */
+                }
+            }, delay);
         } else {
             // الوضع الافتراضي: اطبع في نفس دورة النقرة — المتصفح يتعامل مع الكشف بلا تدهور في الخبرة.
-            try { win.focus(); win.print(); } catch { /* noop */ }
+            try {
+                win.focus();
+                win.print();
+            } catch {
+                /* noop */
+            }
         }
     }
     return true;
@@ -116,12 +160,16 @@ export function printViewerDocument(win: Window, html: string, opts: PrintViewer
 
 /** المنفذ الموحد الطباعة/المعاينة — يعمل على Android/iOS (WebView) والمتصفح معًا. */
 export function printSmart(html: string, opts: PrintViewerOptions = {}): boolean {
-    if (typeof window === 'undefined') { return false; }
+    if (typeof window === 'undefined') {
+        return false;
+    }
     if (isNativeBridge()) {
         return openNativeOverlay(html, opts);
     }
     const win = window.open('', '_blank', 'width=980,height=1100');
-    if (!win) { return openNativeOverlay(html, opts); }
+    if (!win) {
+        return openNativeOverlay(html, opts);
+    }
     return printViewerDocument(win, html, opts);
 }
 
@@ -143,7 +191,9 @@ const TOOLBAR = `
 </style>`;
 
 function injectViewer(html: string): string {
-    if (html.includes('erp-print-toolbar')) { return html; }
+    if (html.includes('erp-print-toolbar')) {
+        return html;
+    }
     const bodyOpen = /<body[^>]*>/i.exec(html);
     if (bodyOpen) {
         const at = bodyOpen.index;

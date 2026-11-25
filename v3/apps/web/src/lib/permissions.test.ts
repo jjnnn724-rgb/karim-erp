@@ -84,17 +84,11 @@ describe('عقد الصلاحيات — التجميع والوضع', () => {
 
 describe('عقد الصلاحيات — البحث واختيار المستخدم', () => {
     it('يطابق بالاسم والمفتاح والمجموعة، ويطابق العربية المطوية', () => {
-        expect(searchPermissions(catalog, 'finance').rows.map((item) => item.key)).toEqual([
-            'finance.view',
-            'finance.edit',
-        ]);
+        expect(searchPermissions(catalog, 'finance').rows.map((item) => item.key)).toEqual(['finance.view', 'finance.edit']);
         const folded = searchPermissions(catalog, 'الموارد البشريه');
         expect(folded.rows.map((item) => item.key)).toEqual(['hr.view']);
         expect(folded.folded).toBe(true);
-        expect(searchPermissions(catalog, 'ماليه finance').rows.map((item) => item.key)).toEqual([
-            'finance.view',
-            'finance.edit',
-        ]);
+        expect(searchPermissions(catalog, 'ماليه finance').rows.map((item) => item.key)).toEqual(['finance.view', 'finance.edit']);
         expect(searchPermissions(catalog, 'ماليه hr').rows).toEqual([]);
         expect(searchPermissions(catalog, '').rows).toHaveLength(4);
     });

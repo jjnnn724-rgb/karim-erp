@@ -1,16 +1,5 @@
 import { useId } from 'react';
-import {
-    Area,
-    AreaChart,
-    Bar,
-    BarChart,
-    CartesianGrid,
-    Cell,
-    ResponsiveContainer,
-    Tooltip,
-    XAxis,
-    YAxis,
-} from 'recharts';
+import { Area, AreaChart, Bar, BarChart, CartesianGrid, Cell, ResponsiveContainer, Tooltip, XAxis, YAxis } from 'recharts';
 import type { HomeDeptPoint, HomeSeries } from '../lib/home';
 
 /**
@@ -160,12 +149,7 @@ export default function HomeCharts({ revenue, net, depts, deptsTitle, reducedMot
                                     axisLine={false}
                                 />
                                 <Tooltip contentStyle={tooltipStyle} labelStyle={{ color: inkColor }} />
-                                <Bar
-                                    dataKey="value"
-                                    name={deptsTitle}
-                                    radius={[0, 4, 4, 0]}
-                                    isAnimationActive={!reducedMotion}
-                                >
+                                <Bar dataKey="value" name={deptsTitle} radius={[0, 4, 4, 0]} isAnimationActive={!reducedMotion}>
                                     {depts.map((entry, index) => (
                                         <Cell
                                             key={`${entry.name}-${String(index)}`}

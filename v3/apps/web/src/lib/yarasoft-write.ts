@@ -121,9 +121,7 @@ export type YarasoftLogRow = z.infer<typeof yarasoftLogRowSchema>;
 export type YarasoftInvoiceDetail = z.infer<typeof yarasoftInvoiceDetailSchema>;
 
 /** بنود الفاتورة من `payload.items` بعد تطبيع الشكل — `[]` لأي شكل آخر. */
-export function invoicePayloadItems(
-    detail: YarasoftInvoiceDetail | null | undefined,
-): z.infer<typeof invoiceItemSchema>[] {
+export function invoicePayloadItems(detail: YarasoftInvoiceDetail | null | undefined): z.infer<typeof invoiceItemSchema>[] {
     if (!detail || typeof detail.payload !== 'object' || detail.payload === null) {
         return [];
     }
@@ -221,10 +219,7 @@ export const yarasoftSectionInvoiceRowSchema = z
 export const yarasoftSectionInvoicesSchema = z
     .object({
         ok: z.boolean().optional(),
-        section: z
-            .object({ id: idLike.optional(), dept_code: textLike, display_ar: textLike })
-            .passthrough()
-            .optional(),
+        section: z.object({ id: idLike.optional(), dept_code: textLike, display_ar: textLike }).passthrough().optional(),
         page: numLike,
         limit: numLike,
         total: numLike,
@@ -588,14 +583,9 @@ export const yarasoftMirrorCloseSchema = z
         payed: numLike,
         open: numLike,
         avg: numLike,
-        pay_split: z
-            .object({ cash: numLike, network: numLike, credit: numLike, mobile: numLike })
-            .passthrough()
-            .optional(),
+        pay_split: z.object({ cash: numLike, network: numLike, credit: numLike, mobile: numLike }).passthrough().optional(),
         by_hour: z.record(z.string(), z.object({ invoices: numLike, revenue: numLike }).passthrough()).optional(),
-        top_items: z
-            .array(z.object({ code: textLike, name: textLike, qty: numLike, total: numLike }).passthrough())
-            .optional(),
+        top_items: z.array(z.object({ code: textLike, name: textLike, qty: numLike, total: numLike }).passthrough()).optional(),
     })
     .passthrough();
 
@@ -671,21 +661,11 @@ export function fetchYarasoftStatus(signal?: AbortSignal) {
 
 export function fetchYarasoftLog(limit = 150, signal?: AbortSignal) {
     const safeLimit = Math.max(1, Math.min(500, Math.floor(Number(limit) || 150)));
-    return fetchJson(
-        yarasoftLogResponseSchema,
-        `/api/yarasoft/log?limit=${String(safeLimit)}`,
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    return fetchJson(yarasoftLogResponseSchema, `/api/yarasoft/log?limit=${String(safeLimit)}`, getAccessToken(), signal ? { signal } : {});
 }
 
 export function fetchYarasoftInvoiceDetail(id: string | number) {
-    return fetchJson(
-        yarasoftInvoiceDetailSchema,
-        `/api/yarasoft/log/${encodeURIComponent(String(id))}/detail`,
-        getAccessToken(),
-        {},
-    );
+    return fetchJson(yarasoftInvoiceDetailSchema, `/api/yarasoft/log/${encodeURIComponent(String(id))}/detail`, getAccessToken(), {});
 }
 
 export function fetchYarasoftReview(open = true, signal?: AbortSignal) {
@@ -698,30 +678,15 @@ export function fetchYarasoftReview(open = true, signal?: AbortSignal) {
 }
 
 export function fetchYarasoftMappings(signal?: AbortSignal) {
-    return fetchJson(
-        yarasoftMappingsResponseSchema,
-        '/api/yarasoft/mappings',
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    return fetchJson(yarasoftMappingsResponseSchema, '/api/yarasoft/mappings', getAccessToken(), signal ? { signal } : {});
 }
 
 export function fetchYarasoftSectionMap(signal?: AbortSignal) {
-    return fetchJson(
-        yarasoftSectionMapResponseSchema,
-        '/api/yarasoft/sections/map',
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    return fetchJson(yarasoftSectionMapResponseSchema, '/api/yarasoft/sections/map', getAccessToken(), signal ? { signal } : {});
 }
 
 export function fetchYarasoftUnmappedSections(signal?: AbortSignal) {
-    return fetchJson(
-        yarasoftUnmappedResponseSchema,
-        '/api/yarasoft/sections/unmapped',
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    return fetchJson(yarasoftUnmappedResponseSchema, '/api/yarasoft/sections/unmapped', getAccessToken(), signal ? { signal } : {});
 }
 
 export interface SectionInvoiceQuery {
@@ -765,21 +730,11 @@ export function fetchYarasoftSectionInvoiceDetail(ref: string, signal?: AbortSig
 }
 
 export function fetchYarasoftOracleStatus(signal?: AbortSignal) {
-    return fetchJson(
-        yarasoftOracleStatusSchema,
-        '/api/yarasoft/oracle/status',
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    return fetchJson(yarasoftOracleStatusSchema, '/api/yarasoft/oracle/status', getAccessToken(), signal ? { signal } : {});
 }
 
 export function fetchYarasoftOracleCatchUpStatus(signal?: AbortSignal) {
-    return fetchJson(
-        yarasoftCatchUpStatusSchema,
-        '/api/yarasoft/oracle/catch-up/status',
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    return fetchJson(yarasoftCatchUpStatusSchema, '/api/yarasoft/oracle/catch-up/status', getAccessToken(), signal ? { signal } : {});
 }
 
 export function fetchYarasoftOracleReconcile(days = 14, signal?: AbortSignal) {
@@ -793,40 +748,20 @@ export function fetchYarasoftOracleReconcile(days = 14, signal?: AbortSignal) {
 }
 
 export function fetchYarasoftCatalogStatus(signal?: AbortSignal) {
-    return fetchJson(
-        yarasoftCatalogStatusSchema,
-        '/api/yarasoft/oracle/catalog-status',
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    return fetchJson(yarasoftCatalogStatusSchema, '/api/yarasoft/oracle/catalog-status', getAccessToken(), signal ? { signal } : {});
 }
 
 export function fetchYarasoftQuarantine(signal?: AbortSignal) {
-    return fetchJson(
-        yarasoftQuarantineSchema,
-        '/api/yarasoft/quality/quarantine',
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    return fetchJson(yarasoftQuarantineSchema, '/api/yarasoft/quality/quarantine', getAccessToken(), signal ? { signal } : {});
 }
 
 export function fetchYarasoftMirrorCashiers(date = '', signal?: AbortSignal) {
     const query = date ? `?date=${encodeURIComponent(date)}` : '';
-    return fetchJson(
-        yarasoftMirrorCashiersSchema,
-        `/api/yarasoft/mirror/cashiers${query}`,
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    return fetchJson(yarasoftMirrorCashiersSchema, `/api/yarasoft/mirror/cashiers${query}`, getAccessToken(), signal ? { signal } : {});
 }
 
 export function fetchYarasoftMirrorOrders(
-    {
-        date = '',
-        cashier = '',
-        limit = 50,
-        offset = 0,
-    }: { date?: string; cashier?: string; limit?: number; offset?: number } = {},
+    { date = '', cashier = '', limit = 50, offset = 0 }: { date?: string; cashier?: string; limit?: number; offset?: number } = {},
     signal?: AbortSignal,
 ) {
     const params = new URLSearchParams();
@@ -860,12 +795,7 @@ export function fetchYarasoftMirrorClose({ date = '', cashier }: { date?: string
     if (date) {
         params.set('date', date);
     }
-    return fetchJson(
-        yarasoftMirrorCloseSchema,
-        `/api/yarasoft/mirror/close?${params.toString()}`,
-        getAccessToken(),
-        {},
-    );
+    return fetchJson(yarasoftMirrorCloseSchema, `/api/yarasoft/mirror/close?${params.toString()}`, getAccessToken(), {});
 }
 
 /* ─── الكتابات ──────────────────────────────────────────────────────────── */
@@ -886,11 +816,7 @@ export function resolveYarasoftReview(id: string | number, internalProductId: nu
 
 export function approveYarasoftSection(
     id: string | number,
-    {
-        displayAr = '',
-        displayEn = '',
-        mergeMapId,
-    }: { displayAr?: string; displayEn?: string; mergeMapId?: string | number | null } = {},
+    { displayAr = '', displayEn = '', mergeMapId }: { displayAr?: string; displayEn?: string; mergeMapId?: string | number | null } = {},
 ) {
     const body: Record<string, unknown> = { displayAr: String(displayAr).trim(), displayEn: String(displayEn).trim() };
     if (mergeMapId !== undefined && mergeMapId !== null && mergeMapId !== '') {
@@ -908,24 +834,13 @@ export function renameYarasoftSection(
     id: string | number,
     { displayAr = '', displayEn = '' }: { displayAr?: string; displayEn?: string } = {},
 ) {
-    return writeJson(
-        yarasoftRenameSchema,
-        `/api/yarasoft/sections/map/${encodeURIComponent(String(id))}/rename`,
-        'POST',
-        {
-            displayAr: String(displayAr).trim(),
-            displayEn: String(displayEn).trim(),
-        },
-    );
+    return writeJson(yarasoftRenameSchema, `/api/yarasoft/sections/map/${encodeURIComponent(String(id))}/rename`, 'POST', {
+        displayAr: String(displayAr).trim(),
+        displayEn: String(displayEn).trim(),
+    });
 }
 
-export function createYarasoftManualSection({
-    displayAr = '',
-    displayEn = '',
-}: {
-    displayAr?: string;
-    displayEn?: string;
-} = {}) {
+export function createYarasoftManualSection({ displayAr = '', displayEn = '' }: { displayAr?: string; displayEn?: string } = {}) {
     return writeJson(yarasoftRenameSchema, '/api/yarasoft/sections/manual', 'POST', {
         displayAr: String(displayAr).trim(),
         displayEn: String(displayEn).trim(),
@@ -986,9 +901,7 @@ export function organizeYarasoftCategories() {
 }
 
 export function syncYarasoftBalances(force = false) {
-    return writeJson(yarasoftSyncBalancesSchema, '/api/yarasoft/oracle/sync-balances', 'POST', {
-        force: Boolean(force),
-    });
+    return writeJson(yarasoftSyncBalancesSchema, '/api/yarasoft/oracle/sync-balances', 'POST', { force: Boolean(force) });
 }
 
 export function previewYarasoftInvoiceText(text: string) {
@@ -1013,11 +926,7 @@ export interface YarasoftProduct {
 }
 
 export async function searchYarasoftProducts(query: string, signal?: AbortSignal) {
-    const result = await fetchInventoryRegister(
-        { q: String(query ?? '').trim(), category: 'all', stock: 'all' },
-        signal,
-        2,
-    );
+    const result = await fetchInventoryRegister({ q: String(query ?? '').trim(), category: 'all', stock: 'all' }, signal, 2);
     const rows: YarasoftProduct[] = [];
     for (const item of result.rows) {
         const id = Number(item.id);

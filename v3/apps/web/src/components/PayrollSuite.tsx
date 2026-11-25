@@ -228,10 +228,7 @@ export function PayrollSuite({ month }: { month: string }) {
         },
     });
 
-    const removeRow = useWriteMutation<
-        { entity: 'advances' | 'adjustments' | 'contracts' | 'evaluations'; id: string },
-        void
-    >({
+    const removeRow = useWriteMutation<{ entity: 'advances' | 'adjustments' | 'contracts' | 'evaluations'; id: string }, void>({
         mutationFn: (vars) => removePayrollSuiteRow(vars.entity, vars.id),
         successTitle: () => 'تم الحذف',
         invalidate: [...invalidate],
@@ -248,11 +245,7 @@ export function PayrollSuite({ month }: { month: string }) {
     const employeesMissing = employeesQuery.isError;
     const employeeHint = employeesMissing ? 'تعذّر تحميل دليل الموظفين — أعد المحاولة قبل الإضافة.' : undefined;
 
-    async function askDelete(
-        entity: 'advances' | 'adjustments' | 'contracts' | 'evaluations',
-        id: string,
-        label: string,
-    ): Promise<void> {
+    async function askDelete(entity: 'advances' | 'adjustments' | 'contracts' | 'evaluations', id: string, label: string): Promise<void> {
         if (!(await confirm(`حذف ${label}؟`))) {
             return;
         }
@@ -270,19 +263,12 @@ export function PayrollSuite({ month }: { month: string }) {
     return (
         <div className="flex flex-col gap-md">
             {error ? (
-                <p
-                    className="rounded-md border border-danger/40 bg-danger-soft px-sm py-xs text-body-sm text-danger-text"
-                    role="alert"
-                >
+                <p className="rounded-md border border-danger/40 bg-danger-soft px-sm py-xs text-body-sm text-danger-text" role="alert">
                     {error}
                 </p>
             ) : null}
 
-            <SectionCard
-                title="السلف"
-                english="Advances"
-                actions={<Badge variant="neutral">{advances.length} سجلًا</Badge>}
-            >
+            <SectionCard title="السلف" english="Advances" actions={<Badge variant="neutral">{advances.length} سجلًا</Badge>}>
                 <div className="flex flex-col gap-sm p-sm">
                     <div className="flex flex-wrap items-end gap-sm">
                         <Select
@@ -381,9 +367,7 @@ export function PayrollSuite({ month }: { month: string }) {
                                     <tbody>
                                         {advances.map((row) => (
                                             <tr key={row.id} className="border-b border-hairline">
-                                                <td className="px-sm py-xxs font-semibold text-ink">
-                                                    {nameOf(row.employeeId)}
-                                                </td>
+                                                <td className="px-sm py-xxs font-semibold text-ink">{nameOf(row.employeeId)}</td>
                                                 <td className="px-sm py-xxs text-ink" dir="ltr">
                                                     {moneyOf(row.amount)}
                                                 </td>
@@ -423,11 +407,7 @@ export function PayrollSuite({ month }: { month: string }) {
                 </div>
             </SectionCard>
 
-            <SectionCard
-                title="بنود الرواتب"
-                english="Adjustments"
-                actions={<Badge variant="neutral">{adjustments.length} بندًا</Badge>}
-            >
+            <SectionCard title="بنود الرواتب" english="Adjustments" actions={<Badge variant="neutral">{adjustments.length} بندًا</Badge>}>
                 <div className="flex flex-col gap-sm p-sm">
                     <div className="flex flex-wrap items-end gap-sm">
                         <Select
@@ -525,19 +505,13 @@ export function PayrollSuite({ month }: { month: string }) {
                                     <tbody>
                                         {adjustments.map((row) => (
                                             <tr key={row.id} className="border-b border-hairline">
-                                                <td className="px-sm py-xxs font-semibold text-ink">
-                                                    {nameOf(row.employeeId)}
-                                                </td>
+                                                <td className="px-sm py-xxs font-semibold text-ink">{nameOf(row.employeeId)}</td>
                                                 <td className="px-sm py-xxs text-muted" dir="ltr">
                                                     {row.month || '—'}
                                                 </td>
                                                 <td className="px-sm py-xxs">
                                                     <Badge
-                                                        variant={
-                                                            row.kind === 'penalty' || row.kind === 'deduction'
-                                                                ? 'danger'
-                                                                : 'success'
-                                                        }
+                                                        variant={row.kind === 'penalty' || row.kind === 'deduction' ? 'danger' : 'success'}
                                                     >
                                                         {adjustmentKindName(row.kind)}
                                                     </Badge>
@@ -551,9 +525,7 @@ export function PayrollSuite({ month }: { month: string }) {
                                                         size="sm"
                                                         variant="danger"
                                                         disabled={removeRow.isPending}
-                                                        onClick={() =>
-                                                            void askDelete('adjustments', row.id, 'هذا البند')
-                                                        }
+                                                        onClick={() => void askDelete('adjustments', row.id, 'هذا البند')}
                                                     >
                                                         حذف
                                                     </Button>
@@ -570,11 +542,7 @@ export function PayrollSuite({ month }: { month: string }) {
                 </div>
             </SectionCard>
 
-            <SectionCard
-                title="العقود"
-                english="Contracts"
-                actions={<Badge variant="neutral">{contracts.length} عقدًا</Badge>}
-            >
+            <SectionCard title="العقود" english="Contracts" actions={<Badge variant="neutral">{contracts.length} عقدًا</Badge>}>
                 <div className="flex flex-col gap-sm p-sm">
                     <div className="flex flex-wrap items-end gap-sm">
                         <Select
@@ -668,9 +636,7 @@ export function PayrollSuite({ month }: { month: string }) {
                                             const state = contractState(row.end_date);
                                             return (
                                                 <tr key={row.id} className="border-b border-hairline">
-                                                    <td className="px-sm py-xxs font-semibold text-ink">
-                                                        {nameOf(row.employeeId)}
-                                                    </td>
+                                                    <td className="px-sm py-xxs font-semibold text-ink">{nameOf(row.employeeId)}</td>
                                                     <td className="px-sm py-xxs text-muted" dir="ltr">
                                                         {row.start_date.slice(0, 10) || '—'}
                                                     </td>
@@ -688,9 +654,7 @@ export function PayrollSuite({ month }: { month: string }) {
                                                             size="sm"
                                                             variant="danger"
                                                             disabled={removeRow.isPending}
-                                                            onClick={() =>
-                                                                void askDelete('contracts', row.id, 'هذا العقد')
-                                                            }
+                                                            onClick={() => void askDelete('contracts', row.id, 'هذا العقد')}
                                                         >
                                                             حذف
                                                         </Button>
@@ -708,11 +672,7 @@ export function PayrollSuite({ month }: { month: string }) {
                 </div>
             </SectionCard>
 
-            <SectionCard
-                title="التقييمات"
-                english="Evaluations"
-                actions={<Badge variant="neutral">{evaluations.length} تقييمًا</Badge>}
-            >
+            <SectionCard title="التقييمات" english="Evaluations" actions={<Badge variant="neutral">{evaluations.length} تقييمًا</Badge>}>
                 <div className="flex flex-col gap-sm p-sm">
                     <div className="flex flex-wrap items-end gap-sm">
                         <Select
@@ -739,12 +699,7 @@ export function PayrollSuite({ month }: { month: string }) {
                             onValueChange={setEvScore}
                             containerClassName="w-32"
                         />
-                        <Input
-                            label="المقيّم"
-                            containerClassName="w-40"
-                            value={evBy}
-                            onChange={(event) => setEvBy(event.target.value)}
-                        />
+                        <Input label="المقيّم" containerClassName="w-40" value={evBy} onChange={(event) => setEvBy(event.target.value)} />
                         <Input
                             label="ملاحظات"
                             containerClassName="w-56"
@@ -805,9 +760,7 @@ export function PayrollSuite({ month }: { month: string }) {
                                     <tbody>
                                         {evaluations.map((row) => (
                                             <tr key={row.id} className="border-b border-hairline">
-                                                <td className="px-sm py-xxs font-semibold text-ink">
-                                                    {nameOf(row.employeeId)}
-                                                </td>
+                                                <td className="px-sm py-xxs font-semibold text-ink">{nameOf(row.employeeId)}</td>
                                                 <td className="px-sm py-xxs text-muted" dir="ltr">
                                                     {row.period || '—'}
                                                 </td>
@@ -821,9 +774,7 @@ export function PayrollSuite({ month }: { month: string }) {
                                                         size="sm"
                                                         variant="danger"
                                                         disabled={removeRow.isPending}
-                                                        onClick={() =>
-                                                            void askDelete('evaluations', row.id, 'هذا التقييم')
-                                                        }
+                                                        onClick={() => void askDelete('evaluations', row.id, 'هذا التقييم')}
                                                     >
                                                         حذف
                                                     </Button>

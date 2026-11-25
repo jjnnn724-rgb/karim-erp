@@ -56,15 +56,7 @@ function Loading({ label }: { readonly label: string }) {
     );
 }
 
-function Kpi({
-    label,
-    value,
-    tone = 'default',
-}: {
-    readonly label: string;
-    readonly value: string;
-    readonly tone?: 'default' | 'accent';
-}) {
+function Kpi({ label, value, tone = 'default' }: { readonly label: string; readonly value: string; readonly tone?: 'default' | 'accent' }) {
     return (
         <article className={`fc-kpi fc-kpi--${tone}`}>
             <h3>{label}</h3>
@@ -224,9 +216,7 @@ function VatPanel({
                 <Kpi label="ضريبة المدخلات" value={status.data.summary.inputVat} />
                 <Kpi label="الصافي المستحق / (الدائن)" value={status.data.summary.netVatPayable} tone="accent" />
             </div>
-            <p className="fc-disclaimer">
-                اجتياز الفحوصات الداخلية لا يعني تقديم الإقرار إلى زاتكا أو اعتماده من الهيئة.
-            </p>
+            <p className="fc-disclaimer">اجتياز الفحوصات الداخلية لا يعني تقديم الإقرار إلى زاتكا أو اعتماده من الهيئة.</p>
         </section>
     );
 }
@@ -251,10 +241,7 @@ function PayrollPanel({
             {!data.payrollApprovalAllowed ? (
                 <div className="fc-hard-block fc-hard-block--compact" role="alert">
                     <strong>اعتماد الرواتب محظور</strong>
-                    <p>
-                        لم يُعثر على مجموعة نسب تأمينات موثّقة ومعتمدة. الحسابات أدناه معاينة فقط، ولا تُعدّ اعتمادًا
-                        تنظيميًا.
-                    </p>
+                    <p>لم يُعثر على مجموعة نسب تأمينات موثّقة ومعتمدة. الحسابات أدناه معاينة فقط، ولا تُعدّ اعتمادًا تنظيميًا.</p>
                 </div>
             ) : null}
             <div className="fc-section-heading">
@@ -294,20 +281,12 @@ function PayrollPanel({
                                               ? 'غير سعودي'
                                               : 'غير محدد'}
                                     </td>
+                                    <td dir="ltr">{item.calculation?.contributionBase ? money(item.calculation.contributionBase) : '—'}</td>
                                     <td dir="ltr">
-                                        {item.calculation?.contributionBase
-                                            ? money(item.calculation.contributionBase)
-                                            : '—'}
+                                        {item.calculation?.employeeContribution ? money(item.calculation.employeeContribution) : '—'}
                                     </td>
                                     <td dir="ltr">
-                                        {item.calculation?.employeeContribution
-                                            ? money(item.calculation.employeeContribution)
-                                            : '—'}
-                                    </td>
-                                    <td dir="ltr">
-                                        {item.calculation?.employerContribution
-                                            ? money(item.calculation.employerContribution)
-                                            : '—'}
+                                        {item.calculation?.employerContribution ? money(item.calculation.employerContribution) : '—'}
                                     </td>
                                     <td>
                                         {item.blockers.length > 0
@@ -507,12 +486,7 @@ export function FinancialCompliance() {
                     />
                 ) : null}
                 {active === 'vat' ? (
-                    <VatPanel
-                        status={vat.data}
-                        loading={vat.isPending}
-                        error={vat.error}
-                        retry={() => void vat.refetch()}
-                    />
+                    <VatPanel status={vat.data} loading={vat.isPending} error={vat.error} retry={() => void vat.refetch()} />
                 ) : null}
                 {active === 'payroll' ? (
                     <PayrollPanel

@@ -2,13 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 import { useMemo, useState } from 'react';
 import { type AccountChartFilterDraft, SearchToolbar } from '../components/AccountingChartFilters';
 import { ChevronIcon } from '../components/icons';
-import { PrintActions } from '../components/PrintActions';
 import type { AccountChartNode } from '../lib/account-chart';
 import { mockAccountChartPageService } from '../lib/account-chart';
 import { accountTypeLabel, formatInt } from '../lib/format';
 import { queryKeys } from '../lib/queryKeys';
 import type { DataTableColumn, DataTableTreeRow } from '../ui';
-import { DataTable, PageHeader, useToast } from '../ui';
+import { DataTable, useToast } from '../ui';
 
 const PAGE_SIZE = 4;
 const EMPTY_PAGE_ITEMS: AccountChartNode[] = [];
@@ -49,9 +48,7 @@ const ACCOUNT_COLUMNS: DataTableColumn<AccountChartNode>[] = [
             <span className="flex items-center gap-xs">
                 <span className="erp-numeric text-body-md text-ink">{node.account.code}</span>
                 {!node.account.is_active ? (
-                    <span className="rounded-full border border-neutral px-xs py-xxs text-caption text-neutral-text">
-                        غير نشط
-                    </span>
+                    <span className="rounded-full border border-neutral px-xs py-xxs text-caption text-neutral-text">غير نشط</span>
                 ) : null}
             </span>
         ),
@@ -135,21 +132,24 @@ export function AccountsTree() {
 
     return (
         <div className="flex flex-col gap-md">
-            <PageHeader
-                title="شجرة الحسابات"
-                description={
-                    query.isSuccess
-                        ? `${formatInt(query.data.matchedAccounts)} حساب مطابق · ${formatInt(query.data.total)} مجموعة حساب رئيسية`
-                        : 'عرض شجري للحسابات مع البحث والمرشّحات'
-                }
-                actions={
-                    <>
-                        <div className="flex items-center gap-xs" data-erp-print-hide>
-                            <PrintActions title="شجرة الحسابات" />
-                        </div>
-                    </>
-                }
-            />
+            <header className="flex flex-wrap items-end justify-between gap-sm">
+                <div>
+                    <h1 className="text-display-lg text-ink">
+                        {' '}
+                        شجرة الحسابات{' '}
+                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
+                            {' '}
+                            Chart of Accounts{' '}
+                        </span>{' '}
+                    </h1>
+                    <p className="text-body-sm text-muted" aria-live="polite">
+                        {query.isSuccess
+                            ? `${formatInt(query.data.matchedAccounts)} حساب مطابق · ${formatInt(query.data.total)} مجموعة حساب رئيسية`
+                            : 'عرض شجري للحسابات مع البحث والمرشّحات'}
+                    </p>
+                </div>
+                <div className="flex items-center gap-xs" data-erp-print-hide></div>
+            </header>
 
             <SearchToolbar
                 value={draft}
@@ -165,16 +165,10 @@ export function AccountsTree() {
                 columns={ACCOUNT_COLUMNS}
                 rows={pageItems}
                 rowKey={(node) => node.account.code}
-                state={
-                    query.isPending ? 'loading' : query.isError ? 'error' : pageItems.length === 0 ? 'empty' : 'data'
-                }
+                state={query.isPending ? 'loading' : query.isError ? 'error' : pageItems.length === 0 ? 'empty' : 'data'}
                 loadingRows={6}
                 emptyTitle={hasActiveFilters ? 'لا نتائج' : 'لا توجد حسابات'}
-                emptyDescription={
-                    hasActiveFilters
-                        ? 'لا يوجد حساب يطابق هذه المرشّحات. جرّب تغييرها أو مسحها.'
-                        : 'لم تُستورد الحسابات بعد.'
-                }
+                emptyDescription={hasActiveFilters ? 'لا يوجد حساب يطابق هذه المرشّحات. جرّب تغييرها أو مسحها.' : 'لم تُستورد الحسابات بعد.'}
                 errorMessage={query.error instanceof Error ? query.error.message : 'خطأ غير معروف'}
                 onRetry={() => {
                     void query.refetch();

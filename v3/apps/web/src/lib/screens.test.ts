@@ -1,13 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-    enabledScreens,
-    firstEnabledScreen,
-    isRouteScreenEnabled,
-    isScreenEnabled,
-    LEGACY_APP_URL,
-    V3_SCREENS,
-    V3_UTILITY_SCREEN_ALIASES,
-} from './screens';
+import { enabledScreens, firstEnabledScreen, isScreenEnabled, LEGACY_APP_URL, V3_SCREENS } from './screens';
 
 function docWith(content: string | null): Document {
     const doc = document.implementation.createHTMLDocument('screens');
@@ -32,18 +24,6 @@ describe('مفاتيح الشاشات', () => {
         expect(isScreenEnabled('accounts', doc)).toBe(true);
         expect(isScreenEnabled('journal', doc)).toBe(false);
         expect(firstEnabledScreen(doc)).toBe('accounts');
-    });
-
-    it('المسارات الخدمية تتبع راية الميزة الأساسية ولا تُفتح عند تعطيلها', () => {
-        expect(V3_UTILITY_SCREEN_ALIASES).toEqual({
-            cashier: 'pos-entry',
-            integrations: 'oracle-data',
-        });
-        expect(isRouteScreenEnabled('cashier', new Set(['pos-entry']))).toBe(true);
-        expect(isRouteScreenEnabled('integrations', new Set(['oracle-data']))).toBe(true);
-        expect(isRouteScreenEnabled('cashier', new Set(['cashier']))).toBe(false);
-        expect(isRouteScreenEnabled('integrations', new Set(['integrations']))).toBe(false);
-        expect(isRouteScreenEnabled('accounts', new Set(['accounts']))).toBe(true);
     });
 
     it('أول شاشة مفعّلة تتبع ترتيب v3 لا ترتيب النص', () => {

@@ -82,12 +82,12 @@ describe('إيرادات ومصروفات — التحقق بنصوص V2', () =>
             { field: 'amount', message: 'المبلغ يجب أن يكون أكبر من صفر' },
         ]);
         const longDept = 'د'.repeat(51);
-        expect(
-            validateRevenueForm({ source: 'مبيعات', deptId: longDept, amount: '5', date: '2026-11-08' })[0]?.message,
-        ).toBe('الحقل "deptId" أطول من المسموح (الحد الأقصى 50 حرفًا)');
-        expect(
-            validateRevenueForm({ source: 'س'.repeat(256), deptId: 'K', amount: '5', date: '2026-11-08' })[0]?.message,
-        ).toBe('الحقل "source" أطول من المسموح (الحد الأقصى 255 حرفًا)');
+        expect(validateRevenueForm({ source: 'مبيعات', deptId: longDept, amount: '5', date: '2026-11-08' })[0]?.message).toBe(
+            'الحقل "deptId" أطول من المسموح (الحد الأقصى 50 حرفًا)',
+        );
+        expect(validateRevenueForm({ source: 'س'.repeat(256), deptId: 'K', amount: '5', date: '2026-11-08' })[0]?.message).toBe(
+            'الحقل "source" أطول من المسموح (الحد الأقصى 255 حرفًا)',
+        );
     });
 
     it('نموذج مصروف فارغ: البيان ثم الفئة الطويلة', () => {
@@ -111,9 +111,7 @@ describe('إيرادات ومصروفات — التحقق بنصوص V2', () =>
 
 describe('إيرادات ومصروفات — الحمولات', () => {
     it('تعديل الإيراد يرسل مفاتيح persistUpdate فقط (بلا id)', () => {
-        expect(
-            normalizeRevenueForm({ source: ' مبيعات ', deptId: ' K ', amount: '10.5', date: '2026-11-08', notes: ' ' }),
-        ).toEqual({
+        expect(normalizeRevenueForm({ source: ' مبيعات ', deptId: ' K ', amount: '10.5', date: '2026-11-08', notes: ' ' })).toEqual({
             deptId: 'K',
             source: 'مبيعات',
             amount: 10.5,
@@ -159,9 +157,7 @@ describe('إيرادات ومصروفات — الحمولات', () => {
             date: '2026-11-08',
             notes: '',
         });
-        expect(
-            expenseFormOf({ desc: 'غاز', deptId: 'K', category: 'تشغيل', amount: '8', date: '2026-11-07' }),
-        ).toMatchObject({
+        expect(expenseFormOf({ desc: 'غاز', deptId: 'K', category: 'تشغيل', amount: '8', date: '2026-11-07' })).toMatchObject({
             desc: 'غاز',
             category: 'تشغيل',
         });

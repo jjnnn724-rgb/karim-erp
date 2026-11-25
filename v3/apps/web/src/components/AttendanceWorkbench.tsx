@@ -41,12 +41,7 @@ import { useToast } from '../ui/Toast';
  */
 
 /** مفاتيح الاستعلامات التي تتأثر بأي كتابة حضور. */
-const ATTENDANCE_KEYS = [
-    ['attendance-range'],
-    ['attendance-today'],
-    ['attendance-leaves'],
-    ['attendance-audit'],
-] as const;
+const ATTENDANCE_KEYS = [['attendance-range'], ['attendance-today'], ['attendance-leaves'], ['attendance-audit']] as const;
 
 function employeeOptions(employees: readonly Employee[]): { value: string; label: string }[] {
     return employees
@@ -64,13 +59,7 @@ function useWorkStartHour() {
 
 /* ─── تصحيح بصمة ────────────────────────────────────────────────────────── */
 
-export function AttendanceCorrectButton({
-    record,
-    employee,
-}: {
-    record: AttendanceRecord;
-    employee: Employee | undefined;
-}) {
+export function AttendanceCorrectButton({ record, employee }: { record: AttendanceRecord; employee: Employee | undefined }) {
     const auth = useAuthState();
     const writable = canWriteAttendance(auth.user?.role);
     const { toast } = useToast();
@@ -399,9 +388,7 @@ export function AttendanceResolveButton({
                             {...(withId ? { value: withId } : {})}
                             onValueChange={setWithId}
                             placeholder="اختر…"
-                            options={employeeOptions(employees).filter(
-                                (option) => option.value !== String(employee.id),
-                            )}
+                            options={employeeOptions(employees).filter((option) => option.value !== String(employee.id))}
                         />
                     ) : null}
                     <Input
@@ -549,12 +536,7 @@ export function AttendanceWorkbench({ employees, todayStr }: { employees: readon
                         placeholder="اختر…"
                         options={options}
                     />
-                    <Input
-                        label={ATT_WRITE_TEXT.date}
-                        type="date"
-                        value={date}
-                        onChange={(event) => setDate(event.target.value)}
-                    />
+                    <Input label={ATT_WRITE_TEXT.date} type="date" value={date} onChange={(event) => setDate(event.target.value)} />
                     <Input
                         label={ATT_WRITE_TEXT.reason}
                         value={reason}
@@ -583,18 +565,8 @@ export function AttendanceWorkbench({ employees, todayStr }: { employees: readon
             >
                 <div className="flex flex-col gap-sm">
                     <div className="grid gap-sm sm:grid-cols-3">
-                        <Input
-                            label="من"
-                            type="date"
-                            value={auditFrom}
-                            onChange={(event) => setAuditFrom(event.target.value)}
-                        />
-                        <Input
-                            label="إلى"
-                            type="date"
-                            value={auditTo}
-                            onChange={(event) => setAuditTo(event.target.value)}
-                        />
+                        <Input label="من" type="date" value={auditFrom} onChange={(event) => setAuditFrom(event.target.value)} />
+                        <Input label="إلى" type="date" value={auditTo} onChange={(event) => setAuditTo(event.target.value)} />
                         <Select
                             label="الفعل"
                             {...(auditAction ? { value: auditAction } : {})}
@@ -667,9 +639,7 @@ export function AttendanceWorkbench({ employees, todayStr }: { employees: readon
                                                     <td className="px-sm py-xxs text-muted">{row.reason || '—'}</td>
                                                     <td className="px-sm py-xxs text-ink">
                                                         {row.actorName}
-                                                        <small className="block text-caption text-muted">
-                                                            {row.actorRole}
-                                                        </small>
+                                                        <small className="block text-caption text-muted">{row.actorRole}</small>
                                                     </td>
                                                     <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">
                                                         {row.at}
@@ -700,12 +670,7 @@ export function AttendanceWorkbench({ employees, todayStr }: { employees: readon
                 }
             >
                 <div className="flex flex-col gap-sm">
-                    <Input
-                        label="الشهر"
-                        type="month"
-                        value={month}
-                        onChange={(event) => setMonth(event.target.value)}
-                    />
+                    <Input label="الشهر" type="month" value={month} onChange={(event) => setMonth(event.target.value)} />
                     {attendanceMonthError(month) ? (
                         <p role="alert" className="text-body-sm text-danger-text">
                             {attendanceMonthError(month)}
@@ -720,17 +685,13 @@ export function AttendanceWorkbench({ employees, todayStr }: { employees: readon
                     {strictQuery.data ? (
                         <>
                             <p className="text-body-sm text-muted">
-                                النتيجة: {strictQuery.data.ok ? 'معتمد' : 'يحتاج مراجعة'} — سليم{' '}
-                                {strictQuery.data.counts.PASS} · تنبيه {strictQuery.data.counts.WARN} · فشل{' '}
-                                {strictQuery.data.counts.FAIL}
+                                النتيجة: {strictQuery.data.ok ? 'معتمد' : 'يحتاج مراجعة'} — سليم {strictQuery.data.counts.PASS} · تنبيه{' '}
+                                {strictQuery.data.counts.WARN} · فشل {strictQuery.data.counts.FAIL}
                             </p>
                             {strictQuery.data.checks.length ? (
                                 <ul className="flex list-none flex-col gap-xs">
                                     {strictQuery.data.checks.map((check) => (
-                                        <li
-                                            key={check.name}
-                                            className="rounded-md border border-hairline bg-surface p-sm text-body-sm"
-                                        >
+                                        <li key={check.name} className="rounded-md border border-hairline bg-surface p-sm text-body-sm">
                                             <div className="flex flex-wrap items-center justify-between gap-xs">
                                                 <b className="text-ink">{check.name}</b>
                                                 <span
@@ -756,9 +717,7 @@ export function AttendanceWorkbench({ employees, todayStr }: { employees: readon
                                                         {check.details.map((detail) => (
                                                             <li key={`${check.name}-${detail.emp}`} dir="ltr">
                                                                 {detail.emp}
-                                                                {detail.lateDays !== null
-                                                                    ? ` · late ${detail.lateDays}`
-                                                                    : ''}
+                                                                {detail.lateDays !== null ? ` · late ${detail.lateDays}` : ''}
                                                                 {detail.days !== null ? ` · days ${detail.days}` : ''}
                                                             </li>
                                                         ))}
@@ -789,12 +748,7 @@ export function AttendanceWorkbench({ employees, todayStr }: { employees: readon
                 }
             >
                 <div className="flex flex-col gap-sm">
-                    <Input
-                        label="الشهر"
-                        type="month"
-                        value={month}
-                        onChange={(event) => setMonth(event.target.value)}
-                    />
+                    <Input label="الشهر" type="month" value={month} onChange={(event) => setMonth(event.target.value)} />
                     {attendanceMonthError(month) ? (
                         <p role="alert" className="text-body-sm text-danger-text">
                             {attendanceMonthError(month)}
@@ -810,8 +764,8 @@ export function AttendanceWorkbench({ employees, todayStr }: { employees: readon
                         monthlyQuery.data.rows.length ? (
                             <>
                                 <p className="text-body-sm text-muted">
-                                    {new Intl.NumberFormat('en-US').format(monthlyQuery.data.employees)} موظفًا · يوم
-                                    العمل {minutesToHM(monthlyQuery.data.workDayMinutes)} · إجمالي العجز{' '}
+                                    {new Intl.NumberFormat('en-US').format(monthlyQuery.data.employees)} موظفًا · يوم العمل{' '}
+                                    {minutesToHM(monthlyQuery.data.workDayMinutes)} · إجمالي العجز{' '}
                                     {minutesToHM(monthlyQuery.data.totals.deficitMinutes)}
                                 </p>
                                 <div className="max-h-96 overflow-auto rounded-md border border-hairline">
@@ -852,16 +806,10 @@ export function AttendanceWorkbench({ employees, todayStr }: { employees: readon
                                                     <td className="erp-numeric px-sm py-xxs" dir="ltr">
                                                         {row.present}
                                                     </td>
-                                                    <td
-                                                        className="erp-numeric px-sm py-xxs text-success-text"
-                                                        dir="ltr"
-                                                    >
+                                                    <td className="erp-numeric px-sm py-xxs text-success-text" dir="ltr">
                                                         {row.completeWorkDays}
                                                     </td>
-                                                    <td
-                                                        className="erp-numeric px-sm py-xxs text-warning-text"
-                                                        dir="ltr"
-                                                    >
+                                                    <td className="erp-numeric px-sm py-xxs text-warning-text" dir="ltr">
                                                         {row.shortDays}
                                                     </td>
                                                     <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">

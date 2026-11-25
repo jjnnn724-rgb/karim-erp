@@ -25,8 +25,7 @@ import { Dialog } from '../ui/Dialog';
  * `BULK_CHUNK` في V2) مع إظهار ما فشل بدل ابتلاعه.
  */
 
-const FIELD_CLASS =
-    'h-9 w-full min-w-0 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink';
+const FIELD_CLASS = 'h-9 w-full min-w-0 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink';
 
 export interface BulkReceiptDialogProps {
     open: boolean;
@@ -70,9 +69,7 @@ export function BulkReceiptDialog({ open, onOpenChange, onImported }: BulkReceip
     }
 
     function removeRow(index: number): void {
-        setRows((previous) =>
-            previous.length === 1 ? [emptyBulkRow()] : previous.filter((_, position) => position !== index),
-        );
+        setRows((previous) => (previous.length === 1 ? [emptyBulkRow()] : previous.filter((_, position) => position !== index)));
     }
 
     async function submit(): Promise<void> {
@@ -94,9 +91,7 @@ export function BulkReceiptDialog({ open, onOpenChange, onImported }: BulkReceip
             const result = await submitBulkReceipt(rows);
             setOutcome(result);
             onImported?.(result);
-            if (result.failures.length) {
-                setRows(result.retryRows);
-            } else {
+            if (!result.failures.length) {
                 setRows([emptyBulkRow()]);
             }
         } catch (submitError) {
@@ -146,12 +141,6 @@ export function BulkReceiptDialog({ open, onOpenChange, onImported }: BulkReceip
                                 {`${failure.names.slice(0, 5).join('، ')} — ${failure.message}`}
                             </p>
                         ))}
-                        {outcome.retryRows.some((row) => row.submissionKey) ? (
-                            <p className="mt-xxs">
-                                تعذّر تأكيد حالة بعض الدفعات؛ أعد المحاولة دون تعديل الصفوف المقفلة، وتحقق من رصيد
-                                المخزون قبل إنشاء استلام جديد.
-                            </p>
-                        ) : null}
                     </div>
                 ) : null}
 
@@ -181,7 +170,6 @@ export function BulkReceiptDialog({ open, onOpenChange, onImported }: BulkReceip
                                                 min={field.type === 'number' ? 0 : undefined}
                                                 placeholder={field.placeholder}
                                                 aria-label={`${field.label} — صف ${index + 1}`}
-                                                disabled={pending || Boolean(row.submissionKey)}
                                                 onChange={(event) => {
                                                     update(index, field.key, event.target.value);
                                                 }}
@@ -192,7 +180,6 @@ export function BulkReceiptDialog({ open, onOpenChange, onImported }: BulkReceip
                                     <td className="px-xs py-xxs">
                                         <button
                                             type="button"
-                                            disabled={pending || Boolean(row.submissionKey)}
                                             onClick={() => {
                                                 removeRow(index);
                                             }}

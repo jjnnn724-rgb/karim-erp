@@ -27,28 +27,16 @@ export type WriteAck = z.infer<typeof writeAckSchema>;
 export type WriteMethod = 'POST' | 'PUT' | 'PATCH' | 'DELETE';
 
 /** كتابة JSON واحدة — نفس `fetchJson` لكن بلا تكرار التوكن والمفتاح. */
-export async function writeJson<T>(
-    schema: z.ZodType<T>,
-    url: string,
-    method: WriteMethod,
-    body?: unknown,
-    headers?: Record<string, string>,
-): Promise<T> {
+export async function writeJson<T>(schema: z.ZodType<T>, url: string, method: WriteMethod, body?: unknown): Promise<T> {
     return fetchJson(schema, url, getAccessToken(), {
         method,
         ...(body === undefined ? {} : { body }),
-        ...(headers ? { headers } : {}),
     });
 }
 
 /** كتابة لا يهمّ شكل مردودها بعد التحقق (POST/PUT/DELETE عام في القديم). */
-export async function writeAck(
-    url: string,
-    method: WriteMethod,
-    body?: unknown,
-    headers?: Record<string, string>,
-): Promise<WriteAck> {
-    return writeJson(writeAckSchema, url, method, body, headers);
+export async function writeAck(url: string, method: WriteMethod, body?: unknown): Promise<WriteAck> {
+    return writeJson(writeAckSchema, url, method, body);
 }
 
 /**
@@ -98,9 +86,7 @@ export type WriteMutationResult<TVars, TData> = UseMutationResult<TData, unknown
  * `useMutation` بعقد الكتابة الموحّد: توست نجاح عربي + إبطال الاستعلامات،
  * وتوست خطأ يحمل رسالة الخادم. مكوّنات الاختبار تُغلّفها بـ`ToastProvider`.
  */
-export function useWriteMutation<TVars, TData>(
-    options: WriteMutationOptions<TVars, TData>,
-): WriteMutationResult<TVars, TData> {
+export function useWriteMutation<TVars, TData>(options: WriteMutationOptions<TVars, TData>): WriteMutationResult<TVars, TData> {
     const queryClient = useQueryClient();
     const { toast } = useToast();
 
@@ -116,8 +102,7 @@ export function useWriteMutation<TVars, TData>(
                     variant: 'success',
                 });
             }
-            const keys =
-                typeof options.invalidate === 'function' ? options.invalidate(vars, data) : (options.invalidate ?? []);
+            const keys = typeof options.invalidate === 'function' ? options.invalidate(vars, data) : (options.invalidate ?? []);
             await Promise.all(keys.map((queryKey) => queryClient.invalidateQueries({ queryKey })));
             await options.onSuccess?.(data, vars);
         },

@@ -1,7 +1,7 @@
 import { render, screen } from '@testing-library/react';
 import { describe, expect, it } from 'vitest';
-import { ScreenHero } from './ScreenHero';
 import { AnswerStrip } from './AnswerStrip';
+import { ScreenHero } from './ScreenHero';
 import { expectNoAxeViolations, installDomPolyfills } from './test-utils';
 
 installDomPolyfills();

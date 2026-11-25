@@ -40,10 +40,7 @@ describe('dispatch operational print sheet', () => {
     });
 
     it('does not render a non-image signature payload as an image', () => {
-        const html = dispatchPrintHtml(
-            { id: '7', status: 'approved', requestSignatureData: 'javascript:alert(1)' } as Dispatch,
-            brand,
-        );
+        const html = dispatchPrintHtml({ id: '7', status: 'approved', requestSignatureData: 'javascript:alert(1)' } as Dispatch, brand);
 
         expect(html).not.toContain('javascript:');
         expect(html).not.toContain('<img src="javascript:');

@@ -4,11 +4,12 @@ import { fetchJson } from './api';
 import { getAccessToken } from './auth';
 
 /**
- * مرتجعات المطبخ — قراءة من `/api/kitchenReturns` بنفس عقد القديم
+ * مرتجعات المطبخ — قراءة فقط من `/api/kitchenReturns` بنفس عقد القديم
  * (`frontend/app/js/v2/data/warehouse-repo.js`): الشهر الحالي أولًا عند
  * الخادم (`v2_period=month`)، ثم ترتيب `id desc`، وسقف 8×1000 معلن.
  *
- * الإنشاء والإبطال يمران عبر مسار العملية المخصص في `wh-returns-write`.
+ * الإنشاء والحذف (عكس الأثر المخزني والمحاسبي) يبقيان في V2 حتى تُنقل
+ * دورتهما وتواقيعهما كاملة. هذا الملف لا يكتب.
  */
 
 const moneyValue = z
@@ -49,8 +50,6 @@ export const kitchenReturnSchema = z
         reason: optionalText,
         notes: optionalText,
         totalValue: moneyValue,
-        status: z.string().nullable().optional(),
-        voidedAt: z.string().nullable().optional(),
         createdBy: z
             .union([z.string(), z.number()])
             .nullable()
@@ -125,8 +124,6 @@ export type KitchenReturnRow = {
     itemsCount: number;
     reasonText: string;
     total: string;
-    status: string;
-    voided: boolean;
     createdBy: string;
 };
 
@@ -149,8 +146,6 @@ export function kitchenReturnToRow(entry: KitchenReturn): KitchenReturnRow {
         itemsCount: items.length,
         reasonText: entry.reason || entry.notes || '',
         total: moneyOf(entry.totalValue),
-        status: entry.status || 'approved',
-        voided: Boolean(entry.voidedAt || entry.status === 'voided'),
         createdBy: entry.createdBy ? String(entry.createdBy) : '',
     };
 }
@@ -164,16 +159,15 @@ export type ReturnTotals = {
 };
 
 export function returnTotals(rows: readonly KitchenReturnRow[]): ReturnTotals {
-    const active = rows.filter((row) => !row.voided);
     let total = '0.00';
-    for (const row of active) {
+    for (const row of rows) {
         total = addMoney(total, row.total);
     }
     return {
         count: rows.length,
         total,
-        items: active.reduce((sum, row) => sum + row.itemsCount, 0),
-        linked: active.filter((row) => row.dispatchId !== null).length,
-        depts: new Set(active.map((row) => row.deptName)).size,
+        items: rows.reduce((sum, row) => sum + row.itemsCount, 0),
+        linked: rows.filter((row) => row.dispatchId !== null).length,
+        depts: new Set(rows.map((row) => row.deptName)).size,
     };
 }

@@ -81,13 +81,7 @@ export function Select({
                     ) : null}
                 </span>
             ) : null}
-            <ShadcnSelect
-                value={value}
-                onValueChange={onValueChange}
-                disabled={disabled}
-                name={name}
-                required={required}
-            >
+            <ShadcnSelect value={value} onValueChange={onValueChange} disabled={disabled} name={name} required={required}>
                 <ShadcnTrigger
                     id={selectId}
                     aria-labelledby={labelId}

@@ -8,10 +8,14 @@
 const PREFIX = 'karim_ui_flag_';
 
 export function isUiFlagOn(name: string, fallback = false): boolean {
-    if (typeof name !== 'string' || !name.trim()) {return fallback;}
+    if (typeof name !== 'string' || !name.trim()) {
+        return fallback;
+    }
     try {
         const raw = globalThis.localStorage?.getItem(PREFIX + name.trim());
-        if (raw === null || raw === undefined) {return fallback;}
+        if (raw === null || raw === undefined) {
+            return fallback;
+        }
         return raw === '1' || raw === 'true';
     } catch {
         return fallback;

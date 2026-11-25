@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ToastProvider } from '../ui/Toast';
 import { ConfirmProvider } from '../components/ConfirmProvider';
+import { ToastProvider } from '../ui/Toast';
 import { PunchControl } from './PunchControl';
 
 function json(body: unknown, status = 200): Response {
@@ -63,7 +63,18 @@ describe('مركز التحكم بالبصمة والحضور', () => {
                     return json({
                         running: true,
                         devices: [
-                            { id: '1', name: 'جهاز البوابة', ipAddress: '192.168.1.100', port: 4370, status: 'متصل', enabled: true, lastSyncAt: '2026-11-17 07:00:00', lastError: null, totalSynced: 1234, live: { online: true } },
+                            {
+                                id: '1',
+                                name: 'جهاز البوابة',
+                                ipAddress: '192.168.1.100',
+                                port: 4370,
+                                status: 'متصل',
+                                enabled: true,
+                                lastSyncAt: '2026-11-17 07:00:00',
+                                lastError: null,
+                                totalSynced: 1234,
+                                live: { online: true },
+                            },
                         ],
                         totals: { logs: 1000, unmapped: 0, today: 42, employees: 100, linkedEmployees: 99, unlinkedEmployees: 1 },
                     });

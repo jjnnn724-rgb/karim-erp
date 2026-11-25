@@ -1,5 +1,4 @@
 import { useMutation, useQuery } from '@tanstack/react-query';
-import { ScreenHero } from '../ui';
 import { useState } from 'react';
 import { ItemDossier } from '../components/ItemDossier';
 import { KpiCard, RangeControls, SectionCard } from '../components/Reports';
@@ -15,6 +14,7 @@ import {
     saveDownload,
 } from '../lib/inventory-inquiry';
 import { errorMessage, intOf, moneyOf, presetRange, qtyOf, rangeProblem, textOf, todayIso } from '../lib/reporting';
+import { ScreenHero } from '../ui';
 
 /**
  * محرك استعلامات المخزون — قراءة فقط من `/api/inventory-inquiry`.
@@ -109,7 +109,7 @@ export function InventoryInquiry() {
 
     return (
         <div className="mx-auto flex w-full min-w-0 flex-col gap-lg">
-<ScreenHero
+            <ScreenHero
                 title="محرك الاستعلامات"
                 english="Inventory Query"
                 description="ما دخل من الفواتير، وما في المخزن، وما انصرف، وما بيع، وبأي تكلفة — من دفتر المخزون مباشرة."
@@ -117,10 +117,12 @@ export function InventoryInquiry() {
                     <>
                         <button
                             type="button"
-                            onClick={() => { () => {
-                    void itemsQuery.refetch();
-                    void departmentsQuery.refetch();
-                } }}
+                            onClick={() => {
+                                () => {
+                                    void itemsQuery.refetch();
+                                    void departmentsQuery.refetch();
+                                };
+                            }}
                             disabled={itemsQuery.isFetching || departmentsQuery.isFetching}
                             className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
                         >

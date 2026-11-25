@@ -3,7 +3,7 @@ import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { StateError, StateLoading, TableScroll } from '../components/TableState';
-import { useAuthState, getAccessToken } from '../lib/auth';
+import { getAccessToken, useAuthState } from '../lib/auth';
 import { ATT_STATE, fetchAttendanceReport, rangeReportRows } from '../lib/employee-card';
 import { fetchEmployeeLeaves, fetchEmployeeSuite } from '../lib/employee-profile';
 import { fetchEmployees, fetchHrDepartments } from '../lib/employees';
@@ -67,7 +67,9 @@ export function EmployeeCard() {
     const [employeeId] = useState(() => {
         try {
             const raw = new URLSearchParams(window.location.search).get('id') ?? '';
-            return decodeURIComponent(raw).replace(/^['"]+|['"]+$/g, '').trim();
+            return decodeURIComponent(raw)
+                .replace(/^['"]+|['"]+$/g, '')
+                .trim();
         } catch {
             return '';
         }
@@ -88,11 +90,17 @@ export function EmployeeCard() {
     });
     const employee = useMemo(() => {
         const lookup = employeeId.replace(/^['"]+|['"]+$/g, '').trim();
-        return (employeesQuery.data ?? []).find((row) => {
-            const id = String(row.id ?? '').replace(/^['"]+|['"]+$/g, '').trim();
-            const code = String(row.employeeId ?? '').replace(/^['"]+|['"]+$/g, '').trim();
-            return id === lookup || code === lookup;
-        }) ?? null;
+        return (
+            (employeesQuery.data ?? []).find((row) => {
+                const id = String(row.id ?? '')
+                    .replace(/^['"]+|['"]+$/g, '')
+                    .trim();
+                const code = String(row.employeeId ?? '')
+                    .replace(/^['"]+|['"]+$/g, '')
+                    .trim();
+                return id === lookup || code === lookup;
+            }) ?? null
+        );
     }, [employeesQuery.data, employeeId]);
     const departmentsQuery = useQuery({
         queryKey: ['employee-card', 'departments'],
@@ -124,9 +132,7 @@ export function EmployeeCard() {
 
     function printEmployeeProfile() {
         if (!employee) return;
-        const logo = brand.logoSrc
-            ? `<img src="${brand.logoSrc}" alt="" style="width:22mm;height:22mm;object-fit:contain">`
-            : '';
+        const logo = brand.logoSrc ? `<img src="${brand.logoSrc}" alt="" style="width:22mm;height:22mm;object-fit:contain">` : '';
         const rows = [
             ['الاسم الكامل', name],
             ['كود الموظف', code || '—'],
@@ -140,8 +146,13 @@ export function EmployeeCard() {
             ['الراحة الأسبوعية', employee.day_off == null ? '—' : (DAY_OFF_AR[Number(employee.day_off) % 7] ?? '—')],
             ['رقم الجهاز', String(employee.deviceUserId ?? '—')],
             ['رقم البطاقة', String(employee.cardId ?? '—')],
-        ].map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`).join('');
-        printSmart(`<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>بطاقة الموظف - ${escapeHtml(name)}</title></head><body><header style="display:flex;align-items:center;gap:14px;border-bottom:3px solid #b08d57;padding-bottom:10mm;margin-bottom:8mm">${logo}<div><div style="font-size:20pt;font-weight:800">${escapeHtml(brand.name)}</div><div style="font-size:9pt;letter-spacing:1.5px">${escapeHtml(PRINT_COMPANY_EN)}</div></div><div style="margin-inline-start:auto;text-align:center"><div style="font-size:11pt;font-weight:700">بطاقة موظف رسمية</div><div style="font-size:9pt">EMPLOYEE RECORD</div></div></header><main><h1 style="font-size:18pt;margin:0 0 5mm">${escapeHtml(name)}</h1><table style="width:100%;border-collapse:collapse;border:1px solid #d4dde4"><tbody>${rows}</tbody></table></main><footer style="position:fixed;bottom:0;left:0;right:0;border-top:1px solid #b8c4cc;padding-top:3mm;font-size:8pt;text-align:center">${escapeHtml(brand.name)} · صفحة <span class="pageNumber"></span></footer></body></html>`, { autoPrint: true, printDelayMs: 350 });
+        ]
+            .map(([label, value]) => `<tr><th>${escapeHtml(label)}</th><td>${escapeHtml(value)}</td></tr>`)
+            .join('');
+        printSmart(
+            `<!doctype html><html lang="ar" dir="rtl"><head><meta charset="utf-8"><title>بطاقة الموظف - ${escapeHtml(name)}</title></head><body><header style="display:flex;align-items:center;gap:14px;border-bottom:3px solid #b08d57;padding-bottom:10mm;margin-bottom:8mm">${logo}<div><div style="font-size:20pt;font-weight:800">${escapeHtml(brand.name)}</div><div style="font-size:9pt;letter-spacing:1.5px">${escapeHtml(PRINT_COMPANY_EN)}</div></div><div style="margin-inline-start:auto;text-align:center"><div style="font-size:11pt;font-weight:700">بطاقة موظف رسمية</div><div style="font-size:9pt">EMPLOYEE RECORD</div></div></header><main><h1 style="font-size:18pt;margin:0 0 5mm">${escapeHtml(name)}</h1><table style="width:100%;border-collapse:collapse;border:1px solid #d4dde4"><tbody>${rows}</tbody></table></main><footer style="position:fixed;bottom:0;left:0;right:0;border-top:1px solid #b8c4cc;padding-top:3mm;font-size:8pt;text-align:center">${escapeHtml(brand.name)} · صفحة <span class="pageNumber"></span></footer></body></html>`,
+            { autoPrint: true, printDelayMs: 350 },
+        );
     }
 
     async function printLuxCard() {
@@ -258,7 +269,13 @@ export function EmployeeCard() {
                 <div className="flex min-w-0 flex-1 flex-col gap-xxs">
                     <div className="flex flex-wrap items-center gap-sm">
                         <h2 className="text-heading-lg text-ink">{name}</h2>
-                        {inactive ? <Badge variant="warning">موقوف</Badge> : <Badge variant="success" dot>نشط</Badge>}
+                        {inactive ? (
+                            <Badge variant="warning">موقوف</Badge>
+                        ) : (
+                            <Badge variant="success" dot>
+                                نشط
+                            </Badge>
+                        )}
                     </div>
                     <p className="text-body-sm text-muted">
                         {[position || null, department || null, code ? `كود ${code}` : null].filter(Boolean).join(' · ') || '—'}
@@ -291,7 +308,10 @@ export function EmployeeCard() {
             <div className="grid gap-md md:grid-cols-2">
                 <section className="rounded-lg border border-hairline bg-surface p-sm shadow-card" aria-label="الهوية والاتصال">
                     <h3 className="mb-xs text-caption font-medium uppercase tracking-[0.14em] text-faint">
-                        الهوية والاتصال <span className="normal-case" dir="ltr" lang="en">Identity</span>
+                        الهوية والاتصال{' '}
+                        <span className="normal-case" dir="ltr" lang="en">
+                            Identity
+                        </span>
                     </h3>
                     <Fact label="الاسم الكامل" value={name} />
                     <Fact label="كود الموظف" value={code || '—'} mono />
@@ -305,24 +325,38 @@ export function EmployeeCard() {
 
                 <section className="rounded-lg border border-hairline bg-surface p-sm shadow-card" aria-label="الوثائق والعمل">
                     <h3 className="mb-xs text-caption font-medium uppercase tracking-[0.14em] text-faint">
-                        الوثائق والانتهاءات <span className="normal-case" dir="ltr" lang="en">Documents</span>
+                        الوثائق والانتهاءات{' '}
+                        <span className="normal-case" dir="ltr" lang="en">
+                            Documents
+                        </span>
                     </h3>
                     <ExpiryFact label="انتهاء الإقامة" value={employee.iqamaExpiry} />
                     <ExpiryFact label="الشهادة الصحية" value={employee.healthCertExpiry} />
                     <ExpiryFact label="الشهادة التعليمية الصحية" value={employee.healthEduExpiry} />
                     <Fact label="رقم الهوية/الإقامة" value={String(employee.iqamaNumber ?? '—')} mono />
                     <h3 className="mb-xs mt-sm text-caption font-medium uppercase tracking-[0.14em] text-faint">
-                        البنك وWPS <span className="normal-case" dir="ltr" lang="en">Bank</span>
+                        البنك وWPS{' '}
+                        <span className="normal-case" dir="ltr" lang="en">
+                            Bank
+                        </span>
                     </h3>
                     <Fact label="IBAN الحساب البنكي" value={String(employee.iban ?? '—')} mono />
                     <Fact label="رقم التأمينات (GOSI)" value={String(employee.gosi_number ?? '—')} mono />
                     <h3 className="mb-xs mt-sm text-caption font-medium uppercase tracking-[0.14em] text-faint">
-                        العمل والوردية <span className="normal-case" dir="ltr" lang="en">Work</span>
+                        العمل والوردية{' '}
+                        <span className="normal-case" dir="ltr" lang="en">
+                            Work
+                        </span>
                     </h3>
-                    {showSalary ? <Fact label="الراتب" value={employee.salary == null ? '—' : formatMoney(String(employee.salary))} mono /> : null}
+                    {showSalary ? (
+                        <Fact label="الراتب" value={employee.salary == null ? '—' : formatMoney(String(employee.salary))} mono />
+                    ) : null}
                     <Fact label="بداية الوردية" value={String(employee.shift_start ?? '—')} mono />
                     <Fact label="مدة الوردية (ساعات)" value={employee.shift_karim == null ? '—' : String(employee.shift_karim)} mono />
-                    <Fact label="الراحة الأسبوعية" value={employee.day_off == null ? '—' : DAY_OFF_AR[Number(employee.day_off) % 7] ?? '—'} />
+                    <Fact
+                        label="الراحة الأسبوعية"
+                        value={employee.day_off == null ? '—' : (DAY_OFF_AR[Number(employee.day_off) % 7] ?? '—')}
+                    />
                     <Fact label="رقم البطاقة" value={String(employee.cardId ?? '—')} mono />
                     <Fact label="رقم الجهاز" value={String(employee.deviceUserId ?? '—')} mono />
                     {isAdmin ? <Fact label="الانصراف التلقائي" value={isTrue(employee.auto_checkout) ? 'مُفعّل' : 'مُعطّل'} /> : null}
@@ -343,10 +377,30 @@ export function EmployeeCard() {
             {/* ─── سجلات HR ─── */}
             <div className="grid gap-md md:grid-cols-2">
                 <LeavesSection query={leavesQuery} />
-                <SuiteSection title="سلف الرواتب" english="Advances" rows={suiteQuery.data?.advances ?? []} loading={suiteQuery.isPending} />
-                <SuiteSection title="تسويات الرواتب" english="Adjustments" rows={suiteQuery.data?.adjustments ?? []} loading={suiteQuery.isPending} />
-                <SuiteSection title="عقود العمل" english="Contracts" rows={suiteQuery.data?.contracts ?? []} loading={suiteQuery.isPending} />
-                <SuiteSection title="التقييمات" english="Evaluations" rows={suiteQuery.data?.evaluations ?? []} loading={suiteQuery.isPending} />
+                <SuiteSection
+                    title="سلف الرواتب"
+                    english="Advances"
+                    rows={suiteQuery.data?.advances ?? []}
+                    loading={suiteQuery.isPending}
+                />
+                <SuiteSection
+                    title="تسويات الرواتب"
+                    english="Adjustments"
+                    rows={suiteQuery.data?.adjustments ?? []}
+                    loading={suiteQuery.isPending}
+                />
+                <SuiteSection
+                    title="عقود العمل"
+                    english="Contracts"
+                    rows={suiteQuery.data?.contracts ?? []}
+                    loading={suiteQuery.isPending}
+                />
+                <SuiteSection
+                    title="التقييمات"
+                    english="Evaluations"
+                    rows={suiteQuery.data?.evaluations ?? []}
+                    loading={suiteQuery.isPending}
+                />
             </div>
 
             {editOpen && employee ? (
@@ -534,21 +588,39 @@ function AttendanceRangeBlock({
                         <table className="w-full border-collapse text-body-md">
                             <thead>
                                 <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                    <th scope="col" className="px-sm py-xs text-start font-medium">اليوم</th>
-                                    <th scope="col" className="px-sm py-xs text-start font-medium">الحالة</th>
-                                    <th scope="col" className="px-sm py-xs text-start font-medium">الدخول</th>
-                                    <th scope="col" className="px-sm py-xs text-start font-medium">الخروج</th>
-                                    <th scope="col" className="px-sm py-xs text-start font-medium">دقائق العمل</th>
+                                    <th scope="col" className="px-sm py-xs text-start font-medium">
+                                        اليوم
+                                    </th>
+                                    <th scope="col" className="px-sm py-xs text-start font-medium">
+                                        الحالة
+                                    </th>
+                                    <th scope="col" className="px-sm py-xs text-start font-medium">
+                                        الدخول
+                                    </th>
+                                    <th scope="col" className="px-sm py-xs text-start font-medium">
+                                        الخروج
+                                    </th>
+                                    <th scope="col" className="px-sm py-xs text-start font-medium">
+                                        دقائق العمل
+                                    </th>
                                 </tr>
                             </thead>
                             <tbody>
                                 {(model.rows ?? []).slice(0, 62).map((row) => (
                                     <tr key={String(row.date ?? '')} className="border-b border-hairline">
-                                        <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">{String(row.date ?? '')}</td>
+                                        <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">
+                                            {String(row.date ?? '')}
+                                        </td>
                                         <td className="px-sm py-xxs text-body-sm">{ATT_STATE[row.state]?.label ?? row.state}</td>
-                                        <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">{String(row.checkIn ?? '—')}</td>
-                                        <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">{String(row.checkOut ?? '—')}</td>
-                                        <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">{intOf(Number(row.minutes ?? 0))}</td>
+                                        <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">
+                                            {String(row.checkIn ?? '—')}
+                                        </td>
+                                        <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">
+                                            {String(row.checkOut ?? '—')}
+                                        </td>
+                                        <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">
+                                            {intOf(Number(row.minutes ?? 0))}
+                                        </td>
                                     </tr>
                                 ))}
                             </tbody>
@@ -587,7 +659,10 @@ function LeavesSection({ query }: { query: LeavesQueryShape }) {
                 ) : (
                     <ul className="flex list-none flex-col gap-xxs p-sm" role="list">
                         {query.data.map((leave) => (
-                            <li key={leave.id} className="flex flex-wrap items-center justify-between gap-xs rounded-md bg-surface-sunken p-xs text-body-md">
+                            <li
+                                key={leave.id}
+                                className="flex flex-wrap items-center justify-between gap-xs rounded-md bg-surface-sunken p-xs text-body-md"
+                            >
                                 <span className="font-medium text-ink">{leave.typeName}</span>
                                 <span className="text-caption text-muted" dir="ltr">
                                     {`${leave.start} ← ${leave.end}`}
@@ -602,7 +677,17 @@ function LeavesSection({ query }: { query: LeavesQueryShape }) {
     );
 }
 
-function SuiteSection({ title, english, rows, loading }: { title: string; english: string; rows: Array<Record<string, unknown>>; loading: boolean }) {
+function SuiteSection({
+    title,
+    english,
+    rows,
+    loading,
+}: {
+    title: string;
+    english: string;
+    rows: Array<Record<string, unknown>>;
+    loading: boolean;
+}) {
     return (
         <section className="rounded-lg border border-hairline bg-surface shadow-card">
             <div className="border-b border-hairline px-sm py-xs">
@@ -618,7 +703,10 @@ function SuiteSection({ title, english, rows, loading }: { title: string; englis
             {rows.length > 0 ? (
                 <ul className="flex list-none flex-col gap-xxs p-sm" role="list">
                     {rows.slice(0, 6).map((row, index) => (
-                        <li key={String(row.id ?? index)} className="flex items-center justify-between rounded-md bg-surface-sunken p-xs text-body-md">
+                        <li
+                            key={String(row.id ?? index)}
+                            className="flex items-center justify-between rounded-md bg-surface-sunken p-xs text-body-md"
+                        >
                             <span className="text-ink">{String(row.notes ?? row.title ?? row.type ?? 'سجل')}</span>
                             <span className="text-caption text-muted" dir="ltr">
                                 {String(row.date ?? row.created_at ?? '')}
@@ -651,11 +739,28 @@ function EmployeeEditDrawer({
     const [busy, setBusy] = useState(false);
     const [error, setError] = useState('');
     const fieldKeys: string[] = [
-        'name', 'department', 'position', 'phone', 'email', 'joinDate', 'iqamaNumber', 'nationality',
-        'iqamaExpiry', 'healthCertExpiry', 'healthEduExpiry',
-        'iban', 'gosi_number',
-        'salary', 'shift_start', 'shift_karim', 'day_off', 'status',
-        'cardId', 'deviceUserId', 'auto_checkout', 'auto_lock',
+        'name',
+        'department',
+        'position',
+        'phone',
+        'email',
+        'joinDate',
+        'iqamaNumber',
+        'nationality',
+        'iqamaExpiry',
+        'healthCertExpiry',
+        'healthEduExpiry',
+        'iban',
+        'gosi_number',
+        'salary',
+        'shift_start',
+        'shift_karim',
+        'day_off',
+        'status',
+        'cardId',
+        'deviceUserId',
+        'auto_checkout',
+        'auto_lock',
     ];
     const [form, setForm] = useState<Record<string, string>>(() => {
         const picked: Record<string, string> = {};
@@ -678,17 +783,17 @@ function EmployeeEditDrawer({
             for (const [key, raw] of Object.entries(form)) {
                 if (key === 'salary') {
                     const n = Number(raw);
-                    payload.salary = raw === '' ? null : (Number.isFinite(n) ? n : null);
+                    payload.salary = raw === '' ? null : Number.isFinite(n) ? n : null;
                     continue;
                 }
                 if (key === 'shift_karim') {
                     const n = Number(raw);
-                    payload.shift_karim = raw === '' ? null : (Number.isFinite(n) && n >= 0 && n <= 24 ? n : null);
+                    payload.shift_karim = raw === '' ? null : Number.isFinite(n) && n >= 0 && n <= 24 ? n : null;
                     continue;
                 }
                 if (key === 'day_off') {
                     const n = Number(raw);
-                    payload.day_off = raw === '' ? null : (Number.isInteger(n) && n >= 0 && n <= 6 ? n : null);
+                    payload.day_off = raw === '' ? null : Number.isInteger(n) && n >= 0 && n <= 6 ? n : null;
                     continue;
                 }
                 if (key === 'status') {
@@ -723,7 +828,12 @@ function EmployeeEditDrawer({
             <div className="flex flex-col gap-md">
                 <p className="text-caption font-medium uppercase tracking-[0.14em] text-faint">الهوية والاتصال</p>
                 <LabeledInput label="الاسم الكامل" value={form.name} onChange={(v) => set('name', v)} />
-                <LabeledSelect label="القسم (HR)" value={form.department} onChange={(v) => set('department', v)} options={departmentOptions} />
+                <LabeledSelect
+                    label="القسم (HR)"
+                    value={form.department}
+                    onChange={(v) => set('department', v)}
+                    options={departmentOptions}
+                />
                 <LabeledInput label="الوظيفة" value={form.position} onChange={(v) => set('position', v)} />
                 <LabeledInput label="الهاتف" value={form.phone} onChange={(v) => set('phone', v)} />
                 <LabeledInput label="البريد الإلكتروني" value={form.email} onChange={(v) => set('email', v)} />
@@ -733,8 +843,18 @@ function EmployeeEditDrawer({
 
                 <p className="text-caption font-medium uppercase tracking-[0.14em] text-faint">الوثائق والانتهاءات</p>
                 <LabeledInput label="انتهاء الإقامة" value={form.iqamaExpiry} onChange={(v) => set('iqamaExpiry', v)} type="date" />
-                <LabeledInput label="انتهاء الشهادة الصحية" value={form.healthCertExpiry} onChange={(v) => set('healthCertExpiry', v)} type="date" />
-                <LabeledInput label="انتهاء الشهادة التعليمية" value={form.healthEduExpiry} onChange={(v) => set('healthEduExpiry', v)} type="date" />
+                <LabeledInput
+                    label="انتهاء الشهادة الصحية"
+                    value={form.healthCertExpiry}
+                    onChange={(v) => set('healthCertExpiry', v)}
+                    type="date"
+                />
+                <LabeledInput
+                    label="انتهاء الشهادة التعليمية"
+                    value={form.healthEduExpiry}
+                    onChange={(v) => set('healthEduExpiry', v)}
+                    type="date"
+                />
 
                 <p className="text-caption font-medium uppercase tracking-[0.14em] text-faint">البنك وWPS</p>
                 <LabeledInput label="IBAN الحساب البنكي" value={form.iban} onChange={(v) => set('iban', v)} />
@@ -748,13 +868,19 @@ function EmployeeEditDrawer({
                     label="الراحة الأسبوعية"
                     value={form.day_off}
                     onChange={(v) => set('day_off', v)}
-                    options={[{ value: '', label: '— بلا راحة مسجلة —' }, ...DAY_OFF_AR.map((name, index) => ({ value: String(index), label: name }))]}
+                    options={[
+                        { value: '', label: '— بلا راحة مسجلة —' },
+                        ...DAY_OFF_AR.map((name, index) => ({ value: String(index), label: name })),
+                    ]}
                 />
                 <LabeledSelect
                     label="الحالة"
                     value={form.status}
                     onChange={(v) => set('status', v)}
-                    options={[{ value: 'active', label: 'نشط' }, { value: 'inactive', label: 'موقوف' }]}
+                    options={[
+                        { value: 'active', label: 'نشط' },
+                        { value: 'inactive', label: 'موقوف' },
+                    ]}
                 />
 
                 <p className="text-caption font-medium uppercase tracking-[0.14em] text-faint">البطاقة والجهاز</p>
@@ -766,18 +892,28 @@ function EmployeeEditDrawer({
                             label="انصراف تلقائي (أدمن)"
                             value={form.auto_checkout}
                             onChange={(v) => set('auto_checkout', v)}
-                            options={[{ value: 'true', label: 'مُفعّل' }, { value: 'false', label: 'مُعطّل' }]}
+                            options={[
+                                { value: 'true', label: 'مُفعّل' },
+                                { value: 'false', label: 'مُعطّل' },
+                            ]}
                         />
                         <LabeledSelect
                             label="قفل اليوم التلقائي (أدمن)"
                             value={form.auto_lock}
                             onChange={(v) => set('auto_lock', v)}
-                            options={[{ value: 'true', label: 'مُفعّل' }, { value: 'false', label: 'مُعطّل' }]}
+                            options={[
+                                { value: 'true', label: 'مُفعّل' },
+                                { value: 'false', label: 'مُعطّل' },
+                            ]}
                         />
                     </>
                 ) : null}
 
-                {error ? <p role="alert" className="text-body-sm text-danger-text">{error}</p> : null}
+                {error ? (
+                    <p role="alert" className="text-body-sm text-danger-text">
+                        {error}
+                    </p>
+                ) : null}
             </div>
             <Button type="button" onClick={() => void save()} disabled={busy} className="w-full">
                 {busy ? 'جارٍ الحفظ…' : 'حفظ كل التعديلات'}
@@ -786,7 +922,17 @@ function EmployeeEditDrawer({
     );
 }
 
-function LabeledInput({ label, value, onChange, type = 'text' }: { label: string; value: string | undefined; onChange: (v: string) => void; type?: string }) {
+function LabeledInput({
+    label,
+    value,
+    onChange,
+    type = 'text',
+}: {
+    label: string;
+    value: string | undefined;
+    onChange: (v: string) => void;
+    type?: string;
+}) {
     return (
         <label className="flex flex-col gap-xxs text-label-md text-ink-secondary">
             {label}
@@ -802,7 +948,17 @@ function LabeledInput({ label, value, onChange, type = 'text' }: { label: string
     );
 }
 
-function LabeledSelect({ label, value, onChange, options }: { label: string; value: string | undefined; onChange: (v: string) => void; options: ReadonlyArray<{ value: string; label: string }> }) {
+function LabeledSelect({
+    label,
+    value,
+    onChange,
+    options,
+}: {
+    label: string;
+    value: string | undefined;
+    onChange: (v: string) => void;
+    options: ReadonlyArray<{ value: string; label: string }>;
+}) {
     return (
         <label className="flex flex-col gap-xxs text-label-md text-ink-secondary">
             {label}

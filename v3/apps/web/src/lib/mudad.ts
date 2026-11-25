@@ -185,9 +185,7 @@ export const gosiPreviewLineSchema = z
 
 export type GosiPreviewLine = z.infer<typeof gosiPreviewLineSchema>;
 
-export const gosiPreviewUnknownSchema = z
-    .object({ employee_id: idValue, name: nullableText, reason: z.string() })
-    .passthrough();
+export const gosiPreviewUnknownSchema = z.object({ employee_id: idValue, name: nullableText, reason: z.string() }).passthrough();
 
 export const gosiPreviewResponseSchema = z
     .object({
@@ -205,9 +203,7 @@ export const gosiPreviewResponseSchema = z
 
 export type GosiPreviewResponse = z.infer<typeof gosiPreviewResponseSchema>;
 
-export const qiwaCheckSchema = z
-    .object({ id: z.string(), label_ar: z.string(), ok: z.boolean(), detail: z.string() })
-    .passthrough();
+export const qiwaCheckSchema = z.object({ id: z.string(), label_ar: z.string(), ok: z.boolean(), detail: z.string() }).passthrough();
 
 export const qiwaReadinessResponseSchema = z
     .object({
@@ -269,12 +265,7 @@ export function gosiPreviewPath(month: string, rateSet: string): string {
 }
 
 export function fetchWpsRequirements(month: string, signal?: AbortSignal): Promise<WpsRequirementsResponse> {
-    return fetchJson(
-        wpsRequirementsResponseSchema,
-        wpsRequirementsPath(month),
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    return fetchJson(wpsRequirementsResponseSchema, wpsRequirementsPath(month), getAccessToken(), signal ? { signal } : {});
 }
 
 export function fetchWpsReadiness(month: string, signal?: AbortSignal): Promise<WpsReadinessResponse> {
@@ -282,30 +273,15 @@ export function fetchWpsReadiness(month: string, signal?: AbortSignal): Promise<
 }
 
 export function fetchGosiRates(signal?: AbortSignal): Promise<GosiRatesResponse> {
-    return fetchJson(
-        gosiRatesResponseSchema,
-        '/api/integration/gosi/rates',
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    return fetchJson(gosiRatesResponseSchema, '/api/integration/gosi/rates', getAccessToken(), signal ? { signal } : {});
 }
 
 export function fetchGosiPreview(month: string, rateSet: string, signal?: AbortSignal): Promise<GosiPreviewResponse> {
-    return fetchJson(
-        gosiPreviewResponseSchema,
-        gosiPreviewPath(month, rateSet),
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    return fetchJson(gosiPreviewResponseSchema, gosiPreviewPath(month, rateSet), getAccessToken(), signal ? { signal } : {});
 }
 
 export function fetchQiwaReadiness(signal?: AbortSignal): Promise<QiwaReadinessResponse> {
-    return fetchJson(
-        qiwaReadinessResponseSchema,
-        '/api/integration/qiwa/readiness',
-        getAccessToken(),
-        signal ? { signal } : {},
-    );
+    return fetchJson(qiwaReadinessResponseSchema, '/api/integration/qiwa/readiness', getAccessToken(), signal ? { signal } : {});
 }
 
 /* ─── التحقق المحلي (مطابق لدوال الخادم) ───────────────────────────────── */
@@ -403,15 +379,10 @@ export function validateBankForm(form: BankForm): { ok: true; payload: BankPaylo
 }
 
 export async function updateEmployeeBank(id: string, payload: BankPayload): Promise<BankUpdateResponse> {
-    return fetchJson(
-        bankUpdateResponseSchema,
-        `/api/integration/wps/employees/${encodeURIComponent(id)}/bank`,
-        getAccessToken(),
-        {
-            method: 'PUT',
-            body: payload,
-        },
-    );
+    return fetchJson(bankUpdateResponseSchema, `/api/integration/wps/employees/${encodeURIComponent(id)}/bank`, getAccessToken(), {
+        method: 'PUT',
+        body: payload,
+    });
 }
 
 /** توليد كشف المراجعة — بلا رفع؛ النتيجة CSV نصّي يُنزّل محليًا. */

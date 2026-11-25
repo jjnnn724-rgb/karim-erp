@@ -149,9 +149,7 @@ function ShelfCard({
                 <div>
                     <dt className="text-caption text-muted">القيمة</dt>
                     <dd className="erp-numeric text-ink" dir="ltr">
-                        {statsReady && items
-                            ? `${formatMoney(items.value.toFixed(2))}${currency ? ` ${currency}` : ''}`
-                            : '—'}
+                        {statsReady && items ? `${formatMoney(items.value.toFixed(2))}${currency ? ` ${currency}` : ''}` : '—'}
                     </dd>
                 </div>
                 <div>
@@ -281,12 +279,7 @@ function ShelfFormDialog({ open, editing, shelves, onClose, onSaved }: ShelfForm
                 </>
             }
         >
-            <form
-                id="erp-shelf-form"
-                ref={formRef}
-                onSubmit={(event) => void submit(event)}
-                className="flex flex-col gap-sm"
-            >
+            <form id="erp-shelf-form" ref={formRef} onSubmit={(event) => void submit(event)} className="flex flex-col gap-sm">
                 <Input
                     label="اسم الرف"
                     name="name"
@@ -493,10 +486,7 @@ export function Shelves() {
 
             <Card className="p-sm">
                 <div className="flex flex-wrap items-end gap-sm">
-                    <label
-                        className="flex min-w-56 flex-1 flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-shelves-search"
-                    >
+                    <label className="flex min-w-56 flex-1 flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-shelves-search">
                         بحث
                         <input
                             id="erp-shelves-search"

@@ -1,12 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-    canControlZk,
-    canWriteZk,
-    emptyZkDeviceForm,
-    validateZkDeviceForm,
-    zkDevicePayload,
-    zkEngineReasonError,
-} from './zkteco-write';
+import { canControlZk, canWriteZk, emptyZkDeviceForm, validateZkDeviceForm, zkDevicePayload, zkEngineReasonError } from './zkteco-write';
 
 describe('zkteco-write', () => {
     it('يقبل النموذج الافتراضي (منفذ 4370 وفترة 30)', () => {
@@ -44,7 +37,9 @@ describe('zkteco-write', () => {
     });
 
     it('يفصل أدوار الكتابة عن أدوار التحكم', () => {
-        expect(canWriteZk('hr')).toBe(true);
+        expect(canWriteZk('admin')).toBe(true);
+        expect(canWriteZk('owner')).toBe(true);
+        expect(canWriteZk('hr')).toBe(false);
         expect(canWriteZk('manager')).toBe(false);
         expect(canControlZk('owner')).toBe(true);
         expect(canControlZk('hr')).toBe(false);

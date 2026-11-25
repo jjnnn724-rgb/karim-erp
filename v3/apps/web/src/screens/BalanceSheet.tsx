@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { ScreenHero } from '../ui';
 import { useMemo, useState } from 'react';
 import { KpiCard, SectionCard } from '../components/Reports';
 import { StateError, StateLoading } from '../components/TableState';
 import { accountAmount, type BalanceSheetAccount, fetchBalanceSheet, sumAccounts } from '../lib/balance-sheet';
 import { errorMessage, moneyOf, num } from '../lib/reporting';
+import { ScreenHero } from '../ui';
 import { Button } from '../ui/Button';
 import { Input } from '../ui/Input';
 import './BalanceSheet.premium.css';
@@ -115,7 +115,7 @@ export function BalanceSheet() {
 
     return (
         <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-lg">
-<ScreenHero
+            <ScreenHero
                 title="قائمة المركز المالي"
                 english="Balance Sheet"
                 description="قائمة مركزية من الأستاذ العام — للقراءة فقط، لا تعديل ولا ترحيل. تُولَّد من القيود المرحّلة مباشرة."
@@ -123,9 +123,11 @@ export function BalanceSheet() {
                     <>
                         <button
                             type="button"
-                            onClick={() => { () => {
-                    void query.refetch();
-                } }}
+                            onClick={() => {
+                                () => {
+                                    void query.refetch();
+                                };
+                            }}
                             disabled={query.isFetching}
                             className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
                         >
@@ -134,8 +136,7 @@ export function BalanceSheet() {
                     </>
                 }
             />
-            <div data-erp-print-hide className="flex flex-wrap items-center gap-sm">
-            </div>
+            <div data-erp-print-hide className="flex flex-wrap items-center gap-sm"></div>
             <SectionCard title="تاريخ القائمة" english="As-of date">
                 <div className="flex flex-wrap items-end gap-sm p-sm">
                     <Input
