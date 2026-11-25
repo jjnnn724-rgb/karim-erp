@@ -6,9 +6,9 @@
  * القرار المطلوب من المالك: إمكانية «رؤية» كلمة مرور أي مستخدم من صفحة
  * المستخدمين (لمساعدة موظف نسي كلمته). bcrypt يبقى هو أداة التحقق من الدخول
  * ولم يُمس — هذه نسخة إضافية اختيارية تُكتب مع كل تعيين كلمة مرور:
- *   • AES-256-GCM بمفتاح مشتق من JWT_SECRET (سري بالفعل في .env خارج Git)
+ *   • AES-256-GCM بمفتاح مشتق من VAULT_KEY (إلزامي — لا مشتق من أسرار JWT)
  *   • تُخزن في عمود users.password_vault — لا تُرجع في أي استجابة API عامة
- *   • لو تغيّر JWT_SECRET تصبح النسخ القديمة غير قابلة للفك (fail-safe)
+ *   • لو تغيّر VAULT_KEY تصبح النسخ القديمة غير قابلة للفك (fail-safe)
  *
  * @module password-vault
  */
@@ -21,25 +21,16 @@ const { logger } = require('./logger');
 
 const VAULT_PREFIX = 'v1:';
 
-// FIX 2026-10-11 (C2): vault key now prefers dedicated VAULT_KEY env var.
-// Falls back to legacy sha256 derivation for backward compatibility with
-// existing encrypted passwords. Set VAULT_KEY in .env for full separation.
+// VAULT_KEY is mandatory: the vault must never derive its key from JWT secrets.
+// Missing/short key => no encryption/decryption (fail closed) + hard error at init.
 let _vaultKeyCache = null;
 
-/** مفتاح التشفير — VAULT_KEY أولاً، وإلا التراثي (للتوافق مع البيانات القديمة). */
+/** مفتاح التشفير — VAULT_KEY فقط (بدون أي تراجع إلى أسرار JWT). */
 function vaultKey() {
     if (_vaultKeyCache !== null) {return _vaultKeyCache;}
-    // 1. Dedicated VAULT_KEY (الأفضل — فصل كامل عن مفتاح التوقيع)
     const dedicated = String(process.env.VAULT_KEY || '');
-    if (dedicated.length >= 32) {
-        _vaultKeyCache = crypto.createHash('sha256').update(dedicated + '|karim-pw-vault|v1').digest();
-        return _vaultKeyCache;
-    }
-    // 2. Legacy fallback: sha256 من JWT secret (نفس المشتق القديم — للتوافق)
-    const secret = String(process.env.JWT_ACCESS_SECRET || process.env.JWT_REFRESH_SECRET
-        || process.env.JWT_SECRET || process.env.EMPLOYEE_QR_SECRET || '');
-    if (secret.length < 16) {return null;}
-    _vaultKeyCache = crypto.createHash('sha256').update(secret + '|karim-pw-vault|v1').digest();
+    if (dedicated.length < 32) {return null;}
+    _vaultKeyCache = crypto.createHash('sha256').update(dedicated + '|karim-pw-vault|v1').digest();
     return _vaultKeyCache;
 }
 
@@ -85,15 +76,15 @@ function decryptFromVault(stored) {
     }
 }
 
-/** هجرة إضافية: عمود الخزنة. */
+/** هجرة إضافية: عمود الخزنة. يفشل فورًا لو VAULT_KEY غير موجود. */
 function ensurePasswordVaultSchema() {
+    // Fail closed at init: a dedicated VAULT_KEY is required. No JWT fallback.
+    if (!vaultKey()) {
+        throw new Error('VAULT_KEY is required for the password vault (at least 32 characters). Set it in .env; deriving the vault key from JWT secrets is no longer supported.');
+    }
     const file = path.join(__dirname, '..', 'database', 'migrations', '083_password_vault.sql');
     return (async () => {
         if (fs.existsSync(file)) {await pool.query(fs.readFileSync(file, 'utf-8'));}
-        // C2: warn if VAULT_KEY not set
-        if (!process.env.VAULT_KEY) {
-            logger.warn('[PW_VAULT] VAULT_KEY env var not set — using JWT-derived key (legacy). Set VAULT_KEY in .env for full key separation.');
-        }
         logger.info('[PW_VAULT] ready (users.password_vault)');
     })().catch((e) => { logger.error('[PW_VAULT] init skipped:', e.message); });
 }

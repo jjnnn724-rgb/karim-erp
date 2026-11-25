@@ -152,7 +152,10 @@ const PORT = process.env.PORT || 5000;
 // -------------------------------------------------------
 // Both REST (express cors middleware) and Socket.io read from the
 // SAME `ALLOWED_ORIGINS` env var. No hardcoded '*' anywhere.
-const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS || '*';
+// Safe default: loopback only (local dev). Wildcard is explicit opt-in and is
+// still refused in production by the check below.
+const DEFAULT_DEV_ORIGINS = 'http://localhost:5000,http://127.0.0.1:5000,https://localhost:5001,https://127.0.0.1:5001,http://localhost:5173,http://127.0.0.1:5173';
+const ALLOWED_ORIGINS = process.env.ALLOWED_ORIGINS || DEFAULT_DEV_ORIGINS;
 if (ALLOWED_ORIGINS === '*') {
     if (process.env.NODE_ENV === 'production') {
         // M-7/L-5 (تدقيق 2026-10-23): CORS مفتوح في الإنتاج غير مقبول — رفض الإقلاع.
@@ -490,10 +493,16 @@ app.use('/api', autoDbValidation({
   skipChecks: false,
 }));
 
-// ─── API_KEY Protection (optional but recommended) ──────
+// ─── API_KEY Protection (mandatory in production) ───────
 const API_KEY = process.env.API_KEY;
-// B.9: Print explicit warning if API_KEY is empty (no silent failure)
+// B.9: never fail silently. In production a missing key would leave every
+// /api/* data endpoint open, so refuse to boot (same policy as wildcard CORS).
+// Dev keeps the legacy warning + skip below, so local/trusted-LAN work continues.
 if (!API_KEY) {
+    if (process.env.NODE_ENV === 'production') {
+        logger.error('🚨 [FATAL] API_KEY is not set in production. Refusing to boot with unauthenticated /api/* endpoints. Set API_KEY=<random-32-char-string> in .env.');
+        process.exit(1);
+    }
     logger.warn('[SECURITY] API_KEY is not set in .env. All /api/* endpoints are accessible without an x-api-key header. This is acceptable on a trusted LAN, but for any environment where the network is not fully trusted, set API_KEY=<random-32-char-string> in .env.');
 }
 function apiKeyMiddleware(req, res, next) {

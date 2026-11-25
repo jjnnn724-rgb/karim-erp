@@ -56,6 +56,10 @@ function isDiscountApprover(role) {
     return SALE_DISCOUNT_APPROVER_ROLES.has(String(role || ''));
 }
 const MAX_PAYMENTS = 8;
+// Master ZATCA kill-switch — mirrors zatca-worker.js. QR/signature artifacts are
+// generated only when explicitly enabled. With the switch off, a sale must NOT
+// carry a fake QR or signature (fail closed, never invent compliance data).
+const ZATCA_ENABLED = process.env.ZATCA_ENABLED === 'true';
 
 function generateLegacyId() {
     // Milliseconds × 1000 + crypto-random suffix — collision-resistant under bursts
@@ -924,7 +928,7 @@ async function completeSale(req, res) {
         );
         orderRow = issuedRes.rows[0];
 
-        // ── Build ZATCA QR TLV + sign ─────────────────────────────────────────
+        // ── Build ZATCA QR TLV + sign (explicit kill-switch only) ─────────────
         const deptRes = await client.query(
             `SELECT name_ar, vat_number, code FROM pos_departments WHERE id = $1;`,
             [orderRow.department_id]
@@ -933,47 +937,60 @@ async function completeSale(req, res) {
         // Open-buffet department → the thermal receipt prints PERSON COUNTS
         // (guest tiers) instead of the menu-item table
         const isBuffetDept = dept?.code === 'erp_open_buffet';
-        // Seller VAT resolution chain: department → ZATCA settings hub (managed
-        // from the settings screen with zero code) → loud placeholder. Previously
-        // ONLY the department column was read, so a VAT saved in the ZATCA hub
-        // never reached invoices — a settings field that silently did nothing.
-        let settingsVat = null;
-        await client.query('SAVEPOINT zatca_settings_lookup;');
-        try {
-            const cfgRes = await client.query(`SELECT vat_number FROM zatca_settings WHERE id = 1;`);
-            settingsVat = cfgRes.rows[0]?.vat_number || null;
-            await client.query('RELEASE SAVEPOINT zatca_settings_lookup;');
-        } catch (settingsError) {
-            await client.query('ROLLBACK TO SAVEPOINT zatca_settings_lookup;');
-            await client.query('RELEASE SAVEPOINT zatca_settings_lookup;');
-            logger.warn(`[${requestId}] ZATCA settings lookup unavailable; resolving VAT from department: ${settingsError.message}`);
+        // Receipt default (no fake compliance data): only the department's own
+        // VAT is shown when ZATCA is off; the settings hub is consulted below
+        // ONLY when ZATCA artifacts are actually being produced.
+        let vatNumberForQr = dept?.vat_number || null;
+        let vatNumberPlaceholder = false;
+        let qrPayload = null;
+        let signature = null;
+        if (ZATCA_ENABLED) {
+            // Seller VAT resolution chain: department → ZATCA settings hub
+            // (managed from the settings screen with zero code). No hardcoded
+            // placeholder number is ever used — an unconfigured seller skips
+            // QR generation instead of emitting test data.
+            let settingsVat = null;
+            await client.query('SAVEPOINT zatca_settings_lookup;');
+            try {
+                const cfgRes = await client.query(`SELECT vat_number FROM zatca_settings WHERE id = 1;`);
+                settingsVat = cfgRes.rows[0]?.vat_number || null;
+                await client.query('RELEASE SAVEPOINT zatca_settings_lookup;');
+            } catch (settingsError) {
+                await client.query('ROLLBACK TO SAVEPOINT zatca_settings_lookup;');
+                await client.query('RELEASE SAVEPOINT zatca_settings_lookup;');
+                logger.warn(`[${requestId}] ZATCA settings lookup unavailable; resolving VAT from department: ${settingsError.message}`);
+            }
+            const resolvedVat = resolveSellerVat({ deptVat: dept?.vat_number, settingsVat });
+            if (!resolvedVat.vat) {
+                vatNumberPlaceholder = true;
+                logger.error(`[${requestId}] ZATCA enabled but no real seller vat_number is configured (department id=${req.body.department_id} and zatca_settings). Skipping QR/signature — configure the real VAT number from الضبط ← ZATCA.`);
+            } else {
+                vatNumberForQr = resolvedVat.vat;
+                if (resolvedVat.source === 'settings_hub') {
+                    logger.info(`[${requestId}] ZATCA QR VAT taken from the settings hub (department has none)`);
+                }
+                qrPayload = buildZatcaTlvInJs({
+                    sellerName: dept.name_ar,
+                    vatNumber: vatNumberForQr,
+                    timestamp: orderRow.created_at,
+                    total: Number(orderRow.total_amount),
+                    vatTotal: Number(orderRow.tax_total),
+                    counter: orderRow.invoice_counter,
+                    uuid: orderRow.invoice_uuid,
+                });
+                signature = await signInvoice({
+                    invoiceHash: orderRow.invoice_hash,
+                    invoiceUuid: orderRow.invoice_uuid,
+                    counter: orderRow.invoice_counter,
+                });
+                await client.query(
+                    `UPDATE pos_orders SET qr_payload = $1, digital_signature = $2, signature_algorithm = 'ECDSA-P256-SHA256' WHERE id = $3;`,
+                    [qrPayload, signature, orderId]
+                );
+            }
+        } else {
+            logger.info(`[${requestId}] ZATCA_ENABLED is not 'true' — sale completed without QR/signature (no ZATCA fields written)`);
         }
-        const resolvedVat = resolveSellerVat({ deptVat: dept?.vat_number, settingsVat });
-        const vatNumberForQr = resolvedVat.vat;
-        const vatNumberPlaceholder = resolvedVat.placeholder;
-        if (resolvedVat.source === 'placeholder') {
-            logger.error(`[${requestId}] pos_departments.id=${req.body.department_id} AND zatca_settings have NO vat_number — ZATCA QR uses a placeholder. Configure the real VAT number from الضبط ← ZATCA immediately.`);
-        } else if (resolvedVat.source === 'settings_hub') {
-            logger.info(`[${requestId}] ZATCA QR VAT taken from the settings hub (department has none)`);
-        }
-        const qrPayload = buildZatcaTlvInJs({
-            sellerName: dept.name_ar,
-            vatNumber: vatNumberForQr,
-            timestamp: orderRow.created_at,
-            total: Number(orderRow.total_amount),
-            vatTotal: Number(orderRow.tax_total),
-            counter: orderRow.invoice_counter,
-            uuid: orderRow.invoice_uuid,
-        });
-        const signature = await signInvoice({
-            invoiceHash: orderRow.invoice_hash,
-            invoiceUuid: orderRow.invoice_uuid,
-            counter: orderRow.invoice_counter,
-        });
-        await client.query(
-            `UPDATE pos_orders SET qr_payload = $1, digital_signature = $2, signature_algorithm = 'ECDSA-P256-SHA256' WHERE id = $3;`,
-            [qrPayload, signature, orderId]
-        );
 
         // ── Enqueue print job ─────────────────────────────────────────────────
         const printerId = req.body.printer_id || `pos-${req.body.department_id}`;
@@ -982,7 +999,10 @@ async function completeSale(req, res) {
         // thermal receipt printed garbage. Must await.
         const escposBytes = await buildEscPosReceipt({
             order: orderRow, items: totals.line_items, payments: req.body.payments,
-            qrPayload, department: { ...dept, vat_number: vatNumberForQr }, cashier, paid, change: cashChange,
+            // buildQrCommand() does Buffer.from(payload, 'base64') — passing null
+            // would throw and abort an otherwise valid sale when ZATCA is off.
+            // Empty string yields an empty QR command, never fake TLV data.
+            qrPayload: qrPayload || '', department: { ...dept, vat_number: vatNumberForQr }, cashier, paid, change: cashChange,
             buffet: isBuffetDept,
         });
         const printRes = await client.query(

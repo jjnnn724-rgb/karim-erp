@@ -1,12 +1,15 @@
 /**
  * branch-context.js — تصفية البيانات حسب الفرع (migration 102).
  * ─────────────────────────────────────────────────────────────
- * السياسة الآمنة (fail-open للسلوك القديم):
+ * السياسة الآمنة (fail-closed افتراضيًا):
  *  • admin/manager/auditor/dept_head: كل الفروع إلا إذا أرسل العميل
- *    ترويسة x-branch-id أو ?branch= → تصفية على ذاك الفرع.
+ *    ترويسة x-branch-id أو ?branch= → تصفية على ذاك الفرع (سلوكه محفوظ).
  *  • باقي الأدوار (cashier/warehouse/kitchen/hr…): مقفلون على
- *    branch_id الخاص بحسابهم إن وُجد؛ يطلب فرعًا آخر = 403.
- *  • فرع المستخدم NULL (ما قبل الترقية) = بلا تصفية، مثل اليوم تمامًا.
+ *    branch_id الخاص بحسابهم؛ يطلب فرعًا آخر = 403.
+ *  • فرع المستخدم NULL (حالة شاذة بعد 102، التي تعيّن MAIN لكل حساب):
+ *    مرشّح مستحيل (-1) → قائمة فارغة / 404، وليس "بلا تصفية = كل الفروع".
+ *    النشر القديم قبل الترقية/الـbackfill يحتاج BRANCH_LEGACY_FAIL_OPEN=true
+ *    صراحةً لاستعادة السلوك القديم. الافتراضي آمن.
  */
 const { pool } = require('./shared-pool');
 
@@ -16,6 +19,16 @@ const BRANCH_AWARE_ENTITIES = new Set([
 ]);
 
 const GLOBAL_ROLES = new Set(['admin', 'manager', 'auditor', 'dept_head']);
+
+// معرّف فرع مستحيل: معرّفات الفروع موجبة (SERIAL)، فـ -1 لا يطابق أي صف.
+// يصل لمستهلكي التصفية فينتج قائمة فارغة أو 404 بدل "بلا تصفية = كل الفروع".
+const DENY_BRANCH_ID = -1;
+
+// استثناء صريح للترحيل/النشر القديم (قبل 102 أو قبل backfill المستخدمين).
+// الافتراضي false = آمن؛ لا يُفعَّل إلا بقرار من المشغّل.
+function isLegacyFailOpen() {
+    return String(process.env.BRANCH_LEGACY_FAIL_OPEN || '').trim().toLowerCase() === 'true';
+}
 
 // ─── كاش الفروع (5 دقائق) — جدول صغير، قراءة كثيفة ────────────────
 // FAILO-OPEN: قبل تطبيق 102_branches يكون جدول branches غائبًا — نتصرف كأن
@@ -68,10 +81,11 @@ async function resolveBranch(req) {
         if (!b) {const e = new Error('BRANCH_NOT_FOUND'); e.statusCode = 404; throw e;}
         return b.id;
     }
-    // أدوار تشغيلية: مقفلة على فرع المستخدم إن لم يُعيَّن فرع ← سلوك قديم
+    // أدوار تشغيلية: مقفلة على فرع المستخدم
     if (own == null) {
         if (requested) {const e = new Error('BRANCH_NOT_FOUND'); e.statusCode = 404; throw e;}
-        return null;
+        // fail-closed: غياب الفرع لا يعني "كل الفروع". مرشّح مستحيل = لا بيانات.
+        return isLegacyFailOpen() ? null : DENY_BRANCH_ID;
     }
     if (requested) {
         const b = await resolveBranchRef(requested);
@@ -84,7 +98,8 @@ async function resolveBranch(req) {
 /**
  * ختم الفرع عند الإنشاء: admin/manager يختار فرعًا صريحًا (أو فرعَه الافتراضي)،
  * وباقي الأدوار يُختم سجلهم تلقائيًا على فرع صاحبهم — محاولة كتابة لفرع
- * آخر = 403. فرع المستخدم NULL (ما قبل الترقية) = بلا ختم (سلوك قديم).
+ * آخر = 403. فرع المستخدم NULL = يُمنع الختم (403 BRANCH_REQUIRED) حتى لا
+ * تُنشأ صفوف بلا فرع؛ الاستثناء الوحيد هو BRANCH_LEGACY_FAIL_OPEN=true.
  */
 async function stampForCreate(req, bodyBranchId) {
     const user = req.user || {};
@@ -97,7 +112,11 @@ async function stampForCreate(req, bodyBranchId) {
         if (!b) {const e = new Error('BRANCH_NOT_FOUND'); e.statusCode = 404; throw e;}
         return b.id;
     }
-    if (own == null) {return null;}
+    if (own == null) {
+        if (isLegacyFailOpen()) {return null;}
+        // حظر كتابة بلا فرع بدل ختم -1 (الذي يخالف FK ويحوّل الخطأ إلى 500).
+        const e = new Error('BRANCH_REQUIRED'); e.statusCode = 403; throw e;
+    }
     if (requested != null && requested !== '') {
         const b = await resolveBranchRef(requested);
         if (!b || b.id !== own) {const e = new Error('BRANCH_OUT_OF_SCOPE'); e.statusCode = 403; throw e;}
@@ -105,4 +124,4 @@ async function stampForCreate(req, bodyBranchId) {
     return own;
 }
 
-module.exports = { BRANCH_AWARE_ENTITIES, resolveBranch, resolveBranchRef, stampForCreate, invalidateBranchCache, loadBranches };
+module.exports = { BRANCH_AWARE_ENTITIES, DENY_BRANCH_ID, resolveBranch, resolveBranchRef, stampForCreate, invalidateBranchCache, loadBranches };

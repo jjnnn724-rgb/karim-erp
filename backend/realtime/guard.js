@@ -3,14 +3,17 @@
 /**
  * realtime/guard.js — socket handshake auth + per-socket rate limits (TASK 4).
  * ────────────────────────────────────────────────────────────────────────────
- * Coexistence design (zero regression): anonymous sockets still connect
- * (legacy clients, pre-login screens). An `erp:authed` room marks sockets
- * whose JWT verified. With RT_REQUIRE_AUTH=true, sensitive broadcasts go
- * only to that room; otherwise legacy global behavior is byte-identical.
+ * Coexistence design: anonymous sockets still connect (pre-login screens),
+ * but an `erp:authed` room marks sockets whose JWT verified. Sensitive
+ * broadcasts are auth-gated BY DEFAULT (RT_REQUIRE_AUTH defaults true).
+ * Legacy/local-dev global broadcasts require an explicit RT_REQUIRE_AUTH=false.
  */
 
 function isRtAuthRequired() {
-    return String(process.env.RT_REQUIRE_AUTH || '').trim().toLowerCase() === 'true';
+    const raw = process.env.RT_REQUIRE_AUTH;
+    // Secure default: omitted/empty means auth is required. Opt-out is explicit.
+    if (raw === undefined || raw === null || String(raw).trim() === '') {return true;}
+    return String(raw).trim().toLowerCase() === 'true';
 }
 
 /**

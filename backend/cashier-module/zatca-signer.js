@@ -4,8 +4,9 @@
  * Signs: SHA-256( invoice_hash || invoice_uuid || counter )
  * Output: Base64(DER-encoded ECDSA-Sig-Value)
  *
- * Production: store private key in HSM/KMS, never in env.
- * Dev fallback: ephemeral keypair (NOT for production).
+ * Production: store private key in HSM/KMS, never in env. A missing key FAILS
+ * CLOSED. Ephemeral keys are available only with an explicit opt-in
+ * (ZATCA_ALLOW_DEV_KEY=true) AND NODE_ENV !== 'production' — local testing only.
  */
 
 const crypto = require('crypto');
@@ -21,6 +22,15 @@ function loadKeyPair() {
         cachedKeyPair = { privateKey: crypto.createPrivateKey({ key: pem, format: 'pem' }) };
         cachedKeyPair.publicKey = crypto.createPublicKey(cachedKeyPair.privateKey).export({ type: 'spki', format: 'pem' });
     } else {
+        // Fail closed: an ephemeral signing key must never be used in production
+        // or by default in any environment. Both conditions must be explicit.
+        const devKeyAllowed = process.env.NODE_ENV !== 'production'
+            && process.env.ZATCA_ALLOW_DEV_KEY === 'true';
+        if (!devKeyAllowed) {
+            throw new Error('ZATCA_SIGNING_KEY_MISSING: ZATCA_ECDSA_PRIVATE_KEY_B64 is not configured. '
+                + 'Configure a real ECDSA P-256 signing key (HSM/KMS in production). '
+                + 'For local development only, set ZATCA_ALLOW_DEV_KEY=true with NODE_ENV!=production.');
+        }
         logger.warn('⚠ [zatca-signer] ZATCA_ECDSA_PRIVATE_KEY_B64 not set — generating ephemeral ECDSA P-256 key. NOT FOR PRODUCTION.');
         cachedKeyPair = crypto.generateKeyPairSync('ec', { namedCurve: 'prime256v1' });
     }

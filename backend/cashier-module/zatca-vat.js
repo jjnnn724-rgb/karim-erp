@@ -8,14 +8,17 @@
  * Resolution order (first VALID 15-digit VAT wins):
  *   1. department VAT          (branch-level override)
  *   2. ZATCA settings hub VAT  (managed from الضبط ← ZATCA in the UI)
- *   3. hardcoded placeholder   → placeholder=true, every layer must warn loudly
+ *   3. nothing configured      → vat=null, caller MUST skip ZATCA artifacts
+ *
+ * NO PLACEHOLDER: a hardcoded sample VAT must never reach an invoice/QR. When
+ * no real VAT is configured the caller skips ZATCA artifacts entirely (the
+ * sale itself still completes) and logs a loud configuration error.
  *
  * WHY: previously the sale path read ONLY pos_departments.vat_number, so a VAT
  * number saved in the settings hub never reached invoices/QRs — a settings
  * screen that silently did nothing. This module is the single tested chokepoint.
  */
 
-const ZATCA_PLACEHOLDER_VAT = '300000000000003'; // official ZATCA sample VAT — never a real seller
 const VAT_15_DIGITS = /^\d{15}$/;
 
 /** Digits-only normalization → 15-digit VAT or null. Accepts '3-0-0…', ' 3000… ', 3000…(number).
@@ -32,7 +35,9 @@ function normalizeVat(value) {
 /**
  * Resolve the seller VAT for a ZATCA artifact.
  * @param {{deptVat?: string|null, settingsVat?: string|null}} [input]
- * @returns {{vat: string, placeholder: boolean, source: 'department'|'settings_hub'|'placeholder'}}
+ * @returns {{vat: string|null, placeholder: boolean,
+ *            source: 'department'|'settings_hub'|'unconfigured'}}
+ *          A null `vat` means "not configured": callers MUST skip ZATCA artifacts.
  */
 function resolveSellerVat({ deptVat, settingsVat } = {}) {
   const dept = normalizeVat(deptVat);
@@ -45,7 +50,9 @@ function resolveSellerVat({ deptVat, settingsVat } = {}) {
     return { vat: hub, placeholder: false, source: 'settings_hub' };
   }
 
-  return { vat: ZATCA_PLACEHOLDER_VAT, placeholder: true, source: 'placeholder' };
+  // Fail closed: no invented/sample tax number. The caller logs a configuration
+  // error and skips QR/signature generation; sale completion is unaffected.
+  return { vat: null, placeholder: true, source: 'unconfigured' };
 }
 
-module.exports = { resolveSellerVat, normalizeVat, ZATCA_PLACEHOLDER_VAT };
+module.exports = { resolveSellerVat, normalizeVat };

@@ -23,7 +23,7 @@ import { formatInt } from '../data/reports-repo.js?v=4.9.180';
 import { ROLES } from '../../core/config.js?v=4.9.180';
 import {
     USERS_WRITE_ROLES, validateUserForm, createUser, updateUser, deleteUser,
-    linkUserEmployee, fetchUserPassword, issueUserResetCode, fetchUserLinkData,
+    linkUserEmployee, issueUserResetCode, fetchUserLinkData,
 } from '../data/users-repo.js?v=4.9.180';
 import { fetchUsers, userToRow } from '../data/portal-repo.js?v=4.9.180';
 
@@ -109,7 +109,6 @@ export function mountUsersScreen(host, ctx = {}) {
                     const isSelf = selfId !== null && String(r.id) === selfId;
                     return `<span class="erp-row-wrap">`
                     + `<button type="button" class="erp-btn erp-btn--sm" data-v2-edit="${esc(String(r.id))}" aria-label="تعديل ${esc(r.name)}"><i class="ji" data-i="pencil" aria-hidden="true"></i><span>تعديل</span></button>`
-                    + `<button type="button" class="erp-btn erp-btn--sm" data-v2-pw="${esc(String(r.id))}" aria-label="عرض كلمة المرور"><i class="ji" data-i="eye" aria-hidden="true"></i></button>`
                     + (!isSelf && r.active ? `<button type="button" class="erp-btn erp-btn--sm" data-v2-reset="${esc(String(r.id))}" aria-label="رمز استعادة" title="رمز استعادة (10 دقائق، استخدام واحد)"><i class="ji" data-i="key" aria-hidden="true"></i></button>` : '')
                     + (!isSelf ? `<button type="button" class="erp-btn erp-btn--sm erp-btn--danger" data-v2-del="${esc(String(r.id))}" aria-label="حذف ${esc(r.name)}"><i class="ji" data-i="trash" aria-hidden="true"></i></button>` : '')
                     + `</span>`;
@@ -337,21 +336,6 @@ export function mountUsersScreen(host, ctx = {}) {
         holder.scrollIntoView({ block: 'nearest' });
     }
 
-    async function viewPassword(user) {
-        try {
-            const r = await fetchUserPassword(user.id);
-            if (!el.isConnected) {return;}
-            if (!r.available) {
-                showSecret(`كلمة مرور ${user.name}`, 'لا توجد نسخة محفوظة لهذا الحساب (أُنشئ قبل تفعيل الخزنة). افتح «تعديل» وحدد كلمة مرور جديدة وستُسجَّل تلقائيًا وتظهر هنا بعدها.', '—', 'إغلاق');
-                return;
-            }
-            showSecret(`كلمة مرور ${user.name}`, `اسم المستخدم: @${user.username} — هذه النسخة تُحدَّث تلقائيًا مع كل تعيين كلمة مرور لهذا الحساب.`, r.password, 'نسخ');
-        } catch {
-            if (!el.isConnected) {return;}
-            say('تعذر جلب كلمة المرور — حاول مرة أخرى');
-        }
-    }
-
     async function resetCode(user) {
         try {
             const data = await issueUserResetCode(user.username);
@@ -427,12 +411,6 @@ export function mountUsersScreen(host, ctx = {}) {
         if (db) {
             const u = rows.find((r) => String(r.id) === String(db.dataset.v2Del));
             if (u) {confirmDelete(u);}
-            return;
-        }
-        const pb = event.target.closest('[data-v2-pw]');
-        if (pb) {
-            const u = rows.find((r) => String(r.id) === String(pb.dataset.v2Pw));
-            if (u) {viewPassword(u);}
             return;
         }
         const rb = event.target.closest('[data-v2-reset]');

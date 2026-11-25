@@ -112,7 +112,7 @@ describe('environment registry', () => {
 });
 
 describe('seller VAT resolution chain (zatca-vat)', () => {
-    const { resolveSellerVat, normalizeVat, ZATCA_PLACEHOLDER_VAT } = require('../backend/cashier-module/zatca-vat');
+    const { resolveSellerVat, normalizeVat } = require('../backend/cashier-module/zatca-vat');
 
     test('department VAT wins when valid', () => {
         const r = resolveSellerVat({ deptVat: '311111111111113', settingsVat: '322222222222223' });
@@ -130,12 +130,12 @@ describe('seller VAT resolution chain (zatca-vat)', () => {
         expect(r.vat).toBe('322222222222223');
     });
 
-    test('placeholder only when BOTH sources are missing — flagged loudly', () => {
+    test('unconfigured VAT is null and loudly flagged — NO placeholder', () => {
         const r = resolveSellerVat({ deptVat: '', settingsVat: undefined });
         expect(r.placeholder).toBe(true);
-        expect(r.source).toBe('placeholder');
-        expect(r.vat).toBe(ZATCA_PLACEHOLDER_VAT);
-        expect(resolveSellerVat({}).placeholder).toBe(true);
+        expect(r.source).toBe('unconfigured');
+        expect(r.vat).toBeNull();
+        expect(resolveSellerVat({}).vat).toBeNull();
     });
 
     test('normalizeVat strips separators and rejects wrong input', () => {

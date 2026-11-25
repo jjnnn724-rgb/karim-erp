@@ -34,9 +34,9 @@ describe('تقرير الإقلاع: صحة الوصف وصدق الطباعة',
         expect(SRC).toContain('writeStartupReport({ ok: false');
     });
 
-    test('خزنة كلمات المرور مشتقة من سر التوقيع: تدويره يَبطرها — لا يدوَّر بلا ترحيل', () => {
+    test('خزنة كلمات المرور تتطلب VAULT_KEY مستقل — لا ترجع لسر التوقيع', () => {
         const vault = fs.readFileSync(path.join(__dirname, '..', 'backend', 'password-vault.js'), 'utf8');
-        expect(vault).toContain('process.env.JWT_ACCESS_SECRET');
         expect(vault).toContain('VAULT_KEY');
+        expect(vault).not.toContain('process.env.JWT_ACCESS_SECRET');
     });
 });
