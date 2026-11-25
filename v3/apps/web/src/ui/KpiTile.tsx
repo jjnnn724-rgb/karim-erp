@@ -54,7 +54,18 @@ export interface KpiTileProps {
     className?: string;
 }
 
-export function KpiTile({ label, value, unit, delta, trend, tone, hint, icon, loading = false, className }: KpiTileProps) {
+export function KpiTile({
+    label,
+    value,
+    unit,
+    delta,
+    trend,
+    tone,
+    hint,
+    icon,
+    loading = false,
+    className,
+}: KpiTileProps) {
     const badgeTone = tone ?? (trend ? TREND_TONE[trend] : undefined);
 
     return (
@@ -67,7 +78,10 @@ export function KpiTile({ label, value, unit, delta, trend, tone, hint, icon, lo
             <div className="flex items-start justify-between gap-sm">
                 <p className="text-label-md text-muted">{label}</p>
                 {icon ? (
-                    <span className="grid size-8 shrink-0 place-items-center rounded-md bg-primary/15 text-brand-text" aria-hidden="true">
+                    <span
+                        className="grid size-8 shrink-0 place-items-center rounded-md bg-primary/15 text-brand-text"
+                        aria-hidden="true"
+                    >
                         {icon}
                     </span>
                 ) : null}

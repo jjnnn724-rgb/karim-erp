@@ -34,7 +34,9 @@ const TONE_CLASS: Record<DisplayTone, string> = {
 function usePrefersReducedMotion(): boolean {
     const [reduced, setReduced] = useState(() => {
         try {
-            return typeof window.matchMedia === 'function' ? window.matchMedia('(prefers-reduced-motion: reduce)').matches : false;
+            return typeof window.matchMedia === 'function'
+                ? window.matchMedia('(prefers-reduced-motion: reduce)').matches
+                : false;
         } catch {
             return false;
         }
@@ -97,7 +99,10 @@ function ChartSkeleton() {
 }
 
 /** فشل وحدة Recharts لا يُسقط الصفحة ولا يُخفي الجداول البديلة. */
-class ChartBoundary extends Component<{ readonly children: ReactNode; readonly fallback: ReactNode }, { failed: boolean }> {
+class ChartBoundary extends Component<
+    { readonly children: ReactNode; readonly fallback: ReactNode },
+    { failed: boolean }
+> {
     override state = { failed: false };
 
     static getDerivedStateFromError() {
@@ -122,7 +127,10 @@ function HomeSkeleton() {
                     </li>
                 ))}
             </ul>
-            <div aria-hidden="true" className="h-48 rounded-lg border border-hairline bg-surface motion-safe:animate-pulse" />
+            <div
+                aria-hidden="true"
+                className="h-48 rounded-lg border border-hairline bg-surface motion-safe:animate-pulse"
+            />
         </div>
     );
 }
@@ -249,7 +257,9 @@ export function Home() {
     const quickActions = quickActionsForRole(role, screens, allowedMenus);
     const greeting = name ? `مرحبًا، ${name}` : 'مرحبًا';
 
-    const hasCharts = Boolean(data && (data.revenueSeries.points.length > 1 || data.netSeries.points.length > 1 || data.depts.length > 0));
+    const hasCharts = Boolean(
+        data && (data.revenueSeries.points.length > 1 || data.netSeries.points.length > 1 || data.depts.length > 0),
+    );
 
     return (
         <div className="home-premium">
@@ -418,7 +428,9 @@ export function Home() {
                                     <ul className="home-alerts__list">
                                         {data.alerts.map((alert) => (
                                             <li key={alert.id} className="home-alert" data-tone={alert.tone}>
-                                                <AlertCircleIcon className={`home-alert__icon size-4 ${TONE_CLASS[alert.tone]}`} />
+                                                <AlertCircleIcon
+                                                    className={`home-alert__icon size-4 ${TONE_CLASS[alert.tone]}`}
+                                                />
                                                 <div>
                                                     <p className={`home-alert__title ${TONE_CLASS[alert.tone]}`}>
                                                         {alert.title} · {alert.severity}

@@ -122,6 +122,21 @@
     flex-direction: column;
     gap: 0.25rem;
 }
+/* «شاشاتي اليومية» أعلى القائمة، ثم «كل الشاشات» — نفس الشاشات بلا تكرار. */
+.erp-shell__section-label {
+    margin: 0;
+    padding-inline: 0.75rem;
+    color: color-mix(in srgb, var(--erp-sidebar-ink) 58%, transparent);
+    font-size: 0.6875rem;
+    font-weight: 600;
+    letter-spacing: 0.03em;
+    line-height: 1.6;
+}
+.erp-shell__nav-daily {
+    gap: 0.1875rem;
+    padding-block-end: 0.75rem;
+    border-block-end: 1px solid color-mix(in srgb, var(--erp-sidebar-ink) 12%, transparent);
+}
 .erp-shell__group-trigger {
     display: flex;
     align-items: center;
@@ -734,90 +749,3 @@
         display: none;
     }
 }
-/* ─── زر الطباعة الموحد + قائمته (2026-11-21) ─── لغة واحدة، مكان واحد */
-.erp-shell__print-wrap {
-    position: relative;
-    display: inline-flex;
-}
-.erp-shell__print-btn {
-    display: inline-flex;
-    align-items: center;
-    justify-content: center;
-    inline-size: 2.25rem;
-    block-size: 2.25rem;
-    border-radius: 10px;
-    border: 1px solid var(--erp-hairline-strong, rgb(220 229 236));
-    background: var(--erp-surface, #fff);
-    color: var(--erp-ink, #172b3b);
-    cursor: pointer;
-    transition: background 140ms ease, border-color 140ms ease;
-}
-.erp-shell__print-btn:hover {
-    background: var(--erp-surface-hover, #f3f6fa);
-    border-color: rgb(15 118 110 / 45%);
-}
-.erp-shell__print-menu {
-    position: absolute;
-    inset-block-start: calc(100% + 6px);
-    inset-inline-end: 0;
-    z-index: 60;
-    min-inline-size: 11rem;
-    padding: 0.35rem;
-    border-radius: 12px;
-    border: 1px solid var(--erp-hairline-strong, rgb(220 229 236));
-    background: var(--erp-surface, #fff);
-    box-shadow: 0 14px 30px -14px rgb(23 43 59 / 35%);
-    display: flex;
-    flex-direction: column;
-    gap: 2px;
-}
-.erp-shell__print-item {
-    border: 0;
-    background: transparent;
-    color: var(--erp-ink, #172b3b);
-    text-align: start;
-    padding: 0.45rem 0.6rem;
-    border-radius: 8px;
-    font-size: 0.85rem;
-    cursor: pointer;
-}
-.erp-shell__print-item:hover { background: var(--erp-surface-hover, #f3f6fa); }
-.erp-shell__print-item:disabled { opacity: 0.55; cursor: default; }
-
-/* Language toggle: Arabic / English */
-.erp-shell__lang-toggle {
-    display: inline-flex;
-    align-items: center;
-    gap: 0.45rem;
-    padding-inline: 0.55rem;
-    block-size: 2.25rem;
-    border: 1px solid var(--erp-border, #e5e7eb);
-    border-radius: 999px;
-    background: var(--erp-surface, #fff);
-    color: #1f2937;
-    font-size: 0.78rem;
-    font-weight: 800;
-    letter-spacing: 0.02em;
-    cursor: pointer;
-    transition: background 160ms, border-color 160ms;
-}
-.erp-shell__lang-toggle:hover { background: #f3f4f6; border-color: #d1d5db; }
-.erp-shell__lang-toggle:focus-visible {
-    outline: 2px solid #168653;
-    outline-offset: 2px;
-}
-.erp-shell__lang-toggle-code {
-    display: inline-grid;
-    place-items: center;
-    inline-size: 1.55rem;
-    block-size: 1.55rem;
-    border-radius: 999px;
-    background: #0f3d3e;
-    color: #fff;
-    font-size: 0.62rem;
-    font-weight: 800;
-}
-.erp-shell__lang-toggle-word { font-size: 0.75rem; font-weight: 700; color: #1f2937; }
-[data-theme='dark'] .erp-shell__lang-toggle { background: var(--erp-surface-2, #1f2937); border-color: var(--erp-border, #374151); color: #e5e7eb; }
-[data-theme='dark'] .erp-shell__lang-toggle:hover { background: #253141; }
-[data-theme='dark'] .erp-shell__lang-toggle-word { color: #e5e7eb; }

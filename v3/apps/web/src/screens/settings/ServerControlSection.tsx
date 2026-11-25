@@ -189,7 +189,10 @@ export function ServerControlSection() {
                     </dl>
 
                     {maintenance ? (
-                        <p className="rounded-md border border-warning bg-surface p-sm text-body-sm text-warning-text" role="status">
+                        <p
+                            className="rounded-md border border-warning bg-surface p-sm text-body-sm text-warning-text"
+                            role="status"
+                        >
                             {`راية الصيانة: ${controlMaintenanceName(maintenance.state)}${maintenance.by ? ` — بواسطة ${String(maintenance.by)}` : ''}${maintenance.reason ? ` · ${String(maintenance.reason)}` : ''}`}
                         </p>
                     ) : null}
@@ -245,8 +248,12 @@ export function ServerControlSection() {
                                                 {formatStamp(String(row.at ?? row.createdAt ?? ''))}
                                             </td>
                                             <td className="px-sm py-xxs text-ink">{valueText(row.action)}</td>
-                                            <td className="px-sm py-xxs text-body-sm text-muted">{valueText(row.actor)}</td>
-                                            <td className="px-sm py-xxs text-body-sm text-muted">{valueText(row.result)}</td>
+                                            <td className="px-sm py-xxs text-body-sm text-muted">
+                                                {valueText(row.actor)}
+                                            </td>
+                                            <td className="px-sm py-xxs text-body-sm text-muted">
+                                                {valueText(row.result)}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>

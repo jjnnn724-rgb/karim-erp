@@ -229,7 +229,11 @@ export function PayrollWorkbench({ month }: { month: string }) {
                         {...monthErrorProps}
                     />
                     <label className="flex items-center gap-xs text-body-md text-ink">
-                        <input type="checkbox" checked={includeOvertime} onChange={(event) => setIncludeOvertime(event.target.checked)} />
+                        <input
+                            type="checkbox"
+                            checked={includeOvertime}
+                            onChange={(event) => setIncludeOvertime(event.target.checked)}
+                        />
                         {PAYROLL_WRITE_TEXT.overtime}
                     </label>
                     {generateError ? (
@@ -270,7 +274,11 @@ export function PayrollWorkbench({ month }: { month: string }) {
                         </span>
                     </p>
                     <label className="flex items-center gap-xs text-body-md text-ink">
-                        <input type="checkbox" checked={skipFridays} onChange={(event) => setSkipFridays(event.target.checked)} />
+                        <input
+                            type="checkbox"
+                            checked={skipFridays}
+                            onChange={(event) => setSkipFridays(event.target.checked)}
+                        />
                         {PAYROLL_WRITE_TEXT.skipFridays}
                     </label>
                     {previewQuery.isPending ? (
@@ -307,7 +315,8 @@ export function PayrollWorkbench({ month }: { month: string }) {
                             </dl>
                             <DeductionsTable preview={previewQuery.data} />
                             <p className="text-caption text-muted">
-                                {formatInt(previewQuery.data.employees.length)} موظفًا في الكشف — الصفوف التي عليها خصم فقط معروضة أعلاه.
+                                {formatInt(previewQuery.data.employees.length)} موظفًا في الكشف — الصفوف التي عليها خصم
+                                فقط معروضة أعلاه.
                             </p>
                         </>
                     ) : null}

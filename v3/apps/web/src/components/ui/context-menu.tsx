@@ -130,7 +130,11 @@ function ContextMenuCheckboxItem({
     );
 }
 
-function ContextMenuRadioItem({ className, children, ...props }: React.ComponentProps<typeof ContextMenuPrimitive.RadioItem>) {
+function ContextMenuRadioItem({
+    className,
+    children,
+    ...props
+}: React.ComponentProps<typeof ContextMenuPrimitive.RadioItem>) {
     return (
         <ContextMenuPrimitive.RadioItem
             data-slot="context-menu-radio-item"

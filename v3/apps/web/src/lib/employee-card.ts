@@ -1,5 +1,5 @@
 import { z } from 'zod';
-import { fetchJson } from './api';
+import { fetchJson, fetchText } from './api';
 import { weekdayAr } from './attendance';
 import { getAccessToken } from './auth';
 
@@ -31,8 +31,14 @@ export function rangeDays(from: string, to: string, max = MAX_RANGE_DAYS): strin
     }
     const out: string[] = [];
     const end = new Date(`${String(to).slice(0, 10)}T12:00:00`);
-    for (let d = new Date(`${String(from).slice(0, 10)}T12:00:00`); d <= end && out.length < max; d.setDate(d.getDate() + 1)) {
-        out.push(`${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`);
+    for (
+        let d = new Date(`${String(from).slice(0, 10)}T12:00:00`);
+        d <= end && out.length < max;
+        d.setDate(d.getDate() + 1)
+    ) {
+        out.push(
+            `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`,
+        );
     }
     return out;
 }
@@ -111,7 +117,21 @@ export async function fetchAttendanceReport(
         from,
         to,
     });
-    return fetchJson(attendanceReportSchema, `/api/hr/attendance/report?${params.toString()}`, getAccessToken(), signal ? { signal } : {});
+    return fetchJson(
+        attendanceReportSchema,
+        `/api/hr/attendance/report?${params.toString()}`,
+        getAccessToken(),
+        signal ? { signal } : {},
+    );
+}
+
+/** البطاقة الرسمية للطباعة من القالب الموحد في الخادم (كما في V1/V2). */
+export async function fetchEmployeeLuxCardHtml(employeeId: string | number, signal?: AbortSignal): Promise<string> {
+    return fetchText(
+        `/api/hr/employees/${encodeURIComponent(String(employeeId))}/lux-card`,
+        getAccessToken(),
+        signal ? { signal } : {},
+    );
 }
 
 /* ─── حالات الصفّ (ATT_STATE) ────────────────────────────────────────────── */
@@ -221,7 +241,9 @@ export function employeeAttendancePrintHtml(options: EmployeeAttendancePrintOpti
             </tr>`;
         })
         .join('');
-    const totalHours = Number.isFinite(summary.totalKarim) ? summary.totalKarim.toLocaleString('en-US', { maximumFractionDigits: 2 }) : '—';
+    const totalHours = Number.isFinite(summary.totalKarim)
+        ? summary.totalKarim.toLocaleString('en-US', { maximumFractionDigits: 2 })
+        : '—';
     const title = `كشف حضور وانصراف — ${employeeName}`;
 
     return `<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8">
@@ -237,8 +259,10 @@ h1{margin:0 0 8px;color:#102a43;font-size:22px}.identity,.period,.stats{display:
 table{width:100%;border-collapse:collapse}th,td{border:1px solid #dce5ec;padding:7px 8px;text-align:right}
 th{background:#102a43;color:#f0f6fa;white-space:nowrap}tbody tr:nth-child(even){background:#f3f6fa}.numeric{direction:ltr;unicode-bidi:embed;text-align:center}
 .foot{margin-top:12px;color:#596e80;font-size:11px}.actions{margin:0 auto 16px;max-width:1100px}
-@media print{body{padding:0}.sheet{max-width:none}thead{display:table-header-group}tr{break-inside:avoid}}
+.actions button{border:0;border-radius:6px;padding:9px 18px;background:#0f766e;color:#fff;font:inherit;cursor:pointer}
+@media print{body{padding:0}.actions{display:none!important}.sheet{max-width:none}thead{display:table-header-group}tr{break-inside:avoid}}
 </style></head><body>
+<div class="actions"><button type="button" data-print>طباعة الكشف</button></div>
 <main class="sheet"><header class="head"><h1>${escapeHtml(title)}</h1>
 <div class="identity"><span>رقم الموظف: <strong>${escapeHtml(employeeCode || '—')}</strong></span>
 <span>القسم: <strong>${escapeHtml(department || '—')}</strong></span><span>الوظيفة: <strong>${escapeHtml(position || '—')}</strong></span></div></header>

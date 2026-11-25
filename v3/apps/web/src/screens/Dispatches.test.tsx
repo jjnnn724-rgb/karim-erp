@@ -15,16 +15,22 @@ import { Dispatches } from './Dispatches';
 
 const mocks = vi.hoisted(() => ({
     role: 'accountant',
+    deptCode: 'K01',
     signerName: 'مستخدم اختبار',
     createDispatch: vi.fn(),
     editDispatch: vi.fn(),
-    deleteDispatch: vi.fn(),
+    cancelDispatch: vi.fn(),
+    voidDispatch: vi.fn(),
     chefApproveDispatch: vi.fn(),
     chefRejectDispatch: vi.fn(),
     approveDispatch: vi.fn(),
     rejectDispatch: vi.fn(),
     receiveDispatch: vi.fn(),
     reopenDispatch: vi.fn(),
+    fetchDispatchDetails: vi.fn(),
+    dispatchPrintHtml: vi.fn(),
+    openBlankTab: vi.fn(),
+    printHtmlDocument: vi.fn(),
 }));
 
 vi.mock('../lib/auth', () => ({
@@ -33,8 +39,29 @@ vi.mock('../lib/auth', () => ({
     useAuthState: () => ({
         status: 'authenticated',
         token: 'test-token',
-        user: { id: '7', name: mocks.signerName, username: 'test', role: mocks.role, deptCode: 'K01' },
+        user: { id: '7', name: mocks.signerName, username: 'test', role: mocks.role, dept_code: mocks.deptCode },
     }),
+}));
+
+vi.mock('../lib/dispatches', async (importOriginal) => {
+    const original = await importOriginal<typeof import('../lib/dispatches')>();
+    return {
+        ...original,
+        fetchDispatchDetails: mocks.fetchDispatchDetails,
+    };
+});
+
+vi.mock('../lib/dispatch-print', () => ({
+    dispatchPrintHtml: mocks.dispatchPrintHtml,
+}));
+
+vi.mock('../lib/print', () => ({
+    usePrintBrand: () => ({ name: 'شركة الاختبار', logoSrc: '/logo.png' }),
+}));
+
+vi.mock('../lib/print-document', () => ({
+    openBlankTab: mocks.openBlankTab,
+    printHtmlDocument: mocks.printHtmlDocument,
 }));
 
 vi.mock('../lib/dispatches-write', async (importOriginal) => {
@@ -43,7 +70,8 @@ vi.mock('../lib/dispatches-write', async (importOriginal) => {
         ...original,
         createDispatch: mocks.createDispatch,
         editDispatch: mocks.editDispatch,
-        deleteDispatch: mocks.deleteDispatch,
+        cancelDispatch: mocks.cancelDispatch,
+        voidDispatch: mocks.voidDispatch,
         chefApproveDispatch: mocks.chefApproveDispatch,
         chefRejectDispatch: mocks.chefRejectDispatch,
         approveDispatch: mocks.approveDispatch,
@@ -153,6 +181,18 @@ function stubFetch(fail = false): string[] {
                     fuzzy: false,
                 });
             }
+            if (target.includes('/api/warehouse/dispatches/department-report')) {
+                return json({
+                    ok: true,
+                    departmentCodes: [mocks.deptCode],
+                    from: `${today.slice(0, 7)}-01`,
+                    to: today,
+                    dispatchCount: 1,
+                    totalCost: 25.5,
+                    daily: [{ date: today, dispatchCount: 1, totalCost: 25.5 }],
+                    monthly: [{ month: today.slice(0, 7), dispatchCount: 1, totalCost: 25.5 }],
+                });
+            }
             if (target.includes('/api/dispatches')) {
                 return json(dispatches);
             }
@@ -216,16 +256,22 @@ async function openCreate(): Promise<void> {
 beforeEach(() => {
     vi.clearAllMocks();
     mocks.role = 'accountant';
+    mocks.deptCode = 'K01';
     mocks.signerName = 'مستخدم اختبار';
     mocks.createDispatch.mockResolvedValue(undefined);
     mocks.editDispatch.mockResolvedValue({ chefApprovalReset: false });
-    mocks.deleteDispatch.mockResolvedValue(undefined);
+    mocks.cancelDispatch.mockResolvedValue(undefined);
+    mocks.voidDispatch.mockResolvedValue(undefined);
     mocks.chefApproveDispatch.mockResolvedValue(undefined);
     mocks.chefRejectDispatch.mockResolvedValue(undefined);
     mocks.approveDispatch.mockResolvedValue({ totalValue: 50 });
     mocks.rejectDispatch.mockResolvedValue(undefined);
     mocks.receiveDispatch.mockResolvedValue(undefined);
     mocks.reopenDispatch.mockResolvedValue(undefined);
+    mocks.fetchDispatchDetails.mockResolvedValue({ id: '104', status: 'approved' });
+    mocks.dispatchPrintHtml.mockReturnValue('<!doctype html><html><body>إذن صرف A4</body></html>');
+    mocks.openBlankTab.mockReturnValue({ close: vi.fn() });
+    mocks.printHtmlDocument.mockImplementation(() => undefined);
     vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue('data:image/png;base64,AAAA');
 });
 
@@ -268,7 +314,7 @@ describe('أذون الصرف — القراءة بقواعد V2', () => {
         stubFetch();
         renderScreen();
         await waitFor(() => {
-            expect(screen.getByRole('table')).toBeTruthy();
+            expect(screen.getAllByRole('table').length).toBeGreaterThan(0);
         });
 
         fireEvent.change(screen.getByLabelText('الحالة'), { target: { value: 'chef_approved' } });
@@ -301,7 +347,7 @@ describe('أذون الصرف — القراءة بقواعد V2', () => {
         const urls = stubFetch();
         renderScreen();
         await waitFor(() => {
-            expect(screen.getByRole('table')).toBeTruthy();
+            expect(screen.getAllByRole('table').length).toBeGreaterThan(0);
         });
         expect(urls.some((url) => url.includes('v2_period=month'))).toBe(true);
 
@@ -337,7 +383,7 @@ describe('أذون الصرف — القراءة بقواعد V2', () => {
         await waitFor(() => {
             expect(screen.getByRole('alert').textContent).toContain('بداية الفترة بعد نهايتها');
         });
-        expect(screen.queryByRole('table')).toBeNull();
+        expect(screen.queryByRole('table', { name: 'تكلفة أذون الصرف مجمعة حسب الفترة' })).toBeNull();
     });
 });
 
@@ -346,36 +392,140 @@ describe('أذون الصرف — الأزرار حسب الدور والحال�
         stubFetch();
         renderScreen();
         await waitFor(() => {
-            expect(screen.getByRole('table')).toBeTruthy();
+            expect(screen.getAllByRole('table').length).toBeGreaterThan(0);
         });
     }
 
-    it('محاسب: بلا زر إنشاء وبلا قرارات تخدم الأدوار، ويرى فقط زر «طباعة»', async () => {
+    it('محاسب: بلا إنشاء أو قرارات؛ الطباعة تظهر للحالات المعتمدة فقط', async () => {
         await ready();
         expect(screen.queryByRole('button', { name: 'طلب صرف جديد' })).toBeNull();
-        // عمود الإجراءات يظهر فقط لزر الطباعة (لا قرار اعتماد/رفض/استلام/تعديل/إرجاع/حذف)
         expect(screen.getByText('إجراءات')).toBeTruthy();
-        for (const id of ['101', '102', '103', '104']) {
-            const buttons = within(rowOf(id)).queryAllByRole('button');
-            expect(buttons).toHaveLength(1);
-            expect(buttons[0]?.textContent).toContain('طباعة');
-        }
+        expect(within(rowOf('101')).queryByRole('button', { name: 'طباعة إذن الصرف #101' })).toBeNull();
+        expect(within(rowOf('102')).queryByRole('button', { name: 'طباعة إذن الصرف #102' })).toBeNull();
+        expect(within(rowOf('103')).queryByRole('button', { name: 'طباعة إذن الصرف #103' })).toBeNull();
+        expect(within(rowOf('104')).getByRole('button', { name: 'طباعة إذن الصرف #104' })).toBeTruthy();
+        expect(within(rowOf('104')).queryAllByRole('button')).toHaveLength(1);
     });
 
-    it('مخزن: اعتماد/رفض/حذف الطلبات المعلّقة فقط، بلا قرار شيف أو استلام', async () => {
+    it('يطبع الإذن من تفاصيله التشغيلية ويستخدم هوية الطباعة الحالية', async () => {
+        await ready();
+        const printWindow = { close: vi.fn() };
+        const details = { id: '104', status: 'approved', approvedItems: [] };
+        mocks.openBlankTab.mockReturnValue(printWindow);
+        mocks.fetchDispatchDetails.mockResolvedValue(details);
+        mocks.dispatchPrintHtml.mockReturnValue('<!doctype html><html><body>الإذن #104</body></html>');
+
+        fireEvent.click(within(rowOf('104')).getByRole('button', { name: 'طباعة إذن الصرف #104' }));
+
+        await waitFor(() => {
+            expect(mocks.fetchDispatchDetails).toHaveBeenCalledWith('104');
+            expect(mocks.dispatchPrintHtml).toHaveBeenCalledWith(details, {
+                name: 'شركة الاختبار',
+                logoSrc: '/logo.png',
+            });
+            expect(mocks.printHtmlDocument).toHaveBeenCalledWith(
+                printWindow,
+                '<!doctype html><html><body>الإذن #104</body></html>',
+            );
+        });
+    });
+
+    it('رئيس القسم يرى أذون قسمه فقط ويشاهد تكلفة الصرف المعتمدة للفترة', async () => {
+        mocks.role = 'dept_head';
+        await ready();
+        expect(within(rowOf('101')).getByText('#101')).toBeTruthy();
+        expect(screen.queryByRole('button', { name: 'طباعة إذن الصرف #104' })).toBeNull();
+        expect(await screen.findByText('إجمالي التكلفة المعتمدة')).toBeTruthy();
+        expect(screen.getByRole('table', { name: 'تكلفة أذون الصرف مجمعة حسب الفترة' })).toBeTruthy();
+        expect(screen.getByText('عدد أذون الصرف')).toBeTruthy();
+    });
+
+    it('يوضح لرئيس القسم سبب غياب الاستلام عندما لا يكون الحساب مربوطًا بقسم', async () => {
+        mocks.role = 'dept_head';
+        mocks.deptCode = '';
+        stubFetch();
+        renderScreen();
+        await waitFor(() => {
+            expect(screen.getByRole('alert')).toBeTruthy();
+        });
+        expect(screen.getByRole('alert').textContent).toContain('حساب رئيس القسم غير مرتبط بقسم');
+        expect(screen.queryByRole('button', { name: 'طباعة إذن الصرف #104' })).toBeNull();
+    });
+
+    it('مخزن: يعاين ويعدل قبل الاعتماد، ويعتمد/يرفض ضمن مرحلته فقط', async () => {
         mocks.role = 'warehouse';
         await ready();
         expect(screen.getByRole('button', { name: 'طلب صرف جديد' })).toBeTruthy();
 
+        expect(within(rowOf('102')).getByRole('button', { name: 'معاينة إذن الصرف #102' })).toBeTruthy();
+        expect(within(rowOf('102')).getByRole('button', { name: 'تعديل — إذن #102' })).toBeTruthy();
         expect(within(rowOf('102')).getByRole('button', { name: /اعتماد وصرف/ })).toBeTruthy();
         expect(within(rowOf('102')).getByRole('button', { name: /رفض المخازن/ })).toBeTruthy();
-        expect(within(rowOf('102')).getByRole('button', { name: /حذف/ })).toBeTruthy();
+        expect(within(rowOf('102')).getByRole('button', { name: /إلغاء/ })).toBeTruthy();
         expect(within(rowOf('103')).getByRole('button', { name: /اعتماد وصرف/ })).toBeTruthy();
+        expect(within(rowOf('101')).getByRole('button', { name: 'معاينة إذن الصرف #101' })).toBeTruthy();
 
         expect(within(rowOf('101')).queryByRole('button', { name: /اعتماد الشيف/ })).toBeNull();
         expect(within(rowOf('104')).queryByRole('button', { name: /استلام/ })).toBeNull();
-        expect(within(rowOf('104')).queryByRole('button', { name: /حذف/ })).toBeNull();
+        expect(within(rowOf('104')).queryByRole('button', { name: /إلغاء/ })).toBeNull();
+        expect(within(rowOf('104')).queryByRole('button', { name: /إبطال/ })).toBeNull();
         expect(within(rowOf('104')).queryByRole('button', { name: /إرجاع للمخازن للتعديل/ })).toBeNull();
+    });
+
+    it('المخزن يفتح معاينة كاملة ثم ينتقل للاعتماد بنفس بيانات التفاصيل', async () => {
+        mocks.role = 'warehouse';
+        await ready();
+        const details = {
+            id: '102',
+            status: 'pending',
+            deptName: 'المخبز',
+            createdBy: 'رئيس القسم',
+            date: today,
+            items: [{ itemName: 'أرز', qty: 2, unit: 'كجم' }],
+        };
+        mocks.fetchDispatchDetails.mockResolvedValue(details);
+
+        clickRowAction('102', /معاينة إذن الصرف/);
+
+        await waitFor(() => {
+            expect(mocks.fetchDispatchDetails).toHaveBeenCalledWith('102');
+        });
+        const dialog = screen.getByRole('dialog');
+        expect(await within(dialog).findByText('رئيس القسم')).toBeTruthy();
+        expect(within(dialog).getByText('المخبز')).toBeTruthy();
+        expect(within(dialog).getByText('أرز')).toBeTruthy();
+        expect(within(dialog).getByRole('button', { name: 'متابعة للاعتماد والصرف' })).toBeTruthy();
+
+        fireEvent.click(within(dialog).getByRole('button', { name: 'متابعة للاعتماد والصرف' }));
+
+        expect(screen.getByText('الموافقة على طلب صرف — المخبز')).toBeTruthy();
+        expect(screen.getByText(/المطلوب: 2 كجم/)).toBeTruthy();
+    });
+
+    it('تعديل المخزن يتطلب سببًا ولا يسمح بتغيير القسم', async () => {
+        mocks.role = 'warehouse';
+        await ready();
+        clickRowAction('102', /تعديل/);
+        const dialog = screen.getByRole('dialog');
+        expect(within(dialog).getByText('المخبز')).toBeTruthy();
+        expect(within(dialog).queryByLabelText(/القسم الطالب/)).toBeNull();
+
+        submitForm('erp-dispatch-request-form');
+        expect(within(dialog).getByRole('alert').textContent).toContain('سبب تعديل أمين المخزن إلزامي');
+        expect(mocks.editDispatch).not.toHaveBeenCalled();
+
+        fireEvent.change(within(dialog).getByLabelText(/سبب التعديل/), {
+            target: { value: 'تصحيح الكمية بعد مراجعة المخزون' },
+        });
+        submitForm('erp-dispatch-request-form');
+
+        await waitFor(() => {
+            expect(mocks.editDispatch).toHaveBeenCalledTimes(1);
+        });
+        expect(mocks.editDispatch.mock.calls[0]?.[1]).toEqual({
+            items: [{ itemName: 'أرز', qty: 2, unit: 'كجم' }],
+            reason: 'تصحيح الكمية بعد مراجعة المخزون',
+        });
     });
 
     it('شيف: قرار الشيف على المعلّق المحوَّل واستلام المعتمد، بلا قرار مخازن', async () => {
@@ -395,7 +545,7 @@ describe('أذون الصرف — الأزرار حسب الدور والحال�
         expect(within(rowOf('101')).getByRole('button', { name: /اعتماد الشيف/ })).toBeTruthy();
         expect(within(rowOf('102')).getByRole('button', { name: /اعتماد وصرف/ })).toBeTruthy();
         expect(within(rowOf('104')).getByRole('button', { name: /استلام/ })).toBeTruthy();
-        expect(within(rowOf('104')).getByRole('button', { name: /حذف/ })).toBeTruthy();
+        expect(within(rowOf('104')).getByRole('button', { name: /إبطال/ })).toBeTruthy();
         expect(within(rowOf('104')).getByRole('button', { name: /إرجاع للمخازن للتعديل/ })).toBeTruthy();
     });
 
@@ -410,9 +560,14 @@ describe('أذون الصرف — الأزرار حسب الدور والحال�
         fireEvent.change(within(dialog).getByLabelText('سبب الإرجاع (إلزامي)'), {
             target: { value: 'تصحيح الكمية' },
         });
+        sign();
         submitForm('erp-dispatch-reopen-form');
         await waitFor(() => {
-            expect(mocks.reopenDispatch).toHaveBeenCalledWith('104', 'تصحيح الكمية');
+            expect(mocks.reopenDispatch).toHaveBeenCalledWith('104', {
+                reason: 'تصحيح الكمية',
+                signatureData: 'data:image/png;base64,AAAA',
+                signerName: 'مستخدم اختبار',
+            });
         });
     });
 
@@ -421,7 +576,7 @@ describe('أذون الصرف — الأزرار حسب الدور والحال�
         await ready();
         expect(screen.getByRole('button', { name: 'طلب صرف جديد' })).toBeTruthy();
         expect(within(rowOf('101')).getByRole('button', { name: /تعديل/ })).toBeTruthy();
-        expect(within(rowOf('102')).queryByRole('button', { name: /تعديل/ })).toBeNull();
+        expect(screen.queryByText('#102')).toBeNull();
     });
 });
 
@@ -574,8 +729,8 @@ describe('أذون الصرف — تعديل قبل الاعتماد', () => {
     });
 });
 
-describe('أذون الصرف — الحذف', () => {
-    it('يطلب تأكيد V2 ثم يحذف بإبطال السجل والمخزون', async () => {
+describe('أذون الصرف — الإلغاء قبل الصرف', () => {
+    it('يحفظ سبب الإلغاء في السجل بدل حذف الإذن', async () => {
         mocks.role = 'warehouse';
         stubFetch();
         const { invalidate } = renderScreen();
@@ -583,26 +738,30 @@ describe('أذون الصرف — الحذف', () => {
             expect(screen.getByRole('table')).toBeTruthy();
         });
 
-        clickRowAction('102', /حذف/);
-        const confirmDialog = await screen.findByRole('dialog');
-        expect(within(confirmDialog).getByText(/حذف طلب الصرف المعلق نهائيًا/)).toBeTruthy();
-        fireEvent.click(within(confirmDialog).getByRole('button', { name: 'تأكيد' }));
+        clickRowAction('102', /إلغاء/);
+        const dialog = await screen.findByRole('dialog');
+        expect(within(dialog).getByText(/الإلغاء متاح قبل صرف المخزون/)).toBeTruthy();
+        fireEvent.change(within(dialog).getByLabelText('سبب الإلغاء (إلزامي)'), {
+            target: { value: 'طلب مكرر' },
+        });
+        submitForm('erp-dispatch-cancel-form');
 
         await waitFor(() => {
-            expect(mocks.deleteDispatch).toHaveBeenCalledWith('102');
+            expect(mocks.cancelDispatch).toHaveBeenCalledWith('102', 'طلب مكرر');
         });
         await waitFor(() => {
-            expect(screen.getByText('حُذف طلب الصرف المعلق')).toBeTruthy();
+            expect(screen.getByText('تم إلغاء إذن الصرف مع حفظ سجله')).toBeTruthy();
         });
         const keys = invalidate.mock.calls.map((call) => {
             const options = call[0] as { queryKey?: unknown[] } | undefined;
             return options?.queryKey?.[0];
         });
         expect(keys).toContain('dispatches');
-        expect(keys).toContain('inventory');
+        // الإلغاء قبل الصرف لا يمس المخزون — بخلاف الإبطال بعد الصرف.
+        expect(keys).not.toContain('inventory');
     });
 
-    it('إلغاء التأكيد لا يحذف', async () => {
+    it('إلغاء التأكيد لا يلغي الإذن', async () => {
         mocks.role = 'warehouse';
         stubFetch();
         renderScreen();
@@ -610,27 +769,30 @@ describe('أذون الصرف — الحذف', () => {
             expect(screen.getByRole('table')).toBeTruthy();
         });
 
-        clickRowAction('102', /حذف/);
-        const confirmDialog = await screen.findByRole('dialog');
-        fireEvent.click(within(confirmDialog).getByRole('button', { name: 'إلغاء' }));
+        clickRowAction('102', /إلغاء/);
+        const dialog = await screen.findByRole('dialog');
+        fireEvent.click(within(dialog).getByRole('button', { name: 'إلغاء' }));
         await waitFor(() => {
             expect(screen.queryByRole('dialog')).toBeNull();
         });
-        expect(mocks.deleteDispatch).not.toHaveBeenCalled();
+        expect(mocks.cancelDispatch).not.toHaveBeenCalled();
     });
 
-    it('فشل الحذف يظهر بنص الخادم أعلى الشاشة', async () => {
+    it('فشل الإلغاء يظهر بنص الخادم أعلى الشاشة', async () => {
         mocks.role = 'warehouse';
-        mocks.deleteDispatch.mockRejectedValue(new ApiError(409, 'DISPATCH_ALREADY_APPROVED', 'تم اعتماد الإذن'));
+        mocks.cancelDispatch.mockRejectedValue(new ApiError(409, 'DISPATCH_ALREADY_APPROVED', 'تم اعتماد الإذن'));
         stubFetch();
         renderScreen();
         await waitFor(() => {
             expect(screen.getByRole('table')).toBeTruthy();
         });
 
-        clickRowAction('102', /حذف/);
-        const confirmDialog = await screen.findByRole('dialog');
-        fireEvent.click(within(confirmDialog).getByRole('button', { name: 'تأكيد' }));
+        clickRowAction('102', /إلغاء/);
+        const dialog = await screen.findByRole('dialog');
+        fireEvent.change(within(dialog).getByLabelText('سبب الإلغاء (إلزامي)'), {
+            target: { value: 'طلب مكرر' },
+        });
+        submitForm('erp-dispatch-cancel-form');
         await waitFor(() => {
             expect(screen.getByRole('alert').textContent).toContain('تم اعتماد الإذن');
         });

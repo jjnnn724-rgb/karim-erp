@@ -8,9 +8,8 @@ import { getAccessToken } from './auth';
  * ثم `{data, pagination}`. الشهر الحالي 5 صفحات (5,000 إذن) وكل السجل 40
  * صفحة (40,000) — نفس سقفي القديم المعلنين على الشاشة.
  *
- * التواقيع وبصماتها (request/warehouse/kitchen/chef…Signature* وlastEventHash)
- * مادة إثبات لا أعمدة سجل: لا تُحوَّل هنا ولا تُعرض ولا تُذكر في وصف.
- * الأصناف jsonb تصل كملخص سطرٍ واحد (`itemsSummary`) لا كـ JSON خام.
+ * التواقيع وبصماتها مادة إثبات لا أعمدة سجل: لا تُعرض في القائمة، وتُجلب
+ * صور التوقيع فقط عند فتح ورقة إذن مفردة. الأصناف jsonb لا تُعرض كـ JSON خام.
  */
 
 const dispatchItemSchema = z
@@ -20,6 +19,17 @@ const dispatchItemSchema = z
         qty: z.union([z.string(), z.number()]).nullable().optional(),
         approvedQty: z.union([z.string(), z.number()]).nullable().optional(),
         receivedQty: z.union([z.string(), z.number()]).nullable().optional(),
+        receivedPackagingQty: z.union([z.string(), z.number()]).nullable().optional(),
+        actualWeight: z.union([z.string(), z.number()]).nullable().optional(),
+        packagingQty: z.union([z.string(), z.number()]).nullable().optional(),
+        packagingUom: z.string().nullable().optional(),
+        catchWeightEnabled: z
+            .union([z.boolean(), z.string(), z.number()])
+            .nullable()
+            .optional()
+            .transform((value) => value === true || value === 1 || value === '1' || value === 'true'),
+        catchWeightUom: z.string().nullable().optional(),
+        requestedQty: z.union([z.string(), z.number()]).nullable().optional(),
         unit: z.string().nullable().optional(),
     })
     .passthrough();
@@ -30,11 +40,42 @@ export const dispatchSchema = z
         deptCode: z.string().nullable().optional(),
         deptName: z.string().nullable().optional(),
         items: z.array(dispatchItemSchema).nullable().optional(),
+        approvedItems: z.array(dispatchItemSchema).nullable().optional(),
         status: z.string().nullable().optional(),
         date: z.string().nullable().optional(),
+        requestedAt: z.string().nullable().optional(),
         createdBy: z.string().nullable().optional(),
         creatorUserId: z.union([z.string(), z.number()]).nullable().optional(),
+        notes: z.string().nullable().optional(),
+        approveNotes: z.string().nullable().optional(),
+        receiptNotes: z.string().nullable().optional(),
+        rejectionReason: z.string().nullable().optional(),
+        cancellationReason: z.string().nullable().optional(),
+        reopenReason: z.string().nullable().optional(),
+        voidReason: z.string().nullable().optional(),
+        chefApprovedBy: z.string().nullable().optional(),
+        chefApprovedAt: z.string().nullable().optional(),
+        warehouseApprovedBy: z.string().nullable().optional(),
+        warehouseApprovedAt: z.string().nullable().optional(),
+        approvedBy: z.string().nullable().optional(),
+        approvedDate: z.string().nullable().optional(),
+        warehouseRejectedBy: z.string().nullable().optional(),
+        warehouseRejectedAt: z.string().nullable().optional(),
+        chefRejectedBy: z.string().nullable().optional(),
+        chefRejectedAt: z.string().nullable().optional(),
+        kitchenReceiptSignatureData: z.string().nullable().optional(),
         kitchenReceivedBy: z.string().nullable().optional(),
+        requestSignatureData: z.string().nullable().optional(),
+        chefApprovalSignatureData: z.string().nullable().optional(),
+        chefRejectionSignatureData: z.string().nullable().optional(),
+        warehouseApprovalSignatureData: z.string().nullable().optional(),
+        warehouseRejectionSignatureData: z.string().nullable().optional(),
+        cancelledBy: z.string().nullable().optional(),
+        cancelledAt: z.string().nullable().optional(),
+        reopenedBy: z.string().nullable().optional(),
+        reopenedAt: z.string().nullable().optional(),
+        voidedBy: z.string().nullable().optional(),
+        voidedAt: z.string().nullable().optional(),
         kitchenReceivedAt: z.string().nullable().optional(),
         receivedItems: z.array(dispatchItemSchema).nullable().optional(),
         needsChefApproval: z.boolean().nullable().optional(),
@@ -42,6 +83,40 @@ export const dispatchSchema = z
     .passthrough();
 
 export type Dispatch = z.infer<typeof dispatchSchema>;
+
+const dispatchCostBucketSchema = z.object({
+    date: z.string().optional(),
+    month: z.string().optional(),
+    dispatchCount: z.number(),
+    totalCost: z.number(),
+});
+
+export const departmentDispatchReportSchema = z.object({
+    ok: z.literal(true),
+    departmentCodes: z.array(z.string()),
+    from: z.string(),
+    to: z.string(),
+    dispatchCount: z.number(),
+    totalCost: z.number(),
+    daily: z.array(dispatchCostBucketSchema),
+    monthly: z.array(dispatchCostBucketSchema),
+});
+
+export type DepartmentDispatchReport = z.infer<typeof departmentDispatchReportSchema>;
+
+export async function fetchDepartmentDispatchReport(
+    from: string,
+    to: string,
+    signal?: AbortSignal,
+): Promise<DepartmentDispatchReport> {
+    const params = new URLSearchParams({ from, to });
+    return fetchJson(
+        departmentDispatchReportSchema,
+        `/api/warehouse/dispatches/department-report?${params.toString()}`,
+        getAccessToken(),
+        signal ? { signal } : {},
+    );
+}
 
 const pageSchema = z
     .object({
@@ -74,7 +149,12 @@ export async function fetchDispatches(scope: DispatchScope, signal?: AbortSignal
         if (scope !== 'all') {
             params.set('v2_period', 'month');
         }
-        const body = await fetchJson(pageSchema, `/api/dispatches?${params.toString()}`, getAccessToken(), signal ? { signal } : {});
+        const body = await fetchJson(
+            pageSchema,
+            `/api/dispatches?${params.toString()}`,
+            getAccessToken(),
+            signal ? { signal } : {},
+        );
         rows.push(...body.data);
         const totalPages = body.pagination?.totalPages ?? 0;
         if (body.data.length < PAGE_SIZE || (totalPages > 0 && page >= totalPages)) {
@@ -84,6 +164,11 @@ export async function fetchDispatches(scope: DispatchScope, signal?: AbortSignal
     return rows;
 }
 
+/** تفاصيل الإذن المفردة، بما فيها التواقيع، لورقة الطباعة التشغيلية. */
+export async function fetchDispatchDetails(id: string): Promise<Dispatch> {
+    return fetchJson(dispatchSchema, `/api/dispatches/${encodeURIComponent(id)}`, getAccessToken());
+}
+
 export const DISPATCH_STATUS = {
     pending: { label: 'بانتظار اعتماد المخزن', tone: 'warning' },
     chef_approved: { label: 'معتمد من الشيف — بانتظار المخازن', tone: 'info' },
@@ -91,6 +176,8 @@ export const DISPATCH_STATUS = {
     partially_received: { label: 'مستلم جزئيًا', tone: 'warning' },
     received: { label: 'مستلم ومغلق', tone: 'success' },
     rejected: { label: 'مرفوض من الإدارة', tone: 'danger' },
+    cancelled: { label: 'ملغي قبل الصرف', tone: 'neutral' },
+    voided: { label: 'مبطل — محفوظ بالسجل', tone: 'danger' },
 } as const;
 
 export type DispatchStatusTone = (typeof DISPATCH_STATUS)[keyof typeof DISPATCH_STATUS]['tone'] | 'neutral';
@@ -235,7 +322,10 @@ export function matchDispatchProduct(row: DispatchRow, query: string): boolean {
 }
 
 /** تجميع المسحوب لصنف البحث: عدد الأذون وكميات الأصناف المطابقة. */
-export function summarizeProductWithdrawal(rows: readonly DispatchRow[], query: string): { vouchers: number; byName: Map<string, number> } {
+export function summarizeProductWithdrawal(
+    rows: readonly DispatchRow[],
+    query: string,
+): { vouchers: number; byName: Map<string, number> } {
     const key = arSearchKey(query);
     const byName = new Map<string, number>();
     let vouchers = 0;

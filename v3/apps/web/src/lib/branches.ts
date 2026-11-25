@@ -60,7 +60,8 @@ export function validateBranchForm(form: Partial<BranchForm>, editing = false): 
     }
     if (!clean(form.name_ar)) errors.push({ field: 'name_ar', message: 'اسم الفرع بالعربية مطلوب' });
     const currency = (clean(form.currency) || 'SAR').toUpperCase();
-    if (!currencyPattern.test(currency)) errors.push({ field: 'currency', message: 'العملة رمز ISO من 3 حروف (SAR / EGP / AED)' });
+    if (!currencyPattern.test(currency))
+        errors.push({ field: 'currency', message: 'العملة رمز ISO من 3 حروف (SAR / EGP / AED)' });
     return errors;
 }
 
@@ -77,7 +78,10 @@ export function normalizeBranchPayload(form: Partial<BranchForm>): Record<string
 }
 
 export async function createBranch(form: Partial<BranchForm>): Promise<void> {
-    await fetchJson(branchWriteResponse, '/api/branches', getAccessToken(), { method: 'POST', body: normalizeBranchPayload(form) });
+    await fetchJson(branchWriteResponse, '/api/branches', getAccessToken(), {
+        method: 'POST',
+        body: normalizeBranchPayload(form),
+    });
 }
 
 export async function updateBranch(id: string, form: Partial<BranchForm>): Promise<void> {
@@ -90,7 +94,9 @@ export async function updateBranch(id: string, form: Partial<BranchForm>): Promi
 }
 
 export async function deactivateBranch(id: string): Promise<void> {
-    await fetchJson(branchWriteResponse, `/api/branches/${encodeURIComponent(id)}`, getAccessToken(), { method: 'DELETE' });
+    await fetchJson(branchWriteResponse, `/api/branches/${encodeURIComponent(id)}`, getAccessToken(), {
+        method: 'DELETE',
+    });
 }
 
 export async function reactivateBranch(id: string): Promise<void> {
@@ -211,7 +217,9 @@ export type BranchTotals = {
 };
 
 export function branchTotals(rows: readonly BranchRow[]): BranchTotals {
-    const currencies = [...new Set(rows.map((row) => row.currency).filter(Boolean))].sort((a, b) => a.localeCompare(b, 'en'));
+    const currencies = [...new Set(rows.map((row) => row.currency).filter(Boolean))].sort((a, b) =>
+        a.localeCompare(b, 'en'),
+    );
     return {
         total: rows.length,
         active: rows.filter((row) => row.active).length,

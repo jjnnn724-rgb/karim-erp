@@ -41,7 +41,9 @@ const files = readdirSync(UI, { withFileTypes: true })
     .map((entry) => entry.name);
 
 /** كل مصدر المكتبة (لا اختبارات — وحارسها أولها). */
-const SOURCES = files.filter((name) => /\.(ts|tsx)$/.test(name) && !name.endsWith('.test.ts') && !name.endsWith('.test.tsx'));
+const SOURCES = files.filter(
+    (name) => /\.(ts|tsx)$/.test(name) && !name.endsWith('.test.ts') && !name.endsWith('.test.tsx'),
+);
 
 const components = files
     .filter((name) => name.endsWith('.tsx'))
@@ -61,7 +63,9 @@ function code(name: string): string {
 
 describe('مكتبة المكوّنات — العقد', () => {
     it('لكل مكوّن ملف اختبار شقيق', () => {
-        const missing = components.filter((name) => !CO_TESTED[name] && !files.includes(name.replace(/\.tsx$/, '.test.tsx')));
+        const missing = components.filter(
+            (name) => !CO_TESTED[name] && !files.includes(name.replace(/\.tsx$/, '.test.tsx')),
+        );
         expect(missing).toEqual([]);
     });
 
@@ -124,7 +128,9 @@ describe('مكتبة المكوّنات — الهوية والاتجاه', () =
     });
 
     it('لا لون نصّي أبيض/أسود صريح في المكوّنات', () => {
-        const offenders = SOURCES.filter((name) => /\b(?:bg|text|border)-(?:white|black)\b/.test(code(name))).map((name) => name);
+        const offenders = SOURCES.filter((name) => /\b(?:bg|text|border)-(?:white|black)\b/.test(code(name))).map(
+            (name) => name,
+        );
         expect(offenders).toEqual([]);
     });
 });

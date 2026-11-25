@@ -1,11 +1,11 @@
 /**
  * خريطة التنقّل — المصدر الوحيد لمجموعات القائمة والعناوين والشريط السفلي.
  *
- * الشاشات الـ63 مفاتيح `V3_SCREENS` مقسّمة على سبع مجموعات منطقية (خطة
+ * الشاشات الـ64 مفاتيح `V3_SCREENS` مقسّمة على سبع مجموعات منطقية (خطة
  * المرحلة الثانية §3.3). التقسيم هنا **بيانات** لا JSX، فيختبره حارس
  * الوحدة ويتحقّق من تغطية كل مفاتيح `screens.ts` مرّة واحدة.
  *
- * `Shell.tsx` يحمل كتلة `NAV_ITEMS` الـ63 نفسها (يحرسها
+ * `Shell.tsx` يحمل كتلة `NAV_ITEMS` الـ64 نفسها (يحرسها
  * `registration.test.ts` نصًّا)، وهذا الملف يضيف ما فوقها: التجميع،
  * عنوان كل مسار، والشريط السفلي. أي انحراف بين الاثنين يُسقط
  * `Shell.test.tsx`.
@@ -18,7 +18,15 @@
  * التشغيل أولًا لأن نقطة البيع والمطبخ أكثر ما يُفتح يوميًا، ثم المال والمخزون،
  * والإدارة في آخر القائمة.
  */
-export const NAV_GROUP_IDS = ['operations', 'finance', 'inventory', 'procurement', 'hr', 'analytics', 'system'] as const;
+export const NAV_GROUP_IDS = [
+    'operations',
+    'finance',
+    'inventory',
+    'procurement',
+    'hr',
+    'analytics',
+    'system',
+] as const;
 
 export type NavGroupId = (typeof NAV_GROUP_IDS)[number];
 
@@ -31,15 +39,22 @@ export interface NavGroup {
     readonly keys: readonly string[];
 }
 
-/** سبع مجموعات تغطّي 54 شاشة بلا تكرار ولا زيادة (يحرسه `Shell.test.tsx`) —
- *  تنظيفا 2026-11-20/21: الرفوف والميزان واستعلام المبيعات وموجز المدير
- *  وتقارير المبيعات والبطاقة الفاخرة والمساعد الذكي ولوحة المحاسب. */
+/** سبع مجموعات تغطّي 64 شاشة بلا تكرار ولا زيادة (يحرسه `Shell.test.tsx`). */
 export const NAV_GROUPS: readonly NavGroup[] = [
     {
         id: 'operations',
         label: 'التشغيل',
         shortLabel: 'تشغيل',
-        keys: ['pos-entry', 'pos-reports', 'cashier-monitor', 'kitchen', 'menu-board', 'recipes', 'buffet', 'departments', 'dept-transfers', 'whatsapp'],
+        keys: [
+            'pos-entry',
+            'cashier-monitor',
+            'kitchen',
+            'menu-board',
+            'recipes',
+            'departments',
+            'dept-transfers',
+            'whatsapp',
+        ],
     },
     {
         id: 'finance',
@@ -52,15 +67,14 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             'expenses',
             'cash-register',
             'daily-locks',
-            'bank-rec',
             'pnl',
             'cfo',
             'monthly-comparison',
             'cost-analysis',
             'cost-center',
+            'accountant-dashboard',
             'yarasoft',
-            'balance-sheet',
-            'cash-flow',
+            'financial-compliance',
         ],
     },
     {
@@ -79,9 +93,13 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             'warehouse-dashboard',
             'wh-moves',
             'dispatch',
+            'warehouse-gov',
+            'shelves',
             'wh-returns',
+            'weight',
             'goods-scan',
             'inventory-inquiry',
+            'inventory-inquiry-pro',
             'wh-vs-pos',
         ],
     },
@@ -101,8 +119,6 @@ export const NAV_GROUPS: readonly NavGroup[] = [
             'dept-employees',
             'employee-portal',
             'zkteco',
-            'punch-control',
-            'compliance-center',
         ],
     },
     {
@@ -110,15 +126,15 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         label: 'التحليل والتقارير',
         shortLabel: 'تحليل',
         keys: [
-            'command-center',
+            'briefing',
             'executive',
             'dept-head-dashboard',
+            'reports',
             'vat-return',
             'cashier-sales',
             'sales-analyzer',
+            'sales-inquiry',
             'received-analyzer',
-            'dept-cost',
-            'ext-sales',
         ],
     },
     {
@@ -127,6 +143,28 @@ export const NAV_GROUPS: readonly NavGroup[] = [
         shortLabel: 'نظام',
         keys: ['users', 'branches', 'permissions', 'settings', 'sessions', 'oracle-data'],
     },
+];
+
+/**
+ * «شاشاتي اليومية» — قائمة عرض أعلى التنقّل، لا مجموعة ثامنة.
+ *
+ * المفاتيح تبقى ضمن `NAV_GROUPS` كما هي، فتبقى التغطية الكاملة للـ64
+ * محفوظة ويظل التجميع مصدرًا واحدًا. `Shell` يعرض هذه القائمة أولًا ثم
+ * يستبعدها من «كل الشاشات» — كل شاشة تظهر مرة واحدة في القائمة.
+ */
+export const DAILY_TITLE = 'شاشاتي اليومية';
+export const ALL_SCREENS_TITLE = 'كل الشاشات';
+
+/** ما يُفتح في أول الوردية: بيع، كاشير، مطبخ، مخزن، موظفون، حضور، مدد، تقارير. */
+export const DAILY_KEYS: readonly string[] = [
+    'pos-entry',
+    'cashier-monitor',
+    'kitchen',
+    'warehouse',
+    'employees',
+    'attendance',
+    'mudad',
+    'reports',
 ];
 
 /** المسار الرئيسي والعنوان المعروض. */
@@ -143,7 +181,6 @@ export const NAV_TITLES: Readonly<Record<string, string>> = {
     '/expenses': 'المصروفات',
     '/cash-register': 'سجلّ الصرف',
     '/daily-locks': 'لوحة التقفيل اليومي',
-    '/bank-rec': 'مطابقة البنك',
     '/oracle-data': 'بيانات Oracle المنسوخة',
     '/procurement': 'الموردون',
     '/purchase-invoices': 'فواتير الشراء',
@@ -154,6 +191,7 @@ export const NAV_TITLES: Readonly<Record<string, string>> = {
     '/warehouse': 'المخزون',
     '/item-prices': 'أسعار الأصناف',
     '/warehouse-gov': 'حوكمة المخزن',
+    '/shelves': 'الرفوف',
     '/wh-returns': 'مرتجعات المطبخ',
     '/wh-prs': 'طلبات الشراء',
     '/dept-transfers': 'التحويلات الداخلية',
@@ -168,13 +206,10 @@ export const NAV_TITLES: Readonly<Record<string, string>> = {
     '/branches': 'الفروع',
     '/permissions': 'الصلاحيات',
     '/veg-requests': 'طلبات الخضار',
+    '/weight': 'الميزان',
     '/recipes': 'الوصفات',
-    '/buffet': 'كوست البوفيه',
     '/goods-scan': 'مسح البضاعة',
-    '/command-center': 'مركز القيادة الموحّد',
-    '/compliance-center': 'لوحة الامتثال الشهري',
-    '/balance-sheet': 'قائمة المركز المالي',
-    '/cash-flow': 'قائمة التدفقات النقدية',
+    '/briefing': 'موجز المدير',
     '/sessions': 'الأجهزة والجلسات',
     '/whatsapp': 'واتساب والتنبيهات',
     '/settings': 'إعدادات النظام',
@@ -183,29 +218,30 @@ export const NAV_TITLES: Readonly<Record<string, string>> = {
     '/dept-employees': 'موظفو القسم',
     '/employee-portal': 'بوابة الموظف',
     '/zkteco': 'أجهزة البصمة',
-    '/punch-control': 'مركز التحكم بالبصمة والحضور',
     '/kitchen': 'المطبخ',
     '/menu-board': 'شاشة القائمة',
     '/warehouse-dashboard': 'لوحة المخزن',
+    '/accountant-dashboard': 'لوحة المحاسب',
     '/dept-head-dashboard': 'لوحة رئيس القسم',
     '/cost-analysis': 'تحليل التكلفة',
     '/cost-center': 'مركز التكلفة',
     '/inventory-inquiry': 'محرك الاستعلامات',
+    '/inventory-inquiry-pro': 'البطاقة الفاخرة',
     '/pnl': 'الأرباح والخسائر',
     '/cfo': 'المدير المالي',
     '/monthly-comparison': 'المقارنة الشهرية',
-    '/ext-sales': 'البيع الخارجي — المبيعات والمسحوبات',
+    '/reports': 'تقارير المبيعات',
     '/vat-return': 'مسودة مراجعة ضريبة القيمة المضافة',
+    '/financial-compliance': 'مركز الامتثال المالي',
     '/cashier-sales': 'مبيعات الكاشير',
     '/cashier-monitor': 'متابعة الكاشير',
-    '/pos-reports': 'مركز التقارير',
     '/pos-entry': 'نقطة البيع',
     '/cashier': 'واجهة الكاشير',
     '/integrations': 'مصدر البيانات',
     '/sales-analyzer': 'تحليل المبيعات',
+    '/sales-inquiry': 'استعلام المبيعات',
     '/received-analyzer': 'تحليل المستلَم',
     '/wh-vs-pos': 'المخزن مقابل نقطة البيع',
-    '/dept-cost': 'وضع القسم',
     '/yarasoft': 'تكامل قاعدة الكاشير',
 };
 
@@ -223,7 +259,7 @@ export const MOBILE_PRIMARY: readonly MobilePrimaryItem[] = [
     { key: 'pos-entry', label: 'الكاشير' },
     { key: 'warehouse', label: 'المخزون' },
     { key: 'employees', label: 'الموظفون' },
-    { key: 'pos-reports', label: 'التقارير' },
+    { key: 'reports', label: 'التقارير' },
 ];
 
 /** المسار بلا `basepath`؛ يوحّد `/accounts/` و`/accounts` و`/`. */

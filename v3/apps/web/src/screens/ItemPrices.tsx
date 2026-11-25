@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
+import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { fetchCurrency } from '../lib/finance';
 import { formatMoney } from '../lib/format';
@@ -15,6 +16,8 @@ import {
     priceTotals,
     sortPriceRows,
 } from '../lib/item-prices';
+
+import { PageHeader } from '../ui';
 
 /**
  * أسعار الأصناف — صفحة قراءة فقط لـ`inventory."avgCost"`.
@@ -96,30 +99,27 @@ export function ItemPrices() {
 
     return (
         <div className="flex flex-col gap-md">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        أسعار الأصناف{' '}
-                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
-                            Item Prices
-                        </span>
-                    </h1>
-                    <p className="text-body-sm text-muted">
-                        متوسط تكلفة الشراء لكل صنف — يتحدّث أوتوماتيك مع كل فاتورة/استلام شراء بالمتوسط المرجح.
-                    </p>
-                </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            void pricesQuery.refetch();
-                        }}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                </div>
-            </header>
+            <PageHeader
+                title="أسعار الأصناف"
+                english="Item Prices"
+                description="متوسط تكلفة الشراء لكل صنف — يتحدّث أوتوماتيك مع كل فاتورة/استلام شراء بالمتوسط المرجح."
+                actions={
+                    <>
+                        <div className="flex items-center gap-xs" data-erp-print-hide>
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    void pricesQuery.refetch();
+                                }}
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                            >
+                                تحديث
+                            </button>
+                            <PrintActions title="أسعار الأصناف" />
+                        </div>
+                    </>
+                }
+            />
 
             <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
                 <Kpi

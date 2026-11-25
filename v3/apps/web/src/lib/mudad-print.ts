@@ -75,7 +75,9 @@ export function mudadReviewPrintHtml(readiness: WpsReadinessResponse, options: M
 
     const employeeRows = readiness.employees
         .map((employee) => {
-            const issues = employee.issues.length ? employee.issues.map((code) => escapeHtml(issueLabel(code))).join('، ') : '—';
+            const issues = employee.issues.length
+                ? employee.issues.map((code) => escapeHtml(issueLabel(code))).join('، ')
+                : '—';
             return (
                 `<tr><td>${escapeHtml(employee.name ?? '—')}</td>` +
                 `<td class="c">${escapeHtml(employee.employee_id)}</td>` +
@@ -129,7 +131,11 @@ export function mudadReviewPrintHtml(readiness: WpsReadinessResponse, options: M
                                (line) =>
                                    `<tr><td>${escapeHtml(line.name ?? '—')}</td>` +
                                    `<td class="c">${escapeHtml(
-                                       line.category === 'saudi' ? 'سعودي' : line.category === 'expat' ? 'وافد' : 'غير معروف',
+                                       line.category === 'saudi'
+                                           ? 'سعودي'
+                                           : line.category === 'expat'
+                                             ? 'وافد'
+                                             : 'غير معروف',
                                    )}</td>` +
                                    `<td class="n">${escapeHtml(moneyText(line.wage))}</td>` +
                                    `<td class="n">${escapeHtml(moneyText(line.employee))}</td>` +
@@ -143,7 +149,10 @@ export function mudadReviewPrintHtml(readiness: WpsReadinessResponse, options: M
                  preview.unclassified.length
                      ? `<p class="warn-line">لم يُصنَّف تأمينيًا: ${escapeHtml(
                            preview.unclassified
-                               .map((entry) => `${entry.name ?? `#${entry.employee_id}`} — ${gosiReasonLabel(entry.reason)}`)
+                               .map(
+                                   (entry) =>
+                                       `${entry.name ?? `#${entry.employee_id}`} — ${gosiReasonLabel(entry.reason)}`,
+                               )
                                .join('، '),
                        )}</p>`
                      : ''
@@ -204,8 +213,11 @@ td.c{text-align:center}td.n{direction:ltr;unicode-bidi:embed;text-align:right}
 .sign{flex:1;text-align:center}.sign .line{border-top:2px dotted #8496a5;margin-top:44px;padding-top:6px;font-weight:700;font-size:12.5px}
 .sign .who{color:#596e80;font-size:11.5px}
 .foot{border-top:2px solid #0f766e;margin-top:24px;padding-top:8px;display:flex;justify-content:space-between;color:#596e80;font-size:10.5px}
-@media print{body{padding:0}@page{size:A4;margin:12mm}}
+.controls{text-align:center;margin-bottom:18px}.controls button{border:0;border-radius:7px;padding:10px 24px;margin:0 5px;font:inherit;cursor:pointer;background:#0f766e;color:#fff}
+.controls button.secondary{background:#555}
+@media print{body{padding:0}.controls{display:none!important}@page{size:A4;margin:12mm}}
 </style></head><body>
+<div class="controls"><button type="button" data-mudad-print>طباعة</button><button type="button" class="secondary" data-mudad-close>إغلاق</button></div>
 <main class="sheet">
 <header class="head">
 <div class="brand"><h1>ورقة مراجعة الامتثال — ملف الأجور</h1><p>نظام Karim ERP — مراجعة داخلية قبل أي رفع يدوي</p></div>

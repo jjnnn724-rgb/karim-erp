@@ -108,7 +108,8 @@ export function PosBuffetPrices({ tiers, canManage, busy, onBack, onSave, onAdd,
             </div>
             <div className="erp-card__body erp-stack">
                 <p className="text-body-sm text-muted">
-                    التعديل يسري على الفواتير الجديدة فقط. فئات كبير/صغير/ضيافة أساسية يمكن تعديل سعرها فقط، وإضافة فئات جديدة متاحة دائمًا.
+                    التعديل يسري على الفواتير الجديدة فقط. فئات كبير/صغير/ضيافة أساسية يمكن تعديل سعرها فقط، وإضافة فئات
+                    جديدة متاحة دائمًا.
                 </p>
 
                 {tiers.length === 0 ? (
@@ -289,10 +290,13 @@ function reportHtml(report: BuffetReport, invoices: readonly BuffetInvoiceRow[])
         .join('');
 
     return (
-        `<h1>تقرير البوفيه المفتوح <span style="font-size:.55em;letter-spacing:.05em;color:#6b5d2f" lang="en" dir="ltr">OPEN BUFFET REPORT</span> — ${escapeHtml(report.date)}</h1>` +
+        `<h1>تقرير البوفيه المفتوح — ${escapeHtml(report.date)}</h1>` +
         '<div class="cards">' +
         cards
-            .map(([label, value]) => `<div class="card"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`)
+            .map(
+                ([label, value]) =>
+                    `<div class="card"><span>${escapeHtml(label)}</span><strong>${escapeHtml(value)}</strong></div>`,
+            )
             .join('') +
         '</div>' +
         '<h2>حسب الفئة</h2><table><thead><tr><th>الفئة</th><th>أفراد</th><th>الإيراد الصافي</th><th>متوسط الفرد</th><th>فواتير</th></tr></thead>' +
@@ -309,7 +313,16 @@ function reportHtml(report: BuffetReport, invoices: readonly BuffetInvoiceRow[])
 }
 
 /** تقرير البوفيه اليومي — أرقام الخادم كما هي، وطباعة محلية للعرض. */
-export function PosBuffetReport({ date, onDate, report, invoices, loading, error, onRetry, onBack }: PosBuffetReportProps) {
+export function PosBuffetReport({
+    date,
+    onDate,
+    report,
+    invoices,
+    loading,
+    error,
+    onRetry,
+    onBack,
+}: PosBuffetReportProps) {
     const [draftDate, setDraftDate] = useState(date);
     const [problem, setProblem] = useState('');
     const [printError, setPrintError] = useState('');
@@ -368,7 +381,10 @@ export function PosBuffetReport({ date, onDate, report, invoices, loading, error
                             if (!report) {
                                 return;
                             }
-                            const opened = openPrintWindow(`تقرير البوفيه — ${report.date}`, reportHtml(report, invoices));
+                            const opened = openPrintWindow(
+                                `تقرير البوفيه — ${report.date}`,
+                                reportHtml(report, invoices),
+                            );
                             if (!opened) {
                                 setPrintError('حجب المتصفح نافذة الطباعة؛ اسمح بالنوافذ المنبثقة ثم أعد المحاولة.');
                             }
@@ -401,7 +417,10 @@ export function PosBuffetReport({ date, onDate, report, invoices, loading, error
                                 ['صافي الإيراد', moneyText(total?.net_revenue ?? 0)],
                                 ['الفواتير', intOf(total?.invoices ?? 0)],
                                 ['متوسط الفرد', moneyText(total?.revenue_per_cover ?? 0)],
-                                ['ملغاة', `${intOf(total?.voided?.count ?? 0)} · ${moneyText(total?.voided?.amount ?? 0)}`],
+                                [
+                                    'ملغاة',
+                                    `${intOf(total?.voided?.count ?? 0)} · ${moneyText(total?.voided?.amount ?? 0)}`,
+                                ],
                                 [
                                     'معلقة بالكاشير',
                                     `${intOf(total?.still_held?.count ?? 0)} · ${moneyText(total?.still_held?.amount ?? 0)}`,
@@ -439,7 +458,10 @@ export function PosBuffetReport({ date, onDate, report, invoices, loading, error
                                     </thead>
                                     <tbody>
                                         {report.tiers.map((tier, index) => (
-                                            <tr key={`${String(tier.name)}-${String(index)}`} className="border-b border-hairline">
+                                            <tr
+                                                key={`${String(tier.name)}-${String(index)}`}
+                                                className="border-b border-hairline"
+                                            >
                                                 <td className="px-sm py-xxs text-ink">{tier.name || '—'}</td>
                                                 <td className="erp-numeric px-sm py-xxs" dir="ltr">
                                                     {intOf(tier.covers ?? 0)}
@@ -527,8 +549,13 @@ export function PosBuffetReport({ date, onDate, report, invoices, loading, error
                                             </thead>
                                             <tbody>
                                                 {report.payments.map((row, index) => (
-                                                    <tr key={`${String(row.method)}-${String(index)}`} className="border-b border-hairline">
-                                                        <td className="px-sm py-xxs text-ink">{paymentMethodLabel(row.method)}</td>
+                                                    <tr
+                                                        key={`${String(row.method)}-${String(index)}`}
+                                                        className="border-b border-hairline"
+                                                    >
+                                                        <td className="px-sm py-xxs text-ink">
+                                                            {paymentMethodLabel(row.method)}
+                                                        </td>
                                                         <td className="erp-numeric px-sm py-xxs" dir="ltr">
                                                             {intOf(row.count ?? 0)}
                                                         </td>
@@ -632,7 +659,9 @@ export function PosBuffetReport({ date, onDate, report, invoices, loading, error
                                                     {moneyText(invoice.total_amount)}
                                                 </td>
                                                 <td className="px-sm py-xxs">
-                                                    <Badge variant={invoice.status === 'cancelled' ? 'danger' : 'success'}>
+                                                    <Badge
+                                                        variant={invoice.status === 'cancelled' ? 'danger' : 'success'}
+                                                    >
                                                         {orderStatusLabel(invoice.status)}
                                                     </Badge>
                                                 </td>

@@ -10,11 +10,12 @@ import { SearchInput } from './SearchInput';
  * RTL آمن: جميع الخصائص منطقية (لا left/right).
  */
 export interface FilterBarProps {
-    from: string;
-    to: string;
-    onFrom: (value: string) => void;
-    onTo: (value: string) => void;
-    onApply: () => void;
+    /** نطاق التاريخ اختياري: شاشات البحث فقط (بلا فترة) تتجاهله. */
+    from?: string;
+    to?: string;
+    onFrom?: (value: string) => void;
+    onTo?: (value: string) => void;
+    onApply?: () => void;
     searchLabel?: string;
     searchPlaceholder?: string;
     searchValue: string;
@@ -23,6 +24,10 @@ export interface FilterBarProps {
     error?: string;
     /** مرشّحات متخصصة إضافية تُعرض مع نطاق التاريخ والبحث. */
     advancedFilters?: ReactNode;
+    /** محتوى إضافي أسفل الصف (عدّاد نتائج، ملاحظة تطبيع البحث…). */
+    footer?: ReactNode;
+    /** بلا حاوية بطاقة — عند التضمين داخل بطاقة الشاشة. */
+    bare?: boolean;
     onReset?: () => void;
     resetDisabled?: boolean;
     id?: string;
@@ -42,16 +47,28 @@ export function FilterBar({
     pending = false,
     error,
     advancedFilters,
+    footer,
+    bare = false,
     onReset,
     resetDisabled = false,
     id,
     'data-testid': testId,
 }: FilterBarProps) {
+    const hasRange = Boolean(onFrom && onTo && onApply);
     return (
-        <section className="rounded-lg border border-hairline bg-surface shadow-card">
+        <section className={bare ? 'min-w-0' : 'rounded-lg border border-hairline bg-surface shadow-card'}>
             <div className="flex flex-col gap-sm p-md">
                 <div className="flex flex-wrap gap-sm items-end">
-                    <RangeControls from={from} to={to} onFrom={onFrom} onTo={onTo} onApply={onApply} pending={pending} />
+                    {hasRange ? (
+                        <RangeControls
+                            from={from ?? ''}
+                            to={to ?? ''}
+                            onFrom={(value) => onFrom?.(value)}
+                            onTo={(value) => onTo?.(value)}
+                            onApply={() => onApply?.()}
+                            pending={pending}
+                        />
+                    ) : null}
                     {error ? (
                         <p role="alert" className="mt-xs text-body-sm text-danger-text">
                             {error}
@@ -77,6 +94,7 @@ export function FilterBar({
                     ) : null}
                 </div>
                 {advancedFilters ? <div className="flex flex-wrap items-end gap-sm">{advancedFilters}</div> : null}
+                {footer ? <div className="flex flex-wrap items-center gap-sm">{footer}</div> : null}
             </div>
         </section>
     );

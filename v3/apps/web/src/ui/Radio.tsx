@@ -21,7 +21,17 @@ export interface RadioProps {
     className?: string | undefined;
 }
 
-export function Radio({ label, value, name, checked, onChange, disabled = false, description, id, className }: RadioProps) {
+export function Radio({
+    label,
+    value,
+    name,
+    checked,
+    onChange,
+    disabled = false,
+    description,
+    id,
+    className,
+}: RadioProps) {
     const autoId = useId();
     const radioId = id ?? autoId;
 

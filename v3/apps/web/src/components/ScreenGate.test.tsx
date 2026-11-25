@@ -42,4 +42,14 @@ describe('حارس الشاشة', () => {
         expect(screen.queryByText('محتوى v3')).toBeNull();
         expect(screen.getByRole('link', { name: /النسخة القديمة/ }).getAttribute('href')).toBe(LEGACY_APP_URL);
     });
+
+    it('أداة مصدر البيانات تتبع راية شاشة بيانات Oracle', () => {
+        declareScreens('oracle-data');
+        renderScreen(
+            <ScreenGate screen="oracle-data">
+                <p>إدارة مصدر البيانات</p>
+            </ScreenGate>,
+        );
+        expect(screen.getByText('إدارة مصدر البيانات')).toBeTruthy();
+    });
 });

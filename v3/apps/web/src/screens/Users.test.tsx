@@ -64,7 +64,10 @@ function json(body: unknown, status = 200): Response {
     });
 }
 
-function stubFetch(fail: 'users' | null = null, updates: { url: string; body: Record<string, unknown> }[] = []): string[] {
+function stubFetch(
+    fail: 'users' | null = null,
+    updates: { url: string; body: Record<string, unknown> }[] = [],
+): string[] {
     const urls: string[] = [];
     vi.stubGlobal(
         'fetch',
@@ -139,7 +142,13 @@ describe('user password editing', () => {
         await waitFor(() => expect(updates).toHaveLength(1));
         expect(updates[0]).toEqual({
             url: '/api/users/2',
-            body: { name: 'أحمد صالح', role: 'dept_head', dept_code: 'salads', active: true, password: 'TestPassword123' },
+            body: {
+                name: 'أحمد صالح',
+                role: 'dept_head',
+                dept_code: 'salads',
+                active: true,
+                password: 'TestPassword123',
+            },
         });
         await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     });
@@ -157,19 +166,24 @@ describe('user password editing', () => {
         await waitFor(() => expect(screen.queryByRole('dialog')).toBeNull());
     });
 
-    it.each(['short1', 'abcdefghijkl', '123456789012', '            '])('rejects a weak nonempty password: %s', async (value) => {
-        const { updates, dialog } = await openEditor();
-        fireEvent.change(within(dialog).getByLabelText('كلمة المرور الجديدة (اختياري)'), { target: { value } });
-        fireEvent.click(within(dialog).getByRole('button', { name: 'حفظ التعديل' }));
+    it.each(['short1', 'abcdefghijkl', '123456789012', '            '])(
+        'rejects a weak nonempty password: %s',
+        async (value) => {
+            const { updates, dialog } = await openEditor();
+            fireEvent.change(within(dialog).getByLabelText('كلمة المرور الجديدة (اختياري)'), { target: { value } });
+            fireEvent.click(within(dialog).getByRole('button', { name: 'حفظ التعديل' }));
 
-        expect(await within(dialog).findByRole('alert')).toHaveTextContent(USER_TEXT.passwordWeak);
-        expect(updates).toHaveLength(0);
-        expect(vi.mocked(fetch).mock.calls.every(([, init]) => !init?.method || init.method === 'GET')).toBe(true);
-    });
+            expect(await within(dialog).findByRole('alert')).toHaveTextContent(USER_TEXT.passwordWeak);
+            expect(updates).toHaveLength(0);
+            expect(vi.mocked(fetch).mock.calls.every(([, init]) => !init?.method || init.method === 'GET')).toBe(true);
+        },
+    );
 
     it('resets the password and validation error when reopened', async () => {
         const { updates, editButton, dialog } = await openEditor();
-        fireEvent.change(within(dialog).getByLabelText('كلمة المرور الجديدة (اختياري)'), { target: { value: 'short1' } });
+        fireEvent.change(within(dialog).getByLabelText('كلمة المرور الجديدة (اختياري)'), {
+            target: { value: 'short1' },
+        });
         fireEvent.click(within(dialog).getByRole('button', { name: 'حفظ التعديل' }));
         expect(await within(dialog).findByRole('alert')).toHaveTextContent(USER_TEXT.passwordWeak);
         fireEvent.click(within(dialog).getByRole('button', { name: 'إلغاء' }));

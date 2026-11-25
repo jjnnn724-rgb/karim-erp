@@ -2,7 +2,14 @@ import { Slider as SliderPrimitive } from 'radix-ui';
 import * as React from 'react';
 import { cn } from '@/lib/utils';
 
-function Slider({ className, defaultValue, value, min = 0, max = 100, ...props }: React.ComponentProps<typeof SliderPrimitive.Root>) {
+function Slider({
+    className,
+    defaultValue,
+    value,
+    min = 0,
+    max = 100,
+    ...props
+}: React.ComponentProps<typeof SliderPrimitive.Root>) {
     const _values = React.useMemo(
         () => (Array.isArray(value) ? value : Array.isArray(defaultValue) ? defaultValue : [min, max]),
         [value, defaultValue, min, max],
@@ -33,7 +40,9 @@ function Slider({ className, defaultValue, value, min = 0, max = 100, ...props }
             >
                 <SliderPrimitive.Range
                     data-slot="slider-range"
-                    className={cn('absolute bg-primary data-[orientation=horizontal]:h-full data-[orientation=vertical]:w-full')}
+                    className={cn(
+                        'absolute bg-primary data-[orientation=horizontal]:h-full data-[orientation=vertical]:w-full',
+                    )}
                 />
             </SliderPrimitive.Track>
             {thumbKeys.map((thumbKey) => (

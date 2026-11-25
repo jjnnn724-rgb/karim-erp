@@ -101,7 +101,16 @@ describe('واتساب والتنبيهات', () => {
         expect(screen.getByText('966511111111@s.whatsapp.net')).toBeTruthy();
 
         // تبويبات V2 كلها معروضة، وبوابة الإدارة تحجب تبويبي أرقام الإدارة والتنبيهات.
-        for (const label of ['الربط وQR', 'الوارد', 'صندوق الصادر', 'القوالب', 'الحملات', 'قواعد الرد', 'سجل الأحداث', 'اسأل النظام']) {
+        for (const label of [
+            'الربط وQR',
+            'الوارد',
+            'صندوق الصادر',
+            'القوالب',
+            'الحملات',
+            'قواعد الرد',
+            'سجل الأحداث',
+            'اسأل النظام',
+        ]) {
             expect(screen.getByRole('tab', { name: label })).toBeTruthy();
         }
         expect(screen.queryByRole('tab', { name: 'أرقام الإدارة' })).toBeNull();

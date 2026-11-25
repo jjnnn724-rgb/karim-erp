@@ -92,7 +92,12 @@ export const salesReportSchema = z
 
 export type SalesReport = z.infer<typeof salesReportSchema>;
 
-export async function fetchSalesReport(from: string, to: string, groupBy: GroupBy, signal?: AbortSignal): Promise<SalesReport> {
+export async function fetchSalesReport(
+    from: string,
+    to: string,
+    groupBy: GroupBy,
+    signal?: AbortSignal,
+): Promise<SalesReport> {
     const params = new URLSearchParams({ start_date: from, end_date: to, group_by: groupBy });
     return fetchJson<SalesReport>(
         salesReportSchema,

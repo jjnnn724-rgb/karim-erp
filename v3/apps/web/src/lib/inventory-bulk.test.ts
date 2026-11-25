@@ -1,4 +1,5 @@
-import { describe, expect, it } from 'vitest';
+import { beforeEach, describe, expect, it, vi } from 'vitest';
+import { ApiError } from './api';
 import {
     BULK_CHUNK_SIZE,
     BULK_DEFAULTS,
@@ -9,8 +10,14 @@ import {
     chunkBulkRows,
     emptyBulkRow,
     isValidExpiryDate,
+    submitBulkReceipt,
     validBulkRows,
 } from './inventory-bulk';
+import { writeJson } from './write';
+
+vi.mock('./write', () => ({ writeJson: vi.fn() }));
+
+const mockedWriteJson = vi.mocked(writeJson);
 
 /**
  * حارس الاستلام المجمّع — العقد من `backend/warehouse/returns-routes.js:348-429`:
@@ -30,6 +37,48 @@ describe('الاستلام المجمّع — الافتراضيات كما في
         expect(blank.category).toBe('عام');
         expect(blank.unit).toBe('قطعة');
         expect(blank.minQty).toBe('5');
+    });
+
+    describe('الاستلام المجمّع — إعادة المحاولة الآمنة', () => {
+        beforeEach(() => {
+            mockedWriteJson.mockReset();
+        });
+
+        it('يعيد الصفوف الفاشلة فقط ويعيد استخدام مفتاح الدفعة بعد انقطاع الشبكة', async () => {
+            const rows = Array.from({ length: 45 }, (_, index) => row({ name: `صنف ${index + 1}` }));
+            mockedWriteJson
+                .mockResolvedValueOnce({ batchId: 'BULK-1' })
+                .mockRejectedValueOnce(new Error('انقطع الاتصال'))
+                .mockResolvedValueOnce({ batchId: 'BULK-3' })
+                .mockResolvedValueOnce({ batchId: 'BULK-2' });
+
+            const partial = await submitBulkReceipt(rows);
+
+            expect(partial.imported).toBe(25);
+            expect(partial.retryRows).toHaveLength(20);
+            expect(mockedWriteJson).toHaveBeenCalledTimes(3);
+            const failedHeaders = mockedWriteJson.mock.calls[1]?.[4];
+            expect(failedHeaders?.['X-Idempotency-Key']).toBeTruthy();
+
+            const retried = await submitBulkReceipt(partial.retryRows);
+
+            expect(retried.imported).toBe(20);
+            expect(retried.failures).toHaveLength(0);
+            expect(mockedWriteJson).toHaveBeenCalledTimes(4);
+            expect(mockedWriteJson.mock.calls[3]?.[4]).toEqual(failedHeaders);
+        });
+
+        it('uses a fresh key after a definite validation rejection', async () => {
+            mockedWriteJson.mockRejectedValueOnce(new ApiError(422, 'UNIT_MISMATCH', 'الوحدة غير مطابقة'));
+            const failed = await submitBulkReceipt([row()]);
+            const firstKey = mockedWriteJson.mock.calls[0]?.[4]?.['X-Idempotency-Key'];
+
+            expect(failed.retryRows[0]?.submissionKey).toBeUndefined();
+            mockedWriteJson.mockResolvedValueOnce({ batchId: 'BULK-RETRY' });
+            await submitBulkReceipt(failed.retryRows);
+
+            expect(mockedWriteJson.mock.calls[1]?.[4]?.['X-Idempotency-Key']).not.toBe(firstKey);
+        });
     });
 
     it('الصف الفارغ لا يمرّ بالتحقق', () => {
@@ -94,7 +143,9 @@ describe('الاستلام المجمّع — الترشيح والدفعات', 
 
 describe('الاستلام المجمّع — نص النتيجة', () => {
     it('نجاح كامل', () => {
-        expect(bulkOutcomeText({ imported: 30, total: 30, batches: ['BULK-1'], failures: [] })).toBe('استُورد 30 صنف');
+        expect(bulkOutcomeText({ imported: 30, total: 30, batches: ['BULK-1'], failures: [], retryRows: [] })).toBe(
+            'استُورد 30 صنف',
+        );
     });
 
     it('نتيجة جزئية تُظهر ما فشل', () => {
@@ -103,6 +154,7 @@ describe('الاستلام المجمّع — نص النتيجة', () => {
             total: 40,
             batches: ['BULK-1'],
             failures: [{ names: ['أرز'], message: 'خطأ' }],
+            retryRows: [],
         });
         expect(text).toContain('استُورد 20 صنف من 40');
         expect(text).toContain('فشلت 1 دفعة');

@@ -309,7 +309,9 @@ export function SignaturePad({ label, name, onChange, testId, className }: Signa
             />
             <div className="flex flex-wrap items-center justify-between gap-xs">
                 <span className="text-caption text-faint">
-                    {inked ? 'التوقيع جاهز باسم حسابك — يمكنك الرسم فوقه بإصبعك أو الماوس.' : 'اضبط اسم الحساب أولًا ليُرسم التوقيع.'}
+                    {inked
+                        ? 'التوقيع جاهز باسم حسابك — يمكنك الرسم فوقه بإصبعك أو الماوس.'
+                        : 'اضبط اسم الحساب أولًا ليُرسم التوقيع.'}
                 </span>
                 <button
                     type="button"

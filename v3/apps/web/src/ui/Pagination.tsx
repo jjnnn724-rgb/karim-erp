@@ -20,7 +20,8 @@ const DEFAULT_LABELS: PaginationLabels = {
     previous: 'السابق',
     next: 'التالي',
     page: (page) => `الصفحة ${String(page)}`,
-    summary: (from, to, total) => `${from.toLocaleString('en-US')}–${to.toLocaleString('en-US')} من ${total.toLocaleString('en-US')}`,
+    summary: (from, to, total) =>
+        `${from.toLocaleString('en-US')}–${to.toLocaleString('en-US')} من ${total.toLocaleString('en-US')}`,
 };
 
 export interface PaginationProps {
@@ -57,7 +58,15 @@ function buildPages(page: number, totalPages: number, siblingCount: number): Arr
     return pages;
 }
 
-export function Pagination({ page, pageSize, total, onPageChange, siblingCount = 1, className, labels }: PaginationProps) {
+export function Pagination({
+    page,
+    pageSize,
+    total,
+    onPageChange,
+    siblingCount = 1,
+    className,
+    labels,
+}: PaginationProps) {
     const text = { ...DEFAULT_LABELS, ...labels };
     const totalPages = Math.max(1, Math.ceil(total / Math.max(1, pageSize)));
     const currentPage = Math.min(Math.max(1, page), totalPages);

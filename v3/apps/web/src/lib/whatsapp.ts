@@ -60,9 +60,7 @@ export const whatsappMessageSchema = z.looseObject({
     to: z.string().nullable().optional(),
     from: z.string().nullable().optional(),
     remote_jid: z.string().nullable().optional(),
-    body: z
-        .union([z.string(), z.null(), z.undefined()])
-        .transform((value) => value ?? ''),
+    body: z.string().optional().default(''),
     timestamp: z.string().nullable().optional(),
     created_at: z.string().nullable().optional(),
     status: z.string().optional().default('received'),
@@ -130,7 +128,9 @@ export const whatsappTemplatesResponseSchema = z.looseObject({
 });
 
 /** القوالب من أي من الشكلين (`templates` هو شكل الخادم الحالي). */
-export function whatsappTemplateRows(data: z.infer<typeof whatsappTemplatesResponseSchema> | undefined): WhatsappTemplate[] {
+export function whatsappTemplateRows(
+    data: z.infer<typeof whatsappTemplatesResponseSchema> | undefined,
+): WhatsappTemplate[] {
     if (!data) {
         return [];
     }

@@ -39,7 +39,9 @@ export function Textarea({
     const textareaId = id ?? autoId;
     const hintId = hint ? `${textareaId}-hint` : undefined;
     const errorId = error ? `${textareaId}-error` : undefined;
-    const describedBy = [ariaDescribedBy, errorId ?? hintId].filter((value): value is string => Boolean(value)).join(' ');
+    const describedBy = [ariaDescribedBy, errorId ?? hintId]
+        .filter((value): value is string => Boolean(value))
+        .join(' ');
 
     return (
         <div className={cn('flex flex-col gap-xs', containerClassName)}>

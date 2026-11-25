@@ -127,7 +127,11 @@ export interface OracleTableQuery {
     search?: string;
 }
 
-export async function fetchOracleTable(pgName: string, query: OracleTableQuery = {}, signal?: AbortSignal): Promise<OracleTablePage> {
+export async function fetchOracleTable(
+    pgName: string,
+    query: OracleTableQuery = {},
+    signal?: AbortSignal,
+): Promise<OracleTablePage> {
     const page = Math.max(1, Math.floor(query.page ?? 1));
     const limit = Math.min(200, Math.max(1, Math.floor(query.limit ?? ORACLE_PAGE_SIZE)));
     const search = String(query.search ?? '').trim();

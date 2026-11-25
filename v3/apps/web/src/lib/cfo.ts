@@ -51,7 +51,9 @@ export const cfoSummarySchema = z
             .passthrough()
             .optional(),
         revenue_by_dept: z
-            .array(z.object({ code: text, name: text, total: numLike, net: numLike, margin_pct: numLike }).passthrough())
+            .array(
+                z.object({ code: text, name: text, total: numLike, net: numLike, margin_pct: numLike }).passthrough(),
+            )
             .optional(),
         top_expense_categories: z.array(z.object({ category: text, total: numLike }).passthrough()).optional(),
     })

@@ -17,10 +17,9 @@ import { getAppKey } from './auth';
 export class ApiError extends Error {
     readonly status: number;
     readonly code: string;
-    /** جسم الخطأ الخام كما أعاده الخادم — يقرأه من يحتاج تفاصيل 422. */
-    readonly payload?: unknown;
+    readonly payload: unknown;
 
-    constructor(status: number, code: string, message: string, payload?: unknown) {
+    constructor(status: number, code: string, message: string, payload: unknown = null) {
         super(message);
         this.name = 'ApiError';
         this.status = status;
@@ -38,12 +37,40 @@ export interface FetchOptions {
     signal?: AbortSignal;
     method?: 'POST' | 'PUT' | 'PATCH' | 'DELETE';
     body?: unknown;
-    /** ترويسات إضافية تفرضها بوابة قديمة — مثل `Idempotency-Key` في البيع. */
+    /** ترويسات إضافية مثل مفتاح idempotency ثابت لعملية قابلة لإعادة المحاولة. */
     headers?: Record<string, string>;
 }
 
-function buildHeaders(token: string | null, withBody: boolean, extra?: Record<string, string>): Record<string, string> {
+function createIdempotencyKey(): string {
+    const cryptoApi = globalThis.crypto;
+    if (!cryptoApi?.getRandomValues) {
+        throw new Error('المتصفح لا يدعم مفاتيح الكتابة الآمنة');
+    }
+    const bytes = cryptoApi.getRandomValues(new Uint8Array(16));
+    bytes[6] = (bytes[6] ?? 0) & 0x0f;
+    bytes[6] = (bytes[6] ?? 0) | 0x40;
+    bytes[8] = (bytes[8] ?? 0) & 0x3f;
+    bytes[8] = (bytes[8] ?? 0) | 0x80;
+    const hex = Array.from(bytes, (byte) => byte.toString(16).padStart(2, '0')).join('');
+    return `${hex.slice(0, 8)}-${hex.slice(8, 12)}-${hex.slice(12, 16)}-${hex.slice(16, 20)}-${hex.slice(20)}`;
+}
+
+function isWarehouseWrite(url: string, method: FetchOptions['method']): boolean {
+    return Boolean(method && /^\/api\/warehouse(?:\/|$)/.test(url));
+}
+
+function buildHeaders(
+    token: string | null,
+    withBody: boolean,
+    extra?: Record<string, string>,
+    url?: string,
+    method?: FetchOptions['method'],
+): Record<string, string> {
     const headers: Record<string, string> = { ...extra, Accept: 'application/json' };
+    const hasIdempotencyKey = Object.keys(headers).some((name) => name.toLowerCase() === 'x-idempotency-key');
+    if (url && isWarehouseWrite(url, method) && !hasIdempotencyKey) {
+        headers['X-Idempotency-Key'] = createIdempotencyKey();
+    }
     if (token) {
         headers.Authorization = `Bearer ${token}`;
     }
@@ -62,13 +89,24 @@ function buildHeaders(token: string | null, withBody: boolean, extra?: Record<st
 async function parseError(response: Response): Promise<ApiError> {
     let code = `HTTP_${response.status}`;
     let message = `تعذّر الاتصال بالخادم (${response.status})`;
-    let payload: unknown;
+    let payload: unknown = null;
     try {
         payload = await response.json();
         const parsed = v3ErrorSchema.safeParse(payload);
         if (parsed.success) {
             code = parsed.data.error;
             message = parsed.data.message;
+        } else if (typeof payload === 'object' && payload !== null && 'error' in payload) {
+            const nested = (payload as { error?: unknown }).error;
+            if (typeof nested === 'object' && nested !== null) {
+                const nestedError = nested as { code?: unknown; message?: unknown };
+                if (typeof nestedError.code === 'string') {
+                    code = nestedError.code;
+                }
+                if (typeof nestedError.message === 'string') {
+                    message = nestedError.message;
+                }
+            }
         }
     } catch {
         // جسم غير JSON — تبقى الرسالة الافتراضية.
@@ -79,8 +117,13 @@ async function parseError(response: Response): Promise<ApiError> {
 /**
  * `fetcher` لـTanStack Query: يُعيد البيانات بعد التحقق، أو يرمي `ApiError`.
  */
-export async function fetchJson<T>(schema: z.ZodType<T>, url: string, token: string | null, options: FetchOptions = {}): Promise<T> {
-    const headers = buildHeaders(token, options.body !== undefined, options.headers);
+export async function fetchJson<T>(
+    schema: z.ZodType<T>,
+    url: string,
+    token: string | null,
+    options: FetchOptions = {},
+): Promise<T> {
+    const headers = buildHeaders(token, options.body !== undefined, options.headers, url, options.method);
     const init: RequestInit = {
         headers,
         ...(options.method ? { method: options.method } : {}),

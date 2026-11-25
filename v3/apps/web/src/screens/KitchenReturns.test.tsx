@@ -5,6 +5,12 @@ import { riyadhToday } from '../lib/finance';
 import { ToastProvider } from '../ui/Toast';
 import { KitchenReturns } from './KitchenReturns';
 
+const authMock = vi.hoisted(() => ({ role: 'accountant' }));
+vi.mock('../lib/auth', async (importOriginal) => ({
+    ...(await importOriginal<typeof import('../lib/auth')>()),
+    useAuthState: () => ({ user: { id: '1', username: 'test', role: authMock.role, dept_code: 'K01' } }),
+}));
+
 /**
  * السجل يعرض ما يعيده `/api/kitchenReturns`: ملخص الأصناف كما في القديم
  * (`name (qty)` مفصولة بفاصلة عربية)، والسبب أو الملاحظات، والقيمة نصًّا.
@@ -108,6 +114,7 @@ function summaryLine(): string {
 }
 
 afterEach(() => {
+    authMock.role = 'accountant';
     vi.unstubAllGlobals();
 });
 
@@ -122,7 +129,7 @@ describe('مرتجعات المطبخ', () => {
 
         expect(screen.getByRole('heading', { level: 1 }).textContent).toContain('مرتجعات المطبخ');
         expect(summaryLine()).toContain('3 مرتجعًا');
-        expect(summaryLine()).toContain('إجمالي 61.76 SAR');
+        expect(summaryLine()).toContain('قيمة نشطة 61.76 SAR');
         expect(summaryLine()).toContain('الشهر الحالي (أصل 8,000 الأحدث)');
         expect(dataRows()).toHaveLength(3);
 
@@ -140,6 +147,92 @@ describe('مرتجعات المطبخ', () => {
 
         const linkedKpi = screen.getByText('1 إرجاع مباشر').parentElement as HTMLElement;
         expect(within(linkedKpi).getByText('2')).toBeTruthy();
+    });
+
+    it('يربط المرتجع بإذن صرف ويحفظ الكميات والكراتين', async () => {
+        authMock.role = 'admin';
+        const posted: Record<string, unknown>[] = [];
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (url: string, init?: RequestInit) => {
+                const target = String(url);
+                if (target.includes('/api/kitchenReturns')) return json(returns);
+                if (target.includes('/api/settings/main_settings')) return json({ currency: 'SAR' });
+                if (target.includes('/api/departments')) {
+                    return json({ data: [{ code: 'K01', name: 'المطبخ الرئيسي' }], pagination: { totalPages: 1 } });
+                }
+                if (target.includes('/api/dispatches')) {
+                    return json({
+                        data: [
+                            {
+                                id: 501,
+                                date: today,
+                                deptCode: 'K01',
+                                deptName: 'المطبخ الرئيسي',
+                                status: 'partially_received',
+                                items: [{ itemName: 'دجاج', qty: 2 }],
+                                approvedItems: [{ itemName: 'دجاج', approvedQty: 2, packagingQty: 4, unit: 'kg' }],
+                            },
+                        ],
+                        pagination: { totalPages: 1 },
+                    });
+                }
+                if (target.includes('/api/warehouse/returns') && init?.method === 'POST') {
+                    posted.push(JSON.parse(String(init.body)) as Record<string, unknown>);
+                    return json({ return: { id: 9010 } });
+                }
+                return json({ error: 'NOT_FOUND' }, 404);
+            }),
+        );
+        renderScreen();
+        await waitFor(() => expect(screen.getByRole('table')).toBeTruthy());
+        fireEvent.click(screen.getByRole('button', { name: 'مرتجع جديد' }));
+
+        const linkedButton = screen.getByRole('button', { name: 'مرتبط بإذن صرف' });
+        await waitFor(() => expect((linkedButton as HTMLButtonElement).disabled).toBe(false));
+        fireEvent.click(linkedButton);
+        expect(screen.queryByLabelText('قسم الإرجاع')).toBeNull();
+        expect(screen.getByLabelText('إذن الصرف')).toBeTruthy();
+        expect(screen.getByLabelText('اسم الصنف').getAttribute('list')).toBe('erp-return-dispatch-items');
+
+        fireEvent.change(screen.getByLabelText('اسم الصنف'), { target: { value: 'دجاج' } });
+        fireEvent.change(screen.getByLabelText('الكمية'), { target: { value: '0.5' } });
+        fireEvent.change(screen.getByLabelText('كراتين (اختياري)'), { target: { value: '1' } });
+        fireEvent.change(screen.getByLabelText(/سبب الإرجاع/), { target: { value: 'فائض وردية' } });
+        fireEvent.click(screen.getByRole('button', { name: 'إضافة الصنف' }));
+        fireEvent.click(screen.getByRole('button', { name: 'حفظ المرتجع' }));
+
+        await waitFor(() => expect(posted).toHaveLength(1));
+        expect(posted[0]).toMatchObject({
+            dispatchId: 501,
+            reason: 'فائض وردية',
+            items: [{ name: 'دجاج', qty: 0.5, packagingQty: 1, packagingUom: 'كرتون' }],
+        });
+    });
+
+    it('يعرض المبطل محفوظًا ويستبعده من القيمة النشطة', async () => {
+        const body = {
+            data: [
+                returns.data[0],
+                { ...returns.data[1], id: 9003, status: 'voided', voidedAt: `${today}T12:00:00.000Z` },
+            ],
+            pagination: { totalPages: 1 },
+        };
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (url: string) => {
+                if (String(url).includes('/api/kitchenReturns')) return json(body);
+                if (String(url).includes('/api/settings/main_settings')) return json({ currency: 'SAR' });
+                return json({ error: 'NOT_FOUND' }, 404);
+            }),
+        );
+        renderScreen();
+        await waitFor(() => expect(screen.getByRole('table')).toBeTruthy());
+
+        const voided = screen.getByText('#9003').closest('tr') as HTMLElement;
+        expect(within(voided).getByText('مبطل')).toBeTruthy();
+        expect(summaryLine()).toContain('قيمة نشطة 31.26 SAR');
+        expect(screen.queryByRole('button', { name: 'إبطال' })).toBeNull();
     });
 
     it('يبحث في القسم والصنف والسبب', async () => {

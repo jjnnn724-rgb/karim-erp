@@ -278,7 +278,9 @@ describe('عقود الكاشير', () => {
                 },
             ],
             payments: [{ method: 'cash', amount: '57.50' }],
-            print_jobs: [{ id: '3', status: 'done', attempts: 1, last_attempt_at: null, completed_at: null, last_error: null }],
+            print_jobs: [
+                { id: '3', status: 'done', attempts: 1, last_attempt_at: null, completed_at: null, last_error: null },
+            ],
         });
         expect(parsed.success).toBe(true);
     });
@@ -335,8 +337,26 @@ describe('عقود الكاشير', () => {
 
     it('إعدادات البوفيه: كل كتابة تُعيد `tiers` كاملة', () => {
         const tiers = [
-            { id: 1, tier: 'adult', name_ar: 'بالغ', price: 90, vat_rate: 15, unit: 'فرد', is_core: true, is_active: true },
-            { id: 7, tier: 'custom_7', name_ar: 'أطفال 3-6', price: 40, vat_rate: 15, unit: 'فرد', is_core: false, is_active: false },
+            {
+                id: 1,
+                tier: 'adult',
+                name_ar: 'بالغ',
+                price: 90,
+                vat_rate: 15,
+                unit: 'فرد',
+                is_core: true,
+                is_active: true,
+            },
+            {
+                id: 7,
+                tier: 'custom_7',
+                name_ar: 'أطفال 3-6',
+                price: 40,
+                vat_rate: 15,
+                unit: 'فرد',
+                is_core: false,
+                is_active: false,
+            },
         ];
         expect(buffetConfigSchema.safeParse({ department: {}, pos_department: null, tiers }).success).toBe(true);
         expect(buffetConfigSchema.safeParse({ saved: 2, tiers, message: 'تم' }).success).toBe(true);
@@ -374,7 +394,10 @@ describe('عقود الكاشير', () => {
             cashier_name: 'كاشير 1',
             session_id: '77',
             covers: {
-                tiers: { adult: { name: 'بالغ', covers: 2, amount: 180 }, child: { name: 'صغير', covers: 1, amount: 60 } },
+                tiers: {
+                    adult: { name: 'بالغ', covers: 2, amount: 180 },
+                    child: { name: 'صغير', covers: 1, amount: 60 },
+                },
                 covers_total: 3,
             },
         });
@@ -474,7 +497,9 @@ describe('أبواب الكاشير — السلوك على الشبكة', () =>
     });
 
     it('رفع صورة الصنف POST واحد متعدد الأجزاء ثم قراءة رده نفسه', async () => {
-        const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) => jsonResponse({ id: '7', image_url: '/uploads/menu/p7.png' }));
+        const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) =>
+            jsonResponse({ id: '7', image_url: '/uploads/menu/p7.png' }),
+        );
         vi.stubGlobal('fetch', fetchMock);
 
         const file = new File([new Uint8Array([1, 2, 3])], 'p.png', { type: 'image/png' });

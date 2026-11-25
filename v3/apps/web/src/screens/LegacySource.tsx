@@ -79,13 +79,15 @@ export function LegacySource() {
         <div className="legacy-source" dir="rtl">
             <header className="legacy-source__head">
                 <div>
-                    <h1 className="text-heading-md"> مصدر البيانات{' '} <span className="text-body-sm text-muted" dir="ltr" lang="en"> Data Source </span> </h1>
+                    <h1 className="text-heading-md">مصدر البيانات</h1>
                     <p className="text-body-md text-muted">
-                        النظام يعمل على PostgreSQL الخاص به. Yarasoft و Oracle مصدر قراءة فقط للفترة السابقة، ويُفصلان من هنا نهائيًا عند
-                        الجاهزية.
+                        النظام يعمل على PostgreSQL الخاص به. Yarasoft و Oracle مصدر قراءة فقط للفترة السابقة، ويُفصلان من
+                        هنا نهائيًا عند الجاهزية.
                     </p>
                 </div>
-                <Badge variant={standalone ? 'success' : 'warning'}>{standalone ? 'مستقل — PostgreSQL فقط' : 'متصل بالمصدر القديم'}</Badge>
+                <Badge variant={standalone ? 'success' : 'warning'}>
+                    {standalone ? 'مستقل — PostgreSQL فقط' : 'متصل بالمصدر القديم'}
+                </Badge>
             </header>
 
             <div className="legacy-source__grid">
@@ -147,14 +149,16 @@ export function LegacySource() {
                                 <dd dir="ltr">{data?.oracle.service ?? '—'}</dd>
                             </div>
                         </dl>
-                        <p className="text-body-sm text-muted">الربط المباشر يعمل في عملية معزولة، ويتوقف تلقائيًا في الوضع المستقل.</p>
+                        <p className="text-body-sm text-muted">
+                            الربط المباشر يعمل في عملية معزولة، ويتوقف تلقائيًا في الوضع المستقل.
+                        </p>
                     </CardBody>
                 </Card>
             </div>
 
             <p className="legacy-source__note">
-                أرقام الفواتير في v3 تُولَّد من قاعدة النظام بتسلسل مقفول لكل قسم، ولا تعتمد على ترقيم Yarasoft — فلا تتكرر ولا تتعارض مع
-                الفترة السابقة.
+                أرقام الفواتير في v3 تُولَّد من قاعدة النظام بتسلسل مقفول لكل قسم، ولا تعتمد على ترقيم Yarasoft — فلا تتكرر
+                ولا تتعارض مع الفترة السابقة.
             </p>
         </div>
     );

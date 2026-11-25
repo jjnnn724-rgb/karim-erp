@@ -1,6 +1,6 @@
 import type { V3JournalEntry } from '@karim/shared';
 import { describe, expect, it } from 'vitest';
-import { formatMoney, statusLabel, totalCredit, totalDebit } from './format';
+import { formatMoney, parseArabicDecimal, statusLabel, totalCredit, totalDebit } from './format';
 
 const entry: V3JournalEntry = {
     id: '1',
@@ -27,6 +27,13 @@ const entry: V3JournalEntry = {
 };
 
 describe('عرض المال', () => {
+    it('يقرأ الأرقام العربية والفارسية مع الفاصل العشري العربي', () => {
+        expect(parseArabicDecimal('١٬٢٣٤٫٥')).toBe(1234.5);
+        expect(parseArabicDecimal('۱۲٫۷۵')).toBe(12.75);
+        expect(parseArabicDecimal('')).toBe(0);
+        expect(parseArabicDecimal('غير رقم')).toBe(0);
+    });
+
     it('يعرض NUMERIC(14,2) نصًّا بأرقام لاتينية وفاصل آلاف', () => {
         expect(formatMoney('1234.50')).toBe('1,234.50');
         expect(formatMoney('40.00')).toBe('40.00');

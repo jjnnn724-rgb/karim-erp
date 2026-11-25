@@ -30,7 +30,16 @@ const SRC = dirname(fileURLToPath(import.meta.url));
 
 describe('Chart', () => {
     it('يعرض العنوان والوصف ويُحمّل الإدراك الكسول', async () => {
-        render(<Chart kind="line" title="الإيراد الشهري" description="آخر شهرين" data={data} xKey="month" series={series} />);
+        render(
+            <Chart
+                kind="line"
+                title="الإيراد الشهري"
+                description="آخر شهرين"
+                data={data}
+                xKey="month"
+                series={series}
+            />,
+        );
 
         expect(screen.getByRole('figure', { name: /الإيراد الشهري/ })).toBeTruthy();
         expect(screen.getByText('آخر شهرين')).toBeTruthy();

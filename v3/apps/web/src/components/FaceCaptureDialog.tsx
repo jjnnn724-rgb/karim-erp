@@ -21,53 +21,11 @@ const FACE_API_SRC = '/app/vendor/face-api.js?v=4.9.77';
 const FACE_MODELS_URI = '/app/vendor/face-models';
 const MAX_SAMPLES = 8;
 
-type Facing = 'user' | 'environment';
-/* الافتراضي 2026-11-18: «الخلفية» — المالك أبلغ أن الخلفية هي الشغالة على
-   أجهزة المطعم، والأمامية قد لا تعمل. الاختيار يُحفظ لكل جهاز. */
-const FACING_STORAGE_KEY = 'karim.faceCapture.facingMode';
-
-function getPreferredFacing(): Facing {
-    try {
-        const saved = globalThis.localStorage?.getItem(FACING_STORAGE_KEY);
-        return saved === 'user' ? 'user' : 'environment';
-    } catch {
-        return 'environment';
-    }
-}
-
-function persistFacing(facing: Facing): void {
-    try {
-        globalThis.localStorage?.setItem(FACING_STORAGE_KEY, facing);
-    } catch {
-        // وضع التصفح الخاص — الاختيار يبقى لهذه الجلسة فقط.
-    }
-}
-
-function otherFacing(facing: Facing): Facing {
-    return facing === 'user' ? 'environment' : 'user';
-}
-
-function facingLabel(facing: Facing): string {
-    return facing === 'user' ? 'الأمامية' : 'الخلفية';
-}
-
-/** القيود بالترتيب: المفضلة بمقاسين، ثم الأخرى كاحتياطي، ثم أي كاميرا. */
-function cameraTries(preferred: Facing): Array<{ constraints: MediaStreamConstraints; facing: Facing | null }> {
-    const other = otherFacing(preferred);
-    return [
-        {
-            constraints: { video: { facingMode: preferred, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false },
-            facing: preferred,
-        },
-        {
-            constraints: { video: { facingMode: preferred, width: { ideal: 640 }, height: { ideal: 480 } }, audio: false },
-            facing: preferred,
-        },
-        { constraints: { video: { facingMode: other, width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false }, facing: other },
-        { constraints: { video: { facingMode: other, width: { ideal: 640 }, height: { ideal: 480 } }, audio: false }, facing: other },
-        { constraints: { video: true, audio: false }, facing: null },
-    ];
-}
+const CAMERA_TRIES: MediaStreamConstraints[] = [
+    { video: { facingMode: 'user', width: { ideal: 1280 }, height: { ideal: 720 } }, audio: false },
+    { video: { facingMode: 'user', width: { ideal: 640 }, height: { ideal: 480 } }, audio: false },
+    { video: true, audio: false },
+];
 
 interface FaceBox {
     x: number;
@@ -153,7 +111,7 @@ function isSecureCameraContext(): boolean {
     return host === 'localhost' || host === '127.0.0.1';
 }
 
-async function openCameraStream(video: HTMLVideoElement, preferred: Facing): Promise<{ stream: MediaStream; facing: Facing | null }> {
+async function openCameraStream(video: HTMLVideoElement): Promise<MediaStream> {
     if (!isSecureCameraContext()) {
         throw new Error('الكاميرا تحتاج اتصالًا آمنًا (HTTPS) — افتح النظام عبر https، أو ارفع صورة بالأسفل');
     }
@@ -162,26 +120,28 @@ async function openCameraStream(video: HTMLVideoElement, preferred: Facing): Pro
         throw new Error('المتصفح لا يدعم الكاميرا — استخدم «رفع صورة» بالأسفل');
     }
     let lastError: unknown = null;
-    for (const attempt of cameraTries(preferred)) {
+    let stream: MediaStream | null = null;
+    for (const constraints of CAMERA_TRIES) {
         try {
-            const stream = await media.getUserMedia(attempt.constraints);
-            try {
-                video.srcObject = stream;
-                await video.play();
-                return { stream, facing: attempt.facing };
-            } catch {
-                stream.getTracks().forEach((track) => {
-                    track.stop();
-                });
-                video.srcObject = null;
-                throw new Error('تم فتح الكاميرا لكن تعذر عرض الصورة — اضغط «إعادة تشغيل الكاميرا» أو تحقق من أذونات الموقع');
-            }
+            stream = await media.getUserMedia(constraints);
+            break;
         } catch (error) {
-            // خطأ «تعذر عرض الصورة» ليس خطأ جهاز — لا تعيد المحاولة بقيود أخرى.
-            if (error instanceof Error && error.message.startsWith('تم فتح الكاميرا')) {
-                throw error;
-            }
             lastError = error;
+        }
+    }
+    if (stream) {
+        try {
+            video.srcObject = stream;
+            await video.play();
+            return stream;
+        } catch {
+            stream.getTracks().forEach((track) => {
+                track.stop();
+            });
+            video.srcObject = null;
+            throw new Error(
+                'تم فتح الكاميرا لكن تعذر عرض الصورة — اضغط «إعادة تشغيل الكاميرا» أو تحقق من أذونات الموقع',
+            );
         }
     }
     const name = lastError instanceof Error ? lastError.name : '';
@@ -327,8 +287,6 @@ export function FaceCaptureDialog({
     const sourcesRef = useRef<Array<'live' | 'upload'>>([]);
     const cameraAttemptRef = useRef(0);
     const doneRef = useRef(false);
-    const [facing, setFacing] = useState<Facing>(getPreferredFacing);
-    const [openedFacing, setOpenedFacing] = useState<Facing | null>(null);
     const [message, setMessage] = useState('جارٍ تشغيل الكاميرا…');
     const [count, setCount] = useState(0);
     const [busy, setBusy] = useState(false);
@@ -375,13 +333,6 @@ export function FaceCaptureDialog({
             if (!image) {
                 return false;
             }
-            // عيّنة مطابقة بايتيًا لعيّنة سابقة ليست «لقطة جديدة»: تُقابل رفض السيرفر
-            // PUNCH_FACE_REPLAY حتى على بصمة حقيقية (لقطتان من نفس فريم الكاميرا).
-            // نمنعها هنا — العينة المتطابقة لا تُحتسب، ونطلب من المستخدم تغيير زاويته.
-            if (imagesRef.current.includes(image)) {
-                setMessage('التقطت نفس الصورة — حرّك رأسك قليلًا ثم التقط اللقطة التالية');
-                return false;
-            }
             if (requireDescriptor && !descriptor) {
                 setMessage('لم يُرصد وجه واضح — اقترب من الكاميرا وحسّن الإضاءة ثم أعد المحاولة');
                 return false;
@@ -397,35 +348,27 @@ export function FaceCaptureDialog({
         [requireDescriptor],
     );
 
-    /* التصفير يخص فتح الحوار فقط — تبديل الكاميرا لا يمسح العينات الملتقطة. */
-    const prevOpenRef = useRef(false);
-    useEffect(() => {
-        if (open && !prevOpenRef.current) {
-            doneRef.current = false;
-            imagesRef.current = [];
-            descriptorsRef.current = [];
-            sourcesRef.current = [];
-            engineRef.current = null;
-            optionsRef.current = null;
-            enginePromiseRef.current = null;
-            setCount(0);
-            setBusy(false);
-            setCameraFailed(false);
-            setMessage('جارٍ تشغيل الكاميرا…');
-        }
-        prevOpenRef.current = open;
-    }, [open]);
-
     useEffect(() => {
         if (!open || !videoElement) {
             return;
         }
+        doneRef.current = false;
+        imagesRef.current = [];
+        descriptorsRef.current = [];
+        sourcesRef.current = [];
+        engineRef.current = null;
+        optionsRef.current = null;
+        enginePromiseRef.current = null;
+        setCount(0);
+        setBusy(false);
+        setCameraFailed(false);
+        setMessage('جارٍ تشغيل الكاميرا…');
         let cancelled = false;
         const cameraAttempt = ++cameraAttemptRef.current;
 
         const start = async () => {
             try {
-                const { stream, facing: opened } = await openCameraStream(videoElement, facing);
+                const stream = await openCameraStream(videoElement);
                 if (cancelled || cameraAttempt !== cameraAttemptRef.current) {
                     stream.getTracks().forEach((track) => {
                         track.stop();
@@ -433,13 +376,9 @@ export function FaceCaptureDialog({
                     return;
                 }
                 streamRef.current = stream;
-                setOpenedFacing(opened);
                 setCameraFailed(false);
-                const intro = max > 1 ? `وجّه وجهك للكاميرا — سنلتقط ${max} لقطات متنوعة` : 'وجّه وجهك للكاميرا ثم اضغط «التقاط»';
                 setMessage(
-                    opened && opened !== facing
-                        ? `تعذرت الكاميرا ${facingLabel(facing)} — فُتحت ${facingLabel(opened)} بدلًا منها. ${intro}`
-                        : intro,
+                    max > 1 ? `وجّه وجهك للكاميرا — سنلتقط ${max} لقطات متنوعة` : 'وجّه وجهك للكاميرا ثم اضغط «التقاط»',
                 );
             } catch (error) {
                 if (!cancelled) {
@@ -458,11 +397,15 @@ export function FaceCaptureDialog({
                     }
                     engineRef.current = engine;
                     optionsRef.current = new engine.TinyFaceDetectorOptions({
-                        inputSize: 320,
-                        scoreThreshold: 0.35,
+                        // 416 أدق في الوجوه الصغيرة/البعيدة، و0.5 يقلّل
+                        // الوجوه الوهمية في الخلفية التي كانت تلوّث اللقطة.
+                        inputSize: 416,
+                        scoreThreshold: 0.5,
                     });
                     if (streamRef.current) {
-                        setMessage(max > 1 ? `محرك الوجه جاهز — سنلتقط ${max} لقطات` : '✅ محرك الوجه جاهز — اضغط «التقاط»');
+                        setMessage(
+                            max > 1 ? `محرك الوجه جاهز — سنلتقط ${max} لقطات` : '✅ محرك الوجه جاهز — اضغط «التقاط»',
+                        );
                     }
                     return engine;
                 })
@@ -475,19 +418,7 @@ export function FaceCaptureDialog({
             cameraAttemptRef.current += 1;
             stopStream();
         };
-    }, [open, videoElement, max, wantDescriptors, requireDescriptor, stopStream, facing]);
-
-    const toggleCamera = () => {
-        if (busy || doneRef.current) {
-            return;
-        }
-        const next = otherFacing(facing);
-        persistFacing(next);
-        setOpenedFacing(null);
-        setCameraFailed(false);
-        setFacing(next); // الأثر يعيد فتح الكاميرا بالاتجاه الجديد ويُبقي العينات
-        setMessage('جارٍ تبديل الكاميرا…');
-    };
+    }, [open, videoElement, max, wantDescriptors, requireDescriptor, stopStream]);
 
     const retryCamera = async () => {
         const video = videoRef.current;
@@ -499,7 +430,7 @@ export function FaceCaptureDialog({
         setCameraFailed(false);
         setMessage('جارٍ إعادة تشغيل الكاميرا…');
         try {
-            const { stream, facing: opened } = await openCameraStream(video, facing);
+            const stream = await openCameraStream(video);
             if (cameraAttempt !== cameraAttemptRef.current || doneRef.current) {
                 stream.getTracks().forEach((track) => {
                     track.stop();
@@ -507,8 +438,9 @@ export function FaceCaptureDialog({
                 return;
             }
             streamRef.current = stream;
-            setOpenedFacing(opened);
-            setMessage(max > 1 ? `وجّه وجهك للكاميرا — سنلتقط ${max} لقطات متنوعة` : 'وجّه وجهك للكاميرا ثم اضغط «التقاط»');
+            setMessage(
+                max > 1 ? `وجّه وجهك للكاميرا — سنلتقط ${max} لقطات متنوعة` : 'وجّه وجهك للكاميرا ثم اضغط «التقاط»',
+            );
         } catch (error) {
             if (cameraAttempt === cameraAttemptRef.current && !doneRef.current) {
                 const text = error instanceof Error ? error.message : 'تعذر تشغيل الكاميرا';
@@ -588,7 +520,6 @@ export function FaceCaptureDialog({
                 <video
                     ref={attachVideo}
                     className="aspect-video w-full rounded-lg bg-black object-cover"
-                    style={{ transform: (openedFacing ?? facing) === 'user' ? 'scaleX(-1)' : 'none' }}
                     autoPlay
                     playsInline
                     muted
@@ -599,15 +530,6 @@ export function FaceCaptureDialog({
                 </p>
                 <progress className="w-full" max={max} value={count} hidden={max <= 1} aria-label="لقطات الوجه" />
                 <div className="flex flex-wrap items-center gap-sm">
-                    <Button
-                        variant="secondary"
-                        disabled={busy}
-                        onClick={toggleCamera}
-                        title={`اضغط للتبديل إلى الكاميرا ${facingLabel(otherFacing(facing))}`}
-                        aria-label={`الكاميرا ${facingLabel(facing)} — اضغط للتبديل إلى ${facingLabel(otherFacing(facing))}`}
-                    >
-                        🔄 الكاميرا: {facingLabel(facing)}
-                    </Button>
                     <Button variant="primary" loading={busy} onClick={() => void shoot()}>
                         التقاط
                     </Button>
@@ -622,7 +544,7 @@ export function FaceCaptureDialog({
                             <input
                                 type="file"
                                 accept="image/*"
-                                capture={facing}
+                                capture="user"
                                 className="hidden"
                                 onChange={(event) => {
                                     const file = event.target.files?.[0] ?? null;
@@ -633,7 +555,9 @@ export function FaceCaptureDialog({
                         </label>
                     ) : null}
                 </div>
-                <p className="text-body-xs text-muted">الصور لا تُخزَّن على الخادم — تُستخدم لحظيًا لاستخراج البصمة ثم تُهمل.</p>
+                <p className="text-body-xs text-muted">
+                    الصور لا تُخزَّن على الخادم — تُستخدم لحظيًا لاستخراج البصمة ثم تُهمل.
+                </p>
             </div>
         </Dialog>
     );

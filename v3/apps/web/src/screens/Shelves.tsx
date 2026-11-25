@@ -34,12 +34,12 @@ import {
     validateShelfForm,
 } from '../lib/shelves';
 import { isWriteRole, useWriteMutation, writeErrorMessage } from '../lib/write';
+import { PageHeader } from '../ui';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
 import { useToast } from '../ui/Toast';
 
-import { PageHeader } from '../ui';
 /**
  * الرفوف — قراءة من `/api/shelves` و`/api/inventory`، وكتابة مطابقة لـV2:
  * إضافة/تعديل/حذف بنفس البوابة (POST/PUT/DELETE `/api/shelves`)، ونفس أدوار

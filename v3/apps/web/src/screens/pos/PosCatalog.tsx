@@ -2,8 +2,6 @@ import { memo, type RefObject, useCallback, useEffect, useMemo, useRef, useState
 import type { BuffetLive, HeldOrder } from '../../lib/pos';
 import { intOf } from '../../lib/reporting';
 import { Badge, Button, SearchInput } from '../../ui';
-import { CatalogPriceEdit } from './CatalogPriceEdit';
-import { ProductArt } from './pos-art';
 import { bestSellers, type CatalogItem, moneyText, orderCatalog, qtyText, type SalesIndex, soldQty } from './pos-ui';
 
 export interface PosCatalogProps {
@@ -24,16 +22,7 @@ export interface PosCatalogProps {
     favorites: readonly string[];
     onToggleFavorite: (item: CatalogItem) => void;
     canSell: boolean;
-    canManageImages: boolean;
-    /** manager/admin فقط — يفتح محرر سعر البيع من البطاقة. */
-    canEditProductPrice: boolean;
-    onProductPriceSaved: (productId: string, price: number) => void;
-    /**
-     * شريط الفئات تحت البحث — مخفي عن موظف الكاشير (طلب المالك 2026-11-14):
-     * كل شريط يستهلك نحو 46px من ارتفاع الشاشة، والمينو يستاهل المساحة.
-     * الأدوار الأعلى (مدير/محاسب) يبقى عندهم الشريط للتنقل بين الفئات.
-     */
-    showCategories?: boolean;
+    canManageCatalog: boolean;
     imagePending: boolean;
     onUploadImage: (item: CatalogItem, file: File) => void;
     onRemoveImage: (item: CatalogItem) => void;
@@ -87,15 +76,12 @@ interface ProductCardProps {
     pinned: boolean;
     canSell: boolean;
     busy: boolean;
-    canManageImages: boolean;
+    canManageCatalog: boolean;
     imagePending: boolean;
-    /** manager/admin فقط */
-    canEditProductPrice: boolean;
     onAdd: (item: CatalogItem) => void;
     onToggleFavorite: (item: CatalogItem) => void;
     onPickImage: (item: CatalogItem) => void;
     onRemoveImage: (item: CatalogItem) => void;
-    onEditPrice: (item: CatalogItem) => void;
 }
 
 /**
@@ -107,14 +93,12 @@ const ProductCard = memo(function ProductCard({
     pinned,
     canSell,
     busy,
-    canManageImages,
+    canManageCatalog,
     imagePending,
-    canEditProductPrice,
     onAdd,
     onToggleFavorite,
     onPickImage,
     onRemoveImage,
-    onEditPrice,
 }: ProductCardProps) {
     return (
         <article className={`pos-product${pinned ? ' is-pinned' : ''}`}>
@@ -128,23 +112,25 @@ const ProductCard = memo(function ProductCard({
                 }}
             >
                 <span className="pos-product__media">
-                    <ProductArt item={item} />
                     {item.imageUrl ? (
                         <img
-                            className="pos-product__photo"
                             src={item.imageUrl}
                             alt=""
                             loading="lazy"
                             decoding="async"
                             fetchPriority="low"
                             onError={(event) => {
-                                // صورة تالفة أو مفقودة: أخفِها فتظهر أيقونة العائلة خلفها.
+                                // صورة تالفة أو مفقودة: أخفِها بدل أيقونة مكسورة، تبقى مساحة التدرّج.
                                 event.currentTarget.style.visibility = 'hidden';
                             }}
                         />
-                    ) : null}
-                    {/* الفئة تُعرض تحت الاسم (نص هادئ) بدل شارة عائمة فوق الصورة */}
-                    {item.stock !== null && item.stock > 0 && item.stock <= 5 ? (
+                    ) : (
+                        <span className="pos-product__glyph" aria-hidden="true">
+                            {item.name.trim().charAt(0) || '•'}
+                        </span>
+                    )}
+                    {item.category ? <span className="pos-product__category-badge">{item.category}</span> : null}
+                    {item.stock !== null && item.stock <= 5 ? (
                         <span className="pos-product__stock">{`متبقي ${qtyText(item.stock)}`}</span>
                     ) : null}
                     <span className="pos-product__add" aria-hidden="true">
@@ -158,12 +144,6 @@ const ProductCard = memo(function ProductCard({
                             {moneyText(item.price)}
                             {item.unit ? <span className="pos-product__unit">/{item.unit}</span> : null}
                         </span>
-                        {item.nameEn ? (
-                            <span className="pos-product__name-en" dir="ltr">
-                                {item.nameEn}
-                            </span>
-                        ) : null}
-                        {item.category ? <span className="pos-product__category-line">{item.category}</span> : null}
                     </span>
                 </span>
             </button>
@@ -178,39 +158,10 @@ const ProductCard = memo(function ProductCard({
                         onToggleFavorite(item);
                     }}
                 >
-                    <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill={pinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
-                        <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" />
-                    </svg>
+                    {pinned ? '★' : '☆'}
                 </button>
             ) : null}
-            {canEditProductPrice ? (
-                <button
-                    type="button"
-                    className="pos-product__price-edit"
-                    aria-label={`تعديل سعر ${item.name}`}
-                    title="تعديل سعر البيع"
-                    disabled={busy}
-                    onClick={() => {
-                        onEditPrice(item);
-                    }}
-                >
-                    <svg
-                        aria-hidden="true"
-                        viewBox="0 0 24 24"
-                        width="13"
-                        height="13"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    >
-                        <path d="M12.6 3.7a2 2 0 0 1 1.4-.6h.6a2 2 0 0 1 1.4.6l4.3 4.3a2 2 0 0 1 0 2.8l-8.5 8.5a2 2 0 0 1-2.8 0l-4.3-4.3a2 2 0 0 1 0-2.8l8.5-8.5Z" />
-                        <path d="M13 7l4 4M8.5 12.5l3 3" />
-                    </svg>
-                </button>
-            ) : null}
-            {canManageImages ? (
+            {canManageCatalog ? (
                 <div className="pos-product__image-actions">
                     <button
                         type="button"
@@ -260,21 +211,21 @@ function PosCatalogView({
     favorites,
     onToggleFavorite,
     canSell,
-    canManageImages,
+    canManageCatalog,
     imagePending,
     onUploadImage,
     onRemoveImage,
     onRecall,
     onDeleteHeld,
     busy,
-    canEditProductPrice,
-    onProductPriceSaved,
-    showCategories = true,
 }: PosCatalogProps) {
     const fileRef = useRef<HTMLInputElement | null>(null);
     const [imageTarget, setImageTarget] = useState<CatalogItem | null>(null);
-    const [priceEditTarget, setPriceEditTarget] = useState<CatalogItem | null>(null);
     const needle = query.trim().toLocaleLowerCase();
+
+    useEffect(() => {
+        searchInputRef.current?.focus();
+    }, [searchInputRef]);
 
     const categories = useMemo(() => {
         const soldByCategory = new Map<string, number>();
@@ -289,15 +240,13 @@ function PosCatalogView({
             .map(([category]) => ({ name: category, count: itemsByCategory.get(category) ?? 0 }));
     }, [items, sales]);
 
-    const activeCategory = showCategories ? selectedCategory : '';
-
     const filtered = useMemo(() => {
         return items.filter((item) => {
-            const categoryMatch = buffet || !activeCategory || item.category === activeCategory;
+            const categoryMatch = buffet || !selectedCategory || item.category === selectedCategory;
             const haystack = `${item.name} ${item.barcode} ${item.category}`.toLocaleLowerCase();
             return categoryMatch && (!needle || haystack.includes(needle));
         });
-    }, [activeCategory, buffet, items, needle]);
+    }, [buffet, items, needle, selectedCategory]);
 
     const ordered = useMemo(() => {
         if (buffet) return filtered;
@@ -306,22 +255,6 @@ function PosCatalogView({
 
     // تحميل تدريجي للبطاقات: تركيب 322 بطاقة معًا يكلّف أول رسم وتذكيرات لا داعي لها.
     const [visibleCount, setVisibleCount] = useState(PAGE_SIZE);
-    const [toolsOpen, setToolsOpen] = useState(false);
-
-    useEffect(() => {
-        if (!toolsOpen) {
-            return undefined;
-        }
-        const onKey = (event: KeyboardEvent) => {
-            if (event.key === 'Escape') {
-                setToolsOpen(false);
-            }
-        };
-        window.addEventListener('keydown', onKey);
-        return () => {
-            window.removeEventListener('keydown', onKey);
-        };
-    }, [toolsOpen]);
     const sentinelRef = useRef<HTMLDivElement | null>(null);
 
     // biome-ignore lint/correctness/useExhaustiveDependencies: filter changes intentionally reset the visible page.
@@ -361,7 +294,9 @@ function PosCatalogView({
         if (buffet) {
             return [] as CatalogItem[];
         }
-        return favorites.map((id) => items.find((item) => item.id === id)).filter((item): item is CatalogItem => Boolean(item));
+        return favorites
+            .map((id) => items.find((item) => item.id === id))
+            .filter((item): item is CatalogItem => Boolean(item));
     }, [buffet, favorites, items]);
 
     const pickImage = useCallback((item: CatalogItem) => {
@@ -394,215 +329,169 @@ function PosCatalogView({
                 pinned={favorites.includes(item.id)}
                 canSell={canSell}
                 busy={busy}
-                canManageImages={canManageImages}
+                canManageCatalog={canManageCatalog}
                 imagePending={imagePending}
-                canEditProductPrice={canEditProductPrice}
                 onAdd={onAdd}
                 onToggleFavorite={onToggleFavorite}
                 onPickImage={pickImage}
                 onRemoveImage={onRemoveImage}
-                onEditPrice={setPriceEditTarget}
             />
         );
     }
 
     return (
         <section className="erp-card pos-catalog" aria-labelledby="pos-catalog-title">
-            <h2 id="pos-catalog-title" className="sr-only">
-                الأصناف
-            </h2>
-
-            {!buffet ? (
-                <button
-                    type="button"
-                    className="pos-tools-toggle"
-                    aria-expanded={toolsOpen}
-                    aria-controls="pos-tools-panel"
-                    aria-label="الأصناف المفضلة والأكثر مبيعًا"
-                    title="الأصناف المفضلة والأكثر مبيعًا"
-                    onClick={() => {
-                        setToolsOpen((open) => !open);
-                    }}
-                >
-                    <svg
-                        aria-hidden="true"
-                        viewBox="0 0 24 24"
-                        width="20"
-                        height="20"
-                        fill="none"
-                        stroke="currentColor"
-                        strokeWidth="1.8"
-                        strokeLinecap="round"
-                        strokeLinejoin="round"
-                    >
-                        <path d="M4 6h16M7 12h10M10 18h4" />
-                    </svg>
-                </button>
-            ) : null}
-            {toolsOpen && !buffet ? (
-                <>
-                    <button
-                        type="button"
-                        className="pos-tools-scrim"
-                        aria-label="إغلاق أدوات الكتالوج"
-                        onClick={() => {
-                            setToolsOpen(false);
-                        }}
-                    />
-                    <div className="pos-tools-panel" id="pos-tools-panel" role="dialog" aria-modal="false" aria-label="أدوات الكتالوج">
-                        <header className="pos-tools-panel__head">
-                            <strong className="pos-tools-panel__title">الكتالوج</strong>
-                            <Badge variant="info">{intOf(filtered.length)} صنف</Badge>
-                            <button
-                                type="button"
-                                className="pos-tools-close"
-                                aria-label="إغلاق"
-                                onClick={() => {
-                                    setToolsOpen(false);
-                                }}
-                            >
-                                ×
-                            </button>
-                        </header>
-
-                        {favoriteItems.length ? (
-                            <div className="pos-tools-group" role="group" aria-label="الأصناف المفضلة">
-                                <span className="pos-tools-group__label">المفضلة</span>
-                                <div className="pos-tools-quick">
-                                    {favoriteItems.map((item) => (
-                                        <button
-                                            key={`fav-${String(item.id)}`}
-                                            type="button"
-                                            className="pos-favorite"
-                                            aria-label={`إضافة ${item.name} إلى السلة من المفضلة`}
-                                            disabled={!canSell || busy}
-                                            onClick={() => {
-                                                onAdd(item);
-                                            }}
-                                        >
-                                            {item.imageUrl ? (
-                                                <img
-                                                    className="pos-favorite__thumb"
-                                                    src={item.imageUrl}
-                                                    alt=""
-                                                    loading="lazy"
-                                                    decoding="async"
-                                                    onError={(event) => {
-                                                        event.currentTarget.style.visibility = 'hidden';
-                                                    }}
-                                                />
-                                            ) : null}
-                                            <span className="pos-favorite__copy">
-                                                <strong>{item.name}</strong>
-                                                <small>{moneyText(item.price)}</small>
-                                            </span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
+            <div className="pos-catalog__toolbar">
+                <div className="pos-catalog__head">
+                    <h2 id="pos-catalog-title" className="erp-card__title">
+                        {buffet ? 'فئات البوفيه' : 'الأصناف'} <Badge variant="info">{intOf(filtered.length)}</Badge>
+                        {buffet ? (
+                            <Badge variant="info" className="ms-xs">
+                                بوفيه مفتوح
+                            </Badge>
                         ) : null}
-
-                        {topSellers.length ? (
-                            <div className="pos-tools-group" role="group" aria-label="الأكثر مبيعًا">
-                                <span className="pos-tools-group__label">الأكثر مبيعًا</span>
-                                <div className="pos-tools-quick">
-                                    {topSellers.map((item) => (
-                                        <button
-                                            key={`best-${String(item.id)}`}
-                                            type="button"
-                                            className="pos-favorite pos-favorite--best"
-                                            aria-label={`إضافة ${item.name} إلى السلة من الأكثر مبيعًا`}
-                                            disabled={!canSell || busy}
-                                            onClick={() => {
-                                                onAdd(item);
-                                            }}
-                                        >
-                                            {item.imageUrl ? (
-                                                <img
-                                                    className="pos-favorite__thumb"
-                                                    src={item.imageUrl}
-                                                    alt=""
-                                                    loading="lazy"
-                                                    decoding="async"
-                                                    onError={(event) => {
-                                                        event.currentTarget.style.visibility = 'hidden';
-                                                    }}
-                                                />
-                                            ) : null}
-                                            <span className="pos-favorite__copy">
-                                                <strong>{item.name}</strong>
-                                                <small>
-                                                    {moneyText(item.price)} · {qtyText(soldQty(item, sales))} مبيعًا
-                                                </small>
-                                            </span>
-                                        </button>
-                                    ))}
-                                </div>
-                            </div>
-                        ) : null}
-                    </div>
-                </>
-            ) : null}
-
-            {buffet ? (
-                <div className="pos-catalog__toolbar">
-                    <div className="pos-catalog__head">
-                        <span className="erp-card__title">فئات البوفيه</span>
-                        <Badge variant="info">بوفيه مفتوح</Badge>
-                    </div>
-                    <SearchInput
-                        inputRef={searchInputRef}
-                        label="بحث الفئات"
-                        placeholder="اسم فئة البوفيه... [F2]"
-                        value={query}
-                        onChange={onQuery}
-                        inputMode="none"
-                        autoComplete="off"
-                        enterKeyHint="enter"
-                        className="pos-search"
-                        onKeyDown={(event) => {
-                            if (event.key === 'Enter') {
-                                event.preventDefault();
-                                onBarcodeEnter();
-                            }
-                        }}
-                    />
+                    </h2>
+                    <p className="text-body-sm text-muted">
+                        {buffet
+                            ? 'اختر فئة لإضافة فرد'
+                            : hasSales
+                              ? 'المفضلة ثم الأكثر مبيعًا — واختر فئة للتصفية'
+                              : 'اضغط الصنف أو امسح الباركود ثم Enter'}
+                    </p>
                 </div>
-            ) : null}
-            {/* البحث العادي انتقل إلى شريط الرأس (يوفّر صفًا كاملًا للمنيو) — 2026-11-14 */}
 
-            {categories.length && !buffet && showCategories ? (
-                <div className="pos-categories" role="group" aria-label="الفئات">
-                    <button
-                        type="button"
-                        className={`pos-category${selectedCategory ? '' : ' is-active'}`}
-                        aria-pressed={!selectedCategory}
-                        onClick={() => onCategory('')}
-                    >
-                        الكل
-                        <span className="pos-category__count" aria-hidden="true">
-                            {intOf(items.length)}
-                        </span>
-                    </button>
-                    {categories.map((category) => (
+                <SearchInput
+                    inputRef={searchInputRef}
+                    label={buffet ? 'بحث الفئات' : 'بحث الأصناف'}
+                    placeholder={buffet ? 'اسم فئة البوفيه' : 'اسم الصنف أو الباركود... [F2]'}
+                    value={query}
+                    onChange={onQuery}
+                    autoComplete="off"
+                    inputMode={buffet ? undefined : 'none'}
+                    onKeyDown={(event) => {
+                        if (event.key === 'Enter') {
+                            event.preventDefault();
+                            onBarcodeEnter();
+                        }
+                    }}
+                />
+
+                {!buffet && categories.length ? (
+                    <fieldset className="pos-categories m-0 min-w-0 border-0 p-0" aria-label="تصنيف الأصناف">
                         <button
-                            key={category.name}
                             type="button"
-                            className={`pos-category${selectedCategory === category.name ? ' is-active' : ''}`}
-                            aria-pressed={selectedCategory === category.name}
-                            onClick={() => onCategory(category.name)}
+                            className={`pos-category${selectedCategory ? '' : ' is-active'}`}
+                            aria-pressed={!selectedCategory}
+                            onClick={() => {
+                                onCategory('');
+                            }}
                         >
-                            {category.name}
+                            الكل
                             <span className="pos-category__count" aria-hidden="true">
-                                {intOf(category.count)}
+                                {intOf(items.length)}
                             </span>
                         </button>
-                    ))}
-                </div>
-            ) : null}
+                        {categories.map((category) => (
+                            <button
+                                key={category.name}
+                                type="button"
+                                className={`pos-category${selectedCategory === category.name ? ' is-active' : ''}`}
+                                aria-pressed={selectedCategory === category.name}
+                                onClick={() => {
+                                    onCategory(category.name);
+                                }}
+                            >
+                                {category.name}
+                                <span className="pos-category__count" aria-hidden="true">
+                                    {intOf(category.count)}
+                                </span>
+                            </button>
+                        ))}
+                    </fieldset>
+                ) : null}
+            </div>
 
             <div className="erp-card__body pos-catalog__body">
                 {buffet ? <BuffetLiveStrip live={buffetLive} /> : null}
+
+                {!buffet && favoriteItems.length ? (
+                    <fieldset className="pos-favorites m-0 min-w-0 border-0 p-0" aria-label="الأصناف المفضلة">
+                        <span className="pos-favorites__label">المفضلة</span>
+                        <div className="pos-favorites__list">
+                            {favoriteItems.map((item) => (
+                                <button
+                                    key={item.id}
+                                    type="button"
+                                    className="pos-favorite"
+                                    aria-label={`إضافة ${item.name} إلى السلة من المفضلة`}
+                                    disabled={!canSell || busy}
+                                    onClick={() => {
+                                        onAdd(item);
+                                    }}
+                                >
+                                    {item.imageUrl ? (
+                                        <img
+                                            className="pos-favorite__thumb"
+                                            src={item.imageUrl}
+                                            alt=""
+                                            loading="lazy"
+                                            decoding="async"
+                                            onError={(event) => {
+                                                event.currentTarget.style.visibility = 'hidden';
+                                            }}
+                                        />
+                                    ) : null}
+                                    <span className="pos-favorite__copy">
+                                        <strong>{item.name}</strong>
+                                        <small>{moneyText(item.price)}</small>
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                    </fieldset>
+                ) : null}
+
+                {topSellers.length ? (
+                    <fieldset
+                        className="pos-favorites pos-favorites--best m-0 min-w-0 border-0 p-0"
+                        aria-label="الأكثر مبيعًا"
+                    >
+                        <span className="pos-favorites__label">الأكثر مبيعًا</span>
+                        <div className="pos-favorites__list">
+                            {topSellers.map((item) => (
+                                <button
+                                    key={`best-${item.id}`}
+                                    type="button"
+                                    className="pos-favorite pos-favorite--best"
+                                    aria-label={`إضافة ${item.name} إلى السلة من الأكثر مبيعًا`}
+                                    disabled={!canSell || busy}
+                                    onClick={() => {
+                                        onAdd(item);
+                                    }}
+                                >
+                                    {item.imageUrl ? (
+                                        <img
+                                            className="pos-favorite__thumb"
+                                            src={item.imageUrl}
+                                            alt=""
+                                            loading="lazy"
+                                            decoding="async"
+                                            onError={(event) => {
+                                                event.currentTarget.style.visibility = 'hidden';
+                                            }}
+                                        />
+                                    ) : null}
+                                    <span className="pos-favorite__copy">
+                                        <strong>{item.name}</strong>
+                                        <small>
+                                            {moneyText(item.price)} · {qtyText(soldQty(item, sales))} مبيعًا
+                                        </small>
+                                    </span>
+                                </button>
+                            ))}
+                        </div>
+                    </fieldset>
+                ) : null}
 
                 {filtered.length === 0 ? (
                     <p className="text-body-sm text-muted" role="status">
@@ -611,11 +500,13 @@ function PosCatalogView({
                 ) : (
                     <div className={`pos-grid${buffet ? ' pos-grid--people' : ''}`}>
                         {ordered.slice(0, visibleCount).map(renderItem)}
-                        {visibleCount < ordered.length ? <div ref={sentinelRef} className="pos-grid__sentinel" aria-hidden="true" /> : null}
+                        {visibleCount < ordered.length ? (
+                            <div ref={sentinelRef} className="pos-grid__sentinel" aria-hidden="true" />
+                        ) : null}
                     </div>
                 )}
 
-                {canManageImages && !buffet ? (
+                {canManageCatalog && !buffet ? (
                     <input
                         ref={fileRef}
                         type="file"
@@ -633,16 +524,18 @@ function PosCatalogView({
                     />
                 ) : null}
 
-                {heldOrders.length > 0 || heldError ? (
-                    <section className="pos-held" aria-labelledby="pos-held-title">
-                        <h3 id="pos-held-title" className="pos-held__title">
-                            الطلبات المعلقة <Badge variant="info">{heldOrders.length}</Badge>
-                        </h3>
-                        {heldError ? (
-                            <p className="text-body-sm text-danger" role="alert">
-                                {heldError}
-                            </p>
-                        ) : null}
+                <section className="pos-held" aria-labelledby="pos-held-title">
+                    <h3 id="pos-held-title" className="pos-held__title">
+                        الطلبات المعلقة <Badge variant="info">{heldOrders.length}</Badge>
+                    </h3>
+                    {heldError ? (
+                        <p className="text-body-sm text-danger" role="alert">
+                            {heldError}
+                        </p>
+                    ) : null}
+                    {heldOrders.length === 0 ? (
+                        <p className="text-body-sm text-muted">لا توجد طلبات معلقة.</p>
+                    ) : (
                         <ul className="pos-held__list">
                             {heldOrders.map((order) => (
                                 <li key={order.id} className="pos-held__row">
@@ -677,18 +570,9 @@ function PosCatalogView({
                                 </li>
                             ))}
                         </ul>
-                    </section>
-                ) : null}
+                    )}
+                </section>
             </div>
-            {!buffet ? (
-                <CatalogPriceEdit
-                    product={priceEditTarget}
-                    onClose={() => {
-                        setPriceEditTarget(null);
-                    }}
-                    onSaved={onProductPriceSaved}
-                />
-            ) : null}
         </section>
     );
 }

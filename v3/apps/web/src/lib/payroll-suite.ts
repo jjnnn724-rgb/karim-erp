@@ -128,7 +128,12 @@ export async function fetchAdvances(signal?: AbortSignal): Promise<PayrollAdvanc
 }
 
 export async function fetchAdjustments(signal?: AbortSignal): Promise<PayrollAdjustment[]> {
-    return fetchJson(entityRowsSchema(adjustmentSchema), listPath(ADJUSTMENTS), getAccessToken(), signal ? { signal } : {});
+    return fetchJson(
+        entityRowsSchema(adjustmentSchema),
+        listPath(ADJUSTMENTS),
+        getAccessToken(),
+        signal ? { signal } : {},
+    );
 }
 
 export async function fetchContracts(signal?: AbortSignal): Promise<PayrollContract[]> {
@@ -136,7 +141,12 @@ export async function fetchContracts(signal?: AbortSignal): Promise<PayrollContr
 }
 
 export async function fetchEvaluations(signal?: AbortSignal): Promise<PayrollEvaluation[]> {
-    return fetchJson(entityRowsSchema(evaluationSchema), listPath(EVALUATIONS), getAccessToken(), signal ? { signal } : {});
+    return fetchJson(
+        entityRowsSchema(evaluationSchema),
+        listPath(EVALUATIONS),
+        getAccessToken(),
+        signal ? { signal } : {},
+    );
 }
 
 export interface AdvanceInput {

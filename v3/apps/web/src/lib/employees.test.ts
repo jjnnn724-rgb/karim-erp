@@ -73,7 +73,19 @@ describe('دليل الموظفين — الصفّ والحالة', () => {
             departments,
         );
         expect(Object.keys(parsed).sort()).toEqual(
-            ['code', 'dept', 'deptCode', 'deptResolved', 'id', 'name', 'phone', 'position', 'status', 'statusKnown', 'statusLabel'].sort(),
+            [
+                'code',
+                'dept',
+                'deptCode',
+                'deptResolved',
+                'id',
+                'name',
+                'phone',
+                'position',
+                'status',
+                'statusKnown',
+                'statusLabel',
+            ].sort(),
         );
     });
 });

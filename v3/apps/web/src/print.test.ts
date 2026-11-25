@@ -116,7 +116,9 @@ describe('print.css — هوية المستند المنقولة من V2', () =>
     });
 
     it('تذييل واحد ثابت في آخر المستند لا مكرر لكل صفحة', () => {
-        const runner = blocksMatching(/\.erp-print-runner\s*,?\s*$/).find((block) => /justify-content:\s*space-between/.test(block.body));
+        const runner = blocksMatching(/\.erp-print-runner\s*,?\s*$/).find((block) =>
+            /justify-content:\s*space-between/.test(block.body),
+        );
         expect(runner).toBeDefined();
         expect(runner?.body).toMatch(/position:\s*static/);
         expect(runner?.body).toMatch(/break-inside:\s*avoid/);

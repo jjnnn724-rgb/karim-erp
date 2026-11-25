@@ -23,18 +23,18 @@ export const V3_SCREENS = [
     'dispatch',
     'warehouse',
     'warehouse-gov',
+    'shelves',
     'wh-returns',
     'wh-prs',
     'dept-transfers',
     'employees',
-    'employee-card',
     'hr-departments',
     'users',
     'branches',
     'permissions',
     'veg-requests',
+    'weight',
     'recipes',
-    'buffet',
     'goods-scan',
     'attendance',
     'leaves',
@@ -43,6 +43,7 @@ export const V3_SCREENS = [
     'roster',
     'sessions',
     'whatsapp',
+    'briefing',
     'settings',
     'executive',
     'hr-dashboard',
@@ -52,67 +53,45 @@ export const V3_SCREENS = [
     'kitchen',
     'menu-board',
     'warehouse-dashboard',
+    'accountant-dashboard',
     'dept-head-dashboard',
     'cost-analysis',
     'cost-center',
     'inventory-inquiry',
+    'inventory-inquiry-pro',
     'pnl',
     'cfo',
-    'dept-cost',
     'monthly-comparison',
+    'reports',
     'vat-return',
+    'financial-compliance',
     'cashier-sales',
     'cashier-monitor',
     'pos-entry',
-    'pos-reports',
     'sales-analyzer',
+    'sales-inquiry',
     'received-analyzer',
     'wh-vs-pos',
     'yarasoft',
-    'command-center',
-    'bank-rec',
-    'compliance-center',
-    'balance-sheet',
-    'cash-flow',
-    'ext-sales',
-    'punch-control',
     'item-prices',
-    // شاشات WIP مسجّلة بمساراتها واختباراتها — تُفتح برابط مباشر حتى تُعتمد
-    // في القوائم والأدوار بقرار المالك (لا تغيير في صلاحيات اليوم).
-    'shelves',
-    'weight',
-    'briefing',
-    'reports',
-    'sales-inquiry',
-    'inventory-inquiry-pro',
-    'accountant-dashboard',
-    'financial-compliance',
 ] as const;
 export type V3Screen = (typeof V3_SCREENS)[number];
 
-/**
- * شاشات مفعّلة ومسجّلة خارج القائمة الجانبية — تُفتح من أزرار داخل الشاشات
- * الأم، لا من السايدبار (تنظيف 2026-11-20 «النظام الأنظف»).
- * حاليًا: `warehouse-gov` زر داخل صفحة المخزن، و`employee-card` بطاقة الموظف
- * الكاملة تُفتح من بطاقات شاشة الموظفين (2026-11-21).
- *
- * شاشات WIP (2026-11-22): `shelves`/`weight`/`briefing`/`reports`/
- * `sales-inquiry`/`inventory-inquiry-pro`/`accountant-dashboard`/
- * `financial-compliance` مسجّلة بمساراتها لكنها خارج السايدبار حتى يُعتمد
- * ظهورها وقواعدها في `role-menus` بقرار المالك.
- */
-export const OFF_NAV_SCREENS = [
-    'warehouse-gov',
-    'employee-card',
-    'shelves',
-    'weight',
-    'briefing',
-    'reports',
-    'sales-inquiry',
-    'inventory-inquiry-pro',
-    'accountant-dashboard',
-    'financial-compliance',
-] as const;
+/** Utility routes share the rollout gate of their corresponding full feature. */
+export const V3_UTILITY_SCREEN_ALIASES = {
+    cashier: 'pos-entry',
+    integrations: 'oracle-data',
+} as const satisfies Record<string, V3Screen>;
+
+export function featureScreenForRoute(routeKey: string): string {
+    if (routeKey === 'cashier') return V3_UTILITY_SCREEN_ALIASES.cashier;
+    if (routeKey === 'integrations') return V3_UTILITY_SCREEN_ALIASES.integrations;
+    return routeKey;
+}
+
+export function isRouteScreenEnabled(routeKey: string, screens: ReadonlySet<string>): boolean {
+    return screens.has(featureScreenForRoute(routeKey));
+}
 
 export const LEGACY_APP_URL = '/app/v2.html?live=1';
 

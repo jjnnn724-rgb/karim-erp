@@ -96,7 +96,9 @@ describe('SignaturePad — توقيع باسم الحساب كما في V2', () 
                 return true;
             },
         });
-        vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(context as unknown as CanvasRenderingContext2D);
+        vi.spyOn(HTMLCanvasElement.prototype, 'getContext').mockReturnValue(
+            context as unknown as CanvasRenderingContext2D,
+        );
         vi.spyOn(HTMLCanvasElement.prototype, 'toDataURL').mockReturnValue(SIGNATURE);
         const styleSpy = vi.spyOn(window, 'getComputedStyle').mockImplementation(
             () =>

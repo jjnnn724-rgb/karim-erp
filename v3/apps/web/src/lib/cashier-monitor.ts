@@ -110,7 +110,12 @@ export async function fetchMonitorOrders(query: MonitorOrdersQuery, signal?: Abo
     }
     params.set('limit', String(query.limit ?? 50));
     params.set('offset', String(query.offset ?? 0));
-    return fetchJson(monitorOrdersSchema, `/api/cashier-monitor/orders?${params.toString()}`, getAccessToken(), signal ? { signal } : {});
+    return fetchJson(
+        monitorOrdersSchema,
+        `/api/cashier-monitor/orders?${params.toString()}`,
+        getAccessToken(),
+        signal ? { signal } : {},
+    );
 }
 
 export function monitorCashierLabel(row: MonitorCashier): string {

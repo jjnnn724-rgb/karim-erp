@@ -34,7 +34,16 @@ import { Input } from '../../ui/Input';
 import { Select } from '../../ui/Select';
 import { Textarea } from '../../ui/Textarea';
 import { useToast } from '../../ui/Toast';
-import { FieldGrid, formatNumber, formatStamp, QueryBoundary, ReadOnlyBadge, SaveBar, SectionCard, useDraftForm } from './shared';
+import {
+    FieldGrid,
+    formatNumber,
+    formatStamp,
+    QueryBoundary,
+    ReadOnlyBadge,
+    SaveBar,
+    SectionCard,
+    useDraftForm,
+} from './shared';
 
 interface ZatcaForm {
     seller_name: string;
@@ -121,7 +130,12 @@ function statsChips(stats: ZatcaQueueStats) {
         { key: 'reported', label: 'مُبلّغة', value: stats.reported, tone: 'success' as const },
         { key: 'failed', label: 'فاشلة', value: stats.failed, tone: 'danger' as const },
         { key: 'dead_letter', label: 'فشل نهائي', value: stats.dead_letter, tone: 'danger' as const },
-        { key: 'skipped_cancelled', label: 'متجاوزة (ملغاة)', value: stats.skipped_cancelled, tone: 'neutral' as const },
+        {
+            key: 'skipped_cancelled',
+            label: 'متجاوزة (ملغاة)',
+            value: stats.skipped_cancelled,
+            tone: 'neutral' as const,
+        },
         { key: 'skipped_disabled', label: 'متجاوزة (موقوفة)', value: stats.skipped_disabled, tone: 'neutral' as const },
     ];
 }
@@ -369,7 +383,9 @@ export function ZatcaSection() {
             >
                 <div className="flex flex-wrap items-center gap-xs">
                     <Badge variant="info">{config.environment_label || config.environment}</Badge>
-                    <Badge variant={config.has_csid ? 'success' : 'warning'}>{config.has_csid ? 'CSID جاهزة' : 'بلا CSID'}</Badge>
+                    <Badge variant={config.has_csid ? 'success' : 'warning'}>
+                        {config.has_csid ? 'CSID جاهزة' : 'بلا CSID'}
+                    </Badge>
                     <Badge variant={data.engine.poller_in_server ? 'success' : 'warning'}>
                         {data.engine.poller_in_server ? 'الاستطلاع داخل الخادم' : 'الاستطلاع خارج الخادم'}
                     </Badge>
@@ -407,7 +423,13 @@ export function ZatcaSection() {
                             تفعيل الربط
                         </Button>
                     )}
-                    <Button variant="secondary" size="sm" loading={testing} disabled={testing} onClick={() => void runTest()}>
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        loading={testing}
+                        disabled={testing}
+                        onClick={() => void runTest()}
+                    >
                         اختبار الاتصال
                     </Button>
                 </div>
@@ -434,7 +456,10 @@ export function ZatcaSection() {
                 <ol className="flex flex-wrap items-center gap-md border-t border-hairline p-sm text-body-sm">
                     {setupSteps(config).map((step, index) => (
                         <li key={step.key} className="flex items-center gap-xs">
-                            <span aria-hidden="true" className={step.done ? 'text-success-text' : 'text-caption text-faint'}>
+                            <span
+                                aria-hidden="true"
+                                className={step.done ? 'text-success-text' : 'text-caption text-faint'}
+                            >
                                 {step.done ? '✔' : String(index + 1)}
                             </span>
                             <span className={step.done ? 'text-ink' : 'text-muted'}>{step.label}</span>
@@ -596,7 +621,9 @@ export function ZatcaSection() {
                             loading={clearCsid.isPending}
                             disabled={!canWrite}
                             onClick={async () => {
-                                const ok = await confirm('حذف شهادة CSID المحفوظة؟ سيتوقف الإبلاغ للهيئة حتى تُدخل شهادة جديدة.');
+                                const ok = await confirm(
+                                    'حذف شهادة CSID المحفوظة؟ سيتوقف الإبلاغ للهيئة حتى تُدخل شهادة جديدة.',
+                                );
                                 if (ok) {
                                     clearCsid.mutate();
                                 }
@@ -616,7 +643,9 @@ export function ZatcaSection() {
                                 toast({ title: 'احفظ رقمًا ضريبيًا من 15 رقمًا أولًا', variant: 'error' });
                                 return;
                             }
-                            const ok = await confirm(`سيتم تطبيق الرقم الضريبي ${vat} على جميع الأقسام/الفروع. متابعة؟`);
+                            const ok = await confirm(
+                                `سيتم تطبيق الرقم الضريبي ${vat} على جميع الأقسام/الفروع. متابعة؟`,
+                            );
                             if (ok) {
                                 applyVat.mutate();
                             }
@@ -655,7 +684,12 @@ export function ZatcaSection() {
                         <Badge variant={queueQuery.isFetching ? 'warning' : 'success'} dot>
                             {queueQuery.isFetching ? 'جارٍ التحديث' : `متابعة كل ${String(QUEUE_POLL_MS / 1000)} ث`}
                         </Badge>
-                        <Button variant="ghost" size="sm" loading={queueQuery.isFetching} onClick={() => void queueQuery.refetch()}>
+                        <Button
+                            variant="ghost"
+                            size="sm"
+                            loading={queueQuery.isFetching}
+                            onClick={() => void queueQuery.refetch()}
+                        >
                             تحديث
                         </Button>
                         <Button
@@ -702,9 +736,12 @@ export function ZatcaSection() {
                     />
                 </div>
                 {stats.dead_letter > 0 ? (
-                    <div role="alert" className="mx-sm mt-sm rounded-lg border border-danger bg-surface p-sm text-body-sm text-danger-text">
-                        <strong>{formatNumber(stats.dead_letter)} فاتورة فشلت نهائيًا</strong> — لن يعيد النظام إرسالها تلقائيًا؛ عالج السبب
-                        ثم أعد جدولتها.
+                    <div
+                        role="alert"
+                        className="mx-sm mt-sm rounded-lg border border-danger bg-surface p-sm text-body-sm text-danger-text"
+                    >
+                        <strong>{formatNumber(stats.dead_letter)} فاتورة فشلت نهائيًا</strong> — لن يعيد النظام إرسالها
+                        تلقائيًا؛ عالج السبب ثم أعد جدولتها.
                         <div className="mt-xs">
                             <Button
                                 variant="secondary"

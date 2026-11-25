@@ -66,7 +66,10 @@ export function GeneralSection() {
                 pos_official_path: form.pos_official_path.trim(),
             }),
         successTitle: () => SETTINGS_TEXT.saveSuccess,
-        invalidate: [['settings', 'main']],
+        invalidate: [
+            ['settings', 'main'],
+            ['print', 'brand'],
+        ],
         silentError: true,
         onSuccess: () => {
             setError('');
@@ -80,7 +83,10 @@ export function GeneralSection() {
     const logoSave = useWriteMutation<{ logoB64: string | null }, void>({
         mutationFn: (payload) => saveMainSettings(data?.id ?? 'main_settings', payload),
         successTitle: () => 'تم حفظ الشعار',
-        invalidate: [['settings', 'main']],
+        invalidate: [
+            ['settings', 'main'],
+            ['print', 'brand'],
+        ],
         silentError: true,
         onError: (cause) => {
             setError(writeErrorMessage(cause, 'تعذّر حفظ الشعار'));
@@ -184,7 +190,11 @@ export function GeneralSection() {
 
                 <div className="flex flex-wrap items-center gap-md rounded-lg border border-hairline bg-surface-sunken p-sm">
                     {logo ? (
-                        <img src={logo} alt="شعار المنشأة" className="size-20 rounded-lg border border-hairline object-cover" />
+                        <img
+                            src={logo}
+                            alt="شعار المنشأة"
+                            className="size-20 rounded-lg border border-hairline object-cover"
+                        />
                     ) : (
                         <span className="flex size-20 items-center justify-center rounded-lg border border-dashed border-hairline-strong text-caption text-faint">
                             بلا شعار

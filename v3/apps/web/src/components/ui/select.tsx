@@ -82,7 +82,11 @@ function SelectContent({
 
 function SelectLabel({ className, ...props }: React.ComponentProps<typeof SelectPrimitive.Label>) {
     return (
-        <SelectPrimitive.Label data-slot="select-label" className={cn('px-2 py-1.5 text-xs text-muted-foreground', className)} {...props} />
+        <SelectPrimitive.Label
+            data-slot="select-label"
+            className={cn('px-2 py-1.5 text-xs text-muted-foreground', className)}
+            {...props}
+        />
     );
 }
 
@@ -96,7 +100,10 @@ function SelectItem({ className, children, ...props }: React.ComponentProps<type
             )}
             {...props}
         >
-            <span data-slot="select-item-indicator" className="absolute right-2 flex size-3.5 items-center justify-center">
+            <span
+                data-slot="select-item-indicator"
+                className="absolute right-2 flex size-3.5 items-center justify-center"
+            >
                 <SelectPrimitive.ItemIndicator>
                     <CheckIcon className="size-4" />
                 </SelectPrimitive.ItemIndicator>
@@ -128,7 +135,10 @@ function SelectScrollUpButton({ className, ...props }: React.ComponentProps<type
     );
 }
 
-function SelectScrollDownButton({ className, ...props }: React.ComponentProps<typeof SelectPrimitive.ScrollDownButton>) {
+function SelectScrollDownButton({
+    className,
+    ...props
+}: React.ComponentProps<typeof SelectPrimitive.ScrollDownButton>) {
     return (
         <SelectPrimitive.ScrollDownButton
             data-slot="select-scroll-down-button"

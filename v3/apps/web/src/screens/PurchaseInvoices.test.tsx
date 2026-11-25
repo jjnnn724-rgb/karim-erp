@@ -454,7 +454,9 @@ describe('فواتير الشراء — إنشاء وتعديل (نموذج بن
 
     it('خطأ تكرار الفاتورة يظهر بنص V2 ويبقي النموذج مفتوحًا', async () => {
         mocks.role = 'admin';
-        mocks.createPurchaseInvoice.mockRejectedValueOnce(new ApiError(409, 'DUPLICATE_INVOICE', 'فاتورة مشابهة مسجلة بالفعل'));
+        mocks.createPurchaseInvoice.mockRejectedValueOnce(
+            new ApiError(409, 'DUPLICATE_INVOICE', 'فاتورة مشابهة مسجلة بالفعل'),
+        );
         stubFetch();
         renderScreen();
         await waitFor(() => {
@@ -538,7 +540,9 @@ describe('فواتير الشراء — دفعة جزئية', () => {
             amount: '10',
             method: 'cash',
         });
-        expect(await screen.findByText('تم تسجيل دفعة 10.00 SAR على الفاتورة INV-1 — رصيد المورد الآن 42.00 SAR')).toBeTruthy();
+        expect(
+            await screen.findByText('تم تسجيل دفعة 10.00 SAR على الفاتورة INV-1 — رصيد المورد الآن 42.00 SAR'),
+        ).toBeTruthy();
     });
 
     it('يرفض مبلغًا يتجاوز المتبقي قبل الطلب بنص V2', async () => {
@@ -569,9 +573,13 @@ describe('فواتير الشراء — إلغاء void وحذف الكل (أد�
         });
 
         fireEvent.click(screen.getByRole('button', { name: 'حذف الفاتورة INV-1' }));
-        expect(await screen.findByText((content) => content.includes('حذف فاتورة الشراء INV-1 (100.00 SAR)؟'))).toBeTruthy();
         expect(
-            screen.getByText((content) => content.includes('عليها مبلغ مسدد 40.00 SAR — إن كانت دفعة تلقائية ستُعكس مع الإلغاء.')),
+            await screen.findByText((content) => content.includes('حذف فاتورة الشراء INV-1 (100.00 SAR)؟')),
+        ).toBeTruthy();
+        expect(
+            screen.getByText((content) =>
+                content.includes('عليها مبلغ مسدد 40.00 SAR — إن كانت دفعة تلقائية ستُعكس مع الإلغاء.'),
+            ),
         ).toBeTruthy();
         fireEvent.click(screen.getByRole('button', { name: 'تأكيد' }));
 
@@ -587,7 +595,11 @@ describe('فواتير الشراء — إلغاء void وحذف الكل (أد�
     it('رفض الدفعات اليدوية يضيف دليل V2 إلى رسالة الخادم', async () => {
         mocks.role = 'admin';
         mocks.voidPurchaseInvoice.mockRejectedValueOnce(
-            new ApiError(409, 'INVOICE_HAS_PAYMENTS', 'الفاتورة مرتبطة بدفعات موردين يدوية — لا يمكن إلغاؤها قبل عكس الدفعة محاسبيًا'),
+            new ApiError(
+                409,
+                'INVOICE_HAS_PAYMENTS',
+                'الفاتورة مرتبطة بدفعات موردين يدوية — لا يمكن إلغاؤها قبل عكس الدفعة محاسبيًا',
+            ),
         );
         stubFetch();
         renderScreen();
@@ -641,5 +653,24 @@ describe('فواتير الشراء — إلغاء void وحذف الكل (أد�
         await screen.findByText((content) => content.includes('حذف كل فواتير الشراء (4) نهائيًا؟'));
         fireEvent.click(screen.getByRole('button', { name: 'إلغاء' }));
         expect(mocks.clearAllPurchaseInvoices).not.toHaveBeenCalled();
+    });
+
+    it('يُظهر الفترة النشطة ويتيح إزالة مرشّح الترتيب وحده', async () => {
+        stubFetch();
+        renderScreen();
+        await waitFor(() => {
+            expect(dataRows()).toHaveLength(3);
+        });
+
+        const last30 = screen.getByRole('button', { name: 'آخر 30 يومًا' });
+        expect(last30.getAttribute('aria-pressed')).toBe('true');
+
+        fireEvent.click(screen.getByRole('button', { name: 'الإجمالي' }));
+        const chips = screen.getByRole('list', { name: 'المرشّحات النشطة' });
+        expect(within(chips).getByText(/الإجمالي \(تصاعدي\)/)).toBeTruthy();
+
+        fireEvent.click(within(chips).getByRole('button', { name: 'إزالة مرشّح الترتيب' }));
+        expect(within(chips).queryByText(/الإجمالي \(تصاعدي\)/)).toBeNull();
+        expect(within(chips).getByText('الفترة')).toBeTruthy();
     });
 });

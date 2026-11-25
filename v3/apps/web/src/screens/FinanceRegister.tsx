@@ -3,6 +3,7 @@ import { toCents } from '@karim/shared';
 import { useQuery, useQueryClient } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useConfirm } from '../components/ConfirmProvider';
+import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import {
@@ -51,6 +52,7 @@ import {
 } from '../lib/finance-register-write';
 import { formatMoney } from '../lib/format';
 import { isWriteRole, useWriteMutation, writeErrorMessage } from '../lib/write';
+import { PageHeader } from '../ui';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
@@ -213,7 +215,12 @@ function RegisterEditDialog({ open, entity, row, departments, onClose, onSaved }
                 </>
             }
         >
-            <form id="erp-finance-edit-form" ref={formRef} onSubmit={(event) => void submit(event)} className="flex flex-col gap-sm">
+            <form
+                id="erp-finance-edit-form"
+                ref={formRef}
+                onSubmit={(event) => void submit(event)}
+                className="flex flex-col gap-sm"
+            >
                 {entity === 'revenues' ? (
                     <Input
                         label="المصدر"
@@ -242,7 +249,10 @@ function RegisterEditDialog({ open, entity, row, departments, onClose, onSaved }
                     />
                 )}
 
-                <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-finance-edit-dept">
+                <label
+                    className="flex flex-col gap-xxs text-label-md text-ink-secondary"
+                    htmlFor="erp-finance-edit-dept"
+                >
                     القسم
                     <select
                         id="erp-finance-edit-dept"
@@ -264,7 +274,10 @@ function RegisterEditDialog({ open, entity, row, departments, onClose, onSaved }
                 </label>
 
                 {entity === 'expenses' ? (
-                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-finance-edit-category">
+                    <label
+                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
+                        htmlFor="erp-finance-edit-category"
+                    >
                         الفئة
                         <select
                             id="erp-finance-edit-category"
@@ -431,7 +444,12 @@ function RegisterCreateDialog({ open, entity, departments, onClose, onSaved }: R
                 </>
             }
         >
-            <form id="erp-finance-create-form" ref={formRef} onSubmit={(event) => void submit(event)} className="flex flex-col gap-sm">
+            <form
+                id="erp-finance-create-form"
+                ref={formRef}
+                onSubmit={(event) => void submit(event)}
+                className="flex flex-col gap-sm"
+            >
                 {entity === 'revenues' ? (
                     <Input
                         label="المصدر"
@@ -460,7 +478,10 @@ function RegisterCreateDialog({ open, entity, departments, onClose, onSaved }: R
                     />
                 )}
 
-                <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-finance-create-dept">
+                <label
+                    className="flex flex-col gap-xxs text-label-md text-ink-secondary"
+                    htmlFor="erp-finance-create-dept"
+                >
                     القسم
                     <select
                         id="erp-finance-create-dept"
@@ -481,7 +502,10 @@ function RegisterCreateDialog({ open, entity, departments, onClose, onSaved }: R
                 </label>
 
                 {entity === 'expenses' ? (
-                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-finance-create-category">
+                    <label
+                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
+                        htmlFor="erp-finance-create-category"
+                    >
                         الفئة
                         <select
                             id="erp-finance-create-category"
@@ -631,7 +655,9 @@ export function FinanceRegister({ config }: { config: RegisterConfig }) {
                 };
             });
         const searched = query
-            ? mapped.filter((item) => `${item.source} ${item.notes} ${String(item.row.deptId ?? '')}`.toLowerCase().includes(query))
+            ? mapped.filter((item) =>
+                  `${item.source} ${item.notes} ${String(item.row.deptId ?? '')}`.toLowerCase().includes(query),
+              )
             : mapped;
         const sorted = [...searched].sort((a, b) => compareRows(a, b, sort.key));
         return sort.dir === 'asc' ? sorted : sorted.reverse();
@@ -645,7 +671,9 @@ export function FinanceRegister({ config }: { config: RegisterConfig }) {
 
     function toggleSort(key: SortKey) {
         setPage(1);
-        setSort((previous) => (previous.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
+        setSort((previous) =>
+            previous.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' },
+        );
     }
 
     function resetFilters() {
@@ -699,39 +727,38 @@ export function FinanceRegister({ config }: { config: RegisterConfig }) {
 
     return (
         <div className="finance-register-premium flex flex-col gap-md">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        {config.title}{' '}
-                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
-                            {config.english}
-                        </span>
-                    </h1>
-                    <p className="text-body-sm text-muted">{config.subtitle}</p>
-                </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                    {writable ? (
-                        <Button
-                            type="button"
-                            size="sm"
-                            onClick={() => {
-                                setPageError('');
-                                setCreateOpen(true);
-                            }}
-                        >
-                            {config.entity === 'revenues' ? 'إضافة إيراد' : 'إضافة مصروف'}
-                        </Button>
-                    ) : null}
-                    <button
-                        type="button"
-                        onClick={resetFilters}
-                        disabled={!filtered}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
-                    >
-                        عرض الكل
-                    </button>
-                </div>
-            </header>
+            <PageHeader
+                title={config.title}
+                english={config.english}
+                description={config.subtitle}
+                actions={
+                    <>
+                        <div className="flex items-center gap-xs" data-erp-print-hide>
+                            {writable ? (
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={() => {
+                                        setPageError('');
+                                        setCreateOpen(true);
+                                    }}
+                                >
+                                    {config.entity === 'revenues' ? 'إضافة إيراد' : 'إضافة مصروف'}
+                                </Button>
+                            ) : null}
+                            <PrintActions title={config.title} />
+                            <button
+                                type="button"
+                                onClick={resetFilters}
+                                disabled={!filtered}
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                            >
+                                عرض الكل
+                            </button>
+                        </div>
+                    </>
+                }
+            />
 
             {pageError ? (
                 <p role="alert" className="text-body-sm text-danger-text">
@@ -741,7 +768,10 @@ export function FinanceRegister({ config }: { config: RegisterConfig }) {
 
             <Card className="p-sm">
                 <div className="flex flex-wrap items-end gap-sm">
-                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor={`erp-${config.entity}-from`}>
+                    <label
+                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
+                        htmlFor={`erp-${config.entity}-from`}
+                    >
                         من
                         <input
                             id={`erp-${config.entity}-from`}
@@ -756,7 +786,10 @@ export function FinanceRegister({ config }: { config: RegisterConfig }) {
                             dir="ltr"
                         />
                     </label>
-                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor={`erp-${config.entity}-to`}>
+                    <label
+                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
+                        htmlFor={`erp-${config.entity}-to`}
+                    >
                         إلى
                         <input
                             id={`erp-${config.entity}-to`}
@@ -772,7 +805,10 @@ export function FinanceRegister({ config }: { config: RegisterConfig }) {
                             dir="ltr"
                         />
                     </label>
-                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor={`erp-${config.entity}-dept`}>
+                    <label
+                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
+                        htmlFor={`erp-${config.entity}-dept`}
+                    >
                         القسم
                         <select
                             id={`erp-${config.entity}-dept`}
@@ -800,7 +836,9 @@ export function FinanceRegister({ config }: { config: RegisterConfig }) {
                             id={`erp-${config.entity}-search`}
                             type="search"
                             value={search}
-                            placeholder={config.sourceLabel === 'البيان' ? 'البيان أو الملاحظات…' : 'المصدر أو الملاحظات…'}
+                            placeholder={
+                                config.sourceLabel === 'البيان' ? 'البيان أو الملاحظات…' : 'المصدر أو الملاحظات…'
+                            }
                             onChange={(event) => {
                                 setSearch(event.target.value);
                                 setPage(1);
@@ -838,7 +876,10 @@ export function FinanceRegister({ config }: { config: RegisterConfig }) {
                 ) : null}
 
                 {registerQuery.isSuccess && rows.length === 0 ? (
-                    <StateEmpty title="لا سجلات" hint="لا توجد سجلات مطابقة للفترة أو المرشّحات — وسّع الفترة أو «عرض الكل»." />
+                    <StateEmpty
+                        title="لا سجلات"
+                        hint="لا توجد سجلات مطابقة للفترة أو المرشّحات — وسّع الفترة أو «عرض الكل»."
+                    />
                 ) : null}
 
                 {registerQuery.isSuccess && rows.length > 0 ? (
@@ -847,7 +888,11 @@ export function FinanceRegister({ config }: { config: RegisterConfig }) {
                             <table className="w-full border-collapse text-body-md">
                                 <thead>
                                     <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                        <th scope="col" aria-sort={ariaSort('source')} className="px-sm py-xs text-start font-medium">
+                                        <th
+                                            scope="col"
+                                            aria-sort={ariaSort('source')}
+                                            className="px-sm py-xs text-start font-medium"
+                                        >
                                             <button
                                                 type="button"
                                                 onClick={() => {
@@ -860,7 +905,11 @@ export function FinanceRegister({ config }: { config: RegisterConfig }) {
                                         <th scope="col" className="px-sm py-xs text-start font-medium">
                                             القسم
                                         </th>
-                                        <th scope="col" aria-sort={ariaSort('amount')} className="px-sm py-xs text-end font-medium">
+                                        <th
+                                            scope="col"
+                                            aria-sort={ariaSort('amount')}
+                                            className="px-sm py-xs text-end font-medium"
+                                        >
                                             <button
                                                 type="button"
                                                 onClick={() => {
@@ -870,7 +919,11 @@ export function FinanceRegister({ config }: { config: RegisterConfig }) {
                                                 المبلغ
                                             </button>
                                         </th>
-                                        <th scope="col" aria-sort={ariaSort('date')} className="px-sm py-xs text-center font-medium">
+                                        <th
+                                            scope="col"
+                                            aria-sort={ariaSort('date')}
+                                            className="px-sm py-xs text-center font-medium"
+                                        >
                                             <button
                                                 type="button"
                                                 onClick={() => {
@@ -897,18 +950,29 @@ export function FinanceRegister({ config }: { config: RegisterConfig }) {
                                 </thead>
                                 <tbody>
                                     {pageRows.map((item) => (
-                                        <tr key={item.row.id} className="border-b border-hairline hover:bg-surface-hover">
+                                        <tr
+                                            key={item.row.id}
+                                            className="border-b border-hairline hover:bg-surface-hover"
+                                        >
                                             <td className="px-sm py-xxs text-ink">{item.source || '—'}</td>
-                                            <td className="px-sm py-xxs text-body-sm text-ink-secondary">{item.deptName}</td>
+                                            <td className="px-sm py-xxs text-body-sm text-ink-secondary">
+                                                {item.deptName}
+                                            </td>
                                             <td className="erp-numeric px-sm py-xxs text-end text-ink">
                                                 {formatMoney(normalizeAmount(item.row.amount))}
-                                                {currency ? <span className="ms-xs text-caption text-muted">{currency}</span> : null}
+                                                {currency ? (
+                                                    <span className="ms-xs text-caption text-muted">{currency}</span>
+                                                ) : null}
                                             </td>
                                             <td className="erp-numeric px-sm py-xxs text-center text-body-sm text-muted">
                                                 {item.row.date}
                                             </td>
-                                            {config.showKind ? <td className="px-sm py-xxs text-body-sm text-muted">{item.kind}</td> : null}
-                                            <td className="px-sm py-xxs text-body-sm text-muted">{item.notes || '—'}</td>
+                                            {config.showKind ? (
+                                                <td className="px-sm py-xxs text-body-sm text-muted">{item.kind}</td>
+                                            ) : null}
+                                            <td className="px-sm py-xxs text-body-sm text-muted">
+                                                {item.notes || '—'}
+                                            </td>
                                             {writable ? (
                                                 <td className="px-sm py-xxs text-body-sm" data-erp-print-hide>
                                                     {editLocked(item.row) ? null : (

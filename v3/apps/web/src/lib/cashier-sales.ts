@@ -36,7 +36,10 @@ const totalsSchema = z
         avg_day: numLike,
         avg_items: numLike,
         delta: numLike,
-        prev: z.object({ collected: numLike, from: text, to: text, partial: z.unknown().optional() }).passthrough().optional(),
+        prev: z
+            .object({ collected: numLike, from: text, to: text, partial: z.unknown().optional() })
+            .passthrough()
+            .optional(),
     })
     .passthrough();
 

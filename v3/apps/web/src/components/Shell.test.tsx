@@ -1,5 +1,8 @@
 import { describe, expect, it } from 'vitest';
 import {
+    ALL_SCREENS_TITLE,
+    DAILY_KEYS,
+    DAILY_TITLE,
     DEFAULT_NAV_PREFS,
     documentTitle,
     groupForPath,
@@ -15,7 +18,7 @@ import {
     titleForPath,
     writeNavPrefs,
 } from '../lib/navigation';
-import { OFF_NAV_SCREENS, V3_SCREENS } from '../lib/screens';
+import { V3_SCREENS } from '../lib/screens';
 import { NAV_ITEMS } from './Shell';
 
 /**
@@ -42,26 +45,19 @@ describe('التنقّل — سبع مجموعات', () => {
         expect(new Set(NAV_GROUPS.map((group) => group.id)).size).toBe(7);
     });
 
-    it('كل شاشة في مجموعة واحدة بالضبط أو في قائمة «خارج القائمة» (تغطية كاملة)', () => {
+    it('كل شاشة في مجموعة واحدة بالضبط (تغطية كاملة)', () => {
         const grouped = NAV_GROUPS.flatMap((group) => group.keys);
-        const expected = V3_SCREENS.filter((key) => !OFF_NAV_SCREENS.includes(key as (typeof OFF_NAV_SCREENS)[number]));
-        expect(grouped).toHaveLength(expected.length);
+        expect(grouped).toHaveLength(V3_SCREENS.length);
         expect(new Set(grouped).size).toBe(grouped.length);
-        expect([...grouped].sort()).toEqual([...expected].sort());
-        // شاشات خارج القائمة مسجلة فعلًا لكنها تُفتح بأزرار لا بالسايدبار.
-        for (const key of OFF_NAV_SCREENS) {
-            expect(V3_SCREENS).toContain(key);
-            expect(grouped).not.toContain(key);
-        }
+        expect([...grouped].sort()).toEqual([...V3_SCREENS].sort());
     });
 
     it('كتلة NAV_ITEMS تطابق المفاتيح والعناوين', () => {
         // مسارات خدمية خارج مصفوفة التكافؤ (كشك الكاشير ومصدر البيانات):
         // تُعرض في التنقّل لكن لا تقابلها شاشات V2.
         const utilityPaths = new Set(['/cashier', '/integrations']);
-        const expected = V3_SCREENS.filter((key) => !OFF_NAV_SCREENS.includes(key as (typeof OFF_NAV_SCREENS)[number]));
         const parityItems = NAV_ITEMS.filter((item) => !utilityPaths.has(item.to));
-        expect(parityItems).toHaveLength(expected.length);
+        expect(parityItems).toHaveLength(V3_SCREENS.length);
         const groupKeys = new Set(NAV_GROUPS.flatMap((group) => group.keys));
         for (const item of parityItems) {
             const key = item.to.slice(1);
@@ -73,14 +69,9 @@ describe('التنقّل — سبع مجموعات', () => {
         }
     });
 
-    it('كل عنوان في الخريطة يطابق تسمية تنقّل أو الرئيسية أو شاشة خارج القائمة', () => {
+    it('كل عنوان في الخريطة يطابق تسمية تنقّل أو الرئيسية', () => {
         const itemTitles = new Map<string, string>(NAV_ITEMS.map((item) => [item.to, item.label]));
-        const offNavPaths = new Set(OFF_NAV_SCREENS.map((key) => `/${key}`));
         for (const path of Object.keys(NAV_TITLES)) {
-            if (offNavPaths.has(path)) {
-                // شاشة تُفتح بزرًا داخل شاشة أم — عنوانها مطلوب للفتات والوثيقة.
-                continue;
-            }
             const expected = path === '/' ? HOME_TITLE : itemTitles.get(path);
             expect(NAV_TITLES[path]).toBe(expected);
         }
@@ -132,6 +123,34 @@ describe('التنقّل — العنوان والمسار', () => {
         for (const entry of MOBILE_PRIMARY.slice(1)) {
             expect(entry.key).not.toBeNull();
             expect(titleForPath(`/${String(entry.key)}`)).toBeTruthy();
+        }
+    });
+});
+
+describe('التنقّل — شاشاتي اليومية أوّلًا ثم كل الشاشات', () => {
+    it('القائمة اليومية فرعية من الـ64 وبلا تكرار', () => {
+        expect(DAILY_KEYS.length).toBeGreaterThan(4);
+        expect(new Set(DAILY_KEYS).size).toBe(DAILY_KEYS.length);
+        const allKeys = new Set(NAV_GROUPS.flatMap((group) => group.keys));
+        for (const key of DAILY_KEYS) {
+            expect(allKeys.has(key)).toBe(true);
+        }
+    });
+
+    it('اليومية + الباقي = الـ64 بلا تكرار ولا نقص', () => {
+        const grouped = NAV_GROUPS.flatMap((group) => group.keys);
+        const rest = grouped.filter((key) => !DAILY_KEYS.includes(key));
+        const shown = [...DAILY_KEYS, ...rest];
+        expect(shown).toHaveLength(V3_SCREENS.length);
+        expect(new Set(shown).size).toBe(V3_SCREENS.length);
+        expect([...shown].sort()).toEqual([...V3_SCREENS].sort());
+    });
+
+    it('عنوانا القسمين معرّفان ولكل شاشة يومية عنوان', () => {
+        expect(DAILY_TITLE).toBe('شاشاتي اليومية');
+        expect(ALL_SCREENS_TITLE).toBe('كل الشاشات');
+        for (const key of DAILY_KEYS) {
+            expect(titleForPath(`/${key}`)).toBeTruthy();
         }
     });
 });

@@ -189,13 +189,17 @@ describe('فروع المنشأة', () => {
         await waitFor(() => expect(calls.some((call) => call.method === 'POST')).toBe(true));
         const request = calls.find((call) => call.method === 'POST');
         expect(request?.url).toContain('/api/branches');
-        const body = JSON.parse(String(vi.mocked(fetch).mock.calls.find((call) => call[1]?.method === 'POST')?.[1]?.body ?? ''));
+        const body = JSON.parse(
+            String(vi.mocked(fetch).mock.calls.find((call) => call[1]?.method === 'POST')?.[1]?.body ?? ''),
+        );
         expect(body).toMatchObject({ code: 'BR-2', name_ar: 'فرع جديد', currency: 'SAR', timezone: 'Asia/Riyadh' });
     });
 
     it('يخفي عمليات الكتابة عن غير الأدمن ولا يرسل كتابة', async () => {
         authMock.role = 'manager';
-        const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) => json({ ok: true, data: branches }));
+        const fetchMock = vi.fn(async (_input: RequestInfo | URL, _init?: RequestInit) =>
+            json({ ok: true, data: branches }),
+        );
         vi.stubGlobal('fetch', fetchMock);
         renderScreen();
         await screen.findByText('الفرع الرئيسي');
@@ -217,7 +221,9 @@ describe('فروع المنشأة', () => {
                 calls.push({ method, url: String(input) });
                 // فرعان مفعّلان على الخادم: الإيقاف متاح لكليهما، وMAIN وحده معطّل الزر.
                 return json(
-                    method === 'DELETE' ? { ok: true } : { ok: true, data: branches.map((branch) => ({ ...branch, is_active: true })) },
+                    method === 'DELETE'
+                        ? { ok: true }
+                        : { ok: true, data: branches.map((branch) => ({ ...branch, is_active: true })) },
                 );
             }),
         );
@@ -227,7 +233,9 @@ describe('فروع المنشأة', () => {
         expect(stopButtons[0]?.hasAttribute('disabled')).toBe(true);
         fireEvent.click(stopButtons[1]!);
         // يظهر Dialog تأكيد النصّ الموثق ولا يُرسل DELETE قبل التأكيد.
-        expect(await screen.findByText('إيقاف فرع «فرع القاهرة»؟ يُخفى من القوائم، وسجلاته التاريخية تبقى كما هي.')).toBeTruthy();
+        expect(
+            await screen.findByText('إيقاف فرع «فرع القاهرة»؟ يُخفى من القوائم، وسجلاته التاريخية تبقى كما هي.'),
+        ).toBeTruthy();
         expect(calls.some((call) => call.method === 'DELETE')).toBe(false);
     });
 
@@ -238,14 +246,20 @@ describe('فروع المنشأة', () => {
             'fetch',
             vi.fn(async (input: RequestInfo | URL, init?: RequestInit) => {
                 const method = init?.method || 'GET';
-                calls.push({ method, url: String(input), body: init?.body ? JSON.parse(String(init.body)) : undefined });
+                calls.push({
+                    method,
+                    url: String(input),
+                    body: init?.body ? JSON.parse(String(init.body)) : undefined,
+                });
                 return json(method === 'PATCH' ? { ok: true, data: branches[1] } : { ok: true, data: branches });
             }),
         );
         renderScreen();
         await screen.findByText('الفرع الرئيسي');
         fireEvent.click(screen.getAllByRole('button', { name: 'تعديل' })[0]!);
-        fireEvent.change(await screen.findByLabelText(/^الاسم بالعربية/), { target: { value: 'الفرع الرئيسي المعدل' } });
+        fireEvent.change(await screen.findByLabelText(/^الاسم بالعربية/), {
+            target: { value: 'الفرع الرئيسي المعدل' },
+        });
         fireEvent.click(screen.getByRole('button', { name: 'حفظ التعديل' }));
         await waitFor(() => expect(calls.some((call) => call.method === 'PATCH')).toBe(true));
         expect(calls.find((call) => call.method === 'PATCH')?.body).not.toHaveProperty('code');
@@ -267,14 +281,18 @@ describe('فروع المنشأة', () => {
                 const method = init?.method || 'GET';
                 calls.push({ method, url: String(input) });
                 return json(
-                    method === 'DELETE' ? { ok: true } : { ok: true, data: branches.map((branch) => ({ ...branch, is_active: true })) },
+                    method === 'DELETE'
+                        ? { ok: true }
+                        : { ok: true, data: branches.map((branch) => ({ ...branch, is_active: true })) },
                 );
             }),
         );
         renderScreen();
         await screen.findByText('الفرع الرئيسي');
         fireEvent.click(screen.getAllByRole('button', { name: 'إيقاف' })[1]!);
-        expect(await screen.findByText('إيقاف فرع «فرع القاهرة»؟ يُخفى من القوائم، وسجلاته التاريخية تبقى كما هي.')).toBeTruthy();
+        expect(
+            await screen.findByText('إيقاف فرع «فرع القاهرة»؟ يُخفى من القوائم، وسجلاته التاريخية تبقى كما هي.'),
+        ).toBeTruthy();
         expect(calls.some((call) => call.method === 'DELETE')).toBe(false);
         const dialog = screen.getByRole('dialog');
         // زر التأكيد داخل الـ Dialog (الأخير).

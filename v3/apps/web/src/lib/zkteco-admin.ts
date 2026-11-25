@@ -129,7 +129,12 @@ export async function importZkUsers(deviceId: string, options: ZkImportOptions =
     if (department) {
         body.department = department;
     }
-    const result = await writeJson(importSchema, `/api/zkteco/devices/${encodeURIComponent(deviceId)}/import-users`, 'POST', body);
+    const result = await writeJson(
+        importSchema,
+        `/api/zkteco/devices/${encodeURIComponent(deviceId)}/import-users`,
+        'POST',
+        body,
+    );
     return {
         total: Number(result.total ?? 0),
         created: Number(result.created ?? 0),
@@ -271,7 +276,12 @@ export async function fetchZkLogs(options: ZkLogsOptions = {}, signal?: AbortSig
     if (options.unmappedOnly) {
         params.set('unmapped', '1');
     }
-    return fetchJson(z.array(logSchema), `/api/zkteco/logs?${params.toString()}`, getAccessToken(), signal ? { signal } : {});
+    return fetchJson(
+        z.array(logSchema),
+        `/api/zkteco/logs?${params.toString()}`,
+        getAccessToken(),
+        signal ? { signal } : {},
+    );
 }
 
 const toggleSchema = z
@@ -290,9 +300,14 @@ export interface ZkPunchToggleResult {
 }
 
 export async function toggleZkPunch(logId: string, ignore: boolean, reason: string): Promise<ZkPunchToggleResult> {
-    const result = await writeJson(toggleSchema, `/api/zkteco/logs/${encodeURIComponent(logId)}/${ignore ? 'ignore' : 'restore'}`, 'POST', {
-        reason: String(reason ?? '').trim(),
-    });
+    const result = await writeJson(
+        toggleSchema,
+        `/api/zkteco/logs/${encodeURIComponent(logId)}/${ignore ? 'ignore' : 'restore'}`,
+        'POST',
+        {
+            reason: String(reason ?? '').trim(),
+        },
+    );
     return {
         changed: result.changed === true,
         ignored: result.ignored === true,
@@ -372,7 +387,12 @@ export type ZkCoverageRow = z.infer<typeof coverageRowSchema>;
 
 export async function fetchZkCoverage(days: number, signal?: AbortSignal): Promise<ZkCoverage> {
     const bounded = Math.min(90, Math.max(1, Math.round(days) || 7));
-    return fetchJson(coverageSchema, `/api/zkteco/coverage?days=${String(bounded)}`, getAccessToken(), signal ? { signal } : {});
+    return fetchJson(
+        coverageSchema,
+        `/api/zkteco/coverage?days=${String(bounded)}`,
+        getAccessToken(),
+        signal ? { signal } : {},
+    );
 }
 
 // ─── المطابقة (دفتر الجهاز مقابل دفتر النظام) ──────────────────────────────
@@ -420,7 +440,12 @@ export interface ZkRangeQuery {
 
 export async function fetchZkReconciliation(range: ZkRangeQuery, signal?: AbortSignal): Promise<ZkReconciliation> {
     const params = new URLSearchParams({ from: range.from, to: range.to });
-    return fetchJson(reconciliationSchema, `/api/zkteco/reconciliation?${params.toString()}`, getAccessToken(), signal ? { signal } : {});
+    return fetchJson(
+        reconciliationSchema,
+        `/api/zkteco/reconciliation?${params.toString()}`,
+        getAccessToken(),
+        signal ? { signal } : {},
+    );
 }
 
 // ─── مركز التحكم ────────────────────────────────────────────────────────────

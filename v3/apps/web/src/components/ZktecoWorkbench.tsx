@@ -186,7 +186,11 @@ export function ZktecoWorkbench({ devices, running }: ZktecoWorkbenchProps) {
             </div>
 
             {writable && devices.length > 0 ? (
-                <section aria-label="إدارة أجهزة البصمة" className="rounded-lg border border-hairline bg-surface p-sm" data-erp-print-hide>
+                <section
+                    aria-label="إدارة أجهزة البصمة"
+                    className="rounded-lg border border-hairline bg-surface p-sm"
+                    data-erp-print-hide
+                >
                     <h2 className="text-heading-sm text-ink">إدارة الأجهزة</h2>
                     <ul className="mt-xs flex flex-col gap-xs">
                         {devices.map((device) => (

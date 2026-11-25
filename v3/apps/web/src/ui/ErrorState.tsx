@@ -31,7 +31,10 @@ export function ErrorState({
 }: ErrorStateProps) {
     return (
         <div role="alert" className={cn('flex flex-col items-center gap-sm p-xl text-center', className)}>
-            <span className="grid size-11 place-items-center rounded-full bg-danger-soft text-danger-text" aria-hidden="true">
+            <span
+                className="grid size-11 place-items-center rounded-full bg-danger-soft text-danger-text"
+                aria-hidden="true"
+            >
                 {icon ?? <AlertTriangleIcon className="size-5" />}
             </span>
             <div className="flex flex-col gap-xxs">

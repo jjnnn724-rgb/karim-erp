@@ -1,5 +1,5 @@
 import { useQuery } from '@tanstack/react-query';
-import { useEffect, useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useState } from 'react';
 import { useAuthState } from '../lib/auth';
 import {
     approveKitchenAudit,
@@ -28,7 +28,6 @@ import {
     submitKitchenAudit,
     validateKitchenProduction,
 } from '../lib/kitchen-ops';
-import { fetchKitchenOverview } from '../lib/kitchen';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
@@ -36,7 +35,6 @@ import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 import { SignaturePad } from '../ui/SignaturePad';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '../ui/Tabs';
-import { useConfirm } from './ConfirmProvider';
 import { StateEmpty, StateError, StateLoading, TableScroll } from './TableState';
 
 /**
@@ -52,7 +50,8 @@ import { StateEmpty, StateError, StateLoading, TableScroll } from './TableState'
  * الشاشة لا تحسب أرصدة ولا ترحّل شيئًا محليًّا؛ كل رقم يُقرأ من الخادم.
  */
 
-const FIELD_CLASS = 'h-9 w-full min-w-0 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink';
+const FIELD_CLASS =
+    'h-9 w-full min-w-0 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink';
 
 const SECONDARY_BUTTON_CLASS =
     'rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover disabled:opacity-50';
@@ -107,7 +106,6 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
     const signerName = String(auth.user?.name ?? auth.user?.username ?? '').trim();
     const canWrite = canWriteKitchenOps(role);
     const canReview = canReviewKitchenExceptions(role);
-    const confirm = useConfirm();
 
     const [tab, setTab] = useState<TabKey>('receive');
 
@@ -144,13 +142,6 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
         queryFn: ({ signal }) => fetchKitchenDocuments(signal),
         enabled: open && tab === 'documents',
         staleTime: 30_000,
-    });
-
-    const overviewQuery = useQuery({
-        queryKey: ['kitchen', 'overview'],
-        queryFn: ({ signal }) => fetchKitchenOverview(signal),
-        enabled: open && tab === 'audits',
-        staleTime: 20_000,
     });
 
     useEffect(() => {
@@ -228,13 +219,21 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
             setReceiveError('أدخل كمية أكبر من صفر لصنف واحد على الأقل.');
             return;
         }
-        if (lines.some((line) => line.packagingQty != null && (!Number.isFinite(line.packagingQty) || line.packagingQty < 0))) {
+        if (
+            lines.some(
+                (line) => line.packagingQty != null && (!Number.isFinite(line.packagingQty) || line.packagingQty < 0),
+            )
+        ) {
             setReceiveError('عدد الكراتين غير صحيح.');
             return;
         }
-        const over = Object.values(receiveLines).find((line) => Number(line.qty) > 0 && Number(line.qty) > line.available + 0.0001);
+        const over = Object.values(receiveLines).find(
+            (line) => Number(line.qty) > 0 && Number(line.qty) > line.available + 0.0001,
+        );
         if (over) {
-            setReceiveError(`الكمية تتجاوز المتاح في الرئيسي: ${over.name} (المتاح ${formatKitchenQty(over.available)}).`);
+            setReceiveError(
+                `الكمية تتجاوز المتاح في الرئيسي: ${over.name} (المتاح ${formatKitchenQty(over.available)}).`,
+            );
             return;
         }
         setReceiveError('');
@@ -433,7 +432,9 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
             return Number(line.qty) > 0 && required > line.available + 0.0001;
         });
         if (over) {
-            setProductionError(`المكوّن لا يكفي في مخزن المطبخ: ${over.name} (المتاح ${formatKitchenQty(over.available)}).`);
+            setProductionError(
+                `المكوّن لا يكفي في مخزن المطبخ: ${over.name} (المتاح ${formatKitchenQty(over.available)}).`,
+            );
             return;
         }
         if (!check.ok) {
@@ -466,25 +467,6 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
     const audits = auditsQuery.data ?? [];
     const selectedAudit: KitchenAudit | undefined = audits.find((row) => String(row.id) === auditId);
 
-    const autoOpenNewestRef = useRef(false);
-    const autoStartCountingRef = useRef(false);
-
-    // بعد إنشاء جلسة جرد جديدة: افتح الجلسة الأحدث (القائمة مرتبة created_at DESC) وابدأ العدّ تلقائيًا.
-    useEffect(() => {
-        if (!autoOpenNewestRef.current || audits.length === 0) {
-            return;
-        }
-        autoOpenNewestRef.current = false;
-        autoStartCountingRef.current = true;
-        const newest = audits[0];
-        if (!newest) {
-            autoStartCountingRef.current = false;
-            return;
-        }
-        setAuditId(String(newest.id));
-        // eslint-disable-next-line react-hooks/exhaustive-deps
-    }, [auditsQuery.data]);
-
     useEffect(() => {
         if (!selectedAudit) {
             return;
@@ -496,25 +478,13 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
         setCounts(next);
         setSignature(null);
         setAuditError('');
-        setIsCounting(autoStartCountingRef.current && String(selectedAudit.status) === 'draft');
-        autoStartCountingRef.current = false;
+        setIsCounting(false);
     }, [selectedAudit]);
 
-    /** توزيعات خلال فترة الجرد — بنفس التوزيعات الظاهرة في نظرة المطبخ (window 300). */
-    const movements = useMemo(() => {
-        if (!selectedAudit) {
-            return [];
-        }
-        const rows = overviewQuery.data?.distributions ?? [];
-        const start = String(selectedAudit.period_start ?? '').slice(0, 10);
-        const end = String(selectedAudit.period_end ?? '').slice(0, 10);
-        return rows.filter((row) => {
-            const day = String(row.created_at ?? '').slice(0, 10);
-            return (!start || day >= start) && (!end || day <= end);
-        });
-    }, [overviewQuery.data, selectedAudit]);
-
-    const createAuditMutation = useWriteMutation<{ period: KitchenAuditPeriod; start: string; end: string; notes: string }, void>({
+    const createAuditMutation = useWriteMutation<
+        { period: KitchenAuditPeriod; start: string; end: string; notes: string },
+        void
+    >({
         mutationFn: (input) =>
             createKitchenAudit({
                 period: input.period,
@@ -525,7 +495,6 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
         successTitle: 'تم بدء جلسة جرد المطبخ',
         invalidate: [['kitchen', 'audits']],
         onSuccess: () => {
-            autoOpenNewestRef.current = true;
             setCreateOpen(false);
             setNewNotes('');
         },
@@ -544,7 +513,8 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
     });
 
     const submitMutation = useWriteMutation<{ audit: KitchenAudit; signature: string }, void>({
-        mutationFn: (input) => submitKitchenAudit(String(input.audit.id), { signatureData: input.signature, signerName }),
+        mutationFn: (input) =>
+            submitKitchenAudit(String(input.audit.id), { signatureData: input.signature, signerName }),
         successTitle: 'أُرسل جرد المطبخ للمراجعة',
         invalidate: [['kitchen', 'audits']],
         silentError: true,
@@ -556,7 +526,8 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
     });
 
     const approveMutation = useWriteMutation<{ audit: KitchenAudit; signature: string }, void>({
-        mutationFn: (input) => approveKitchenAudit(String(input.audit.id), { signatureData: input.signature, signerName }),
+        mutationFn: (input) =>
+            approveKitchenAudit(String(input.audit.id), { signatureData: input.signature, signerName }),
         successTitle: 'اعتُمِد جرد المطبخ ورُحّلت الفروق',
         invalidate: [
             ['kitchen', 'audits'],
@@ -681,14 +652,22 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                                                 const key = String(item.inventory_id);
                                                 const line = receiveLines[key];
                                                 return (
-                                                    <tr key={key} className="border-b border-hairline hover:bg-surface-hover">
+                                                    <tr
+                                                        key={key}
+                                                        className="border-b border-hairline hover:bg-surface-hover"
+                                                    >
                                                         <td className="px-sm py-xxs text-ink">
-                                                            <span className="block break-words">{String(item.name ?? `#${key}`)}</span>
+                                                            <span className="block break-words">
+                                                                {String(item.name ?? `#${key}`)}
+                                                            </span>
                                                             <span className="block text-caption text-faint" dir="ltr">
                                                                 {String(item.unit ?? '')}
                                                             </span>
                                                         </td>
-                                                        <td className="erp-numeric px-sm py-xxs text-end text-body-sm" dir="ltr">
+                                                        <td
+                                                            className="erp-numeric px-sm py-xxs text-end text-body-sm"
+                                                            dir="ltr"
+                                                        >
                                                             {formatKitchenQty(Number(item.available ?? 0))}
                                                         </td>
                                                         <td className="px-sm py-xxs">
@@ -759,8 +738,6 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                                     size="sm"
                                     loading={receiveMutation.isPending}
                                     onClick={submitReceive}
-                                    disabled={!canWrite}
-                                    title={canWrite ? undefined : 'الاستلام متاح للمخزن والمطبخ والإدارة فقط'}
                                 >
                                     استلام في مخزن المطبخ
                                 </Button>
@@ -825,7 +802,13 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                                         label: `${String(row.name ?? '')} — متاح ${formatKitchenQty(Number(row.available ?? 0))}`,
                                     }))}
                                 />
-                                <Button type="button" variant="secondary" size="sm" onClick={addMaterial} disabled={!materialPick}>
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={addMaterial}
+                                    disabled={!materialPick}
+                                >
                                     إضافة
                                 </Button>
                             </div>
@@ -835,7 +818,10 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                         ) : (
                             <ul className="mt-sm flex list-none flex-col gap-xs">
                                 {draft.materials.map((line) => (
-                                    <li key={line.key} className="grid items-end gap-xs sm:grid-cols-[1fr_5rem_5rem_auto]">
+                                    <li
+                                        key={line.key}
+                                        className="grid items-end gap-xs sm:grid-cols-[1fr_5rem_5rem_auto]"
+                                    >
                                         <span className="text-body-sm text-ink">
                                             {line.name}
                                             <span className="ms-xs text-caption text-faint" dir="ltr">
@@ -850,7 +836,9 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                                             onChange={(event) =>
                                                 updateDraft({
                                                     materials: draft.materials.map((row) =>
-                                                        row.key === line.key ? { ...row, qty: event.target.value } : row,
+                                                        row.key === line.key
+                                                            ? { ...row, qty: event.target.value }
+                                                            : row,
                                                     ),
                                                 })
                                             }
@@ -863,7 +851,9 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                                             onChange={(event) =>
                                                 updateDraft({
                                                     materials: draft.materials.map((row) =>
-                                                        row.key === line.key ? { ...row, waste: event.target.value } : row,
+                                                        row.key === line.key
+                                                            ? { ...row, waste: event.target.value }
+                                                            : row,
                                                     ),
                                                 })
                                             }
@@ -872,7 +862,9 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                                             type="button"
                                             className={DANGER_BUTTON_CLASS}
                                             onClick={() =>
-                                                updateDraft({ materials: draft.materials.filter((row) => row.key !== line.key) })
+                                                updateDraft({
+                                                    materials: draft.materials.filter((row) => row.key !== line.key),
+                                                })
                                             }
                                         >
                                             حذف
@@ -893,20 +885,31 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                                     value={distributionPick}
                                     onValueChange={setDistributionPick}
                                     options={[
-                                        ...KITCHEN_CHANNELS.map((row) => ({ value: `channel:${row.code}`, label: row.label })),
+                                        ...KITCHEN_CHANNELS.map((row) => ({
+                                            value: `channel:${row.code}`,
+                                            label: row.label,
+                                        })),
                                         ...destinations.map((row) => ({
                                             value: `department:${String(row.id)}`,
                                             label: `${String(row.icon ?? '')} ${String(row.name ?? '')}`.trim(),
                                         })),
                                     ]}
                                 />
-                                <Button type="button" variant="secondary" size="sm" onClick={addDistribution} disabled={!distributionPick}>
+                                <Button
+                                    type="button"
+                                    variant="secondary"
+                                    size="sm"
+                                    onClick={addDistribution}
+                                    disabled={!distributionPick}
+                                >
                                     إضافة
                                 </Button>
                             </div>
                         </div>
                         {draft.distributions.length === 0 ? (
-                            <p className="mt-sm text-body-sm text-muted">لم تُضف جهات بعد — الزر أدناه يوزّع كل الكمية.</p>
+                            <p className="mt-sm text-body-sm text-muted">
+                                لم تُضف جهات بعد — الزر أدناه يوزّع كل الكمية.
+                            </p>
                         ) : (
                             <ul className="mt-sm flex list-none flex-col gap-xs">
                                 {draft.distributions.map((line) => (
@@ -925,7 +928,9 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                                             onChange={(event) =>
                                                 updateDraft({
                                                     distributions: draft.distributions.map((row) =>
-                                                        row.key === line.key ? { ...row, qty: event.target.value } : row,
+                                                        row.key === line.key
+                                                            ? { ...row, qty: event.target.value }
+                                                            : row,
                                                     ),
                                                 })
                                             }
@@ -935,7 +940,9 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                                             className={DANGER_BUTTON_CLASS}
                                             onClick={() =>
                                                 updateDraft({
-                                                    distributions: draft.distributions.filter((row) => row.key !== line.key),
+                                                    distributions: draft.distributions.filter(
+                                                        (row) => row.key !== line.key,
+                                                    ),
                                                 })
                                             }
                                         >
@@ -967,7 +974,10 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                     </label>
 
                     {productionError ? (
-                        <p role="alert" className="rounded-md border border-danger/30 bg-danger-soft p-sm text-body-sm text-danger-text">
+                        <p
+                            role="alert"
+                            className="rounded-md border border-danger/30 bg-danger-soft p-sm text-body-sm text-danger-text"
+                        >
                             {productionError}
                         </p>
                     ) : null}
@@ -1001,7 +1011,12 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                                 <p className="text-body-sm text-muted">
                                     الجلسة تُبنى من أرصدة مخزن المطبخ، والاعتماد يترحّل الفروق إلى الدفتر.
                                 </p>
-                                <Button type="button" size="sm" onClick={() => setCreateOpen(true)} disabled={!canWrite}>
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    onClick={() => setCreateOpen(true)}
+                                    disabled={!canWrite}
+                                >
                                     بدء جلسة جرد
                                 </Button>
                             </div>
@@ -1015,10 +1030,16 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                                                 <th scope="col" className="px-sm py-xs text-start font-medium">
                                                     الجلسة
                                                 </th>
-                                                <th scope="col" className="hidden px-sm py-xs text-start font-medium sm:table-cell">
+                                                <th
+                                                    scope="col"
+                                                    className="hidden px-sm py-xs text-start font-medium sm:table-cell"
+                                                >
                                                     الفترة
                                                 </th>
-                                                <th scope="col" className="hidden px-sm py-xs text-end font-medium sm:table-cell">
+                                                <th
+                                                    scope="col"
+                                                    className="hidden px-sm py-xs text-end font-medium sm:table-cell"
+                                                >
                                                     البنود
                                                 </th>
                                                 <th scope="col" className="px-sm py-xs text-start font-medium">
@@ -1036,27 +1057,40 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                                                 const to = String(audit.period_end ?? '').slice(0, 10) || '—';
                                                 // الهاتف: MM-DD يكفي داخل عمود ضيق؛ السنة الكاملة على الشاشات الأوسع.
                                                 const shortRange =
-                                                    from.length === 10 && to.length === 10 && from.slice(0, 4) === to.slice(0, 4)
+                                                    from.length === 10 &&
+                                                    to.length === 10 &&
+                                                    from.slice(0, 4) === to.slice(0, 4)
                                                         ? `${from.slice(5)} ← ${to.slice(5)}`
                                                         : `${from} ← ${to}`;
                                                 return (
-                                                    <tr key={String(audit.id)} className="border-b border-hairline hover:bg-surface-hover">
+                                                    <tr
+                                                        key={String(audit.id)}
+                                                        className="border-b border-hairline hover:bg-surface-hover"
+                                                    >
                                                         <td className="px-sm py-xxs text-ink">
                                                             <span className="block" dir="ltr">
                                                                 {String(audit.audit_number ?? `#${String(audit.id)}`)}
                                                             </span>
-                                                            <span className="block text-caption text-faint sm:hidden" dir="ltr">
+                                                            <span
+                                                                className="block text-caption text-faint sm:hidden"
+                                                                dir="ltr"
+                                                            >
                                                                 {shortRange}
                                                             </span>
                                                         </td>
-                                                        <td className="hidden px-sm py-xxs text-body-sm text-muted sm:table-cell" dir="ltr">
+                                                        <td
+                                                            className="hidden px-sm py-xxs text-body-sm text-muted sm:table-cell"
+                                                            dir="ltr"
+                                                        >
                                                             {`${from} ← ${to}`}
                                                         </td>
                                                         <td
                                                             className="erp-numeric hidden px-sm py-xxs text-end text-body-sm sm:table-cell"
                                                             dir="ltr"
                                                         >
-                                                            {formatKitchenQty(Number(audit.total_items ?? (audit.items ?? []).length))}
+                                                            {formatKitchenQty(
+                                                                Number(audit.total_items ?? (audit.items ?? []).length),
+                                                            )}
                                                         </td>
                                                         <td
                                                             className={`px-sm py-xxs text-body-sm whitespace-nowrap ${STATUS_TEXT_CLASS[tone]}`}
@@ -1095,55 +1129,14 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                                         }`}
                                     </p>
                                 </div>
-                                <button type="button" className={SECONDARY_BUTTON_CLASS} onClick={() => setAuditId(null)}>
+                                <button
+                                    type="button"
+                                    className={SECONDARY_BUTTON_CLASS}
+                                    onClick={() => setAuditId(null)}
+                                >
                                     رجوع للقائمة
                                 </button>
                             </div>
-
-                            <details className="rounded-md border border-hairline bg-surface-sunken px-sm py-xs">
-                                <summary className="cursor-pointer text-body-sm text-ink hover:text-primary">
-                                    {`حركة الإنتاج والتوزيع خلال الفترة (${String(movements.length)})`}
-                                </summary>
-                                {movements.length === 0 ? (
-                                    <p className="mt-xs text-caption text-muted">
-                                        لا توجد توزيعات مسجلة ضمن فترة الجرد في نافذة الخادم (أحدث 300 توزيع).
-                                    </p>
-                                ) : (
-                                    <TableScroll label="حركة الإنتاج والتوزيع خلال فترة الجرد">
-                                        <table className="mt-xs w-full border-collapse text-body-md">
-                                            <thead>
-                                                <tr className="bg-surface text-label-md text-ink-secondary">
-                                                    <th scope="col" className="px-sm py-xs text-start font-medium">التاريخ</th>
-                                                    <th scope="col" className="px-sm py-xs text-start font-medium">الصنف</th>
-                                                    <th scope="col" className="px-sm py-xs text-start font-medium">القسم</th>
-                                                    <th scope="col" className="px-sm py-xs text-end font-medium">الكمية</th>
-                                                </tr>
-                                            </thead>
-                                            <tbody>
-                                                {movements.slice(0, 50).map((row, rowIndex) => (
-                                                    <tr key={String(row.id ?? rowIndex)} className="border-b border-hairline">
-                                                        <td className="px-sm py-xxs text-body-sm text-muted" dir="ltr">
-                                                            {String(row.created_at ?? '').slice(0, 10)}
-                                                        </td>
-                                                        <td className="px-sm py-xxs text-ink">
-                                                            {String(row.product_name ?? '—')}
-                                                        </td>
-                                                        <td className="px-sm py-xxs text-body-sm text-muted">
-                                                            {String(row.department_name ?? '—')}
-                                                        </td>
-                                                        <td className="erp-numeric px-sm py-xxs text-end" dir="ltr">
-                                                            {formatKitchenQty(Number(row.quantity ?? 0))}
-                                                        </td>
-                                                    </tr>
-                                                ))}
-                                            </tbody>
-                                        </table>
-                                    </TableScroll>
-                                )}
-                                {movements.length > 50 ? (
-                                    <p className="mt-xs text-caption text-muted">{`يعرض أحدث 50 بندًا من ${String(movements.length)} توزيع.`}</p>
-                                ) : null}
-                            </details>
 
                             <TableScroll label="بنود جرد المطبخ">
                                 <table className="w-full border-collapse text-body-md">
@@ -1166,7 +1159,8 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                                     <tbody>
                                         {(selectedAudit.items ?? []).slice(0, 300).map((item) => {
                                             const variance =
-                                                Number(counts[String(item.id)] ?? item.counted_qty) - Number(item.system_qty ?? 0);
+                                                Number(counts[String(item.id)] ?? item.counted_qty) -
+                                                Number(item.system_qty ?? 0);
                                             return (
                                                 <tr key={String(item.id)} className="border-b border-hairline">
                                                     <td className="px-sm py-xxs text-ink">
@@ -1177,16 +1171,22 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                                                             {String(item.unit ?? '')}
                                                         </span>
                                                     </td>
-                                                    <td className="erp-numeric px-sm py-xxs text-end text-body-sm" dir="ltr">
+                                                    <td
+                                                        className="erp-numeric px-sm py-xxs text-end text-body-sm"
+                                                        dir="ltr"
+                                                    >
                                                         {formatKitchenQty(Number(item.system_qty ?? 0))}
                                                     </td>
                                                     <td className="px-sm py-xxs">
                                                         <input
                                                             className={FIELD_CLASS}
                                                             inputMode="decimal"
-                                                            disabled={!isCounting || String(selectedAudit.status) !== 'draft'}
+                                                            disabled={
+                                                                !isCounting || String(selectedAudit.status) !== 'draft'
+                                                            }
                                                             value={
-                                                                counts[String(item.id)] ?? formatKitchenQty(Number(item.counted_qty ?? 0))
+                                                                counts[String(item.id)] ??
+                                                                formatKitchenQty(Number(item.counted_qty ?? 0))
                                                             }
                                                             onChange={(event) =>
                                                                 setCounts((current) => ({
@@ -1215,7 +1215,8 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                                 </table>
                             </TableScroll>
 
-                            {String(selectedAudit.status) === 'draft' || String(selectedAudit.status) === 'submitted' ? (
+                            {String(selectedAudit.status) === 'draft' ||
+                            String(selectedAudit.status) === 'submitted' ? (
                                 <div className="rounded-md border border-hairline p-sm">
                                     <SignaturePad
                                         label="توقيع صاحب الحساب"
@@ -1273,25 +1274,16 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                                         </Button>
                                     </>
                                 ) : null}
-                                {String(selectedAudit.status) === 'submitted' ? (
+                                {['draft', 'submitted'].includes(String(selectedAudit.status)) ? (
                                     <Button
                                         type="button"
                                         size="sm"
                                         loading={approveMutation.isPending}
                                         onClick={() => {
                                             const value = requireSignature();
-                                            if (!value) {
-                                                return;
+                                            if (value) {
+                                                approveMutation.mutate({ audit: selectedAudit, signature: value });
                                             }
-                                            void (async () => {
-                                                const accepted = await confirm(
-                                                    'اعتماد الجرد؟ ستُرحَّل فروقات المخازن ومخزن المطبخ إلى الدفتر نهائيًا — لا يمكن التراجع إلا بقيد تصحيح.',
-                                                    { title: 'اعتماد الجرد', confirmLabel: 'اعتماد وترحيل', tone: 'danger' },
-                                                );
-                                                if (accepted) {
-                                                    approveMutation.mutate({ audit: selectedAudit, signature: value });
-                                                }
-                                            })();
                                         }}
                                         disabled={!canReview}
                                     >
@@ -1328,11 +1320,24 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                                     value={newStart}
                                     onChange={(event) => setNewStart(event.target.value)}
                                 />
-                                <Input label="إلى تاريخ" type="date" value={newEnd} onChange={(event) => setNewEnd(event.target.value)} />
-                                <Input label="ملاحظات" value={newNotes} onChange={(event) => setNewNotes(event.target.value)} />
+                                <Input
+                                    label="إلى تاريخ"
+                                    type="date"
+                                    value={newEnd}
+                                    onChange={(event) => setNewEnd(event.target.value)}
+                                />
+                                <Input
+                                    label="ملاحظات"
+                                    value={newNotes}
+                                    onChange={(event) => setNewNotes(event.target.value)}
+                                />
                             </div>
                             <div className="mt-sm flex flex-wrap justify-end gap-sm">
-                                <button type="button" className={SECONDARY_BUTTON_CLASS} onClick={() => setCreateOpen(false)}>
+                                <button
+                                    type="button"
+                                    className={SECONDARY_BUTTON_CLASS}
+                                    onClick={() => setCreateOpen(false)}
+                                >
                                     إلغاء
                                 </button>
                                 <Button
@@ -1377,16 +1382,10 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                                             المستند
                                         </th>
                                         <th scope="col" className="px-sm py-xs text-start font-medium">
-                                            التاريخ
-                                        </th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">
                                             من ← إلى
                                         </th>
                                         <th scope="col" className="px-sm py-xs text-end font-medium">
                                             الأصناف
-                                        </th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">
-                                            محتوى المستند
                                         </th>
                                         <th scope="col" className="px-sm py-xs text-start font-medium">
                                             الحالة
@@ -1394,34 +1393,22 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                                     </tr>
                                 </thead>
                                 <tbody>
-                                    {documents.map((document) => {
-                                        const items = Array.isArray(document.items) ? document.items : [];
-                                        const itemsText = items
-                                            .map((item) =>
-                                                `${String(item.item_name ?? '—')} (${formatKitchenQty(Number(item.requested_qty ?? 0))} ${String(item.unit ?? '')})`.trim(),
-                                            )
-                                            .join(' · ');
-                                        return (
-                                            <tr key={String(document.id)} className="border-b border-hairline align-top">
-                                                <td className="px-sm py-xxs text-ink" dir="ltr">
-                                                    {String(document.id)}
-                                                </td>
-                                                <td className="px-sm py-xxs text-body-sm text-muted" dir="ltr">
-                                                    {String(document.created_at ?? '').slice(0, 10) || '—'}
-                                                </td>
-                                                <td className="px-sm py-xxs text-body-sm text-muted">
-                                                    {`${String(document.source_name ?? '—')} ← ${String(document.destination_name ?? '—')}`}
-                                                </td>
-                                                <td className="erp-numeric px-sm py-xxs text-end text-body-sm" dir="ltr">
-                                                    {formatKitchenQty(items.length)}
-                                                </td>
-                                                <td className="max-w-72 px-sm py-xxs text-body-sm text-ink">
-                                                    <span className="block break-words">{itemsText || '—'}</span>
-                                                </td>
-                                                <td className="px-sm py-xxs text-body-sm text-muted">{String(document.status ?? '—')}</td>
-                                            </tr>
-                                        );
-                                    })}
+                                    {documents.map((document) => (
+                                        <tr key={String(document.id)} className="border-b border-hairline">
+                                            <td className="px-sm py-xxs text-ink" dir="ltr">
+                                                {String(document.id)}
+                                            </td>
+                                            <td className="px-sm py-xxs text-body-sm text-muted">
+                                                {`${String(document.source_name ?? '—')} ← ${String(document.destination_name ?? '—')}`}
+                                            </td>
+                                            <td className="erp-numeric px-sm py-xxs text-end text-body-sm" dir="ltr">
+                                                {formatKitchenQty((document.items ?? []).length)}
+                                            </td>
+                                            <td className="px-sm py-xxs text-body-sm text-muted">
+                                                {String(document.status ?? '—')}
+                                            </td>
+                                        </tr>
+                                    ))}
                                 </tbody>
                             </table>
                         </TableScroll>

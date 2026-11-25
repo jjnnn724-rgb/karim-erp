@@ -1,6 +1,7 @@
 import './WarehouseGov.premium.css';
 import { useMutation, useQuery, useQueryClient } from '@tanstack/react-query';
 import { type FormEvent, useState } from 'react';
+import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { fetchCurrency } from '../lib/finance';
@@ -24,6 +25,8 @@ import {
     openingTotals,
     validateFiscalYearForm,
 } from '../lib/warehouse-gov';
+
+import { PageHeader } from '../ui';
 
 function hasRole(role: string, roles: readonly string[]): boolean {
     return roles.includes(role);
@@ -95,7 +98,9 @@ export function WarehouseGov() {
 
     const writeMutation = useMutation({
         mutationFn: async (
-            action: { kind: 'create'; payload: ReturnType<typeof normalizeFiscalYearForm> } | { kind: 'close' | 'next'; id: string },
+            action:
+                | { kind: 'create'; payload: ReturnType<typeof normalizeFiscalYearForm> }
+                | { kind: 'close' | 'next'; id: string },
         ) => {
             if (action.kind === 'create') {
                 return createFiscalYear(action.payload);
@@ -146,7 +151,7 @@ export function WarehouseGov() {
         return (
             <div className="flex flex-col gap-md erp-premium-WarehouseGov">
                 <header>
-                    <h1 className="text-display-lg text-ink"> حوكمة المخزن{' '} <span className="text-body-sm text-muted" dir="ltr" lang="en"> Warehouse Governance </span> </h1>
+                    <h1 className="text-display-lg text-ink">حوكمة المخزن</h1>
                     <p className="text-body-sm text-muted">السنوات المالية والرصيد الافتتاحي وفحص النظام.</p>
                 </header>
                 <Card>
@@ -167,30 +172,27 @@ export function WarehouseGov() {
 
     return (
         <div className="flex flex-col gap-md erp-premium-WarehouseGov">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        حوكمة المخزن{' '}
-                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
-                            Warehouse Governance
-                        </span>
-                    </h1>
-                    <p className="text-body-sm text-muted">
-                        دورة السنوات المالية وتقارير الأرصدة وفحص اتساق النظام — الصلاحية النهائية للخادم.
-                    </p>
-                </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                    <button
-                        type="button"
-                        onClick={() => {
-                            void queryClient.invalidateQueries({ queryKey: ['warehouse-gov'] });
-                        }}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                </div>
-            </header>
+            <PageHeader
+                title="حوكمة المخزن"
+                english="Warehouse Governance"
+                description="دورة السنوات المالية وتقارير الأرصدة وفحص اتساق النظام — الصلاحية النهائية للخادم."
+                actions={
+                    <>
+                        <div className="flex items-center gap-xs" data-erp-print-hide>
+                            <PrintActions title="حوكمة المخزن" />
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    void queryClient.invalidateQueries({ queryKey: ['warehouse-gov'] });
+                                }}
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                            >
+                                تحديث
+                            </button>
+                        </div>
+                    </>
+                }
+            />
 
             {status ? (
                 <p role="status" aria-live="polite" className="text-body-sm text-muted">
@@ -203,7 +205,9 @@ export function WarehouseGov() {
                     <div className="flex flex-wrap items-center justify-between gap-sm">
                         <div>
                             <h2 className="text-heading-md text-ink">السنوات المالية</h2>
-                            <p className="text-caption text-muted">Fiscal years · {formatInt(fiscalTotals.total)} سنة</p>
+                            <p className="text-caption text-muted">
+                                Fiscal years · {formatInt(fiscalTotals.total)} سنة
+                            </p>
                         </div>
                         {canCreateFiscal ? (
                             <button
@@ -217,15 +221,20 @@ export function WarehouseGov() {
                                 {formOpen ? 'إغلاق النموذج' : 'سنة مالية جديدة'}
                             </button>
                         ) : (
-                            <span className="rounded-full border border-hairline px-sm py-xxs text-caption text-muted">الكتابة مغلقة</span>
+                            <span className="rounded-full border border-hairline px-sm py-xxs text-caption text-muted">
+                                الكتابة مغلقة
+                            </span>
                         )}
                     </div>
                     <p className="text-body-sm text-muted">
-                        الإقفال لا يحذف المبيعات أو المصروفات؛ يحفظ لقطة ويمنع الخادم تكرار الإقفال، ثم تُرحّل الأرصدة إلى السنة التالية.{' '}
-                        {fiscalTotals.open} مفتوحة · {fiscalTotals.closed} مغلقة.
+                        الإقفال لا يحذف المبيعات أو المصروفات؛ يحفظ لقطة ويمنع الخادم تكرار الإقفال، ثم تُرحّل الأرصدة إلى
+                        السنة التالية. {fiscalTotals.open} مفتوحة · {fiscalTotals.closed} مغلقة.
                     </p>
                     {formOpen && canCreateFiscal ? (
-                        <form onSubmit={submitFiscalForm} className="flex flex-col gap-sm rounded-md border border-hairline p-md">
+                        <form
+                            onSubmit={submitFiscalForm}
+                            className="flex flex-col gap-sm rounded-md border border-hairline p-md"
+                        >
                             <div className="grid gap-sm sm:grid-cols-2">
                                 <label className="flex flex-col gap-xxs text-label-md text-ink">
                                     تاريخ البداية
@@ -293,7 +302,9 @@ export function WarehouseGov() {
                     ) : null}
                     {fiscalQuery.isError ? (
                         <StateError
-                            message={fiscalQuery.error instanceof Error ? fiscalQuery.error.message : 'تعذّر جلب السنوات'}
+                            message={
+                                fiscalQuery.error instanceof Error ? fiscalQuery.error.message : 'تعذّر جلب السنوات'
+                            }
                             onRetry={() => void fiscalQuery.refetch()}
                         />
                     ) : fiscalQuery.isLoading ? (
@@ -352,7 +363,9 @@ export function WarehouseGov() {
                                                         </span>
                                                     </div>
                                                 ) : (
-                                                    <span className="text-body-sm text-muted">مغلقة — بلا لقطة محفوظة</span>
+                                                    <span className="text-body-sm text-muted">
+                                                        مغلقة — بلا لقطة محفوظة
+                                                    </span>
                                                 )}
                                             </td>
                                             {canCloseFiscal ? (
@@ -400,7 +413,9 @@ export function WarehouseGov() {
                     </div>
                     {openingQuery.isError ? (
                         <StateError
-                            message={openingQuery.error instanceof Error ? openingQuery.error.message : 'تعذّر جلب التقرير'}
+                            message={
+                                openingQuery.error instanceof Error ? openingQuery.error.message : 'تعذّر جلب التقرير'
+                            }
                             onRetry={() => void openingQuery.refetch()}
                         />
                     ) : openingQuery.isLoading ? (
@@ -418,13 +433,17 @@ export function WarehouseGov() {
                                 <Metric
                                     label="إجمالي الفواتير"
                                     value={money(opening.totalAmount, currency)}
-                                    {...(opening.missing ? { hint: `${formatInt(opening.missing)} بندًا لصنف غير موجود` } : {})}
+                                    {...(opening.missing
+                                        ? { hint: `${formatInt(opening.missing)} بندًا لصنف غير موجود` }
+                                        : {})}
                                 />
                             </div>
                             {invoices.length ? (
                                 <TableScroll label="فواتير الرصيد الافتتاحي">
                                     <table className="erp-table w-full min-w-[780px]">
-                                        <caption className="sr-only">بنود فواتير الرصيد الافتتاحي وحالتها في سجل المخزون</caption>
+                                        <caption className="sr-only">
+                                            بنود فواتير الرصيد الافتتاحي وحالتها في سجل المخزون
+                                        </caption>
                                         <thead>
                                             <tr>
                                                 <th scope="col">الصنف</th>
@@ -439,7 +458,9 @@ export function WarehouseGov() {
                                         <tbody>
                                             {invoices.flatMap((invoice) =>
                                                 invoice.items.map((item, index) => (
-                                                    <tr key={`${invoice.id}-${item.itemId ?? item.name}-${String(index)}`}>
+                                                    <tr
+                                                        key={`${invoice.id}-${item.itemId ?? item.name}-${String(index)}`}
+                                                    >
                                                         <th scope="row">
                                                             {item.name || (item.itemId ? `#${item.itemId}` : '—')}
                                                             <span className="block text-caption text-muted">
@@ -454,7 +475,9 @@ export function WarehouseGov() {
                                                             {formatQty(item.issuedSince)} {item.unit}
                                                         </td>
                                                         <td dir="ltr">
-                                                            {item.currentQty === null ? '—' : `${formatQty(item.currentQty)} ${item.unit}`}
+                                                            {item.currentQty === null
+                                                                ? '—'
+                                                                : `${formatQty(item.currentQty)} ${item.unit}`}
                                                         </td>
                                                         <td dir="ltr">{money(item.price, currency)}</td>
                                                         <td>{item.itemExists ? 'في السجل' : 'محذوف من السجل'}</td>
@@ -476,7 +499,9 @@ export function WarehouseGov() {
                 <Card className="flex flex-col gap-md p-md">
                     <div>
                         <h2 className="text-heading-md text-ink">فحص النظام</h2>
-                        <p className="text-caption text-muted">System health · المؤشرات والملاحظات التي أعادها الخادم</p>
+                        <p className="text-caption text-muted">
+                            System health · المؤشرات والملاحظات التي أعادها الخادم
+                        </p>
                     </div>
                     {healthQuery.isError ? (
                         <StateError
@@ -511,14 +536,23 @@ export function WarehouseGov() {
                             {healthQuery.data.anomalies.length ? (
                                 <ul className="flex flex-col gap-xs">
                                     {healthQuery.data.anomalies.map((anomaly, index) => (
-                                        <li key={`${anomaly.name}-${String(index)}`} className="rounded-md border border-hairline p-sm">
-                                            <strong className="text-body-md text-ink">{anomaly.name || 'صنف بلا اسم'}</strong>
-                                            <span className="ms-sm text-body-sm text-muted">{anomaly.issue || 'ملاحظة بلا وصف'}</span>
+                                        <li
+                                            key={`${anomaly.name}-${String(index)}`}
+                                            className="rounded-md border border-hairline p-sm"
+                                        >
+                                            <strong className="text-body-md text-ink">
+                                                {anomaly.name || 'صنف بلا اسم'}
+                                            </strong>
+                                            <span className="ms-sm text-body-sm text-muted">
+                                                {anomaly.issue || 'ملاحظة بلا وصف'}
+                                            </span>
                                         </li>
                                     ))}
                                 </ul>
                             ) : (
-                                <p className="text-body-sm text-muted">لا توجد ملاحظات ضمن النتائج التي أعادها الخادم.</p>
+                                <p className="text-body-sm text-muted">
+                                    لا توجد ملاحظات ضمن النتائج التي أعادها الخادم.
+                                </p>
                             )}
                         </>
                     ) : null}

@@ -212,7 +212,9 @@ export async function expectNoAxeViolations(container: Element): Promise<void> {
         runOnly: { type: 'tag', values: ['wcag2a', 'wcag2aa', 'wcag21a', 'wcag21aa'] },
         rules: { 'color-contrast': { enabled: false } },
     });
-    const blocking = results.violations.filter((violation) => violation.impact === 'critical' || violation.impact === 'serious');
+    const blocking = results.violations.filter(
+        (violation) => violation.impact === 'critical' || violation.impact === 'serious',
+    );
     expect(
         blocking.map((violation) => ({
             id: violation.id,

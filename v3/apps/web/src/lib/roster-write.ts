@@ -20,7 +20,16 @@ import { isWriteRole, writeAck, writeJson } from './write';
  */
 
 /** أدوار الحفظ — `ROSTER_ROLES` في hr-routes.js:1141. */
-export const ROSTER_WRITE_ROLES = ['admin', 'hr', 'manager', 'dept_head', 'kitchen', 'sous_chef', 'warehouse', 'accountant'] as const;
+export const ROSTER_WRITE_ROLES = [
+    'admin',
+    'hr',
+    'manager',
+    'dept_head',
+    'kitchen',
+    'sous_chef',
+    'warehouse',
+    'accountant',
+] as const;
 
 /** أدوار اعتماد الطباعة — `requireRole('hr','admin')` في الخادم. */
 export const ROSTER_APPROVE_ROLES = ['hr', 'admin'] as const;
@@ -116,7 +125,11 @@ export function rosterCellPayload(cell: RosterCellEdit): RosterCellPayload {
 export type RosterSaveValidation = { ok: true; cells: RosterCellPayload[] } | { ok: false; error: string };
 
 /** تحقق الحفظة كاملة — بالترتيب نفسه الذي يعتمده الخادم. */
-export function validateRosterSave(edits: readonly RosterCellEdit[], weekStart: string, today: string): RosterSaveValidation {
+export function validateRosterSave(
+    edits: readonly RosterCellEdit[],
+    weekStart: string,
+    today: string,
+): RosterSaveValidation {
     if (!edits.length) {
         return { ok: false, error: 'لا توجد خلايا للحفظ' };
     }
@@ -136,12 +149,20 @@ export function validateRosterSave(edits: readonly RosterCellEdit[], weekStart: 
 }
 
 const saveSchema = z
-    .object({ ok: z.boolean().optional(), updated: z.union([z.string(), z.number()]).optional(), week_start: z.string().optional() })
+    .object({
+        ok: z.boolean().optional(),
+        updated: z.union([z.string(), z.number()]).optional(),
+        week_start: z.string().optional(),
+    })
     .passthrough();
 
 export type RosterSaveResult = z.infer<typeof saveSchema>;
 
-export async function saveRosterWeek(weekStart: string, cells: readonly RosterCellPayload[], dept: string): Promise<RosterSaveResult> {
+export async function saveRosterWeek(
+    weekStart: string,
+    cells: readonly RosterCellPayload[],
+    dept: string,
+): Promise<RosterSaveResult> {
     const payload: Record<string, unknown> = { week_start: weekStart, cells };
     if (dept) {
         payload.dept = dept;

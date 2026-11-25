@@ -122,7 +122,9 @@ const ackSchema = z.object({ ok: flag, inserted: numLike, matched: numLike, scan
 
 export const depreciationSchema = z.object({ ok: flag, month: text, posted: numLike, total: numLike }).passthrough();
 
-export const payrollPostSchema = z.object({ total: numLike, count: numLike, entry: z.object({}).passthrough().optional() }).passthrough();
+export const payrollPostSchema = z
+    .object({ total: numLike, count: numLike, entry: z.object({}).passthrough().optional() })
+    .passthrough();
 
 export const alertsRunSchema = z.object({ ok: flag, sent: z.array(z.string()).optional() }).passthrough();
 
@@ -168,7 +170,12 @@ export interface StatementPayload {
 
 export type Validation<T> = { ok: true; payload: T } | { ok: false; error: string };
 
-export function validateStatement(date: string, description: string, amount: string, account: string): Validation<StatementPayload> {
+export function validateStatement(
+    date: string,
+    description: string,
+    amount: string,
+    account: string,
+): Validation<StatementPayload> {
     if (!isValidDate(date)) {
         return { ok: false, error: 'تاريخ الكشف غير صالح' };
     }
@@ -239,7 +246,12 @@ export interface BudgetPayload {
     account_code?: string;
 }
 
-export function validateBudget(period: string, label: string, account: string, amount: string): Validation<BudgetPayload> {
+export function validateBudget(
+    period: string,
+    label: string,
+    account: string,
+    amount: string,
+): Validation<BudgetPayload> {
     const cleanPeriod = String(period ?? '').trim();
     if (!isValidMonth(cleanPeriod)) {
         return { ok: false, error: 'شهر الموازنة بصيغة YYYY-MM' };
@@ -325,7 +337,12 @@ export async function deleteBudget(id: string): Promise<void> {
 }
 
 export async function fetchCustody(date: string, signal?: AbortSignal): Promise<Custody> {
-    return fetchJson(custodySchema, `/api/accounting/cash-custody?date=${encodeURIComponent(date)}`, token(), signal ? { signal } : {});
+    return fetchJson(
+        custodySchema,
+        `/api/accounting/cash-custody?date=${encodeURIComponent(date)}`,
+        token(),
+        signal ? { signal } : {},
+    );
 }
 
 export async function ackCustody(id: string): Promise<void> {

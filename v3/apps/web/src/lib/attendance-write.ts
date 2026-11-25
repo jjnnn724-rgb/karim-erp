@@ -26,7 +26,7 @@ import { isWriteRole, writeAck } from './write';
  */
 
 /** أدوار الكتابة — بوابة الخادم `admin|hr|manager` (server.js:1778). */
-export const ATT_WRITE_ROLES = ['admin', 'owner'] as const;
+export const ATT_WRITE_ROLES = ['admin', 'hr', 'manager'] as const;
 
 export function canWriteAttendance(role: string | null | undefined): boolean {
     return isWriteRole(role, ATT_WRITE_ROLES);
@@ -48,7 +48,10 @@ export function attendanceMonthError(month: unknown): string {
 
 /* ─── التحقق (رسائل V2 نفسها) ───────────────────────────────────────────── */
 
-export function validateReason(reason: unknown, message = 'اكتب السبب'): { ok: true; reason: string } | { ok: false; message: string } {
+export function validateReason(
+    reason: unknown,
+    message = 'اكتب السبب',
+): { ok: true; reason: string } | { ok: false; message: string } {
     const text = String(reason ?? '').trim();
     return text ? { ok: true, reason: text } : { ok: false, message };
 }
@@ -90,7 +93,10 @@ function toMinutes(value: string | null | undefined): number | null {
 }
 
 /** بداية الوردية من بطاقة الموظف، وإلا ساعة بدء العمل، وإلا 09:00. */
-export function shiftStartFor(employee: { shift_start?: string | null | undefined } | null | undefined, workStartHour: number): string {
+export function shiftStartFor(
+    employee: { shift_start?: string | null | undefined } | null | undefined,
+    workStartHour: number,
+): string {
     const stored = String(employee?.shift_start ?? '');
     if (/^\d{2}:\d{2}/.test(stored)) {
         return stored;
@@ -134,7 +140,12 @@ export function calcPunchTimes({
 /** سطور التدقيق الثلاثة حرفيًّا — قابلة للمقارنة بين الشاشتين. */
 export function auditNote(
     kind: 'fill' | 'correct' | 'swap',
-    { who = '', reason = '', date = '', withName = '' }: { who?: string; reason?: string; date?: string; withName?: string },
+    {
+        who = '',
+        reason = '',
+        date = '',
+        withName = '',
+    }: { who?: string; reason?: string; date?: string; withName?: string },
 ): string {
     const text = String(reason ?? '').trim();
     const actor = String(who ?? '');
@@ -297,7 +308,12 @@ export interface WorkStartHour {
 /** تُقرأ من `settings/main_settings`، وإن تعذّرت فـ09:00 مع `ok:false`. */
 export async function fetchWorkStartHour(signal?: AbortSignal): Promise<WorkStartHour> {
     try {
-        const settings = await fetchJson(mainSettingsSchema, '/api/settings/main_settings', getAccessToken(), signal ? { signal } : {});
+        const settings = await fetchJson(
+            mainSettingsSchema,
+            '/api/settings/main_settings',
+            getAccessToken(),
+            signal ? { signal } : {},
+        );
         const hour = Number(settings.workStartHour);
         return { hour: Number.isFinite(hour) && hour > 0 ? Math.floor(hour) : 9, ok: true };
     } catch {
@@ -431,7 +447,12 @@ export async function fetchAttendanceAudit({
     }
     query.set('limit', String(Math.min(500, Math.max(1, Number(limit) || 200))));
     query.set('offset', String(Math.max(0, Number(offset) || 0)));
-    const body = await fetchJson(auditListSchema, `/api/attendance/audit?${query.toString()}`, getAccessToken(), signal ? { signal } : {});
+    const body = await fetchJson(
+        auditListSchema,
+        `/api/attendance/audit?${query.toString()}`,
+        getAccessToken(),
+        signal ? { signal } : {},
+    );
     return {
         rows: auditEditRows(body),
         total: Number(body.total ?? 0) || 0,
@@ -506,7 +527,14 @@ export async function fetchStrictAudit(month: string, signal?: AbortSignal): Pro
             name: String(check.name ?? '—'),
             status,
             statusAr: AUDIT_STATUS_AR[status] ?? status ?? '—',
-            tone: status === 'PASS' ? 'success' : status === 'WARN' ? 'warning' : status === 'FAIL' ? 'danger' : 'neutral',
+            tone:
+                status === 'PASS'
+                    ? 'success'
+                    : status === 'WARN'
+                      ? 'warning'
+                      : status === 'FAIL'
+                        ? 'danger'
+                        : 'neutral',
             count: Number(check.count ?? 0) || 0,
             details: (check.detail ?? []).map((detail) => ({
                 emp: String(detail.emp ?? ''),
@@ -604,7 +632,8 @@ export function monthlyRow(raw: Record<string, unknown>): MonthlyAttendanceRow {
 /** الكشف كله: صفوف + إجماليات جمع صفوف الخادم نفسه — لا إعادة حساب. */
 export function buildMonthlySheet(body: z.infer<typeof monthlySchema>): MonthlyAttendanceSheet {
     const rows = (body.employees ?? []).map(monthlyRow);
-    const sum = (pick: (row: MonthlyAttendanceRow) => number): number => rows.reduce((total, row) => total + pick(row), 0);
+    const sum = (pick: (row: MonthlyAttendanceRow) => number): number =>
+        rows.reduce((total, row) => total + pick(row), 0);
     return {
         month: MONTH_RE.test(String(body.month ?? '')) ? String(body.month) : '',
         workDayMinutes: num(body.workDayMinutes) || 600,

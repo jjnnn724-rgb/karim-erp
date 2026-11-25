@@ -12,7 +12,10 @@ function Harness() {
             <button type="button" onClick={() => toast({ title: 'تم الحفظ', variant: 'success' })}>
                 نجاح
             </button>
-            <button type="button" onClick={() => toast({ title: 'فشل الحفظ', description: 'حاول مجددًا', variant: 'error' })}>
+            <button
+                type="button"
+                onClick={() => toast({ title: 'فشل الحفظ', description: 'حاول مجددًا', variant: 'error' })}
+            >
                 خطأ
             </button>
             <button type="button" onClick={() => toast({ title: 'معلومة', duration: 1000 })}>

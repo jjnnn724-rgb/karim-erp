@@ -1,37 +1,30 @@
 /**
  * خرائط الأدوار → الشاشات — مرآة V2 حرفيًا (`frontend/app/js/core/config.js`
  * `ROLES`) مضافًا إليها الشاشات الجديدة في V3 فقط (accounts/journal/
- * daily-locks/purchase-invoices/payments/warehouse-gov/goods-scan/sessions/
- * executive/warehouse-dashboard/dept-head-dashboard/inventory-inquiry).
- *
- * تنظيف 2026-11-20 («النظام الأنظف»): حُذفت من القوائم شاشات الدمج/الحذف —
- * `sales-inquiry` (دمجت في `sales-analyzer`)، `briefing` (المحتوى في
- * `executive` + الرئيسية)، `reports` (مصدرها POS الميت)،
- * `inventory-inquiry-pro` (الـDossier يفتح داخل المحرك)، `shelves` و`weight`
- * (واجهات محذوفة). مفاتيح V2 القديمة `query`/`professional` أُزيلت أيضًا.
- *
- * `pos-entry` شاشة V3 فقط (V2 يفتح الكاشير المستقل)، ومفتاحها ممنوح لأدوار
- * الكاشير الأربعة في `POS_ROLES` — لا قائمة V2 لها.
+ * daily-locks/purchase-invoices/payments/warehouse-gov/shelves/weight/
+ * goods-scan/sessions/briefing/executive/warehouse-dashboard/
+ * accountant-dashboard/dept-head-dashboard/inventory-inquiry/
+ * inventory-inquiry-pro/item-prices). `pos-entry` شاشة V3 فقط (V2 يفتح الكاشير المستقل)،
+ * ومفتاحها ممنوح لأدوار الكاشير الأربعة في `POS_ROLES` — لا قائمة V2 لها.
  *
  * مفاتيح V2 → V3: `wh-invoices` = `purchase-invoices`، `query` =
- * `inventory-inquiry`، `yara-daily-locks` = `daily-locks`. القوائم المالية
- * (cfo/journal/accounts/pnl/cost-center/cost-analysis/monthly-comparison)
- * محجوزة للأدوار المالية في الخادم (`accounting-routes.js` READ_ROLES) كما
- * في V2 — الـ sous_chef لا يرى هذه الشاشات في القائمة بدل أن يفتحها فيُرفض
- * (403).
+ * `inventory-inquiry`، `professional` = `inventory-inquiry-pro`،
+ * `yara-daily-locks` = `daily-locks`. القوائم المالية (cfo/journal/accounts/
+ * pnl/cost-center/cost-analysis/monthly-comparison/reports) محجوزة
+ * للأدوار المالية في الخادم (`accounting-routes.js` READ_ROLES) كما في V2 —
+ * الـ sous_chef لا يرى هذه الشاشات في القائمة بدل أن يفتحها فيُرفض (403).
  */
 
 export const ROLES = {
     admin: [
-        'pos-reports',
         'dashboard',
         'menu-board',
         'cfo',
-        'dept-cost',
         'accounts',
         'journal',
         'cash-register',
         'cashier-sales',
+        'sales-inquiry',
         'revenues',
         'expenses',
         'daily-locks',
@@ -52,23 +45,22 @@ export const ROLES = {
         'procurement',
         'kitchen',
         'veg-requests',
+        'weight',
         'goods-scan',
         'dispatch',
         'recipes',
-        'buffet',
-        'ext-sales',
+        'reports',
         'vat-return',
+        'financial-compliance',
         'settings',
         'users',
         'branches',
         'permissions',
         'hr-dashboard',
         'employees',
-        'employee-card',
         'leaves',
         'attendance',
         'zkteco',
-        'punch-control',
         'yarasoft',
         'oracle-data',
         'sales-analyzer',
@@ -78,24 +70,24 @@ export const ROLES = {
         'mudad',
         'employee-portal',
         'roster',
+        'query',
+        'professional',
+        'shelves',
         'sessions',
+        'briefing',
         'executive',
         'warehouse-dashboard',
+        'accountant-dashboard',
         'dept-head-dashboard',
         'inventory-inquiry',
+        'inventory-inquiry-pro',
         'dept-employees',
         'received-analyzer',
         'wh-vs-pos',
         'cashier-monitor',
         'pos-entry',
-        'compliance-center',
-        'balance-sheet',
-        'cash-flow',
-        'command-center',
-        'bank-rec',
     ],
     manager: [
-        'pos-reports',
         'dashboard',
         'menu-board',
         'cfo',
@@ -103,6 +95,7 @@ export const ROLES = {
         'journal',
         'cash-register',
         'cashier-sales',
+        'sales-inquiry',
         'revenues',
         'expenses',
         'daily-locks',
@@ -113,13 +106,15 @@ export const ROLES = {
         'departments',
         'dispatch',
         'recipes',
-        'buffet',
-        'ext-sales',
+        'reports',
         'vat-return',
+        'financial-compliance',
         'hr-dashboard',
         'employees',
         'mudad',
         'leaves',
+        'attendance',
+        'zkteco',
         'whatsapp',
         'employee-portal',
         'warehouse',
@@ -130,18 +125,16 @@ export const ROLES = {
         'wh-moves',
         'wh-returns',
         'wh-prs',
-        'dept-transfers',
         'procurement',
         'kitchen',
         'veg-requests',
+        'weight',
         'goods-scan',
         'roster',
+        'shelves',
         'warehouse-dashboard',
+        'accountant-dashboard',
         'pos-entry',
-        'balance-sheet',
-        'cash-flow',
-        'command-center',
-        'bank-rec',
     ],
     warehouse: [
         'dashboard',
@@ -153,49 +146,52 @@ export const ROLES = {
         'wh-moves',
         'wh-returns',
         'wh-prs',
-        'dept-transfers',
         'veg-requests',
         'procurement',
         'dispatch',
         'roster',
+        'shelves',
+        'weight',
         'goods-scan',
         'warehouse-dashboard',
     ],
-    kitchen: ['kitchen', 'dispatch', 'wh-prs', 'dept-transfers', 'recipes', 'buffet', 'leaves', 'employee-portal', 'roster'],
+    kitchen: ['kitchen', 'dispatch', 'wh-prs', 'recipes', 'attendance', 'leaves', 'employee-portal', 'roster'],
     sous_chef: [
         'kitchen',
         'dispatch',
         'wh-prs',
-        'dept-transfers',
         'veg-requests',
         'sales-analyzer',
+        'sales-inquiry',
         'received-analyzer',
         'wh-vs-pos',
+        'query',
+        'professional',
+        'item-prices',
         'recipes',
-        'buffet',
         'attendance',
         'leaves',
         'employee-portal',
         'roster',
+        'weight',
         'inventory-inquiry',
-        'warehouse',
-        'item-prices',
+        'inventory-inquiry-pro',
     ],
-    dept_head: ['dashboard', 'leaves', 'employee-portal', 'dept-employees', 'dispatch', 'dept-transfers', 'roster', 'dept-head-dashboard'],
+    dept_head: ['dashboard', 'attendance', 'leaves', 'employee-portal', 'dept-employees', 'dispatch', 'roster'],
     hr: [
         'dashboard',
         'hr-dashboard',
         'employees',
-        'employee-card',
         'leaves',
         'attendance',
+        'zkteco',
         'hr-departments',
         'payroll',
+        'financial-compliance',
         'employee-portal',
         'roster',
     ],
     accountant: [
-        'pos-reports',
         'dashboard',
         'cfo',
         'accounts',
@@ -218,23 +214,21 @@ export const ROLES = {
         'wh-moves',
         'wh-returns',
         'wh-prs',
-        'dept-transfers',
         'procurement',
         'dispatch',
-        'ext-sales',
+        'reports',
         'vat-return',
+        'financial-compliance',
         'payroll',
+        'zkteco',
         'oracle-data',
         'roster',
+        'accountant-dashboard',
         'pos-entry',
-        'balance-sheet',
-        'cash-flow',
-        'command-center',
-        'bank-rec',
     ],
-    employee: ['dashboard', 'leaves', 'employee-portal'],
-    owner: ['cashier-monitor', 'dashboard', 'zkteco', 'punch-control', 'sales-analyzer'],
-    cashier: ['dashboard', 'leaves', 'employee-portal', 'pos-entry'],
+    employee: ['dashboard', 'attendance', 'leaves', 'employee-portal'],
+    owner: ['cashier-monitor', 'dashboard', 'zkteco', 'sales-inquiry'],
+    cashier: ['dashboard', 'attendance', 'leaves', 'employee-portal', 'pos-entry'],
 } as const;
 
 export type RoleKey = keyof typeof ROLES;
@@ -250,37 +244,40 @@ export function roleMenus(role: string | null | undefined): readonly string[] {
 }
 
 /**
- * مرادفات مفاتيح V2 القديمة → شاشات V3 — نفس خريطة الـShell والـScreenGate.
- * المفتاح القديم يبقى في النتيجة (كما يمنحه الخادم) وتُضاف الشاشة المقابلة له،
- * فلا يرى المستخدم «لا تملك صلاحية» رغم أن المنح موجود في الخادم.
+ * مفاتيح قوائم V2 القديمة → شاشات V3 المقابلة. كتالوج الصلاحيات في الخادم
+ * (`backend/permissions.js`) ما زال يمنح `query`/`professional`/`procurement`،
+ * وV3 يسمّي نفس الشاشات `inventory-inquiry`/`inventory-inquiry-pro`/
+ * `purchase-invoices`. بلا هذه الترجمة يرى المستخدم «لا تملك صلاحية» رغم أن
+ * المنح موجود. المفتاح الأصلي يبقى أيضًا (قد يكون شاشة V3 صالحة بذاته).
  */
-const MENU_ALIASES: Readonly<Record<string, readonly string[]>> = {
+const MENU_ALIASES: Readonly<Record<string, readonly string[]>> = Object.freeze({
     query: ['inventory-inquiry'],
     professional: ['inventory-inquiry-pro'],
     procurement: ['purchase-invoices'],
     'wh-invoices': ['purchase-invoices'],
     'yara-daily-locks': ['daily-locks'],
-};
+});
 
-/** يوسّع مفاتيح V2 إلى شاشات V3 بلا تكرار ويحفظ الترتيب؛ المجهول يمرّ كما هو. */
+/** يوسّع كل مفتاح إلى نفسه + مرادفاته في V3 (بلا تكرار). */
 export function expandMenuKeys(keys: readonly string[]): string[] {
     const out: string[] = [];
-    const seen = new Set<string>();
     for (const raw of keys) {
         const key = String(raw);
-        for (const expanded of [key, ...(MENU_ALIASES[key] ?? [])]) {
-            if (!seen.has(expanded)) {
-                seen.add(expanded);
-                out.push(expanded);
-            }
+        out.push(key);
+        for (const alias of MENU_ALIASES[key] ?? []) {
+            out.push(alias);
         }
     }
     return out;
 }
 
 /** الإشهار: admin بلا سحب (مرآة `if (role === 'admin') {denied.clear();}`). */
-export function allowedMenus(role: string | null | undefined, granted: readonly string[], denied: readonly string[]): readonly string[] {
+export function allowedMenus(
+    role: string | null | undefined,
+    granted: readonly string[],
+    denied: readonly string[],
+): readonly string[] {
     const base = roleMenus(role);
-    const deniedSet = new Set(role === 'admin' ? [] : expandMenuKeys(denied.map((m) => String(m))));
-    return expandMenuKeys([...base, ...granted.map((m) => String(m))]).filter((m) => !deniedSet.has(m));
+    const deniedSet = new Set(role === 'admin' ? [] : expandMenuKeys(denied));
+    return [...new Set([...base, ...expandMenuKeys(granted)])].filter((m) => !deniedSet.has(m));
 }

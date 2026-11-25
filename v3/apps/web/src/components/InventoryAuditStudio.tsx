@@ -59,7 +59,8 @@ import { TableScroll } from './TableState';
 
 const PAGE_ROWS = 120;
 
-const FIELD_CLASS = 'h-9 w-full min-w-0 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink';
+const FIELD_CLASS =
+    'h-9 w-full min-w-0 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink';
 
 const PRIMARY_BUTTON_CLASS =
     'rounded-md border border-primary-active/40 bg-primary px-sm py-xxs text-body-sm text-on-primary hover:bg-primary-hover disabled:opacity-50';
@@ -217,7 +218,10 @@ export function InventoryAuditStudio({ open, onOpenChange }: InventoryAuditStudi
         },
     });
 
-    const saveMutation = useWriteMutation<{ id: string; rows: { itemId: number; countedQty: number; notes: string }[] }, void>({
+    const saveMutation = useWriteMutation<
+        { id: string; rows: { itemId: number; countedQty: number; notes: string }[] },
+        void
+    >({
         mutationFn: async ({ id, rows }) => {
             const result = await saveAuditCounts(id, rows);
             if (result.rejectedCount > 0) {
@@ -490,7 +494,9 @@ export function InventoryAuditStudio({ open, onOpenChange }: InventoryAuditStudi
                             <Button type="button" size="sm" onClick={startCreate}>
                                 بدء جلسة جرد
                             </Button>
-                            <span className="text-caption text-muted">الجلسة تُبنى من أرصدة المخزن المختار، ويمكن عدّها على مراحل.</span>
+                            <span className="text-caption text-muted">
+                                الجلسة تُبنى من أرصدة المخزن المختار، ويمكن عدّها على مراحل.
+                            </span>
                         </div>
                     ) : null}
 
@@ -522,7 +528,10 @@ export function InventoryAuditStudio({ open, onOpenChange }: InventoryAuditStudi
                                         onChange={(event) => {
                                             const value = event.target.value;
                                             setPeriodType(
-                                                value === 'daily' || value === 'weekly' || value === 'monthly' || value === 'annual'
+                                                value === 'daily' ||
+                                                    value === 'weekly' ||
+                                                    value === 'monthly' ||
+                                                    value === 'annual'
                                                     ? value
                                                     : 'custom',
                                             );
@@ -573,7 +582,9 @@ export function InventoryAuditStudio({ open, onOpenChange }: InventoryAuditStudi
                                         onChange={(event) => {
                                             const value = event.target.value;
                                             setScopeMode(
-                                                AUDIT_SCOPE_MODES.includes(value as AuditScopeMode) ? (value as AuditScopeMode) : 'all',
+                                                AUDIT_SCOPE_MODES.includes(value as AuditScopeMode)
+                                                    ? (value as AuditScopeMode)
+                                                    : 'all',
                                             );
                                         }}
                                         className={FIELD_CLASS}
@@ -642,7 +653,12 @@ export function InventoryAuditStudio({ open, onOpenChange }: InventoryAuditStudi
                                 >
                                     إلغاء
                                 </button>
-                                <button type="button" className={PRIMARY_BUTTON_CLASS} onClick={submitCreate} disabled={pending}>
+                                <button
+                                    type="button"
+                                    className={PRIMARY_BUTTON_CLASS}
+                                    onClick={submitCreate}
+                                    disabled={pending}
+                                >
                                     {createMutation.isPending ? 'جارٍ الإنشاء…' : 'بدء الجرد'}
                                 </button>
                             </div>
@@ -689,14 +705,22 @@ export function InventoryAuditStudio({ open, onOpenChange }: InventoryAuditStudi
                                                 </span>
                                             </td>
                                             <td className="px-xs py-xxs">
-                                                <span className={`text-caption ${STATUS_TEXT_CLASS[auditStatusTone(row.status)]}`}>
+                                                <span
+                                                    className={`text-caption ${STATUS_TEXT_CLASS[auditStatusTone(row.status)]}`}
+                                                >
                                                     {auditStatusLabel(row.status)}
                                                 </span>
                                             </td>
-                                            <td className="erp-numeric px-xs py-xxs text-caption text-ink-secondary" dir="ltr">
+                                            <td
+                                                className="erp-numeric px-xs py-xxs text-caption text-ink-secondary"
+                                                dir="ltr"
+                                            >
                                                 {auditPeriodLabel(row)}
                                             </td>
-                                            <td className="erp-numeric px-xs py-xxs text-caption text-ink-secondary" dir="ltr">
+                                            <td
+                                                className="erp-numeric px-xs py-xxs text-caption text-ink-secondary"
+                                                dir="ltr"
+                                            >
                                                 {auditProgressLabel(row)}
                                             </td>
                                             <td className="px-xs py-xxs text-end">
@@ -707,7 +731,9 @@ export function InventoryAuditStudio({ open, onOpenChange }: InventoryAuditStudi
                                                         openAudit(row);
                                                     }}
                                                 >
-                                                    {canWrite && isAuditDraft(row.status) ? 'متابعة العدّ' : 'عرض التفاصيل'}
+                                                    {canWrite && isAuditDraft(row.status)
+                                                        ? 'متابعة العدّ'
+                                                        : 'عرض التفاصيل'}
                                                 </button>
                                             </td>
                                         </tr>
@@ -735,10 +761,22 @@ export function InventoryAuditStudio({ open, onOpenChange }: InventoryAuditStudi
                     </div>
 
                     <div className="grid gap-xs sm:grid-cols-4">
-                        <KpiTile label="إجمالي الأصناف" value={formatAuditInt(detail?.progress?.total ?? audit.total_items ?? 0)} />
-                        <KpiTile label="تم عدّه" value={formatAuditInt(detail?.progress?.counted ?? audit.counted_items ?? 0)} />
-                        <KpiTile label="أصناف بفروق" value={formatAuditInt(detail?.summary?.items_with_variance ?? 0)} />
-                        <KpiTile label="قيمة الفروق" value={formatAuditMoney(detail?.summary?.projected_variance_value ?? 0)} />
+                        <KpiTile
+                            label="إجمالي الأصناف"
+                            value={formatAuditInt(detail?.progress?.total ?? audit.total_items ?? 0)}
+                        />
+                        <KpiTile
+                            label="تم عدّه"
+                            value={formatAuditInt(detail?.progress?.counted ?? audit.counted_items ?? 0)}
+                        />
+                        <KpiTile
+                            label="أصناف بفروق"
+                            value={formatAuditInt(detail?.summary?.items_with_variance ?? 0)}
+                        />
+                        <KpiTile
+                            label="قيمة الفروق"
+                            value={formatAuditMoney(detail?.summary?.projected_variance_value ?? 0)}
+                        />
                     </div>
 
                     {detailQuery.isPending ? (
@@ -796,7 +834,8 @@ export function InventoryAuditStudio({ open, onOpenChange }: InventoryAuditStudi
                                             const key = String(item.item_id);
                                             const raw = counts[key] ?? formatAuditQty(item.counted_qty);
                                             const parsed = Number(raw);
-                                            const variance = (Number.isFinite(parsed) ? parsed : 0) - Number(item.system_qty);
+                                            const variance =
+                                                (Number.isFinite(parsed) ? parsed : 0) - Number(item.system_qty);
                                             const varianceValue = variance * Number(item.avg_cost ?? 0);
                                             const editable = canWrite && isAuditDraft(audit.status);
                                             const note = itemNotes[key] ?? '';
@@ -804,7 +843,9 @@ export function InventoryAuditStudio({ open, onOpenChange }: InventoryAuditStudi
                                             return (
                                                 <tr key={key} className="border-b border-hairline last:border-0">
                                                     <td className="px-xs py-xxs">
-                                                        <span className="text-ink">{String(item.item_name ?? '—')}</span>
+                                                        <span className="text-ink">
+                                                            {String(item.item_name ?? '—')}
+                                                        </span>
                                                         <span className="block text-caption text-muted">
                                                             {String(item.category ?? '')}
                                                             {item.is_stale ? ' · الرصيد تغيّر بعد اللقطة' : ''}
@@ -824,8 +865,14 @@ export function InventoryAuditStudio({ open, onOpenChange }: InventoryAuditStudi
                                                                 value={raw}
                                                                 onChange={(event) => {
                                                                     const value = event.target.value;
-                                                                    setCounts((previous) => ({ ...previous, [key]: value }));
-                                                                    setTouched((previous) => ({ ...previous, [key]: true }));
+                                                                    setCounts((previous) => ({
+                                                                        ...previous,
+                                                                        [key]: value,
+                                                                    }));
+                                                                    setTouched((previous) => ({
+                                                                        ...previous,
+                                                                        [key]: true,
+                                                                    }));
                                                                 }}
                                                                 className="h-9 w-24 rounded-md border border-hairline-strong bg-surface px-xs text-body-sm text-ink"
                                                                 dir="ltr"
@@ -871,13 +918,21 @@ export function InventoryAuditStudio({ open, onOpenChange }: InventoryAuditStudi
                                                                 value={note}
                                                                 onChange={(event) => {
                                                                     const value = event.target.value;
-                                                                    setItemNotes((previous) => ({ ...previous, [key]: value }));
-                                                                    setTouched((previous) => ({ ...previous, [key]: true }));
+                                                                    setItemNotes((previous) => ({
+                                                                        ...previous,
+                                                                        [key]: value,
+                                                                    }));
+                                                                    setTouched((previous) => ({
+                                                                        ...previous,
+                                                                        [key]: true,
+                                                                    }));
                                                                 }}
                                                                 className="h-9 w-40 rounded-md border border-hairline-strong bg-surface px-xs text-body-sm text-ink"
                                                             />
                                                         ) : (
-                                                            <span className="text-caption text-muted">{note || '—'}</span>
+                                                            <span className="text-caption text-muted">
+                                                                {note || '—'}
+                                                            </span>
                                                         )}
                                                     </td>
                                                     <td className="px-xs py-xxs">
@@ -890,7 +945,9 @@ export function InventoryAuditStudio({ open, onOpenChange }: InventoryAuditStudi
                                                                         rowSaveMutation.mutate({
                                                                             id: audit.id,
                                                                             itemId: Number(item.item_id),
-                                                                            countedQty: Number.isFinite(parsed) ? parsed : 0,
+                                                                            countedQty: Number.isFinite(parsed)
+                                                                                ? parsed
+                                                                                : 0,
                                                                             notes: note.trim(),
                                                                         });
                                                                     }}
@@ -948,7 +1005,11 @@ export function InventoryAuditStudio({ open, onOpenChange }: InventoryAuditStudi
                                     ) : null}
 
                                     <SignaturePad
-                                        label={isAuditDraft(audit.status) ? 'توقيع العدّ والإرسال' : 'توقيع الاعتماد النهائي'}
+                                        label={
+                                            isAuditDraft(audit.status)
+                                                ? 'توقيع العدّ والإرسال'
+                                                : 'توقيع الاعتماد النهائي'
+                                        }
                                         name={signerName}
                                         onChange={setSignature}
                                         testId="audit-signature"
@@ -973,7 +1034,12 @@ export function InventoryAuditStudio({ open, onOpenChange }: InventoryAuditStudi
                                             {AUDIT_TEXT.cancel}
                                         </button>
                                         {isAuditDraft(audit.status) ? (
-                                            <button type="button" className={PRIMARY_BUTTON_CLASS} onClick={submitAudit} disabled={pending}>
+                                            <button
+                                                type="button"
+                                                className={PRIMARY_BUTTON_CLASS}
+                                                onClick={submitAudit}
+                                                disabled={pending}
+                                            >
                                                 {submitMutation.isPending ? 'جارٍ الإرسال…' : AUDIT_TEXT.submit}
                                             </button>
                                         ) : (
@@ -1024,7 +1090,12 @@ export function InventoryAuditStudio({ open, onOpenChange }: InventoryAuditStudi
                                         >
                                             تراجع
                                         </button>
-                                        <button type="button" className={DANGER_BUTTON_CLASS} onClick={confirmCancel} disabled={pending}>
+                                        <button
+                                            type="button"
+                                            className={DANGER_BUTTON_CLASS}
+                                            onClick={confirmCancel}
+                                            disabled={pending}
+                                        >
                                             {cancelMutation.isPending ? 'جارٍ الإلغاء…' : 'تأكيد الإلغاء'}
                                         </button>
                                     </div>

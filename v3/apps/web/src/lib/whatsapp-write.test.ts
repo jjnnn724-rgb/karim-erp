@@ -64,7 +64,9 @@ describe('أدوار واتساب', () => {
 
 describe('حالة المحرك', () => {
     it('يفضّل connection.state كما يعيده الخادم', () => {
-        expect(whatsappEngineState({ connection: { state: 'QR_REQUIRED', qrAvailable: true, reconnects: 0 } })).toBe('QR_REQUIRED');
+        expect(whatsappEngineState({ connection: { state: 'QR_REQUIRED', qrAvailable: true, reconnects: 0 } })).toBe(
+            'QR_REQUIRED',
+        );
         expect(whatsappEngineState({ status: 'CONNECTED' })).toBe('CONNECTED');
         expect(whatsappEngineState(undefined)).toBe('DISCONNECTED');
     });
@@ -148,7 +150,11 @@ describe('مستلمو الحملة — نسخة V2 حرفيًا', () => {
                 '9665DDD@s.whatsapp.net|1|x',
             ].join('\r\n'),
         );
-        expect(rows.map((row) => row.remote_jid)).toEqual(['9665AAA@s.whatsapp.net', '9665CCC@s.whatsapp.net', '9665DDD@s.whatsapp.net']);
+        expect(rows.map((row) => row.remote_jid)).toEqual([
+            '9665AAA@s.whatsapp.net',
+            '9665CCC@s.whatsapp.net',
+            '9665DDD@s.whatsapp.net',
+        ]);
         expect(rows[0]?.vars).toEqual(['أحمد', '123']);
     });
 
@@ -212,7 +218,13 @@ describe('عقود الكتابة المرسلة للخادم', () => {
 
     it('قاعدة الرد: id رقمي عند التعديل ولا يُرسل عند الإضافة', async () => {
         const fetchMock = stubFetch({ ok: true });
-        await saveWhatsappRule({ name: 'ق', match_type: 'contains', pattern: 'سعر', response: 'راجع الموقع', enabled: false });
+        await saveWhatsappRule({
+            name: 'ق',
+            match_type: 'contains',
+            pattern: 'سعر',
+            response: 'راجع الموقع',
+            enabled: false,
+        });
         expect(JSON.parse(String(request(fetchMock).init.body))).toEqual({
             name: 'ق',
             match_type: 'contains',

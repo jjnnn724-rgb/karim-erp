@@ -185,7 +185,12 @@ export async function fetchAuditLocations(signal?: AbortSignal): Promise<AuditLo
 }
 
 export async function fetchAuditDetail(id: string, signal?: AbortSignal): Promise<AuditDetail> {
-    return fetchJson(auditDetailSchema, `${BASE}/audits/${encodeURIComponent(id)}`, getAccessToken(), signal ? { signal } : {});
+    return fetchJson(
+        auditDetailSchema,
+        `${BASE}/audits/${encodeURIComponent(id)}`,
+        getAccessToken(),
+        signal ? { signal } : {},
+    );
 }
 
 export interface CreateAuditInput {
@@ -276,10 +281,15 @@ export async function saveAuditCount(
     countedQty: number,
     notes?: string | null,
 ): Promise<{ countedItems: number }> {
-    const body = await writeJson(singleCountSchema, `${BASE}/audits/${encodeURIComponent(id)}/counts/${itemId}`, 'PUT', {
-        countedQty: Number(countedQty),
-        notes: String(notes ?? '').trim() || null,
-    });
+    const body = await writeJson(
+        singleCountSchema,
+        `${BASE}/audits/${encodeURIComponent(id)}/counts/${itemId}`,
+        'PUT',
+        {
+            countedQty: Number(countedQty),
+            notes: String(notes ?? '').trim() || null,
+        },
+    );
     return { countedItems: Number(body.counted_items ?? 0) };
 }
 
@@ -289,7 +299,11 @@ export async function saveAuditCount(
  * و`counted_items`. زرّ «مسح» في صف شبكة V2 (`data-v2-aclear`).
  */
 export async function clearAuditCount(id: string, itemId: number): Promise<{ countedItems: number }> {
-    const body = await writeJson(singleCountSchema, `${BASE}/audits/${encodeURIComponent(id)}/counts/${itemId}`, 'DELETE');
+    const body = await writeJson(
+        singleCountSchema,
+        `${BASE}/audits/${encodeURIComponent(id)}/counts/${itemId}`,
+        'DELETE',
+    );
     return { countedItems: Number(body.counted_items ?? 0) };
 }
 

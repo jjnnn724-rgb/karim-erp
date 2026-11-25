@@ -16,6 +16,7 @@ import {
     zkScanDeviceName,
 } from '../lib/zkteco-admin';
 import { canWriteZk, createZkDevice, type ZkDeviceForm } from '../lib/zkteco-write';
+import { DataTable, type DataTableColumn } from '../ui';
 import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
@@ -24,7 +25,6 @@ import { Select } from '../ui/Select';
 import { useToast } from '../ui/Toast';
 import { useConfirm } from './ConfirmProvider';
 import { SectionCard } from './Reports';
-import { StateEmpty, StateError, TableScroll } from './TableState';
 
 /**
  * أدوات V2 المتبقية لأجهزة البصمة: مسح الشبكة، استيراد مستخدمي الجهاز
@@ -139,7 +139,9 @@ export function ZktecoAdmin({ devices }: { devices: readonly ZkDeviceRow[] }) {
             toast({
                 title: 'حُفظ الربط',
                 description:
-                    result.attached > 0 ? `${result.name}: أُسندت ${String(result.attached)} بصمة سابقة` : `${result.name}: حُدّث رقم البصمة`,
+                    result.attached > 0
+                        ? `${result.name}: أُسندت ${String(result.attached)} بصمة سابقة`
+                        : `${result.name}: حُدّث رقم البصمة`,
                 variant: 'success',
             });
         },
@@ -188,6 +190,97 @@ export function ZktecoAdmin({ devices }: { devices: readonly ZkDeviceRow[] }) {
         );
     }, [employees, filter]);
     const linkedCount = employees.filter((row) => String(row.deviceUserId ?? '').trim() !== '').length;
+
+    /**
+     * أعمدة الربط — الخلايا تحفظ دلالات العرض القديمة حرفيًا: الاسم مع القسم
+     * سطرًا ثانويًا، والأرقام لاتينية معزولة الاتجاه (`dir="ltr"` + `erp-numeric`)،
+     * وشارة «بلا رقم»، وزر الربط/تعديل الربط للأدوار الكاتبة فقط. البحث يبقى
+     * مسؤولية الشاشة (`manualFiltering`)، والفرز محلي آمن لأن كل الموظفين
+     * محمّلون — نفس نهج الجلسات. فوق 200 صف يتكفّل DataTable بالتمرير الافتراضي
+     * (PLAN §3.4) بدل رسم مئات الصفوف دفعة واحدة. لا تصدير CSV هنا — لم يكن في
+     * الشاشة القديمة ولا يُضاف الآن.
+     */
+    const columns = useMemo<DataTableColumn<ZkMappingEmployee>[]>(() => {
+        const base: DataTableColumn<ZkMappingEmployee>[] = [
+            {
+                key: 'name',
+                header: 'الموظف',
+                className: 'text-ink',
+                cell: (row) => (
+                    <>
+                        {String(row.name ?? '') || `#${row.id}`}
+                        {row.department ? <span className="text-caption text-faint"> · {row.department}</span> : null}
+                    </>
+                ),
+                sortValue: (row) => String(row.name ?? '') || null,
+            },
+            {
+                key: 'employeeId',
+                header: 'الرقم الوظيفي',
+                className: 'erp-numeric text-muted',
+                cell: (row) => <span dir="ltr">{String(row.employeeId ?? '') || '—'}</span>,
+                sortValue: (row) => String(row.employeeId ?? '') || null,
+            },
+            {
+                key: 'deviceUserId',
+                header: 'رقم البصمة',
+                className: 'erp-numeric',
+                cell: (row) => {
+                    const number = String(row.deviceUserId ?? '').trim();
+                    return number ? <span dir="ltr">{number}</span> : <Badge variant="warning">بلا رقم</Badge>;
+                },
+                sortValue: (row) => String(row.deviceUserId ?? '').trim() || null,
+            },
+            {
+                key: 'todayPunches',
+                header: 'بصمات اليوم',
+                className: 'erp-numeric text-muted',
+                cell: (row) => <span dir="ltr">{intOf(num(row.todayPunches))}</span>,
+                sortValue: (row) => num(row.todayPunches),
+            },
+            {
+                key: 'punches30d',
+                header: '30 يومًا',
+                className: 'erp-numeric text-muted',
+                cell: (row) => <span dir="ltr">{intOf(num(row.punches30d))}</span>,
+                sortValue: (row) => num(row.punches30d),
+            },
+            {
+                key: 'note',
+                header: 'ملاحظة',
+                className: 'text-body-sm',
+                cell: (row) =>
+                    row.altOwnedBy ? (
+                        <span className="text-danger-text">{`الرقم البديل مملوك لـ ${row.altOwnedBy}`}</span>
+                    ) : row.deviceAccountName ? (
+                        <span className="text-muted">{row.deviceAccountName}</span>
+                    ) : (
+                        <span className="text-faint">—</span>
+                    ),
+            },
+        ];
+        if (writable) {
+            base.push({
+                key: 'action',
+                header: 'إجراء',
+                cell: (row) => (
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="ghost"
+                        onClick={() => {
+                            setMappingError('');
+                            setMappingValue(String(row.deviceUserId ?? '').trim());
+                            setMappingTarget(row);
+                        }}
+                    >
+                        {String(row.deviceUserId ?? '').trim() ? 'تعديل الربط' : 'ربط'}
+                    </Button>
+                ),
+            });
+        }
+        return base;
+    }, [writable]);
 
     return (
         <>
@@ -243,115 +336,44 @@ export function ZktecoAdmin({ devices }: { devices: readonly ZkDeviceRow[] }) {
                     </span>
                 }
             >
-                {mappingsQuery.isError ? (
-                    <StateError
-                        message={writeErrorMessage(mappingsQuery.error, 'تعذّر جلب الربط')}
+                <div className="flex flex-col gap-sm">
+                    <Input
+                        label="بحث"
+                        value={filter}
+                        placeholder="بالاسم أو الرقم الوظيفي أو رقم البصمة"
+                        onChange={(event) => setFilter(event.target.value)}
+                    />
+                    <DataTable<ZkMappingEmployee>
+                        caption="جدول ربط الموظفين بأرقام البصمة"
+                        columns={columns}
+                        rows={filtered}
+                        rowKey={(row) => row.id}
+                        state={
+                            mappingsQuery.isPending
+                                ? 'loading'
+                                : mappingsQuery.isError
+                                  ? 'error'
+                                  : filtered.length === 0
+                                    ? 'empty'
+                                    : 'data'
+                        }
+                        emptyTitle={employees.length === 0 ? 'لا موظفين' : 'لا نتائج مطابقة للبحث.'}
+                        emptyDescription={
+                            employees.length === 0
+                                ? 'تعذّر قراءة قائمة الموظفين أو لا يوجد موظفون.'
+                                : 'امسح البحث أو غيّر كلماته.'
+                        }
+                        errorMessage={writeErrorMessage(mappingsQuery.error, 'تعذّر جلب الربط')}
                         onRetry={() => {
                             void mappingsQuery.refetch();
                         }}
+                        manualFiltering
+                        // قائمة الموظفين كلها بلا سقف — عتبة 50 تحجز منطقة تمرير
+                        // ثابتة الارتفاع حتى مع مئات الموظفين (CLS ≈ 0).
+                        virtualizeThreshold={50}
+                        loadingRows={15}
                     />
-                ) : employees.length === 0 ? (
-                    <StateEmpty title="لا موظفين" hint="تعذّر قراءة قائمة الموظفين أو لا يوجد موظفون." />
-                ) : (
-                    <div className="flex flex-col gap-sm">
-                        <Input
-                            label="بحث"
-                            value={filter}
-                            placeholder="بالاسم أو الرقم الوظيفي أو رقم البصمة"
-                            onChange={(event) => setFilter(event.target.value)}
-                        />
-                        <TableScroll label="جدول ربط الموظفين بأرقام البصمة">
-                            <table className="w-full border-collapse text-body-md">
-                                <thead>
-                                    <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">
-                                            الموظف
-                                        </th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">
-                                            الرقم الوظيفي
-                                        </th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">
-                                            رقم البصمة
-                                        </th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">
-                                            بصمات اليوم
-                                        </th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">
-                                            30 يومًا
-                                        </th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">
-                                            ملاحظة
-                                        </th>
-                                        {writable ? (
-                                            <th scope="col" className="px-sm py-xs text-start font-medium">
-                                                إجراء
-                                            </th>
-                                        ) : null}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {filtered.map((row) => {
-                                        const number = String(row.deviceUserId ?? '').trim();
-                                        return (
-                                            <tr key={row.id} className="border-b border-hairline hover:bg-surface-hover">
-                                                <td className="px-sm py-xxs text-ink">
-                                                    {String(row.name ?? '') || `#${row.id}`}
-                                                    {row.department ? (
-                                                        <span className="text-caption text-faint"> · {row.department}</span>
-                                                    ) : null}
-                                                </td>
-                                                <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">
-                                                    {String(row.employeeId ?? '') || '—'}
-                                                </td>
-                                                <td className="erp-numeric px-sm py-xxs" dir="ltr">
-                                                    {number ? number : <Badge variant="warning">بلا رقم</Badge>}
-                                                </td>
-                                                <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">
-                                                    {intOf(num(row.todayPunches))}
-                                                </td>
-                                                <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">
-                                                    {intOf(num(row.punches30d))}
-                                                </td>
-                                                <td className="px-sm py-xxs text-body-sm">
-                                                    {row.altOwnedBy ? (
-                                                        <span className="text-danger-text">
-                                                            {`الرقم البديل مملوك لـ ${row.altOwnedBy}`}
-                                                        </span>
-                                                    ) : row.deviceAccountName ? (
-                                                        <span className="text-muted">{row.deviceAccountName}</span>
-                                                    ) : (
-                                                        <span className="text-faint">—</span>
-                                                    )}
-                                                </td>
-                                                {writable ? (
-                                                    <td className="px-sm py-xxs">
-                                                        <Button
-                                                            type="button"
-                                                            size="sm"
-                                                            variant="ghost"
-                                                            onClick={() => {
-                                                                setMappingError('');
-                                                                setMappingValue(number);
-                                                                setMappingTarget(row);
-                                                            }}
-                                                        >
-                                                            {number ? 'تعديل الربط' : 'ربط'}
-                                                        </Button>
-                                                    </td>
-                                                ) : null}
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                            </table>
-                        </TableScroll>
-                        {filtered.length === 0 ? (
-                            <p className="text-body-sm text-muted" role="status">
-                                لا نتائج مطابقة للبحث.
-                            </p>
-                        ) : null}
-                    </div>
-                )}
+                </div>
 
                 {unmapped.length > 0 ? (
                     <div className="mt-sm rounded-md border border-warning bg-surface p-sm">

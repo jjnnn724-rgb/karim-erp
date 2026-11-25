@@ -46,7 +46,14 @@ export interface BadgeProps {
     className?: string;
 }
 
-export function Badge({ children, variant = 'neutral', soft = true, dot = false, unknown = false, className }: BadgeProps) {
+export function Badge({
+    children,
+    variant = 'neutral',
+    soft = true,
+    dot = false,
+    unknown = false,
+    className,
+}: BadgeProps) {
     return (
         <ShadcnBadge
             variant="outline"

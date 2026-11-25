@@ -50,7 +50,9 @@ describe('الأرباح والخسائر', () => {
                                     revenue: 6000,
                                     net: 2000,
                                     margin_pct: 33.3,
-                                    subDepartments: [{ code: 'SWEETS', name: 'الحلواني', revenue: 0, operating: 0, net: -500 }],
+                                    subDepartments: [
+                                        { code: 'SWEETS', name: 'الحلواني', revenue: 0, operating: 0, net: -500 },
+                                    ],
                                 },
                                 {
                                     code: 'SWEETS',

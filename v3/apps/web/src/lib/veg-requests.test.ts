@@ -82,6 +82,7 @@ describe('عقد طلبات الخضار — الشكل والصفّ', () => {
             pricedBy: '',
             notes: 'توريد الصباح',
             printCount: 0,
+            canHide: true,
         });
         expect(received.statusLabel).toBe('تم الاستلام');
         expect(received.receivedBy).toBe('أمين المخزن');
@@ -89,6 +90,10 @@ describe('عقد طلبات الخضار — الشكل والصفّ', () => {
         expect(priced.pricedBy).toBe('أمين المخزن');
         expect(priced.total).toBe('90');
         expect(cancelled.statusLabel).toBe('ملغي');
+        expect(cancelled.canHide).toBe(true);
+        expect(
+            row({ id: 2, status: 'cancelled', expense_id: 15, created_at: '2026-11-06T08:00:00.000Z' }).canHide,
+        ).toBe(false);
     });
 
     it('الطلب بلا رقم يُعرض #id، وبلا منشئ #created_by، وبلا إجمالي null', () => {

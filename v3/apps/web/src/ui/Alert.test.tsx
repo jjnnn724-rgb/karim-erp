@@ -45,7 +45,12 @@ describe('Alert', () => {
 
     it('يقبل إجراءً وclassName مخصصًا بلا كسر الشكل', () => {
         render(
-            <Alert variant="danger" title="تعذّر التحميل" action={<button type="button">إعادة المحاولة</button>} className="mt-md">
+            <Alert
+                variant="danger"
+                title="تعذّر التحميل"
+                action={<button type="button">إعادة المحاولة</button>}
+                className="mt-md"
+            >
                 أعد المحاولة بعد لحظات.
             </Alert>,
         );

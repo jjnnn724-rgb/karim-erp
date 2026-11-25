@@ -114,7 +114,10 @@ const stockItemSchema = z
 export const deptStockSchema = z
     .object({
         location: z
-            .object({ id: z.union([z.string(), z.number()]).nullable().optional(), code: z.string().nullable().optional() })
+            .object({
+                id: z.union([z.string(), z.number()]).nullable().optional(),
+                code: z.string().nullable().optional(),
+            })
             .passthrough()
             .nullable()
             .optional(),
@@ -176,13 +179,23 @@ export async function createExternalSaleTransfer(input: TransferCreateInput): Pr
 }
 
 export async function approveTransfer(id: string | number): Promise<TransferResult> {
-    return writeJson(transferResultSchema, `/api/warehouse/dept-transfers/${encodeURIComponent(String(id))}/approve`, 'POST', {});
+    return writeJson(
+        transferResultSchema,
+        `/api/warehouse/dept-transfers/${encodeURIComponent(String(id))}/approve`,
+        'POST',
+        {},
+    );
 }
 
 export async function rejectTransfer(id: string | number, reason: string): Promise<TransferResult> {
-    return writeJson(transferResultSchema, `/api/warehouse/dept-transfers/${encodeURIComponent(String(id))}/reject`, 'POST', {
-        reason: reason.trim(),
-    });
+    return writeJson(
+        transferResultSchema,
+        `/api/warehouse/dept-transfers/${encodeURIComponent(String(id))}/reject`,
+        'POST',
+        {
+            reason: reason.trim(),
+        },
+    );
 }
 
 export async function cancelTransfer(id: string | number): Promise<void> {

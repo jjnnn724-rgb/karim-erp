@@ -90,7 +90,12 @@ export async function fetchPermissionCatalog(signal?: AbortSignal): Promise<Perm
 }
 
 export async function fetchUserPermissions(id: string, signal?: AbortSignal): Promise<UserPermissions> {
-    return fetchJson(userPermissionsSchema, `/api/permissions/users/${encodeURIComponent(id)}`, getAccessToken(), signal ? { signal } : {});
+    return fetchJson(
+        userPermissionsSchema,
+        `/api/permissions/users/${encodeURIComponent(id)}`,
+        getAccessToken(),
+        signal ? { signal } : {},
+    );
 }
 
 export type PermissionBootstrap = {
@@ -187,7 +192,11 @@ export function catalogTotals(catalog: readonly PermissionItem[]): CatalogTotals
 
 export type ModeCounts = { grant: number; deny: number; inherit: number };
 
-export function modeCounts(catalog: readonly PermissionItem[], grants: ReadonlySet<string>, denies: ReadonlySet<string>): ModeCounts {
+export function modeCounts(
+    catalog: readonly PermissionItem[],
+    grants: ReadonlySet<string>,
+    denies: ReadonlySet<string>,
+): ModeCounts {
     const counts: ModeCounts = { grant: 0, deny: 0, inherit: 0 };
     for (const item of catalog) {
         counts[permMode(item.key, grants, denies)] += 1;
@@ -197,7 +206,10 @@ export function modeCounts(catalog: readonly PermissionItem[], grants: ReadonlyS
 
 /* ─── البحث واختيار المستخدم ───────────────────────────────────────────── */
 
-export function searchPermissions(items: readonly PermissionItem[], query: string): { rows: PermissionItem[]; folded: boolean } {
+export function searchPermissions(
+    items: readonly PermissionItem[],
+    query: string,
+): { rows: PermissionItem[]; folded: boolean } {
     const raw = String(query ?? '').trim();
     if (!raw) {
         return { rows: [...items], folded: false };

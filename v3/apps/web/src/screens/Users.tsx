@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
+import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { fetchEmployees } from '../lib/employees';
@@ -33,6 +34,7 @@ import {
     userWriteVisible,
 } from '../lib/users-write';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
+import { PageHeader } from '../ui';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
@@ -370,7 +372,13 @@ function EditDialog({ open, row, onClose, pending, onSave }: EditDialogProps) {
                 <p className="text-body-sm text-muted">
                     <strong className="text-ink">{row?.username ? `@${row.username}` : ''}</strong>
                 </p>
-                <Input label="الاسم الكامل" name="name" value={name} onChange={(e) => setName(e.target.value)} required />
+                <Input
+                    label="الاسم الكامل"
+                    name="name"
+                    value={name}
+                    onChange={(e) => setName(e.target.value)}
+                    required
+                />
                 <Select
                     label="الدور"
                     name="role"
@@ -534,7 +542,9 @@ export function Users() {
 
     function toggleSort(key: SortKey) {
         setPage(1);
-        setSort((previous) => (previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
+        setSort((previous) =>
+            previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' },
+        );
     }
 
     function resetFilters() {
@@ -567,7 +577,10 @@ export function Users() {
         },
     });
 
-    const activeMutation = useWriteMutation<{ id: string | number; active: boolean }, { id: string | number; active: boolean }>({
+    const activeMutation = useWriteMutation<
+        { id: string | number; active: boolean },
+        { id: string | number; active: boolean }
+    >({
         mutationFn: ({ id, active }) => setUserActive(id, active).then((r) => ({ id: r.id, active })),
         successTitle: ({ active }) => (active ? USER_TEXT.activateSuccess : USER_TEXT.deactivateSuccess),
         invalidate: [['users']],
@@ -643,37 +656,33 @@ export function Users() {
 
     return (
         <div className="flex flex-col gap-lg">
-            <header className="flex flex-wrap items-end justify-between gap-md border-b border-hairline pb-md">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        المستخدمون{' '}
-                        <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted" dir="ltr" lang="en">
-                            Users
-                        </span>
-                    </h1>
-                    <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        من يدخل النظام وبأي دور، ومن هو موظفه المرتبط. إنشاء الحسابات وتعديل بياناتهم وإيقاف/ تفعيل الحساب وحذفه. كلمة
-                        المرور لا تُعرض في أي صفّ. القراءة محجوزة في الخادم للأدوار الإدارية، والكتابة لـ admin|manager|hr والحذف للأدمن فقط.
-                    </p>
-                </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                    {canWrite ? (
-                        <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
-                            إضافة مستخدم
-                        </Button>
-                    ) : null}
-                    <button
-                        type="button"
-                        onClick={() => {
-                            void usersQuery.refetch();
-                            void employeesQuery.refetch();
-                        }}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                </div>
-            </header>
+            <PageHeader
+                title="المستخدمون"
+                english="Users"
+                description="من يدخل النظام وبأي دور، ومن هو موظفه المرتبط. إنشاء الحسابات وتعديل بياناتهم وإيقاف/ تفعيل الحساب وحذفه. كلمة المرور لا تُعرض في أي صفّ. القراءة محجوزة في الخادم للأدوار الإدارية، والكتابة لـ admin|manager|hr والحذف للأدمن فقط."
+                actions={
+                    <>
+                        <div className="flex items-center gap-xs" data-erp-print-hide>
+                            {canWrite ? (
+                                <Button type="button" size="sm" onClick={() => setCreateOpen(true)}>
+                                    إضافة مستخدم
+                                </Button>
+                            ) : null}
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    void usersQuery.refetch();
+                                    void employeesQuery.refetch();
+                                }}
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                            >
+                                تحديث
+                            </button>
+                            <PrintActions title="المستخدمون" />
+                        </div>
+                    </>
+                }
+            />
 
             <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
                 <Kpi
@@ -698,7 +707,11 @@ export function Users() {
                     label="رؤساء أقسام بلا قسم"
                     english="Heads w/o dept"
                     value={formatInt(totals.headWithoutDept)}
-                    hint={totals.headWithoutDept ? 'رئيس قسم بلا كود قسم مخزَّن' : `${formatInt(heads)} رئيس قسم — كلهم بأكواد`}
+                    hint={
+                        totals.headWithoutDept
+                            ? 'رئيس قسم بلا كود قسم مخزَّن'
+                            : `${formatInt(heads)} رئيس قسم — كلهم بأكواد`
+                    }
                 />
             </div>
 
@@ -737,7 +750,10 @@ export function Users() {
                             ))}
                         </select>
                     </label>
-                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-users-status">
+                    <label
+                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
+                        htmlFor="erp-users-status"
+                    >
                         الحالة
                         <select
                             id="erp-users-status"
@@ -781,7 +797,9 @@ export function Users() {
                     </span>
                 </div>
                 {search.folded ? (
-                    <p className="mt-sm text-body-sm text-muted">بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.</p>
+                    <p className="mt-sm text-body-sm text-muted">
+                        بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.
+                    </p>
                 ) : null}
             </Card>
 
@@ -805,12 +823,18 @@ export function Users() {
                                         )}
                                     </span>
                                     <span className="h-2 flex-1 overflow-hidden rounded-full bg-surface-sunken">
-                                        <span className="block h-full rounded-full bg-primary" style={{ width: `${share.toFixed(1)}%` }} />
+                                        <span
+                                            className="block h-full rounded-full bg-primary"
+                                            style={{ width: `${share.toFixed(1)}%` }}
+                                        />
                                     </span>
                                     <span className="erp-numeric w-16 shrink-0 text-end text-ink" dir="ltr">
                                         {formatInt(entry.count)}
                                     </span>
-                                    <span className="erp-numeric w-14 shrink-0 text-end text-caption text-muted" dir="ltr">
+                                    <span
+                                        className="erp-numeric w-14 shrink-0 text-end text-caption text-muted"
+                                        dir="ltr"
+                                    >
                                         {share.toFixed(1)}%
                                     </span>
                                 </li>
@@ -855,7 +879,12 @@ export function Users() {
                             <table className="w-full min-w-[760px] border-collapse text-body-md">
                                 <thead>
                                     <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                        <SortableTh label="اسم المستخدم" sortKey="username" sort={sort} onToggle={toggleSort} />
+                                        <SortableTh
+                                            label="اسم المستخدم"
+                                            sortKey="username"
+                                            sort={sort}
+                                            onToggle={toggleSort}
+                                        />
                                         <SortableTh label="الاسم" sortKey="name" sort={sort} onToggle={toggleSort} />
                                         <SortableTh label="الدور" sortKey="role" sort={sort} onToggle={toggleSort} />
                                         <th scope="col" className="px-sm py-xs text-start font-medium">
@@ -865,9 +894,18 @@ export function Users() {
                                         <th scope="col" className="px-sm py-xs text-start font-medium">
                                             الموظف المرتبط
                                         </th>
-                                        <SortableTh label="آخر دخول" sortKey="lastLogin" sort={sort} onToggle={toggleSort} />
+                                        <SortableTh
+                                            label="آخر دخول"
+                                            sortKey="lastLogin"
+                                            sort={sort}
+                                            onToggle={toggleSort}
+                                        />
                                         {(canWrite || canDelete) && (
-                                            <th scope="col" className="px-sm py-xs text-start font-medium" data-erp-print-hide>
+                                            <th
+                                                scope="col"
+                                                className="px-sm py-xs text-start font-medium"
+                                                data-erp-print-hide
+                                            >
                                                 إجراءات
                                             </th>
                                         )}
@@ -881,7 +919,9 @@ export function Users() {
                                             </td>
                                             <td className="px-sm py-xxs text-ink">{row.name}</td>
                                             <td className="px-sm py-xxs text-body-sm">
-                                                <span className={row.roleKnown ? 'text-ink' : 'text-muted'}>{row.roleLabel}</span>
+                                                <span className={row.roleKnown ? 'text-ink' : 'text-muted'}>
+                                                    {row.roleLabel}
+                                                </span>
                                                 {row.roleKnown ? null : (
                                                     <span className="text-caption text-faint" dir="ltr">
                                                         {' '}
@@ -889,11 +929,16 @@ export function Users() {
                                                     </span>
                                                 )}
                                             </td>
-                                            <td className="px-sm py-xxs text-body-sm text-muted" title={row.deptCode || 'بلا كود قسم'}>
+                                            <td
+                                                className="px-sm py-xxs text-body-sm text-muted"
+                                                title={row.deptCode || 'بلا كود قسم'}
+                                            >
                                                 {row.deptCode || '—'}
                                             </td>
                                             <td className="px-sm py-xxs text-body-sm">
-                                                <span className={row.active ? 'text-success-text' : 'text-muted'}>{row.statusLabel}</span>
+                                                <span className={row.active ? 'text-success-text' : 'text-muted'}>
+                                                    {row.statusLabel}
+                                                </span>
                                             </td>
                                             <td className="px-sm py-xxs text-body-sm">
                                                 {row.linked ? (
@@ -947,7 +992,9 @@ export function Users() {
                                                                         size="sm"
                                                                         variant="secondary"
                                                                         title="إيقاف الحساب"
-                                                                        onClick={() => void handleChangeStatus(row, false)}
+                                                                        onClick={() =>
+                                                                            void handleChangeStatus(row, false)
+                                                                        }
                                                                     >
                                                                         إيقاف
                                                                     </Button>
@@ -957,7 +1004,9 @@ export function Users() {
                                                                         size="sm"
                                                                         variant="secondary"
                                                                         title="تفعيل الحساب"
-                                                                        onClick={() => void handleChangeStatus(row, true)}
+                                                                        onClick={() =>
+                                                                            void handleChangeStatus(row, true)
+                                                                        }
                                                                     >
                                                                         تفعيل
                                                                     </Button>
@@ -1091,7 +1140,9 @@ export function Users() {
                 }
             >
                 <div className="flex flex-col gap-sm">
-                    <p className="text-body-sm text-muted">صالح 10 دقائق · استخدام واحد · إصدار رمز جديد يُبطل السابق. أعطِه للموظف وحده.</p>
+                    <p className="text-body-sm text-muted">
+                        صالح 10 دقائق · استخدام واحد · إصدار رمز جديد يُبطل السابق. أعطِه للموظف وحده.
+                    </p>
                     {resetError ? (
                         <p
                             className="rounded-md border border-danger/40 bg-danger-soft px-sm py-xs text-body-sm text-danger-text"

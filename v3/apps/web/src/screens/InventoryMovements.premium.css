@@ -1,3 +1,5 @@
+/* حركات المخزون — طبقة صقل بصرية فوق نظام الرموز (بلا ألوان خام، بلا خصائص فيزيائية). */
+
 .erp-premium-InventoryMovements {
     min-width: 0;
 }
@@ -40,6 +42,68 @@
     inset-block-start: 0;
     z-index: 1;
 }
+.erp-mv-kpi::before {
+    content: "";
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline: 0;
+    height: 3px;
+    background: var(--erp-neutral);
+}
+.erp-mv-legend {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.875rem;
+    margin: 0;
+    padding: 0;
+    list-style: none;
+    font-size: var(--text-body-sm);
+    color: var(--erp-muted);
+}
+.erp-mv-legend li {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.3rem;
+}
+.erp-mv-legend__dot {
+    width: 0.5rem;
+    height: 0.5rem;
+    border-radius: 999px;
+    background: var(--erp-neutral);
+}
+.erp-mv-legend__dot--in {
+    background: var(--erp-success);
+}
+.erp-mv-legend__dot--out {
+    background: var(--erp-danger);
+}
+.erp-mv-legend__dot--return {
+    background: var(--erp-info);
+}
+.erp-mv-legend__dot--adjustment {
+    background: var(--erp-warning);
+}
+.erp-mv-type-raw {
+    opacity: 0.8;
+}
+.erp-mv-updated {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.4rem;
+    border: 1px solid var(--erp-hairline);
+    border-radius: 999px;
+    background: var(--erp-surface);
+    padding: 0.25rem 0.6rem;
+    font-size: var(--text-caption);
+    color: var(--erp-muted);
+}
+.erp-mv-updated__dot {
+    width: 0.45rem;
+    height: 0.45rem;
+    border-radius: 999px;
+    background: var(--erp-success);
+}
+
 @media (max-width: 640px) {
     .erp-premium-InventoryMovements {
         gap: 0.85rem;
@@ -59,9 +123,14 @@
     .erp-premium-InventoryMovements :is(table) {
         min-width: 36rem;
     }
+    .erp-mv-legend {
+        gap: 0.5rem;
+    }
 }
+
 @media (prefers-reduced-motion: reduce) {
-    .erp-premium-InventoryMovements :is(tbody tr) {
+    .erp-premium-InventoryMovements :is(tbody tr),
+    .erp-mv-preset {
         transition: none;
     }
 }

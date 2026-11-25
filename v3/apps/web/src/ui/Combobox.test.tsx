@@ -56,7 +56,9 @@ describe('Combobox', () => {
         render(<Combobox label="الفرع" options={options} error="الفرع مطلوب" />);
         const input = screen.getByRole('combobox', { name: 'الفرع' });
         expect(input.getAttribute('aria-invalid')).toBe('true');
-        expect(document.getElementById(String(input.getAttribute('aria-describedby')))?.textContent).toContain('الفرع مطلوب');
+        expect(document.getElementById(String(input.getAttribute('aria-describedby')))?.textContent).toContain(
+            'الفرع مطلوب',
+        );
     });
 
     it('بلا مخالفات axe', async () => {

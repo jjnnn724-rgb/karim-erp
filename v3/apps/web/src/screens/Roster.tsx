@@ -1,6 +1,7 @@
 import './Roster.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
+import { PrintActions } from '../components/PrintActions';
 import { RosterWorkbench } from '../components/RosterWorkbench';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { formatInt } from '../lib/inventory-register';
@@ -22,6 +23,8 @@ import {
     searchRosterLogs,
     weekOf,
 } from '../lib/roster';
+
+import { PageHeader } from '../ui';
 
 /**
  * الدوام — شبكة الدوام الأسبوعية، قراءة فقط من `/api/hr/dept-roster-week`.
@@ -179,7 +182,9 @@ export function Roster() {
 
     function toggleLogSort(key: LogSortKey) {
         setLogPage(1);
-        setLogSort((previous) => (previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
+        setLogSort((previous) =>
+            previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' },
+        );
     }
 
     function stepWeek(delta: number) {
@@ -191,7 +196,8 @@ export function Roster() {
         setWeek(next);
     }
 
-    const approvalLabel = approval.key === 'approved' ? 'معتمد' : approval.key === 'pending' ? 'بانتظار التوقيع' : 'لا اعتماد مسجَّل';
+    const approvalLabel =
+        approval.key === 'approved' ? 'معتمد' : approval.key === 'pending' ? 'بانتظار التوقيع' : 'لا اعتماد مسجَّل';
 
     const approvalHint =
         approval.key === 'approved'
@@ -202,27 +208,26 @@ export function Roster() {
 
     return (
         <div className="flex flex-col gap-md roster-premium">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        الدوام{' '}
-                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
-                            Dept Roster
-                        </span>
-                    </h1>
-                    <p className="text-body-sm text-muted">شبكة دوام الأسبوع.</p>
-                </div>
-                <button
-                    type="button"
-                    onClick={() => {
-                        void weekQuery.refetch();
-                    }}
-                    data-erp-print-hide
-                    className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                >
-                    تحديث
-                </button>
-            </header>
+            <PageHeader
+                title="الدوام"
+                english="Dept Roster"
+                description="شبكة دوام الأسبوع."
+                actions={
+                    <>
+                        <PrintActions title="الدوام" />
+                        <button
+                            type="button"
+                            onClick={() => {
+                                void weekQuery.refetch();
+                            }}
+                            data-erp-print-hide
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                        >
+                            تحديث
+                        </button>
+                    </>
+                }
+            />
 
             {data ? (
                 <RosterWorkbench
@@ -276,7 +281,10 @@ export function Roster() {
                     </label>
 
                     {!data?.fixed ? (
-                        <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-roster-dept">
+                        <label
+                            className="flex flex-col gap-xxs text-label-md text-ink-secondary"
+                            htmlFor="erp-roster-dept"
+                        >
                             القسم
                             <select
                                 id="erp-roster-dept"
@@ -347,7 +355,9 @@ export function Roster() {
                 ) : null}
 
                 {search.folded || logSearch.folded ? (
-                    <p className="mt-sm text-body-sm text-muted">بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.</p>
+                    <p className="mt-sm text-body-sm text-muted">
+                        بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.
+                    </p>
                 ) : null}
             </Card>
 
@@ -362,7 +372,9 @@ export function Roster() {
                             ({formatInt(summary.employees)})
                         </span>
                     </h2>
-                    <span className="text-body-sm text-muted">الأيام المقفلة والمظللة بالإجازة كما أرسلها الخادم — القرار للخادم</span>
+                    <span className="text-body-sm text-muted">
+                        الأيام المقفلة والمظللة بالإجازة كما أرسلها الخادم — القرار للخادم
+                    </span>
                 </div>
 
                 {weekQuery.isPending ? (
@@ -382,13 +394,18 @@ export function Roster() {
                 ) : null}
 
                 {weekQuery.isSuccess && rows.length === 0 ? (
-                    <StateEmpty title="لا موظفون في نطاق هذا القسم" hint="الخادم أرسل شبكة فارغة لهذا النطاق — الصف لا يُختلق." />
+                    <StateEmpty
+                        title="لا موظفون في نطاق هذا القسم"
+                        hint="الخادم أرسل شبكة فارغة لهذا النطاق — الصف لا يُختلق."
+                    />
                 ) : null}
 
                 {weekQuery.isSuccess && rows.length > 0 ? (
                     <TableScroll label="شبكة دوام الأسبوع">
                         <table className="w-full border-collapse text-body-md">
-                            <caption className="sr-only">شبكة دوام الأسبوع — كل خلية محفوظة تُطبق في تاريخها عبر مجدول المحرك</caption>
+                            <caption className="sr-only">
+                                شبكة دوام الأسبوع — كل خلية محفوظة تُطبق في تاريخها عبر مجدول المحرك
+                            </caption>
                             <thead>
                                 <tr className="bg-surface-sunken text-label-md text-ink-secondary">
                                     <th scope="col" className="px-sm py-xs text-start font-medium">
@@ -400,8 +417,12 @@ export function Roster() {
                                             <small className="erp-numeric block text-caption text-muted" dir="ltr">
                                                 {day.date}
                                             </small>
-                                            {day.isToday ? <small className="block text-caption text-success-text">اليوم</small> : null}
-                                            {day.isPast ? <small className="block text-caption text-muted">مقفل</small> : null}
+                                            {day.isToday ? (
+                                                <small className="block text-caption text-success-text">اليوم</small>
+                                            ) : null}
+                                            {day.isPast ? (
+                                                <small className="block text-caption text-muted">مقفل</small>
+                                            ) : null}
                                         </th>
                                     ))}
                                 </tr>
@@ -415,7 +436,9 @@ export function Roster() {
                                                 {row.employeeId}
                                             </small>
                                             {row.position ? (
-                                                <small className="block text-caption text-muted">· {row.position}</small>
+                                                <small className="block text-caption text-muted">
+                                                    · {row.position}
+                                                </small>
                                             ) : null}
                                         </td>
                                         {days.map((day, index) => (
@@ -467,23 +490,48 @@ export function Roster() {
                 ) : null}
 
                 {weekQuery.isError ? null : logs.length === 0 ? (
-                    <StateEmpty title="لا تغييرات مسجّلة في نطاق هذا القسم" hint="أول حفظ لأي خلية سيظهر هنا بتاريخ سريانه ومن سجّله." />
+                    <StateEmpty
+                        title="لا تغييرات مسجّلة في نطاق هذا القسم"
+                        hint="أول حفظ لأي خلية سيظهر هنا بتاريخ سريانه ومن سجّله."
+                    />
                 ) : null}
 
                 {weekQuery.isError ? null : logs.length > 0 ? (
                     <>
                         <TableScroll label="آخر تغييرات الدوام">
                             <table className="w-full border-collapse text-body-md">
-                                <caption className="sr-only">آخر تغييرات الدوام — كل سطر تغيير مجدول بتاريخ سريانه</caption>
+                                <caption className="sr-only">
+                                    آخر تغييرات الدوام — كل سطر تغيير مجدول بتاريخ سريانه
+                                </caption>
                                 <thead>
                                     <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                        <SortableTh label="الموظف" sortKey="employee" sort={logSort} onToggle={toggleLogSort} />
+                                        <SortableTh
+                                            label="الموظف"
+                                            sortKey="employee"
+                                            sort={logSort}
+                                            onToggle={toggleLogSort}
+                                        />
                                         <th scope="col" className="px-sm py-xs text-start font-medium">
                                             الدوام
                                         </th>
-                                        <SortableTh label="يسري من" sortKey="effectiveFrom" sort={logSort} onToggle={toggleLogSort} />
-                                        <SortableTh label="بواسطة" sortKey="by" sort={logSort} onToggle={toggleLogSort} />
-                                        <SortableTh label="وقت التسجيل" sortKey="at" sort={logSort} onToggle={toggleLogSort} />
+                                        <SortableTh
+                                            label="يسري من"
+                                            sortKey="effectiveFrom"
+                                            sort={logSort}
+                                            onToggle={toggleLogSort}
+                                        />
+                                        <SortableTh
+                                            label="بواسطة"
+                                            sortKey="by"
+                                            sort={logSort}
+                                            onToggle={toggleLogSort}
+                                        />
+                                        <SortableTh
+                                            label="وقت التسجيل"
+                                            sortKey="at"
+                                            sort={logSort}
+                                            onToggle={toggleLogSort}
+                                        />
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -492,7 +540,10 @@ export function Roster() {
                                             <td className="px-sm py-xxs text-ink">
                                                 {row.employee}
                                                 {row.empNo ? (
-                                                    <small className="erp-numeric block text-caption text-muted" dir="ltr">
+                                                    <small
+                                                        className="erp-numeric block text-caption text-muted"
+                                                        dir="ltr"
+                                                    >
                                                         {row.empNo}
                                                     </small>
                                                 ) : null}

@@ -171,7 +171,9 @@ export function PosHistory({
                                                 <td className="erp-numeric px-sm py-xxs" dir="ltr">
                                                     #{String(order.invoice_counter ?? order.id)}
                                                 </td>
-                                                <td className="px-sm py-xxs text-ink">{order.department_name || '—'}</td>
+                                                <td className="px-sm py-xxs text-ink">
+                                                    {order.department_name || '—'}
+                                                </td>
                                                 <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">
                                                     {order.created_at || '—'}
                                                 </td>
@@ -183,7 +185,9 @@ export function PosHistory({
                                                     {moneyText(order.total_amount)}
                                                 </td>
                                                 <td className="px-sm py-xxs">
-                                                    <Badge variant={orderStatusTone(order.status)}>{orderStatusLabel(order.status)}</Badge>
+                                                    <Badge variant={orderStatusTone(order.status)}>
+                                                        {orderStatusLabel(order.status)}
+                                                    </Badge>
                                                 </td>
                                                 <td className="px-sm py-xxs">
                                                     <Button
@@ -203,7 +207,12 @@ export function PosHistory({
                             </TableScroll>
                         )}
                         {pagination && pagination.totalPages > 1 ? (
-                            <Pagination page={pagination.page} pageSize={pagination.limit} total={pagination.total} onPageChange={onPage} />
+                            <Pagination
+                                page={pagination.page}
+                                pageSize={pagination.limit}
+                                total={pagination.total}
+                                onPageChange={onPage}
+                            />
                         ) : null}
                     </>
                 ) : null}
@@ -272,7 +281,9 @@ export function PosOrderDetailPanel({
                             </li>
                             <li>
                                 <span>الحالة</span>
-                                <Badge variant={orderStatusTone(detail.status)}>{orderStatusLabel(detail.status)}</Badge>
+                                <Badge variant={orderStatusTone(detail.status)}>
+                                    {orderStatusLabel(detail.status)}
+                                </Badge>
                             </li>
                         </ul>
 
@@ -404,8 +415,13 @@ export function PosOrderDetailPanel({
                                     </thead>
                                     <tbody>
                                         {detail.payments.map((payment, index) => (
-                                            <tr key={`${String(payment.method)}-${String(index)}`} className="border-b border-hairline">
-                                                <td className="px-sm py-xxs text-ink">{paymentMethodLabel(payment.method)}</td>
+                                            <tr
+                                                key={`${String(payment.method)}-${String(index)}`}
+                                                className="border-b border-hairline"
+                                            >
+                                                <td className="px-sm py-xxs text-ink">
+                                                    {paymentMethodLabel(payment.method)}
+                                                </td>
                                                 <td className="erp-numeric px-sm py-xxs" dir="ltr">
                                                     {moneyText(payment.amount)}
                                                 </td>

@@ -32,7 +32,10 @@ export interface AdvancedFiltersProps {
 }
 
 export function AdvancedFilters({ value, levels, onTypeChange, onLevelChange }: AdvancedFiltersProps) {
-    const levelOptions = [ALL_LEVELS_OPTION, ...levels.map((level) => ({ value: String(level), label: `المستوى ${String(level)}` }))];
+    const levelOptions = [
+        ALL_LEVELS_OPTION,
+        ...levels.map((level) => ({ value: String(level), label: `المستوى ${String(level)}` })),
+    ];
 
     return (
         <div className="grid gap-sm sm:grid-cols-3">
@@ -52,7 +55,9 @@ export function AdvancedFilters({ value, levels, onTypeChange, onLevelChange }: 
                 options={levelOptions}
                 onValueChange={(next) => {
                     const level = Number(next);
-                    onLevelChange(next === 'all' ? null : Number.isInteger(level) && levels.includes(level) ? level : null);
+                    onLevelChange(
+                        next === 'all' ? null : Number.isInteger(level) && levels.includes(level) ? level : null,
+                    );
                 }}
             />
             <Select

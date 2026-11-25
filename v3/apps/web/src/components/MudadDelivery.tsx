@@ -44,7 +44,9 @@ function dateText(value: string | null | undefined): string {
         return '—';
     }
     const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' });
+    return Number.isNaN(date.getTime())
+        ? String(value)
+        : date.toLocaleString('ar-EG', { dateStyle: 'short', timeStyle: 'short' });
 }
 
 function clockText(value: string | null | undefined): string {
@@ -108,7 +110,9 @@ function ProviderCard({
 }
 
 export function MudadDelivery({ writable }: { writable: boolean }) {
-    const [pendingToggle, setPendingToggle] = useState<{ provider: IntegrationProvider; enabled: boolean } | null>(null);
+    const [pendingToggle, setPendingToggle] = useState<{ provider: IntegrationProvider; enabled: boolean } | null>(
+        null,
+    );
     const [review, setReview] = useState<{ row: OutboxRow; decision: ReviewDecision } | null>(null);
     const [reason, setReason] = useState('');
     const [reviewError, setReviewError] = useState('');
@@ -198,7 +202,10 @@ export function MudadDelivery({ writable }: { writable: boolean }) {
     return (
         <>
             <Card className="mudad-section">
-                <SectionHead title="مزوّدو التكامل" description="التصنيف كما هو في السجل — التفعيل لا يُتاح قبل تحقق موثّق." />
+                <SectionHead
+                    title="مزوّدو التكامل"
+                    description="التصنيف كما هو في السجل — التفعيل لا يُتاح قبل تحقق موثّق."
+                />
                 <div className="mudad-section__body flex flex-col gap-sm">
                     <div className="flex flex-wrap items-center justify-between gap-sm">
                         <p className="text-body-sm text-muted">
@@ -214,7 +221,11 @@ export function MudadDelivery({ writable }: { writable: boolean }) {
                     </div>
                     {healthQuery.isError ? (
                         <StateError
-                            message={healthQuery.error instanceof Error ? healthQuery.error.message : 'تعذّرت قراءة حالة التكامل'}
+                            message={
+                                healthQuery.error instanceof Error
+                                    ? healthQuery.error.message
+                                    : 'تعذّرت قراءة حالة التكامل'
+                            }
                             onRetry={() => {
                                 void healthQuery.refetch();
                             }}
@@ -267,7 +278,10 @@ export function MudadDelivery({ writable }: { writable: boolean }) {
                             value={outboxStatus}
                             options={[
                                 { value: '', label: 'كل الحالات' },
-                                ...OUTBOX_STATUSES.map((status) => ({ value: status, label: outboxStatusLabel(status) })),
+                                ...OUTBOX_STATUSES.map((status) => ({
+                                    value: status,
+                                    label: outboxStatusLabel(status),
+                                })),
                             ]}
                             onValueChange={(next) => {
                                 setOutboxStatus(next as (typeof OUTBOX_STATUSES)[number] | '');
@@ -279,12 +293,18 @@ export function MudadDelivery({ writable }: { writable: boolean }) {
                             <Badge variant="neutral">معلّق: {formatInt(counts.pending)}</Badge>
                             <Badge variant="warning">فاشل: {formatInt(counts.failed)}</Badge>
                             <Badge variant="danger">ميت: {formatInt(counts.dead_letter)}</Badge>
-                            <span className="text-muted">أقدم انتظار: {ageText(counts.oldest_pending_age_seconds)}</span>
+                            <span className="text-muted">
+                                أقدم انتظار: {ageText(counts.oldest_pending_age_seconds)}
+                            </span>
                         </p>
                     ) : null}
                     {outboxQuery.isError ? (
                         <StateError
-                            message={outboxQuery.error instanceof Error ? outboxQuery.error.message : 'تعذّرت قراءة صندوق الصادر'}
+                            message={
+                                outboxQuery.error instanceof Error
+                                    ? outboxQuery.error.message
+                                    : 'تعذّرت قراءة صندوق الصادر'
+                            }
                             onRetry={() => {
                                 void outboxQuery.refetch();
                             }}
@@ -299,7 +319,11 @@ export function MudadDelivery({ writable }: { writable: boolean }) {
                     {outboxQuery.isSuccess && deadRows.length === 0 ? (
                         <StateEmpty
                             title="لا صفوف في هذه الحالة"
-                            hint={outboxStatus ? 'لا صفوف بهذه الحالة الآن — جرّب حالة أخرى من المرشّح.' : 'صندوق الصادر فارغ.'}
+                            hint={
+                                outboxStatus
+                                    ? 'لا صفوف بهذه الحالة الآن — جرّب حالة أخرى من المرشّح.'
+                                    : 'صندوق الصادر فارغ.'
+                            }
                         />
                     ) : null}
                     {deadRows.length ? (
@@ -333,14 +357,18 @@ export function MudadDelivery({ writable }: { writable: boolean }) {
                                 <tbody>
                                     {deadRows.map((row) => (
                                         <tr key={row.id} className="border-b border-hairline hover:bg-surface-hover">
-                                            <td className="px-sm py-xxs text-body-sm text-muted">{dateText(row.created_at)}</td>
+                                            <td className="px-sm py-xxs text-body-sm text-muted">
+                                                {dateText(row.created_at)}
+                                            </td>
                                             <td className="px-sm py-xxs text-ink" dir="ltr">
                                                 {row.provider_code || '—'}
                                             </td>
                                             <td className="px-sm py-xxs text-ink" dir="ltr">
                                                 {row.event_type || '—'}
                                             </td>
-                                            <td className="px-sm py-xxs text-body-sm text-muted">{outboxStatusLabel(row.status)}</td>
+                                            <td className="px-sm py-xxs text-body-sm text-muted">
+                                                {outboxStatusLabel(row.status)}
+                                            </td>
                                             <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">
                                                 {formatInt(row.attempts)}/{formatInt(row.max_attempts)}
                                             </td>
@@ -380,7 +408,9 @@ export function MudadDelivery({ writable }: { writable: boolean }) {
                                                             </Button>
                                                         </>
                                                     ) : null}
-                                                    {!writable ? <span className="text-caption text-muted">—</span> : null}
+                                                    {!writable ? (
+                                                        <span className="text-caption text-muted">—</span>
+                                                    ) : null}
                                                 </div>
                                             </td>
                                         </tr>
@@ -397,7 +427,9 @@ export function MudadDelivery({ writable }: { writable: boolean }) {
                 <div className="flex flex-col gap-sm p-sm">
                     {eventsQuery.isError ? (
                         <StateError
-                            message={eventsQuery.error instanceof Error ? eventsQuery.error.message : 'تعذّرت قراءة الأحداث'}
+                            message={
+                                eventsQuery.error instanceof Error ? eventsQuery.error.message : 'تعذّرت قراءة الأحداث'
+                            }
                             onRetry={() => {
                                 void eventsQuery.refetch();
                             }}
@@ -432,12 +464,18 @@ export function MudadDelivery({ writable }: { writable: boolean }) {
                                 <tbody>
                                     {events.map((event: IntegrationEvent) => (
                                         <tr key={event.id} className="border-b border-hairline">
-                                            <td className="px-sm py-xxs text-body-sm text-muted">{dateText(event.occurred_at)}</td>
+                                            <td className="px-sm py-xxs text-body-sm text-muted">
+                                                {dateText(event.occurred_at)}
+                                            </td>
                                             <td className="px-sm py-xxs text-ink" dir="ltr">
                                                 {event.provider_code || '—'}
                                             </td>
-                                            <td className="px-sm py-xxs text-body-sm text-muted">{eventDirectionLabel(event.direction)}</td>
-                                            <td className="px-sm py-xxs text-body-sm text-muted">{eventOutcomeLabel(event.outcome)}</td>
+                                            <td className="px-sm py-xxs text-body-sm text-muted">
+                                                {eventDirectionLabel(event.direction)}
+                                            </td>
+                                            <td className="px-sm py-xxs text-body-sm text-muted">
+                                                {eventOutcomeLabel(event.outcome)}
+                                            </td>
                                             <td className="px-sm py-xxs text-body-sm text-muted" dir="ltr">
                                                 {event.error_code || '—'}
                                             </td>
@@ -511,7 +549,12 @@ export function MudadDelivery({ writable }: { writable: boolean }) {
                         >
                             إلغاء
                         </Button>
-                        <Button type="button" size="sm" loading={reviewMutation.isPending} onClick={() => void submitReview()}>
+                        <Button
+                            type="button"
+                            size="sm"
+                            loading={reviewMutation.isPending}
+                            onClick={() => void submitReview()}
+                        >
                             تأكيد المراجعة
                         </Button>
                     </>
@@ -523,7 +566,12 @@ export function MudadDelivery({ writable }: { writable: boolean }) {
                             ? `صف الصادر #${review.row.id} لن يُرسل مرة أخرى.`
                             : `سيُنشأ صف إعادة إرسال جديد من الصف #${review?.row.id ?? ''}.`}
                     </p>
-                    <Input label="سبب المراجعة" name="review-reason" value={reason} onChange={(event) => setReason(event.target.value)} />
+                    <Input
+                        label="سبب المراجعة"
+                        name="review-reason"
+                        value={reason}
+                        onChange={(event) => setReason(event.target.value)}
+                    />
                     {reviewError ? (
                         <p role="alert" className="text-body-sm text-danger-text">
                             {reviewError}

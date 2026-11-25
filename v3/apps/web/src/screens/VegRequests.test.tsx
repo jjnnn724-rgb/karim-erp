@@ -4,10 +4,19 @@ import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ToastProvider } from '../ui/Toast';
 import { VegRequests } from './VegRequests';
 
+vi.mock('../lib/auth', () => ({
+    getAppKey: () => null,
+    getAccessToken: () => 'test-token',
+    useAuthState: () => ({
+        status: 'authenticated',
+        token: 'test-token',
+        user: { id: '1', name: 'الشيف', role: 'sous_chef', username: 'chef' },
+    }),
+}));
+
 /**
- * شاشة طلبات الخضار تقرأ `/api/veg-requests` فقط — نفس أعمدة القديم
- * (`veg-requests.js`) والملخص من عدّاد الخادم، والمرشّح يُرسل status
- * بالاسم الذي يقبله الخادم. لا كتابة هنا.
+ * تدفق V3 للخضار يطابق عقود الخادم: قائمة الطلبات، كتالوج الفئات،
+ * والإنشاء من الأصناف الأساسية بكميات ووحدات يحددها المستخدم.
  */
 
 const requests = [
@@ -54,7 +63,9 @@ function stubFetch(fail = false): string[] {
             if (url.includes('/api/settings/main_settings')) {
                 return json({ currency: 'SAR' });
             }
-            const rows = url.includes('status=received') ? requests.filter((request) => request.status === 'received') : requests;
+            const rows = url.includes('status=received')
+                ? requests.filter((request) => request.status === 'received')
+                : requests;
             return json({ ok: true, requests: rows, summary });
         }),
     );
@@ -87,12 +98,14 @@ describe('طلبات شراء الخضار', () => {
         expect(await screen.findByText('VR-20261025-17905')).toBeTruthy();
         expect(screen.getByText('VR-20261105-17907')).toBeTruthy();
         expect(screen.getByText('فاروق عبد احمد')).toBeTruthy();
-        expect(screen.getAllByText('عاجل').length).toBeGreaterThanOrEqual(1);
-        expect(screen.getAllByText('عادي').length).toBeGreaterThanOrEqual(1);
+        expect(screen.getByText('عاجل')).toBeTruthy();
+        expect(screen.getByText('عادي')).toBeTruthy();
         expect(screen.getByText('بانتظار المعالجة')).toBeTruthy();
         expect(screen.getByText('تم الاستلام')).toBeTruthy();
         expect(screen.getByText('1,250.50')).toBeTruthy();
         expect(screen.getByText('SAR')).toBeTruthy();
+        expect(screen.getByText('معلقة 1 · معلقة اليوم 0 · طلبات اليوم 1')).toBeTruthy();
+        expect(screen.getByText('2 طلبًا محمّلًا')).toBeTruthy();
     });
 
     it('يطلب السقف 200 دائمًا، ويرسل status=match عند ترشيح الحالة', async () => {
@@ -109,7 +122,7 @@ describe('طلبات شراء الخضار', () => {
         expect(urls.some((url) => url.includes('status=received'))).toBe(true);
     });
 
-    it('يبحث بتطبيع الحروف العربية', async () => {
+    it('يبحث بتطبيع الحروف العربية ويعلن التطبيع', async () => {
         stubFetch();
         renderScreen();
         await screen.findByText('VR-20261025-17905');
@@ -119,6 +132,7 @@ describe('طلبات شراء الخضار', () => {
             expect(bodyRows()).toHaveLength(1);
         });
         expect(bodyRows()[0]?.textContent).toContain('VR-20261025-17905');
+        expect(screen.getByText('بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.')).toBeTruthy();
     });
 
     it('بلا نتائج يعرض حالة فارغة، ومسح المرشّحات يعيد السجل', async () => {
@@ -160,5 +174,78 @@ describe('طلبات شراء الخضار', () => {
         expect(screen.getByText('تعذّر جلب البيانات')).toBeTruthy();
         expect(screen.getByText('تعذّر جلب طلبات الخضار')).toBeTruthy();
         expect(screen.getByRole('button', { name: 'إعادة المحاولة' })).toBeTruthy();
+    });
+
+    it('يرتّب السجل ويعلن اتجاه الفرز دلاليًا', async () => {
+        stubFetch();
+        renderScreen();
+        await screen.findByText('VR-20261025-17905');
+
+        fireEvent.click(screen.getByRole('button', { name: 'رقم الطلب' }));
+        expect(screen.getByRole('columnheader', { name: 'رقم الطلب' })).toHaveAttribute('aria-sort', 'ascending');
+        fireEvent.click(screen.getByRole('button', { name: 'رقم الطلب' }));
+        expect(screen.getByRole('columnheader', { name: 'رقم الطلب' })).toHaveAttribute('aria-sort', 'descending');
+    });
+
+    it('ينشئ طلبًا من القائمة الأساسية بكميات ووحدات يختارها المستخدم فقط', async () => {
+        const submitted: Record<string, unknown>[] = [];
+        vi.stubGlobal(
+            'fetch',
+            vi.fn(async (url: string, init?: RequestInit) => {
+                if (url.includes('/api/settings/main_settings')) return json({ currency: 'SAR' });
+                if (url.includes('/api/veg-requests') && init?.method === 'POST') {
+                    submitted.push(JSON.parse(String(init.body)) as Record<string, unknown>);
+                    return json({ id: 17920 });
+                }
+                if (url.includes('/api/veg-requests/catalog')) {
+                    return json({
+                        categories: [
+                            {
+                                key: 'main',
+                                label: 'الأصناف الرئيسية',
+                                items: [
+                                    { name: 'طماطم', unit: 'كجم' },
+                                    { name: 'كرنب أبيض', unit: 'كيس' },
+                                    { name: 'زنجبيل', unit: 'كرتونة' },
+                                ],
+                            },
+                        ],
+                        units: ['كجم', 'كيس', 'كرتونة'],
+                    });
+                }
+                return json({ ok: true, requests, summary });
+            }),
+        );
+        renderScreen();
+        await screen.findByText('VR-20261025-17905');
+        fireEvent.click(screen.getByRole('button', { name: 'طلب جديد' }));
+
+        expect(await screen.findByRole('combobox', { name: 'القسم' })).toHaveTextContent('الأصناف الرئيسية');
+        expect(screen.getByRole('combobox', { name: 'وحدة كرنب أبيض' })).toHaveTextContent('كيس');
+        expect(screen.getByRole('combobox', { name: 'وحدة زنجبيل' })).toHaveTextContent('كرتونة');
+        expect(screen.queryByLabelText('كمية بطاطس')).toBeNull();
+        expect(screen.queryByLabelText('كمية ملوخية')).toBeNull();
+
+        fireEvent.change(screen.getByLabelText('كمية طماطم'), { target: { value: '3.5' } });
+        fireEvent.change(screen.getByLabelText('كمية كرنب أبيض'), { target: { value: '2' } });
+        fireEvent.click(screen.getByRole('combobox', { name: 'وحدة كرنب أبيض' }));
+        fireEvent.click(screen.getByRole('option', { name: 'كجم' }));
+        const addButtons = screen.getAllByRole('button', { name: 'إضافة' });
+        const [tomatoAddButton, cabbageAddButton] = addButtons;
+        if (!tomatoAddButton || !cabbageAddButton) {
+            throw new Error('Expected add buttons for the first two catalog items.');
+        }
+        fireEvent.click(tomatoAddButton);
+        fireEvent.click(cabbageAddButton);
+        fireEvent.click(screen.getByRole('button', { name: 'إرسال الطلب' }));
+
+        await waitFor(() => {
+            expect(submitted).toHaveLength(1);
+        });
+        expect(submitted[0]?.items).toEqual([
+            { name: 'طماطم', qty: 3.5, unit: 'كجم', note: '' },
+            { name: 'كرنب أبيض', qty: 2, unit: 'كجم', note: '' },
+        ]);
+        expect(submitted[0]?.priority).toBe('normal');
     });
 });

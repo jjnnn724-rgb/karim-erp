@@ -10,33 +10,31 @@ import { isWriteRole, writeJson } from './write';
  *  • استلام    POST /api/veg-requests/:id/receive  (sous_chef|admin|owner)
  *  • تسعير     POST /api/veg-requests/:id/price    (warehouse|admin|owner|manager)
  *  • تعديل     PUT  /api/veg-requests/:id/items    (sous_chef|admin|owner)
+ *  • إضافة أصناف (أدمن فقط) POST /api/veg-requests/:id/admin/items
+ *                                                  (admin — قبل التسعير)
  *  • إلغاء     POST /api/veg-requests/:id/cancel   (READ_ROLES — gate server-side)
+ *  • إخفاء آمن DELETE /api/veg-requests/:id         (admin|owner — لا يحذف ماليًا)
+ *  • واتساب    /contacts + /:id/notify             (إعداد إداري وطابور إرسال)
  *  • طباعة     POST /api/veg-requests/:id/printed  (READ_ROLES — عدّاد فقط)
- *  • حذف نهائي DELETE /api/veg-requests/:id          (admin|owner — يشيل الطلب + المصروف التلقائي المرتبط؛ 409 عند وجود فاتورة أو قيد محاسبي)
  *
- * حتى تُفعَّل هذه المسارات في الباك إند، تُعدّ الدوال جاهزة بنفس العقود.
+ * أجسام الطلبات ومخططات الاستجابة مطابقة للمسارات العاملة في الخادم.
  */
 
 export const VEG_CREATE_ROLES = ['sous_chef', 'admin', 'owner'] as const;
 export const VEG_RECEIVE_ROLES = ['sous_chef', 'admin', 'owner'] as const;
 export const VEG_PRICE_ROLES = ['warehouse', 'admin', 'owner', 'manager'] as const;
+export const VEG_ADMIN_ROLES = ['admin'] as const;
 
-export function vegCreateVisible(role: string | null | undefined, deptCode?: string | null | undefined, grants?: ReadonlySet<string>): boolean {
-    if (isWriteRole(role, VEG_CREATE_ROLES)) {return true;}
-    // منح مباشر من الأدمن يفتح التدفق بغض النظر عن دور/تخصص المستخدم
-    if (grants?.has('veg.create')) {return true;}
-    // رئيس قسم السلطات تحديدًا (dept_head · dept_code=salads)
-    return String(role || '') === 'dept_head'
-        && String(deptCode ?? '').toLowerCase().split(',').map((s) => s.trim()).includes('salads');
+export function vegAdminVisible(role: string | null | undefined): boolean {
+    return isWriteRole(role, VEG_ADMIN_ROLES);
 }
 
-export function vegReceiveVisible(role: string | null | undefined, deptCode?: string | null | undefined, grants?: ReadonlySet<string>): boolean {
-    if (isWriteRole(role, VEG_RECEIVE_ROLES)) {return true;}
-    // منح مباشر من الأدمن يفتح التدفق بغض النظر عن دور/تخصص المستخدم
-    if (grants?.has('veg.receive')) {return true;}
-    // رئيس قسم السلطات تحديدًا (dept_head · dept_code=salads)
-    return String(role || '') === 'dept_head'
-        && String(deptCode ?? '').toLowerCase().split(',').map((s) => s.trim()).includes('salads');
+export function vegCreateVisible(role: string | null | undefined): boolean {
+    return isWriteRole(role, VEG_CREATE_ROLES);
+}
+
+export function vegReceiveVisible(role: string | null | undefined): boolean {
+    return isWriteRole(role, VEG_RECEIVE_ROLES);
 }
 
 export function vegPriceVisible(role: string | null | undefined): boolean {
@@ -53,19 +51,20 @@ export const VEG_TEXT = {
     receiveFailed: 'فشل استلام الطلب',
     priceFailed: 'فشل تسعير الطلب',
     editFailed: 'فشل تعديل الكميات',
+    adminEditFailed: 'فشل إضافة/تعديل الأصناف',
     cancelFailed: 'فشل إلغاء الطلب',
-    deleteFailed: 'فشل حذف الطلب',
     createSuccess: 'تم إنشاء طلب الخضار بنجاح',
     receiveSuccess: 'تم استلام الطلب',
     priceSuccess: 'تم تسعير الطلب',
     editSuccess: 'تم تعديل الكميات',
+    adminEditSuccess: 'تمت إضافة/تعديل الأصناف',
     cancelSuccess: 'تم إلغاء الطلب',
-    deleteSuccess: 'تم حذف الطلب نهائيًا',
+    deleteSuccess: 'تم إخفاء الطلب من السجل مع الاحتفاظ به للتدقيق',
     cancel: 'إلغاء',
     confirmCancel: 'إلغاء طلب الخضار «%s»؟',
+    confirmDelete: 'إخفاء طلب الخضار «%s» من السجل؟ سيبقى محفوظًا للتدقيق ولن يُحذف أي سجل مالي.',
     confirmReceive: 'استلام طلب الخضار «%s»؟',
     confirmPrice: 'تسعير طلب الخضار «%s»؟ سيُحمَّل المصروف على قسم المطبخ.',
-    confirmDelete: 'حذف الطلب «%s» نهائيًا؟ لا يمكن التراجع — سيُحذف معه المصروف التلقائي المرتبط به إن وُجد، ويرفض النظام لو له فاتورة مورد أو قيد محاسبي.',
 } as const;
 
 /* ── مخططات التحقق ────────────────────────────────────────────────────── */
@@ -81,6 +80,7 @@ export const vegItemSchema = z.object({
     name: z.string().min(1),
     qty: z.coerce.number().positive(),
     unit: z.string().optional().nullable(),
+    note: z.string().max(120).optional().nullable(),
 });
 
 export type VegCreateInput = {
@@ -100,17 +100,24 @@ export type VegResult = z.infer<typeof vegResultSchema>;
 
 export async function createVegRequest(input: VegCreateInput): Promise<VegResult> {
     return writeJson(vegResultSchema, '/api/veg-requests', 'POST', {
-        items: input.items.map((item) => ({ name: item.name, qty: Number(item.qty), unit: item.unit ?? '', note: item.note?.trim() || null })),
+        items: input.items.map((item) => ({
+            name: item.name,
+            qty: Number(item.qty),
+            unit: item.unit ?? '',
+            note: item.note ?? '',
+        })),
         priority: input.priority,
         notes: input.notes?.trim() || null,
     });
 }
 
-export async function receiveVegRequest(
-    id: string | number,
-    payload?: { quantities?: Array<{ name: string; receivedQty: number }>; rejections?: string[] },
-): Promise<VegResult> {
-    return writeJson(vegResultSchema, `/api/veg-requests/${encodeURIComponent(String(id))}/receive`, 'POST', payload ?? {});
+export type VegReceiveInput = {
+    quantities: Array<{ name: string; receivedQty: number }>;
+    rejections: string[];
+};
+
+export async function receiveVegRequest(id: string | number, input: VegReceiveInput): Promise<VegResult> {
+    return writeJson(vegResultSchema, `/api/veg-requests/${encodeURIComponent(String(id))}/receive`, 'POST', input);
 }
 
 export async function priceVegRequest(
@@ -122,7 +129,14 @@ export async function priceVegRequest(
 
 export async function editVegItems(id: string | number, input: VegEditItemsInput): Promise<VegResult> {
     return writeJson(vegResultSchema, `/api/veg-requests/${encodeURIComponent(String(id))}/items`, 'PUT', {
-        items: input.items.map((item) => ({ name: item.name, qty: Number(item.qty), unit: item.unit ?? '', note: item.note?.trim() || null })),
+        items: input.items.map((item) => ({ name: item.name, qty: Number(item.qty), unit: item.unit ?? '' })),
+    });
+}
+
+/** إضافة أصناف نسيها الشيف + تعديل الكميات — الأدمن فقط، قبل التسعير. */
+export async function adminEditVegItems(id: string | number, input: VegEditItemsInput): Promise<VegResult> {
+    return writeJson(vegResultSchema, `/api/veg-requests/${encodeURIComponent(String(id))}/admin/items`, 'POST', {
+        items: input.items.map((item) => ({ name: item.name, qty: Number(item.qty), unit: item.unit ?? '' })),
     });
 }
 
@@ -132,114 +146,112 @@ export async function cancelVegRequest(id: string | number, reason?: string): Pr
     });
 }
 
-/** حذف نهائي — DELETE /:id (admin|owner). 409 لو للطلب فاتورة أو قيد محاسبي؛ المصروف التلقائي المرتبط يُحذف في نفس الـ transaction. */
-const vegDeleteSchema = z
-    .object({ ok: z.boolean().optional(), id: z.union([z.string(), z.number()]).optional(), expenseDeleted: z.boolean().optional() })
-    .passthrough();
-export type VegDeleteResult = z.infer<typeof vegDeleteSchema>;
-
-export async function deleteVegRequest(id: string | number): Promise<VegDeleteResult> {
-    return writeJson(vegDeleteSchema, `/api/veg-requests/${encodeURIComponent(String(id))}`, 'DELETE');
+export async function deleteVegRequest(id: string | number): Promise<VegResult> {
+    return writeJson(vegResultSchema, `/api/veg-requests/${encodeURIComponent(String(id))}`, 'DELETE');
 }
 
-/** عدّاد الطباعة — POST /:id/printed (:463) لكل أدوار القراءة؛ V2 يطلقه ولا ينتظره. */
-const vegPrintedSchema = z.object({ ok: z.boolean().optional(), print_count: z.coerce.number().optional() }).passthrough();
-
-export async function markVegPrinted(id: string | number): Promise<z.infer<typeof vegPrintedSchema>> {
-    return writeJson(vegPrintedSchema, `/api/veg-requests/${encodeURIComponent(String(id))}/printed`, 'POST');
-}
-
-/* ── أرقام واتساب (مورد / مخزن) للطلبات ── */
 export type VegContacts = {
     supplier_jid: string;
     warehouse_jid: string;
 };
 
-export async function fetchVegContacts(): Promise<VegContacts> {
-    return fetchJson(
-        z
-            .object({
-                supplier_jid: z.string().optional().default(''),
-                warehouse_jid: z.string().optional().default(''),
-            })
-            .passthrough(),
+const vegContactsSchema = z
+    .object({
+        contacts: z.object({
+            supplier_jid: z.string(),
+            warehouse_jid: z.string(),
+        }),
+    })
+    .passthrough();
+
+export async function fetchVegContacts(signal?: AbortSignal): Promise<VegContacts> {
+    const body = await fetchJson(
+        vegContactsSchema,
         '/api/veg-requests/contacts',
         getAccessToken(),
+        signal ? { signal } : {},
     );
+    return body.contacts;
 }
 
-export async function saveVegContacts(input: VegContacts): Promise<{ ok?: boolean | undefined }> {
-    return writeJson(
-        z.object({ ok: z.boolean().optional() }).passthrough(),
-        '/api/veg-requests/contacts',
-        'PUT',
-        { supplier_jid: input.supplier_jid, warehouse_jid: input.warehouse_jid },
-    );
+export async function saveVegContacts(contacts: VegContacts): Promise<VegContacts> {
+    const body = await writeJson(vegContactsSchema, '/api/veg-requests/contacts', 'PUT', contacts);
+    return body.contacts;
 }
 
-export async function notifyVegRequest(id: string | number, target: 'supplier' | 'warehouse'): Promise<{ ok?: boolean | undefined; sent?: number | undefined }> {
-    return writeJson(
-        z.object({ ok: z.boolean().optional(), sent: z.number().optional() }).passthrough(),
-        `/api/veg-requests/${encodeURIComponent(String(id))}/notify`,
-        'POST',
-        { target },
-    );
+const vegNotificationSchema = z
+    .object({
+        id: z.union([z.string(), z.number()]),
+        status: z.string(),
+        queued: z.literal(true),
+    })
+    .passthrough();
+
+export async function notifyVegRequest(
+    id: string | number,
+    target: 'supplier' | 'warehouse',
+): Promise<z.infer<typeof vegNotificationSchema>> {
+    return writeJson(vegNotificationSchema, `/api/veg-requests/${encodeURIComponent(String(id))}/notify`, 'POST', {
+        target,
+    });
+}
+
+/** عدّاد الطباعة — POST /:id/printed (:463) لكل أدوار القراءة؛ V2 يطلقه ولا ينتظره. */
+const vegPrintedSchema = z
+    .object({ ok: z.boolean().optional(), print_count: z.coerce.number().optional() })
+    .passthrough();
+
+export async function markVegPrinted(id: string | number): Promise<z.infer<typeof vegPrintedSchema>> {
+    return writeJson(vegPrintedSchema, `/api/veg-requests/${encodeURIComponent(String(id))}/printed`, 'POST');
 }
 
 /* ── الكتالوج ─────────────────────────────────────────────────────────── */
 
-export type VegCatalogItem = { name: string; unit: string };
-export type VegCatalog = {
-    /** تسمية القسم → أصنافه بوحداتها الافتراضية («النسخة النهائية» من الورقة الرسمية) */
-    categories: Record<string, VegCatalogItem[]>;
-    units: string[];
-    /** خريطة صنف → وحدة افتراضية من الكتالوج — لملء الوحدة تلقائيًا في واجهة الإنشاء */
-    unitOf: Record<string, string>;
+export type VegCatalogItem = {
+    name: string;
+    unit: string;
 };
+
+export type VegCatalogCategory = {
+    key: string;
+    label: string;
+    items: VegCatalogItem[];
+};
+
+export type VegCatalog = {
+    categories: VegCatalogCategory[];
+    units: string[];
+};
+
+const vegCatalogSchema = z
+    .object({
+        categories: z
+            .array(
+                z
+                    .object({
+                        key: z.string(),
+                        label: z.string(),
+                        items: z.array(z.object({ name: z.string(), unit: z.string() }).passthrough()),
+                    })
+                    .passthrough(),
+            )
+            .nullable()
+            .optional(),
+        units: z.array(z.string()).nullable().optional(),
+    })
+    .passthrough();
 
 export async function fetchVegCatalog(signal?: AbortSignal): Promise<VegCatalog> {
     const body = await fetchJson(
-        z
-            .object({
-                categories: z
-                    .array(
-                        z
-                            .object({
-                                key: z.string().optional(),
-                                label: z.string().optional(),
-                                items: z
-                                    .array(z.object({ name: z.string(), unit: z.string().optional() }).passthrough())
-                                    .default([]),
-                            })
-                            .passthrough(),
-                    )
-                    .nullable()
-                    .optional(),
-                units: z.array(z.string()).nullable().optional(),
-            })
-            .passthrough(),
+        vegCatalogSchema,
         '/api/veg-requests/catalog',
         getAccessToken(),
         signal ? { signal } : {},
     );
-
-    // السيرفر يرجع مصفوفة {key, label, items[{name, unit}]} — نحوّلها لكنتج مسطّح مع وحداته
-    const flat: Record<string, VegCatalogItem[]> = {};
-    const unitOf: Record<string, string> = {};
-    const units: string[] = [...(body.units ?? [])];
-    for (const group of body.categories ?? []) {
-        const label = group.label ?? group.key ?? 'أصناف';
-        const items: VegCatalogItem[] = [];
-        for (const item of group.items ?? []) {
-            const name = String(item.name ?? '').trim();
-            if (!name || items.some((candidate) => candidate.name === name)) { continue; }
-            const unit = String(item.unit ?? '').trim() || 'وحدة';
-            items.push({ name, unit });
-            if (!unitOf[name]) { unitOf[name] = unit; }
-        }
-        if (items.length) { flat[label] = items; }
-    }
-    return { categories: flat, units, unitOf };
+    return {
+        categories: (body.categories ?? []).filter((category) => category.key !== 'extras'),
+        units: body.units ?? [],
+    };
 }
 
 /* ── دوال تأكيد ───────────────────────────────────────────────────────── */
@@ -248,16 +260,16 @@ export function vegCancelConfirm(ref: string): string {
     return VEG_TEXT.confirmCancel.replace('%s', String(ref ?? ''));
 }
 
+export function vegDeleteConfirm(ref: string): string {
+    return VEG_TEXT.confirmDelete.replace('%s', String(ref ?? ''));
+}
+
 export function vegReceiveConfirm(ref: string): string {
     return VEG_TEXT.confirmReceive.replace('%s', String(ref ?? ''));
 }
 
 export function vegPriceConfirm(ref: string): string {
     return VEG_TEXT.confirmPrice.replace('%s', String(ref ?? ''));
-}
-
-export function vegDeleteConfirm(ref: string): string {
-    return VEG_TEXT.confirmDelete.replace('%s', String(ref ?? ''));
 }
 
 /* ── نصوص نجاح ───────────────────────────────────────────────────────── */
@@ -276,6 +288,10 @@ export function vegPriceSuccess(no: string): string {
 
 export function vegEditSuccess(no: string): string {
     return `${VEG_TEXT.editSuccess} — «${String(no ?? '')}»`;
+}
+
+export function vegAdminEditSuccess(no: string): string {
+    return `${VEG_TEXT.adminEditSuccess} — «${String(no ?? '')}»`;
 }
 
 export function vegCancelSuccess(no: string): string {

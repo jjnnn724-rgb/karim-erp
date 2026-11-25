@@ -34,7 +34,9 @@ function stamp(value: string | null | undefined): string {
         return '—';
     }
     const date = new Date(value);
-    return Number.isNaN(date.getTime()) ? String(value) : date.toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
+    return Number.isNaN(date.getTime())
+        ? String(value)
+        : date.toLocaleString('ar-EG', { dateStyle: 'medium', timeStyle: 'short' });
 }
 
 export function MudadCredentials() {
@@ -44,7 +46,8 @@ export function MudadCredentials() {
     const [formError, setFormError] = useState('');
 
     const rotate = useWriteMutation<{ provider: IntegrationProviderCode; key: string; value: string }, unknown>({
-        mutationFn: ({ provider: code, key: keyName, value: secret }) => rotateIntegrationCredential(code, keyName, secret),
+        mutationFn: ({ provider: code, key: keyName, value: secret }) =>
+            rotateIntegrationCredential(code, keyName, secret),
         successTitle: 'تم تدوير الاعتماد',
         successDescription: 'أُبطل الاعتماد السابق وسُجّل الحدث في سجل التكامل.',
         silentError: true,
@@ -83,7 +86,10 @@ export function MudadCredentials() {
                 <div className="grid gap-sm md:grid-cols-3">
                     <Select
                         label="المزوّد"
-                        options={INTEGRATION_PROVIDER_CODES.map((code) => ({ value: code, label: PROVIDER_LABELS[code] }))}
+                        options={INTEGRATION_PROVIDER_CODES.map((code) => ({
+                            value: code,
+                            label: PROVIDER_LABELS[code],
+                        }))}
                         value={provider}
                         onValueChange={(next) => {
                             setProvider(next as IntegrationProviderCode);

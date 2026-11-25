@@ -27,7 +27,17 @@ describe('عقود تبويبات المدير المالي السبعة', () =>
             ok: true,
             count: 4,
             total: 47812.22,
-            aging: [{ supplier: 'شركة اليسرة للأغذية', total: 47812.22, current: 47812.22, d30: 0, d60: 0, d90: 0, over90: 0 }],
+            aging: [
+                {
+                    supplier: 'شركة اليسرة للأغذية',
+                    total: 47812.22,
+                    current: 47812.22,
+                    d30: 0,
+                    d60: 0,
+                    d90: 0,
+                    over90: 0,
+                },
+            ],
         });
         expect(parsed.success).toBe(true);
     });

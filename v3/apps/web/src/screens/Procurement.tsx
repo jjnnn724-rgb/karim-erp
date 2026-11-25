@@ -2,6 +2,7 @@ import './Procurement.premium.css';
 import { toCents } from '@karim/shared';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
+import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { fetchCurrency } from '../lib/finance';
@@ -11,9 +12,11 @@ import {
     fetchSuppliers,
     isSupplierActive,
     moneyOf,
+    normalizeTaxStatus,
     type Supplier,
     supplierStatusLabel,
     TAX_STATUS_LABEL,
+    type TaxStatus,
 } from '../lib/procurement';
 import {
     createSupplier,
@@ -26,10 +29,12 @@ import {
     supplierDeactivateConfirm,
     supplierDeleteConfirm,
     supplierDeleteVisible,
+    supplierTaxError,
     supplierWriteVisible,
     updateSupplier,
 } from '../lib/suppliers-write';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
+import { PageHeader } from '../ui';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
@@ -48,7 +53,7 @@ import { Input } from '../ui/Input';
 const PAGE_SIZE = 20;
 
 type SortKey = 'name' | 'purchasesTotal' | 'paymentsTotal' | 'dueTotal' | 'lastPurchaseDate';
-type TaxFilter = 'ALL' | 'REGISTERED' | 'NOT_REGISTERED';
+type TaxFilter = 'ALL' | TaxStatus;
 type StatusFilter = 'ALL' | 'active' | 'inactive';
 
 function formatInt(value: number): string {
@@ -100,7 +105,9 @@ function SupplierFormDialog({ open, onClose, pending, editing, onSave }: Supplie
         nameEn: string;
         phone: string;
         address: string;
-        taxNumber: string;
+        taxStatus: TaxStatus;
+        vatNumber: string;
+        commercialRegister: string;
         category: string;
         active: boolean;
     }>({
@@ -108,7 +115,9 @@ function SupplierFormDialog({ open, onClose, pending, editing, onSave }: Supplie
         nameEn: '',
         phone: '',
         address: '',
-        taxNumber: '',
+        taxStatus: 'NOT_REGISTERED',
+        vatNumber: '',
+        commercialRegister: '',
         category: '',
         active: true,
     });
@@ -124,12 +133,24 @@ function SupplierFormDialog({ open, onClose, pending, editing, onSave }: Supplie
                 nameEn: String(editing.name_en ?? ''),
                 phone: String(editing.phone ?? ''),
                 address: String(editing.address ?? ''),
-                taxNumber: String(editing.tax_number ?? ''),
+                taxStatus: normalizeTaxStatus(editing.tax_registration_status),
+                vatNumber: String(editing.vat_number ?? ''),
+                commercialRegister: String(editing.commercial_register ?? ''),
                 category: String(editing.category ?? ''),
                 active: isSupplierActive(editing),
             });
         } else {
-            setForm({ name: '', nameEn: '', phone: '', address: '', taxNumber: '', category: '', active: true });
+            setForm({
+                name: '',
+                nameEn: '',
+                phone: '',
+                address: '',
+                taxStatus: 'NOT_REGISTERED',
+                vatNumber: '',
+                commercialRegister: '',
+                category: '',
+                active: true,
+            });
         }
         setFormError('');
     }, [open, editing]);
@@ -146,13 +167,22 @@ function SupplierFormDialog({ open, onClose, pending, editing, onSave }: Supplie
             return;
         }
 
+        const vatNumber = form.vatNumber.trim() || null;
+        const taxMessage = supplierTaxError({ tax_registration_status: form.taxStatus, vat_number: vatNumber });
+        if (taxMessage) {
+            setFormError(taxMessage);
+            return;
+        }
         const input: SupplierCreateInput | SupplierUpdateInput = {
             name: form.name.trim(),
             phone: form.phone.trim(),
             address: form.address.trim() || null,
-            tax_number: form.taxNumber.trim() || null,
-            ...(form.category ? { category: form.category.trim() } : {}),
-            active: form.active,
+            name_en: form.nameEn.trim() || null,
+            category: form.category.trim() || null,
+            tax_registration_status: form.taxStatus,
+            vat_number: vatNumber,
+            commercial_register: form.commercialRegister.trim() || null,
+            is_active: form.active,
         };
 
         try {
@@ -214,12 +244,43 @@ function SupplierFormDialog({ open, onClose, pending, editing, onSave }: Supplie
                         onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
                         placeholder="القاهرة، مصر"
                     />
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary">
+                        الحالة الضريبية
+                        <select
+                            name="taxStatus"
+                            value={form.taxStatus}
+                            onChange={(e) =>
+                                setForm((prev) => ({ ...prev, taxStatus: normalizeTaxStatus(e.target.value) }))
+                            }
+                            className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
+                        >
+                            {Object.entries(TAX_STATUS_LABEL).map(([value, label]) => (
+                                <option key={value} value={value}>
+                                    {label}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
                     <Input
-                        label="الرقم الضريبي (اختياري)"
-                        name="taxNumber"
-                        value={form.taxNumber}
-                        onChange={(e) => setForm((prev) => ({ ...prev, taxNumber: e.target.value }))}
-                        placeholder="123456789"
+                        label={
+                            form.taxStatus === 'NOT_REGISTERED'
+                                ? 'الرقم الضريبي (اتركه فارغًا)'
+                                : 'الرقم الضريبي (15 رقمًا)'
+                        }
+                        name="vatNumber"
+                        value={form.vatNumber}
+                        onChange={(e) => setForm((prev) => ({ ...prev, vatNumber: e.target.value }))}
+                        placeholder="302212427200003"
+                        dir="ltr"
+                        maxLength={20}
+                    />
+                    <Input
+                        label="السجل التجاري (اختياري)"
+                        name="commercialRegister"
+                        value={form.commercialRegister}
+                        onChange={(e) => setForm((prev) => ({ ...prev, commercialRegister: e.target.value }))}
+                        placeholder="7051115819"
+                        dir="ltr"
                     />
                     <Input
                         label="الفئة (اختياري)"
@@ -264,7 +325,16 @@ interface SupplierActionDialogProps {
     variant: 'secondary' | 'danger';
 }
 
-function SupplierActionDialog({ open, title, message, onConfirm, onClose, pending, confirmLabel, variant }: SupplierActionDialogProps) {
+function SupplierActionDialog({
+    open,
+    title,
+    message,
+    onConfirm,
+    onClose,
+    pending,
+    confirmLabel,
+    variant,
+}: SupplierActionDialogProps) {
     return (
         <Dialog
             open={open}
@@ -340,7 +410,14 @@ export function Procurement() {
             if (!term) {
                 return true;
             }
-            return [supplier.name, supplier.name_en, supplier.phone, supplier.vat_number, supplier.category, supplier.id]
+            return [
+                supplier.name,
+                supplier.name_en,
+                supplier.phone,
+                supplier.vat_number,
+                supplier.category,
+                supplier.id,
+            ]
                 .map((value) => String(value ?? '').toLowerCase())
                 .some((value) => value.includes(term));
         });
@@ -355,7 +432,9 @@ export function Procurement() {
 
     function toggleSort(key: SortKey) {
         setPage(1);
-        setSort((previous) => (previous.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'desc' }));
+        setSort((previous) =>
+            previous.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'desc' },
+        );
     }
 
     function ariaSort(key: SortKey): 'ascending' | 'descending' | 'none' {
@@ -389,7 +468,10 @@ export function Procurement() {
         },
     });
 
-    const updateSupplierMutation = useWriteMutation<{ id: string | number; input: SupplierUpdateInput }, { id: string | number }>({
+    const updateSupplierMutation = useWriteMutation<
+        { id: string | number; input: SupplierUpdateInput },
+        { id: string | number }
+    >({
         mutationFn: ({ id, input }) => updateSupplier(id, input).then((r) => ({ id: r.id })),
         successTitle: () => SUPPLIER_TEXT.updateSuccess,
         invalidate: [
@@ -403,7 +485,10 @@ export function Procurement() {
         },
     });
 
-    const setSupplierActiveMutation = useWriteMutation<{ id: string | number; active: boolean }, { id: string | number; active: boolean }>({
+    const setSupplierActiveMutation = useWriteMutation<
+        { id: string | number; active: boolean },
+        { id: string | number; active: boolean }
+    >({
         mutationFn: ({ id, active }) => setSupplierActive(id, active).then((r) => ({ id: r.id, active })),
         successTitle: ({ active }) => (active ? SUPPLIER_TEXT.activateSuccess : SUPPLIER_TEXT.deactivateSuccess),
         invalidate: [
@@ -465,43 +550,41 @@ export function Procurement() {
 
     return (
         <div className="erp-premium-screen flex flex-col gap-md">
-            <header className="flex flex-wrap items-end justify-between gap-sm">
-                <div>
-                    <h1 className="text-display-lg text-ink">
-                        الموردون{' '}
-                        <span className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted" dir="ltr" lang="en">
-                            Suppliers
-                        </span>
-                    </h1>
-                    <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        دليل الموردين وملخص المشتريات — إضافة وتعديل وإيقاف وتفعيل وحذف. القراءة من `/api/procurement/suppliers`، والكتابة
-                        لـ admin|manager|accountant والحذف للأدمن فقط.
-                    </p>
-                </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                    {canWrite ? (
-                        <Button type="button" size="sm" onClick={() => openForm()}>
-                            إضافة مورد
-                        </Button>
-                    ) : null}
-                    <button
-                        type="button"
-                        onClick={() => {
-                            void summaryQuery.refetch();
-                            void suppliersQuery.refetch();
-                        }}
-                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                    >
-                        تحديث
-                    </button>
-                </div>
-            </header>
+            <PageHeader
+                title="الموردون"
+                english="Suppliers"
+                description="دليل الموردين وملخص المشتريات — إضافة وتعديل وإيقاف وتفعيل وحذف. القراءة من `/api/procurement/suppliers`، والكتابة لـ admin|manager|accountant والحذف للأدمن فقط."
+                actions={
+                    <>
+                        <div className="flex items-center gap-xs" data-erp-print-hide>
+                            {canWrite ? (
+                                <Button type="button" size="sm" onClick={() => openForm()}>
+                                    إضافة مورد
+                                </Button>
+                            ) : null}
+                            <PrintActions title="الموردون" />
+                            <button
+                                type="button"
+                                onClick={() => {
+                                    void summaryQuery.refetch();
+                                    void suppliersQuery.refetch();
+                                }}
+                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                            >
+                                تحديث
+                            </button>
+                        </div>
+                    </>
+                }
+            />
 
             <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
                 <Kpi
                     label="موردون نشطون"
                     english="Active Suppliers"
-                    value={summary ? `${formatInt(summary.activeSuppliers)} / ${formatInt(summary.totalSuppliers)}` : '—'}
+                    value={
+                        summary ? `${formatInt(summary.activeSuppliers)} / ${formatInt(summary.totalSuppliers)}` : '—'
+                    }
                     hint="من دليل الموردين"
                 />
                 <Kpi
@@ -547,7 +630,10 @@ export function Procurement() {
                             className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
                         />
                     </label>
-                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-procurement-tax">
+                    <label
+                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
+                        htmlFor="erp-procurement-tax"
+                    >
                         الحالة الضريبية
                         <select
                             id="erp-procurement-tax"
@@ -561,9 +647,13 @@ export function Procurement() {
                             <option value="ALL">كل الحالات</option>
                             <option value="REGISTERED">{TAX_STATUS_LABEL.REGISTERED}</option>
                             <option value="NOT_REGISTERED">{TAX_STATUS_LABEL.NOT_REGISTERED}</option>
+                            <option value="EXEMPT">{TAX_STATUS_LABEL.EXEMPT}</option>
                         </select>
                     </label>
-                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-procurement-status">
+                    <label
+                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
+                        htmlFor="erp-procurement-status"
+                    >
                         الحالة
                         <select
                             id="erp-procurement-status"
@@ -608,7 +698,10 @@ export function Procurement() {
                 ) : null}
 
                 {suppliersQuery.isSuccess && rows.length === 0 ? (
-                    <StateEmpty title="لا موردون" hint="لا يوجد مورد مطابق للبحث أو المرشّحات — امسح البحث أو غيّر الحالة." />
+                    <StateEmpty
+                        title="لا موردون"
+                        hint="لا يوجد مورد مطابق للبحث أو المرشّحات — امسح البحث أو غيّر الحالة."
+                    />
                 ) : null}
 
                 {suppliersQuery.isSuccess && rows.length > 0 ? (
@@ -617,7 +710,11 @@ export function Procurement() {
                             <table className="w-full border-collapse text-body-md">
                                 <thead>
                                     <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                        <th scope="col" aria-sort={ariaSort('name')} className="px-sm py-xs text-start font-medium">
+                                        <th
+                                            scope="col"
+                                            aria-sort={ariaSort('name')}
+                                            className="px-sm py-xs text-start font-medium"
+                                        >
                                             <button
                                                 type="button"
                                                 onClick={() => {
@@ -633,7 +730,11 @@ export function Procurement() {
                                         <th scope="col" className="px-sm py-xs text-start font-medium">
                                             الفئة
                                         </th>
-                                        <th scope="col" aria-sort={ariaSort('purchasesTotal')} className="px-sm py-xs text-end font-medium">
+                                        <th
+                                            scope="col"
+                                            aria-sort={ariaSort('purchasesTotal')}
+                                            className="px-sm py-xs text-end font-medium"
+                                        >
                                             <button
                                                 type="button"
                                                 onClick={() => {
@@ -643,7 +744,11 @@ export function Procurement() {
                                                 المشتريات
                                             </button>
                                         </th>
-                                        <th scope="col" aria-sort={ariaSort('paymentsTotal')} className="px-sm py-xs text-end font-medium">
+                                        <th
+                                            scope="col"
+                                            aria-sort={ariaSort('paymentsTotal')}
+                                            className="px-sm py-xs text-end font-medium"
+                                        >
                                             <button
                                                 type="button"
                                                 onClick={() => {
@@ -653,7 +758,11 @@ export function Procurement() {
                                                 المدفوعات
                                             </button>
                                         </th>
-                                        <th scope="col" aria-sort={ariaSort('dueTotal')} className="px-sm py-xs text-end font-medium">
+                                        <th
+                                            scope="col"
+                                            aria-sort={ariaSort('dueTotal')}
+                                            className="px-sm py-xs text-end font-medium"
+                                        >
                                             <button
                                                 type="button"
                                                 onClick={() => {
@@ -681,7 +790,11 @@ export function Procurement() {
                                             الحالة
                                         </th>
                                         {(canWrite || canDelete) && (
-                                            <th scope="col" className="px-sm py-xs text-start font-medium" data-erp-print-hide>
+                                            <th
+                                                scope="col"
+                                                className="px-sm py-xs text-start font-medium"
+                                                data-erp-print-hide
+                                            >
                                                 إجراءات
                                             </th>
                                         )}
@@ -689,19 +802,26 @@ export function Procurement() {
                                 </thead>
                                 <tbody>
                                     {pageRows.map((supplier) => (
-                                        <tr key={supplier.id} className="border-b border-hairline hover:bg-surface-hover">
+                                        <tr
+                                            key={supplier.id}
+                                            className="border-b border-hairline hover:bg-surface-hover"
+                                        >
                                             <td className="px-sm py-xxs">
                                                 <span className="block text-ink">{supplier.name}</span>
                                                 {supplier.name_en || supplier.vat_number ? (
                                                     <span className="block text-caption text-muted" dir="ltr">
-                                                        {supplier.vat_number ? `VAT ${supplier.vat_number}` : supplier.name_en}
+                                                        {supplier.vat_number
+                                                            ? `VAT ${supplier.vat_number}`
+                                                            : supplier.name_en}
                                                     </span>
                                                 ) : null}
                                             </td>
                                             <td className="erp-numeric px-sm py-xxs text-body-sm text-muted" dir="ltr">
                                                 {supplier.phone || '—'}
                                             </td>
-                                            <td className="px-sm py-xxs text-body-sm text-muted">{supplier.category || '—'}</td>
+                                            <td className="px-sm py-xxs text-body-sm text-muted">
+                                                {supplier.category || '—'}
+                                            </td>
                                             <td className="erp-numeric px-sm py-xxs text-end text-ink">
                                                 {formatMoney(moneyOf(supplier.purchasesTotal))}
                                             </td>
@@ -716,7 +836,9 @@ export function Procurement() {
                                             </td>
                                             <td className="px-sm py-xxs text-body-sm">
                                                 {isSupplierActive(supplier) ? (
-                                                    <span className="text-success-text">{supplierStatusLabel(supplier)}</span>
+                                                    <span className="text-success-text">
+                                                        {supplierStatusLabel(supplier)}
+                                                    </span>
                                                 ) : (
                                                     <span className="text-muted">{supplierStatusLabel(supplier)}</span>
                                                 )}
@@ -741,7 +863,9 @@ export function Procurement() {
                                                                         size="sm"
                                                                         variant="secondary"
                                                                         title="إيقاف المورد"
-                                                                        onClick={() => handleChangeStatus(supplier, false)}
+                                                                        onClick={() =>
+                                                                            handleChangeStatus(supplier, false)
+                                                                        }
                                                                     >
                                                                         إيقاف
                                                                     </Button>
@@ -751,7 +875,9 @@ export function Procurement() {
                                                                         size="sm"
                                                                         variant="secondary"
                                                                         title="تفعيل المورد"
-                                                                        onClick={() => handleChangeStatus(supplier, true)}
+                                                                        onClick={() =>
+                                                                            handleChangeStatus(supplier, true)
+                                                                        }
                                                                     >
                                                                         تفعيل
                                                                     </Button>
@@ -817,7 +943,10 @@ export function Procurement() {
                 editing={editing}
                 onSave={async (input, isEditing) => {
                     if (isEditing && editing) {
-                        await updateSupplierMutation.mutateAsync({ id: editing.id, input: input as SupplierUpdateInput });
+                        await updateSupplierMutation.mutateAsync({
+                            id: editing.id,
+                            input: input as SupplierUpdateInput,
+                        });
                     } else {
                         await createSupplierMutation.mutateAsync(input as SupplierCreateInput);
                     }

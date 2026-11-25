@@ -92,7 +92,10 @@ function AlertDialogTitle({ className, ...props }: React.ComponentProps<typeof A
     );
 }
 
-function AlertDialogDescription({ className, ...props }: React.ComponentProps<typeof AlertDialogPrimitive.Description>) {
+function AlertDialogDescription({
+    className,
+    ...props
+}: React.ComponentProps<typeof AlertDialogPrimitive.Description>) {
     return (
         <AlertDialogPrimitive.Description
             data-slot="alert-dialog-description"
@@ -120,7 +123,8 @@ function AlertDialogAction({
     variant = 'default',
     size = 'default',
     ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Action> & Pick<React.ComponentProps<typeof Button>, 'variant' | 'size'>) {
+}: React.ComponentProps<typeof AlertDialogPrimitive.Action> &
+    Pick<React.ComponentProps<typeof Button>, 'variant' | 'size'>) {
     return (
         <Button variant={variant} size={size} asChild>
             <AlertDialogPrimitive.Action data-slot="alert-dialog-action" className={cn(className)} {...props} />
@@ -133,7 +137,8 @@ function AlertDialogCancel({
     variant = 'outline',
     size = 'default',
     ...props
-}: React.ComponentProps<typeof AlertDialogPrimitive.Cancel> & Pick<React.ComponentProps<typeof Button>, 'variant' | 'size'>) {
+}: React.ComponentProps<typeof AlertDialogPrimitive.Cancel> &
+    Pick<React.ComponentProps<typeof Button>, 'variant' | 'size'>) {
     return (
         <Button variant={variant} size={size} asChild>
             <AlertDialogPrimitive.Cancel data-slot="alert-dialog-cancel" className={cn(className)} {...props} />

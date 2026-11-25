@@ -30,7 +30,9 @@ export function useDraftForm<T>(initial: T | null, signature: string): Draft<T> 
         if (initial === null) {
             return;
         }
-        setState((current) => (current && current.signature === signature ? current : { base: initial, value: initial, signature }));
+        setState((current) =>
+            current && current.signature === signature ? current : { base: initial, value: initial, signature },
+        );
     }, [initial, signature]);
 
     if (state === null) {
@@ -95,7 +97,13 @@ export function SectionCard({
 
 export function FieldGrid({ children, columns = 2 }: { children: ReactNode; columns?: 2 | 3 }) {
     return (
-        <div className={columns === 3 ? 'grid grid-cols-1 gap-md sm:grid-cols-2 xl:grid-cols-3' : 'grid grid-cols-1 gap-md sm:grid-cols-2'}>
+        <div
+            className={
+                columns === 3
+                    ? 'grid grid-cols-1 gap-md sm:grid-cols-2 xl:grid-cols-3'
+                    : 'grid grid-cols-1 gap-md sm:grid-cols-2'
+            }
+        >
             {children}
         </div>
     );

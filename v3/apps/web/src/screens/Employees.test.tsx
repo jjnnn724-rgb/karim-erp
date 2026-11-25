@@ -1,8 +1,23 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
-import { fireEvent, render, screen, waitFor } from '@testing-library/react';
+import { fireEvent, render, screen, waitFor, within } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
 import { ToastProvider } from '../ui/Toast';
 import { Employees } from './Employees';
+
+const authMocks = vi.hoisted(() => ({ role: 'employee' }));
+
+vi.mock('../lib/auth', async (importOriginal) => {
+    const actual = await importOriginal<typeof import('../lib/auth')>();
+    return {
+        ...actual,
+        getAccessToken: () => 'employee-card-test-token',
+        useAuthState: () => ({
+            status: 'authenticated' as const,
+            token: 'test-token',
+            user: { id: '1', name: 'مستخدم اختبار', username: 'test', role: authMocks.role },
+        }),
+    };
+});
 
 /**
  * دليل الموظفين يقرأ `/api/employees` و`/api/hrDepartments`، يحلّ اسم
@@ -93,6 +108,7 @@ function bodyRows(): HTMLElement[] {
 }
 
 afterEach(() => {
+    authMocks.role = 'employee';
     vi.unstubAllGlobals();
     try {
         localStorage.removeItem('erp-employees-view');
@@ -143,7 +159,8 @@ describe('دليل الموظفين', () => {
             vi.fn(async (input: RequestInfo | URL) => {
                 const url = String(input);
                 if (url.includes('/api/employees')) return json({ data: employees, pagination: { totalPages: 1 } });
-                if (url.includes('/api/hrDepartments')) return json({ data: departments, pagination: { totalPages: 1 } });
+                if (url.includes('/api/hrDepartments'))
+                    return json({ data: departments, pagination: { totalPages: 1 } });
                 if (url.includes('/api/hr/attendance/report')) {
                     const params = new URL(url, window.location.origin).searchParams;
                     return json({
@@ -169,10 +186,56 @@ describe('دليل الموظفين', () => {
         await waitFor(() => expect(printButton.hasAttribute('disabled')).toBe(false));
         fireEvent.click(printButton);
 
-        expect(window.open).toHaveBeenCalledWith('', '_blank', expect.any(String));
+        expect(window.open).toHaveBeenCalledWith('', '_blank');
         expect(popup.document.body.innerHTML).toContain('08:00');
         expect(popup.document.body.innerHTML).toContain('16:00');
         expect(print).toHaveBeenCalledOnce();
+    });
+
+    it('يفتح البطاقة الرسمية المولدة من الخادم داخل V3', async () => {
+        const popup = {
+            document: document.implementation.createHTMLDocument(),
+            focus: vi.fn(),
+            close: vi.fn(),
+        } as unknown as Window;
+        vi.spyOn(window, 'open').mockReturnValue(popup);
+        const fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+            const url = String(input);
+            if (url.includes('/api/employees')) return json({ data: employees, pagination: { totalPages: 1 } });
+            if (url.includes('/api/hrDepartments')) return json({ data: departments, pagination: { totalPages: 1 } });
+            if (url.includes('/api/hr/employees/1/lux-card')) {
+                return new Response('<!doctype html><html><body>البطاقة الرسمية</body></html>', {
+                    status: 200,
+                    headers: { 'Content-Type': 'text/html' },
+                });
+            }
+            return json({ error: 'NOT_FOUND', message: 'مسار غير معروف' }, 404);
+        });
+        vi.stubGlobal('fetch', fetchMock);
+        renderScreen();
+
+        fireEvent.click(await screen.findByRole('button', { name: /أحمد علي/ }));
+        fireEvent.click(await screen.findByRole('button', { name: 'بطاقة الموظف الرسمية' }));
+
+        await waitFor(() => expect(popup.document.body.textContent).toContain('البطاقة الرسمية'));
+        expect(fetchMock).toHaveBeenCalledWith(
+            '/api/hr/employees/1/lux-card',
+            expect.objectContaining({ headers: expect.objectContaining({ Authorization: expect.any(String) }) }),
+        );
+    });
+
+    it('يفتح البطاقة الكاملة للأدمن من الجدول', async () => {
+        authMocks.role = 'admin';
+        stubFetch();
+        renderScreen();
+        await screen.findByText('أحمد علي');
+        switchToTable();
+
+        const table = screen.getByRole('table', { name: 'جدول دليل الموظفين' });
+        fireEvent.click(within(table).getByRole('button', { name: 'فتح البطاقة الكاملة — أحمد علي' }));
+
+        expect(await screen.findByRole('dialog', { name: 'كشف الموظف — أحمد علي' })).toBeTruthy();
+        expect(screen.getByText('الراتب')).toBeTruthy();
     });
 
     it('البطاقات افتراضية والمبدّل يتحول للجدول', async () => {
@@ -232,11 +295,13 @@ describe('دليل الموظفين', () => {
         await screen.findByText('أحمد علي');
         switchToTable();
 
-        fireEvent.click(screen.getByRole('button', { name: 'الكود' }));
+        // DataTable الموحّد يسمّي زر الفرز «فرز حسب {العمود}».
+        fireEvent.click(screen.getByRole('button', { name: 'فرز حسب الكود' }));
         await waitFor(() => {
             expect(bodyRows()[0]?.textContent).toContain('EMP-001');
         });
-        fireEvent.click(screen.getByRole('button', { name: 'الكود' }));
+        // DataTable الموحّد يسمّي زر الفرز «فرز حسب {العمود}».
+        fireEvent.click(screen.getByRole('button', { name: 'فرز حسب الكود' }));
         await waitFor(() => {
             expect(bodyRows()[0]?.textContent).toContain('EMP-003');
         });

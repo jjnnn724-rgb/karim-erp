@@ -32,9 +32,18 @@ import { Dialog } from '../../ui/Dialog';
 import { Input } from '../../ui/Input';
 import { Select } from '../../ui/Select';
 import { useToast } from '../../ui/Toast';
-import { FieldGrid, formatNumber, formatStamp, QueryBoundary, ReadOnlyBadge, SaveBar, SectionCard, useDraftForm } from './shared';
+import {
+    FieldGrid,
+    formatNumber,
+    formatStamp,
+    QueryBoundary,
+    ReadOnlyBadge,
+    SaveBar,
+    SectionCard,
+    useDraftForm,
+} from './shared';
 
-type FieldKind = 'bool' | 'int' | 'float' | 'coord';
+type FieldKind = 'bool' | 'int' | 'float' | 'coord' | 'user_ids';
 
 interface PunchField {
     key: string;
@@ -55,7 +64,15 @@ const FIELDS: readonly PunchField[] = [
     { key: 'punch_face_enabled', label: 'محرك الوجه الأساسي', kind: 'bool', def: 'false' },
     { key: 'punch_face_v2_enabled', label: 'الوجه المتقدم ArcFace', kind: 'bool', def: 'false' },
     { key: 'punch_face_threshold', label: 'عتبة الأساسي', kind: 'float', def: '0.55', min: 0.3, max: 0.9, step: 0.01 },
-    { key: 'punch_face_v2_threshold', label: 'عتبة المتقدم', kind: 'float', def: '0.42', min: 0.2, max: 0.8, step: 0.01 },
+    {
+        key: 'punch_face_v2_threshold',
+        label: 'عتبة المتقدم',
+        kind: 'float',
+        def: '0.42',
+        min: 0.2,
+        max: 0.8,
+        step: 0.01,
+    },
     { key: 'punch_radius_meters', label: 'النطاق (م)', kind: 'int', def: '120', min: 50, max: 500 },
     { key: 'punch_max_accuracy_m', label: 'دقة الموقع (م)', kind: 'int', def: '50', min: 10, max: 200 },
     { key: 'punch_max_fix_age_s', label: 'قدم GPS (ث)', kind: 'int', def: '30', min: 5, max: 120 },
@@ -63,25 +80,26 @@ const FIELDS: readonly PunchField[] = [
     { key: 'punch_max_teleport_kmh', label: 'أقصى سرعة (كم/س)', kind: 'int', def: '250', min: 50, max: 1000 },
     { key: 'punch_geo_strict_multi_fix', label: 'صرامة GPS: قراءة واحدة لا تكفي', kind: 'bool', def: 'false' },
     { key: 'punch_strict_geofence', label: 'منطقة الغموض مرفوضة', kind: 'bool', def: 'false' },
+    { key: 'punch_geo_exempt_user_ids', label: 'حسابات مستثناة من الموقع', kind: 'user_ids', def: '' },
     { key: 'punch_max_clock_skew_s', label: 'أقصى انحراف ساعة (ث)', kind: 'int', def: '120', min: 10, max: 600 },
     { key: 'punch_face_strict', label: 'صرامة الوجه: كاميرا متعددة والتحقق من الخادم', kind: 'bool', def: 'false' },
     { key: 'punch_face_min_samples', label: 'أقل عينات الوجه', kind: 'int', def: '2', min: 1, max: 5 },
-    { key: 'punch_face_replay_min_distance', label: 'أدنى مسافة إعادة تشغيل', kind: 'float', def: '0.004', min: 0, max: 0.2, step: 0.001 },
+    {
+        key: 'punch_face_replay_min_distance',
+        label: 'أدنى مسافة إعادة تشغيل',
+        kind: 'float',
+        def: '0.004',
+        min: 0,
+        max: 0.2,
+        step: 0.001,
+    },
     { key: 'punch_restaurant_lat', label: 'خط العرض', kind: 'coord', def: '' },
     { key: 'punch_restaurant_lng', label: 'خط الطول', kind: 'coord', def: '' },
 ];
 
 const BOOL_FIELDS = FIELDS.filter((field) => field.kind === 'bool');
-const NUMBER_FIELDS = FIELDS.filter((field) => field.kind !== 'bool' && field.kind !== 'coord');
+const NUMBER_FIELDS = FIELDS.filter((field) => field.kind === 'int' || field.kind === 'float');
 const COORD_FIELDS = FIELDS.filter((field) => field.kind === 'coord');
-
-/** قائمة المعرّفات (مفصولة بفواصل/فراغات) — مطابقة لمنطق الخادم تمامًا. */
-function parseExemptIds(raw: string): string[] {
-    return String(raw || '')
-        .split(/[\s,]+/)
-        .map((s) => s.trim())
-        .filter(Boolean);
-}
 
 interface PunchForm {
     values: Record<string, string>;
@@ -107,6 +125,11 @@ function changedPatch(value: Record<string, string>, base: Record<string, string
             patch[field.key] = next === 'true';
         } else if (field.kind === 'coord') {
             patch[field.key] = next.trim() === '' ? null : next.trim();
+        } else if (field.kind === 'user_ids') {
+            patch[field.key] = next
+                .split(',')
+                .map((id) => id.trim())
+                .filter(Boolean);
         } else {
             patch[field.key] = next;
         }
@@ -119,35 +142,11 @@ const ATTEMPT_DECISION: Record<string, { label: string; tone: 'success' | 'dange
     rejected: { label: 'مرفوضة', tone: 'danger' },
 };
 
-/**
- * قراءة صورة الوجه لرفعها — تُصغَّر إلى 480px كحد أقصى وتُضغط JPEG ‎0.85.
- * الصورة الأصلية من كاميرا الهاتف (عدة MB) + base64 تتجاوز حد جسم الطلب العام
- * (2MB) فيفشل التسجيل بـ HTTP 413 قبل أن يصل إلى الخادم.
- */
 function readFile(file: File): Promise<string> {
     return new Promise((resolve, reject) => {
-        if (!/^image\//.test(file.type)) {
-            reject(new Error('الملف المختار ليس صورة — اختر صورة واضحة للوجه'));
-            return;
-        }
         const reader = new FileReader();
+        reader.onload = () => resolve(typeof reader.result === 'string' ? reader.result : '');
         reader.onerror = () => reject(new Error('تعذّرت قراءة الصورة'));
-        reader.onload = () => {
-            const image = new Image();
-            image.onerror = () => reject(new Error('تعذّرت قراءة الصورة'));
-            image.onload = () => {
-                const max = 480;
-                const scale = Math.min(1, max / Math.max(image.width || max, image.height || max));
-                const w = Math.max(1, Math.round((image.width || max) * scale));
-                const h = Math.max(1, Math.round((image.height || max) * scale));
-                const canvas = document.createElement('canvas');
-                canvas.width = w;
-                canvas.height = h;
-                canvas.getContext('2d')?.drawImage(image, 0, 0, w, h);
-                resolve(canvas.toDataURL('image/jpeg', 0.85));
-            };
-            image.src = String(reader.result || '');
-        };
         reader.readAsDataURL(file);
     });
 }
@@ -166,22 +165,23 @@ export function PunchSection() {
     const [files, setFiles] = useState<File[]>([]);
     const [enrollError, setEnrollError] = useState('');
     const [locating, setLocating] = useState(false);
-    const [exemptError, setExemptError] = useState('');
-    const [exemptUserId, setExemptUserId] = useState('');
 
     const settingsQuery = useQuery({
         queryKey: ['settings', 'punch'],
-        queryFn: ({ signal }) => fetchJson(punchSettingsSchema, '/api/attendance/portal/settings-admin', getAccessToken(), { signal }),
+        queryFn: ({ signal }) =>
+            fetchJson(punchSettingsSchema, '/api/attendance/portal/settings-admin', getAccessToken(), { signal }),
         refetchOnWindowFocus: false,
     });
     const devicesQuery = useQuery({
         queryKey: ['settings', 'punch-devices'],
-        queryFn: ({ signal }) => fetchJson(punchDevicesSchema, '/api/attendance/portal/punch-devices', getAccessToken(), { signal }),
+        queryFn: ({ signal }) =>
+            fetchJson(punchDevicesSchema, '/api/attendance/portal/punch-devices', getAccessToken(), { signal }),
         refetchOnWindowFocus: false,
     });
     const facesQuery = useQuery({
         queryKey: ['settings', 'punch-faces'],
-        queryFn: ({ signal }) => fetchJson(punchFacesSchema, '/api/attendance/portal/face/list', getAccessToken(), { signal }),
+        queryFn: ({ signal }) =>
+            fetchJson(punchFacesSchema, '/api/attendance/portal/face/list', getAccessToken(), { signal }),
         refetchOnWindowFocus: false,
     });
     const attemptsQuery = useQuery({
@@ -191,13 +191,19 @@ export function PunchSection() {
             if (filter) {
                 params.set('decision', filter);
             }
-            return fetchJson(punchAttemptsSchema, `/api/attendance/portal/attempts?${params.toString()}`, getAccessToken(), { signal });
+            return fetchJson(
+                punchAttemptsSchema,
+                `/api/attendance/portal/attempts?${params.toString()}`,
+                getAccessToken(),
+                { signal },
+            );
         },
         refetchOnWindowFocus: false,
     });
     const usersQuery = useQuery({
         queryKey: ['settings', 'punch-users'],
-        queryFn: ({ signal }) => fetchJson(entityPageSchema, '/api/users?limit=1000&page=1', getAccessToken(), { signal }),
+        queryFn: ({ signal }) =>
+            fetchJson(entityPageSchema, '/api/users?limit=1000&page=1', getAccessToken(), { signal }),
         enabled: isAdmin,
         refetchOnWindowFocus: false,
     });
@@ -262,42 +268,39 @@ export function PunchSection() {
         },
     });
 
-    const saveExempt = useWriteMutation<Record<string, unknown>, void>({
-        mutationFn: (payload) => savePunchSettings(payload),
-        successTitle: () => 'تم حفظ قائمة الاستثناء',
-        invalidate: [['settings', 'punch']],
-        silentError: true,
-        onSuccess: () => {
-            setExemptError('');
-            setExemptUserId('');
-        },
-        onError: (cause) => {
-            setExemptError(writeErrorMessage(cause, 'تعذّر حفظ قائمة الاستثناء'));
-        },
-    });
-
     if (!draft || !data) {
         return (
-            <QueryBoundary pending={settingsQuery.isPending} error={settingsQuery.error} onRetry={() => void settingsQuery.refetch()}>
+            <QueryBoundary
+                pending={settingsQuery.isPending}
+                error={settingsQuery.error}
+                onRetry={() => void settingsQuery.refetch()}
+            >
                 <span />
             </QueryBoundary>
         );
     }
 
-    const users = (usersQuery.data?.data ?? [])
+    const allUsers = (usersQuery.data?.data ?? [])
         .map((row) => (row && typeof row === 'object' ? (row as Record<string, unknown>) : {}))
-        .filter((row) => row.active !== false && row.id !== undefined && row.id !== null)
+        .filter((row) => row.id !== undefined && row.id !== null)
         .map((row) => ({
             value: String(row.id),
             label: `${String(row.name || row.username || '')} (${String(row.username || '')})`,
+            active: row.active !== false,
         }));
+    const users = allUsers.filter((user) => user.active);
+    const geoExemptIds = new Set(
+        (draft.value.values.punch_geo_exempt_user_ids ?? '')
+            .split(',')
+            .map((id) => id.trim())
+            .filter(Boolean),
+    );
 
     const patch = changedPatch(draft.value.values, draft.base.values);
     const dirtyKeys = Object.keys(patch);
     const devices: PunchDevice[] = devicesQuery.data ?? [];
     const faces: PunchFace[] = facesQuery.data ?? [];
     const attempts: PunchAttempts | null = attemptsQuery.data ?? null;
-    const exemptIds = parseExemptIds(String(data?.values.punch_geo_exempt_user_ids ?? ''));
 
     const setField = (key: string, next: string) => {
         draft.set('values', { ...draft.value.values, [key]: next });
@@ -349,9 +352,12 @@ export function PunchSection() {
             >
                 <div className="grid grid-cols-1 gap-sm sm:grid-cols-2 xl:grid-cols-3">
                     {BOOL_FIELDS.filter((field) =>
-                        ['punch_portal_enabled', 'punch_device_binding', 'punch_device_auto_rebind', 'punch_selfie_enabled'].includes(
-                            field.key,
-                        ),
+                        [
+                            'punch_portal_enabled',
+                            'punch_device_binding',
+                            'punch_device_auto_rebind',
+                            'punch_selfie_enabled',
+                        ].includes(field.key),
                     ).map((field) => (
                         <Checkbox
                             key={field.key}
@@ -369,9 +375,12 @@ export function PunchSection() {
             <SectionCard title="الموقع والتحقق" english="Location & Trust" badge={<ReadOnlyBadge visible={canWrite} />}>
                 <div className="grid grid-cols-1 gap-sm sm:grid-cols-2 xl:grid-cols-3">
                     {BOOL_FIELDS.filter((field) =>
-                        ['punch_geofence_enabled', 'punch_teleport_check', 'punch_geo_strict_multi_fix', 'punch_strict_geofence'].includes(
-                            field.key,
-                        ),
+                        [
+                            'punch_geofence_enabled',
+                            'punch_teleport_check',
+                            'punch_geo_strict_multi_fix',
+                            'punch_strict_geofence',
+                        ].includes(field.key),
                     ).map((field) => (
                         <Checkbox
                             key={field.key}
@@ -384,6 +393,32 @@ export function PunchSection() {
                         />
                     ))}
                 </div>
+                <label className="mt-md flex flex-col gap-xxs text-label-md text-ink-secondary">
+                    حسابات مستثناة من شرط الموقع الجغرافي
+                    <select
+                        multiple
+                        size={Math.min(Math.max(allUsers.length, 4), 8)}
+                        value={[...geoExemptIds]}
+                        disabled={!canWrite || usersQuery.isPending}
+                        onChange={(event) => {
+                            setField(
+                                'punch_geo_exempt_user_ids',
+                                Array.from(event.currentTarget.selectedOptions, (option) => option.value).join(', '),
+                            );
+                        }}
+                        className="min-h-28 rounded-md border border-hairline-strong bg-surface px-sm py-xs text-body-md text-ink"
+                        aria-describedby="punch-geo-exempt-help"
+                    >
+                        {allUsers.map((user) => (
+                            <option key={user.value} value={user.value} disabled={!user.active}>
+                                {user.label}{user.active ? '' : ' — غير نشط'}
+                            </option>
+                        ))}
+                    </select>
+                    <span id="punch-geo-exempt-help" className="text-caption text-muted">
+                        الاستثناء يتجاوز GPS والنطاق فقط؛ يظل شرط الشبكة وربط الجهاز والتحقق بالوجه قائمًا.
+                    </span>
+                </label>
                 <FieldGrid columns={3}>
                     {NUMBER_FIELDS.filter((field) =>
                         [
@@ -424,75 +459,17 @@ export function PunchSection() {
                             }}
                         />
                     ))}
-                    <Button variant="secondary" size="sm" loading={locating} disabled={!canWrite || locating} onClick={captureLocation}>
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        loading={locating}
+                        disabled={!canWrite || locating}
+                        onClick={captureLocation}
+                    >
                         التقط الموقع
                     </Button>
                 </div>
             </SectionCard>
-
-            {isAdmin ? (
-                <SectionCard
-                    title="استثناء الموقع الجغرافي"
-                    english="Geo Exemptions"
-                    badge={<Badge variant="warning">{String(exemptIds.length)} مستثنى</Badge>}
-                >
-                    <p className="text-body-sm text-muted">
-                        المستثنون يبصمون من أي موقع — باقي طبقات الأمان (الوجه، الجهاز، السبام) كما هي.
-                    </p>
-                    {exemptError ? <p role="alert" className="text-body-sm text-danger-text">{exemptError}</p> : null}
-                    <div className="flex flex-wrap items-end gap-sm">
-                        <Select
-                            label="الموظف"
-                            name="exempt_user"
-                            value={exemptUserId}
-                            onValueChange={(value) => setExemptUserId(String(value ?? ''))}
-                            options={users}
-                            containerClassName="min-w-56"
-                        />
-                        <Button
-                            variant="primary"
-                            size="sm"
-                            disabled={!exemptUserId || saveExempt.isPending || exemptIds.includes(exemptUserId)}
-                            loading={saveExempt.isPending}
-                            onClick={() => {
-                                const id = exemptUserId.trim();
-                                if (!id) { return; }
-                                const merged = [...exemptIds.filter((x) => x !== id), id].join(',');
-                                saveExempt.mutate({ punch_geo_exempt_user_ids: merged });
-                            }}
-                        >
-                            استثناء
-                        </Button>
-                    </div>
-                    {exemptIds.length === 0 ? (
-                        <p className="text-body-sm text-muted">لا يوجد أحد مستثنى حاليًا.</p>
-                    ) : (
-                        <ul className="flex flex-wrap gap-xs">
-                            {exemptIds.map((userId) => (
-                                <li
-                                    key={userId}
-                                    className="inline-flex items-center gap-xs rounded-md border border-hairline bg-surface-sunken px-sm py-xxs text-body-sm"
-                                >
-                                    <span>{users.find((u) => u.value === userId)?.label ?? <span dir="ltr">{userId}</span>}</span>
-                                    <button
-                                        type="button"
-                                        aria-label={`إزالة ${userId} من الاستثناء`}
-                                        title="إزالة"
-                                        disabled={saveExempt.isPending}
-                                        className="text-danger-text"
-                                        onClick={() => {
-                                            const merged = exemptIds.filter((x) => x !== userId).join(',');
-                                            saveExempt.mutate({ punch_geo_exempt_user_ids: merged });
-                                        }}
-                                    >
-                                        ×
-                                    </button>
-                                </li>
-                            ))}
-                        </ul>
-                    )}
-                </SectionCard>
-            ) : null}
 
             <SectionCard title="التحقق بالوجه" english="Face Verification" badge={<ReadOnlyBadge visible={canWrite} />}>
                 <div className="grid grid-cols-1 gap-sm sm:grid-cols-2 xl:grid-cols-3">
@@ -684,7 +661,9 @@ export function PunchSection() {
                                     <tr key={`${face.user_id}-${face.engine}`}>
                                         <td>{face.name || face.username || face.user_id}</td>
                                         <td>
-                                            <Badge variant={face.engine === 'v2' ? 'success' : 'neutral'}>{face.engine}</Badge>
+                                            <Badge variant={face.engine === 'v2' ? 'success' : 'neutral'}>
+                                                {face.engine}
+                                            </Badge>
                                         </td>
                                         <td>{formatStamp(face.enrolled_at)}</td>
                                         <td>{face.enrolled_by || '—'}</td>
@@ -695,7 +674,9 @@ export function PunchSection() {
                                                 loading={dropFace.isPending}
                                                 disabled={!canWrite || dropFace.isPending}
                                                 onClick={async () => {
-                                                    const ok = await confirm(`حذف قالب وجه ${face.name || face.username || face.user_id}؟`);
+                                                    const ok = await confirm(
+                                                        `حذف قالب وجه ${face.name || face.username || face.user_id}؟`,
+                                                    );
                                                     if (ok) {
                                                         dropFace.mutate(face.user_id);
                                                     }
@@ -740,8 +721,12 @@ export function PunchSection() {
                     <div className="flex flex-wrap gap-xs">
                         <Badge variant="success">مقبولة 24س: {formatNumber(attempts.summary.accepted_24h)}</Badge>
                         <Badge variant="danger">مرفوضة 24س: {formatNumber(attempts.summary.rejected_24h)}</Badge>
-                        <Badge variant="warning">خارج النطاق 7ي: {formatNumber(attempts.summary.out_of_range_7d)}</Badge>
-                        <Badge variant="warning">جهاز مختلف 7ي: {formatNumber(attempts.summary.device_mismatch_7d)}</Badge>
+                        <Badge variant="warning">
+                            خارج النطاق 7ي: {formatNumber(attempts.summary.out_of_range_7d)}
+                        </Badge>
+                        <Badge variant="warning">
+                            جهاز مختلف 7ي: {formatNumber(attempts.summary.device_mismatch_7d)}
+                        </Badge>
                     </div>
                 ) : null}
                 {attemptsQuery.isPending ? (
@@ -783,17 +768,23 @@ export function PunchSection() {
                                             <td className="text-muted">{attempt.reject_code || '—'}</td>
                                             <td>
                                                 <span className="erp-numeric" dir="ltr">
-                                                    {attempt.distance_m === null ? '—' : String(Math.round(attempt.distance_m))}
+                                                    {attempt.distance_m === null
+                                                        ? '—'
+                                                        : String(Math.round(attempt.distance_m))}
                                                 </span>
                                             </td>
                                             <td>
                                                 <span className="erp-numeric" dir="ltr">
-                                                    {attempt.accuracy_m === null ? '—' : String(Math.round(attempt.accuracy_m))}
+                                                    {attempt.accuracy_m === null
+                                                        ? '—'
+                                                        : String(Math.round(attempt.accuracy_m))}
                                                 </span>
                                             </td>
                                             <td>
                                                 <span className="erp-numeric" dir="ltr">
-                                                    {attempt.teleport_kmh === null ? '—' : String(Math.round(attempt.teleport_kmh))}
+                                                    {attempt.teleport_kmh === null
+                                                        ? '—'
+                                                        : String(Math.round(attempt.teleport_kmh))}
                                                 </span>
                                             </td>
                                             <td>
@@ -842,7 +833,14 @@ export function PunchSection() {
                             setTargetUser(next);
                         }}
                     />
-                    <Input label="لقطات الوجه" type="file" accept="image/*" capture="user" multiple onChange={pickFiles} />
+                    <Input
+                        label="لقطات الوجه"
+                        type="file"
+                        accept="image/*"
+                        capture="user"
+                        multiple
+                        onChange={pickFiles}
+                    />
                     {files.length ? <p className="text-body-sm text-muted">{String(files.length)} لقطة</p> : null}
                     {enrollError ? (
                         <p role="alert" className="text-body-sm text-danger-text">

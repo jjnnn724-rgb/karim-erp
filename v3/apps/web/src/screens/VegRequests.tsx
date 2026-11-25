@@ -2,13 +2,11 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
-import { fetchMyPermissions } from '../lib/my-menus';
 import { fetchCurrency } from '../lib/finance';
 import { formatMoney, parseArabicDecimal } from '../lib/format';
+import { openBlankTab, printHtmlDocument } from '../lib/print-document';
 import { presetRange } from '../lib/reporting';
-import { printSmart } from '../lib/print-viewer';
 import { vegRequestPrintHtml } from '../lib/veg-print';
-import { AnswerStrip, ScreenHero } from '../ui';
 import {
     fetchVegConsumption,
     fetchVegRequests,
@@ -16,12 +14,14 @@ import {
     searchVegRequests,
     VEG_FILTER_LABELS,
     VEG_STATUS_FILTERS,
+    type VegConsumptionItem,
     type VegRequestRow,
     type VegStatusFilter,
     vegRequestToRow,
     vegStatusCounts,
 } from '../lib/veg-requests';
 import {
+    adminEditVegItems,
     cancelVegRequest,
     createVegRequest,
     deleteVegRequest,
@@ -35,6 +35,7 @@ import {
     saveVegContacts,
     VEG_TEXT,
     type VegCatalog,
+    type VegCatalogItem,
     type VegContacts,
     type VegItemInput,
     vegCancelConfirm,
@@ -44,11 +45,12 @@ import {
     vegReceiveVisible,
 } from '../lib/veg-requests-write';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
+import { DataTable, type DataTableColumn, PageHeader } from '../ui';
 import { Button } from '../ui/Button';
-import { StatCard } from '../ui/StatCard';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
+import { StatCard } from '../ui/StatCard';
 import { useToast } from '../ui/Toast';
 
 /**
@@ -58,8 +60,10 @@ import { useToast } from '../ui/Toast';
  *  • تسعير (POST /api/veg-requests/:id/price — warehouse|admin|owner|manager)
  *  • تعديل الكميات (PUT /api/veg-requests/:id/items — sous_chef|admin|owner)
  *  • إلغاء (POST /api/veg-requests/:id/cancel — admin/owner لأي حالة، وبقية الأدوار للمعلق فقط)
- *  • حذف نهائي (DELETE /api/veg-requests/:id — admin/owner فقط؛ يرفض لو الطلبية له فاتورة مورد أو قيد محاسبي)
+ *  • إخفاء آمن (DELETE /api/veg-requests/:id — admin/owner؛ soft delete للمعلّق/الملغى فقط)
  *  • طباعة الطلب (ورقة A4 من صفّه + POST /api/veg-requests/:id/printed) وطباعة الشاشة (PrintActions)
+ *  • أرقام واتساب محفوظة بالخادم، وإشعارات عبر طابور المحرك مع حواجز الإرسال
+ *  • التحليل يربط الاستلام بالطلبات والاستهلاك بدفتر المخزون بالاسم والوحدة
  *
  * القراءة من `/api/veg-requests`، والكتابة محجوزة للأدوار أعلاه والخادم يحسم.
  */
@@ -148,20 +152,47 @@ const CREATE_FORM_ID = 'erp-veg-create-form';
 
 function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmit }: CreateDialogProps) {
     const [lines, setLines] = useState<VegItemInput[]>([]);
-    const [manualRows, setManualRows] = useState<Array<{ id: number; name: string; qty: string; unit: string; note: string }>>([]);
+    const [manualRows, setManualRows] = useState<
+        Array<{ id: number; name: string; qty: string; unit: string; note: string }>
+    >([]);
     const [priority, setPriority] = useState<'normal' | 'urgent'>('normal');
     const [notes, setNotes] = useState('');
-    const [selected, setSelected] = useState('');
+    const [search, setSearch] = useState('');
+    const [catalogQty, setCatalogQty] = useState<Record<string, string>>({});
+    const [catalogUnit, setCatalogUnit] = useState<Record<string, string>>({});
     const [category, setCategory] = useState('');
-    const [qty, setQty] = useState('1');
-    const [unit, setUnit] = useState('كجم');
     const [error, setError] = useState('');
 
-    const MANUAL_UNITS = ['كجم', 'جرام', 'طن', 'كرتونة', 'ربطة', 'حبة', 'صندوق', 'كيس', 'شيكارة', 'لتر', 'جالون', 'وحدة'];
+    const MANUAL_UNITS = [
+        'كجم',
+        'جرام',
+        'طن',
+        'كرتونة',
+        'ربطة',
+        'حبة',
+        'صندوق',
+        'كيس',
+        'شيكارة',
+        'لتر',
+        'جالون',
+        'وحدة',
+    ];
+    const units = catalog?.units?.length ? catalog.units : MANUAL_UNITS;
 
-    const categoryNames = useMemo(() => (catalog ? Object.keys(catalog.categories) : []), [catalog]);
+    const categoryNames = useMemo(() => (catalog ? catalog.categories.map((category) => category.key) : []), [catalog]);
     const activeCategory = category && categoryNames.includes(category) ? category : (categoryNames[0] ?? '');
-    const itemsForCategory = useMemo(() => (catalog?.categories[activeCategory] ?? []), [catalog, activeCategory]);
+    const itemsForCategory = useMemo(
+        () => catalog?.categories.find((group) => group.key === activeCategory)?.items ?? [],
+        [catalog, activeCategory],
+    );
+    // بحش سريع داخل قايمة الأصناف المعروضة (اسم يُتطابق جزئيًا — مثل بحش السجل الرئيسي)
+    const visibleItems = useMemo(() => {
+        const term = search.trim().toLowerCase();
+        if (!term) {
+            return itemsForCategory;
+        }
+        return itemsForCategory.filter((item) => item.name.toLowerCase().includes(term));
+    }, [itemsForCategory, search]);
 
     useEffect(() => {
         if (open) {
@@ -169,10 +200,10 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
             setManualRows([]);
             setPriority('normal');
             setNotes('');
-            setSelected('');
+            setSearch('');
+            setCatalogQty({});
+            setCatalogUnit({});
             setCategory('');
-            setQty('1');
-            setUnit('كجم');
             setError('');
         }
     }, [open]);
@@ -180,30 +211,32 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
     // عند وصول الكتالوج: كل فئة تُعرض كما هي في الورقة الرسمية، مع الوحدة الافتراضية للصنف الملتقى
     useEffect(() => {
         if (!catalog) return;
-        const keys = Object.keys(catalog.categories);
+        const keys = catalog.categories.map((group) => group.key);
         if (keys.length && !keys.includes(category)) {
             setCategory(keys[0] ?? '');
         }
-    }, [catalog]);
+    }, [catalog, category]);
 
-    function addLine() {
+    /** إضافة صنف من الكتالوج إلى الطلب — النقرة الواحدة تضيفه مع كميته ووحدته. */
+    function addCatalogLine(item: VegCatalogItem) {
         setError('');
-        const q = parseArabicDecimal(qty);
-        if (!selected) {
-            setError('اختر الصنف من الكتالوج');
+        const q = parseArabicDecimal(catalogQty[item.name] ?? '1');
+        if (!Number.isFinite(q) || q <= 0 || q > 99999) {
+            setError(`أدخل كمية صحيحة للصنف «${item.name}»`);
             return;
         }
-        if (!Number.isFinite(q) || q <= 0) {
-            setError('أدخل كمية صحيحة أكبر من صفر');
+        if (lines.some((line) => line.name === item.name)) {
+            setError(`الصنف «${item.name}» موجود بالفعل في الطلب`);
             return;
         }
-        if (lines.some((line) => line.name === selected)) {
-            setError('الصنف موجود بالفعل في الطلب');
-            return;
-        }
-        setLines((previous) => [...previous, { name: selected, qty: q, unit: unit.trim() || 'كجم' }]);
-        setSelected('');
-        setQty('1');
+        setLines((previous) => [
+            ...previous,
+            {
+                name: item.name,
+                qty: Math.round(q * 1000) / 1000,
+                unit: (catalogUnit[item.name] || item.unit || 'كجم').trim() || 'كجم',
+            },
+        ]);
     }
 
     function collectManualItems(): { ok: true; items: VegItemInput[] } | { ok: false; error: string } {
@@ -212,10 +245,18 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
             const name = row.name.trim();
             const qtyNum = parseArabicDecimal(row.qty);
             const note = row.note.trim();
-            if (!name && !row.qty.trim() && !row.unit.trim() && !note) { continue; }
-            if (!name) { return { ok: false, error: 'صنف يدوي ناقص الاسم' }; }
-            if (!Number.isFinite(qtyNum) || qtyNum <= 0 || qtyNum > 99999) { return { ok: false, error: `كمية الصنف اليدوي «${name}» غير صحيحة` }; }
-            if ([...lines, ...filled].some((l) => l.name === name)) { return { ok: false, error: `الصنف «${name}» مكرر` }; }
+            if (!name && !row.qty.trim() && !row.unit.trim() && !note) {
+                continue;
+            }
+            if (!name) {
+                return { ok: false, error: 'صنف يدوي ناقص الاسم' };
+            }
+            if (!Number.isFinite(qtyNum) || qtyNum <= 0 || qtyNum > 99999) {
+                return { ok: false, error: `كمية الصنف اليدوي «${name}» غير صحيحة` };
+            }
+            if ([...lines, ...filled].some((l) => l.name === name)) {
+                return { ok: false, error: `الصنف «${name}» مكرر` };
+            }
             filled.push({ name, qty: Math.round(qtyNum * 1000) / 1000, unit: row.unit || 'وحدة', note: note || null });
         }
         return { ok: true, items: filled };
@@ -262,65 +303,118 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
             }
         >
             <form id={CREATE_FORM_ID} onSubmit={(event) => void save(event)} className="flex flex-col gap-sm">
-                <div className="grid gap-sm sm:grid-cols-[1fr_1.3fr_96px_96px]">
-                    <Select
-                        label="القسم"
-                        name="category"
-                        value={activeCategory}
-                        onValueChange={(value) => {
-                            setCategory(String(value ?? ''));
-                            setSelected('');
-                        }}
-                        options={categoryNames.map((label) => ({ label, value: label }))}
-                    />
-                    <Select
-                        label="الصنف من الكتالوج"
-                        name="item"
-                        value={selected}
-                        onValueChange={(value) => {
-                            const next = String(value ?? '');
-                            setSelected(next);
-                            const found = itemsForCategory.find((candidate) => candidate.name === next);
-                            if (found) {
-                                setUnit(found.unit);
-                            }
-                        }}
-                        options={itemsForCategory.map((item) => ({ label: `${item.name} — ${item.unit}`, value: item.name }))}
-                    />
-                    <Input
-                        label="الكمية"
-                        name="qty"
-                        type="number"
-                        min={0.001}
-                        step={0.001}
-                        value={qty}
-                        onChange={(e) => setQty(e.target.value)}
-                    />
-                    <Input label="الوحدة" name="unit" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="كجم" />
+                <Select
+                    label="القسم"
+                    name="category"
+                    value={activeCategory}
+                    onValueChange={(value) => setCategory(String(value ?? ''))}
+                    options={(catalog?.categories ?? []).map((group) => ({ label: group.label, value: group.key }))}
+                />
+                <Input
+                    label="بحش"
+                    name="veg-search"
+                    type="search"
+                    value={search}
+                    onChange={(e) => setSearch(e.target.value)}
+                    placeholder="ابحش عن صنف في القايمة…"
+                />
+                {catalogLoading ? <p className="text-body-sm text-muted">جارٍ تحميل الكتالوج…</p> : null}
+                {visibleItems.length ? (
+                    <div className="grid gap-xs sm:grid-cols-2 xl:grid-cols-3">
+                        {visibleItems.map((item) => (
+                            <div
+                                key={item.name}
+                                className={`grid grid-cols-[minmax(0,1fr)_70px_80px_auto] items-end gap-xs rounded-md border border-hairline p-xs${catalogQty[item.name] ? ' bg-surface-sunken ring-2 ring-primary/40' : ''}`}
+                            >
+                                <span className="truncate pb-xs text-body-sm font-medium text-ink">{item.name}</span>
+                                <Input
+                                    aria-label={`كمية ${item.name}`}
+                                    name={`veg-qty-${item.name}`}
+                                    type="number"
+                                    min={0.001}
+                                    step={0.001}
+                                    inputMode="decimal"
+                                    className="text-end tabular-nums"
+                                    value={catalogQty[item.name] ?? '1'}
+                                    onChange={(e) =>
+                                        setCatalogQty((previous) => ({ ...previous, [item.name]: e.target.value }))
+                                    }
+                                    dir="ltr"
+                                />
+                                <Select
+                                    label={`وحدة ${item.name}`}
+                                    name={`veg-unit-${item.name}`}
+                                    value={catalogUnit[item.name] || item.unit || 'كجم'}
+                                    onValueChange={(value) =>
+                                        setCatalogUnit((previous) => ({
+                                            ...previous,
+                                            [item.name]: String(value ?? ''),
+                                        }))
+                                    }
+                                    options={units.map((u) => ({ label: u, value: u }))}
+                                    containerClassName="m-0"
+                                    size="sm"
+                                />
+                                <Button
+                                    type="button"
+                                    size="sm"
+                                    variant="secondary"
+                                    onClick={() => addCatalogLine(item)}
+                                >
+                                    إضافة
+                                </Button>
+                            </div>
+                        ))}
+                    </div>
+                ) : null}
+                <div className="flex items-center gap-xs text-body-sm text-muted">
+                    <b className="text-ink">الأصناف:</b>{' '}
+                    <span className="erp-numeric text-ink" dir="ltr">
+                        {lines.length}
+                    </span>
                 </div>
-                <div>
-                    <Button type="button" variant="secondary" size="sm" onClick={addLine}>
-                        إضافة الصنف
-                    </Button>
-                </div>
+                {visibleItems.length ? null : (
+                    <p className="text-body-sm text-muted">
+                        {search.trim()
+                            ? 'ما توجد خضارات مطابقة — غيّر البحش أو استخدم الصنف اليدوي أسفله.'
+                            : 'كتالوج الخضار غير متوفر — استخدم الأصناف اليدوية أسفله.'}
+                    </p>
+                )}
 
                 {/* ── أصناف يدوية خارج الكتالوج (زي v2) ── */}
                 <div className="rounded-md border border-dashed border-hairline p-sm">
                     <div className="mb-xs flex flex-wrap items-center justify-between gap-sm">
                         <span className="text-label-md text-muted">أصناف من خارج الكتالوج</span>
-                        <Button type="button" variant="secondary" size="sm" onClick={() => setManualRows((prev) => [...prev, { id: Date.now() + prev.length, name: '', qty: '1', unit: 'كجم', note: '' }])}>
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            onClick={() =>
+                                setManualRows((prev) => [
+                                    ...prev,
+                                    { id: Date.now() + prev.length, name: '', qty: '1', unit: 'كجم', note: '' },
+                                ])
+                            }
+                        >
                             + أضف صنف يدوي
                         </Button>
                     </div>
                     {manualRows.length ? (
                         <ul className="flex flex-col gap-xxs">
                             {manualRows.map((row) => (
-                                <li key={row.id} className="grid grid-cols-1 items-end gap-xs sm:grid-cols-[1fr_90px_90px_1fr_auto]">
+                                <li
+                                    key={row.id}
+                                    className="grid grid-cols-1 items-end gap-xs sm:grid-cols-[1fr_90px_90px_1fr_auto]"
+                                >
                                     <Input
                                         label="الصنف"
                                         name={`manual-name-${row.id}`}
                                         value={row.name}
-                                        onChange={(e) => setManualRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, name: e.target.value } : r)))}
+                                        onChange={(e) =>
+                                            setManualRows((prev) =>
+                                                prev.map((r) => (r.id === row.id ? { ...r, name: e.target.value } : r)),
+                                            )
+                                        }
                                         placeholder="اكتب اسم الصنف…"
                                     />
                                     <Input
@@ -330,20 +424,34 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
                                         min={0}
                                         step={0.001}
                                         value={row.qty}
-                                        onChange={(e) => setManualRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, qty: e.target.value } : r)))}
+                                        onChange={(e) =>
+                                            setManualRows((prev) =>
+                                                prev.map((r) => (r.id === row.id ? { ...r, qty: e.target.value } : r)),
+                                            )
+                                        }
                                     />
                                     <Select
                                         label="الوحدة"
                                         name={`manual-unit-${row.id}`}
                                         value={row.unit}
-                                        onValueChange={(value) => setManualRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, unit: String(value ?? 'وحدة') } : r)))}
+                                        onValueChange={(value) =>
+                                            setManualRows((prev) =>
+                                                prev.map((r) =>
+                                                    r.id === row.id ? { ...r, unit: String(value ?? 'وحدة') } : r,
+                                                ),
+                                            )
+                                        }
                                         options={MANUAL_UNITS.map((u) => ({ label: u, value: u }))}
                                     />
                                     <Input
                                         label="ملاحظة (اختياري)"
                                         name={`manual-note-${row.id}`}
                                         value={row.note}
-                                        onChange={(e) => setManualRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, note: e.target.value } : r)))}
+                                        onChange={(e) =>
+                                            setManualRows((prev) =>
+                                                prev.map((r) => (r.id === row.id ? { ...r, note: e.target.value } : r)),
+                                            )
+                                        }
                                         placeholder="زي: حظ كبير / عريض"
                                     />
                                     <button
@@ -374,7 +482,9 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
                                 </span>
                                 <button
                                     type="button"
-                                    onClick={() => setLines((previous) => previous.filter((entry) => entry.name !== line.name))}
+                                    onClick={() =>
+                                        setLines((previous) => previous.filter((entry) => entry.name !== line.name))
+                                    }
                                     className="text-danger-text"
                                 >
                                     إزالة
@@ -383,7 +493,9 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
                         ))}
                     </ul>
                 ) : (
-                    <p className="text-body-sm text-muted">لم تُضف أصناف بعد — اختر من الكتالوج أعلاه أو أضف صنفًا يدويًا (زي v2).</p>
+                    <p className="text-body-sm text-muted">
+                        الأصناف في القايمة أعلاه — اضغط «إضافة» على أي صنف لإضافته للطلب، أو أضف صنفًا يدويًا أسفله.
+                    </p>
                 )}
 
                 <Select
@@ -422,8 +534,16 @@ interface ReceiveDialogProps {
     pending: boolean;
     receiverName?: string | undefined;
     onClose: () => void;
-    onSubmit: (payload: { quantities: Array<{ name: string; receivedQty: number }>; rejections: string[] }) => Promise<void>;
+    onSubmit: (payload: {
+        quantities: Array<{ name: string; receivedQty: number }>;
+        rejections: string[];
+    }) => Promise<void>;
 }
+
+type VegReceiveTableRow = {
+    item: ReceiveDialogProps['items'][number];
+    index: number;
+};
 
 const RECEIVE_FORM_ID = 'erp-veg-receive-form';
 
@@ -436,7 +556,9 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
     useEffect(() => {
         if (open) {
             const next: Record<string, string> = {};
-            for (const item of items) { next[item.name] = String(item.qty ?? 0); }
+            for (const item of items) {
+                next[item.name] = String(item.qty ?? 0);
+            }
             setReceived(next);
             setRejected(new Set());
             setConfirmStage(false);
@@ -445,18 +567,135 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
     }, [open, items]);
 
     const stats = useMemo(() => {
-        let asked = 0, got = 0, spoiled = 0, rejectedCount = 0, over = 0;
+        let asked = 0,
+            got = 0,
+            spoiled = 0,
+            rejectedCount = 0,
+            over = 0;
         for (const item of items) {
             const q = Number(item.qty) || 0;
             const g = parseArabicDecimal(received[item.name]);
             asked += q;
-            if (Number.isFinite(g) && g >= 0) { got += g; }
+            if (Number.isFinite(g) && g >= 0) {
+                got += g;
+            }
             spoiled += Math.max(0, q - (Number.isFinite(g) && g >= 0 ? g : 0));
-            if (Number.isFinite(g) && g > q) { over += g - q; }
-            if (rejected.has(item.name)) { rejectedCount += 1; }
+            if (Number.isFinite(g) && g > q) {
+                over += g - q;
+            }
+            if (rejected.has(item.name)) {
+                rejectedCount += 1;
+            }
         }
-        return { asked: Math.round(asked * 1000) / 1000, got: Math.round(got * 1000) / 1000, spoiled: Math.round(spoiled * 1000) / 1000, rejectedCount, over: Math.round(over * 1000) / 1000 };
+        return {
+            asked: Math.round(asked * 1000) / 1000,
+            got: Math.round(got * 1000) / 1000,
+            spoiled: Math.round(spoiled * 1000) / 1000,
+            rejectedCount,
+            over: Math.round(over * 1000) / 1000,
+        };
     }, [items, received, rejected]);
+
+    const tableRows = items.map((item, index) => ({ item, index }));
+    const columns: DataTableColumn<VegReceiveTableRow>[] = [
+        {
+            key: 'index',
+            header: '#',
+            hideOnMobile: true,
+            cell: (tableRow) => tableRow.index + 1,
+        },
+        {
+            key: 'name',
+            header: 'الصنف',
+            cell: (tableRow) => <span className="font-semibold text-ink">{tableRow.item.name}</span>,
+        },
+        {
+            key: 'asked',
+            header: 'المطلوب',
+            numeric: true,
+            cell: ({ item }) => (
+                <>
+                    {Number(item.qty || 0).toLocaleString('en-US', { maximumFractionDigits: 3 })} {item.unit ?? ''}
+                </>
+            ),
+        },
+        {
+            key: 'received',
+            header: 'المستلم',
+            cell: ({ item }) => {
+                const isRejected = rejected.has(item.name);
+                return (
+                    <Input
+                        aria-label={`المستلم من ${item.name}`}
+                        name={`received-${item.name}`}
+                        type="number"
+                        min={0}
+                        step={0.001}
+                        inputMode="decimal"
+                        className="text-end tabular-nums"
+                        value={received[item.name] ?? ''}
+                        onChange={(event) =>
+                            setReceived((previous) => ({
+                                ...previous,
+                                [item.name]: event.target.value,
+                            }))
+                        }
+                        disabled={isRejected}
+                        dir="ltr"
+                    />
+                );
+            },
+        },
+        {
+            key: 'variance',
+            header: 'التالف / زيادة',
+            numeric: true,
+            cell: ({ item }) => {
+                const asked = Number(item.qty) || 0;
+                const got = parseArabicDecimal(received[item.name]);
+                const gotSafe = Number.isFinite(got) && got >= 0 ? got : 0;
+                const spoiled = Math.max(0, Math.round((asked - gotSafe) * 1000) / 1000);
+                const over = gotSafe > asked ? Math.round((gotSafe - asked) * 1000) / 1000 : 0;
+                return spoiled > 0 ? (
+                    <span className="text-danger-text">
+                        -{spoiled.toLocaleString('en-US', { maximumFractionDigits: 3 })}
+                    </span>
+                ) : over > 0 ? (
+                    <span className="text-success-text">
+                        +{over.toLocaleString('en-US', { maximumFractionDigits: 3 })}
+                    </span>
+                ) : (
+                    '—'
+                );
+            },
+        },
+        {
+            key: 'rejected',
+            header: 'مرفوض',
+            align: 'center',
+            cell: ({ item }) => (
+                <label className="inline-flex cursor-pointer items-center gap-xxs text-caption text-danger-text">
+                    <input
+                        type="checkbox"
+                        checked={rejected.has(item.name)}
+                        onChange={(event) => {
+                            const checked = event.target.checked;
+                            setRejected((previous) => {
+                                const next = new Set(previous);
+                                if (checked) {
+                                    next.add(item.name);
+                                } else {
+                                    next.delete(item.name);
+                                }
+                                return next;
+                            });
+                        }}
+                    />
+                    مرفوض
+                </label>
+            ),
+        },
+    ];
 
     function tabularNumber(v: string | undefined): number {
         return parseArabicDecimal(v);
@@ -484,29 +723,57 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
     return (
         <Dialog
             open={open}
-            onOpenChange={(next) => { if (!next) { onClose(); } }}
+            onOpenChange={(next) => {
+                if (!next) {
+                    onClose();
+                }
+            }}
             title={row ? `استلام الطلب — ${row.number}` : 'استلام الطلب'}
             size="lg"
-            footer={confirmStage ? (
-                <>
-                    <Button type="button" variant="secondary" size="sm" onClick={() => setConfirmStage(false)}>رجوع للتعديل</Button>
-                    <Button type="button" size="sm" variant="danger" loading={pending} onClick={() => void doSubmit()}>
-                        تأكيد الاستلام النهائي
-                    </Button>
-                </>
-            ) : (
-                <>
-                    <Button type="button" variant="secondary" size="sm" onClick={onClose}>{VEG_TEXT.cancel}</Button>
-                    <Button type="button" size="sm" onClick={() => {
-                        if (!items.length) { setError('لا توجد أصناف في الطلب'); return; }
-                        for (const item of items) {
-                            const g = tabularNumber(received[item.name]);
-                            if (!Number.isFinite(g) || g < 0 || g > 1000000) { setError(`كمية الاستلام للصنف «${item.name}» غير صحيحة`); return; }
-                        }
-                        setConfirmStage(true);
-                    }}>استكمال ←</Button>
-                </>
-            )}
+            footer={
+                confirmStage ? (
+                    <>
+                        <Button type="button" variant="secondary" size="sm" onClick={() => setConfirmStage(false)}>
+                            رجوع للتعديل
+                        </Button>
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="danger"
+                            loading={pending}
+                            onClick={() => void doSubmit()}
+                        >
+                            تأكيد الاستلام النهائي
+                        </Button>
+                    </>
+                ) : (
+                    <>
+                        <Button type="button" variant="secondary" size="sm" onClick={onClose}>
+                            {VEG_TEXT.cancel}
+                        </Button>
+                        <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => {
+                                if (!items.length) {
+                                    setError('لا توجد أصناف في الطلب');
+                                    return;
+                                }
+                                for (const item of items) {
+                                    const g = tabularNumber(received[item.name]);
+                                    if (!Number.isFinite(g) || g < 0 || g > 1000000) {
+                                        setError(`كمية الاستلام للصنف «${item.name}» غير صحيحة`);
+                                        return;
+                                    }
+                                }
+                                setConfirmStage(true);
+                            }}
+                        >
+                            استكمال ←
+                        </Button>
+                    </>
+                )
+            }
         >
             <form id={RECEIVE_FORM_ID} onSubmit={(event) => event.preventDefault()} className="flex flex-col gap-sm">
                 {!confirmStage ? (
@@ -514,85 +781,57 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
                         <div className="rounded-md border border-hairline bg-surface-sunken p-sm">
                             <p className="text-label-md font-bold text-ink">السو شيف — تسجيل ما وصل بالفعل</p>
                             <p className="text-body-xs leading-relaxed text-muted">
-                                اكتب الكمية المستلمة فعليًا لكل صنف — زيادة عن المطلوب مقبولة بالكامل وستُحمَّل على الاستلام والتسعير — والصنف المرفوض يستبعد بالكامل.
+                                اكتب الكمية المستلمة فعليًا لكل صنف — زيادة عن المطلوب مقبولة بالكامل وستُحمَّل على الاستلام
+                                والتسعير — والصنف المرفوض يستبعد بالكامل.
                             </p>
                         </div>
 
-                        <div className="overflow-hidden rounded-md border border-hairline">
-                            <table className="w-full border-collapse text-body-sm">
-                                <thead>
-                                    <tr className="bg-surface-sunken text-caption font-bold text-muted">
-                                        <th scope="col" className="px-sm py-xs text-start">#</th>
-                                        <th scope="col" className="px-sm py-xs text-start">الصنف</th>
-                                        <th scope="col" className="px-sm py-xs text-end">المطلوب</th>
-                                        <th scope="col" className="px-sm py-xs text-end">المستلم</th>
-                                        <th scope="col" className="px-sm py-xs text-end">التالف / زيادة</th>
-                                        <th scope="col" className="px-sm py-xs text-center">مرفوض</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {items.map((item, idx) => {
-                                        const asked = Number(item.qty) || 0;
-                                        const got = parseArabicDecimal(received[item.name]);
-                                        const gotSafe = Number.isFinite(got) && got >= 0 ? got : 0;
-                                        const spoiled = Math.max(0, Math.round((asked - gotSafe) * 1000) / 1000);
-                                        const over = gotSafe > asked ? Math.round((gotSafe - asked) * 1000) / 1000 : 0;
-                                        const isRejected = rejected.has(item.name);
-                                        return (
-                                            <tr key={item.name} className={`border-t border-hairline ${isRejected ? 'bg-red-50/40 opacity-70' : ''}`}>
-                                                <td className="px-sm py-xs text-caption text-faint">{idx + 1}</td>
-                                                <td className="px-sm py-xs font-semibold text-ink">{item.name}</td>
-                                                <td className="erp-numeric px-sm py-xs text-end text-ink" dir="ltr">{asked.toLocaleString('en-US', { maximumFractionDigits: 3 })} {item.unit ?? ''}</td>
-                                                <td className="px-sm py-xs">
-                                                    <Input
-                                                        aria-label={`المستلم من ${item.name}`}
-                                                        name={`received-${item.name}`}
-                                                        type="number"
-                                                        min={0}
-                                                        step={0.001}
-                                                        inputMode="decimal"
-                                                        className="text-end tabular-nums"
-                                                        value={received[item.name] ?? ''}
-                                                        onChange={(e) => setReceived((previous) => ({ ...previous, [item.name]: e.target.value }))}
-                                                        disabled={isRejected}
-                                                        dir="ltr"
-                                                    />
-                                                </td>
-                                                <td className="erp-numeric px-sm py-xs text-end font-bold" dir="ltr">{spoiled > 0 ? <span className="text-danger-text">-{spoiled.toLocaleString('en-US', { maximumFractionDigits: 3 })}</span> : over > 0 ? <span className="text-success-text">+{over.toLocaleString('en-US', { maximumFractionDigits: 3 })}</span> : '—'}</td>
-                                                <td className="px-sm py-xs text-center">
-                                                    <label className="inline-flex cursor-pointer items-center gap-xxs text-caption text-danger-text">
-                                                        <input
-                                                            type="checkbox"
-                                                            checked={isRejected}
-                                                            onChange={(e) => {
-                                                                const checked = e.target.checked;
-                                                                setRejected((prev) => {
-                                                                    const next = new Set(prev);
-                                                                    if (checked) { next.add(item.name); } else { next.delete(item.name); }
-                                                                    return next;
-                                                                });
-                                                            }}
-                                                        />
-                                                        مرفوض
-                                                    </label>
-                                                </td>
-                                            </tr>
-                                        );
-                                    })}
-                                </tbody>
-                                <tfoot>
-                                    <tr className="border-t-2 border-hairline-strong bg-surface-sunken">
-                                        <td colSpan={2} className="px-sm py-xs text-body-sm font-bold text-ink">الإجمالي</td>
-                                        <td className="erp-numeric px-sm py-xs text-end text-body-sm text-ink" dir="ltr">{stats.asked.toLocaleString('en-US', { maximumFractionDigits: 3 })}</td>
-                                        <td className="erp-numeric px-sm py-xs text-end font-extrabold text-success-text" dir="ltr">{stats.got.toLocaleString('en-US', { maximumFractionDigits: 3 })}</td>
-                                        <td className="erp-numeric px-sm py-xs text-end font-bold text-ink" dir="ltr">{stats.spoiled > 0 ? `-${stats.spoiled.toLocaleString('en-US', { maximumFractionDigits: 3 })}` : stats.over > 0 ? <span className="text-success-text">+{stats.over.toLocaleString('en-US', { maximumFractionDigits: 3 })}</span> : '—'}</td>
-                                        <td />
-                                    </tr>
-                                </tfoot>
-                            </table>
-                        </div>
-                        {error ? <p role="alert" className="text-body-sm text-danger-text">{error}</p> : null}
-                        <p className="text-body-xs text-faint">الاستلام بواسطة: {receiverName ?? '…'} — التالف يُوثَّق ولا يُسعَّر ولا يُحمّل على المطبخ.</p>
+                        <DataTable<VegReceiveTableRow>
+                            caption="أصناف الاستلام"
+                            columns={columns}
+                            rows={tableRows}
+                            rowKey={(tableRow) => tableRow.item.name}
+                            rowClassName={(tableRow) =>
+                                rejected.has(tableRow.item.name) ? 'bg-red-50/40 opacity-70' : ''
+                            }
+                            maxHeight={300}
+                            footer={
+                                <div className="flex flex-wrap gap-md text-body-sm">
+                                    <span>
+                                        الإجمالي المطلوب:{' '}
+                                        <b className="erp-numeric" dir="ltr">
+                                            {stats.asked.toLocaleString('en-US', { maximumFractionDigits: 3 })}
+                                        </b>
+                                    </span>
+                                    <span>
+                                        المستلم:{' '}
+                                        <b className="erp-numeric text-success-text" dir="ltr">
+                                            {stats.got.toLocaleString('en-US', { maximumFractionDigits: 3 })}
+                                        </b>
+                                    </span>
+                                    <span>
+                                        التالف:{' '}
+                                        <b className="erp-numeric text-danger-text" dir="ltr">
+                                            {stats.spoiled.toLocaleString('en-US', { maximumFractionDigits: 3 })}
+                                        </b>
+                                    </span>
+                                    <span>
+                                        الزيادة:{' '}
+                                        <b className="erp-numeric" dir="ltr">
+                                            {stats.over.toLocaleString('en-US', { maximumFractionDigits: 3 })}
+                                        </b>
+                                    </span>
+                                </div>
+                            }
+                        />
+                        {error ? (
+                            <p role="alert" className="text-body-sm text-danger-text">
+                                {error}
+                            </p>
+                        ) : null}
+                        <p className="text-body-xs text-faint">
+                            الاستلام بواسطة: {receiverName ?? '…'} — التالف يُوثَّق ولا يُسعَّر ولا يُحمّل على المطبخ.
+                        </p>
                     </>
                 ) : (
                     <div className="flex flex-col gap-sm">
@@ -600,15 +839,43 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
                         <div className="rounded-md border border-hairline bg-surface-sunken p-sm text-body-sm text-ink">
                             <p className="mb-xs font-semibold">ملخص ما سيتم تسجيله:</p>
                             <ul className="list-disc ps-5 leading-relaxed text-muted">
-                                <li>أصناف سيتم استلامها: <b className="text-ink">{items.length - stats.rejectedCount} صنف</b></li>
-                                <li>الكمية المستلمة الكلية: <b className="text-ink" dir="ltr">{stats.got.toLocaleString('en-US', { maximumFractionDigits: 3 })}</b></li>
-                                <li>التالف والموثق: <b className="text-ink" dir="ltr">{stats.spoiled.toLocaleString('en-US', { maximumFractionDigits: 3 })}</b></li>
-                                <li>زيادة عن المطلوب (مقبولة بالكامل): <b className="text-ink" dir="ltr">{stats.over > 0 ? `+${stats.over.toLocaleString('en-US', { maximumFractionDigits: 3 })}` : '—'}</b></li>
-                                <li>أصناف مرفوضة كاملة: <b className="text-ink">{stats.rejectedCount}</b></li>
+                                <li>
+                                    أصناف سيتم استلامها:{' '}
+                                    <b className="text-ink">{items.length - stats.rejectedCount} صنف</b>
+                                </li>
+                                <li>
+                                    الكمية المستلمة الكلية:{' '}
+                                    <b className="text-ink" dir="ltr">
+                                        {stats.got.toLocaleString('en-US', { maximumFractionDigits: 3 })}
+                                    </b>
+                                </li>
+                                <li>
+                                    التالف والموثق:{' '}
+                                    <b className="text-ink" dir="ltr">
+                                        {stats.spoiled.toLocaleString('en-US', { maximumFractionDigits: 3 })}
+                                    </b>
+                                </li>
+                                <li>
+                                    زيادة عن المطلوب (مقبولة بالكامل):{' '}
+                                    <b className="text-ink" dir="ltr">
+                                        {stats.over > 0
+                                            ? `+${stats.over.toLocaleString('en-US', { maximumFractionDigits: 3 })}`
+                                            : '—'}
+                                    </b>
+                                </li>
+                                <li>
+                                    أصناف مرفوضة كاملة: <b className="text-ink">{stats.rejectedCount}</b>
+                                </li>
                             </ul>
-                            <p className="mt-xs text-body-xs text-faint">مرفوض = ممنوع تمامًا من التسعير والترحيل — يُعتبر غير موجود نهائيًا.</p>
+                            <p className="mt-xs text-body-xs text-faint">
+                                مرفوض = ممنوع تمامًا من التسعير والترحيل — يُعتبر غير موجود نهائيًا.
+                            </p>
                         </div>
-                        {error ? <p role="alert" className="text-body-sm text-danger-text">{error}</p> : null}
+                        {error ? (
+                            <p role="alert" className="text-body-sm text-danger-text">
+                                {error}
+                            </p>
+                        ) : null}
                     </div>
                 )}
             </form>
@@ -723,6 +990,13 @@ interface PriceDialogProps {
     onSubmit: (prices: { name: string; price: number; qty?: number | undefined }[]) => Promise<void>;
 }
 
+type VegPriceTableRow = {
+    item: PriceDialogProps['items'][number];
+    index: number;
+    raw: string;
+    lineTotal: number | null;
+};
+
 const PRICE_FORM_ID = 'erp-veg-price-form';
 
 function PriceDialog({ open, row, items, pending, onClose, onSubmit }: PriceDialogProps) {
@@ -740,22 +1014,98 @@ function PriceDialog({ open, row, items, pending, onClose, onSubmit }: PriceDial
         }
     }, [open, items]);
 
-    const moneyFmt = (value: number) => Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+    const moneyFmt = (value: number) =>
+        Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
     const math = useMemo(() => {
         let total = 0;
         const lines = items.map((item) => {
-            if (item.rejected) { return { item, raw: '', price: null, valid: true, lineTotal: null }; }
+            if (item.rejected) {
+                return { item, raw: '', price: null, valid: true, lineTotal: null };
+            }
             const raw = String(prices[item.name] ?? '').trim();
             const price = raw === '' ? null : Number(raw);
             const valid = price !== null && Number.isFinite(price) && price >= 0 && price <= 1000000;
-            const lineTotal = valid ? Math.round(price! * item.qty * 100) / 100 : null;
-            if (lineTotal !== null) { total += lineTotal; }
+            const lineTotal = valid && price !== null ? Math.round(price * item.qty * 100) / 100 : null;
+            if (lineTotal !== null) {
+                total += lineTotal;
+            }
             return { item, raw, price, valid, lineTotal };
         });
-        const unpriced = lines.reduce((count, l) => count + ((l.item.rejected || l.valid) ? 0 : 1), 0);
-        return { total: Math.round(total * 100) / 100, unpriced };
+        const unpriced = lines.reduce((count, l) => count + (l.item.rejected || l.valid ? 0 : 1), 0);
+        return { total: Math.round(total * 100) / 100, unpriced, lines };
     }, [items, prices]);
+
+    const tableRows = math.lines.map((line, index) => ({ ...line, index }));
+    const columns: DataTableColumn<VegPriceTableRow>[] = [
+        {
+            key: 'index',
+            header: '#',
+            hideOnMobile: true,
+            cell: (tableRow) => tableRow.index + 1,
+        },
+        {
+            key: 'name',
+            header: 'الصنف',
+            cell: ({ item }) => (
+                <span className={`font-semibold ${item.rejected ? 'text-muted line-through' : 'text-ink'}`}>
+                    {item.name}
+                </span>
+            ),
+        },
+        {
+            key: 'unit',
+            header: 'الوحدة',
+            cell: ({ item }) => item.unit ?? 'كجم',
+        },
+        {
+            key: 'qty',
+            header: 'الكمية',
+            numeric: true,
+            cell: ({ item }) => (item.qty ?? 0).toLocaleString('en-US', { maximumFractionDigits: 3 }),
+        },
+        {
+            key: 'unit-price',
+            header: 'سعر الوحدة (ر.س)',
+            cell: ({ item }) =>
+                item.rejected ? (
+                    <span className="inline-flex rounded-full bg-red-100 px-sm py-xxs text-caption font-bold text-danger-text">
+                        مرفوض — لا يُسعّر
+                    </span>
+                ) : (
+                    <Input
+                        aria-label={`سعر ${item.name}`}
+                        name={`price-${item.name}`}
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        inputMode="decimal"
+                        className="text-end tabular-nums"
+                        value={prices[item.name] ?? ''}
+                        onChange={(event) =>
+                            setPrices((previous) => ({
+                                ...previous,
+                                [item.name]: event.target.value,
+                            }))
+                        }
+                        dir="ltr"
+                    />
+                ),
+        },
+        {
+            key: 'line-total',
+            header: 'الإجمالي (ر.س)',
+            numeric: true,
+            cell: ({ item, lineTotal }) =>
+                item.rejected ? (
+                    <span className="text-muted">—</span>
+                ) : lineTotal !== null ? (
+                    moneyFmt(lineTotal)
+                ) : (
+                    <span className="text-muted">—</span>
+                ),
+        },
+    ];
 
     async function save(event: React.FormEvent<HTMLFormElement>): Promise<void> {
         event.preventDefault();
@@ -766,7 +1116,9 @@ function PriceDialog({ open, row, items, pending, onClose, onSubmit }: PriceDial
         }
         const payload: { name: string; price: number; qty?: number | undefined }[] = [];
         for (const item of items) {
-            if (item.rejected) { continue; }
+            if (item.rejected) {
+                continue;
+            }
             const raw = String(prices[item.name] ?? '').trim();
             const price = Number(raw);
             if (raw === '' || !Number.isFinite(price) || price < 0 || price > 1000000) {
@@ -796,7 +1148,13 @@ function PriceDialog({ open, row, items, pending, onClose, onSubmit }: PriceDial
                     <Button type="button" variant="secondary" size="sm" onClick={onClose}>
                         {VEG_TEXT.cancel}
                     </Button>
-                    <Button type="submit" form={PRICE_FORM_ID} size="md" loading={pending} disabled={!items.length || math.unpriced > 0}>
+                    <Button
+                        type="submit"
+                        form={PRICE_FORM_ID}
+                        size="md"
+                        loading={pending}
+                        disabled={!items.length || math.unpriced > 0}
+                    >
                         ✓ اعتمد وترحّل للمطبخ
                     </Button>
                 </>
@@ -807,76 +1165,34 @@ function PriceDialog({ open, row, items, pending, onClose, onSubmit }: PriceDial
                     <div className="min-w-0">
                         <p className="text-label-md font-bold text-ink">وزارة الحسابات ← الاعتماد السعري</p>
                         <p className="text-body-xs leading-relaxed text-muted">
-                            سعر الوحدة لكل صنف مُستلم فقط. بضغطة واحدة يُقفل التسعير، ويُحمَّل الإجمالي كمصروف على قسم المطبخ تلقائيًا (category: خضار، adjustment veg_request).
+                            سعر الوحدة لكل صنف مُستلم فقط. بضغطة واحدة يُقفل التسعير، ويُحمَّل الإجمالي كمصروف على قسم المطبخ
+                            تلقائيًا (category: خضار، adjustment veg_request).
                         </p>
                     </div>
                     <div className="text-end">
                         <p className="text-caption text-muted">الإجمالي الحالي</p>
-                        <p className="erp-numeric text-heading-lg font-extrabold text-success-text" dir="ltr">{moneyFmt(math.total)} ر.س</p>
+                        <p className="erp-numeric text-heading-lg font-extrabold text-success-text" dir="ltr">
+                            {moneyFmt(math.total)} ر.س
+                        </p>
                     </div>
                 </div>
 
-                <div className="overflow-hidden rounded-md border border-hairline">
-                    <table className="w-full border-collapse text-body-sm">
-                        <thead>
-                            <tr className="bg-surface-sunken text-caption font-bold text-muted">
-                                <th scope="col" className="px-sm py-xs text-start">#</th>
-                                <th scope="col" className="px-sm py-xs text-start">الصنف</th>
-                                <th scope="col" className="px-sm py-xs text-center">الوحدة</th>
-                                <th scope="col" className="px-sm py-xs text-end">الكمية</th>
-                                <th scope="col" className="px-sm py-xs text-end">سعر الوحدة (ر.س)</th>
-                                <th scope="col" className="px-sm py-xs text-end">الإجمالي (ر.س)</th>
-                            </tr>
-                        </thead>
-                        <tbody>
-                            {items.map((item, idx) => {
-                                const isRejected = item.rejected === true;
-                                const line = (!isRejected && math) ? (() => {
-                                    const raw = String(prices[item.name] ?? '').trim();
-                                    const price = raw === '' ? null : Number(raw);
-                                    const valid = price !== null && Number.isFinite(price) && price >= 0 && price <= 1000000;
-                                    const lineTotal = valid ? Math.round(price! * item.qty * 100) / 100 : null;
-                                    return { raw, lineTotal };
-                                })() : { raw: '', lineTotal: null };
-                                return (
-                                    <tr key={item.name} className={`border-t border-hairline${isRejected ? ' bg-red-50/40' : ''}`}>
-                                        <td className="px-sm py-xs text-caption text-faint">{idx + 1}</td>
-                                        <td className={`px-sm py-xs font-semibold ${isRejected ? 'text-muted line-through' : 'text-ink'}`}>{item.name}</td>
-                                        <td className="px-sm py-xs text-center text-muted">{item.unit ?? 'كجم'}</td>
-                                        <td className="erp-numeric px-sm py-xs text-end text-ink" dir="ltr">{(item.qty ?? 0).toLocaleString('en-US', { maximumFractionDigits: 3 })}</td>
-                                        <td className="px-sm py-xs">
-                                            {isRejected ? (
-                                                <span className="inline-flex rounded-full bg-red-100 px-sm py-xxs text-caption font-bold text-danger-text">مرفوض — لا يُسعّر</span>
-                                            ) : (
-                                                <Input
-                                                    aria-label={`سعر ${item.name}`}
-                                                    name={`price-${item.name}`}
-                                                    type="number"
-                                                    min={0}
-                                                    step={0.01}
-                                                    inputMode="decimal"
-                                                    className="text-end tabular-nums"
-                                                    value={prices[item.name] ?? ''}
-                                                    onChange={(e) => setPrices((previous) => ({ ...previous, [item.name]: e.target.value }))}
-                                                    dir="ltr"
-                                                />
-                                            )}
-                                        </td>
-                                        <td className="erp-numeric px-sm py-xs text-end font-bold text-ink" dir="ltr">
-                                            {isRejected ? <span className="text-muted">—</span> : (line.lineTotal !== null ? moneyFmt(line.lineTotal) : <span className="text-muted">—</span>)}
-                                        </td>
-                                    </tr>
-                                );
-                            })}
-                        </tbody>
-                        <tfoot>
-                            <tr className="border-t-2 border-hairline-strong bg-surface-sunken">
-                                <td colSpan={4} className="px-sm py-xs text-body-sm font-bold text-ink">الإجمالي النهائي</td>
-                                <td colSpan={2} className="erp-numeric px-sm py-xs text-end text-heading-md font-extrabold text-success-text" dir="ltr">{moneyFmt(math.total)} ر.س</td>
-                            </tr>
-                        </tfoot>
-                    </table>
-                </div>
+                <DataTable<VegPriceTableRow>
+                    caption="أصناف التسعير"
+                    columns={columns}
+                    rows={tableRows}
+                    rowKey={(tableRow) => tableRow.item.name}
+                    rowClassName={(tableRow) => (tableRow.item.rejected ? 'bg-red-50/40' : '')}
+                    maxHeight={300}
+                    footer={
+                        <div className="flex items-center justify-between gap-sm">
+                            <span className="text-body-sm font-bold text-ink">الإجمالي النهائي</span>
+                            <b className="erp-numeric text-heading-md font-extrabold text-success-text" dir="ltr">
+                                {moneyFmt(math.total)} ر.س
+                            </b>
+                        </div>
+                    }
+                />
 
                 {error ? (
                     <p role="alert" className="text-body-sm text-danger-text">
@@ -935,7 +1251,22 @@ function ConfirmDialog({ open, title, message, pending, onConfirm, onClose }: Co
 
 const CONTACTS_FORM_ID = 'erp-veg-contacts-form';
 
-function VegContactsDialog({ open, pending, current, onClose, onSave }: {
+function phoneDigits(value: string): string | null {
+    const digits = value
+        .replace(/[٠-٩]/g, (digit) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(digit)))
+        .replace(/[۰-۹]/g, (digit) => String('۰۱۲۳۴۵۶۷۸۹'.indexOf(digit)))
+        .replace(/[\s()+.-]/g, '');
+    if (!digits) return '';
+    return /^\d{7,13}$/.test(digits) ? digits : null;
+}
+
+function VegContactsDialog({
+    open,
+    pending,
+    current,
+    onClose,
+    onSave,
+}: {
     open: boolean;
     pending: boolean;
     current: VegContacts | null;
@@ -954,17 +1285,12 @@ function VegContactsDialog({ open, pending, current, onClose, onSave }: {
         }
     }, [open, current]);
 
-    const valid = (digits: string) => {
-        const clean = digits.replace(/\D/g, '');
-        return clean === '' || (clean.length >= 7 && clean.length <= 13);
-    };
-
     async function save(event: React.FormEvent<HTMLFormElement>): Promise<void> {
         event.preventDefault();
         setError('');
-        const supplierDigits = supplier.replace(/\D/g, '');
-        const warehouseDigits = warehouse.replace(/\D/g, '');
-        if (!valid(supplierDigits) || !valid(warehouseDigits)) {
+        const supplierDigits = phoneDigits(supplier);
+        const warehouseDigits = phoneDigits(warehouse);
+        if (supplierDigits === null || warehouseDigits === null) {
             setError('رقم غير صالح — استخدم صيغة دولية بدون + أو 00 (مثال: 9665XXXXXXXX)');
             return;
         }
@@ -975,21 +1301,29 @@ function VegContactsDialog({ open, pending, current, onClose, onSave }: {
         try {
             await onSave({ supplier_jid: supplierDigits, warehouse_jid: warehouseDigits });
             onClose();
-        } catch {
-            setError('تعذر الحفظ — حاول مرة أخرى');
+        } catch (saveError) {
+            setError(saveError instanceof Error ? saveError.message : 'تعذر الحفظ — حاول مرة أخرى');
         }
     }
 
     return (
         <Dialog
             open={open}
-            onOpenChange={(next) => { if (!next) { onClose(); } }}
+            onOpenChange={(next) => {
+                if (!next) {
+                    onClose();
+                }
+            }}
             title="أرقام واتساب — المورد والمخزن"
             size="md"
             footer={
                 <>
-                    <Button type="button" variant="secondary" size="sm" onClick={onClose}>{VEG_TEXT.cancel}</Button>
-                    <Button type="submit" form={CONTACTS_FORM_ID} size="sm" loading={pending}>حفظ</Button>
+                    <Button type="button" variant="secondary" size="sm" onClick={onClose}>
+                        {VEG_TEXT.cancel}
+                    </Button>
+                    <Button type="submit" form={CONTACTS_FORM_ID} size="sm" loading={pending}>
+                        حفظ
+                    </Button>
                 </>
             }
         >
@@ -1010,7 +1344,11 @@ function VegContactsDialog({ open, pending, current, onClose, onSave }: {
                     onChange={(e) => setWarehouse(e.target.value)}
                     placeholder="مثال: 9665XXXXXXXX"
                 />
-                {error ? <p role="alert" className="text-body-sm text-danger-text">{error}</p> : null}
+                {error ? (
+                    <p role="alert" className="text-body-sm text-danger-text">
+                        {error}
+                    </p>
+                ) : null}
             </form>
         </Dialog>
     );
@@ -1018,19 +1356,11 @@ function VegContactsDialog({ open, pending, current, onClose, onSave }: {
 
 /* ── الشاشة ───────────────────────────────────────────────────────────── */
 
-
 export function VegRequests() {
     const auth = useAuthState();
     const { toast } = useToast();
-    const meQuery = useQuery({
-        queryKey: ['permissions', 'me'],
-        queryFn: ({ signal }) => fetchMyPermissions(signal),
-        staleTime: 5 * 60 * 1000,
-        retry: false,
-    });
-    const vegGrants = useMemo(() => new Set<string>(meQuery.data?.grants ?? []), [meQuery.data]);
-    const canCreate = vegCreateVisible(auth.user?.role, auth.user?.dept_code, vegGrants);
-    const canReceive = vegReceiveVisible(auth.user?.role, auth.user?.dept_code, vegGrants);
+    const canCreate = vegCreateVisible(auth.user?.role);
+    const canReceive = vegReceiveVisible(auth.user?.role);
     const canPrice = vegPriceVisible(auth.user?.role);
     const isContactsAdmin = auth.user?.role === 'admin' || auth.user?.role === 'owner';
     const isAdmin = auth.user?.role === 'admin';
@@ -1042,15 +1372,20 @@ export function VegRequests() {
     const [printingId, setPrintingId] = useState<string | null>(null);
 
     const [createOpen, setCreateOpen] = useState(false);
+    const [createSuccessNo, setCreateSuccessNo] = useState<string | null>(null);
     // تحليل الخضار (2026-11-21): المستلم/المستهلك/الرصيد لكل صنف في فترة
     const [analysisOpen, setAnalysisOpen] = useState(false);
     const [contactsOpen, setContactsOpen] = useState(false);
     const [editOpen, setEditOpen] = useState(false);
     const [editRow, setEditRow] = useState<VegRequestRow | null>(null);
-    const [editItems, setEditItems] = useState<ReadonlyArray<{ name: string; qty: number; unit?: string | undefined }>>([]);
+    const [editItems, setEditItems] = useState<ReadonlyArray<{ name: string; qty: number; unit?: string | undefined }>>(
+        [],
+    );
     const [priceOpen, setPriceOpen] = useState(false);
     const [priceRow, setPriceRow] = useState<VegRequestRow | null>(null);
-    const [priceItems, setPriceItems] = useState<ReadonlyArray<{ name: string; qty: number; unit?: string | undefined; rejected?: boolean | undefined }>>([]);
+    const [priceItems, setPriceItems] = useState<
+        ReadonlyArray<{ name: string; qty: number; unit?: string | undefined; rejected?: boolean | undefined }>
+    >([]);
     const [actionOpen, setActionOpen] = useState(false);
     const [actionRow, setActionRow] = useState<VegRequestRow | null>(null);
     const [actionKind, setActionKind] = useState<'cancel' | 'delete'>('cancel');
@@ -1058,8 +1393,9 @@ export function VegRequests() {
     const [actionMessage, setActionMessage] = useState('');
     const [receiveOpen, setReceiveOpen] = useState(false);
     const [receiveRow, setReceiveRow] = useState<VegRequestRow | null>(null);
-    const [receiveItems, setReceiveItems] = useState<ReadonlyArray<{ name: string; qty: number; unit?: string | undefined }>>([]);
-
+    const [receiveItems, setReceiveItems] = useState<
+        ReadonlyArray<{ name: string; qty: number; unit?: string | undefined }>
+    >([]);
 
     const vegQuery = useQuery({
         queryKey: ['veg-requests', status],
@@ -1077,7 +1413,7 @@ export function VegRequests() {
     });
     const contactsQuery = useQuery({
         queryKey: ['veg-contacts'],
-        queryFn: () => fetchVegContacts(),
+        queryFn: ({ signal }) => fetchVegContacts(signal),
         staleTime: 5 * 60 * 1000,
         enabled: isContactsAdmin,
         retry: 0,
@@ -1103,7 +1439,9 @@ export function VegRequests() {
 
     function toggleSort(key: SortKey) {
         setPage(1);
-        setSort((previous) => (previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
+        setSort((previous) =>
+            previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' },
+        );
     }
 
     function resetFilters() {
@@ -1115,7 +1453,10 @@ export function VegRequests() {
 
     /* ── الكتبات عبر useWriteMutation ────────────────────────────────── */
 
-    const createMutation = useWriteMutation<{ items: VegItemInput[]; priority: 'normal' | 'urgent'; notes: string }, void>({
+    const createMutation = useWriteMutation<
+        { items: VegItemInput[]; priority: 'normal' | 'urgent'; notes: string },
+        void
+    >({
         mutationFn: (input) => createVegRequest(input).then(() => undefined),
         successTitle: () => VEG_TEXT.createSuccess,
         invalidate: [['veg-requests']],
@@ -1123,7 +1464,13 @@ export function VegRequests() {
         onSuccess: () => setCreateOpen(false),
     });
 
-    const receiveMutation = useWriteMutation<{ id: string | number; payload: { quantities: Array<{ name: string; receivedQty: number }>; rejections: string[] } }, void>({
+    const receiveMutation = useWriteMutation<
+        {
+            id: string | number;
+            payload: { quantities: Array<{ name: string; receivedQty: number }>; rejections: string[] };
+        },
+        void
+    >({
         mutationFn: ({ id, payload }) => receiveVegRequest(id, payload).then(() => undefined),
         successTitle: () => '✓ تم استلام الطلب',
         invalidate: [['veg-requests']],
@@ -1134,7 +1481,10 @@ export function VegRequests() {
         },
     });
 
-    const priceMutation = useWriteMutation<{ id: string; prices: { name: string; price: number; qty?: number | undefined }[] }, void>({
+    const priceMutation = useWriteMutation<
+        { id: string; prices: { name: string; price: number; qty?: number | undefined }[] },
+        void
+    >({
         mutationFn: ({ id, prices }) => priceVegRequest(id, prices).then(() => undefined),
         successTitle: () => VEG_TEXT.priceSuccess,
         invalidate: [['veg-requests']],
@@ -1146,8 +1496,14 @@ export function VegRequests() {
     });
 
     const editMutation = useWriteMutation<VegItemInput[], void>({
-        mutationFn: (items) => editVegItems(editRow?.id ?? '', { items }).then(() => undefined),
-        successTitle: () => VEG_TEXT.editSuccess,
+        mutationFn: (items) => {
+            const id = editRow?.id ?? '';
+            const input = { items };
+            return (editRow?.status === 'received' ? adminEditVegItems(id, input) : editVegItems(id, input)).then(
+                () => undefined,
+            );
+        },
+        successTitle: () => (editRow?.status === 'received' ? VEG_TEXT.adminEditSuccess : VEG_TEXT.editSuccess),
         invalidate: [['veg-requests']],
         silentError: true,
         onSuccess: () => {
@@ -1180,7 +1536,8 @@ export function VegRequests() {
 
     const notifyMutation = useWriteMutation<{ id: string; target: 'supplier' | 'warehouse' }, void>({
         mutationFn: ({ id, target }) => notifyVegRequest(id, target).then(() => undefined),
-        successTitle: ({ target }) => (target === 'supplier' ? '📤 اتبعتت للمورد على واتساب' : '🏬 اتبعتت للمخزن على واتساب'),
+        successTitle: ({ target }) =>
+            target === 'supplier' ? '📤 أُضيف إشعار المورد إلى طابور واتساب' : '🏬 أُضيف إشعار المخزن إلى طابور واتساب',
         errorTitle: 'تعذر الإرسال على واتساب',
         invalidate: [],
     });
@@ -1214,14 +1571,22 @@ export function VegRequests() {
     function openReceive(row: VegRequestRow) {
         const raw = vegQuery.data?.requests.find((request) => request.id === row.id);
         const items = Array.isArray(raw?.items)
-            ? (raw.items as Array<{ name?: string; qty?: number; quantity?: number; unit?: string; rejected?: boolean }>)
+            ? (raw.items as Array<{
+                  name?: string;
+                  qty?: number;
+                  quantity?: number;
+                  unit?: string;
+                  rejected?: boolean;
+              }>)
             : [];
         setReceiveRow(row);
-        setReceiveItems(items.map((item) => ({
-            name: String(item.name ?? ''),
-            qty: Number(item.qty ?? item.quantity ?? 0),
-            unit: item.unit ? String(item.unit) : undefined,
-        })));
+        setReceiveItems(
+            items.map((item) => ({
+                name: String(item.name ?? ''),
+                qty: Number(item.qty ?? item.quantity ?? 0),
+                unit: item.unit ? String(item.unit) : undefined,
+            })),
+        );
         setReceiveOpen(true);
     }
 
@@ -1229,7 +1594,13 @@ export function VegRequests() {
         if (kind === 'price') {
             const raw = vegQuery.data?.requests.find((request) => request.id === row.id);
             const items = Array.isArray(raw?.items)
-                ? (raw.items as Array<{ name?: string; qty?: number; quantity?: number; unit?: string; rejected?: boolean }>)
+                ? (raw.items as Array<{
+                      name?: string;
+                      qty?: number;
+                      quantity?: number;
+                      unit?: string;
+                      rejected?: boolean;
+                  }>)
                 : [];
             setPriceRow(row);
             setPriceItems(
@@ -1245,7 +1616,7 @@ export function VegRequests() {
         }
         if (kind === 'delete') {
             setActionKind('delete');
-            setActionTitle('حذف الطلب');
+            setActionTitle('إخفاء الطلب');
             setActionMessage(vegDeleteConfirm(row.number));
         } else {
             setActionKind('cancel');
@@ -1265,7 +1636,7 @@ export function VegRequests() {
                 await cancelMutation.mutateAsync(actionRow.id);
             }
         } catch (error) {
-            const fallback = actionKind === 'delete' ? 'تعذر حذف الطلب' : 'تعذر إلغاء الطلب';
+            const fallback = actionKind === 'delete' ? 'تعذّر إخفاء الطلب' : 'تعذّر إلغاء الطلب';
             const message = error instanceof Error ? error.message : fallback;
             toast({ variant: 'error', title: fallback, description: message });
         }
@@ -1284,11 +1655,35 @@ export function VegRequests() {
         }
         setPrintingId(row.id);
         try {
-            printSmart(vegRequestPrintHtml(raw, {
-                byName: String(auth.user?.name ?? auth.user?.username ?? ''),
-                currency,
-            }));
-            void markVegPrinted(row.id).catch(() => undefined);
+            const printWindow = openBlankTab(`طلب خضار ${row.number}`);
+            if (!printWindow) {
+                toast({
+                    variant: 'error',
+                    title: 'تعذّرت الطباعة',
+                    description: 'اسمح بالنوافذ المنبثقة لهذا الموقع ثم أعد المحاولة.',
+                });
+                return;
+            }
+            printHtmlDocument(
+                printWindow,
+                vegRequestPrintHtml(raw, {
+                    byName: String(auth.user?.name ?? auth.user?.username ?? ''),
+                    currency,
+                }),
+            );
+            void markVegPrinted(row.id).catch((error: unknown) => {
+                toast({
+                    variant: 'error',
+                    title: 'تمت الطباعة لكن تعذّر تسجيلها',
+                    description: error instanceof Error ? error.message : 'أعد تحميل السجل للتحقق من عدّاد الطباعة.',
+                });
+            });
+        } catch (error) {
+            toast({
+                variant: 'error',
+                title: 'تعذّرت طباعة الطلب',
+                description: error instanceof Error ? error.message : 'أعد المحاولة.',
+            });
         } finally {
             setPrintingId(null);
         }
@@ -1296,21 +1691,10 @@ export function VegRequests() {
 
     return (
         <div className="mx-auto flex w-full min-w-0 flex-col gap-lg">
-            <ScreenHero
+            <PageHeader
                 title="طلبات شراء الخضار"
                 english="VEGETABLE REQUESTS"
                 description="طلبات المطبخ ← المخازن — إنشاء، استلام، تسعير."
-                answer={
-                    <AnswerStrip
-                        items={[
-                            { label: 'بانتظار الاستلام', english: 'Pending', value: counts.pending, format: formatInt, hint: 'طلبات لم تُستلم بعد', tone: 'warning' },
-                            { label: 'مستلمة', english: 'Received', value: counts.received, format: formatInt, hint: 'استلمها المخزن' },
-                            { label: 'مُسعّرة', english: 'Priced', value: counts.priced, format: formatInt, hint: 'سعّرها المخزن' },
-                            { label: 'عاجلة', english: 'Urgent', value: counts.urgent, format: formatInt, hint: 'طلبات بعلامة الاستعجال', tone: counts.urgent > 0 ? 'danger' : 'neutral' },
-                        ]}
-                        columns={4}
-                    />
-                }
                 actions={
                     <>
                         {canCreate ? (
@@ -1319,7 +1703,14 @@ export function VegRequests() {
                             </Button>
                         ) : null}
                         {isContactsAdmin ? (
-                            <Button type="button" size="sm" variant="secondary" onClick={() => setContactsOpen(true)} title="أرقام واتساب المورد والمخزن">
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                disabled={!contactsQuery.isSuccess}
+                                onClick={() => setContactsOpen(true)}
+                                title="أرقام واتساب المورد والمخزن"
+                            >
                                 📞 أرقام واتساب
                             </Button>
                         ) : null}
@@ -1330,7 +1721,9 @@ export function VegRequests() {
                             }}
                             aria-expanded={analysisOpen}
                             className={`rounded-md px-md py-xs text-button-md ${
-                                analysisOpen ? 'bg-primary text-ink-inverse' : 'border border-hairline-strong bg-surface text-ink hover:bg-surface-hover'
+                                analysisOpen
+                                    ? 'bg-primary text-ink-inverse'
+                                    : 'border border-hairline-strong bg-surface text-ink hover:bg-surface-hover'
                             }`}
                         >
                             تحليل الخضار
@@ -1348,7 +1741,36 @@ export function VegRequests() {
                 }
             />
 
-            {analysisOpen ? <VegAnalysisPanel /> : null}
+            {isContactsAdmin && contactsQuery.isError ? (
+                <StateError
+                    title="تعذّر تحميل أرقام واتساب"
+                    message={contactsQuery.error instanceof Error ? contactsQuery.error.message : 'أعد المحاولة.'}
+                    onRetry={() => {
+                        void contactsQuery.refetch();
+                    }}
+                />
+            ) : null}
+
+            <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4" aria-label="ملخص طلبات الخضار">
+                <StatCard
+                    label="بانتظار الاستلام"
+                    english="Pending"
+                    value={counts.pending}
+                    hint="طلبات لم تُستلم بعد"
+                    tone="warning"
+                />
+                <StatCard label="مستلمة" english="Received" value={counts.received} hint="استلمها المخزن" />
+                <StatCard label="مُسعّرة" english="Priced" value={counts.priced} hint="سعّرها المخزن" />
+                <StatCard
+                    label="عاجلة"
+                    english="Urgent"
+                    value={counts.urgent}
+                    hint="طلبات بعلامة الاستعجال"
+                    tone={counts.urgent > 0 ? 'danger' : 'neutral'}
+                />
+            </ul>
+
+            {analysisOpen ? <VegAnalysisPanel currency={currency} /> : null}
 
             <Card className="p-sm">
                 <div className="flex flex-wrap items-end gap-sm">
@@ -1397,6 +1819,22 @@ export function VegRequests() {
                 </div>
             </Card>
 
+            {vegQuery.data ? (
+                <p
+                    className="flex flex-wrap gap-x-xs gap-y-xxs text-body-sm text-muted"
+                    role="status"
+                    aria-live="polite"
+                >
+                    <span>
+                        معلقة {formatInt(vegQuery.data.summary.pending)} · معلقة اليوم{' '}
+                        {formatInt(vegQuery.data.summary.pendingToday)} · طلبات اليوم{' '}
+                        {formatInt(vegQuery.data.summary.today)}
+                    </span>
+                    <span>{formatInt(allRows.length)} طلبًا محمّلًا</span>
+                    {search.folded ? <span>بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.</span> : null}
+                </p>
+            ) : null}
+
             <Card>
                 {vegQuery.isPending ? (
                     <div aria-busy="true">
@@ -1427,14 +1865,43 @@ export function VegRequests() {
                             <table className="w-full border-collapse text-body-md">
                                 <thead>
                                     <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                        <SortableTh label="رقم الطلب" sortKey="number" sort={sort} onToggle={toggleSort} />
-                                        <SortableTh label="الأصناف" sortKey="itemsCount" sort={sort} onToggle={toggleSort} />
-                                        <SortableTh label="الأولوية" sortKey="priority" sort={sort} onToggle={toggleSort} />
-                                        <SortableTh label="الإجمالي" sortKey="total" sort={sort} onToggle={toggleSort} />
+                                        <SortableTh
+                                            label="رقم الطلب"
+                                            sortKey="number"
+                                            sort={sort}
+                                            onToggle={toggleSort}
+                                        />
+                                        <SortableTh
+                                            label="الأصناف"
+                                            sortKey="itemsCount"
+                                            sort={sort}
+                                            onToggle={toggleSort}
+                                        />
+                                        <SortableTh
+                                            label="الأولوية"
+                                            sortKey="priority"
+                                            sort={sort}
+                                            onToggle={toggleSort}
+                                        />
+                                        <SortableTh
+                                            label="الإجمالي"
+                                            sortKey="total"
+                                            sort={sort}
+                                            onToggle={toggleSort}
+                                        />
                                         <SortableTh label="أنشأها" sortKey="by" sort={sort} onToggle={toggleSort} />
-                                        <SortableTh label="التاريخ" sortKey="created" sort={sort} onToggle={toggleSort} />
+                                        <SortableTh
+                                            label="التاريخ"
+                                            sortKey="created"
+                                            sort={sort}
+                                            onToggle={toggleSort}
+                                        />
                                         <SortableTh label="الحالة" sortKey="status" sort={sort} onToggle={toggleSort} />
-                                        <th scope="col" className="px-sm py-xs text-start font-medium" data-erp-print-hide>
+                                        <th
+                                            scope="col"
+                                            className="px-sm py-xs text-start font-medium"
+                                            data-erp-print-hide
+                                        >
                                             إجراءات
                                         </th>
                                     </tr>
@@ -1461,7 +1928,9 @@ export function VegRequests() {
                                                 ) : (
                                                     <>
                                                         {formatMoney(row.total)}
-                                                        {currency ? <span className="text-caption text-faint"> {currency}</span> : null}
+                                                        {currency ? (
+                                                            <span className="text-caption text-faint"> {currency}</span>
+                                                        ) : null}
                                                     </>
                                                 )}
                                             </td>
@@ -1470,7 +1939,9 @@ export function VegRequests() {
                                                 {row.created || '—'}
                                             </td>
                                             <td className="px-sm py-xxs">
-                                                <span className={`text-body-sm ${statusTone(row.status)}`}>{row.statusLabel}</span>
+                                                <span className={`text-body-sm ${statusTone(row.status)}`}>
+                                                    {row.statusLabel}
+                                                </span>
                                             </td>
                                             <td className="px-sm py-xxs" data-erp-print-hide>
                                                 <div className="flex flex-wrap items-center gap-xs">
@@ -1483,34 +1954,43 @@ export function VegRequests() {
                                                     >
                                                         طباعة
                                                     </Button>
-                                                    {isAdmin ? (
+                                                    {isContactsAdmin ? (
                                                         <>
-                                                            <Button
-                                                                type="button"
-                                                                size="sm"
-                                                                variant="secondary"
-                                                                title="تعديل الطلبية كاملة (الأدمن)"
-                                                                onClick={() => void openEdit(row)}
-                                                            >
-                                                                ✎ تعديل
-                                                            </Button>
-                                                            <Button
-                                                                type="button"
-                                                                size="sm"
-                                                                variant="secondary"
-                                                                title="إلغاء الطلبية (الأدمن) — الطلبية تبقى في السجل"
-                                                                onClick={() => openAction(row, 'cancel')}
-                                                            >
-                                                                ✕ إلغاء
-                                                            </Button>
+                                                            {isAdmin && ['pending', 'received'].includes(row.status) ? (
+                                                                <Button
+                                                                    type="button"
+                                                                    size="sm"
+                                                                    variant="secondary"
+                                                                    title="تعديل الطلبية كاملة (الأدمن)"
+                                                                    onClick={() => void openEdit(row)}
+                                                                >
+                                                                    ✎ تعديل
+                                                                </Button>
+                                                            ) : null}
+                                                            {row.status === 'pending' ? (
+                                                                <Button
+                                                                    type="button"
+                                                                    size="sm"
+                                                                    variant="secondary"
+                                                                    title="إلغاء الطلبية — تظل محفوظة في السجل"
+                                                                    onClick={() => openAction(row, 'cancel')}
+                                                                >
+                                                                    ✕ إلغاء
+                                                                </Button>
+                                                            ) : null}
                                                             <Button
                                                                 type="button"
                                                                 size="sm"
                                                                 variant="danger"
-                                                                title="حذف الطلبية نهائيًا (الأدمن) — تُمحى من السجل مع المصروف التلقائي المرتبط بها؛ يرفض لو لها فاتورة مورد أو قيد محاسبي"
+                                                                disabled={!row.canHide}
+                                                                title={
+                                                                    row.canHide
+                                                                        ? 'إخفاء الطلب المعلّق أو الملغى مع الاحتفاظ به للتدقيق'
+                                                                        : 'لا يمكن إخفاء طلب مستلم أو مرتبط بتسعير/مصروف'
+                                                                }
                                                                 onClick={() => openAction(row, 'delete')}
                                                             >
-                                                                🗑 حذف
+                                                                إخفاء
                                                             </Button>
                                                         </>
                                                     ) : null}
@@ -1520,8 +2000,14 @@ export function VegRequests() {
                                                                 type="button"
                                                                 size="sm"
                                                                 variant="secondary"
+                                                                disabled={notifyMutation.isPending}
                                                                 title="إرسال الطلبية للمورد على واتساب"
-                                                                onClick={() => notifyMutation.mutate({ id: row.id, target: 'supplier' })}
+                                                                onClick={() =>
+                                                                    notifyMutation.mutate({
+                                                                        id: row.id,
+                                                                        target: 'supplier',
+                                                                    })
+                                                                }
                                                             >
                                                                 📤 للمورد
                                                             </Button>
@@ -1529,8 +2015,14 @@ export function VegRequests() {
                                                                 type="button"
                                                                 size="sm"
                                                                 variant="secondary"
+                                                                disabled={notifyMutation.isPending}
                                                                 title="إرسال الطلبية للمخزن على واتساب"
-                                                                onClick={() => notifyMutation.mutate({ id: row.id, target: 'warehouse' })}
+                                                                onClick={() =>
+                                                                    notifyMutation.mutate({
+                                                                        id: row.id,
+                                                                        target: 'warehouse',
+                                                                    })
+                                                                }
                                                             >
                                                                 🏬 للمخزن
                                                             </Button>
@@ -1584,6 +2076,11 @@ export function VegRequests() {
                                                             تسعير
                                                         </Button>
                                                     ) : null}
+                                                    {row.printCount ? (
+                                                        <small className="text-caption text-muted">
+                                                            طُبع {formatInt(row.printCount)} مرة
+                                                        </small>
+                                                    ) : null}
                                                 </div>
                                             </td>
                                         </tr>
@@ -1623,6 +2120,34 @@ export function VegRequests() {
                 ) : null}
             </Card>
 
+            {createSuccessNo ? (
+                <Card className="flex flex-col gap-sm border-success/40 bg-success-soft p-sm">
+                    <div className="text-label-md font-bold text-ink">
+                        ✔ تم إرسال الطلب للمخازن — رقم{' '}
+                        <span className="erp-numeric text-heading-md">{createSuccessNo}</span>
+                    </div>
+                    <div className="flex items-center gap-sm">
+                        <Button
+                            size="sm"
+                            onClick={() => {
+                                const row = vegQuery.data?.requests.find(
+                                    (r) => String(r.request_no) === createSuccessNo,
+                                );
+                                if (row) {
+                                    printRequest(vegRequestToRow(row));
+                                }
+                                setCreateSuccessNo(null);
+                            }}
+                        >
+                            طباعة الطلب
+                        </Button>
+                        <Button size="sm" variant="secondary" onClick={() => setCreateSuccessNo(null)}>
+                            مغلق
+                        </Button>
+                    </div>
+                </Card>
+            ) : null}
+
             {/* Dialogs */}
             <CreateDialog
                 open={createOpen}
@@ -1631,7 +2156,10 @@ export function VegRequests() {
                 pending={createMutation.isPending}
                 onClose={() => setCreateOpen(false)}
                 onSubmit={async (items, priority, notes) => {
-                    await createMutation.mutateAsync({ items, priority, notes });
+                    const result = (await createMutation.mutateAsync({ items, priority, notes })) as unknown as {
+                        request?: { request_no?: string; id?: string };
+                    };
+                    setCreateSuccessNo(String(result?.request?.request_no ?? ''));
                 }}
             />
             <EditItemsDialog
@@ -1693,7 +2221,9 @@ export function VegRequests() {
                 pending={contactsMutation.isPending}
                 current={contactsQuery.data ?? null}
                 onClose={() => setContactsOpen(false)}
-                onSave={async (value) => { await contactsMutation.mutateAsync(value); }}
+                onSave={async (value) => {
+                    await contactsMutation.mutateAsync(value);
+                }}
             />
         </div>
     );
@@ -1708,7 +2238,7 @@ const ANALYSIS_PRESETS: ReadonlyArray<{ preset: 'today' | 'week' | 'month' | 'ye
     { preset: 'year', label: 'هذا العام' },
 ];
 
-function VegAnalysisPanel() {
+function VegAnalysisPanel({ currency }: { currency: string }) {
     const [draft, setDraft] = useState(() => ({ from: presetRange('month').from, to: presetRange('month').to }));
     const [range, setRange] = useState(draft);
     const [q, setQ] = useState('');
@@ -1721,6 +2251,67 @@ function VegAnalysisPanel() {
     const data = analysisQuery.data;
     const rows = data?.rows ?? [];
     const totals = data?.totals;
+    const columns: DataTableColumn<VegConsumptionItem>[] = [
+        {
+            key: 'name',
+            header: 'الصنف',
+            cell: (item) => (
+                <span className="flex flex-wrap items-center gap-xxs text-ink">
+                    {item.name}
+                    {!item.inventoryLinked ? (
+                        <span className="text-caption text-warning-text">غير مربوط بالمخزون</span>
+                    ) : null}
+                </span>
+            ),
+        },
+        {
+            key: 'unit',
+            header: 'الوحدة',
+            cell: (item) => item.unit || 'كجم',
+        },
+        {
+            key: 'received-qty',
+            header: 'المستلم',
+            numeric: true,
+            cell: (item) => Math.round(item.receivedQty * 1000) / 1000,
+        },
+        {
+            key: 'received-value',
+            header: 'قيمة المستلم',
+            numeric: true,
+            cell: (item) => moneyOrDash(item.receivedValue),
+        },
+        {
+            key: 'consumed-qty',
+            header: 'المستهلك',
+            numeric: true,
+            cell: (item) => (item.consumedQty === null ? '—' : Math.round(item.consumedQty * 1000) / 1000),
+        },
+        {
+            key: 'consumed-value',
+            header: 'قيمة المستهلك',
+            numeric: true,
+            cell: (item) => moneyOrDash(item.consumedValue),
+        },
+        {
+            key: 'on-hand',
+            header: 'الرصيد الحالي',
+            numeric: true,
+            cell: (item) => (item.onHand === null ? '—' : Math.round(item.onHand * 1000) / 1000),
+        },
+        {
+            key: 'avg-cost',
+            header: 'متوسط التكلفة',
+            numeric: true,
+            cell: (item) => moneyOrDash(item.avgCost),
+        },
+        {
+            key: 'requests',
+            header: 'طلبات',
+            numeric: true,
+            cell: (item) => item.requests,
+        },
+    ];
 
     function applyPreset(preset: (typeof ANALYSIS_PRESETS)[number]['preset']) {
         const next = presetRange(preset);
@@ -1737,7 +2328,7 @@ function VegAnalysisPanel() {
                         Veg Consumption
                     </span>
                 </h2>
-                <span className="text-body-sm text-muted" role="status" dir="ltr">
+                <span className="text-body-sm text-muted" dir="ltr">
                     {`${range.from} → ${range.to}`}
                 </span>
             </div>
@@ -1774,7 +2365,7 @@ function VegAnalysisPanel() {
                 >
                     عرض
                 </button>
-                <div className="flex flex-wrap gap-xxs" role="group" aria-label="فترات جاهزة">
+                <fieldset className="flex flex-wrap gap-xxs" aria-label="فترات جاهزة">
                     {ANALYSIS_PRESETS.map((preset) => (
                         <button
                             key={preset.preset}
@@ -1783,7 +2374,8 @@ function VegAnalysisPanel() {
                                 applyPreset(preset.preset);
                             }}
                             className={`rounded-md border px-sm py-xxs text-button-md ${
-                                draft.from === presetRange(preset.preset).from && draft.to === presetRange(preset.preset).to
+                                draft.from === presetRange(preset.preset).from &&
+                                draft.to === presetRange(preset.preset).to
                                     ? 'border-primary bg-primary/10 text-primary'
                                     : 'border-hairline-strong bg-surface text-muted hover:bg-surface-hover hover:text-ink'
                             }`}
@@ -1791,7 +2383,7 @@ function VegAnalysisPanel() {
                             {preset.label}
                         </button>
                     ))}
-                </div>
+                </fieldset>
                 <label className="flex flex-col gap-xxs text-label-md text-ink-secondary">
                     بحث عن صنف
                     <input
@@ -1818,21 +2410,29 @@ function VegAnalysisPanel() {
 
             {data ? (
                 <>
-                    <ul className="grid list-none gap-sm px-sm sm:grid-cols-2 xl:grid-cols-4" aria-label="مؤشرات تحليل الخضار">
+                    <ul
+                        className="grid list-none gap-sm px-sm sm:grid-cols-2 xl:grid-cols-4"
+                        aria-label="مؤشرات تحليل الخضار"
+                    >
                         <StatCard
                             label="المستلم في الفترة"
                             english="Received"
-                            value={`${totals ? Math.round(totals.receivedQty * 1000) / 1000 : 0} ${'كجم'}`}
-                            hint={`بقيمة ${totals?.receivedValue ?? 0}`}
+                            value={formatQuantityByUnit(totals?.receivedQtyByUnit ?? [])}
+                            hint={`قيمة المسعّر فقط: ${moneyOrDash(totals?.receivedValue ?? null)}${currency ? ` ${currency}` : ''}`}
                         />
                         <StatCard
                             label="المستهلك في الفترة"
                             english="Consumed"
-                            value={String(totals ? Math.round(totals.consumedQty * 1000) / 1000 : 0)}
-                            hint="صرف مخزني + بيع + توليد + هالك"
+                            value={formatQuantityByUnit(totals?.consumedQtyByUnit ?? [])}
+                            hint={`قيمة الصرف: ${moneyOrDash(totals?.consumedValue ?? null)}${currency ? ` ${currency}` : ''}`}
                             tone="warning"
                         />
-                        <StatCard label="أصناف في التحليل" english="Items" value={String(totals?.items ?? 0)} hint="أصناف الخضار المتتبعة" />
+                        <StatCard
+                            label="أصناف في التحليل"
+                            english="Items"
+                            value={String(totals?.items ?? 0)}
+                            hint="أصناف الخضار المتتبعة"
+                        />
                         <StatCard
                             label="الفترة"
                             english="Range"
@@ -1844,44 +2444,32 @@ function VegAnalysisPanel() {
                     {rows.length === 0 ? (
                         <StateEmpty title="لا حركة خضار في الفترة" hint="غيّر الفترة أو امسح البحث." />
                     ) : (
-                        <TableScroll label="جدول تحليل الخضار">
-                            <table className="w-full border-collapse text-body-md">
-                                <thead>
-                                    <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">الصنف</th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">الوحدة</th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">المستلم</th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">قيمة المستلم</th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">المستهلك</th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">قيمة المستهلك</th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">الرصيد الحالي</th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">متوسط التكلفة</th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">طلبات</th>
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {rows.map((row) => (
-                                        <tr key={`${row.name}-${String(row.inventoryId ?? 'x')}`} className="border-b border-hairline hover:bg-surface-hover">
-                                            <td className="px-sm py-xxs text-ink">{row.name}</td>
-                                            <td className="px-sm py-xxs text-body-sm text-muted">{row.unit || 'كجم'}</td>
-                                            <td className="erp-numeric px-sm py-xxs" dir="ltr">{Math.round(row.receivedQty * 1000) / 1000}</td>
-                                            <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">{String(row.receivedValue)}</td>
-                                            <td className="erp-numeric px-sm py-xxs font-medium" dir="ltr">{Math.round(row.consumedQty * 1000) / 1000}</td>
-                                            <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">{String(row.consumedValue)}</td>
-                                            <td className="erp-numeric px-sm py-xxs" dir="ltr">{Math.round(row.onHand * 1000) / 1000}</td>
-                                            <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">{String(row.avgCost)}</td>
-                                            <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">{row.requests}</td>
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </TableScroll>
+                        <DataTable<VegConsumptionItem>
+                            caption="جدول تحليل الخضار"
+                            columns={columns}
+                            rows={rows}
+                            rowKey={(item) => `${item.name}-${item.unit}-${String(item.inventoryId ?? 'x')}`}
+                            virtualizeThreshold={100}
+                            maxHeight={460}
+                        />
                     )}
                     <p className="px-sm pb-xs text-caption text-faint">
-                        المستلم من سجل الطلبيات المسلمة/المعتمدة في الفترة؛ المستهلك من دفتر حركات المخزون (صرف، بيع، توليد، هالك)؛ الرصيد ومتوسط التكلفة لحظة العرض.
+                        المستلم من سجل الطلبات في الفترة؛ الاستهلاك من دفتر المخزون (صرف، بيع، إنتاج، هالك). المطابقة
+                        بالاسم والوحدة حرفيًا؛ الأصناف غير المرتبطة تظهر بشرطة ولا تُحسب صفرًا.
                     </p>
                 </>
             ) : null}
         </Card>
     );
+}
+
+function moneyOrDash(value: number | null): string {
+    return value === null ? '—' : formatMoney(value.toFixed(2));
+}
+
+function formatQuantityByUnit(items: readonly { unit: string; quantity: number }[]): string {
+    if (!items.length) {
+        return '0';
+    }
+    return items.map(({ unit, quantity }) => `${Math.round(quantity * 1000) / 1000} ${unit}`).join(' · ');
 }

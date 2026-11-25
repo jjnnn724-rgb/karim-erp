@@ -12,9 +12,9 @@ import {
     posStatsResponseSchema,
 } from '../lib/briefing';
 import { formatCurrency, formatInt } from '../lib/format';
+import { PageHeader } from '../ui';
 import { StatCard } from '../ui/StatCard';
 
-import { PageHeader } from '../ui';
 function Kpi({ label, english, value, hint }: { label: string; english: string; value: string; hint: string }) {
     return <StatCard label={label} english={english} value={value} hint={hint} />;
 }

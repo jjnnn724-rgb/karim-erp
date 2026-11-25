@@ -117,7 +117,10 @@ const dailySchema = z
 
 export const pnlStatementSchema = z
     .object({
-        period: z.object({ from: z.string().nullable().optional(), to: z.string().nullable().optional() }).passthrough().optional(),
+        period: z
+            .object({ from: z.string().nullable().optional(), to: z.string().nullable().optional() })
+            .passthrough()
+            .optional(),
         revenue: revenueSchema.optional(),
         cogs: cogsSchema.optional(),
         gross_profit: profitSchema.optional(),
@@ -141,7 +144,10 @@ export const pnlStatementSchema = z
 
 export const pnlResponseSchema = z
     .object({
-        period: z.object({ from: z.string().nullable().optional(), to: z.string().nullable().optional() }).passthrough().optional(),
+        period: z
+            .object({ from: z.string().nullable().optional(), to: z.string().nullable().optional() })
+            .passthrough()
+            .optional(),
         previous_period: z
             .object({ from: z.string().nullable().optional(), to: z.string().nullable().optional() })
             .passthrough()
@@ -164,7 +170,12 @@ export async function fetchPnl(from = '', to = '', signal?: AbortSignal): Promis
         params.set('to', to);
     }
     const query = params.toString();
-    return fetchJson(pnlResponseSchema, `/api/finance/pnl${query ? `?${query}` : ''}`, getAccessToken(), signal ? { signal } : {});
+    return fetchJson(
+        pnlResponseSchema,
+        `/api/finance/pnl${query ? `?${query}` : ''}`,
+        getAccessToken(),
+        signal ? { signal } : {},
+    );
 }
 
 export interface PnlLine {

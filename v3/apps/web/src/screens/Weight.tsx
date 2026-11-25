@@ -24,12 +24,12 @@ import {
     weightWriteVisible,
 } from '../lib/weight-write';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
+import { PageHeader } from '../ui';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 
-import { PageHeader } from '../ui';
 /**
  * الميزان — سجل قراءات الوزن، قراءة فقط من `/api/weightReadings`.
  *

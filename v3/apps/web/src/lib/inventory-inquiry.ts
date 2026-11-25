@@ -282,7 +282,12 @@ export async function fetchInquiryItems(query: InquiryQuery, signal?: AbortSigna
     );
 }
 
-export async function fetchInquiryItem(itemId: string, from: string, to: string, signal?: AbortSignal): Promise<InquiryItem> {
+export async function fetchInquiryItem(
+    itemId: string,
+    from: string,
+    to: string,
+    signal?: AbortSignal,
+): Promise<InquiryItem> {
     return fetchJson(
         inquiryItemSchema,
         `/api/inventory-inquiry/item/${encodeURIComponent(itemId)}${queryString({ from, to })}`,
@@ -346,7 +351,10 @@ export function saveDownload(file: FileResponse): void {
 }
 
 /** حالة الصلاحية من أقرب تاريخ — تُعرض شارة، لا تُحسب كرقم مخزون. */
-export function expiryState(nearestExpiry: string, today: string): { label: string; tone: 'danger' | 'warning' | 'success' | 'neutral' } {
+export function expiryState(
+    nearestExpiry: string,
+    today: string,
+): { label: string; tone: 'danger' | 'warning' | 'success' | 'neutral' } {
     if (!nearestExpiry) {
         return { label: '—', tone: 'neutral' };
     }

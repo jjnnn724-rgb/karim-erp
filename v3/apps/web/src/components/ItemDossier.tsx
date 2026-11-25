@@ -120,10 +120,14 @@ export function ItemDossier({ itemId, from, to }: { itemId: string; from: string
                                         <td className="px-sm py-xxs text-muted">
                                             {textOf(row.type) || '—'}
                                             {row.reason ? (
-                                                <span className="block text-caption text-faint">{textOf(row.reason)}</span>
+                                                <span className="block text-caption text-faint">
+                                                    {textOf(row.reason)}
+                                                </span>
                                             ) : null}
                                         </td>
-                                        <td className="px-sm py-xxs text-muted">{textOf(row.location) || textOf(row.deptCode) || '—'}</td>
+                                        <td className="px-sm py-xxs text-muted">
+                                            {textOf(row.location) || textOf(row.deptCode) || '—'}
+                                        </td>
                                         <td
                                             className={`erp-numeric px-sm py-xxs text-end ${
                                                 Number(row.delta) < 0 ? 'text-danger-text' : 'text-success-text'
