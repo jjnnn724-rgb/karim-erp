@@ -1,0 +1,137 @@
+/* ╔════════════════════════════════════════════════════════════════════════╗
+   ║  K A R I M   E R P — «كحلي فولاذي منظم» (v4.9.411 — ترويض الطبقة)      ║
+   ║  طبقة موحّدة عابرة على كل الشاشات: بطاقات بإطار رفيع واحد وظل هادئ     ║
+   ║  وأرقام جدولية — بلا تدرجات ولا لمعان ولا ذهبي (قرار المالك 2026-11-20: │
+   ║  «كحلي فولاذي منظم»). الألوان من مراسين design-tokens المثبّتة بالاختبار:│
+   ║  primary #0F766E · hairline #DCE5EC · ink #172B3B · dark canvas #0C1722 │
+   ╚════════════════════════════════════════════════════════════════════════╝ */
+
+@layer components {
+    /* ── البطاقة الموحدة: إطار رفيع وظل هادئ — لغة واحدة لكل الشاشات ──── */
+    .erp-card {
+        border: 1px solid rgb(220 229 236);
+        border-radius: 16px;
+        background: var(--erp-surface, #ffffff);
+        box-shadow:
+            0 1px 2px rgb(23 43 59 / 0.06),
+            0 12px 28px -18px rgb(23 43 59 / 0.22);
+        position: relative;
+        isolation: isolate;
+    }
+
+    .erp-card > * { position: relative; z-index: 1; }
+
+    /* ── hover: تعزيز الإطار والظل بلا لون ولا حركة زائدة ──────────────── */
+    .erp-card:hover {
+        border-color: rgb(15 118 110 / 0.35);
+        box-shadow:
+            0 2px 3px rgb(23 43 59 / 0.07),
+            0 16px 34px -18px rgb(15 118 110 / 0.25);
+    }
+
+    /* ── بطاقات المؤشرات البارزة: سطح واحد بإطار أوضح — بلا زجاج ولا لمعان ── */
+    .erp-kpi-glass,
+    .luxury-hero {
+        border: 1px solid rgb(15 118 110 / 0.28);
+        border-radius: 16px;
+        position: relative;
+        background: var(--erp-surface, #ffffff);
+        box-shadow:
+            0 1px 2px rgb(23 43 59 / 0.06),
+            0 14px 30px -20px rgb(15 118 110 / 0.20);
+    }
+
+    .erp-kpi-glass > *,
+    .luxury-hero > * { position: relative; z-index: 1; }
+
+    /* ── الطباعة الرقمية الموحدة — أرقام جدولية لا ترقص ─────────────────── */
+    .erp-ink,
+    .text-ink { letter-spacing: 0.01em; }
+
+    .erp-numeric,
+    .text-numeric,
+    [data-numeric] {
+        font-variant-numeric: tabular-nums;
+        font-feature-settings: "tnum" 1, "lnum" 1;
+    }
+
+    /* ── زر الإجراء المهم: تركواز النظام الصلب — بلا تدرج ──────────────── */
+    .erp-button-luxury {
+        background: #0f766e;
+        color: #ffffff;
+        border: 1px solid rgb(15 118 110 / 0.9);
+        box-shadow:
+            0 1px 0 rgb(255 255 255 / 0.18) inset,
+            0 6px 16px -8px rgb(15 118 110 / 0.5);
+        transition: filter 140ms, transform 140ms;
+    }
+    .erp-button-luxury:hover:not(:disabled) { filter: brightness(1.08); transform: translateY(-1px); }
+    .erp-button-luxury:active:not(:disabled) { transform: translateY(0.5px); }
+
+    /* ── focus واضح بلون النظام للتنقّل بالكيبورد ───────────────────────── */
+    :focus-visible {
+        outline-color: #0f766e;
+        outline-offset: 2px;
+    }
+
+    /* ── dark theme: نفس اللغة على القماش الداكن ────────────────────────── */
+    .dark .erp-card {
+        border: 1px solid rgb(38 54 66);
+        background: var(--erp-surface, #0c1722);
+        box-shadow:
+            0 1px 2px rgb(0 0 0 / 0.35),
+            0 16px 34px -18px rgb(0 0 0 / 0.5);
+    }
+
+    .dark .erp-card:hover {
+        border-color: rgb(83 211 197 / 0.35);
+        box-shadow:
+            0 2px 3px rgb(0 0 0 / 0.38),
+            0 18px 38px -18px rgb(0 0 0 / 0.55);
+    }
+
+    .dark .erp-kpi-glass,
+    .dark .luxury-hero {
+        border-color: rgb(83 211 197 / 0.28);
+        background: var(--erp-surface, #0c1722);
+    }
+
+    .dark .erp-card .text-brand-text { color: #53d3c5; }
+}
+
+/* ــ─ علامة العلامة في الشل: إطار رفيع واحد بلا هالة ───────────────────── */
+.erp-shell__brand-mark {
+    box-shadow:
+        0 0 0 1.5px rgb(15 118 110 / 0.55),
+        0 6px 16px -6px rgb(0 0 0 / 0.45);
+}
+
+/* القائمة الجانبية تلتصق بـ position:sticky من shell-premium.css على 100dvh —
+   إجبارها position:relative كان يكسر الالتصاق فتقف القائمة قبل نهاية الصفحة الطويلة.
+   التوبار فقط يُثبَّت relative كي تتموضع عناصره الزخرفية داخله. */
+.erp-shell__topbar { position: relative; }
+
+/* ــ─ زر نقطة البيع: تركواز النظام الصلب — بلا تدرج ولا برتقالي ───────── */
+.erp-shell__pos-link {
+    background: #0f766e !important;
+    color: #ffffff !important;
+    border: 1px solid rgb(15 118 110 / 0.9) !important;
+    border-radius: 18px !important;
+    box-shadow:
+        0 1px 0 rgb(255 255 255 / 0.18) inset,
+        0 10px 24px -10px rgb(15 118 110 / 0.5);
+}
+.erp-shell__pos-link:hover { filter: brightness(1.08); }
+
+/* ــ─ كروت KPI العائلية: سطح النظام الموحد بإطار رفيع — بلا عسل ───────── */
+.erp-family-kpi {
+    background: var(--erp-surface, #ffffff);
+    border-color: rgb(220 229 236) !important;
+}
+.dark .erp-family-kpi {
+    background: var(--erp-surface, #0c1722);
+    border-color: rgb(38 54 66) !important;
+    color: #e6eef4;
+}
+.dark .erp-family-kpi .text-muted { color: #8fa6b5; }
+.dark .erp-family-kpi .text-ink { color: #e6eef4; }

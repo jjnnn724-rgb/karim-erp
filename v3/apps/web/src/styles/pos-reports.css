@@ -1,0 +1,375 @@
+/* مركز التقارير التنفيذي — Executive Briefing
+   بطاقة بيضاء "quiet premium": خلفية slate-pearl، شيطات أسفل ناعمة، تدرّج خفيف */
+
+.pos-reports {
+    max-width: 1480px;
+    margin-inline: auto;
+}
+
+.pos-reports__body {
+    display: flex;
+    flex-direction: column;
+    gap: 1rem;
+    padding: 0.4rem 0.2rem 1.5rem;
+}
+
+/* ─── الترويسة التنفيذية ─── */
+.pos-reports__head {
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: 1.25rem;
+    padding: 1.1rem 1.25rem;
+    border-radius: 18px;
+    background: linear-gradient(135deg, #0f3d3e 0%, #155e4f 55%, #1c7a52 100%);
+    box-shadow: 0 18px 40px -18px rgb(9 68 54 / 55%);
+    position: relative;
+    overflow: hidden;
+}
+.pos-reports__head::after {
+    content: "";
+    position: absolute;
+    inset-inline-end: -60px;
+    inset-block-start: -60px;
+    inline-size: 190px;
+    block-size: 190px;
+    border-radius: 999px;
+    background: radial-gradient(circle, rgb(255 255 255 / 12%), transparent 70%);
+    pointer-events: none;
+}
+
+.pos-reports__title-block {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    position: relative;
+}
+
+.pos-reports__head .erp-card__title {
+    color: #ffffff !important;
+    font-size: 1.35rem;
+    font-weight: 800;
+    letter-spacing: -0.02em;
+    margin: 0;
+}
+
+.pos-reports__subtitle {
+    margin: 0;
+    font-size: 0.78rem;
+    color: rgb(255 255 255 / 78%);
+    font-weight: 500;
+    max-inline-size: 46rem;
+    line-height: 1.6;
+}
+
+.pos-reports__head button[variant="primary"],
+.pos-reports__head .erp-button {
+    background: #ffffff;
+    color: #0f3d3e;
+    border: 0;
+    font-weight: 800;
+    border-radius: 12px;
+    box-shadow: 0 6px 18px -8px rgb(0 0 0 / 40%);
+    transition: transform 120ms ease, box-shadow 120ms ease;
+}
+.pos-reports__head .erp-button:hover { transform: translateY(-1px); box-shadow: 0 10px 24px -8px rgb(0 0 0 / 45%); }
+
+/* ─── الفلاتر ─── */
+.pos-reports__filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    align-items: end;
+    padding: 0.75rem 1rem;
+    background: #ffffff;
+    border: 1px solid #e8edf1;
+    border-radius: 16px;
+    box-shadow: 0 2px 10px -6px rgb(24 32 42 / 12%);
+}
+.pos-reports__field {
+    display: flex;
+    flex-direction: column;
+    gap: 0.22rem;
+    font-size: 0.68rem;
+    font-weight: 700;
+    color: #5b6773;
+    letter-spacing: 0.02em;
+}
+.pos-reports__field input,
+.pos-reports__field select {
+    block-size: 2.35rem;
+    border: 1px solid #e3e9ee;
+    border-radius: 10px;
+    padding-inline: 0.6rem;
+    background: #f8fafc;
+    color: #20292f;
+    font-size: 0.82rem;
+    transition: border-color 120ms ease, box-shadow 120ms ease;
+}
+.pos-reports__field input:focus,
+.pos-reports__field select:focus {
+    outline: none;
+    border-color: #168653;
+    box-shadow: 0 0 0 3px rgb(22 134 83 / 12%);
+    background: #ffffff;
+}
+
+/* ─── التابات (pills) ─── */
+.pos-reports__tabs {
+    display: flex;
+    gap: 0.4rem;
+    padding: 0.35rem;
+    background: #eef2f6;
+    border-radius: 14px;
+    inline-size: fit-content;
+    border: 1px solid #e3e9ee;
+}
+.pos-reports__tab {
+    padding: 0.45rem 1.1rem;
+    border: 0;
+    border-radius: 11px;
+    background: transparent;
+    color: #5b6773;
+    font-size: 0.82rem;
+    font-weight: 700;
+    cursor: pointer;
+    transition: background-color 130ms ease, color 130ms ease, box-shadow 130ms ease;
+}
+.pos-reports__tab:hover { color: #20292f; }
+.pos-reports__tab.is-active {
+    background: #ffffff;
+    color: #0f3d3e;
+    box-shadow: 0 3px 8px -3px rgb(24 32 42 / 20%);
+}
+
+/* ─── KPI Hero ─── */
+.pos-reports__kpis {
+    display: grid;
+    grid-template-columns: repeat(4, minmax(0, 1fr));
+    gap: 0.75rem;
+}
+@media (max-width: 1280px) { .pos-reports__kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
+@media (max-width: 640px) { .pos-reports__kpis { grid-template-columns: 1fr; } }
+
+.pos-reports__kpi {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 1rem 1.1rem 0.9rem;
+    background: #ffffff;
+    border: 1px solid #e8edf1;
+    border-radius: 16px;
+    box-shadow: 0 3px 14px -8px rgb(24 32 42 / 18%);
+    overflow: hidden;
+    transition: transform 140ms ease, box-shadow 140ms ease;
+}
+.pos-reports__kpi:hover { transform: translateY(-2px); box-shadow: 0 10px 28px -12px rgb(24 32 42 / 28%); }
+.pos-reports__kpi::before {
+    content: "";
+    position: absolute;
+    inset-block-start: 0;
+    inset-inline: 0;
+    block-size: 3px;
+    background: linear-gradient(90deg, #168653, #0f3d3e);
+    opacity: 0.9;
+}
+
+.pos-reports__kpi-label {
+    font-size: 0.72rem;
+    font-weight: 700;
+    color: #68768a;
+    letter-spacing: 0.04em;
+    text-transform: uppercase;
+}
+
+.pos-reports__kpi-row {
+    display: flex;
+    align-items: baseline;
+    justify-content: space-between;
+    gap: 0.6rem;
+}
+
+.pos-reports__kpi-value {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: #20292f;
+    letter-spacing: -0.03em;
+    font-variant-numeric: tabular-nums;
+    line-height: 1.1;
+}
+.pos-reports__kpi-value small { font-size: 0.62em; font-weight: 700; color: #68768a; }
+
+.pos-reports__trend {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.22rem;
+    padding: 0.18rem 0.5rem;
+    border-radius: 999px;
+    font-size: 0.7rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+    white-space: nowrap;
+}
+.pos-reports__trend--up { background: #e7f6ee; color: #0f6d42; }
+.pos-reports__trend--down { background: #fdeaea; color: #b4373f; }
+.pos-reports__trend--flat { background: #eef1f5; color: #68768a; }
+
+.pos-reports__kpi-hint {
+    font-size: 0.64rem;
+    color: #98a5b3;
+    font-weight: 500;
+}
+
+/* ─── Chart grid ─── */
+.pos-reports__charts {
+    display: grid;
+    grid-template-columns: 1.6fr 1fr 1fr;
+    gap: 0.75rem;
+}
+@media (max-width: 1280px) { .pos-reports__charts { grid-template-columns: 1fr 1fr; } .pos-reports__chart--wide { grid-column: 1 / -1; } }
+@media (max-width: 860px) { .pos-reports__charts { grid-template-columns: 1fr; } }
+
+.pos-reports__chart {
+    display: flex;
+    flex-direction: column;
+    gap: 0.5rem;
+    padding: 0.75rem 0.85rem 0.6rem;
+    background: #ffffff;
+    border: 1px solid #e8edf1;
+    border-radius: 16px;
+    box-shadow: 0 3px 14px -8px rgb(24 32 42 / 18%);
+    min-inline-size: 0;
+}
+.pos-reports__chart figcaption {
+    font-size: 0.76rem;
+    font-weight: 800;
+    color: #34414e;
+    letter-spacing: 0.01em;
+}
+
+/* ─── Bottom row: top products + departments ─── */
+.pos-reports__bottom {
+    display: grid;
+    grid-template-columns: 1.5fr 1fr;
+    gap: 0.75rem;
+}
+@media (max-width: 1280px) { .pos-reports__bottom { grid-template-columns: 1fr; } }
+
+.pos-reports__depts {
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+    padding: 0.85rem 0.9rem;
+    background: #ffffff;
+    border: 1px solid #e8edf1;
+    border-radius: 16px;
+    box-shadow: 0 3px 14px -8px rgb(24 32 42 / 18%);
+}
+.pos-reports__depts-title {
+    margin: 0;
+    font-size: 0.78rem;
+    font-weight: 800;
+    color: #34414e;
+}
+.pos-reports__depts-list {
+    list-style: none;
+    margin: 0;
+    padding: 0;
+    display: flex;
+    flex-direction: column;
+    gap: 0.6rem;
+}
+.pos-reports__dept-row {
+    display: grid;
+    grid-template-columns: auto 1fr auto auto;
+    align-items: center;
+    gap: 0.6rem;
+}
+.pos-reports__dept-rank {
+    inline-size: 1.55rem;
+    block-size: 1.55rem;
+    display: grid;
+    place-items: center;
+    border-radius: 999px;
+    background: #f0f5f1;
+    color: #0f6d42;
+    font-size: 0.7rem;
+    font-weight: 800;
+    font-variant-numeric: tabular-nums;
+}
+.pos-reports__dept-row:nth-child(1) .pos-reports__dept-rank { background: #168653; color: #fff; }
+.pos-reports__dept-name {
+    font-size: 0.82rem;
+    font-weight: 700;
+    color: #20292f;
+    white-space: nowrap;
+    overflow: hidden;
+    text-overflow: ellipsis;
+}
+.pos-reports__dept-share {
+    font-size: 0.7rem;
+    font-weight: 800;
+    color: #168653;
+    font-variant-numeric: tabular-nums;
+}
+.pos-reports__dept-revenue {
+    font-size: 0.76rem;
+    font-weight: 700;
+    color: #34414e;
+    font-variant-numeric: tabular-nums;
+}
+
+/* ─── Detail filters ─── */
+.pos-reports__detail-filters {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.6rem;
+    align-items: end;
+}
+
+/* ─── Tables ─── */
+.pos-reports__table {
+    inline-size: 100%;
+    border-collapse: separate;
+    border-spacing: 0;
+    font-size: 0.8rem;
+    border: 1px solid #e8edf1;
+    border-radius: 14px;
+    overflow: hidden;
+    background: #ffffff;
+}
+.pos-reports__table th {
+    background: #f6f9fb;
+    color: #34414e;
+    font-size: 0.7rem;
+    font-weight: 800;
+    letter-spacing: 0.03em;
+    text-align: start;
+    padding: 0.55rem 0.6rem;
+    border-block-end: 1px solid #e3e9ee;
+    white-space: nowrap;
+}
+.pos-reports__table td {
+    padding: 0.42rem 0.6rem;
+    border-block-end: 1px solid #eef2f6;
+    color: #20292f;
+    white-space: nowrap;
+}
+.pos-reports__table tbody tr:hover td { background: #f7faf8; }
+.pos-reports__table tbody tr:last-child td { border-block-end: 0; }
+
+/* ─── شعار KARIM في المتصفح ─── */
+.pos-reports__print-brand { display: none; }
+
+@media print {
+    .pos-reports__filters,
+    .pos-reports__tabs,
+    .pos-reports__head button,
+    .pos-reports__filters,
+    .pos-reports__detail-filters { display: none !important; }
+    .pos-reports__charts,
+    .pos-reports__bottom,
+    .pos-reports__kpis { break-inside: avoid; }
+    .pos-reports__table th, .pos-reports__table td { border-color: #000 !important; }
+}

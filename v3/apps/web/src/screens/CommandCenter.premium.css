@@ -1,0 +1,143 @@
+/* ═══════════════════════════════════════════════════════════════════════════
+   مركز القيادة الموحّد — تنسيق الشاشة فوق رموز DESIGN.md.
+   لا ألوان خام: كل شيء من `--erp-*` حتى يعمل على الفاتح والداكن.
+   ═══════════════════════════════════════════════════════════════════════════ */
+
+.cc-gauge {
+    position: relative;
+    display: grid;
+    place-items: center;
+    inline-size: 9rem;
+    block-size: 9rem;
+}
+
+.cc-gauge__ring {
+    inline-size: 100%;
+    block-size: 100%;
+    transform: rotate(-90deg);
+}
+
+.cc-gauge__ring circle {
+    transition: stroke-dashoffset 0.6s ease;
+}
+
+.cc-gauge__value {
+    position: absolute;
+    inset: 0;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    gap: 0.1rem;
+}
+
+.cc-gauge__value .erp-numeric {
+    font-size: 1.6rem;
+    font-weight: 800;
+    color: var(--erp-ink);
+    line-height: 1;
+}
+
+.cc-gauge__caption {
+    font-size: 0.72rem;
+    color: var(--erp-muted);
+}
+
+/* ── مخاطر ───────────────────────────────────────────────────────────────── */
+
+.cc-risk {
+    display: flex;
+    align-items: flex-start;
+    gap: 0.5rem;
+    padding: 0.5rem 0.6rem;
+    border: 1px solid;
+    border-radius: 10px;
+    font-size: 0.82rem;
+    line-height: 1.6;
+}
+
+.cc-risk--high {
+    border-color: var(--erp-danger);
+    background: var(--erp-danger-soft);
+    color: var(--erp-danger-text);
+}
+
+.cc-risk--med {
+    border-color: var(--erp-warning);
+    background: var(--erp-warning-soft);
+    color: var(--erp-warning-text);
+}
+
+.cc-risk--low {
+    border-color: var(--erp-info);
+    background: var(--erp-info-soft);
+    color: var(--erp-info-text);
+}
+
+.cc-risk__tag {
+    flex-shrink: 0;
+    padding: 0 0.45rem;
+    border: 1px solid currentcolor;
+    border-radius: 999px;
+    font-size: 0.68rem;
+    font-weight: 700;
+    line-height: 1.6;
+    align-self: center;
+}
+
+/* ── بطاقات الوحدات ─────────────────────────────────────────────────────── */
+
+.cc-module {
+    display: flex;
+    flex-direction: column;
+    gap: 0.35rem;
+    padding: 0.7rem 0.75rem;
+    border: 1px solid var(--erp-hairline);
+    border-radius: 12px;
+    background: var(--erp-surface);
+    text-decoration: none;
+    transition:
+        border-color 0.15s ease,
+        background-color 0.15s ease;
+}
+
+.cc-module:hover {
+    border-color: var(--erp-primary);
+    background: var(--erp-surface-hover);
+}
+
+.cc-module:focus-visible {
+    outline: 2px solid var(--erp-primary);
+    outline-offset: 2px;
+}
+
+.cc-module__head {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: 0.5rem;
+}
+
+.cc-module__title {
+    font-size: 0.9rem;
+    font-weight: 700;
+    color: var(--erp-ink);
+}
+
+.cc-module__status {
+    flex-shrink: 0;
+    padding: 0.1rem 0.5rem;
+    border: 1px solid var(--erp-hairline-strong);
+    border-radius: 999px;
+    background: var(--erp-neutral-soft);
+    color: var(--erp-neutral-text);
+    font-size: 0.68rem;
+    font-weight: 700;
+    white-space: nowrap;
+}
+
+.cc-module__desc {
+    color: var(--erp-muted);
+    font-size: 0.74rem;
+    line-height: 1.55;
+}

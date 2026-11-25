@@ -1,0 +1,29 @@
+/* ===========================================================═══════════════
+   قائمة المركز المالي — تنسيق A4 printable + عناوين الأقسام.
+   ======================================================================= */
+
+.bs-section {
+    border: 1px solid var(--erp-hairline);
+    border-radius: 12px;
+    background: var(--erp-surface);
+    overflow: hidden;
+}
+
+.bs-section__title {
+    display: flex;
+    align-items: center;
+    gap: 0.5rem;
+    padding: 0.45rem 0.7rem;
+    border-block-end: 1px solid var(--erp-hairline);
+    background: var(--erp-surface-sunken);
+    color: var(--erp-ink);
+    font-size: 0.86rem;
+    font-weight: 700;
+}
+
+@media print {
+    .bs-section {
+        break-inside: avoid;
+        page-break-inside: avoid;
+    }
+}
