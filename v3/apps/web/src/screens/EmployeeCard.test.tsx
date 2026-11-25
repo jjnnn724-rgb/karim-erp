@@ -25,41 +25,45 @@ function renderCard({ id = '1790812565247459', role = 'admin' } = {}) {
     const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } });
     // بيئة المصادقة والطريق: window.location يقرأ ?id مباشرة في الشاشة.
     window.history.replaceState(null, '', `/employee-card?id=${id}`);
-    vi.stubGlobal('fetch', vi.fn((input: unknown) => {
-        const url = String(input);
-        if (url.includes('/api/employees')) {
-            return Promise.resolve({
-                ok: true,
-                json: () => Promise.resolve([
-                    {
-                        id,
-                        employeeId: 'EMP-7',
-                        name: 'سالم تجريبي',
-                        department: 'kitchen',
-                        position: 'طباخ',
-                        phone: '0555',
-                        status: 'active',
-                        salary: 3500,
-                        iqamaNumber: '2234567890',
-                        iqamaExpiry: '2027-01-01',
-                    },
-                ]),
-            });
-        }
-        if (url.includes('/api/hrDepartments')) {
-            return Promise.resolve({ ok: true, json: () => Promise.resolve([{ id: 1, code: 'kitchen', name: 'المطبخ' }]) });
-        }
-        if (url.includes('/api/hr/leave-workflow') || url.includes('/api/leaveTypes')) {
+    vi.stubGlobal(
+        'fetch',
+        vi.fn((input: unknown) => {
+            const url = String(input);
+            if (url.includes('/api/employees')) {
+                return Promise.resolve({
+                    ok: true,
+                    json: () =>
+                        Promise.resolve([
+                            {
+                                id,
+                                employeeId: 'EMP-7',
+                                name: 'سالم تجريبي',
+                                department: 'kitchen',
+                                position: 'طباخ',
+                                phone: '0555',
+                                status: 'active',
+                                salary: 3500,
+                                iqamaNumber: '2234567890',
+                                iqamaExpiry: '2027-01-01',
+                            },
+                        ]),
+                });
+            }
+            if (url.includes('/api/hrDepartments')) {
+                return Promise.resolve({ ok: true, json: () => Promise.resolve([{ id: 1, code: 'kitchen', name: 'المطبخ' }]) });
+            }
+            if (url.includes('/api/hr/leave-workflow') || url.includes('/api/leaveTypes')) {
+                return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
+            }
+            if (url.includes('/api/hr/shift-schedule')) {
+                return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
+            }
+            if (url.includes('/api/hr/employees/')) {
+                return Promise.resolve({ ok: true, json: () => Promise.resolve({ qrAvailable: false, message: 'غير صادرة' }) });
+            }
             return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
-        }
-        if (url.includes('/api/hr/shift-schedule')) {
-            return Promise.resolve({ ok: true, json: () => Promise.resolve({}) });
-        }
-        if (url.includes('/api/hr/employees/')) {
-            return Promise.resolve({ ok: true, json: () => Promise.resolve({ qrAvailable: false, message: 'غير صادرة' }) });
-        }
-        return Promise.resolve({ ok: true, json: () => Promise.resolve([]) });
-    }) as unknown as typeof fetch);
+        }) as unknown as typeof fetch,
+    );
     return render(
         <QueryClientProvider client={queryClient}>
             <ToastProvider>

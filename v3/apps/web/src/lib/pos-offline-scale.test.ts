@@ -14,7 +14,8 @@ import {
 } from './pos-offline';
 
 const sale = (n: number) => ({
-    departmentId: '7', sessionId: '11',
+    departmentId: '7',
+    sessionId: '11',
     items: [{ product_id: 1, quantity: 1, unit_price: 10, discount: 0 }],
     payments: [{ method: 'cash' as const, amount: 10, reference: null }],
     idempotencyKey: `sale-${n}`,
@@ -50,9 +51,7 @@ describe('Stage 5 scale — offline queue', () => {
             const result = await q.flush();
             expect(result.processed).toBe(100);
             expect(result.remaining).toBe(0);
-            expect(sentPerDevice[device]).toEqual(
-                Array.from({ length: 100 }, (_, n) => `d${device}-s${n}`),
-            );
+            expect(sentPerDevice[device]).toEqual(Array.from({ length: 100 }, (_, n) => `d${device}-s${n}`));
         }
         expect(sentPerDevice).toHaveLength(10);
     });
@@ -64,9 +63,17 @@ describe('Stage 5 scale — offline queue', () => {
             store: localStorageQueueStore('karim_offline_queue_v1_cut'),
             baseDelayMs: 0,
             maxDelayMs: 0,
-            send: async () => { if (!online) { throw new TypeError('Failed to fetch'); } sends++; return { ok: true }; },
+            send: async () => {
+                if (!online) {
+                    throw new TypeError('Failed to fetch');
+                }
+                sends++;
+                return { ok: true };
+            },
         });
-        for (let n = 0; n < 25; n++) { await q.enqueue(n, `cut-${n}`); }
+        for (let n = 0; n < 25; n++) {
+            await q.enqueue(n, `cut-${n}`);
+        }
         expect((await q.flush()).failed).toBe(25);
         online = true;
         expect((await q.flush()).processed).toBe(25);
@@ -77,7 +84,9 @@ describe('Stage 5 scale — offline queue', () => {
     it('انهيار العملية ثم استئنافها: الطابور باقٍ من التخزين', async () => {
         const key = 'karim_offline_queue_v1_crash';
         const q1 = createOfflineQueue<number>({ store: localStorageQueueStore(key), send: async () => ({ ok: true }) });
-        for (let n = 0; n < 40; n++) { await q1.enqueue(n, `crash-${n}`); }
+        for (let n = 0; n < 40; n++) {
+            await q1.enqueue(n, `crash-${n}`);
+        }
         const q2 = createOfflineQueue<number>({ store: localStorageQueueStore(key), send: async () => ({ ok: true }) });
         expect((await q2.stats()).pending).toBe(40);
         expect((await q2.list())[0]?.local_transaction_uuid).toBe('crash-0');
@@ -86,7 +95,7 @@ describe('Stage 5 scale — offline queue', () => {
     it('تكرار النفس uuid لا يُدرج مرتين، وreplay يُغلق بأمان', async () => {
         const q = createOfflineQueue<number>({
             store: localStorageQueueStore('karim_offline_queue_v1_dup'),
-            send: async () => ({ ok: true, replay: true } as SendResult),
+            send: async () => ({ ok: true, replay: true }) as SendResult,
         });
         await q.enqueue(1, 'same-key');
         await q.enqueue(1, 'same-key');
@@ -99,7 +108,7 @@ describe('Stage 5 scale — offline queue', () => {
     it('تجاوز الرصيد (409): تعارض بلا إعادة تلقائية', async () => {
         const q = createOfflineQueue<number>({
             store: localStorageQueueStore('karim_offline_queue_v1_409'),
-            send: async () => ({ ok: false, status: 409 } as SendResult),
+            send: async () => ({ ok: false, status: 409 }) as SendResult,
         });
         await q.enqueue(1, 'oversell-1');
         const r = await q.flush();
@@ -131,7 +140,7 @@ describe('Stage 5 — حد الجهاز', () => {
     it('تعارضات 409 تُعرَض للقرار اليدوي', async () => {
         const q = createOfflineQueue<number>({
             store: localStorageQueueStore('karim_pos_offline_queue_v1'),
-            send: async () => ({ ok: false, status: 409 } as SendResult),
+            send: async () => ({ ok: false, status: 409 }) as SendResult,
         });
         await q.enqueue(1, 'manual-1');
         await q.flush();

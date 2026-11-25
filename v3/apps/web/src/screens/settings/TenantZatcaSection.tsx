@@ -29,7 +29,7 @@ export function TenantZatcaSection() {
                 headers: { 'Content-Type': 'application/json', Authorization: `Bearer ${getAccessToken() || ''}` },
                 body: JSON.stringify({ vatNumber, crNumber, enabled, sandbox }),
             });
-            const body = await res.json() as { ok?: boolean; error?: string; details?: string[] };
+            const body = (await res.json()) as { ok?: boolean; error?: string; details?: string[] };
             if (!res.ok || !body.ok) {
                 toast({ title: body.error || 'فشل الحفظ', variant: 'error' });
                 return;
@@ -54,7 +54,9 @@ export function TenantZatcaSection() {
                 </label>
                 <Checkbox checked={enabled} onCheckedChange={(v) => setEnabled(v === true)} label="تفعيل ZATCA" />
                 <Checkbox checked={sandbox} onCheckedChange={(v) => setSandbox(v === true)} label="وضع sandbox" />
-                <Button type="button" disabled={saving} onClick={() => void save()}>حفظ الإعدادات</Button>
+                <Button type="button" disabled={saving} onClick={() => void save()}>
+                    حفظ الإعدادات
+                </Button>
                 <p className="text-caption text-muted">لا يُرسل أي شيء إلى ZATCA بدون بيانات اعتمادك الخاصة.</p>
             </div>
         </SectionCard>

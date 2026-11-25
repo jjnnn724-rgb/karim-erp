@@ -2,14 +2,14 @@ import { useQuery } from '@tanstack/react-query';
 import { useNavigate } from '@tanstack/react-router';
 import { useMemo, useState } from 'react';
 import { DeptHeadDispatchPanel } from '../components/DeptHeadDispatchPanel';
-import { SectionCard } from '../components/Reports';
 import { PrintActions } from '../components/PrintActions';
+import { SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { fetchDeptHeadSnapshot } from '../lib/dashboards';
 import type { GateUser } from '../lib/dispatches-write';
 import { intOf, moneyOf, presetRange, rangeProblem } from '../lib/reporting';
-import { FilterBar, StatCard , ScreenHero } from '../ui';
+import { FilterBar, ScreenHero, StatCard } from '../ui';
 
 const STATUS_AR: Record<string, string> = {
     pending: 'معلّق',
@@ -88,7 +88,9 @@ export function DeptHeadDashboard() {
     const filteredDispatchExpenses = useMemo(() => {
         const needle = q.trim().toLowerCase();
         return (data?.dispatchExpenses ?? []).filter((row) => {
-            if (!needle) {return true;}
+            if (!needle) {
+                return true;
+            }
             const haystack = `${row.desc} ${row.notes} ${row.dispatchId ?? ''} ${row.adjustmentType}`.toLowerCase();
             return haystack.includes(needle);
         });
@@ -109,7 +111,7 @@ export function DeptHeadDashboard() {
 
     return (
         <div className="flex flex-col gap-md">
-<ScreenHero
+            <ScreenHero
                 title="لوحة رئيس القسم"
                 english="Dept Head Dashboard"
                 description="قسمك ونطاقه الفرعي، ومصروفاته بحسب المصدر، وأذون الصرف بمراحلها — النطاق محسوم على الخادم."
@@ -286,22 +288,37 @@ export function DeptHeadDashboard() {
                                     <table className="w-full border-collapse text-body-md">
                                         <thead>
                                             <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                                <th scope="col" className="px-sm py-xs text-start font-medium">التاريخ</th>
-                                                <th scope="col" className="px-sm py-xs text-start font-medium">البيان</th>
-                                                <th scope="col" className="px-sm py-xs text-end font-medium">المبلغ</th>
-                                                <th scope="col" className="px-sm py-xs text-center font-medium">النوع</th>
-                                                <th scope="col" className="px-sm py-xs text-start font-medium">إذن الصرف</th>
+                                                <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                    التاريخ
+                                                </th>
+                                                <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                    البيان
+                                                </th>
+                                                <th scope="col" className="px-sm py-xs text-end font-medium">
+                                                    المبلغ
+                                                </th>
+                                                <th scope="col" className="px-sm py-xs text-center font-medium">
+                                                    النوع
+                                                </th>
+                                                <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                    إذن الصرف
+                                                </th>
                                             </tr>
                                         </thead>
                                         <tbody>
                                             {filteredDispatchExpenses.map((row) => (
                                                 <tr key={row.id} className="border-b border-hairline hover:bg-surface-hover">
-                                                    <td className="erp-numeric px-sm py-xxs whitespace-nowrap text-body-sm text-muted" dir="ltr">
+                                                    <td
+                                                        className="erp-numeric px-sm py-xxs whitespace-nowrap text-body-sm text-muted"
+                                                        dir="ltr"
+                                                    >
                                                         {row.date || '—'}
                                                     </td>
                                                     <td className="px-sm py-xxs text-ink">
                                                         {row.desc}
-                                                        {row.notes ? <span className="block text-caption text-faint">{row.notes}</span> : null}
+                                                        {row.notes ? (
+                                                            <span className="block text-caption text-faint">{row.notes}</span>
+                                                        ) : null}
                                                     </td>
                                                     <td className="erp-numeric px-sm py-xxs text-end text-ink" dir="ltr">
                                                         {moneyOf(row.amount)}
@@ -333,7 +350,8 @@ export function DeptHeadDashboard() {
                                     </table>
                                 </TableScroll>
                                 <p className="px-sm pb-xs pt-xxs text-caption text-faint">
-                                    أحدث 200 حركة من مصروفات أذونات الصرف المعتمدة للقسم — القيمة دفترية (متوسط التكلفة وقت الاعتماد) وتُقيَّد بسالب عند الإرجاع.
+                                    أحدث 200 حركة من مصروفات أذونات الصرف المعتمدة للقسم — القيمة دفترية (متوسط التكلفة وقت الاعتماد) وتُقيَّد
+                                    بسالب عند الإرجاع.
                                 </p>
                             </>
                         )}

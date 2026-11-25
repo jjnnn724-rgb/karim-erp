@@ -21,22 +21,50 @@ export const VEG_CREATE_ROLES = ['sous_chef', 'admin', 'owner'] as const;
 export const VEG_RECEIVE_ROLES = ['sous_chef', 'admin', 'owner'] as const;
 export const VEG_PRICE_ROLES = ['warehouse', 'admin', 'owner', 'manager'] as const;
 
-export function vegCreateVisible(role: string | null | undefined, deptCode?: string | null | undefined, grants?: ReadonlySet<string>): boolean {
-    if (isWriteRole(role, VEG_CREATE_ROLES)) {return true;}
+export function vegCreateVisible(
+    role: string | null | undefined,
+    deptCode?: string | null | undefined,
+    grants?: ReadonlySet<string>,
+): boolean {
+    if (isWriteRole(role, VEG_CREATE_ROLES)) {
+        return true;
+    }
     // منح مباشر من الأدمن يفتح التدفق بغض النظر عن دور/تخصص المستخدم
-    if (grants?.has('veg.create')) {return true;}
+    if (grants?.has('veg.create')) {
+        return true;
+    }
     // رئيس قسم السلطات تحديدًا (dept_head · dept_code=salads)
-    return String(role || '') === 'dept_head'
-        && String(deptCode ?? '').toLowerCase().split(',').map((s) => s.trim()).includes('salads');
+    return (
+        String(role || '') === 'dept_head' &&
+        String(deptCode ?? '')
+            .toLowerCase()
+            .split(',')
+            .map((s) => s.trim())
+            .includes('salads')
+    );
 }
 
-export function vegReceiveVisible(role: string | null | undefined, deptCode?: string | null | undefined, grants?: ReadonlySet<string>): boolean {
-    if (isWriteRole(role, VEG_RECEIVE_ROLES)) {return true;}
+export function vegReceiveVisible(
+    role: string | null | undefined,
+    deptCode?: string | null | undefined,
+    grants?: ReadonlySet<string>,
+): boolean {
+    if (isWriteRole(role, VEG_RECEIVE_ROLES)) {
+        return true;
+    }
     // منح مباشر من الأدمن يفتح التدفق بغض النظر عن دور/تخصص المستخدم
-    if (grants?.has('veg.receive')) {return true;}
+    if (grants?.has('veg.receive')) {
+        return true;
+    }
     // رئيس قسم السلطات تحديدًا (dept_head · dept_code=salads)
-    return String(role || '') === 'dept_head'
-        && String(deptCode ?? '').toLowerCase().split(',').map((s) => s.trim()).includes('salads');
+    return (
+        String(role || '') === 'dept_head' &&
+        String(deptCode ?? '')
+            .toLowerCase()
+            .split(',')
+            .map((s) => s.trim())
+            .includes('salads')
+    );
 }
 
 export function vegPriceVisible(role: string | null | undefined): boolean {
@@ -65,7 +93,8 @@ export const VEG_TEXT = {
     confirmCancel: 'إلغاء طلب الخضار «%s»؟',
     confirmReceive: 'استلام طلب الخضار «%s»؟',
     confirmPrice: 'تسعير طلب الخضار «%s»؟ سيُحمَّل المصروف على قسم المطبخ.',
-    confirmDelete: 'حذف الطلب «%s» نهائيًا؟ لا يمكن التراجع — سيُحذف معه المصروف التلقائي المرتبط به إن وُجد، ويرفض النظام لو له فاتورة مورد أو قيد محاسبي.',
+    confirmDelete:
+        'حذف الطلب «%s» نهائيًا؟ لا يمكن التراجع — سيُحذف معه المصروف التلقائي المرتبط به إن وُجد، ويرفض النظام لو له فاتورة مورد أو قيد محاسبي.',
 } as const;
 
 /* ── مخططات التحقق ────────────────────────────────────────────────────── */
@@ -100,7 +129,12 @@ export type VegResult = z.infer<typeof vegResultSchema>;
 
 export async function createVegRequest(input: VegCreateInput): Promise<VegResult> {
     return writeJson(vegResultSchema, '/api/veg-requests', 'POST', {
-        items: input.items.map((item) => ({ name: item.name, qty: Number(item.qty), unit: item.unit ?? '', note: item.note?.trim() || null })),
+        items: input.items.map((item) => ({
+            name: item.name,
+            qty: Number(item.qty),
+            unit: item.unit ?? '',
+            note: item.note?.trim() || null,
+        })),
         priority: input.priority,
         notes: input.notes?.trim() || null,
     });
@@ -122,7 +156,12 @@ export async function priceVegRequest(
 
 export async function editVegItems(id: string | number, input: VegEditItemsInput): Promise<VegResult> {
     return writeJson(vegResultSchema, `/api/veg-requests/${encodeURIComponent(String(id))}/items`, 'PUT', {
-        items: input.items.map((item) => ({ name: item.name, qty: Number(item.qty), unit: item.unit ?? '', note: item.note?.trim() || null })),
+        items: input.items.map((item) => ({
+            name: item.name,
+            qty: Number(item.qty),
+            unit: item.unit ?? '',
+            note: item.note?.trim() || null,
+        })),
     });
 }
 
@@ -169,15 +208,16 @@ export async function fetchVegContacts(): Promise<VegContacts> {
 }
 
 export async function saveVegContacts(input: VegContacts): Promise<{ ok?: boolean | undefined }> {
-    return writeJson(
-        z.object({ ok: z.boolean().optional() }).passthrough(),
-        '/api/veg-requests/contacts',
-        'PUT',
-        { supplier_jid: input.supplier_jid, warehouse_jid: input.warehouse_jid },
-    );
+    return writeJson(z.object({ ok: z.boolean().optional() }).passthrough(), '/api/veg-requests/contacts', 'PUT', {
+        supplier_jid: input.supplier_jid,
+        warehouse_jid: input.warehouse_jid,
+    });
 }
 
-export async function notifyVegRequest(id: string | number, target: 'supplier' | 'warehouse'): Promise<{ ok?: boolean | undefined; sent?: number | undefined }> {
+export async function notifyVegRequest(
+    id: string | number,
+    target: 'supplier' | 'warehouse',
+): Promise<{ ok?: boolean | undefined; sent?: number | undefined }> {
     return writeJson(
         z.object({ ok: z.boolean().optional(), sent: z.number().optional() }).passthrough(),
         `/api/veg-requests/${encodeURIComponent(String(id))}/notify`,
@@ -207,9 +247,7 @@ export async function fetchVegCatalog(signal?: AbortSignal): Promise<VegCatalog>
                             .object({
                                 key: z.string().optional(),
                                 label: z.string().optional(),
-                                items: z
-                                    .array(z.object({ name: z.string(), unit: z.string().optional() }).passthrough())
-                                    .default([]),
+                                items: z.array(z.object({ name: z.string(), unit: z.string().optional() }).passthrough()).default([]),
                             })
                             .passthrough(),
                     )
@@ -232,12 +270,18 @@ export async function fetchVegCatalog(signal?: AbortSignal): Promise<VegCatalog>
         const items: VegCatalogItem[] = [];
         for (const item of group.items ?? []) {
             const name = String(item.name ?? '').trim();
-            if (!name || items.some((candidate) => candidate.name === name)) { continue; }
+            if (!name || items.some((candidate) => candidate.name === name)) {
+                continue;
+            }
             const unit = String(item.unit ?? '').trim() || 'وحدة';
             items.push({ name, unit });
-            if (!unitOf[name]) { unitOf[name] = unit; }
+            if (!unitOf[name]) {
+                unitOf[name] = unit;
+            }
         }
-        if (items.length) { flat[label] = items; }
+        if (items.length) {
+            flat[label] = items;
+        }
     }
     return { categories: flat, units, unitOf };
 }

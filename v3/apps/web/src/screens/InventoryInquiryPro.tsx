@@ -27,17 +27,13 @@ export function InventoryInquiryPro() {
     const itemsQuery = useQuery({
         queryKey: ['inquiry-pro-items', applied],
         queryFn: ({ signal }) =>
-            fetchInquiryItems(
-                { from: applied.from, to: applied.to, q: applied.q, sort: 'movements', limit: 200 },
-                signal,
-            ),
+            fetchInquiryItems({ from: applied.from, to: applied.to, q: applied.q, sort: 'movements', limit: 200 }, signal),
         enabled: problem === '',
     });
 
     // تصدير القائمة الحالية من الخادم — نفس بحث الشاشة، وبلا مكتبة في المتصفح.
     const exportFile = useMutation({
-        mutationFn: () =>
-            fetchInquiryExport({ from: applied.from, to: applied.to, q: applied.q, sort: 'movements', limit: 200 }),
+        mutationFn: () => fetchInquiryExport({ from: applied.from, to: applied.to, q: applied.q, sort: 'movements', limit: 200 }),
         onSuccess: (file) => {
             saveDownload(file);
         },

@@ -10,6 +10,43 @@
             "quoteStyle": "single"
         }
     },
+    "linter": {
+        "rules": {
+            "a11y": {
+                "noLabelWithoutControl": "warn",
+                "noRedundantRoles": "warn",
+                "noStaticElementInteractions": "warn",
+                "noSvgWithoutTitle": "warn",
+                "useAriaPropsSupportedByRole": "warn",
+                "useSemanticElements": "warn",
+                "useValidAriaRole": "warn"
+            },
+            "complexity": {
+                "noImportantStyles": "warn",
+                "noUselessFragments": "warn",
+                "useLiteralKeys": "warn",
+                "useMathMinMax": "warn",
+                "useOptionalChain": "warn"
+            },
+            "correctness": {
+                "noUnsafeOptionalChaining": "warn",
+                "useExhaustiveDependencies": "warn"
+            },
+            "performance": {
+                "noAccumulatingSpread": "warn"
+            },
+            "style": {
+                "noDescendingSpecificity": "warn",
+                "noNonNullAssertion": "warn",
+                "useTemplate": "warn"
+            },
+            "suspicious": {
+                "noArrayIndexKey": "warn",
+                "noAssignInExpressions": "warn",
+                "noShadowRestrictedNames": "warn"
+            }
+        }
+    },
     "css": {
         "parser": {
             "tailwindDirectives": true

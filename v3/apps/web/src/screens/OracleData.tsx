@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import { ScreenHero } from '../ui';
 import { useState } from 'react';
 import { KpiCard, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
@@ -19,6 +18,7 @@ import {
 } from '../lib/oracle-data';
 import { errorMessage } from '../lib/reporting';
 import { useWriteMutation } from '../lib/write';
+import { ScreenHero } from '../ui';
 import { useToast } from '../ui/Toast';
 
 /**
@@ -133,7 +133,7 @@ export function OracleData() {
 
     return (
         <div className="flex flex-col gap-md">
-<ScreenHero
+            <ScreenHero
                 title="بيانات Oracle المنسوخة"
                 english="Oracle Data"
                 description="الجداول المنسوخة من Oracle: عدّاد صفوفها الحيّ، وأعمدتها وصفوفها بحثًا وترقيمًا من الخادم."
@@ -141,9 +141,11 @@ export function OracleData() {
                     <>
                         <button
                             type="button"
-                            onClick={() => { () => {
-                    void tablesQuery.refetch();
-                } }}
+                            onClick={() => {
+                                () => {
+                                    void tablesQuery.refetch();
+                                };
+                            }}
                             disabled={tablesQuery.isFetching}
                             className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
                         >

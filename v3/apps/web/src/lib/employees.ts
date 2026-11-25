@@ -16,7 +16,11 @@ import { getAccessToken } from './auth';
  * لا كتابة هنا: الإضافة والتعديل والحذف والاستيراد وكشف الموظف في V2.
  */
 
-const idValue = z.union([z.string(), z.number()]).transform((value) => String(value).replace(/^['"]+|['"]+$/g, '').trim());
+const idValue = z.union([z.string(), z.number()]).transform((value) =>
+    String(value)
+        .replace(/^['"]+|['"]+$/g, '')
+        .trim(),
+);
 const optionalText = z.string().nullable().optional();
 
 export const employeeSchema = z

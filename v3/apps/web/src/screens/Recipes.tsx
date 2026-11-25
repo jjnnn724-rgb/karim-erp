@@ -17,33 +17,33 @@ import {
     searchRecipes,
 } from '../lib/recipes';
 import {
+    type BomLineDraft,
     createRecipe,
     deleteRecipe,
+    fetchBomInventory,
+    fetchProductIngredients,
+    fetchRecipeUnits,
+    ingredientLine,
+    newBomLine,
     RECIPE_TEXT,
     type RecipeCreateInput,
     type RecipeUpdateInput,
+    recipeBomVisible,
     recipeDeleteConfirm,
     recipeDeleteVisible,
     recipeWriteVisible,
-    recipeBomVisible,
-    syncRecipeToCashier,
-    fetchProductIngredients,
-    fetchBomInventory,
-    fetchRecipeUnits,
-    saveProductIngredients,
-    uploadProductImage,
     removeProductImage,
-    ingredientLine,
-    newBomLine,
+    saveProductIngredients,
+    syncRecipeToCashier,
     updateRecipe,
-    type BomLineDraft,
+    uploadProductImage,
 } from '../lib/recipes-write';
-import { useToast } from '../ui/Toast';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
+import { useToast } from '../ui/Toast';
 
 /**
  * الوصفات — CRUD كامل على جدول `recipes`:
@@ -361,7 +361,9 @@ function RecipeBomDialog({ open, row, locked, canBom, onClose, onCloseUpdate }: 
         (async () => {
             try {
                 const synced = await syncRecipeToCashier(recipeId);
-                if (cancelled || !synced.product) { return; }
+                if (cancelled || !synced.product) {
+                    return;
+                }
                 setProductId(Number(synced.product.id));
                 setImageUrl(synced.product.image_url ?? '');
                 const [ingredients, inv, unitList] = await Promise.all([
@@ -369,35 +371,48 @@ function RecipeBomDialog({ open, row, locked, canBom, onClose, onCloseUpdate }: 
                     fetchBomInventory(),
                     fetchRecipeUnits(),
                 ]);
-                if (cancelled) { return; }
+                if (cancelled) {
+                    return;
+                }
                 setLines(ingredients.map(ingredientLine));
                 setInventory(inv.map((i) => ({ id: i.id, name: i.name, unit: i.unit })));
                 setUnits(unitList as unknown as Array<{ value: string; label: string; family: string }>);
                 setSyncState('ready');
             } catch (cause) {
-                if (cancelled) { return; }
+                if (cancelled) {
+                    return;
+                }
                 setSyncState('error');
                 setSyncError(writeErrorMessage(cause, 'تعذر تجهيز محرّر المكوّنات'));
             }
         })();
-        return () => { cancelled = true; };
+        return () => {
+            cancelled = true;
+        };
         // الشاشة لا تعيد المزامنة عند كل تغيير لـrow — تعتمد على open فقط
         // eslint-disable-next-line react-hooks/exhaustive-deps
     }, [open, recipeId]);
 
     const filteredInventory = useMemo(() => {
         const q = invSearch.trim().toLowerCase();
-        if (!q) { return inventory.slice(0, 50); }
+        if (!q) {
+            return inventory.slice(0, 50);
+        }
         return inventory.filter((i) => i.name.toLowerCase().includes(q)).slice(0, 50);
     }, [inventory, invSearch]);
 
     async function handleSave(): Promise<void> {
-        if (saving || !productId) { return; }
+        if (saving || !productId) {
+            return;
+        }
         const bad = lines.some((l) => {
             const q = Number(l.quantity_per_unit);
             return !Number.isFinite(q) || q <= 0;
         });
-        if (bad) { setServerMsg('كل كميات المكوّنات يجب أن تكون أكبر من صفر'); return; }
+        if (bad) {
+            setServerMsg('كل كميات المكوّنات يجب أن تكون أكبر من صفر');
+            return;
+        }
         setSaving(true);
         setServerMsg('');
         try {
@@ -410,19 +425,24 @@ function RecipeBomDialog({ open, row, locked, canBom, onClose, onCloseUpdate }: 
                     waste_percent: Number(line.waste_percent) || 0,
                 })),
             );
-            const msg = result.total_cost != null && !Number.isNaN(result.total_cost as number)
-                ? `تم الحفظ — التكلفة الإجمالية ${Number(result.total_cost).toFixed(2)}`
-                : 'تم حفظ المكوّنات';
+            const msg =
+                result.total_cost != null && !Number.isNaN(result.total_cost as number)
+                    ? `تم الحفظ — التكلفة الإجمالية ${Number(result.total_cost).toFixed(2)}`
+                    : 'تم حفظ المكوّنات';
             setServerMsg(msg);
             onCloseUpdate();
         } catch (cause) {
             setServerMsg(writeErrorMessage(cause, 'تعذر حفظ المكوّنات'));
-        } finally { setSaving(false); }
+        } finally {
+            setSaving(false);
+        }
     }
 
     async function handlePickImage(event: React.ChangeEvent<HTMLInputElement>): Promise<void> {
         const file = event.target.files?.[0];
-        if (!file || !productId) { return; }
+        if (!file || !productId) {
+            return;
+        }
         setImageUploading(true);
         setServerMsg('');
         try {
@@ -431,12 +451,19 @@ function RecipeBomDialog({ open, row, locked, canBom, onClose, onCloseUpdate }: 
             toast({ title: 'تم حفظ صورة الصنف', variant: 'success' });
         } catch (cause) {
             toast({ title: writeErrorMessage(cause, 'تعذر رفع الصورة'), variant: 'error' });
-        } finally { setImageUploading(false); event.target.value = ''; }
+        } finally {
+            setImageUploading(false);
+            event.target.value = '';
+        }
     }
 
     async function handleDeleteImage(): Promise<void> {
-        if (imageUploading || !productId) { return; }
-        if (!window.confirm('حذف صورة الصنف؟')) { return; }
+        if (imageUploading || !productId) {
+            return;
+        }
+        if (!window.confirm('حذف صورة الصنف؟')) {
+            return;
+        }
         setImageUploading(true);
         try {
             await removeProductImage(productId);
@@ -444,13 +471,24 @@ function RecipeBomDialog({ open, row, locked, canBom, onClose, onCloseUpdate }: 
             toast({ title: 'تم حذف صورة الصنف', variant: 'success' });
         } catch (cause) {
             toast({ title: writeErrorMessage(cause, 'تعذر حذف الصورة'), variant: 'error' });
-        } finally { setImageUploading(false); }
+        } finally {
+            setImageUploading(false);
+        }
     }
 
     function addLine(inv: { id: number; name: string; unit: string | null }): void {
         const exists = lines.some((l) => l.inventory_id === inv.id);
-        if (exists) { setServerMsg('هذا المكون موجود بالفعل'); return; }
-        setLines((prev) => [...prev, newBomLine(inv as Pick<typeof inventory[number], 'id' | 'name' | 'unit'>, units as unknown as Parameters<typeof newBomLine>[1])]);
+        if (exists) {
+            setServerMsg('هذا المكون موجود بالفعل');
+            return;
+        }
+        setLines((prev) => [
+            ...prev,
+            newBomLine(
+                inv as Pick<(typeof inventory)[number], 'id' | 'name' | 'unit'>,
+                units as unknown as Parameters<typeof newBomLine>[1],
+            ),
+        ]);
         setInvSearch('');
     }
 
@@ -467,7 +505,9 @@ function RecipeBomDialog({ open, row, locked, canBom, onClose, onCloseUpdate }: 
     return (
         <Dialog
             open={open}
-            onOpenChange={(next) => { if (!next) onClose(); }}
+            onOpenChange={(next) => {
+                if (!next) onClose();
+            }}
             title={`مكوّنات ووصفة — ${recipeName}`}
             size="lg"
             footer={
@@ -487,11 +527,15 @@ function RecipeBomDialog({ open, row, locked, canBom, onClose, onCloseUpdate }: 
                     <div>
                         <p className="text-label-md text-muted">ربط صنف الكاشير</p>
                         <p className="mt-xxs text-body-md font-bold text-ink">
-                            {syncState === 'ready' ? (productId ? `مرتبط — POS #${productId}` : 'مرتبط') : syncState === 'error' ? 'تعذر الربط' : 'جارٍ الربط…'}
+                            {syncState === 'ready'
+                                ? productId
+                                    ? `مرتبط — POS #${productId}`
+                                    : 'مرتبط'
+                                : syncState === 'error'
+                                  ? 'تعذر الربط'
+                                  : 'جارٍ الربط…'}
                         </p>
-                        {syncState === 'error' ? (
-                            <p className="mt-xxs text-body-sm text-danger-text">{syncError}</p>
-                        ) : null}
+                        {syncState === 'error' ? <p className="mt-xxs text-body-sm text-danger-text">{syncError}</p> : null}
                     </div>
                     <div className="flex items-center gap-md">
                         <div className="flex h-24 w-24 items-center justify-center overflow-hidden rounded-md border border-hairline bg-surface-sunken">
@@ -504,11 +548,21 @@ function RecipeBomDialog({ open, row, locked, canBom, onClose, onCloseUpdate }: 
                         {canBom && productId ? (
                             <div className="flex flex-col gap-xs">
                                 <label className="erp-upload-btn inline-flex cursor-pointer items-center gap-xs rounded-md border border-hairline-strong px-md py-xs text-button-md text-ink hover:bg-surface-hover">
-                                    <input type="file" accept="image/*" className="sr-only" onChange={(event) => void handlePickImage(event)} />
+                                    <input
+                                        type="file"
+                                        accept="image/*"
+                                        className="sr-only"
+                                        onChange={(event) => void handlePickImage(event)}
+                                    />
                                     {imageUrl ? 'تغيير الصورة' : 'رفع صورة'}
                                 </label>
                                 {imageUrl ? (
-                                    <button type="button" className="rounded-md border border-danger-text bg-danger-soft px-md py-xxs text-caption text-danger-text" onClick={() => void handleDeleteImage()} disabled={imageUploading}>
+                                    <button
+                                        type="button"
+                                        className="rounded-md border border-danger-text bg-danger-soft px-md py-xxs text-caption text-danger-text"
+                                        onClick={() => void handleDeleteImage()}
+                                        disabled={imageUploading}
+                                    >
                                         حذف الصورة
                                     </button>
                                 ) : null}
@@ -554,10 +608,15 @@ function RecipeBomDialog({ open, row, locked, canBom, onClose, onCloseUpdate }: 
                                                 </td>
                                                 <td className="px-sm py-xxs text-end align-middle">
                                                     <input
-                                                        type="number" min={0} step="any" inputMode="decimal"
+                                                        type="number"
+                                                        min={0}
+                                                        step="any"
+                                                        inputMode="decimal"
                                                         className="w-20 rounded border border-hairline-strong bg-surface px-xs py-xxs text-body-sm text-end tabular-nums"
                                                         value={line.quantity_per_unit}
-                                                        onChange={(event) => updateField(line.inventory_id, 'quantity_per_unit', event.target.value)}
+                                                        onChange={(event) =>
+                                                            updateField(line.inventory_id, 'quantity_per_unit', event.target.value)
+                                                        }
                                                         aria-label={`كمية ${line.inventory_name}`}
                                                     />
                                                 </td>
@@ -569,7 +628,11 @@ function RecipeBomDialog({ open, row, locked, canBom, onClose, onCloseUpdate }: 
                                                         aria-label={`وحدة ${line.inventory_name}`}
                                                     >
                                                         {units.length === 0 ? <option value={line.unit}>{line.unit}</option> : null}
-                                                        {units.map((u) => <option key={u.value} value={u.value}>{u.label}</option>)}
+                                                        {units.map((u) => (
+                                                            <option key={u.value} value={u.value}>
+                                                                {u.label}
+                                                            </option>
+                                                        ))}
                                                     </select>
                                                 </td>
                                                 <td className="erp-numeric px-sm py-xxs text-end align-middle text-ink" dir="ltr">
@@ -592,7 +655,9 @@ function RecipeBomDialog({ open, row, locked, canBom, onClose, onCloseUpdate }: 
                             </div>
                             {/* إضافة مكون */}
                             <div className="mt-sm border-t border-hairline pt-sm">
-                                <label className="text-label-md text-muted" htmlFor="erp-bom-add">إضافة مكوّن من المخزن</label>
+                                <label className="text-label-md text-muted" htmlFor="erp-bom-add">
+                                    إضافة مكوّن من المخزن
+                                </label>
                                 <input
                                     id="erp-bom-add"
                                     type="search"
@@ -601,7 +666,11 @@ function RecipeBomDialog({ open, row, locked, canBom, onClose, onCloseUpdate }: 
                                     value={invSearch}
                                     onChange={(event) => setInvSearch(event.target.value)}
                                 />
-                                <div className="mt-xs max-h-48 overflow-auto rounded-md border border-hairline" role="listbox" aria-label="أصناف المخزن">
+                                <div
+                                    className="mt-xs max-h-48 overflow-auto rounded-md border border-hairline"
+                                    role="listbox"
+                                    aria-label="أصناف المخزن"
+                                >
                                     {filteredInventory.length === 0 ? (
                                         <p className="px-sm py-xs text-body-sm text-muted">لا أصناف مطابقة</p>
                                     ) : null}
@@ -1010,7 +1079,10 @@ export function Recipes() {
                                                                 size="sm"
                                                                 variant="secondary"
                                                                 title="مكوّنات الوصفة والصورة (BOM)"
-                                                                onClick={() => { setBomRow(row); setBomOpen(true); }}
+                                                                onClick={() => {
+                                                                    setBomRow(row);
+                                                                    setBomOpen(true);
+                                                                }}
                                                             >
                                                                 المكوّنات
                                                             </Button>
@@ -1109,7 +1181,10 @@ export function Recipes() {
                 row={bomRow}
                 locked={false}
                 canBom={canBom}
-                onClose={() => { setBomOpen(false); setBomRow(null); }}
+                onClose={() => {
+                    setBomOpen(false);
+                    setBomRow(null);
+                }}
                 onCloseUpdate={() => {
                     void recipesQuery.refetch();
                     void catalogQuery.refetch();

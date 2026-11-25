@@ -1,5 +1,4 @@
 import './CashierMonitor.premium.css';
-import { ScreenHero } from '../ui';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { KpiCard, SectionCard } from '../components/Reports';
@@ -13,6 +12,7 @@ import {
 } from '../lib/cashier-monitor';
 import { printSmart } from '../lib/print-viewer';
 import { errorMessage, intOf, moneyOf, pctOf, shareOf, textOf, todayIso } from '../lib/reporting';
+import { ScreenHero } from '../ui';
 import { useToast } from '../ui/Toast';
 
 /** تحديث تلقائي كل ٣٠ ثانية — المرآة تُحدَّث نفسها على الخادم بـ live=1. */
@@ -66,7 +66,7 @@ export function CashierMonitor() {
 
     return (
         <div className="flex flex-col gap-md premium-screen premium-cashiermonitor">
-<ScreenHero
+            <ScreenHero
                 title="متابعة الكاشير"
                 english="Cashier Monitor"
                 description="أوردرات اليوم الحيّة لكل كاشير، والوردية المفتوحة وآخر حركة — تحديث تلقائي كل ٣٠ ثانية."
@@ -74,10 +74,12 @@ export function CashierMonitor() {
                     <>
                         <button
                             type="button"
-                            onClick={() => { () => {
-                    void summaryQuery.refetch();
-                    void ordersQuery.refetch();
-                } }}
+                            onClick={() => {
+                                () => {
+                                    void summaryQuery.refetch();
+                                    void ordersQuery.refetch();
+                                };
+                            }}
                             disabled={summaryQuery.isFetching || ordersQuery.isFetching}
                             className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
                         >

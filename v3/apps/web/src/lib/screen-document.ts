@@ -6,7 +6,13 @@
  * وprintRegisterTwin يطبعها عبر printOfficialSheet (lib/official-print.ts) —
  * نفس المحرّك الذي يخدم المطبخ والبوفيه وتكلفة الأقسام.
  */
-import { printOfficialSheet, type OfficialSheetColumn, type OfficialSheetInput, type OfficialSheetKpi, type OfficialSheetSection } from './official-print';
+import {
+    type OfficialSheetColumn,
+    type OfficialSheetInput,
+    type OfficialSheetKpi,
+    type OfficialSheetSection,
+    printOfficialSheet,
+} from './official-print';
 
 export interface RegisterTwinColumn {
     /** مفتاح الحقل في صفوف السجل — إلزامي لربط الصف بالعمود. */

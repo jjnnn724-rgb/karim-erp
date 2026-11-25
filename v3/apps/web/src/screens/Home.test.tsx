@@ -240,12 +240,7 @@ describe('الصفحة الرئيسية', () => {
 
     it('الإجراءات السريعة تحترم القوائم المسموحة (المنح والسحب) فوق شاشات الدور', () => {
         // كاشير: قوائمه الفعلية لا تشمل المالية/التقارير — لا إجراء يقود إلى رفض.
-        const cashier = quickActionsForRole('cashier', new Set(V3_SCREENS), [
-            'dashboard',
-            'leaves',
-            'employee-portal',
-            'pos-entry',
-        ]);
+        const cashier = quickActionsForRole('cashier', new Set(V3_SCREENS), ['dashboard', 'leaves', 'employee-portal', 'pos-entry']);
         expect(cashier.map((action) => action.to)).toEqual(['/pos-entry', '/leaves', '/employee-portal']);
         // منحة إضافية تفتح إجراءً، والسحب يمنعه.
         expect(quickActionsForRole('accountant', new Set(V3_SCREENS), ['cfo', 'pnl', 'revenues']).map((a) => a.to)).toEqual([

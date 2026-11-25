@@ -134,15 +134,21 @@ export function AccountsTree() {
         <div className="flex flex-col gap-md">
             <header className="flex flex-wrap items-end justify-between gap-sm">
                 <div>
-                    <h1 className="text-display-lg text-ink"> شجرة الحسابات{' '} <span className="text-body-sm text-muted" dir="ltr" lang="en"> Chart of Accounts </span> </h1>
+                    <h1 className="text-display-lg text-ink">
+                        {' '}
+                        شجرة الحسابات{' '}
+                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
+                            {' '}
+                            Chart of Accounts{' '}
+                        </span>{' '}
+                    </h1>
                     <p className="text-body-sm text-muted" aria-live="polite">
                         {query.isSuccess
                             ? `${formatInt(query.data.matchedAccounts)} حساب مطابق · ${formatInt(query.data.total)} مجموعة حساب رئيسية`
                             : 'عرض شجري للحسابات مع البحث والمرشّحات'}
                     </p>
                 </div>
-                <div className="flex items-center gap-xs" data-erp-print-hide>
-                </div>
+                <div className="flex items-center gap-xs" data-erp-print-hide></div>
             </header>
 
             <SearchToolbar

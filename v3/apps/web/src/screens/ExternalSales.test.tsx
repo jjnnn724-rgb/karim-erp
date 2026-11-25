@@ -1,8 +1,8 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { ToastProvider } from '../ui/Toast';
 import { ConfirmProvider } from '../components/ConfirmProvider';
+import { ToastProvider } from '../ui/Toast';
 import { ExternalSales } from './ExternalSales';
 
 function json(body: unknown, status = 200): Response {
@@ -43,8 +43,26 @@ describe('البيع الخارجي', () => {
                         issued: {
                             totals: { lines: 2, docs: 1, qty: 120.5, value: 3500 },
                             rows: [
-                                { date: '2026-11-16', doc: '1794865971040180', item: 'أرز بسمتي مغسول', qty: 100, unit: 'كيلو', cost: 25, value: 2500, status: 'received' },
-                                { date: '2026-11-17', doc: '1794778971322729', item: 'زيت زيتون', qty: 20.5, unit: 'لتر', cost: 48.78, value: 1000, status: 'received' },
+                                {
+                                    date: '2026-11-16',
+                                    doc: '1794865971040180',
+                                    item: 'أرز بسمتي مغسول',
+                                    qty: 100,
+                                    unit: 'كيلو',
+                                    cost: 25,
+                                    value: 2500,
+                                    status: 'received',
+                                },
+                                {
+                                    date: '2026-11-17',
+                                    doc: '1794778971322729',
+                                    item: 'زيت زيتون',
+                                    qty: 20.5,
+                                    unit: 'لتر',
+                                    cost: 48.78,
+                                    value: 1000,
+                                    status: 'received',
+                                },
                             ],
                             byItem: [
                                 { item: 'أرز بسمتي مغسول', lines: 1, qty: 100, value: 2500 },
@@ -54,8 +72,24 @@ describe('البيع الخارجي', () => {
                         sold: {
                             totals: { invoices: 2, amount: 5100, qty: 130, lines: 3 },
                             rows: [
-                                { id: 'a', date: '2026-11-16', ref: 'BILLS4:2282', customer: 'شركة نجم الشرق', amount: 3000, items: 2, qty: 90 },
-                                { id: 'b', date: '2026-11-17', ref: 'BILLS4:2283', customer: 'شركة اليسرة', amount: 2100, items: 1, qty: 40 },
+                                {
+                                    id: 'a',
+                                    date: '2026-11-16',
+                                    ref: 'BILLS4:2282',
+                                    customer: 'شركة نجم الشرق',
+                                    amount: 3000,
+                                    items: 2,
+                                    qty: 90,
+                                },
+                                {
+                                    id: 'b',
+                                    date: '2026-11-17',
+                                    ref: 'BILLS4:2283',
+                                    customer: 'شركة اليسرة',
+                                    amount: 2100,
+                                    items: 1,
+                                    qty: 40,
+                                },
                             ],
                             byItem: [
                                 { item: 'أرز بسمتي مغسول', qty: 80 },
@@ -93,8 +127,26 @@ describe('البيع الخارجي', () => {
                         issued: {
                             totals: { lines: 2, docs: 1, qty: 120.5, value: 3500 },
                             rows: [
-                                { date: '2026-11-16', doc: '1794865971040180', item: 'أرز بسمتي مغسول', qty: 100, unit: 'كيلو', cost: 25, value: 2500, status: 'received' },
-                                { date: '2026-11-17', doc: '1794778971322729', item: 'زيت زيتون', qty: 20.5, unit: 'لتر', cost: 48.78, value: 1000, status: 'received' },
+                                {
+                                    date: '2026-11-16',
+                                    doc: '1794865971040180',
+                                    item: 'أرز بسمتي مغسول',
+                                    qty: 100,
+                                    unit: 'كيلو',
+                                    cost: 25,
+                                    value: 2500,
+                                    status: 'received',
+                                },
+                                {
+                                    date: '2026-11-17',
+                                    doc: '1794778971322729',
+                                    item: 'زيت زيتون',
+                                    qty: 20.5,
+                                    unit: 'لتر',
+                                    cost: 48.78,
+                                    value: 1000,
+                                    status: 'received',
+                                },
                             ],
                             byItem: [
                                 { item: 'أرز بسمتي مغسول', lines: 1, qty: 100, value: 2500 },
@@ -104,8 +156,24 @@ describe('البيع الخارجي', () => {
                         sold: {
                             totals: { invoices: 2, amount: 5100, qty: 130, lines: 3 },
                             rows: [
-                                { id: 'a', date: '2026-11-16', ref: 'BILLS4:2282', customer: 'شركة نجم الشرق', amount: 3000, items: 2, qty: 90 },
-                                { id: 'b', date: '2026-11-17', ref: 'BILLS4:2283', customer: 'شركة اليسرة', amount: 2100, items: 1, qty: 40 },
+                                {
+                                    id: 'a',
+                                    date: '2026-11-16',
+                                    ref: 'BILLS4:2282',
+                                    customer: 'شركة نجم الشرق',
+                                    amount: 3000,
+                                    items: 2,
+                                    qty: 90,
+                                },
+                                {
+                                    id: 'b',
+                                    date: '2026-11-17',
+                                    ref: 'BILLS4:2283',
+                                    customer: 'شركة اليسرة',
+                                    amount: 2100,
+                                    items: 1,
+                                    qty: 40,
+                                },
                             ],
                             byItem: [
                                 { item: 'أرز بسمتي مغسول', qty: 80 },

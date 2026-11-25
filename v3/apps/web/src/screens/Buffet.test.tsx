@@ -39,8 +39,33 @@ const overview = {
             totalLines: 2,
             perPerson: { low: 2.5, high: 2.857, guestsLow: 35, guestsHigh: 40 },
             lines: [
-                { id: 11, position: 1, name: 'عدس أصفر', qty: 1.5, unit: 'كيلو', state: 'ok', cost: 42.5, packUsed: false, avgCost: 28.33, inventoryId: 700, inventory: { id: 700, name: 'عدس احمر - كيس', unit: 'كيس', avgCost: 56.11 } },
-                { id: 12, position: 2, name: 'ملح', qty: 2, unit: 'ملعقة كبيرة', state: 'ok', cost: 0.44, packUsed: true, avgCost: 0.44, packKg: 50, inventoryId: 710, inventory: { id: 710, name: 'ملح ناعم 50 كيلو-كيس', unit: 'كيس', avgCost: 22 } },
+                {
+                    id: 11,
+                    position: 1,
+                    name: 'عدس أصفر',
+                    qty: 1.5,
+                    unit: 'كيلو',
+                    state: 'ok',
+                    cost: 42.5,
+                    packUsed: false,
+                    avgCost: 28.33,
+                    inventoryId: 700,
+                    inventory: { id: 700, name: 'عدس احمر - كيس', unit: 'كيس', avgCost: 56.11 },
+                },
+                {
+                    id: 12,
+                    position: 2,
+                    name: 'ملح',
+                    qty: 2,
+                    unit: 'ملعقة كبيرة',
+                    state: 'ok',
+                    cost: 0.44,
+                    packUsed: true,
+                    avgCost: 0.44,
+                    packKg: 50,
+                    inventoryId: 710,
+                    inventory: { id: 710, name: 'ملح ناعم 50 كيلو-كيس', unit: 'كيس', avgCost: 22 },
+                },
             ],
         },
         {
@@ -56,7 +81,20 @@ const overview = {
             totalLines: 2,
             perPerson: { low: 1.25, high: 1.428, guestsLow: 35, guestsHigh: 40 },
             lines: [
-                { id: 21, position: 1, name: 'أرز بسمتي', qty: 3, unit: 'كيلو', state: 'ok', cost: 16.5, packUsed: true, avgCost: 5.5, packKg: 20, inventoryId: 720, inventory: { id: 720, name: 'ارز بسمتي20 كيلو بالشدة اليسرة', unit: 'شدة', avgCost: 110.05 } },
+                {
+                    id: 21,
+                    position: 1,
+                    name: 'أرز بسمتي',
+                    qty: 3,
+                    unit: 'كيلو',
+                    state: 'ok',
+                    cost: 16.5,
+                    packUsed: true,
+                    avgCost: 5.5,
+                    packKg: 20,
+                    inventoryId: 720,
+                    inventory: { id: 720, name: 'ارز بسمتي20 كيلو بالشدة اليسرة', unit: 'شدة', avgCost: 110.05 },
+                },
                 { id: 22, position: 2, name: 'مرق دجاج صافي', qty: 4.75, unit: 'لتر', state: 'unlinked', cost: null, inventoryId: null },
             ],
         },
@@ -76,61 +114,73 @@ type RecordedCall = { url: string; method: string; body: Record<string, unknown>
 
 function stubFetch(): RecordedCall[] {
     const calls: RecordedCall[] = [];
-    vi.stubGlobal('fetch', vi.fn(async (url: string, init?: RequestInit) => {
-        const target = String(url);
-        if (target.includes('/api/buffet/overview')) {return json(overview);}
-        if (target.includes('/api/buffet/search')) {
-            return json({ items: [{ id: 800, name: 'أرز بسمتي20 كيلو', unit: 'شدة', category: 'أرز', qty: 12, avgCost: 110.05, perKg: 5.5 }] });
-        }
-        if (target.includes('/api/buffet/ingredients/')) {
-            calls.push({
-                url: target,
-                method: init?.method ?? 'GET',
-                body: typeof init?.body === 'string' ? JSON.parse(init.body) as Record<string, unknown> : {},
-            });
-            return json({ ok: true, updated: 1 }, 200);
-        }
-        if (target.includes('/api/buffet/week/slot') && init?.method === 'DELETE') {
-            calls.push({
-                url: target,
-                method: init?.method ?? 'GET',
-                body: typeof init?.body === 'string' ? JSON.parse(init.body) as Record<string, unknown> : {},
-            });
-            return json({ ok: true }, 200);
-        }
-        if (target.includes('/api/buffet/dishes/autofill')) {
-            return json({
-                ok: true,
-                draft: {
-                    name: 'حلزونة',
-                    category: 'أرز',
-                    yields: 'سفنديش 5 سم — تكفي 35–40 شخص',
-                    description: 'يوخ حقيقي بأرز بسمتي',
-                    ingredients: [{ name: 'أرز بسمتي', qty: 3, unit: 'كيلو' }],
-                    nutrition: {
-                        totals: { kcal: 3000, protein: 50, carbs: 600, fat: 40, fiber: 15, sodium: 1000 },
-                        perServing: { low: { kcal: 80, protein: 1.4, carbs: 17, fat: 1.1, fiber: 0.4, sodium: 27 }, high: { kcal: 91, protein: 1.6, carbs: 19.4, fat: 1.3, fiber: 0.5, sodium: 31 }, guestsLow: 35, guestsHigh: 40 },
-                        allergens: [],
-                        allergenLabels: [],
-                        matchedCount: 1,
-                        unmatched: [],
-                        sourceNote: 'test',
-                        unmatchedNote: null,
+    vi.stubGlobal(
+        'fetch',
+        vi.fn(async (url: string, init?: RequestInit) => {
+            const target = String(url);
+            if (target.includes('/api/buffet/overview')) {
+                return json(overview);
+            }
+            if (target.includes('/api/buffet/search')) {
+                return json({
+                    items: [{ id: 800, name: 'أرز بسمتي20 كيلو', unit: 'شدة', category: 'أرز', qty: 12, avgCost: 110.05, perKg: 5.5 }],
+                });
+            }
+            if (target.includes('/api/buffet/ingredients/')) {
+                calls.push({
+                    url: target,
+                    method: init?.method ?? 'GET',
+                    body: typeof init?.body === 'string' ? (JSON.parse(init.body) as Record<string, unknown>) : {},
+                });
+                return json({ ok: true, updated: 1 }, 200);
+            }
+            if (target.includes('/api/buffet/week/slot') && init?.method === 'DELETE') {
+                calls.push({
+                    url: target,
+                    method: init?.method ?? 'GET',
+                    body: typeof init?.body === 'string' ? (JSON.parse(init.body) as Record<string, unknown>) : {},
+                });
+                return json({ ok: true }, 200);
+            }
+            if (target.includes('/api/buffet/dishes/autofill')) {
+                return json({
+                    ok: true,
+                    draft: {
+                        name: 'حلزونة',
+                        category: 'أرز',
+                        yields: 'سفنديش 5 سم — تكفي 35–40 شخص',
+                        description: 'يوخ حقيقي بأرز بسمتي',
+                        ingredients: [{ name: 'أرز بسمتي', qty: 3, unit: 'كيلو' }],
+                        nutrition: {
+                            totals: { kcal: 3000, protein: 50, carbs: 600, fat: 40, fiber: 15, sodium: 1000 },
+                            perServing: {
+                                low: { kcal: 80, protein: 1.4, carbs: 17, fat: 1.1, fiber: 0.4, sodium: 27 },
+                                high: { kcal: 91, protein: 1.6, carbs: 19.4, fat: 1.3, fiber: 0.5, sodium: 31 },
+                                guestsLow: 35,
+                                guestsHigh: 40,
+                            },
+                            allergens: [],
+                            allergenLabels: [],
+                            matchedCount: 1,
+                            unmatched: [],
+                            sourceNote: 'test',
+                            unmatchedNote: null,
+                        },
+                        model: 'qwen-test',
                     },
-                    model: 'qwen-test',
-                },
-            });
-        }
-        if (target.endsWith('/api/buffet/dishes') && init?.method === 'POST') {
-            calls.push({
-                url: target,
-                method: 'POST',
-                body: typeof init?.body === 'string' ? JSON.parse(init.body) as Record<string, unknown> : {},
-            });
-            return json({ ok: true, id: 99 }, 201);
-        }
-        return json({ error: 'NOT_FOUND', message: target }, 404);
-    }));
+                });
+            }
+            if (target.endsWith('/api/buffet/dishes') && init?.method === 'POST') {
+                calls.push({
+                    url: target,
+                    method: 'POST',
+                    body: typeof init?.body === 'string' ? (JSON.parse(init.body) as Record<string, unknown>) : {},
+                });
+                return json({ ok: true, id: 99 }, 201);
+            }
+            return json({ error: 'NOT_FOUND', message: target }, 404);
+        }),
+    );
     return calls;
 }
 

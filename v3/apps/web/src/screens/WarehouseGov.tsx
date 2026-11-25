@@ -146,7 +146,14 @@ export function WarehouseGov() {
         return (
             <div className="flex flex-col gap-md erp-premium-WarehouseGov">
                 <header>
-                    <h1 className="text-display-lg text-ink"> حوكمة المخزن{' '} <span className="text-body-sm text-muted" dir="ltr" lang="en"> Warehouse Governance </span> </h1>
+                    <h1 className="text-display-lg text-ink">
+                        {' '}
+                        حوكمة المخزن{' '}
+                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
+                            {' '}
+                            Warehouse Governance{' '}
+                        </span>{' '}
+                    </h1>
                     <p className="text-body-sm text-muted">السنوات المالية والرصيد الافتتاحي وفحص النظام.</p>
                 </header>
                 <Card>

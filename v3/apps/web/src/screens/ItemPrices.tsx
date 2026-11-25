@@ -71,10 +71,7 @@ export function ItemPrices() {
     const currency = currencyQuery.data ?? '';
     const withCurrency = (text: string) => `${formatMoney(text)}${currency ? ` ${currency}` : ''}`;
 
-    const rows = useMemo(
-        () => sortPriceRows((pricesQuery.data?.rows ?? []).map(itemToPriceRow), sort),
-        [pricesQuery.data, sort],
-    );
+    const rows = useMemo(() => sortPriceRows((pricesQuery.data?.rows ?? []).map(itemToPriceRow), sort), [pricesQuery.data, sort]);
     const totals = useMemo(() => priceTotals(rows), [rows]);
 
     const categories = pricesQuery.data?.categories ?? [];
@@ -144,12 +141,7 @@ export function ItemPrices() {
                     value={formatPriceInt(totals.zeroCost)}
                     hint="لسه ما اتسجلش عليها شراء بالتكلفة"
                 />
-                <Kpi
-                    label="أعلى تكلفة وحدة"
-                    english="Highest Cost"
-                    value={withCurrency(totals.maxCostText)}
-                    hint={totals.maxCostName}
-                />
+                <Kpi label="أعلى تكلفة وحدة" english="Highest Cost" value={withCurrency(totals.maxCostText)} hint={totals.maxCostName} />
             </div>
 
             <Card className="p-sm">
@@ -171,10 +163,7 @@ export function ItemPrices() {
                             className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
                         />
                     </label>
-                    <label
-                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-item-prices-category"
-                    >
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-item-prices-category">
                         الفئة
                         <select
                             id="erp-item-prices-category"
@@ -195,10 +184,7 @@ export function ItemPrices() {
                                 ))}
                         </select>
                     </label>
-                    <label
-                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-item-prices-sort"
-                    >
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-item-prices-sort">
                         الترتيب
                         <select
                             id="erp-item-prices-sort"
@@ -232,9 +218,7 @@ export function ItemPrices() {
                 <p className="text-body-sm text-muted" role="status">
                     {`${formatPriceInt(rows.length)} صنف معروض — القيمة = الكمية × متوسط التكلفة`}
                     {fuzzy ? ' — بحث تقريبي بالحروف' : ''}
-                    {truncated
-                        ? ` — معروض أول ${formatPriceInt(rows.length)} من ${formatPriceInt(total)}؛ ضيّق البحث لرؤية الباقي`
-                        : ''}
+                    {truncated ? ` — معروض أول ${formatPriceInt(rows.length)} من ${formatPriceInt(total)}؛ ضيّق البحث لرؤية الباقي` : ''}
                 </p>
             ) : null}
 
@@ -288,31 +272,22 @@ export function ItemPrices() {
                                             <td className="px-sm py-xxs text-ink">
                                                 <span className={row.nameResolved ? '' : 'text-muted'}>{row.name}</span>
                                                 {row.barcode ? (
-                                                    <span
-                                                        className="block erp-numeric text-caption text-faint"
-                                                        dir="ltr"
-                                                    >
+                                                    <span className="block erp-numeric text-caption text-faint" dir="ltr">
                                                         {row.barcode}
                                                     </span>
                                                 ) : null}
                                             </td>
-                                            <td className="px-sm py-xxs text-body-sm text-muted">
-                                                {row.category || '—'}
-                                            </td>
+                                            <td className="px-sm py-xxs text-body-sm text-muted">{row.category || '—'}</td>
                                             <td className="erp-numeric px-sm py-xxs text-center text-ink" dir="ltr">
                                                 {row.qtyText}
-                                                {row.unit ? (
-                                                    <span className="text-caption text-muted"> {row.unit}</span>
-                                                ) : null}
+                                                {row.unit ? <span className="text-caption text-muted"> {row.unit}</span> : null}
                                             </td>
                                             <td className="px-sm py-xxs text-end">
                                                 <span className="erp-numeric text-ink" dir="ltr">
                                                     {formatCost(row.costText)}
                                                 </span>
                                                 {row.zeroCost ? (
-                                                    <span className="block text-caption text-warning-text">
-                                                        بدون تكلفة
-                                                    </span>
+                                                    <span className="block text-caption text-warning-text">بدون تكلفة</span>
                                                 ) : null}
                                             </td>
                                             <td className="erp-numeric px-sm py-xxs text-end text-ink" dir="ltr">
@@ -334,10 +309,7 @@ export function ItemPrices() {
                             </table>
                         </TableScroll>
 
-                        <div
-                            className="flex items-center justify-between gap-sm border-t border-hairline px-sm py-xs"
-                            data-erp-print-hide
-                        >
+                        <div className="flex items-center justify-between gap-sm border-t border-hairline px-sm py-xs" data-erp-print-hide>
                             <span className="text-body-sm text-muted">
                                 صفحة {formatPriceInt(safePage)} من {formatPriceInt(pageCount)}
                                 {truncated ? ` — معروض ${formatPriceInt(rows.length)} من ${formatPriceInt(total)}` : ''}

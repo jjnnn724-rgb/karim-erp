@@ -1,11 +1,10 @@
 import { Link, Outlet, useNavigate, useRouterState } from '@tanstack/react-router';
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { logout, useAuthState } from '../lib/auth';
-import { exportElementPdf } from '../lib/pdf-share';
 import { useHiddenNavKeys } from '../lib/hidden-nav';
 import { useLanguage } from '../lib/i18n';
-import { enLabel } from '../lib/nav-en';
 import { useAllowedMenus } from '../lib/my-menus';
+import { enLabel } from '../lib/nav-en';
 import {
     APP_NAME,
     groupForPath,
@@ -19,6 +18,7 @@ import {
     writeNavPrefs,
 } from '../lib/navigation';
 import { useDocumentMeta } from '../lib/page-meta';
+import { exportElementPdf } from '../lib/pdf-share';
 import { isV3Preview } from '../lib/rollout';
 import { enabledScreens, LEGACY_APP_URL } from '../lib/screens';
 import { ThemeProvider, useTheme } from '../ui/ThemeProvider';
@@ -734,7 +734,9 @@ function ShellLayout() {
                             aria-label={lang === 'ar' ? 'التبديل إلى الإنجليزية' : 'Switch to Arabic'}
                             onClick={() => setLang(lang === 'ar' ? 'en' : 'ar')}
                         >
-                            <span aria-hidden="true" className="erp-shell__lang-toggle-code">{lang === 'ar' ? 'EN' : 'ع'}</span>
+                            <span aria-hidden="true" className="erp-shell__lang-toggle-code">
+                                {lang === 'ar' ? 'EN' : 'ع'}
+                            </span>
                             <span className="erp-shell__lang-toggle-word">{lang === 'ar' ? 'English' : 'العربية'}</span>
                         </button>
                         <div className="erp-shell__session-context">

@@ -31,11 +31,7 @@ describe('AnswerStrip', () => {
     });
 
     it('الوحدة والتلميح والاتجاه تمرّ إلى StatCard', () => {
-        render(
-            <AnswerStrip
-                items={[{ label: 'الصافي', value: 900, unit: 'SAR', hint: 'ضريبة 45', trend: 'up', delta: '+8%' }]}
-            />,
-        );
+        render(<AnswerStrip items={[{ label: 'الصافي', value: 900, unit: 'SAR', hint: 'ضريبة 45', trend: 'up', delta: '+8%' }]} />);
         expect(screen.getByText('SAR')).toBeTruthy();
         expect(screen.getByText('ضريبة 45')).toBeTruthy();
         expect(screen.getByText('+8%')).toBeTruthy();

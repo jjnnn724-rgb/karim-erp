@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import { ScreenHero } from '../ui';
 import { type ReactNode, useEffect, useState } from 'react';
 import { KpiCard, RangeControls, SectionCard } from '../components/Reports';
 import { StateError, StateLoading } from '../components/TableState';
@@ -29,6 +28,7 @@ import {
 } from '../lib/vat-return';
 import { vatReviewCsv, vatReviewFilename, vatReviewPrintHtml } from '../lib/vat-return-print';
 import { isWriteRole, useWriteMutation, writeErrorMessage } from '../lib/write';
+import { ScreenHero } from '../ui';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
@@ -334,11 +334,13 @@ export function VatReturn() {
         if (!report) {
             return;
         }
-        printSmart(vatReviewPrintHtml(report, {
-            byName: auth.user?.name ?? '—',
-            currency,
-            settlement,
-        }));
+        printSmart(
+            vatReviewPrintHtml(report, {
+                byName: auth.user?.name ?? '—',
+                currency,
+                settlement,
+            }),
+        );
     }
 
     function exportCsv() {
@@ -378,7 +380,7 @@ export function VatReturn() {
 
     return (
         <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-lg">
-<ScreenHero
+            <ScreenHero
                 title="مسودة مراجعة ضريبة القيمة المضافة"
                 english="VAT Return Review"
                 description="ملخص داخلي مبني على القيود المحاسبية المرحّلة فقط؛ لا يقدّم أو يرسل إقرارًا رسميًا."
@@ -386,9 +388,11 @@ export function VatReturn() {
                     <>
                         <button
                             type="button"
-                            onClick={() => { () => {
-                    void reportQuery.refetch();
-                } }}
+                            onClick={() => {
+                                () => {
+                                    void reportQuery.refetch();
+                                };
+                            }}
                             disabled={reportQuery.isFetching}
                             className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
                         >

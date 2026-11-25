@@ -6,7 +6,7 @@ import { YarasoftWorkbench } from '../components/YarasoftWorkbench';
 import { cashierLabel, cashierMatches, fetchCashierRevenues } from '../lib/cashier-revenues';
 import { formatMoney } from '../lib/format';
 import { presetRange, rangeProblem } from '../lib/reporting';
-import { FilterBar, StatCard , ScreenHero } from '../ui';
+import { FilterBar, ScreenHero, StatCard } from '../ui';
 
 /**
  * شاشة يارسوفت — تبويبان كاملان:
@@ -63,7 +63,7 @@ function IntegrationConsole() {
 
     return (
         <div className="flex flex-col gap-sm">
-<ScreenHero
+            <ScreenHero
                 title="تكامل قاعدة الكاشير"
                 english="YaraSoft Integration"
                 description="حالة الاستيراد والمراجعة والأقسام والروابط وربط Oracle وجودة البيانات والمرآة — نفس عقود V2."
@@ -71,9 +71,11 @@ function IntegrationConsole() {
                     <>
                         <button
                             type="button"
-                            onClick={() => { () => {
-                    void queryClient.invalidateQueries({ queryKey: ['yarasoft'] });
-                } }}
+                            onClick={() => {
+                                () => {
+                                    void queryClient.invalidateQueries({ queryKey: ['yarasoft'] });
+                                };
+                            }}
                             disabled={false}
                             className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
                         >
@@ -114,7 +116,7 @@ function LocalRevenueReport() {
 
     return (
         <div className="flex flex-col gap-md">
-<ScreenHero
+            <ScreenHero
                 title="إيرادات الكاشير"
                 english="Cashier Revenue"
                 description="إيرادات الكاشير مقروءة من قاعدة البيانات المحلية — مصدر القراءة هو PostgreSQL عندنا لا مزامنة Yarasoft."
@@ -122,9 +124,11 @@ function LocalRevenueReport() {
                     <>
                         <button
                             type="button"
-                            onClick={() => { () => {
-                    void snapshot.refetch();
-                } }}
+                            onClick={() => {
+                                () => {
+                                    void snapshot.refetch();
+                                };
+                            }}
                             disabled={snapshot.isFetching}
                             className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
                         >
@@ -133,8 +137,7 @@ function LocalRevenueReport() {
                     </>
                 }
             />
-            <div className="flex justify-end gap-xs" data-erp-print-hide>
-            </div>
+            <div className="flex justify-end gap-xs" data-erp-print-hide></div>
 
             <FilterBar
                 id="yarasoft-filter"

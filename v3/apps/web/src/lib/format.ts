@@ -18,9 +18,13 @@ const MONEY_TEXT_PATTERN = /^(-?)(\d+)(?:\.(\d{1,2}))?$/;
 /** أرقام عربية هندية (٠-٩) → لاتينية، وفواصل عشرية/آلاف → إنجليزية
  *  (٠١٢.٣٤٥ / ١٢٫٥ / ١٬٥٠٠ / ١٢,٥ كلها تُقرأ صح). */
 export function parseArabicDecimal(value: unknown, fallback = Number.NaN): number {
-    if (typeof value === 'number') {return Number.isFinite(value) ? value : fallback;}
+    if (typeof value === 'number') {
+        return Number.isFinite(value) ? value : fallback;
+    }
     let s = String(value ?? '').trim();
-    if (!s) {return fallback;}
+    if (!s) {
+        return fallback;
+    }
     s = s.replace(/[٠-٩]/g, (d) => String('٠١٢٣٤٥٦٧٨٩'.indexOf(d)));
     // فواصل الآلاف تُحذف صراحةً (٫0..)
     s = s.replace(/[٬’' ]/g, '');

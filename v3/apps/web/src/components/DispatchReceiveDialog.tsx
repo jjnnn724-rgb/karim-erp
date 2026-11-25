@@ -2,14 +2,14 @@ import { type FormEvent, useState } from 'react';
 import type { Dispatch } from '../lib/dispatches';
 import {
     DISPATCH_TEXT,
-    type ReceiveDraft,
-    type ReceivedItemPayload,
-    type SignedDecision,
     decisionSignatureError,
     dispatchItemLines,
+    type ReceiveDraft,
+    type ReceivedItemPayload,
     receiveDraftError,
-    receiveSourceItems,
     receivedItemsPayload,
+    receiveSourceItems,
+    type SignedDecision,
 } from '../lib/dispatches-write';
 import { writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
@@ -58,7 +58,10 @@ export function DispatchReceiveDialog({
     const [rows, setRows] = useState<ReceiveRow[]>(() =>
         lines.map((line) => {
             const previousReceipt = (dispatch.receivedItems ?? []).find(
-                (item) => String(item.itemName ?? item.name ?? '').trim().toLowerCase() === line.name.toLowerCase(),
+                (item) =>
+                    String(item.itemName ?? item.name ?? '')
+                        .trim()
+                        .toLowerCase() === line.name.toLowerCase(),
             );
             const previouslyReceived = Number(previousReceipt?.receivedQty) || 0;
             const previouslyReceivedPackaging = Number(previousReceipt?.receivedPackagingQty) || 0;
@@ -70,9 +73,7 @@ export function DispatchReceiveDialog({
                 approvedPackagingQty: Math.max(0, line.packagingQty - previouslyReceivedPackaging),
                 totalApprovedPackagingQty: line.packagingQty,
                 receivedQty: String(Math.max(0, line.qty - previouslyReceived)),
-                receivedPackagingQty: line.catchWeight
-                    ? String(Math.max(0, line.packagingQty - previouslyReceivedPackaging))
-                    : '',
+                receivedPackagingQty: line.catchWeight ? String(Math.max(0, line.packagingQty - previouslyReceivedPackaging)) : '',
             };
         }),
     );
@@ -151,7 +152,8 @@ export function DispatchReceiveDialog({
                 </dl>
 
                 <p className="rounded-md border border-info/40 bg-info-soft p-sm text-body-sm text-ink">
-                    الاستلام والتوقيع باسم حسابك فقط (<strong>{signerName || '—'}</strong>) — أدخل الكميات المستلمة الآن من المتبقي المعتمد، وسيُحفظ العجز لاستكماله لاحقًا.
+                    الاستلام والتوقيع باسم حسابك فقط (<strong>{signerName || '—'}</strong>) — أدخل الكميات المستلمة الآن من المتبقي المعتمد،
+                    وسيُحفظ العجز لاستكماله لاحقًا.
                 </p>
 
                 <ul className="flex flex-col gap-xs">
@@ -207,7 +209,12 @@ export function DispatchReceiveDialog({
                     value={notes}
                     onChange={(event) => setNotes(event.target.value)}
                 />
-                <SignaturePad label={`توقيع المستلم — ${signerName || '—'}`} name={signerName} testId="dispatch-signature" onChange={setSignature} />
+                <SignaturePad
+                    label={`توقيع المستلم — ${signerName || '—'}`}
+                    name={signerName}
+                    testId="dispatch-signature"
+                    onChange={setSignature}
+                />
                 {error ? (
                     <p role="alert" className="text-body-sm text-danger-text">
                         {error}

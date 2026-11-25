@@ -639,7 +639,14 @@ function EmployeeCard({
                     <button
                         type="button"
                         onClick={() => {
-                            void navigate({ to: '/employee-card', search: { id: String(row.id ?? '').replace(/^['"]+|['"]+$/g, '').trim() } });
+                            void navigate({
+                                to: '/employee-card',
+                                search: {
+                                    id: String(row.id ?? '')
+                                        .replace(/^['"]+|['"]+$/g, '')
+                                        .trim(),
+                                },
+                            });
                         }}
                         className="rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-button-md text-ink hover:bg-surface-hover"
                     >
@@ -715,13 +722,15 @@ function AttendanceRangeSection({
             setNote('حمّل كشف اليوم أو الفترة قبل الطباعة');
             return;
         }
-        printSmart(employeeAttendancePrintHtml({
-            employeeName,
-            employeeCode,
-            department,
-            position,
-            report: model,
-        }));
+        printSmart(
+            employeeAttendancePrintHtml({
+                employeeName,
+                employeeCode,
+                department,
+                position,
+                report: model,
+            }),
+        );
     }
 
     // biome-ignore lint/correctness/useExhaustiveDependencies: auto-reload only when the employee changes; load uses the latest range values.

@@ -80,12 +80,8 @@ export function Reports() {
                                         className="block h-full rounded-md border border-hairline bg-surface px-sm py-sm text-ink transition-colors hover:border-primary hover:bg-surface-hover focus-visible:outline focus-visible:outline-2 focus-visible:outline-focus"
                                     >
                                         <span className="block text-heading-sm">{destination.title}</span>
-                                        <span className="mt-xxs block text-body-sm text-muted">
-                                            {destination.description}
-                                        </span>
-                                        <span className="mt-xs block text-caption text-primary">
-                                            {destination.output}
-                                        </span>
+                                        <span className="mt-xxs block text-body-sm text-muted">{destination.description}</span>
+                                        <span className="mt-xs block text-caption text-primary">{destination.output}</span>
                                     </a>
                                 </li>
                             ))}
@@ -110,10 +106,7 @@ export function Reports() {
                         onApply={apply}
                         pending={reportQuery.isFetching}
                     />
-                    <fieldset
-                        className="m-0 flex min-w-0 flex-wrap items-center gap-xs border-0 p-0"
-                        aria-label="التجميع"
-                    >
+                    <fieldset className="m-0 flex min-w-0 flex-wrap items-center gap-xs border-0 p-0" aria-label="التجميع">
                         {GROUP_OPTIONS.map((option) => (
                             <button
                                 key={option.key}
@@ -153,10 +146,7 @@ export function Reports() {
 
             {report ? (
                 <>
-                    <ul
-                        className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4"
-                        aria-label="مؤشرات تقرير المبيعات"
-                    >
+                    <ul className="grid list-none gap-sm sm:grid-cols-2 xl:grid-cols-4" aria-label="مؤشرات تقرير المبيعات">
                         <KpiCard
                             label="صافي المبيعات"
                             english="Net sales"
@@ -249,9 +239,7 @@ export function Reports() {
                                                 key={`${reportRowLabel(row, groupBy)}-${String(index)}`}
                                                 className="border-b border-hairline hover:bg-surface-hover"
                                             >
-                                                <td className="px-sm py-xxs text-ink">
-                                                    {reportRowLabel(row, groupBy)}
-                                                </td>
+                                                <td className="px-sm py-xxs text-ink">{reportRowLabel(row, groupBy)}</td>
                                                 <td className="erp-numeric px-sm py-xxs" dir="ltr">
                                                     {intOf(row.invoice_count)}
                                                 </td>
@@ -277,10 +265,7 @@ export function Reports() {
                             </TableScroll>
                         )}
                         {groupBy === 'item' && rows.length >= ITEM_ROWS_CAP ? (
-                            <p
-                                className="border-t border-hairline px-sm py-xs text-caption text-warning-text"
-                                role="status"
-                            >
+                            <p className="border-t border-hairline px-sm py-xs text-caption text-warning-text" role="status">
                                 {`النافذة مقصوصة عند ${intOf(ITEM_ROWS_CAP)} صنفًا — الأعلى صافيًا أولًا.`}
                             </p>
                         ) : null}

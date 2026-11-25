@@ -439,7 +439,11 @@ export function PunchSection() {
                     <p className="text-body-sm text-muted">
                         المستثنون يبصمون من أي موقع — باقي طبقات الأمان (الوجه، الجهاز، السبام) كما هي.
                     </p>
-                    {exemptError ? <p role="alert" className="text-body-sm text-danger-text">{exemptError}</p> : null}
+                    {exemptError ? (
+                        <p role="alert" className="text-body-sm text-danger-text">
+                            {exemptError}
+                        </p>
+                    ) : null}
                     <div className="flex flex-wrap items-end gap-sm">
                         <Select
                             label="الموظف"
@@ -456,7 +460,9 @@ export function PunchSection() {
                             loading={saveExempt.isPending}
                             onClick={() => {
                                 const id = exemptUserId.trim();
-                                if (!id) { return; }
+                                if (!id) {
+                                    return;
+                                }
                                 const merged = [...exemptIds.filter((x) => x !== id), id].join(',');
                                 saveExempt.mutate({ punch_geo_exempt_user_ids: merged });
                             }}

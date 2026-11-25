@@ -1,6 +1,6 @@
-import { describe, expect, it, vi } from 'vitest';
-import { render, screen, waitFor } from '@testing-library/react';
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
+import { render, screen, waitFor } from '@testing-library/react';
+import { describe, expect, it, vi } from 'vitest';
 import { ToastProvider } from '../ui/Toast';
 import { DepartmentCost } from './DepartmentCost';
 
@@ -14,8 +14,30 @@ const issuesPayload = {
     to: '2026-11-14',
     totals: { items: 2, moves: 15, dispatches: 6, cost: 1250.5, grams: 10000, weight_items: 1, packed_items: 1 },
     items: [
-        { item_id: '11', name: 'بيض كرتون', unit: 'كرتون', category: 'عام', qty: 5, grams: null, cost: 600, moves: 10, dispatches: 3, share: 48 },
-        { item_id: '22', name: 'عدس أحمر-كيس', unit: 'كيس', category: 'عام', qty: 10, grams: 10000, cost: 650.5, moves: 5, dispatches: 3, share: 52 },
+        {
+            item_id: '11',
+            name: 'بيض كرتون',
+            unit: 'كرتون',
+            category: 'عام',
+            qty: 5,
+            grams: null,
+            cost: 600,
+            moves: 10,
+            dispatches: 3,
+            share: 48,
+        },
+        {
+            item_id: '22',
+            name: 'عدس أحمر-كيس',
+            unit: 'كيس',
+            category: 'عام',
+            qty: 10,
+            grams: 10000,
+            cost: 650.5,
+            moves: 5,
+            dispatches: 3,
+            share: 52,
+        },
     ],
     veg: { requests: 3, items_count: 4, qty_kg: 1200 },
 };
@@ -36,8 +58,20 @@ const breakfastPayload = {
     full_cost_pct: 9.4,
     full_verdict: { tone: 'success', text: 'ممتاز — هامش مريح' },
     groups: [
-        { group: 'بيض', items: [{ item_id: '11', name: 'بيض كرتون', unit: 'كرتون', qty: 56, grams: null, cost: 6710.11, moves: 26 }], cost: 6710.11, kg: 0, share: 44 },
-        { group: 'فول', items: [{ item_id: '33', name: 'فول مدمس-كرتون', unit: 'كرتون', qty: 53, grams: null, cost: 1805.79, moves: 25 }], cost: 1805.79, kg: 0, share: 12 },
+        {
+            group: 'بيض',
+            items: [{ item_id: '11', name: 'بيض كرتون', unit: 'كرتون', qty: 56, grams: null, cost: 6710.11, moves: 26 }],
+            cost: 6710.11,
+            kg: 0,
+            share: 44,
+        },
+        {
+            group: 'فول',
+            items: [{ item_id: '33', name: 'فول مدمس-كرتون', unit: 'كرتون', qty: 53, grams: null, cost: 1805.79, moves: 25 }],
+            cost: 1805.79,
+            kg: 0,
+            share: 12,
+        },
     ],
     top_items: [],
     veg: { requests: 3, items_count: 4, qty_kg: 1200 },

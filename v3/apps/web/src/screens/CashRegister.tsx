@@ -1,5 +1,4 @@
 import './CashRegister.premium.css';
-import { ScreenHero } from '../ui';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useRef, useState } from 'react';
 import { KpiCard, SectionCard } from '../components/Reports';
@@ -28,6 +27,7 @@ import {
 import { printSmart } from '../lib/print-viewer';
 import { errorMessage } from '../lib/reporting';
 import { writeErrorMessage } from '../lib/write';
+import { ScreenHero } from '../ui';
 import { useToast } from '../ui/Toast';
 
 /**
@@ -660,14 +660,16 @@ export function CashRegister() {
         setPrinting('multi');
         try {
             const report = await fetchCashRegister({ from, to, limit: MULTI_REPORT_SCAN });
-            printSmart(multiReportHtml({
-                from,
-                to,
-                tokens,
-                rows: report.rows ?? [],
-                totalCount: Number(report.totals?.count ?? 0),
-                currency: String(report.currency ?? ''),
-            }));
+            printSmart(
+                multiReportHtml({
+                    from,
+                    to,
+                    tokens,
+                    rows: report.rows ?? [],
+                    totalCount: Number(report.totals?.count ?? 0),
+                    currency: String(report.currency ?? ''),
+                }),
+            );
         } catch (error) {
             toast({
                 variant: 'error',
@@ -681,7 +683,7 @@ export function CashRegister() {
 
     return (
         <div className="cash-register-premium flex flex-col gap-md">
-<ScreenHero
+            <ScreenHero
                 title="سجلّ الصرف"
                 english="Expense Register"
                 description="كل ما خرج من الصندوق: حركةٌ بإذنها وحالتها، مع مؤشرات الفترة وتوزيع الأقسام."
@@ -689,9 +691,11 @@ export function CashRegister() {
                     <>
                         <button
                             type="button"
-                            onClick={() => { () => {
-                    void registerQuery.refetch();
-                } }}
+                            onClick={() => {
+                                () => {
+                                    void registerQuery.refetch();
+                                };
+                            }}
                             disabled={registerQuery.isFetching}
                             className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
                         >

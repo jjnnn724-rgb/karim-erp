@@ -37,9 +37,7 @@ const leaveRowSchema = z
 
 export type EmployeeLeaveRow = z.infer<typeof leaveRowSchema>;
 
-const leaveTypesSchema = z
-    .object({ rows: z.array(z.object({ id: idLike, name: text }).passthrough()).optional() })
-    .passthrough();
+const leaveTypesSchema = z.object({ rows: z.array(z.object({ id: idLike, name: text }).passthrough()).optional() }).passthrough();
 
 const leaveWorkflowSchema = z.union([z.array(leaveRowSchema), z.object({ rows: z.array(leaveRowSchema).optional() }).passthrough()]);
 
@@ -93,7 +91,12 @@ export type SuiteRow = z.infer<typeof suiteRowSchema>;
 /** قائمة كيان HR مُفلترة على موظف واحد (التقليب الكامل ثم الترشيح بالعميل). */
 async function fetchSuiteEntity(entity: string, employeeId: string, signal?: AbortSignal): Promise<SuiteRow[]> {
     const rowsSchema = z.union([z.array(suiteRowSchema), z.object({ rows: z.array(suiteRowSchema).optional() }).passthrough()]);
-    const body = await fetchJson(rowsSchema, `/api/${entity}?page=1&limit=1000&sort=id&order=desc`, getAccessToken(), signal ? { signal } : {});
+    const body = await fetchJson(
+        rowsSchema,
+        `/api/${entity}?page=1&limit=1000&sort=id&order=desc`,
+        getAccessToken(),
+        signal ? { signal } : {},
+    );
     const rows = Array.isArray(body) ? body : (body.rows ?? []);
     return rows.filter((row) => String(row.employeeId ?? '') === String(employeeId));
 }
@@ -122,7 +125,12 @@ export type ShiftSchedule = z.infer<typeof shiftScheduleSchema>;
 
 export async function fetchShiftSchedule(employeeId: string, signal?: AbortSignal): Promise<ShiftSchedule | null> {
     try {
-        return await fetchJson(shiftScheduleSchema, `/api/hr/shift-schedule/${encodeURIComponent(employeeId)}`, getAccessToken(), signal ? { signal } : {});
+        return await fetchJson(
+            shiftScheduleSchema,
+            `/api/hr/shift-schedule/${encodeURIComponent(employeeId)}`,
+            getAccessToken(),
+            signal ? { signal } : {},
+        );
     } catch {
         return null; // الوردية المجدولة اختيارية — غيابها لا يكسر البطاقة.
     }
@@ -142,7 +150,12 @@ export type QrCard = z.infer<typeof qrCardSchema>;
 
 export async function fetchQrCard(employeeId: string, signal?: AbortSignal): Promise<QrCard | null> {
     try {
-        return await fetchJson(qrCardSchema, `/api/hr/employees/${encodeURIComponent(employeeId)}/card`, getAccessToken(), signal ? { signal } : {});
+        return await fetchJson(
+            qrCardSchema,
+            `/api/hr/employees/${encodeURIComponent(employeeId)}/card`,
+            getAccessToken(),
+            signal ? { signal } : {},
+        );
     } catch {
         return null; // بلا سر QR أو بلا صلاحية — القسم يختفي بنعومة.
     }

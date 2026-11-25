@@ -1,8 +1,8 @@
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vitest';
 import { ApiError } from './api';
-import { setUiFlag } from './ui-flags';
 import type { CompleteSaleInput } from './pos';
 import type { PosSaleItem } from './pos-pricing';
+import { setUiFlag } from './ui-flags';
 
 const mocks = vi.hoisted(() => ({ completePosSale: vi.fn() }));
 

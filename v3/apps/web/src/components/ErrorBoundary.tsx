@@ -9,12 +9,16 @@ import { ErrorScreen } from './ErrorScreen';
 let lastReportAt = 0;
 function reportClientError(kind: string, error: unknown): void {
     const now = Date.now();
-    if (now - lastReportAt < 2_000) {return;}
+    if (now - lastReportAt < 2_000) {
+        return;
+    }
     lastReportAt = now;
     try {
         const err = error instanceof Error ? error : new Error(String(error));
         const message = String((err as Error).message || error).slice(0, 280);
-        if (!message) {return;}
+        if (!message) {
+            return;
+        }
         const payload = {
             kind,
             message,
@@ -23,8 +27,10 @@ function reportClientError(kind: string, error: unknown): void {
             version: 'v3',
         };
         const body = JSON.stringify(payload);
-        const sent = typeof navigator !== 'undefined' && typeof navigator.sendBeacon === 'function'
-            && navigator.sendBeacon('/api/security/client-error', new Blob([body], { type: 'application/json' }));
+        const sent =
+            typeof navigator !== 'undefined' &&
+            typeof navigator.sendBeacon === 'function' &&
+            navigator.sendBeacon('/api/security/client-error', new Blob([body], { type: 'application/json' }));
         if (!sent) {
             void fetch('/api/security/client-error', {
                 method: 'POST',

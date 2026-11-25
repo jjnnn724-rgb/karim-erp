@@ -79,8 +79,8 @@
     --erp-c-warning-text: oklch(0.473 0.1204 50.27); /* #8F4308 */
     --erp-c-danger: oklch(0.5013 0.1783 28.7); /* #B3261E */
     --erp-c-danger-text: oklch(0.4254 0.148 29.38); /* #8E1F16 */
-    --erp-c-info: oklch(0.34489 0.05132 250.50); /* #243B53 — slate مطابق للهوية (كان أزرق) */
-    --erp-c-info-text: oklch(0.28012 0.03945 244.00); /* #172B3B — نفس slate-2 (chart-2) */
+    --erp-c-info: oklch(0.34489 0.05132 250.5); /* #243B53 — slate مطابق للهوية (كان أزرق) */
+    --erp-c-info-text: oklch(0.28012 0.03945 244); /* #172B3B — نفس slate-2 (chart-2) */
     --erp-c-neutral: oklch(0.5006 0.025 259.18); /* #5B6472 */
     --erp-c-neutral-text: oklch(0.3958 0.0244 260.11); /* #3F4754 */
     --erp-c-sidebar: oklch(0.27848 0.05638 249.75); /* #102A43 */
@@ -192,7 +192,7 @@
     --erp-c-danger: oklch(0.7318 0.165 28.31); /* #FF7A6B */
     --erp-c-danger-text: oklch(0.8119 0.1066 28.79); /* #FFA79A */
     --erp-c-info: oklch(0.41411 0.04269 260.21); /* #3E4C63 — steel مطابق للهوية (كان أزرق فاتح) */
-    --erp-c-info-text: oklch(0.86984 0.02180 245.88); /* #C9D6E2 — فاتح على info-soft الداكن */
+    --erp-c-info-text: oklch(0.86984 0.0218 245.88); /* #C9D6E2 — فاتح على info-soft الداكن */
     --erp-c-neutral: oklch(0.6609 0.0246 260.7); /* #8A93A2 */
     --erp-c-neutral-text: oklch(0.7996 0.0217 261.76); /* #B6BECC */
     --erp-c-sidebar: oklch(0.19861 0.03355 246.44); /* #081724 */

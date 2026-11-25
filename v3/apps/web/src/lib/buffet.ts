@@ -21,7 +21,9 @@ const moneyValue = z.union([z.string(), z.number()]).transform((v) => {
     return Number.isFinite(n) ? n : 0;
 });
 const nullableMoney = z.union([z.string(), z.number(), z.null()]).transform((v) => {
-    if (v === null) {return null;}
+    if (v === null) {
+        return null;
+    }
     const n = Number(v);
     return Number.isFinite(n) ? n : null;
 });
@@ -38,25 +40,56 @@ export const buffetLineSchema = z.object({
     avgCost: nullableMoney.optional(),
     packKg: nullableMoney.optional(),
     inventoryId: z.union([z.string(), z.number()]).nullable().optional(),
-    inventory: z.object({ id: z.any().optional(), name: z.string(), unit: z.string(), avgCost: nullableMoney.optional() }).nullable().optional(),
+    inventory: z
+        .object({ id: z.any().optional(), name: z.string(), unit: z.string(), avgCost: nullableMoney.optional() })
+        .nullable()
+        .optional(),
 });
 export type BuffetLine = z.infer<typeof buffetLineSchema>;
 
-export const buffetNutritionSchema = z.object({
-    totals: z.object({ kcal: moneyValue, protein: moneyValue, carbs: moneyValue, fat: moneyValue, fiber: moneyValue, sodium: moneyValue }).passthrough(),
-    perServing: z.object({
-        low: z.object({ kcal: moneyValue, protein: moneyValue, carbs: moneyValue, fat: moneyValue, fiber: moneyValue, sodium: moneyValue }).passthrough().nullable().optional(),
-        high: z.object({ kcal: moneyValue, protein: moneyValue, carbs: moneyValue, fat: moneyValue, fiber: moneyValue, sodium: moneyValue }).passthrough().nullable().optional(),
-        guestsLow: z.number().optional(),
-        guestsHigh: z.number().optional(),
-    }).passthrough(),
-    allergens: z.array(z.string()),
-    allergenLabels: z.array(z.string()),
-    matchedCount: z.number().optional(),
-    unmatched: z.array(z.string()),
-    sourceNote: z.string().nullable().optional(),
-    unmatchedNote: z.string().nullable().optional(),
-}).passthrough();
+export const buffetNutritionSchema = z
+    .object({
+        totals: z
+            .object({ kcal: moneyValue, protein: moneyValue, carbs: moneyValue, fat: moneyValue, fiber: moneyValue, sodium: moneyValue })
+            .passthrough(),
+        perServing: z
+            .object({
+                low: z
+                    .object({
+                        kcal: moneyValue,
+                        protein: moneyValue,
+                        carbs: moneyValue,
+                        fat: moneyValue,
+                        fiber: moneyValue,
+                        sodium: moneyValue,
+                    })
+                    .passthrough()
+                    .nullable()
+                    .optional(),
+                high: z
+                    .object({
+                        kcal: moneyValue,
+                        protein: moneyValue,
+                        carbs: moneyValue,
+                        fat: moneyValue,
+                        fiber: moneyValue,
+                        sodium: moneyValue,
+                    })
+                    .passthrough()
+                    .nullable()
+                    .optional(),
+                guestsLow: z.number().optional(),
+                guestsHigh: z.number().optional(),
+            })
+            .passthrough(),
+        allergens: z.array(z.string()),
+        allergenLabels: z.array(z.string()),
+        matchedCount: z.number().optional(),
+        unmatched: z.array(z.string()),
+        sourceNote: z.string().nullable().optional(),
+        unmatchedNote: z.string().nullable().optional(),
+    })
+    .passthrough();
 export type BuffetNutrition = z.infer<typeof buffetNutritionSchema>;
 
 export const buffetDishSchema = z.object({
@@ -74,12 +107,14 @@ export const buffetDishSchema = z.object({
     pricedLines: z.number(),
     unpricedLines: z.number(),
     totalLines: z.number(),
-    perPerson: z.object({
-        low: moneyValue,
-        high: moneyValue,
-        guestsLow: z.number(),
-        guestsHigh: z.number(),
-    }).nullable(),
+    perPerson: z
+        .object({
+            low: moneyValue,
+            high: moneyValue,
+            guestsLow: z.number(),
+            guestsHigh: z.number(),
+        })
+        .nullable(),
     lines: z.array(buffetLineSchema),
 });
 export type BuffetDish = z.infer<typeof buffetDishSchema>;
@@ -95,27 +130,33 @@ export const buffetWeekEntrySchema = z.object({
 });
 export type BuffetWeekEntry = z.infer<typeof buffetWeekEntrySchema>;
 
-export const buffetOverviewSchema = z.object({
-    ok: z.boolean().optional(),
-    generatedAt: z.string(),
-    totals: z.object({
-        total: z.number(),
-        pricedFull: z.number(),
-        pricedPartial: z.number(),
-        unpriced: z.number(),
-        unpricedLineCount: z.number(),
-        batchCostSum: moneyValue,
-    }),
-    dishes: z.array(buffetDishSchema),
-    week: z.array(buffetWeekEntrySchema),
-    unpriced: z.array(z.object({
-        dish: z.string(),
-        name: z.string(),
-        qty: moneyValue,
-        unit: z.string(),
-        state: z.string(),
-    })).optional(),
-}).passthrough();
+export const buffetOverviewSchema = z
+    .object({
+        ok: z.boolean().optional(),
+        generatedAt: z.string(),
+        totals: z.object({
+            total: z.number(),
+            pricedFull: z.number(),
+            pricedPartial: z.number(),
+            unpriced: z.number(),
+            unpricedLineCount: z.number(),
+            batchCostSum: moneyValue,
+        }),
+        dishes: z.array(buffetDishSchema),
+        week: z.array(buffetWeekEntrySchema),
+        unpriced: z
+            .array(
+                z.object({
+                    dish: z.string(),
+                    name: z.string(),
+                    qty: moneyValue,
+                    unit: z.string(),
+                    state: z.string(),
+                }),
+            )
+            .optional(),
+    })
+    .passthrough();
 export type BuffetOverview = z.infer<typeof buffetOverviewSchema>;
 
 export const inventorySearchItemSchema = z.object({
@@ -137,8 +178,12 @@ export function isFullyPriced(dish: BuffetDish): boolean {
 
 /** الحالة العامة للصنف — للشارة والفلتر */
 export function dishStatus(dish: BuffetDish): 'priced' | 'partial' | 'unpriced' {
-    if (dish.totalLines > 0 && dish.unpricedLines === 0) {return 'priced';}
-    if (dish.pricedLines > 0) {return 'partial';}
+    if (dish.totalLines > 0 && dish.unpricedLines === 0) {
+        return 'priced';
+    }
+    if (dish.pricedLines > 0) {
+        return 'partial';
+    }
     return 'unpriced';
 }
 
@@ -167,31 +212,50 @@ export const dishPayloadSchema = z.object({
     notes: z.string().trim().default(''),
     description: z.string().trim().default(''),
     description_en: z.string().trim().default(''),
-    ingredients: z.array(z.object({ name: z.string().trim().min(1), qty: z.coerce.number().min(0), unit: z.string().trim().min(1) }).passthrough()).default([]),
+    ingredients: z
+        .array(z.object({ name: z.string().trim().min(1), qty: z.coerce.number().min(0), unit: z.string().trim().min(1) }).passthrough())
+        .default([]),
 });
 export type DishPayload = z.infer<typeof dishPayloadSchema>;
 
-export const autofillDraftSchema = z.object({
-    ok: z.boolean().optional(),
-    draft: z.object({
-        name: z.string(),
-        category: z.string().nullable().optional(),
-        yields: z.string().default(''),
-        description: z.string().default(''),
-        ingredients: z.array(z.object({ name: z.string(), qty: moneyValue, unit: z.string() }).passthrough()),
-        nutrition: z.object({
-            totals: z.object({ kcal: moneyValue, protein: moneyValue, carbs: moneyValue, fat: moneyValue, fiber: moneyValue, sodium: moneyValue }).passthrough(),
-            perServing: z.object({ low: z.any(), high: z.any(), guestsLow: z.number().optional(), guestsHigh: z.number().optional() }).passthrough(),
-            allergens: z.array(z.string()),
-            allergenLabels: z.array(z.string()),
-            matchedCount: z.number().optional(),
-            unmatched: z.array(z.string()),
-            sourceNote: z.string().nullable().optional(),
-            unmatchedNote: z.string().nullable().optional(),
-        }).passthrough(),
-        model: z.string().nullable().optional(),
-    }).passthrough(),
-}).passthrough();
+export const autofillDraftSchema = z
+    .object({
+        ok: z.boolean().optional(),
+        draft: z
+            .object({
+                name: z.string(),
+                category: z.string().nullable().optional(),
+                yields: z.string().default(''),
+                description: z.string().default(''),
+                ingredients: z.array(z.object({ name: z.string(), qty: moneyValue, unit: z.string() }).passthrough()),
+                nutrition: z
+                    .object({
+                        totals: z
+                            .object({
+                                kcal: moneyValue,
+                                protein: moneyValue,
+                                carbs: moneyValue,
+                                fat: moneyValue,
+                                fiber: moneyValue,
+                                sodium: moneyValue,
+                            })
+                            .passthrough(),
+                        perServing: z
+                            .object({ low: z.any(), high: z.any(), guestsLow: z.number().optional(), guestsHigh: z.number().optional() })
+                            .passthrough(),
+                        allergens: z.array(z.string()),
+                        allergenLabels: z.array(z.string()),
+                        matchedCount: z.number().optional(),
+                        unmatched: z.array(z.string()),
+                        sourceNote: z.string().nullable().optional(),
+                        unmatchedNote: z.string().nullable().optional(),
+                    })
+                    .passthrough(),
+                model: z.string().nullable().optional(),
+            })
+            .passthrough(),
+    })
+    .passthrough();
 export type AutofillResponse = z.infer<typeof autofillDraftSchema>;
 export type AutofillDraft = AutofillResponse['draft'];
 
@@ -205,10 +269,15 @@ export async function autofillDish(input: { name: string; category?: string; yie
 export function useBuffetCreateDishMutation() {
     return useWriteMutation<DishPayload, { id: string | number }>({
         mutationFn: async (payload) => {
-            const r = await fetchJson(z.object({ ok: z.boolean().optional(), id: z.union([z.string(), z.number()]) }).passthrough(), '/api/buffet/dishes', getAccessToken(), {
-                method: 'POST',
-                body: payload,
-            });
+            const r = await fetchJson(
+                z.object({ ok: z.boolean().optional(), id: z.union([z.string(), z.number()]) }).passthrough(),
+                '/api/buffet/dishes',
+                getAccessToken(),
+                {
+                    method: 'POST',
+                    body: payload,
+                },
+            );
             return { id: r.id };
         },
         successTitle: 'أُضيف الصنف إلى البوفيه',
@@ -232,7 +301,9 @@ export function useBuffetUpdateDishMutation() {
 export function useBuffetDeleteDishMutation() {
     return useWriteMutation<{ id: string | number; name?: string }, void>({
         mutationFn: async ({ id }) => {
-            await fetchJson(z.object({ ok: z.boolean().optional() }).passthrough(), `/api/buffet/dishes/${id}`, getAccessToken(), { method: 'DELETE' });
+            await fetchJson(z.object({ ok: z.boolean().optional() }).passthrough(), `/api/buffet/dishes/${id}`, getAccessToken(), {
+                method: 'DELETE',
+            });
         },
         successTitle: ({ name }: { name?: string }) => (name ? `حُذف «${name}» من البوفيه` : 'حُذف الصنف'),
         invalidate: [['buffet', 'overview']],
@@ -241,43 +312,49 @@ export function useBuffetDeleteDishMutation() {
 
 /** ─── محرك الربط الآلي ─────────────────────────────────────────── */
 
-export const rematchBestSchema = z.object({
-    inventoryId: z.union([z.string(), z.number()]).transform((v) => String(v)),
-    name: z.string(),
-    unit: z.string(),
-    avgCost: nullableMoney,
-    score: moneyValue,
-    reasons: z.array(z.string()).default([]),
-    packKg: nullableMoney,
-}).passthrough();
+export const rematchBestSchema = z
+    .object({
+        inventoryId: z.union([z.string(), z.number()]).transform((v) => String(v)),
+        name: z.string(),
+        unit: z.string(),
+        avgCost: nullableMoney,
+        score: moneyValue,
+        reasons: z.array(z.string()).default([]),
+        packKg: nullableMoney,
+    })
+    .passthrough();
 export type RematchBest = z.infer<typeof rematchBestSchema>;
 
-export const rematchGroupSchema = z.object({
-    name: z.string(),
-    norm: z.string(),
-    count: z.number(),
-    lines: z.array(z.union([z.string(), z.number()]).transform((v) => Number(v))),
-    best: rematchBestSchema.nullable(),
-    alternatives: z.array(rematchBestSchema).default([]),
-    autoApply: z.boolean(),
-}).passthrough();
+export const rematchGroupSchema = z
+    .object({
+        name: z.string(),
+        norm: z.string(),
+        count: z.number(),
+        lines: z.array(z.union([z.string(), z.number()]).transform((v) => Number(v))),
+        best: rematchBestSchema.nullable(),
+        alternatives: z.array(rematchBestSchema).default([]),
+        autoApply: z.boolean(),
+    })
+    .passthrough();
 export type RematchGroup = z.infer<typeof rematchGroupSchema>;
 
-export const rematchResultSchema = z.object({
-    ok: z.boolean().optional(),
-    dryRun: z.boolean().optional(),
-    threshold: z.number(),
-    generatedAt: z.string(),
-    inventoryCount: z.number(),
-    unlinkedBefore: z.number(),
-    summary: z.object({
-        totalGroups: z.number(),
-        autoGroups: z.number(),
-        autoLines: z.number(),
-        reviewGroups: z.number(),
-    }),
-    groups: z.array(rematchGroupSchema),
-}).passthrough();
+export const rematchResultSchema = z
+    .object({
+        ok: z.boolean().optional(),
+        dryRun: z.boolean().optional(),
+        threshold: z.number(),
+        generatedAt: z.string(),
+        inventoryCount: z.number(),
+        unlinkedBefore: z.number(),
+        summary: z.object({
+            totalGroups: z.number(),
+            autoGroups: z.number(),
+            autoLines: z.number(),
+            reviewGroups: z.number(),
+        }),
+        groups: z.array(rematchGroupSchema),
+    })
+    .passthrough();
 export type RematchResponse = z.infer<typeof rematchResultSchema>;
 
 export async function fetchBuffetRematch(): Promise<RematchResponse> {
@@ -311,10 +388,15 @@ export function useBuffetRematchApplyMutation() {
 export function useBuffetAddWeekSlotMutation() {
     return useWriteMutation<{ day: string; meal: string; dishId: string | number }, void>({
         mutationFn: async ({ day, meal, dishId }) => {
-            await fetchJson(z.object({ ok: z.boolean().optional(), position: z.number().optional() }).passthrough(), '/api/buffet/week/slot', getAccessToken(), {
-                method: 'POST',
-                body: { day, meal, dishId: Number(dishId) },
-            });
+            await fetchJson(
+                z.object({ ok: z.boolean().optional(), position: z.number().optional() }).passthrough(),
+                '/api/buffet/week/slot',
+                getAccessToken(),
+                {
+                    method: 'POST',
+                    body: { day, meal, dishId: Number(dishId) },
+                },
+            );
         },
         successTitle: 'أُضيف الصنف للوصفة',
         invalidate: [['buffet', 'overview']],
@@ -335,8 +417,15 @@ export function useBuffetRemoveWeekSlotMutation() {
 }
 
 export async function searchInventoryForLink(q: string, signal?: AbortSignal): Promise<InventorySearchItem[]> {
-    if (q.trim().length < 2) {return [];}
-    const r = await fetchJson(inventorySearchSchema, `/api/buffet/search?q=${encodeURIComponent(q.trim())}`, getAccessToken(), signal ? { signal } : {});
+    if (q.trim().length < 2) {
+        return [];
+    }
+    const r = await fetchJson(
+        inventorySearchSchema,
+        `/api/buffet/search?q=${encodeURIComponent(q.trim())}`,
+        getAccessToken(),
+        signal ? { signal } : {},
+    );
     return r.items;
 }
 
@@ -344,10 +433,15 @@ export async function searchInventoryForLink(q: string, signal?: AbortSignal): P
 export function useBuffetLinkMutation() {
     return useWriteMutation<{ lineId: string | number; inventoryId: string | number | null }, void>({
         mutationFn: async ({ lineId, inventoryId }) => {
-            await fetchJson(z.object({ ok: z.boolean().optional() }).passthrough(), `/api/buffet/ingredients/${lineId}/link`, getAccessToken(), {
-                method: 'PUT',
-                body: { inventoryId: idAsString(inventoryId) },
-            });
+            await fetchJson(
+                z.object({ ok: z.boolean().optional() }).passthrough(),
+                `/api/buffet/ingredients/${lineId}/link`,
+                getAccessToken(),
+                {
+                    method: 'PUT',
+                    body: { inventoryId: idAsString(inventoryId) },
+                },
+            );
         },
         successTitle: 'تم ربط السطر بالمخزن',
         invalidate: [['buffet', 'overview']],
@@ -358,10 +452,15 @@ export function useBuffetLinkMutation() {
 export function useBuffetLinkGroupMutation() {
     return useWriteMutation<{ name: string; inventoryId: string | number | null }, { updated: number }>({
         mutationFn: async ({ name, inventoryId }) => {
-            const r = await fetchJson(z.object({ ok: z.boolean().optional(), updated: z.number().optional() }).passthrough(), '/api/buffet/ingredients/link-group', getAccessToken(), {
-                method: 'PUT',
-                body: { name, inventoryId: idAsString(inventoryId) },
-            });
+            const r = await fetchJson(
+                z.object({ ok: z.boolean().optional(), updated: z.number().optional() }).passthrough(),
+                '/api/buffet/ingredients/link-group',
+                getAccessToken(),
+                {
+                    method: 'PUT',
+                    body: { name, inventoryId: idAsString(inventoryId) },
+                },
+            );
             return { updated: Number(r.updated) || 0 };
         },
         successTitle: 'تم ربط كل الأسطر',
@@ -373,7 +472,12 @@ export function useBuffetLinkGroupMutation() {
 export function useBuffetUnlinkMutation() {
     return useWriteMutation<{ lineId: string | number }, void>({
         mutationFn: async ({ lineId }) => {
-            await fetchJson(z.object({ ok: z.boolean().optional() }).passthrough(), `/api/buffet/ingredients/${lineId}/link`, getAccessToken(), { method: 'DELETE' });
+            await fetchJson(
+                z.object({ ok: z.boolean().optional() }).passthrough(),
+                `/api/buffet/ingredients/${lineId}/link`,
+                getAccessToken(),
+                { method: 'DELETE' },
+            );
         },
         successTitle: 'فُك الربط',
         invalidate: [['buffet', 'overview']],

@@ -59,13 +59,23 @@ function stubFetch(): void {
                         /* تجاهل حمولات غير قابلة للتحليل */
                     }
                 }
-                if (method === 'PUT') { return json(settingsBody); }
+                if (method === 'PUT') {
+                    return json(settingsBody);
+                }
                 return json(settingsBody);
             }
-            if (url.includes('/api/attendance/portal/punch-devices')) { return json({ devices: [] }); }
-            if (url.includes('/api/attendance/portal/face/list')) { return json({ faces: [] }); }
-            if (url.includes('/api/attendance/portal/attempts')) { return json({ attempts: [], summary: {} }); }
-            if (url.includes('/api/users')) { return json(usersBody); }
+            if (url.includes('/api/attendance/portal/punch-devices')) {
+                return json({ devices: [] });
+            }
+            if (url.includes('/api/attendance/portal/face/list')) {
+                return json({ faces: [] });
+            }
+            if (url.includes('/api/attendance/portal/attempts')) {
+                return json({ attempts: [], summary: {} });
+            }
+            if (url.includes('/api/users')) {
+                return json(usersBody);
+            }
             return json({ error: 'NOT_FOUND', message: 'غير موجود' }, 404);
         }),
     );

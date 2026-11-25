@@ -6,7 +6,7 @@
  */
 
 export { Alert, type AlertProps, type AlertVariant } from './Alert';
-export { AnswerStrip, type AnswerItem, type AnswerStripProps } from './AnswerStrip';
+export { type AnswerItem, AnswerStrip, type AnswerStripProps } from './AnswerStrip';
 export { Badge, type BadgeProps, type BadgeVariant } from './Badge';
 export { Button, type ButtonProps, type ButtonSize, type ButtonVariant } from './Button';
 export type { CardBodyProps, CardDescriptionProps, CardFooterProps, CardHeaderProps, CardProps, CardTitleProps } from './Card';
@@ -38,7 +38,7 @@ export { PageHeader, type PageHeaderProps } from './PageHeader';
 export { Pagination, type PaginationLabels, type PaginationProps } from './Pagination';
 export { Radio, RadioGroup, type RadioGroupProps, type RadioOption, type RadioProps } from './Radio';
 export { RegisterShell, type RegisterShellProps } from './RegisterShell';
-export { RowActions, type RowAction, type RowActionsProps } from './RowActions';
+export { type RowAction, RowActions, type RowActionsProps } from './RowActions';
 export { ScreenHero, type ScreenHeroProps } from './ScreenHero';
 export { SearchInput, type SearchInputProps } from './SearchInput';
 export { SegmentedControl, type SegmentedControlProps, type SegmentedOption, type SegmentedSize } from './SegmentedControl';

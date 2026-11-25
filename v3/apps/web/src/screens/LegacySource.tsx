@@ -79,7 +79,14 @@ export function LegacySource() {
         <div className="legacy-source" dir="rtl">
             <header className="legacy-source__head">
                 <div>
-                    <h1 className="text-heading-md"> مصدر البيانات{' '} <span className="text-body-sm text-muted" dir="ltr" lang="en"> Data Source </span> </h1>
+                    <h1 className="text-heading-md">
+                        {' '}
+                        مصدر البيانات{' '}
+                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
+                            {' '}
+                            Data Source{' '}
+                        </span>{' '}
+                    </h1>
                     <p className="text-body-md text-muted">
                         النظام يعمل على PostgreSQL الخاص به. Yarasoft و Oracle مصدر قراءة فقط للفترة السابقة، ويُفصلان من هنا نهائيًا عند
                         الجاهزية.

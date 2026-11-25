@@ -110,7 +110,9 @@ const DEPT_CODE_ALIASES: Record<string, string> = {
 };
 
 function canonicalDeptCode(code: string): string {
-    const clean = String(code ?? '').trim().toLowerCase();
+    const clean = String(code ?? '')
+        .trim()
+        .toLowerCase();
     return (DEPT_CODE_ALIASES[clean] || clean).toLowerCase();
 }
 
@@ -125,9 +127,15 @@ export function deptCodesOf(user: GateUser | null | undefined): string[] {
 /** هل الإذن يخص قسم صاحب الحساب؟ — مرآة deptsMatch (warehouse-routes.js:69). */
 export function rowDeptMatches(user: GateUser | null | undefined, row: DispatchGateRow): boolean {
     const codes = deptCodesOf(user);
-    if (codes.length === 0) {return false;}
-    const d = String(row.deptCode ?? '').trim().toLowerCase();
-    if (!d) {return false;}
+    if (codes.length === 0) {
+        return false;
+    }
+    const d = String(row.deptCode ?? '')
+        .trim()
+        .toLowerCase();
+    if (!d) {
+        return false;
+    }
     const canD = canonicalDeptCode(d);
     return codes.some((c) => {
         const canC = canonicalDeptCode(c);

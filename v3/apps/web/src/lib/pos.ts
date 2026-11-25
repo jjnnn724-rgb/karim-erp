@@ -85,20 +85,24 @@ export const executiveSchema = z.object({
     }),
     daily: z.array(z.object({ day: text, invoices: num, revenue: text })),
     previous_daily: z.array(z.object({ day: text, invoices: num, revenue: text })),
-    by_department: z.array(z.object({
-        id: text,
-        name: text,
-        legacy_code: text,
-        invoices: num,
-        revenue: text,
-        share: num,
-    })),
-    top_products: z.array(z.object({
-        code: text,
-        name: text,
-        qty: text,
-        revenue: text,
-    })),
+    by_department: z.array(
+        z.object({
+            id: text,
+            name: text,
+            legacy_code: text,
+            invoices: num,
+            revenue: text,
+            share: num,
+        }),
+    ),
+    top_products: z.array(
+        z.object({
+            code: text,
+            name: text,
+            qty: text,
+            revenue: text,
+        }),
+    ),
     payments: z.object({
         cash: text,
         card: text,
@@ -109,9 +113,14 @@ export const executiveSchema = z.object({
 export type ExecutiveReport = z.infer<typeof executiveSchema>;
 
 /** النظرة التنفيذية: إيرادات/فواتير/ضريبة/مقارنة بالفترة السابقة + توزيع القسم/المنتج. */
-export async function fetchExecutiveReport(range: { from: string; to: string; departmentId?: string }, signal?: AbortSignal): Promise<ExecutiveReport> {
+export async function fetchExecutiveReport(
+    range: { from: string; to: string; departmentId?: string },
+    signal?: AbortSignal,
+): Promise<ExecutiveReport> {
     const qs = new URLSearchParams({ from: range.from, to: range.to });
-    if (range.departmentId) { qs.set('department_id', range.departmentId); }
+    if (range.departmentId) {
+        qs.set('department_id', range.departmentId);
+    }
     return fetchJson(executiveSchema, `/api/pos/reports/executive?${qs}`, token(), opts(signal));
 }
 
@@ -785,24 +794,41 @@ export const reportInventorySchema = z.object({
 export type ReportInventory = z.infer<typeof reportInventorySchema>;
 
 /** تقرير الأقسام: إيرادات/فواتير/متوسط فاتورة/ضريبة/نقدي/شبكة لكل قسم وفترة. */
-export async function fetchDepartmentReport(range: { from: string; to: string; departmentId?: string }, signal?: AbortSignal): Promise<ReportDepartment> {
+export async function fetchDepartmentReport(
+    range: { from: string; to: string; departmentId?: string },
+    signal?: AbortSignal,
+): Promise<ReportDepartment> {
     const qs = new URLSearchParams({ from: range.from, to: range.to });
-    if (range.departmentId) { qs.set('department_id', range.departmentId); }
+    if (range.departmentId) {
+        qs.set('department_id', range.departmentId);
+    }
     return fetchJson(reportDepartmentSchema, `/api/pos/reports/department?${qs}`, token(), opts(signal));
 }
 
 /** تقرير صنف: كمية/إيراد/ضريبة/خصومات/فواتير/متوسط سعر — من خطوط الفواتير الحقيقية. */
-export async function fetchProductReport(range: { from: string; to: string; productCode?: string; productName?: string }, signal?: AbortSignal): Promise<ReportProduct> {
+export async function fetchProductReport(
+    range: { from: string; to: string; productCode?: string; productName?: string },
+    signal?: AbortSignal,
+): Promise<ReportProduct> {
     const qs = new URLSearchParams({ from: range.from, to: range.to });
-    if (range.productCode) { qs.set('product_code', range.productCode); }
-    if (range.productName) { qs.set('product_name', range.productName); }
+    if (range.productCode) {
+        qs.set('product_code', range.productCode);
+    }
+    if (range.productName) {
+        qs.set('product_name', range.productName);
+    }
     return fetchJson(reportProductSchema, `/api/pos/reports/product?${qs}`, token(), opts(signal));
 }
 
 /** تقرير المخزن: كل حركة بكمية وقيمة وسببها — للفترة المحددة. */
-export async function fetchInventoryReport(range: { from: string; to: string; search?: string }, signal?: AbortSignal): Promise<ReportInventory> {
+export async function fetchInventoryReport(
+    range: { from: string; to: string; search?: string },
+    signal?: AbortSignal,
+): Promise<ReportInventory> {
     const qs = new URLSearchParams({ from: range.from, to: range.to });
-    if (range.search) { qs.set('search', range.search); }
+    if (range.search) {
+        qs.set('search', range.search);
+    }
     return fetchJson(reportInventorySchema, `/api/pos/reports/inventory?${qs}`, token(), opts(signal));
 }
 

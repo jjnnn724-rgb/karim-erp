@@ -136,197 +136,521 @@
    الأقسام — رأس الصفحة + التبويبات (luxe carbon × gold — v4.9.368)
    ═══════════════════════════════════════════════════════════════════════ */
 .live-pane-hero {
-    display: flex; align-items: flex-end; justify-content: space-between; gap: var(--space-lg, 28px);
+    display: flex;
+    align-items: flex-end;
+    justify-content: space-between;
+    gap: var(--space-lg, 28px);
     flex-wrap: wrap;
     padding: 26px 30px 22px;
     background: linear-gradient(135deg, #0d0f0b 0%, #12170f 50%, #1c241c 100%);
-    border: 1px solid rgb(200 162 74 / 0.30); border-radius: 20px;
-    border-bottom: 4px solid #c8a24a; color: #f5efdc;
+    border: 1px solid rgb(200 162 74 / 0.3);
+    border-radius: 20px;
+    border-bottom: 4px solid #c8a24a;
+    color: #f5efdc;
     box-shadow: 0 22px 50px -26px rgb(0 0 0 / 0.7);
 }
 .live-pane-hero__eyebrow {
-    margin: 0 0 8px; font-size: 9px; font-weight: 800; letter-spacing: 0.34em;
-    color: #c8a24a; text-transform: uppercase;
+    margin: 0 0 8px;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.34em;
+    color: #c8a24a;
+    text-transform: uppercase;
 }
-.live-pane-hero__titleline { display: flex; align-items: baseline; gap: 14px; }
+.live-pane-hero__titleline {
+    display: flex;
+    align-items: baseline;
+    gap: 14px;
+}
 .live-pane-hero__title {
-    margin: 0; font-size: clamp(30px, 4vw, 46px); font-weight: 900; line-height: 1.1; color: #fff8e0; letter-spacing: -0.02em;
+    margin: 0;
+    font-size: clamp(30px, 4vw, 46px);
+    font-weight: 900;
+    line-height: 1.1;
+    color: #fff8e0;
+    letter-spacing: -0.02em;
     background: linear-gradient(180deg, #fff7d6 0%, #e0c56f 45%, #9b7937 100%);
-    -webkit-background-clip: text; background-clip: text; -webkit-text-fill-color: transparent;
+    -webkit-background-clip: text;
+    background-clip: text;
+    -webkit-text-fill-color: transparent;
 }
-.live-pane-hero__en { font-size: 11px; font-weight: 700; letter-spacing: 0.24em; color: rgb(255 248 224 / 0.42); }
-.live-pane-hero__sub { margin: 10px 0 0; max-width: 62ch; font-size: 12.5px; line-height: 1.9; color: rgb(245 239 220 / 0.6); }
-.live-pane-hero__actions { display: flex; align-items: center; gap: 8px; flex-wrap: wrap; }
+.live-pane-hero__en {
+    font-size: 11px;
+    font-weight: 700;
+    letter-spacing: 0.24em;
+    color: rgb(255 248 224 / 0.42);
+}
+.live-pane-hero__sub {
+    margin: 10px 0 0;
+    max-width: 62ch;
+    font-size: 12.5px;
+    line-height: 1.9;
+    color: rgb(245 239 220 / 0.6);
+}
+.live-pane-hero__actions {
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    flex-wrap: wrap;
+}
 .live-pane-hero__refresh {
-    background: rgb(200 162 74 / 0.14); color: #fff3c4; border: 1px solid rgb(200 162 74 / 0.55);
-    border-radius: 999px; padding: 8px 18px; font-weight: 800; cursor: pointer;
-    transition: background 120ms ease, transform 120ms ease;
+    background: rgb(200 162 74 / 0.14);
+    color: #fff3c4;
+    border: 1px solid rgb(200 162 74 / 0.55);
+    border-radius: 999px;
+    padding: 8px 18px;
+    font-weight: 800;
+    cursor: pointer;
+    transition:
+        background 120ms ease,
+        transform 120ms ease;
 }
-.live-pane-hero__refresh:hover { background: rgb(200 162 74 / 0.26); transform: translateY(-1px); }
+.live-pane-hero__refresh:hover {
+    background: rgb(200 162 74 / 0.26);
+    transform: translateY(-1px);
+}
 
 /* ── تبويبات «الأقسام / الكاشيرية الحية» ── */
 .live-tabs {
-    display: inline-flex; gap: 6px; padding: 6px;
-    background: #0d1410; border: 1px solid rgb(200 162 74 / 0.25); border-radius: 16px;
-    inline-size: fit-content; direction: rtl;
+    display: inline-flex;
+    gap: 6px;
+    padding: 6px;
+    background: #0d1410;
+    border: 1px solid rgb(200 162 74 / 0.25);
+    border-radius: 16px;
+    inline-size: fit-content;
+    direction: rtl;
 }
 .live-tab {
-    display: inline-flex; align-items: center; gap: 10px;
-    background: transparent; border: 0; border-radius: 11px; cursor: pointer;
-    padding: 10px 20px; color: rgb(245 239 220 / 0.55); font-weight: 800; font-size: 13px;
-    transition: background 140ms ease, color 140ms ease;
+    display: inline-flex;
+    align-items: center;
+    gap: 10px;
+    background: transparent;
+    border: 0;
+    border-radius: 11px;
+    cursor: pointer;
+    padding: 10px 20px;
+    color: rgb(245 239 220 / 0.55);
+    font-weight: 800;
+    font-size: 13px;
+    transition:
+        background 140ms ease,
+        color 140ms ease;
 }
-.live-tab__en { font-size: 8px; letter-spacing: 0.28em; opacity: 0.7; }
-.live-tab:hover { color: #fff8e0; background: rgb(200 162 74 / 0.08); }
+.live-tab__en {
+    font-size: 8px;
+    letter-spacing: 0.28em;
+    opacity: 0.7;
+}
+.live-tab:hover {
+    color: #fff8e0;
+    background: rgb(200 162 74 / 0.08);
+}
 .live-tab--active {
-    background: linear-gradient(180deg, #c8a24a 0%, #9b7937 100%); color: #1b1205;
+    background: linear-gradient(180deg, #c8a24a 0%, #9b7937 100%);
+    color: #1b1205;
     box-shadow: 0 4px 14px -4px rgb(109 78 30 / 0.6);
 }
-.live-tab--live.live-tab--active { background: linear-gradient(160deg, #101b18 0%, #0d1410 100%); color: #fff8e0; box-shadow: 0 0 0 1px rgb(200 162 74 / 0.55), 0 4px 14px -6px rgb(200 162 74 / 0.45); }
+.live-tab--live.live-tab--active {
+    background: linear-gradient(160deg, #101b18 0%, #0d1410 100%);
+    color: #fff8e0;
+    box-shadow:
+        0 0 0 1px rgb(200 162 74 / 0.55),
+        0 4px 14px -6px rgb(200 162 74 / 0.45);
+}
 .live-tab__dot {
-    inline-size: 8px; block-size: 8px; border-radius: 999px; background: #34e28a; display: inline-block;
-    box-shadow: 0 0 8px rgb(52 226 138 / 0.75); animation: live-pulse 1.4s infinite ease-in-out;
+    inline-size: 8px;
+    block-size: 8px;
+    border-radius: 999px;
+    background: #34e28a;
+    display: inline-block;
+    box-shadow: 0 0 8px rgb(52 226 138 / 0.75);
+    animation: live-pulse 1.4s infinite ease-in-out;
 }
 
 /* ═══════════════════════════════════════════════════════════════════════
    الأقسام — ⚜ الكاشيرية الحية (luxe carbon × gold — v4.9.368)
    ═══════════════════════════════════════════════════════════════════════ */
-.live-pane { display: flex; flex-direction: column; gap: 16px; }
+.live-pane {
+    display: flex;
+    flex-direction: column;
+    gap: 16px;
+}
 
 /* ── الشريط الرئيسي كربوني مع ذهبي ── */
 .live-bar {
-    display: flex; align-items: center; justify-content: space-between; gap: var(--space-md, 20px);
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--space-md, 20px);
     flex-wrap: wrap;
     background: linear-gradient(135deg, #0d0f0b 0%, #131a12 55%, #1c241c 100%);
-    border: 1px solid rgb(200 162 74 / 0.30); border-radius: 18px;
+    border: 1px solid rgb(200 162 74 / 0.3);
+    border-radius: 18px;
     border-bottom: 4px solid #c8a24a;
     padding: 20px 26px;
     color: #f5efdc;
     box-shadow: 0 18px 44px -22px rgb(0 0 0 / 0.7);
 }
 .live-bar__eyebrow {
-    margin: 0; font-size: 9px; font-weight: 800; letter-spacing: 0.32em;
-    color: #c8a24a; text-transform: uppercase;
+    margin: 0;
+    font-size: 9px;
+    font-weight: 800;
+    letter-spacing: 0.32em;
+    color: #c8a24a;
+    text-transform: uppercase;
 }
-.live-bar__title { margin: 2px 0 4px; font-size: clamp(24px, 2.6vw, 34px); font-weight: 900; color: #fff8e0; letter-spacing: -0.01em; }
+.live-bar__title {
+    margin: 2px 0 4px;
+    font-size: clamp(24px, 2.6vw, 34px);
+    font-weight: 900;
+    color: #fff8e0;
+    letter-spacing: -0.01em;
+}
 .live-bar__sub {
-    margin: 0; display: flex; align-items: center; gap: 8px; font-size: 12px; color: rgb(245 239 220 / 0.66);
+    margin: 0;
+    display: flex;
+    align-items: center;
+    gap: 8px;
+    font-size: 12px;
+    color: rgb(245 239 220 / 0.66);
 }
 .live-pulse {
-    inline-size: 10px; block-size: 10px; border-radius: 999px; display: inline-block; background: #34e28a;
-    box-shadow: 0 0 10px rgb(52 226 138 / 0.75); animation: live-pulse 1.4s infinite ease-in-out;
+    inline-size: 10px;
+    block-size: 10px;
+    border-radius: 999px;
+    display: inline-block;
+    background: #34e28a;
+    box-shadow: 0 0 10px rgb(52 226 138 / 0.75);
+    animation: live-pulse 1.4s infinite ease-in-out;
 }
-@keyframes live-pulse { 0%,100% { transform: scale(1); opacity: 1 } 50% { transform: scale(0.7); opacity: 0.55 } }
+@keyframes live-pulse {
+    0%,
+    100% {
+        transform: scale(1);
+        opacity: 1;
+    }
+    50% {
+        transform: scale(0.7);
+        opacity: 0.55;
+    }
+}
 
-.live-bar__controls { display: flex; align-items: center; gap: 10px; }
+.live-bar__controls {
+    display: flex;
+    align-items: center;
+    gap: 10px;
+}
 .live-date {
-    background: #0b1512; color: #fff8e0; border: 1px solid rgb(200 162 74 / 0.35); border-radius: 10px;
-    padding: 9px 12px; font-size: 13px; font-family: inherit;
+    background: #0b1512;
+    color: #fff8e0;
+    border: 1px solid rgb(200 162 74 / 0.35);
+    border-radius: 10px;
+    padding: 9px 12px;
+    font-size: 13px;
+    font-family: inherit;
 }
 .live-refresh {
-    background: rgb(200 162 74 / 0.14); color: #fff3c4; border: 1px solid #c8a24a; border-radius: 10px;
-    padding: 10px 16px; font-weight: 800; cursor: pointer; transition: background 120ms ease, transform 120ms ease;
+    background: rgb(200 162 74 / 0.14);
+    color: #fff3c4;
+    border: 1px solid #c8a24a;
+    border-radius: 10px;
+    padding: 10px 16px;
+    font-weight: 800;
+    cursor: pointer;
+    transition:
+        background 120ms ease,
+        transform 120ms ease;
 }
-.live-refresh:hover { background: rgb(200 162 74 / 0.24); transform: translateY(-1px); }
+.live-refresh:hover {
+    background: rgb(200 162 74 / 0.24);
+    transform: translateY(-1px);
+}
 
 /* ── KPI glass ── */
-.live-kpis { display: grid; grid-template-columns: repeat(4, 1fr); gap: 10px; }
-@media (max-width: 900px) { .live-kpis { grid-template-columns: repeat(2, 1fr); } }
+.live-kpis {
+    display: grid;
+    grid-template-columns: repeat(4, 1fr);
+    gap: 10px;
+}
+@media (max-width: 900px) {
+    .live-kpis {
+        grid-template-columns: repeat(2, 1fr);
+    }
+}
 .live-kpi {
     background: linear-gradient(180deg, #101b18 0%, #0a1210 100%);
-    border: 1px solid rgb(200 162 74 / 0.22); border-radius: 14px;
-    padding: 14px 16px; display: flex; flex-direction: column; gap: 2px;
+    border: 1px solid rgb(200 162 74 / 0.22);
+    border-radius: 14px;
+    padding: 14px 16px;
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
     box-shadow: inset 0 1px 0 rgb(255 240 178 / 0.06);
 }
-.live-kpi__label { font-size: 10px; font-weight: 800; letter-spacing: 0.14em; color: #c8a24a; text-transform: uppercase; }
-.live-kpi__value { font-size: clamp(20px, 2vw, 27px); font-weight: 900; color: #fff8e0; font-variant-numeric: tabular-nums; }
+.live-kpi__label {
+    font-size: 10px;
+    font-weight: 800;
+    letter-spacing: 0.14em;
+    color: #c8a24a;
+    text-transform: uppercase;
+}
+.live-kpi__value {
+    font-size: clamp(20px, 2vw, 27px);
+    font-weight: 900;
+    color: #fff8e0;
+    font-variant-numeric: tabular-nums;
+}
 
 /* ── roster الكاشيريات ── */
-.live-roster { display: flex; gap: 10px; flex-wrap: wrap; }
+.live-roster {
+    display: flex;
+    gap: 10px;
+    flex-wrap: wrap;
+}
 .live-cashier {
-    display: flex; align-items: center; gap: 12px; border: 1px solid rgb(200 162 74 / 0.25);
-    background: #0d1412; border-radius: 16px; padding: 10px 16px 10px 12px; cursor: pointer;
-    color: #f5efdc; text-align: right; transition: border-color 140ms ease, transform 140ms ease, background 140ms ease, box-shadow 140ms ease;
+    display: flex;
+    align-items: center;
+    gap: 12px;
+    border: 1px solid rgb(200 162 74 / 0.25);
+    background: #0d1412;
+    border-radius: 16px;
+    padding: 10px 16px 10px 12px;
+    cursor: pointer;
+    color: #f5efdc;
+    text-align: right;
+    transition:
+        border-color 140ms ease,
+        transform 140ms ease,
+        background 140ms ease,
+        box-shadow 140ms ease;
     min-width: 210px;
 }
-.live-cashier:hover { border-color: #c8a24a; transform: translateY(-2px); box-shadow: 0 14px 30px -18px rgb(0 0 0 / 0.6); }
+.live-cashier:hover {
+    border-color: #c8a24a;
+    transform: translateY(-2px);
+    box-shadow: 0 14px 30px -18px rgb(0 0 0 / 0.6);
+}
 .live-cashier--active {
-    border-color: #c8a24a; background: linear-gradient(160deg, #1b2412 0%, #141c10 100%);
-    box-shadow: 0 0 0 1px rgb(200 162 74 / 0.45), 0 14px 34px -16px rgb(200 162 74 / 0.4);
+    border-color: #c8a24a;
+    background: linear-gradient(160deg, #1b2412 0%, #141c10 100%);
+    box-shadow:
+        0 0 0 1px rgb(200 162 74 / 0.45),
+        0 14px 34px -16px rgb(200 162 74 / 0.4);
 }
-.live-cashier--clear { background: transparent; border-style: dashed; color: #c8a24a; }
+.live-cashier--clear {
+    background: transparent;
+    border-style: dashed;
+    color: #c8a24a;
+}
 .live-cashier__avatar {
-    inline-size: 44px; block-size: 44px; border-radius: 12px; display: grid; place-items: center;
-    color: #1b1205; font-weight: 900; font-size: 20px; flex: 0 0 auto;
+    inline-size: 44px;
+    block-size: 44px;
+    border-radius: 12px;
+    display: grid;
+    place-items: center;
+    color: #1b1205;
+    font-weight: 900;
+    font-size: 20px;
+    flex: 0 0 auto;
 }
-.live-cashier__body { display: flex; flex-direction: column; gap: 1px; }
-.live-cashier__name { font-size: 13px; font-weight: 800; color: #fff8e0; }
-.live-cashier__rev { font-size: 15px; font-weight: 900; color: #e0c56f; }
-.live-cashier__meta { display: flex; gap: 10px; font-size: 10px; color: rgb(255 248 224 / 0.6); }
-.live-cashier__net { color: #7fd6a4; }
-.live-cashier__last { font-size: 10px; color: rgb(255 248 224 / 0.4); }
+.live-cashier__body {
+    display: flex;
+    flex-direction: column;
+    gap: 1px;
+}
+.live-cashier__name {
+    font-size: 13px;
+    font-weight: 800;
+    color: #fff8e0;
+}
+.live-cashier__rev {
+    font-size: 15px;
+    font-weight: 900;
+    color: #e0c56f;
+}
+.live-cashier__meta {
+    display: flex;
+    gap: 10px;
+    font-size: 10px;
+    color: rgb(255 248 224 / 0.6);
+}
+.live-cashier__net {
+    color: #7fd6a4;
+}
+.live-cashier__last {
+    font-size: 10px;
+    color: rgb(255 248 224 / 0.4);
+}
 
 /* ── جدول الفواتير ── */
 .live-orders {
-    background: #fdfcf8; border: 1px solid #e3ded0; border-radius: 16px; overflow: hidden;
+    background: #fdfcf8;
+    border: 1px solid #e3ded0;
+    border-radius: 16px;
+    overflow: hidden;
     box-shadow: 0 12px 34px -24px rgb(15 32 27 / 0.35);
 }
 .live-orders__bar {
-    display: flex; align-items: center; justify-content: space-between; gap: 12px;
-    padding: 12px 16px; border-bottom: 1px solid #eae6d8; flex-wrap: wrap;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 12px;
+    padding: 12px 16px;
+    border-bottom: 1px solid #eae6d8;
+    flex-wrap: wrap;
 }
 .live-orders__search input {
-    background: #fff; border: 1px solid #ddd8c8; border-radius: 10px; padding: 8px 14px;
-    min-width: 240px; font-size: 13px; color: #14231f;
+    background: #fff;
+    border: 1px solid #ddd8c8;
+    border-radius: 10px;
+    padding: 8px 14px;
+    min-width: 240px;
+    font-size: 13px;
+    color: #14231f;
 }
-.live-orders__search input:focus { outline: 2px solid #c8a24a; outline-offset: 1px; }
-.live-orders__count { font-size: 12px; font-weight: 800; color: #8a6b2f; }
-
-.live-orders__loading, .live-orders__empty, .live-orders__error {
-    padding: 36px 16px; text-align: center; color: #6b6556; font-size: 13px;
+.live-orders__search input:focus {
+    outline: 2px solid #c8a24a;
+    outline-offset: 1px;
 }
-.live-orders__error { color: #a3352c; }
-.live-orders__scroll { overflow-x: auto; }
+.live-orders__count {
+    font-size: 12px;
+    font-weight: 800;
+    color: #8a6b2f;
+}
 
-.live-table { width: 100%; border-collapse: collapse; font-size: 12px; min-width: 760px; }
+.live-orders__loading,
+.live-orders__empty,
+.live-orders__error {
+    padding: 36px 16px;
+    text-align: center;
+    color: #6b6556;
+    font-size: 13px;
+}
+.live-orders__error {
+    color: #a3352c;
+}
+.live-orders__scroll {
+    overflow-x: auto;
+}
+
+.live-table {
+    width: 100%;
+    border-collapse: collapse;
+    font-size: 12px;
+    min-width: 760px;
+}
 .live-table thead th {
-    background: #0d0f0b; color: #e0c56f; font-size: 10.5px; letter-spacing: 0.06em;
-    text-align: right; padding: 9px 12px; border-bottom: 2px solid #c8a24a; white-space: nowrap;
+    background: #0d0f0b;
+    color: #e0c56f;
+    font-size: 10.5px;
+    letter-spacing: 0.06em;
+    text-align: right;
+    padding: 9px 12px;
+    border-bottom: 2px solid #c8a24a;
+    white-space: nowrap;
 }
-.live-table thead th:nth-child(1), .live-table thead th:nth-child(2) { width: 78px; }
-.live-table tbody td { border-bottom: 1px solid #edeade; padding: 7px 12px; color: #1c241c; }
-.live-table__row:nth-child(even) td { background: #faf8ee; }
-.live-table__row:hover td { background: #f4efd9; }
-.live-table__total { font-weight: 800; }
+.live-table thead th:nth-child(1),
+.live-table thead th:nth-child(2) {
+    width: 78px;
+}
+.live-table tbody td {
+    border-bottom: 1px solid #edeade;
+    padding: 7px 12px;
+    color: #1c241c;
+}
+.live-table__row:nth-child(even) td {
+    background: #faf8ee;
+}
+.live-table__row:hover td {
+    background: #f4efd9;
+}
+.live-table__total {
+    font-weight: 800;
+}
 
 .live-pay {
-    display: inline-block; padding: 2px 12px; border-radius: 999px; font-size: 10px; font-weight: 800; white-space: nowrap;
+    display: inline-block;
+    padding: 2px 12px;
+    border-radius: 999px;
+    font-size: 10px;
+    font-weight: 800;
+    white-space: nowrap;
     border: 1px solid transparent;
 }
-.live-pay--cash { background: #eef6ef; color: #166b3c; border-color: #b9dcc8; }
-.live-pay--net { background: #f7f3e6; color: #8a6d2f; border-color: #e0d2a8; }
-.live-pay--mobile { background: #fdf3e3; color: #8a5a00; border-color: #efdca8; }
-.live-pay--credit { background: #f6eefb; color: #6d28d9; border-color: #dcc7f0; }
-.live-pay--mix { background: #f2f2ee; color: #4b4433; border-color: #ddd9cb; }
+.live-pay--cash {
+    background: #eef6ef;
+    color: #166b3c;
+    border-color: #b9dcc8;
+}
+.live-pay--net {
+    background: #f7f3e6;
+    color: #8a6d2f;
+    border-color: #e0d2a8;
+}
+.live-pay--mobile {
+    background: #fdf3e3;
+    color: #8a5a00;
+    border-color: #efdca8;
+}
+.live-pay--credit {
+    background: #f6eefb;
+    color: #6d28d9;
+    border-color: #dcc7f0;
+}
+.live-pay--mix {
+    background: #f2f2ee;
+    color: #4b4433;
+    border-color: #ddd9cb;
+}
 
 .live-print {
-    inline-size: 32px; block-size: 28px; border-radius: 8px; border: 1px solid #ddd8c3;
-    background: #fff; cursor: pointer; font-size: 15px; line-height: 1; transition: border-color 120ms ease, transform 120ms ease;
+    inline-size: 32px;
+    block-size: 28px;
+    border-radius: 8px;
+    border: 1px solid #ddd8c3;
+    background: #fff;
+    cursor: pointer;
+    font-size: 15px;
+    line-height: 1;
+    transition:
+        border-color 120ms ease,
+        transform 120ms ease;
 }
-.live-print:hover { border-color: #c8a24a; transform: translateY(-1px); }
-.live-print:disabled { opacity: 0.5; cursor: wait; }
+.live-print:hover {
+    border-color: #c8a24a;
+    transform: translateY(-1px);
+}
+.live-print:disabled {
+    opacity: 0.5;
+    cursor: wait;
+}
 
 .live-orders__pager {
-    display: flex; align-items: center; justify-content: space-between;
-    padding: 10px 16px; border-top: 1px solid #eae6d8;
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    padding: 10px 16px;
+    border-top: 1px solid #eae6d8;
 }
-.live-orders__page { font-size: 12px; color: #6b6556; font-variant-numeric: tabular-nums; }
+.live-orders__page {
+    font-size: 12px;
+    color: #6b6556;
+    font-variant-numeric: tabular-nums;
+}
 
 /* ── فواصل التوجهات للشاشات الصغيرة ── */
 @media (max-width: 640px) {
-    .live-bar { padding: 16px; }
-    .live-bar__title { font-size: 22px; }
-    .live-roster { flex-direction: column; }
-    .live-cashier { width: 100%; }
+    .live-bar {
+        padding: 16px;
+    }
+    .live-bar__title {
+        font-size: 22px;
+    }
+    .live-roster {
+        flex-direction: column;
+    }
+    .live-cashier {
+        width: 100%;
+    }
 }
-

@@ -70,9 +70,14 @@
     font-weight: 800;
     border-radius: 12px;
     box-shadow: 0 6px 18px -8px rgb(0 0 0 / 40%);
-    transition: transform 120ms ease, box-shadow 120ms ease;
+    transition:
+        transform 120ms ease,
+        box-shadow 120ms ease;
 }
-.pos-reports__head .erp-button:hover { transform: translateY(-1px); box-shadow: 0 10px 24px -8px rgb(0 0 0 / 45%); }
+.pos-reports__head .erp-button:hover {
+    transform: translateY(-1px);
+    box-shadow: 0 10px 24px -8px rgb(0 0 0 / 45%);
+}
 
 /* ─── الفلاتر ─── */
 .pos-reports__filters {
@@ -104,7 +109,9 @@
     background: #f8fafc;
     color: #20292f;
     font-size: 0.82rem;
-    transition: border-color 120ms ease, box-shadow 120ms ease;
+    transition:
+        border-color 120ms ease,
+        box-shadow 120ms ease;
 }
 .pos-reports__field input:focus,
 .pos-reports__field select:focus {
@@ -133,9 +140,14 @@
     font-size: 0.82rem;
     font-weight: 700;
     cursor: pointer;
-    transition: background-color 130ms ease, color 130ms ease, box-shadow 130ms ease;
+    transition:
+        background-color 130ms ease,
+        color 130ms ease,
+        box-shadow 130ms ease;
 }
-.pos-reports__tab:hover { color: #20292f; }
+.pos-reports__tab:hover {
+    color: #20292f;
+}
 .pos-reports__tab.is-active {
     background: #ffffff;
     color: #0f3d3e;
@@ -148,8 +160,16 @@
     grid-template-columns: repeat(4, minmax(0, 1fr));
     gap: 0.75rem;
 }
-@media (max-width: 1280px) { .pos-reports__kpis { grid-template-columns: repeat(2, minmax(0, 1fr)); } }
-@media (max-width: 640px) { .pos-reports__kpis { grid-template-columns: 1fr; } }
+@media (max-width: 1280px) {
+    .pos-reports__kpis {
+        grid-template-columns: repeat(2, minmax(0, 1fr));
+    }
+}
+@media (max-width: 640px) {
+    .pos-reports__kpis {
+        grid-template-columns: 1fr;
+    }
+}
 
 .pos-reports__kpi {
     position: relative;
@@ -162,9 +182,14 @@
     border-radius: 16px;
     box-shadow: 0 3px 14px -8px rgb(24 32 42 / 18%);
     overflow: hidden;
-    transition: transform 140ms ease, box-shadow 140ms ease;
+    transition:
+        transform 140ms ease,
+        box-shadow 140ms ease;
 }
-.pos-reports__kpi:hover { transform: translateY(-2px); box-shadow: 0 10px 28px -12px rgb(24 32 42 / 28%); }
+.pos-reports__kpi:hover {
+    transform: translateY(-2px);
+    box-shadow: 0 10px 28px -12px rgb(24 32 42 / 28%);
+}
 .pos-reports__kpi::before {
     content: "";
     position: absolute;
@@ -198,7 +223,11 @@
     font-variant-numeric: tabular-nums;
     line-height: 1.1;
 }
-.pos-reports__kpi-value small { font-size: 0.62em; font-weight: 700; color: #68768a; }
+.pos-reports__kpi-value small {
+    font-size: 0.62em;
+    font-weight: 700;
+    color: #68768a;
+}
 
 .pos-reports__trend {
     display: inline-flex;
@@ -211,9 +240,18 @@
     font-variant-numeric: tabular-nums;
     white-space: nowrap;
 }
-.pos-reports__trend--up { background: #e7f6ee; color: #0f6d42; }
-.pos-reports__trend--down { background: #fdeaea; color: #b4373f; }
-.pos-reports__trend--flat { background: #eef1f5; color: #68768a; }
+.pos-reports__trend--up {
+    background: #e7f6ee;
+    color: #0f6d42;
+}
+.pos-reports__trend--down {
+    background: #fdeaea;
+    color: #b4373f;
+}
+.pos-reports__trend--flat {
+    background: #eef1f5;
+    color: #68768a;
+}
 
 .pos-reports__kpi-hint {
     font-size: 0.64rem;
@@ -227,8 +265,19 @@
     grid-template-columns: 1.6fr 1fr 1fr;
     gap: 0.75rem;
 }
-@media (max-width: 1280px) { .pos-reports__charts { grid-template-columns: 1fr 1fr; } .pos-reports__chart--wide { grid-column: 1 / -1; } }
-@media (max-width: 860px) { .pos-reports__charts { grid-template-columns: 1fr; } }
+@media (max-width: 1280px) {
+    .pos-reports__charts {
+        grid-template-columns: 1fr 1fr;
+    }
+    .pos-reports__chart--wide {
+        grid-column: 1 / -1;
+    }
+}
+@media (max-width: 860px) {
+    .pos-reports__charts {
+        grid-template-columns: 1fr;
+    }
+}
 
 .pos-reports__chart {
     display: flex;
@@ -254,7 +303,11 @@
     grid-template-columns: 1.5fr 1fr;
     gap: 0.75rem;
 }
-@media (max-width: 1280px) { .pos-reports__bottom { grid-template-columns: 1fr; } }
+@media (max-width: 1280px) {
+    .pos-reports__bottom {
+        grid-template-columns: 1fr;
+    }
+}
 
 .pos-reports__depts {
     display: flex;
@@ -298,7 +351,10 @@
     font-weight: 800;
     font-variant-numeric: tabular-nums;
 }
-.pos-reports__dept-row:nth-child(1) .pos-reports__dept-rank { background: #168653; color: #fff; }
+.pos-reports__dept-row:nth-child(1) .pos-reports__dept-rank {
+    background: #168653;
+    color: #fff;
+}
 .pos-reports__dept-name {
     font-size: 0.82rem;
     font-weight: 700;
@@ -356,20 +412,33 @@
     color: #20292f;
     white-space: nowrap;
 }
-.pos-reports__table tbody tr:hover td { background: #f7faf8; }
-.pos-reports__table tbody tr:last-child td { border-block-end: 0; }
+.pos-reports__table tbody tr:hover td {
+    background: #f7faf8;
+}
+.pos-reports__table tbody tr:last-child td {
+    border-block-end: 0;
+}
 
 /* ─── شعار KARIM في المتصفح ─── */
-.pos-reports__print-brand { display: none; }
+.pos-reports__print-brand {
+    display: none;
+}
 
 @media print {
     .pos-reports__filters,
     .pos-reports__tabs,
     .pos-reports__head button,
     .pos-reports__filters,
-    .pos-reports__detail-filters { display: none !important; }
+    .pos-reports__detail-filters {
+        display: none !important;
+    }
     .pos-reports__charts,
     .pos-reports__bottom,
-    .pos-reports__kpis { break-inside: avoid; }
-    .pos-reports__table th, .pos-reports__table td { border-color: #000 !important; }
+    .pos-reports__kpis {
+        break-inside: avoid;
+    }
+    .pos-reports__table th,
+    .pos-reports__table td {
+        border-color: #000 !important;
+    }
 }

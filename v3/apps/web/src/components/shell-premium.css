@@ -750,7 +750,9 @@
     background: var(--erp-surface, #fff);
     color: var(--erp-ink, #172b3b);
     cursor: pointer;
-    transition: background 140ms ease, border-color 140ms ease;
+    transition:
+        background 140ms ease,
+        border-color 140ms ease;
 }
 .erp-shell__print-btn:hover {
     background: var(--erp-surface-hover, #f3f6fa);
@@ -781,8 +783,13 @@
     font-size: 0.85rem;
     cursor: pointer;
 }
-.erp-shell__print-item:hover { background: var(--erp-surface-hover, #f3f6fa); }
-.erp-shell__print-item:disabled { opacity: 0.55; cursor: default; }
+.erp-shell__print-item:hover {
+    background: var(--erp-surface-hover, #f3f6fa);
+}
+.erp-shell__print-item:disabled {
+    opacity: 0.55;
+    cursor: default;
+}
 
 /* Language toggle: Arabic / English */
 .erp-shell__lang-toggle {
@@ -799,9 +806,14 @@
     font-weight: 800;
     letter-spacing: 0.02em;
     cursor: pointer;
-    transition: background 160ms, border-color 160ms;
+    transition:
+        background 160ms,
+        border-color 160ms;
 }
-.erp-shell__lang-toggle:hover { background: #f3f4f6; border-color: #d1d5db; }
+.erp-shell__lang-toggle:hover {
+    background: #f3f4f6;
+    border-color: #d1d5db;
+}
 .erp-shell__lang-toggle:focus-visible {
     outline: 2px solid #168653;
     outline-offset: 2px;
@@ -817,7 +829,19 @@
     font-size: 0.62rem;
     font-weight: 800;
 }
-.erp-shell__lang-toggle-word { font-size: 0.75rem; font-weight: 700; color: #1f2937; }
-[data-theme='dark'] .erp-shell__lang-toggle { background: var(--erp-surface-2, #1f2937); border-color: var(--erp-border, #374151); color: #e5e7eb; }
-[data-theme='dark'] .erp-shell__lang-toggle:hover { background: #253141; }
-[data-theme='dark'] .erp-shell__lang-toggle-word { color: #e5e7eb; }
+.erp-shell__lang-toggle-word {
+    font-size: 0.75rem;
+    font-weight: 700;
+    color: #1f2937;
+}
+[data-theme="dark"] .erp-shell__lang-toggle {
+    background: var(--erp-surface-2, #1f2937);
+    border-color: var(--erp-border, #374151);
+    color: #e5e7eb;
+}
+[data-theme="dark"] .erp-shell__lang-toggle:hover {
+    background: #253141;
+}
+[data-theme="dark"] .erp-shell__lang-toggle-word {
+    color: #e5e7eb;
+}

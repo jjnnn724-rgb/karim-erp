@@ -53,13 +53,17 @@ export function buildCashierGroups(
     const sortedLinks = [...links].sort((a, b) => {
         const an = Number(a.cashier_no);
         const bn = Number(b.cashier_no);
-        if (Number.isFinite(an) && Number.isFinite(bn) && an !== bn) { return an - bn; }
+        if (Number.isFinite(an) && Number.isFinite(bn) && an !== bn) {
+            return an - bn;
+        }
         return String(a.cashier_no).localeCompare(String(b.cashier_no), 'en', { numeric: true });
     });
 
     for (const link of sortedLinks) {
         const deptCode = String(link.dept_code || '').trim();
-        if (!deptCode) { continue; }
+        if (!deptCode) {
+            continue;
+        }
         const groupDept = byPosCode.get(`erp_${deptCode.toLowerCase()}`);
         const cashierDept = byPosCode.get(cashierDeptCode(String(link.cashier_no ?? '')));
         const existing = groups.get(deptCode);
@@ -74,7 +78,7 @@ export function buildCashierGroups(
             groups.set(deptCode, {
                 deptCode,
                 title: groupDept?.name_ar || groupDept?.name_en || deptCode,
-                departmentId: groupDept ? String(groupDept.id) : (cashierDept ? String(cashierDept.id) : ''),
+                departmentId: groupDept ? String(groupDept.id) : cashierDept ? String(cashierDept.id) : '',
                 cashiers: [entry],
             });
         }
@@ -83,7 +87,11 @@ export function buildCashierGroups(
     const usedDeptIds = new Set<string>();
     for (const g of groups.values()) {
         usedDeptIds.add(g.departmentId);
-        for (const c of g.cashiers) { if (c.departmentId) { usedDeptIds.add(c.departmentId); } }
+        for (const c of g.cashiers) {
+            if (c.departmentId) {
+                usedDeptIds.add(c.departmentId);
+            }
+        }
     }
 
     const others: PosCashierGroup[] = departments
@@ -100,9 +108,15 @@ export function buildCashierGroups(
     const list = [...groups.values()].sort((a, b) => {
         const ai = order.indexOf(a.deptCode.toLowerCase());
         const bi = order.indexOf(b.deptCode.toLowerCase());
-        if (ai !== -1 && bi !== -1) { return ai - bi; }
-        if (ai !== -1) { return -1; }
-        if (bi !== -1) { return 1; }
+        if (ai !== -1 && bi !== -1) {
+            return ai - bi;
+        }
+        if (ai !== -1) {
+            return -1;
+        }
+        if (bi !== -1) {
+            return 1;
+        }
         return a.title.localeCompare(b.title, 'ar');
     });
 
@@ -127,7 +141,9 @@ export function PosCashierPicker({ departments, links, selectedId, onSelect, bus
                             disabled={busy || disabled || !target}
                             aria-pressed={isSelected}
                             onClick={() => {
-                                if (target) { onSelect(target); }
+                                if (target) {
+                                    onSelect(target);
+                                }
                             }}
                         >
                             <span className="pos-cashier-pick__no">كاشير {cashier.no}</span>
@@ -142,7 +158,9 @@ export function PosCashierPicker({ departments, links, selectedId, onSelect, bus
                         disabled={busy || disabled || !group.departmentId}
                         aria-pressed={group.departmentId === selectedId}
                         onClick={() => {
-                            if (group.departmentId) { onSelect(group.departmentId); }
+                            if (group.departmentId) {
+                                onSelect(group.departmentId);
+                            }
                         }}
                     >
                         <span className="pos-cashier-pick__no">قسم فقط</span>

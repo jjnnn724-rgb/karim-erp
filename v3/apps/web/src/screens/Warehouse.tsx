@@ -4,7 +4,6 @@ import { useNavigate } from '@tanstack/react-router';
 import { useEffect, useMemo, useState } from 'react';
 import { BulkReceiptDialog } from '../components/BulkReceiptDialog';
 import { useConfirm } from '../components/ConfirmProvider';
-import { AnswerStrip, EmptyState, ScreenHero } from '../ui';
 import { InventoryAuditStudio } from '../components/InventoryAuditStudio';
 import { Card, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
@@ -57,6 +56,7 @@ import {
     receiveInventoryItem,
 } from '../lib/inventory-write';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
+import { AnswerStrip, EmptyState, ScreenHero } from '../ui';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
@@ -673,11 +673,34 @@ export function Warehouse() {
                                 english: 'Items',
                                 value: rows.length,
                                 format: formatInt,
-                                hint: truncated ? `أول ${formatInt(rows.length)} من ${formatInt(total)} — سقف الجلب` : `من ${formatInt(total)} في السجل`,
+                                hint: truncated
+                                    ? `أول ${formatInt(rows.length)} من ${formatInt(total)} — سقف الجلب`
+                                    : `من ${formatInt(total)} في السجل`,
                             },
-                            { label: 'تحت الحد', english: 'Below minimum', value: counts.low, format: formatInt, hint: 'الرصيد عند حد إعادة الطلب أو تحته', tone: 'warning' },
-                            { label: 'نفد', english: 'Out of stock', value: counts.out, format: formatInt, hint: 'رصيد صفر أو أقل', tone: counts.out > 0 ? 'danger' : 'neutral' },
-                            { label: 'متوفر', english: 'In stock', value: counts.ok, format: formatInt, hint: 'الرصيد أعلى من الحد المسجّل', tone: 'success' },
+                            {
+                                label: 'تحت الحد',
+                                english: 'Below minimum',
+                                value: counts.low,
+                                format: formatInt,
+                                hint: 'الرصيد عند حد إعادة الطلب أو تحته',
+                                tone: 'warning',
+                            },
+                            {
+                                label: 'نفد',
+                                english: 'Out of stock',
+                                value: counts.out,
+                                format: formatInt,
+                                hint: 'رصيد صفر أو أقل',
+                                tone: counts.out > 0 ? 'danger' : 'neutral',
+                            },
+                            {
+                                label: 'متوفر',
+                                english: 'In stock',
+                                value: counts.ok,
+                                format: formatInt,
+                                hint: 'الرصيد أعلى من الحد المسجّل',
+                                tone: 'success',
+                            },
                         ]}
                         columns={4}
                     />

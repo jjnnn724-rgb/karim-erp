@@ -8,10 +8,7 @@ installDomPolyfills();
 describe('RowActions', () => {
     it('does not render a menu trigger when every action is hidden', () => {
         const { container } = render(
-            <RowActions
-                label="إجراءات الصنف"
-                actions={[{ key: 'edit', label: 'تعديل', onSelect: vi.fn(), hidden: true }]}
-            />,
+            <RowActions label="إجراءات الصنف" actions={[{ key: 'edit', label: 'تعديل', onSelect: vi.fn(), hidden: true }]} />,
         );
 
         expect(container.firstChild).toBeNull();

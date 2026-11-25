@@ -323,5 +323,10 @@ export async function fetchVegConsumption(from: string, to: string, q: string, s
     if (q.trim()) {
         params.set('q', q.trim().slice(0, 60));
     }
-    return fetchJson(consumptionResponseSchema, `/api/veg-requests/consumption?${params.toString()}`, getAccessToken(), signal ? { signal } : {});
+    return fetchJson(
+        consumptionResponseSchema,
+        `/api/veg-requests/consumption?${params.toString()}`,
+        getAccessToken(),
+        signal ? { signal } : {},
+    );
 }

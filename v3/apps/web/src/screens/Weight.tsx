@@ -24,12 +24,12 @@ import {
     weightWriteVisible,
 } from '../lib/weight-write';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
+import { PageHeader } from '../ui';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 
-import { PageHeader } from '../ui';
 /**
  * الميزان — سجل قراءات الوزن، قراءة فقط من `/api/weightReadings`.
  *
@@ -56,19 +56,7 @@ const UNIT_LABELS: Record<UnitFilter, string> = {
     ...WEIGHT_UNIT_LABELS,
 };
 
-function Kpi({
-    label,
-    english,
-    value,
-    suffix,
-    hint,
-}: {
-    label: string;
-    english: string;
-    value: string;
-    suffix?: string;
-    hint: string;
-}) {
+function Kpi({ label, english, value, suffix, hint }: { label: string; english: string; value: string; suffix?: string; hint: string }) {
     return (
         <div className="rounded-lg border border-hairline bg-surface p-md shadow-card">
             <p className="text-label-md text-muted">
@@ -192,9 +180,7 @@ export function Weight() {
 
     function toggleSort(key: SortKey) {
         setPage(1);
-        setSort((previous) =>
-            previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' },
-        );
+        setSort((previous) => (previous?.key === key ? { key, dir: previous.dir === 'asc' ? 'desc' : 'asc' } : { key, dir: 'asc' }));
     }
 
     function resetFilters() {
@@ -242,18 +228,8 @@ export function Weight() {
             ) : null}
 
             <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
-                <Kpi
-                    label="قراءات اليوم"
-                    english="Today"
-                    value={formatInt(summary.todayCount)}
-                    hint="بتاريخ اليوم المحلي"
-                />
-                <Kpi
-                    label="إجمالي القراءات"
-                    english="Readings"
-                    value={formatInt(summary.count)}
-                    hint="كل ما وصل من الخادم"
-                />
+                <Kpi label="قراءات اليوم" english="Today" value={formatInt(summary.todayCount)} hint="بتاريخ اليوم المحلي" />
+                <Kpi label="إجمالي القراءات" english="Readings" value={formatInt(summary.count)} hint="كل ما وصل من الخادم" />
                 <Kpi
                     label="إجمالي الوزن"
                     english="Total"
@@ -319,9 +295,7 @@ export function Weight() {
                     </span>
                 </div>
                 {search.folded ? (
-                    <p className="mt-sm text-body-sm text-muted">
-                        بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.
-                    </p>
+                    <p className="mt-sm text-body-sm text-muted">بعض النتائج جاءت بعد تطبيع الحروف العربية — البحث الذكي مطبَّق.</p>
                 ) : null}
             </Card>
 
@@ -358,22 +332,13 @@ export function Weight() {
                                         <SortableTh label="التاريخ" sortKey="date" sort={sort} onToggle={toggleSort} />
                                         <SortableTh label="الوقت" sortKey="time" sort={sort} onToggle={toggleSort} />
                                         <SortableTh label="الوزن" sortKey="weight" sort={sort} onToggle={toggleSort} />
-                                        <SortableTh
-                                            label="بالكيلوجرام"
-                                            sortKey="kg"
-                                            sort={sort}
-                                            onToggle={toggleSort}
-                                        />
+                                        <SortableTh label="بالكيلوجرام" sortKey="kg" sort={sort} onToggle={toggleSort} />
                                         <SortableTh label="الصنف" sortKey="item" sort={sort} onToggle={toggleSort} />
                                         <th scope="col" className="px-sm py-xs text-start font-medium">
                                             ملاحظات
                                         </th>
                                         {canWrite ? (
-                                            <th
-                                                scope="col"
-                                                className="px-sm py-xs text-start font-medium"
-                                                data-erp-print-hide
-                                            >
+                                            <th scope="col" className="px-sm py-xs text-start font-medium" data-erp-print-hide>
                                                 إجراءات
                                             </th>
                                         ) : null}
@@ -389,15 +354,10 @@ export function Weight() {
                                                 {row.time || '—'}
                                             </td>
                                             <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">
-                                                {formatQty(row.weight)}{' '}
-                                                <span className="text-caption text-faint">{row.unitAr}</span>
+                                                {formatQty(row.weight)} <span className="text-caption text-faint">{row.unitAr}</span>
                                             </td>
                                             <td className="erp-numeric px-sm py-xxs text-ink" dir="ltr">
-                                                {row.kg === null ? (
-                                                    <span className="text-muted">—</span>
-                                                ) : (
-                                                    formatQty(row.kg)
-                                                )}
+                                                {row.kg === null ? <span className="text-muted">—</span> : formatQty(row.kg)}
                                             </td>
                                             <td className="px-sm py-xxs text-ink">{row.itemName || '—'}</td>
                                             <td className="px-sm py-xxs text-body-sm text-muted">
@@ -617,12 +577,7 @@ function WeightFormDialog({ open, editing, pending, onClose, onSubmit }: WeightF
                         dir="ltr"
                     />
                 </div>
-                <Input
-                    label="اسم الصنف"
-                    name="itemName"
-                    value={itemName}
-                    onChange={(e) => setItemName(e.target.value)}
-                />
+                <Input label="اسم الصنف" name="itemName" value={itemName} onChange={(e) => setItemName(e.target.value)} />
                 <Input label="ملاحظات" name="notes" value={notes} onChange={(e) => setNotes(e.target.value)} />
                 {error ? (
                     <p role="alert" className="text-body-sm text-danger-text">

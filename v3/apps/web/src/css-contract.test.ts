@@ -85,10 +85,7 @@ if (process.env.CSS_CONTRACT_UPDATE === '1') {
         const next = Math.min(allowed, current);
         if (next > 0) tightened[file] = next;
     }
-    writeFileSync(
-        BASELINE_PATH,
-        `${JSON.stringify({ _generated: new Date().toISOString(), files: tightened }, null, 4)}\n`,
-    );
+    writeFileSync(BASELINE_PATH, `${JSON.stringify({ _generated: new Date().toISOString(), files: tightened }, null, 4)}\n`);
 }
 
 describe('حارس عقد الألوان في CSS', () => {

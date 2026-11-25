@@ -178,7 +178,17 @@ const ProductCard = memo(function ProductCard({
                         onToggleFavorite(item);
                     }}
                 >
-                    <svg aria-hidden="true" viewBox="0 0 24 24" width="18" height="18" fill={pinned ? 'currentColor' : 'none'} stroke="currentColor" strokeWidth="1.8" strokeLinecap="round" strokeLinejoin="round">
+                    <svg
+                        aria-hidden="true"
+                        viewBox="0 0 24 24"
+                        width="18"
+                        height="18"
+                        fill={pinned ? 'currentColor' : 'none'}
+                        stroke="currentColor"
+                        strokeWidth="1.8"
+                        strokeLinecap="round"
+                        strokeLinejoin="round"
+                    >
                         <path d="m12 3 2.8 5.7 6.2.9-4.5 4.4 1.1 6.2-5.6-3-5.6 3 1.1-6.2L3 9.6l6.2-.9L12 3Z" />
                     </svg>
                 </button>

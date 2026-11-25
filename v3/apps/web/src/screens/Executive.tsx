@@ -1,5 +1,4 @@
 import './Executive.premium.css';
-import { ScreenHero } from '../ui';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { KpiCard, SectionCard } from '../components/Reports';
@@ -13,9 +12,10 @@ import {
     parseNumericVal,
     posStatsResponseSchema,
 } from '../lib/briefing';
-import { formatCurrency, formatInt } from '../lib/format';
 import { alertTone, buildExecutiveKpis, fetchExecutiveSummary, severityLabel } from '../lib/executive';
+import { formatCurrency, formatInt } from '../lib/format';
 import { errorMessage, intOf, moneyOf, num, qtyOf, textOf } from '../lib/reporting';
+import { ScreenHero } from '../ui';
 import { StatCard } from '../ui/StatCard';
 
 /**
@@ -47,7 +47,7 @@ export function Executive() {
 
     return (
         <div className="flex flex-col gap-md premium-screen premium-executive">
-<ScreenHero
+            <ScreenHero
                 title="الموجز التنفيذي"
                 english="Executive Summary"
                 description="تاب المحاسبي من دفتر القيود المُرحَّل، وتاب التشغيلي من موجز المدير: مبيعات اليوم والمصروفات والنواقص — في صفحة واحدة."
@@ -55,9 +55,11 @@ export function Executive() {
                     <>
                         <button
                             type="button"
-                            onClick={() => { () => {
-                    window.location.reload();
-                } }}
+                            onClick={() => {
+                                () => {
+                                    window.location.reload();
+                                };
+                            }}
                             disabled={false}
                             className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
                         >
@@ -68,7 +70,12 @@ export function Executive() {
             />
 
             {canAccounting && canOperational ? (
-                <div role="tablist" aria-label="تبويبات الموجز التنفيذي" className="flex gap-xs border-b border-hairline px-sm" data-erp-print-hide>
+                <div
+                    role="tablist"
+                    aria-label="تبويبات الموجز التنفيذي"
+                    className="flex gap-xs border-b border-hairline px-sm"
+                    data-erp-print-hide
+                >
                     <button
                         type="button"
                         role="tab"
@@ -149,8 +156,7 @@ function AccountingBrief() {
 
     return (
         <>
-            <div className="flex justify-end gap-xs" data-erp-print-hide>
-            </div>
+            <div className="flex justify-end gap-xs" data-erp-print-hide></div>
 
             {summary.isPending ? <StateLoading label="جارٍ تحميل الموجز المحاسبي…" /> : null}
 
@@ -401,8 +407,7 @@ function OperationalBrief() {
 
     return (
         <>
-            <div className="flex justify-end gap-xs" data-erp-print-hide>
-            </div>
+            <div className="flex justify-end gap-xs" data-erp-print-hide></div>
 
             {isPending ? (
                 <StateLoading label="جارٍ جمع بيانات الموجز التشغيلي…" />

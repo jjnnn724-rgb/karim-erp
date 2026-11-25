@@ -1,5 +1,4 @@
 import './Departments.premium.css';
-import { DepartmentsLive } from './DepartmentsLive';
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
@@ -22,6 +21,7 @@ import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
+import { DepartmentsLive } from './DepartmentsLive';
 
 /**
  * سجل الأقسام — CRUD كامل مثل V2:
@@ -374,12 +374,20 @@ export function Departments() {
         <div className="erp-premium-screen flex flex-col gap-md">
             <header className="live-pane-hero">
                 <div className="live-pane-hero__text">
-                    <p className="live-pane-hero__eyebrow" dir="ltr" lang="en">AL SHURFA AL ALAMI · RESTAURANTS</p>
+                    <p className="live-pane-hero__eyebrow" dir="ltr" lang="en">
+                        AL SHURFA AL ALAMI · RESTAURANTS
+                    </p>
                     <div className="live-pane-hero__titleline">
-                        <h1 id="departments-title" className="live-pane-hero__title">الأقسام</h1>
-                        <span className="live-pane-hero__en" dir="ltr" lang="en">Departments</span>
+                        <h1 id="departments-title" className="live-pane-hero__title">
+                            الأقسام
+                        </h1>
+                        <span className="live-pane-hero__en" dir="ltr" lang="en">
+                            Departments
+                        </span>
                     </div>
-                    <p className="live-pane-hero__sub">أقسامك التشغيلية والكاشيرية الحيّة — من لحظة تسلسل المصروف بدخول المطبخ وحتى التوقيع الختامي.</p>
+                    <p className="live-pane-hero__sub">
+                        أقسامك التشغيلية والكاشيرية الحيّة — من لحظة تسلسل المصروف بدخول المطبخ وحتى التوقيع الختامي.
+                    </p>
                 </div>
                 <div className="live-pane-hero__actions" data-erp-print-hide>
                     {canWrite ? (
@@ -412,7 +420,9 @@ export function Departments() {
                     onClick={() => setTab('departments')}
                 >
                     الأقسام
-                    <span className="live-tab__en" dir="ltr">MANAGE</span>
+                    <span className="live-tab__en" dir="ltr">
+                        MANAGE
+                    </span>
                 </button>
                 <button
                     type="button"
@@ -424,7 +434,9 @@ export function Departments() {
                 >
                     الكاشيرية الحيّة
                     <span className="live-tab__dot" aria-hidden="true" />
-                    <span className="live-tab__en" dir="ltr">LIVE</span>
+                    <span className="live-tab__en" dir="ltr">
+                        LIVE
+                    </span>
                 </button>
             </nav>
 
@@ -435,233 +447,246 @@ export function Departments() {
             ) : null}
 
             {tab === 'departments' ? (
-            <div id="panel-departments" role="tabpanel" className="flex flex-col gap-md">
-            <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
-                <Kpi
-                    label="الأقسام التشغيلية"
-                    english="Departments"
-                    value={formatInt(operationalRows.length)}
-                    hint="بلا أقسام المرآة ys_"
-                />
-                <Kpi
-                    label="إيراد الشهر"
-                    english="Revenue"
-                    value={`${formatMoney(totals.revenue)} ${currency}`.trim()}
-                    hint={`كل صفوف ${monthLabel()} — تشمل المرآة وغير المسندة`}
-                />
-                <Kpi
-                    label="مصروف الشهر"
-                    english="Expense"
-                    value={`${formatMoney(totals.expense)} ${currency}`.trim()}
-                    hint="كل الصفوف — صرف المخزون واليدوي والفرق معًا"
-                />
-                <Kpi label="الصافي" english="Net" value={`${formatMoney(totals.net)} ${currency}`.trim()} hint="الإيراد − المصروف" />
-            </div>
-
-            <Card className="p-sm">
-                <div className="flex flex-wrap items-end gap-sm">
-                    <label
-                        className="flex min-w-56 flex-1 flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-departments-search"
-                    >
-                        بحث
-                        <input
-                            id="erp-departments-search"
-                            type="search"
-                            value={search}
-                            placeholder="الكود أو الاسم أو القسم الأب…"
-                            onChange={(event) => {
-                                setSearch(event.target.value);
-                                setPage(1);
-                            }}
-                            className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
+                <div id="panel-departments" role="tabpanel" className="flex flex-col gap-md">
+                    <div className="grid gap-sm sm:grid-cols-2 xl:grid-cols-4">
+                        <Kpi
+                            label="الأقسام التشغيلية"
+                            english="Departments"
+                            value={formatInt(operationalRows.length)}
+                            hint="بلا أقسام المرآة ys_"
                         />
-                    </label>
-                    <label className="flex items-center gap-xs pb-xxs text-body-sm text-ink-secondary">
-                        <input
-                            type="checkbox"
-                            checked={showMirrors}
-                            onChange={(event) => {
-                                setShowMirrors(event.target.checked);
-                                setPage(1);
-                            }}
+                        <Kpi
+                            label="إيراد الشهر"
+                            english="Revenue"
+                            value={`${formatMoney(totals.revenue)} ${currency}`.trim()}
+                            hint={`كل صفوف ${monthLabel()} — تشمل المرآة وغير المسندة`}
                         />
-                        إظهار أقسام المرآة (ys_)
-                    </label>
-                    <button
-                        type="button"
-                        onClick={resetFilters}
-                        className="rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover"
-                    >
-                        إعادة الضبط
-                    </button>
-                    <span className="text-body-sm text-muted">{formatInt(rows.length)} قسمًا</span>
-                </div>
-            </Card>
-
-            <Card>
-                {loading ? (
-                    <div aria-busy="true">
-                        <StateLoading label="جارٍ تحميل الأقسام وأرقام الشهر" />
-                        <TableSkeleton rows={6} columns={6} />
+                        <Kpi
+                            label="مصروف الشهر"
+                            english="Expense"
+                            value={`${formatMoney(totals.expense)} ${currency}`.trim()}
+                            hint="كل الصفوف — صرف المخزون واليدوي والفرق معًا"
+                        />
+                        <Kpi
+                            label="الصافي"
+                            english="Net"
+                            value={`${formatMoney(totals.net)} ${currency}`.trim()}
+                            hint="الإيراد − المصروف"
+                        />
                     </div>
-                ) : null}
 
-                {failure ? (
-                    <StateError
-                        message={failure instanceof Error ? failure.message : 'خطأ غير معروف'}
-                        onRetry={() => {
-                            void departmentsQuery.refetch();
-                            void revenuesQuery.refetch();
-                            void expensesQuery.refetch();
-                        }}
-                    />
-                ) : null}
-
-                {!loading && !failure && rows.length === 0 ? (
-                    <StateEmpty title="لا أقسام" hint="لا يوجد قسم مطابق للبحث — امسح البحث أو أظهر أقسام المرآة." />
-                ) : null}
-
-                {!loading && !failure && rows.length > 0 ? (
-                    <>
-                        <TableScroll label="جدول الأقسام">
-                            <table className="w-full border-collapse text-body-md">
-                                <thead>
-                                    <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                        <th scope="col" aria-sort={ariaSort('code')} className="px-sm py-xs text-start font-medium">
-                                            <button type="button" onClick={() => toggleSort('code')}>
-                                                الكود
-                                            </button>
-                                        </th>
-                                        <th scope="col" aria-sort={ariaSort('name')} className="px-sm py-xs text-start font-medium">
-                                            <button type="button" onClick={() => toggleSort('name')}>
-                                                القسم
-                                            </button>
-                                        </th>
-                                        <th scope="col" aria-sort={ariaSort('revenue')} className="px-sm py-xs text-end font-medium">
-                                            <button type="button" onClick={() => toggleSort('revenue')}>
-                                                الإيراد
-                                            </button>
-                                        </th>
-                                        <th scope="col" aria-sort={ariaSort('expense')} className="px-sm py-xs text-end font-medium">
-                                            <button type="button" onClick={() => toggleSort('expense')}>
-                                                المصروف
-                                            </button>
-                                        </th>
-                                        <th scope="col" aria-sort={ariaSort('net')} className="px-sm py-xs text-end font-medium">
-                                            <button type="button" onClick={() => toggleSort('net')}>
-                                                الصافي
-                                            </button>
-                                        </th>
-                                        <th scope="col" className="px-sm py-xs text-end font-medium">
-                                            نسبة التكلفة
-                                        </th>
-                                        {(canWrite || canDelete) && (
-                                            <th scope="col" className="px-sm py-xs text-start font-medium" data-erp-print-hide>
-                                                إجراءات
-                                            </th>
-                                        )}
-                                    </tr>
-                                </thead>
-                                <tbody>
-                                    {pageRows.map((row) => (
-                                        <tr key={row.code} className="border-b border-hairline hover:bg-surface-hover">
-                                            <td className="erp-numeric px-sm py-xxs text-body-sm text-muted" dir="ltr">
-                                                {row.code}
-                                            </td>
-                                            <td className="px-sm py-xxs">
-                                                <span className="block text-ink">{row.name}</span>
-                                                {row.parentName ? (
-                                                    <span className="block text-caption text-muted">تحت {row.parentName}</span>
-                                                ) : null}
-                                            </td>
-                                            <td className="erp-numeric px-sm py-xxs text-end text-ink">
-                                                {row.revenue === '0.00' ? '—' : formatMoney(row.revenue)}
-                                            </td>
-                                            <td className="erp-numeric px-sm py-xxs text-end text-ink">
-                                                {row.expense === '0.00' ? '—' : formatMoney(row.expense)}
-                                            </td>
-                                            <td
-                                                className={`erp-numeric px-sm py-xxs text-end ${
-                                                    row.net.startsWith('-') ? 'text-danger-text' : 'text-ink'
-                                                }`}
-                                            >
-                                                {row.net === '0.00' ? '—' : formatMoney(row.net)}
-                                            </td>
-                                            <td className="erp-numeric px-sm py-xxs text-end text-body-sm text-muted">
-                                                {row.costRatio === null ? '—' : `${row.costRatio.toFixed(1)}%`}
-                                            </td>
-                                            {(canWrite || canDelete) && (
-                                                <td className="px-sm py-xxs" data-erp-print-hide>
-                                                    <div className="flex flex-wrap items-center gap-xs">
-                                                        {canWrite ? (
-                                                            <Button
-                                                                type="button"
-                                                                size="sm"
-                                                                variant="secondary"
-                                                                title="تعديل القسم"
-                                                                onClick={() =>
-                                                                    openForm({
-                                                                        code: row.code,
-                                                                        name: row.name,
-                                                                        parent_code: row.parentCode,
-                                                                    })
-                                                                }
-                                                            >
-                                                                تعديل
-                                                            </Button>
-                                                        ) : null}
-                                                        {canDelete ? (
-                                                            <Button
-                                                                type="button"
-                                                                size="sm"
-                                                                variant="danger"
-                                                                title="حذف القسم"
-                                                                onClick={() => handleDelete({ code: row.code, name: row.name })}
-                                                            >
-                                                                حذف
-                                                            </Button>
-                                                        ) : null}
-                                                    </div>
-                                                </td>
-                                            )}
-                                        </tr>
-                                    ))}
-                                </tbody>
-                            </table>
-                        </TableScroll>
-
-                        <div className="flex items-center justify-between gap-sm border-t border-hairline px-sm py-xs">
-                            <span className="text-body-sm text-muted">
-                                صفحة {formatInt(safePage)} من {formatInt(pageCount)}
-                            </span>
-                            <div className="flex gap-xs">
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setPage(safePage - 1);
+                    <Card className="p-sm">
+                        <div className="flex flex-wrap items-end gap-sm">
+                            <label
+                                className="flex min-w-56 flex-1 flex-col gap-xxs text-label-md text-ink-secondary"
+                                htmlFor="erp-departments-search"
+                            >
+                                بحث
+                                <input
+                                    id="erp-departments-search"
+                                    type="search"
+                                    value={search}
+                                    placeholder="الكود أو الاسم أو القسم الأب…"
+                                    onChange={(event) => {
+                                        setSearch(event.target.value);
+                                        setPage(1);
                                     }}
-                                    disabled={safePage <= 1}
-                                    className="rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover disabled:opacity-50"
-                                >
-                                    السابق
-                                </button>
-                                <button
-                                    type="button"
-                                    onClick={() => {
-                                        setPage(safePage + 1);
+                                    className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
+                                />
+                            </label>
+                            <label className="flex items-center gap-xs pb-xxs text-body-sm text-ink-secondary">
+                                <input
+                                    type="checkbox"
+                                    checked={showMirrors}
+                                    onChange={(event) => {
+                                        setShowMirrors(event.target.checked);
+                                        setPage(1);
                                     }}
-                                    disabled={safePage >= pageCount}
-                                    className="rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover disabled:opacity-50"
-                                >
-                                    التالي
-                                </button>
-                            </div>
+                                />
+                                إظهار أقسام المرآة (ys_)
+                            </label>
+                            <button
+                                type="button"
+                                onClick={resetFilters}
+                                className="rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover"
+                            >
+                                إعادة الضبط
+                            </button>
+                            <span className="text-body-sm text-muted">{formatInt(rows.length)} قسمًا</span>
                         </div>
-                    </>
-                ) : null}
-            </Card>
-            </div>
+                    </Card>
+
+                    <Card>
+                        {loading ? (
+                            <div aria-busy="true">
+                                <StateLoading label="جارٍ تحميل الأقسام وأرقام الشهر" />
+                                <TableSkeleton rows={6} columns={6} />
+                            </div>
+                        ) : null}
+
+                        {failure ? (
+                            <StateError
+                                message={failure instanceof Error ? failure.message : 'خطأ غير معروف'}
+                                onRetry={() => {
+                                    void departmentsQuery.refetch();
+                                    void revenuesQuery.refetch();
+                                    void expensesQuery.refetch();
+                                }}
+                            />
+                        ) : null}
+
+                        {!loading && !failure && rows.length === 0 ? (
+                            <StateEmpty title="لا أقسام" hint="لا يوجد قسم مطابق للبحث — امسح البحث أو أظهر أقسام المرآة." />
+                        ) : null}
+
+                        {!loading && !failure && rows.length > 0 ? (
+                            <>
+                                <TableScroll label="جدول الأقسام">
+                                    <table className="w-full border-collapse text-body-md">
+                                        <thead>
+                                            <tr className="bg-surface-sunken text-label-md text-ink-secondary">
+                                                <th scope="col" aria-sort={ariaSort('code')} className="px-sm py-xs text-start font-medium">
+                                                    <button type="button" onClick={() => toggleSort('code')}>
+                                                        الكود
+                                                    </button>
+                                                </th>
+                                                <th scope="col" aria-sort={ariaSort('name')} className="px-sm py-xs text-start font-medium">
+                                                    <button type="button" onClick={() => toggleSort('name')}>
+                                                        القسم
+                                                    </button>
+                                                </th>
+                                                <th
+                                                    scope="col"
+                                                    aria-sort={ariaSort('revenue')}
+                                                    className="px-sm py-xs text-end font-medium"
+                                                >
+                                                    <button type="button" onClick={() => toggleSort('revenue')}>
+                                                        الإيراد
+                                                    </button>
+                                                </th>
+                                                <th
+                                                    scope="col"
+                                                    aria-sort={ariaSort('expense')}
+                                                    className="px-sm py-xs text-end font-medium"
+                                                >
+                                                    <button type="button" onClick={() => toggleSort('expense')}>
+                                                        المصروف
+                                                    </button>
+                                                </th>
+                                                <th scope="col" aria-sort={ariaSort('net')} className="px-sm py-xs text-end font-medium">
+                                                    <button type="button" onClick={() => toggleSort('net')}>
+                                                        الصافي
+                                                    </button>
+                                                </th>
+                                                <th scope="col" className="px-sm py-xs text-end font-medium">
+                                                    نسبة التكلفة
+                                                </th>
+                                                {(canWrite || canDelete) && (
+                                                    <th scope="col" className="px-sm py-xs text-start font-medium" data-erp-print-hide>
+                                                        إجراءات
+                                                    </th>
+                                                )}
+                                            </tr>
+                                        </thead>
+                                        <tbody>
+                                            {pageRows.map((row) => (
+                                                <tr key={row.code} className="border-b border-hairline hover:bg-surface-hover">
+                                                    <td className="erp-numeric px-sm py-xxs text-body-sm text-muted" dir="ltr">
+                                                        {row.code}
+                                                    </td>
+                                                    <td className="px-sm py-xxs">
+                                                        <span className="block text-ink">{row.name}</span>
+                                                        {row.parentName ? (
+                                                            <span className="block text-caption text-muted">تحت {row.parentName}</span>
+                                                        ) : null}
+                                                    </td>
+                                                    <td className="erp-numeric px-sm py-xxs text-end text-ink">
+                                                        {row.revenue === '0.00' ? '—' : formatMoney(row.revenue)}
+                                                    </td>
+                                                    <td className="erp-numeric px-sm py-xxs text-end text-ink">
+                                                        {row.expense === '0.00' ? '—' : formatMoney(row.expense)}
+                                                    </td>
+                                                    <td
+                                                        className={`erp-numeric px-sm py-xxs text-end ${
+                                                            row.net.startsWith('-') ? 'text-danger-text' : 'text-ink'
+                                                        }`}
+                                                    >
+                                                        {row.net === '0.00' ? '—' : formatMoney(row.net)}
+                                                    </td>
+                                                    <td className="erp-numeric px-sm py-xxs text-end text-body-sm text-muted">
+                                                        {row.costRatio === null ? '—' : `${row.costRatio.toFixed(1)}%`}
+                                                    </td>
+                                                    {(canWrite || canDelete) && (
+                                                        <td className="px-sm py-xxs" data-erp-print-hide>
+                                                            <div className="flex flex-wrap items-center gap-xs">
+                                                                {canWrite ? (
+                                                                    <Button
+                                                                        type="button"
+                                                                        size="sm"
+                                                                        variant="secondary"
+                                                                        title="تعديل القسم"
+                                                                        onClick={() =>
+                                                                            openForm({
+                                                                                code: row.code,
+                                                                                name: row.name,
+                                                                                parent_code: row.parentCode,
+                                                                            })
+                                                                        }
+                                                                    >
+                                                                        تعديل
+                                                                    </Button>
+                                                                ) : null}
+                                                                {canDelete ? (
+                                                                    <Button
+                                                                        type="button"
+                                                                        size="sm"
+                                                                        variant="danger"
+                                                                        title="حذف القسم"
+                                                                        onClick={() => handleDelete({ code: row.code, name: row.name })}
+                                                                    >
+                                                                        حذف
+                                                                    </Button>
+                                                                ) : null}
+                                                            </div>
+                                                        </td>
+                                                    )}
+                                                </tr>
+                                            ))}
+                                        </tbody>
+                                    </table>
+                                </TableScroll>
+
+                                <div className="flex items-center justify-between gap-sm border-t border-hairline px-sm py-xs">
+                                    <span className="text-body-sm text-muted">
+                                        صفحة {formatInt(safePage)} من {formatInt(pageCount)}
+                                    </span>
+                                    <div className="flex gap-xs">
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setPage(safePage - 1);
+                                            }}
+                                            disabled={safePage <= 1}
+                                            className="rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover disabled:opacity-50"
+                                        >
+                                            السابق
+                                        </button>
+                                        <button
+                                            type="button"
+                                            onClick={() => {
+                                                setPage(safePage + 1);
+                                            }}
+                                            disabled={safePage >= pageCount}
+                                            className="rounded-md border border-hairline-strong bg-surface px-sm py-xxs text-body-sm text-ink hover:bg-surface-hover disabled:opacity-50"
+                                        >
+                                            التالي
+                                        </button>
+                                    </div>
+                                </div>
+                            </>
+                        ) : null}
+                    </Card>
+                </div>
             ) : null}
 
             {/* Dialogs */}

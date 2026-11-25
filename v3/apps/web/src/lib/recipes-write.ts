@@ -131,11 +131,13 @@ export interface SyncLegacyResult {
 
 export async function syncRecipeToCashier(recipeId: string | number): Promise<SyncLegacyResult> {
     return writeJson(
-        z.object({
-            recipe_id: z.union([z.string(), z.number()]),
-            product: z.object({ id: z.number(), image_url: z.string().nullable().optional() }).passthrough().nullable(),
-            synced: z.boolean().optional(),
-        }).passthrough(),
+        z
+            .object({
+                recipe_id: z.union([z.string(), z.number()]),
+                product: z.object({ id: z.number(), image_url: z.string().nullable().optional() }).passthrough().nullable(),
+                synced: z.boolean().optional(),
+            })
+            .passthrough(),
         '/api/pos/recipes/sync-legacy',
         'POST',
         { recipe_id: Number(recipeId) },
@@ -162,23 +164,27 @@ export interface ProductIngredientRow {
 
 export async function fetchProductIngredients(productId: string | number): Promise<ProductIngredientRow[]> {
     return fetchJson(
-        z.array(z.object({
-            id: z.union([z.string(), z.number()]),
-            inventory_id: z.number(),
-            inventory_name: z.string(),
-            inventory_unit: z.string(),
-            inventory_weight: z.union([z.string(), z.number()]).nullable().optional(),
-            available_qty: z.union([z.string(), z.number()]).nullable().optional(),
-            avg_cost: z.union([z.string(), z.number()]).nullable().optional(),
-            quantity_per_unit: z.union([z.string(), z.number()]),
-            unit: z.string(),
-            waste_percent: z.union([z.string(), z.number()]).nullable().optional(),
-            notes: z.string().nullable().optional(),
-            extended_cost: z.union([z.string(), z.number()]).nullable().optional(),
-            inventory_unit_normalized: z.string().nullable().optional(),
-            quantity_in_inventory_units: z.union([z.string(), z.number()]).nullable().optional(),
-            unit_error: z.string().nullable().optional(),
-        }).passthrough()),
+        z.array(
+            z
+                .object({
+                    id: z.union([z.string(), z.number()]),
+                    inventory_id: z.number(),
+                    inventory_name: z.string(),
+                    inventory_unit: z.string(),
+                    inventory_weight: z.union([z.string(), z.number()]).nullable().optional(),
+                    available_qty: z.union([z.string(), z.number()]).nullable().optional(),
+                    avg_cost: z.union([z.string(), z.number()]).nullable().optional(),
+                    quantity_per_unit: z.union([z.string(), z.number()]),
+                    unit: z.string(),
+                    waste_percent: z.union([z.string(), z.number()]).nullable().optional(),
+                    notes: z.string().nullable().optional(),
+                    extended_cost: z.union([z.string(), z.number()]).nullable().optional(),
+                    inventory_unit_normalized: z.string().nullable().optional(),
+                    quantity_in_inventory_units: z.union([z.string(), z.number()]).nullable().optional(),
+                    unit_error: z.string().nullable().optional(),
+                })
+                .passthrough(),
+        ),
         `/api/pos/products/${encodeURIComponent(String(productId))}/ingredients`,
         getAccessToken(),
     ) as unknown as Promise<ProductIngredientRow[]>;
@@ -197,16 +203,36 @@ export interface InventoryEntry {
 
 export async function fetchBomInventory(): Promise<InventoryEntry[]> {
     return fetchJson(
-        z.array(z.object({
-            id: z.number(),
-            name: z.string(),
-            category: z.string().nullable().optional(),
-            unit: z.string().nullable().optional(),
-            weight: z.union([z.string(), z.number()]).nullable().optional().transform((v) => v == null ? 0 : Number(v)),
-            qty: z.union([z.string(), z.number()]).nullable().optional().transform((v) => v == null ? 0 : Number(v)),
-            avgCost: z.union([z.string(), z.number()]).nullable().optional().transform((v) => v == null ? 0 : Number(v)),
-            minQty: z.union([z.string(), z.number()]).nullable().optional().transform((v) => v == null ? 0 : Number(v)),
-        }).passthrough()),
+        z.array(
+            z
+                .object({
+                    id: z.number(),
+                    name: z.string(),
+                    category: z.string().nullable().optional(),
+                    unit: z.string().nullable().optional(),
+                    weight: z
+                        .union([z.string(), z.number()])
+                        .nullable()
+                        .optional()
+                        .transform((v) => (v == null ? 0 : Number(v))),
+                    qty: z
+                        .union([z.string(), z.number()])
+                        .nullable()
+                        .optional()
+                        .transform((v) => (v == null ? 0 : Number(v))),
+                    avgCost: z
+                        .union([z.string(), z.number()])
+                        .nullable()
+                        .optional()
+                        .transform((v) => (v == null ? 0 : Number(v))),
+                    minQty: z
+                        .union([z.string(), z.number()])
+                        .nullable()
+                        .optional()
+                        .transform((v) => (v == null ? 0 : Number(v))),
+                })
+                .passthrough(),
+        ),
         '/api/pos/ingredients',
         getAccessToken(),
     ) as Promise<InventoryEntry[]>;
@@ -232,26 +258,37 @@ export interface SaveIngredientsResult {
     total_cost?: number | null;
 }
 
-export async function saveProductIngredients(productId: string | number, lines: ReadonlyArray<{
-    inventory_id: number;
-    quantity_per_unit: number;
-    unit: string;
-    waste_percent: number;
-}>): Promise<SaveIngredientsResult> {
+export async function saveProductIngredients(
+    productId: string | number,
+    lines: ReadonlyArray<{
+        inventory_id: number;
+        quantity_per_unit: number;
+        unit: string;
+        waste_percent: number;
+    }>,
+): Promise<SaveIngredientsResult> {
     return writeJson(
-        z.object({
-            product_id: z.union([z.string(), z.number()]).optional(),
-            ingredient_count: z.number().optional(),
-            total_cost: z.union([z.string(), z.number()]).nullable().optional().transform((v) => v == null ? null : Number(v)),
-        }).passthrough(),
+        z
+            .object({
+                product_id: z.union([z.string(), z.number()]).optional(),
+                ingredient_count: z.number().optional(),
+                total_cost: z
+                    .union([z.string(), z.number()])
+                    .nullable()
+                    .optional()
+                    .transform((v) => (v == null ? null : Number(v))),
+            })
+            .passthrough(),
         `/api/pos/products/${encodeURIComponent(String(productId))}/ingredients`,
         'PUT',
-        { ingredients: lines.map((line) => ({
-            inventory_id: Number(line.inventory_id),
-            quantity_per_unit: Number(line.quantity_per_unit),
-            unit: String(line.unit || 'piece'),
-            waste_percent: Number(line.waste_percent) || 0,
-        })) },
+        {
+            ingredients: lines.map((line) => ({
+                inventory_id: Number(line.inventory_id),
+                quantity_per_unit: Number(line.quantity_per_unit),
+                unit: String(line.unit || 'piece'),
+                waste_percent: Number(line.waste_percent) || 0,
+            })),
+        },
     ) as Promise<SaveIngredientsResult>;
 }
 
@@ -262,15 +299,19 @@ export async function uploadProductImage(productId: string | number, file: File)
         Accept: 'application/json',
     };
     const token = getAccessToken();
-    if (token) {headers.Authorization = `Bearer ${token}`;}
+    if (token) {
+        headers.Authorization = `Bearer ${token}`;
+    }
     const appKey = getAppKey();
-    if (appKey) {headers['x-api-key'] = appKey;}
+    if (appKey) {
+        headers['x-api-key'] = appKey;
+    }
     const response = await fetch(`/api/pos/products/${encodeURIComponent(String(productId))}/image`, {
         method: 'POST',
         headers,
         body: form,
     });
-    const body = await response.json().catch(() => ({} as { message?: string; error?: string }));
+    const body = await response.json().catch(() => ({}) as { message?: string; error?: string });
     if (!response.ok) {
         throw new Error((body as { message?: string }).message || (body as { error?: string }).error || 'تعذر رفع الصورة');
     }
@@ -307,8 +348,28 @@ export function ingredientLine(row: Partial<ProductIngredientRow>): BomLineDraft
 
 export function newBomLine(inventory: Pick<InventoryEntry, 'id' | 'name' | 'unit'>, units: UnitOption[]): BomLineDraft {
     const known = units.map((option) => option.value);
-    const rawUnit = String(inventory.unit ?? '').trim().toLowerCase();
-    const aliases: Record<string, string> = { g: 'g', جرام: 'g', غرام: 'g', k: 'kg', kilogram: 'kg', كيلو: 'kg', l: 'l', litre: 'l', liter: 'l', لتر: 'l', ml: 'ml', مل: 'ml', مليلتر: 'ml', piece: 'piece', pieces: 'piece', وحدة: 'piece', حبة: 'piece' };
+    const rawUnit = String(inventory.unit ?? '')
+        .trim()
+        .toLowerCase();
+    const aliases: Record<string, string> = {
+        g: 'g',
+        جرام: 'g',
+        غرام: 'g',
+        k: 'kg',
+        kilogram: 'kg',
+        كيلو: 'kg',
+        l: 'l',
+        litre: 'l',
+        liter: 'l',
+        لتر: 'l',
+        ml: 'ml',
+        مل: 'ml',
+        مليلتر: 'ml',
+        piece: 'piece',
+        pieces: 'piece',
+        وحدة: 'piece',
+        حبة: 'piece',
+    };
     const normalized = aliases[rawUnit] || rawUnit || 'piece';
     const unit = known.includes(normalized) ? normalized : (known[0] ?? 'piece');
     return {

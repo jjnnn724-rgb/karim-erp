@@ -5,6 +5,7 @@ import { useConfirm } from '../components/ConfirmProvider';
 import { PrintActions } from '../components/PrintActions';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
+import { printDispatchDocument } from '../lib/dispatch-print';
 import {
     arSearchKey,
     DISPATCH_STATUS,
@@ -70,8 +71,8 @@ import {
 } from '../lib/dispatches-write';
 import { fetchDepartments, firstOfMonth, riyadhToday } from '../lib/finance';
 import { fetchInventoryRegister } from '../lib/inventory-register';
-import { printDispatchDocument } from '../lib/dispatch-print';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
+import { PageHeader } from '../ui';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
@@ -79,7 +80,6 @@ import { SignaturePad } from '../ui/SignaturePad';
 import { Textarea } from '../ui/Textarea';
 import { useToast } from '../ui/Toast';
 
-import { PageHeader } from '../ui';
 /**
  * أذون الصرف — القراءة من `/api/dispatches` بنفس نطاق القديم (الشهر الحالي
  * افتراضيًا، وكل السجل عند الطلب) وبنفس سقفيه المعلنين، ودورة القرار كاملة
@@ -279,9 +279,7 @@ function RequestDialog({
             : catalog
                   .filter(
                       (item) =>
-                          item.mainQty > 0 &&
-                          !lines.some((line) => line.name === item.name) &&
-                          arSearchKey(item.name).includes(needle),
+                          item.mainQty > 0 && !lines.some((line) => line.name === item.name) && arSearchKey(item.name).includes(needle),
                   )
                   .slice(0, 8);
 
@@ -351,15 +349,13 @@ function RequestDialog({
         >
             {isEdit && dispatch?.status === 'chef_approved' ? (
                 <p className="rounded-md border border-warning/40 bg-warning-soft p-sm text-body-sm text-ink">
-                    ⚠ هذا الطلب معتمد من الشيف — الحفظ <strong>يلغي الاعتماد</strong> ويرجعه للمراجعة على الأرقام
-                    الجديدة
+                    ⚠ هذا الطلب معتمد من الشيف — الحفظ <strong>يلغي الاعتماد</strong> ويرجعه للمراجعة على الأرقام الجديدة
                 </p>
             ) : null}
 
             {role === 'dept_head' ? (
                 <p className="text-body-sm text-muted">
-                    القسم الطالب: <strong className="text-ink">قسم حسابك</strong> — رئيس القسم ينشئ ويعدّل لقسمه فقط،
-                    والخادم يفرضه.
+                    القسم الطالب: <strong className="text-ink">قسم حسابك</strong> — رئيس القسم ينشئ ويعدّل لقسمه فقط، والخادم يفرضه.
                 </p>
             ) : (
                 <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-dispatch-dept">
@@ -558,12 +554,7 @@ function ChefApproveDialog({
                     setNotes(event.target.value);
                 }}
             />
-            <SignaturePad
-                label="توقيع الشيف العمومي"
-                name={signerName}
-                testId="dispatch-signature"
-                onChange={setSignature}
-            />
+            <SignaturePad label="توقيع الشيف العمومي" name={signerName} testId="dispatch-signature" onChange={setSignature} />
             <FormMessage message={error} />
         </ActionsDialog>
     );
@@ -751,8 +742,8 @@ function ApproveDialog({
             onSubmit={(event) => void submit(event)}
         >
             <p className="rounded-md border border-warning/40 bg-warning-soft p-sm text-body-sm text-ink">
-                اعتماد المخزن <strong>يخصم الكمية من المخزون ويسجل تكلفة القسم في نفس المعاملة</strong> — راجع الكميات
-                والوزن الفعلي قبل التأكيد.
+                اعتماد المخزن <strong>يخصم الكمية من المخزون ويسجل تكلفة القسم في نفس المعاملة</strong> — راجع الكميات والوزن الفعلي قبل
+                التأكيد.
             </p>
             <ul className="flex flex-col gap-sm">
                 {rows.map((row, index) => (
@@ -816,12 +807,7 @@ function ApproveDialog({
                     setNotes(event.target.value);
                 }}
             />
-            <SignaturePad
-                label="توقيع أمين المخزن المعتمد"
-                name={signerName}
-                testId="dispatch-signature"
-                onChange={setSignature}
-            />
+            <SignaturePad label="توقيع أمين المخزن المعتمد" name={signerName} testId="dispatch-signature" onChange={setSignature} />
             <FormMessage message={error} />
         </ActionsDialog>
     );
@@ -847,9 +833,7 @@ function ReceiveDialog({
     signerName: string;
     pending: boolean;
     onClose: () => void;
-    onSubmit: (
-        body: { items: ReturnType<typeof receivedItemsPayload>; notes: string } & SignedDecision,
-    ) => Promise<unknown>;
+    onSubmit: (body: { items: ReturnType<typeof receivedItemsPayload>; notes: string } & SignedDecision) => Promise<unknown>;
 }) {
     const lines = dispatchItemLines(receiveSourceItems(dispatch), { approved: true });
     const [rows, setRows] = useState<ReceiveRow[]>(() =>
@@ -918,22 +902,17 @@ function ReceiveDialog({
             onSubmit={(event) => void submit(event)}
         >
             <p className="rounded-md border border-info/40 bg-info-soft p-sm text-body-sm text-ink">
-                الاستلام والتوقيع باسم حسابك فقط (<strong>{signerName || '—'}</strong>) — لا يمكن توقيع أي اسم آخر. راجع
-                الكميات ثم أكّد. لا يمكن تسجيل الاستلام مرتين.
+                الاستلام والتوقيع باسم حسابك فقط (<strong>{signerName || '—'}</strong>) — لا يمكن توقيع أي اسم آخر. راجع الكميات ثم أكّد. لا
+                يمكن تسجيل الاستلام مرتين.
             </p>
             <ul className="flex flex-col gap-sm">
                 {rows.map((row, index) => (
-                    <li
-                        key={row.name}
-                        className="flex flex-wrap items-end gap-xs rounded-md border border-hairline p-xs"
-                    >
+                    <li key={row.name} className="flex flex-wrap items-end gap-xs rounded-md border border-hairline p-xs">
                         <div className="flex min-w-40 flex-1 flex-col gap-xxs">
                             <span className="text-body-sm text-ink">{row.name}</span>
                             <span className="text-caption text-muted">
                                 المعتمد: {formatQty(row.approvedQty)}
-                                {row.catchWeight && row.approvedPackagingQty > 0
-                                    ? ` (${formatQty(row.approvedPackagingQty)} كرتون)`
-                                    : ''}
+                                {row.catchWeight && row.approvedPackagingQty > 0 ? ` (${formatQty(row.approvedPackagingQty)} كرتون)` : ''}
                             </span>
                         </div>
                         <Input
@@ -1042,8 +1021,8 @@ function ReopenDialog({
             onSubmit={(event) => void submit(event)}
         >
             <p className="rounded-md border border-warning/40 bg-warning-soft p-sm text-body-sm text-ink">
-                سيُعكس خصم المخزون وتكلفة القسم ويُلغى اعتماد المخازن وتوقيعه. بعد الإرجاع يمكن تعديل الإذن وإعادة إرساله
-                في دورة الاعتماد من جديد. لا يمكن تنفيذ ذلك بعد تسجيل أي استلام.
+                سيُعكس خصم المخزون وتكلفة القسم ويُلغى اعتماد المخازن وتوقيعه. بعد الإرجاع يمكن تعديل الإذن وإعادة إرساله في دورة الاعتماد من
+                جديد. لا يمكن تنفيذ ذلك بعد تسجيل أي استلام.
             </p>
             <Textarea
                 label="سبب الإرجاع (إلزامي)"
@@ -1101,10 +1080,7 @@ export function Dispatches() {
         },
     });
 
-    const editMutation = useWriteMutation<
-        { dispatch: Dispatch; payload: EditDispatchPayload },
-        { chefApprovalReset: boolean }
-    >({
+    const editMutation = useWriteMutation<{ dispatch: Dispatch; payload: EditDispatchPayload }, { chefApprovalReset: boolean }>({
         mutationFn: ({ dispatch, payload }) => editDispatch(dispatch.id, payload),
         invalidate: [['dispatches']],
         silentError: true,
@@ -1192,10 +1168,7 @@ export function Dispatches() {
 
     const rangeInvalid = Boolean(from && to && from > to);
     const allRows = useMemo(() => (dispatchesQuery.data ?? []).map(dispatchToRow), [dispatchesQuery.data]);
-    const rawById = useMemo(
-        () => new Map((dispatchesQuery.data ?? []).map((dispatch) => [dispatch.id, dispatch])),
-        [dispatchesQuery.data],
-    );
+    const rawById = useMemo(() => new Map((dispatchesQuery.data ?? []).map((dispatch) => [dispatch.id, dispatch])), [dispatchesQuery.data]);
 
     const rows = useMemo(() => {
         if (rangeInvalid) {
@@ -1459,20 +1432,12 @@ export function Dispatches() {
                     value={formatInt(counts.approved ?? 0)}
                     hint={DISPATCH_STATUS.approved.label}
                 />
-                <Kpi
-                    label="مستلم ومغلق"
-                    english="Received"
-                    value={formatInt(counts.received ?? 0)}
-                    hint={DISPATCH_STATUS.received.label}
-                />
+                <Kpi label="مستلم ومغلق" english="Received" value={formatInt(counts.received ?? 0)} hint={DISPATCH_STATUS.received.label} />
             </div>
 
             <Card className="p-sm">
                 <div className="flex flex-wrap items-end gap-sm">
-                    <label
-                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-dispatch-scope"
-                    >
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-dispatch-scope">
                         النطاق
                         <select
                             id="erp-dispatch-scope"
@@ -1487,10 +1452,7 @@ export function Dispatches() {
                             <option value="all">كل السجل</option>
                         </select>
                     </label>
-                    <label
-                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-dispatch-from"
-                    >
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-dispatch-from">
                         من
                         <input
                             id="erp-dispatch-from"
@@ -1518,10 +1480,7 @@ export function Dispatches() {
                             className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
                         />
                     </label>
-                    <label
-                        className="flex min-w-56 flex-1 flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-dispatch-search"
-                    >
+                    <label className="flex min-w-56 flex-1 flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-dispatch-search">
                         بحث بالصنف
                         <input
                             id="erp-dispatch-search"
@@ -1535,10 +1494,7 @@ export function Dispatches() {
                             className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
                         />
                     </label>
-                    <label
-                        className="flex flex-col gap-xxs text-label-md text-ink-secondary"
-                        htmlFor="erp-dispatch-status"
-                    >
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-dispatch-status">
                         الحالة
                         <select
                             id="erp-dispatch-status"
@@ -1571,7 +1527,10 @@ export function Dispatches() {
                         type="button"
                         className={status === 'ALL' ? 'erp-dispatch-status-chip is-active' : 'erp-dispatch-status-chip'}
                         aria-pressed={status === 'ALL'}
-                        onClick={() => { setStatus('ALL'); setPage(1); }}
+                        onClick={() => {
+                            setStatus('ALL');
+                            setPage(1);
+                        }}
                     >
                         الكل <span>{formatInt(rows.length)}</span>
                     </button>
@@ -1581,7 +1540,10 @@ export function Dispatches() {
                             type="button"
                             className={status === key ? 'erp-dispatch-status-chip is-active' : 'erp-dispatch-status-chip'}
                             aria-pressed={status === key}
-                            onClick={() => { setStatus(key); setPage(1); }}
+                            onClick={() => {
+                                setStatus(key);
+                                setPage(1);
+                            }}
                         >
                             {entry.label} <span>{formatInt(countsAll[key] ?? 0)}</span>
                         </button>
@@ -1604,9 +1566,7 @@ export function Dispatches() {
 
                 {dispatchesQuery.isError ? (
                     <StateError
-                        message={
-                            dispatchesQuery.error instanceof Error ? dispatchesQuery.error.message : 'خطأ غير معروف'
-                        }
+                        message={dispatchesQuery.error instanceof Error ? dispatchesQuery.error.message : 'خطأ غير معروف'}
                         onRetry={() => {
                             void dispatchesQuery.refetch();
                         }}
@@ -1668,21 +1628,13 @@ export function Dispatches() {
                                     {pageRows.map((row: DispatchRow) => {
                                         const raw = rawById.get(row.id);
                                         return (
-                                            <tr
-                                                key={row.id}
-                                                className="border-b border-hairline hover:bg-surface-hover"
-                                            >
+                                            <tr key={row.id} className="border-b border-hairline hover:bg-surface-hover">
                                                 <td className="erp-numeric px-sm py-xxs text-end text-ink" dir="ltr">
                                                     #{row.id}
                                                 </td>
                                                 <td className="px-sm py-xxs text-ink">{row.dept}</td>
-                                                <td className="px-sm py-xxs text-body-sm text-ink-secondary">
-                                                    {row.itemsText || '—'}
-                                                </td>
-                                                <td
-                                                    className="erp-numeric px-sm py-xxs text-center text-body-sm text-muted"
-                                                    dir="ltr"
-                                                >
+                                                <td className="px-sm py-xxs text-body-sm text-ink-secondary">{row.itemsText || '—'}</td>
+                                                <td className="erp-numeric px-sm py-xxs text-center text-body-sm text-muted" dir="ltr">
                                                     {row.date || '—'}
                                                 </td>
                                                 <td className="px-sm py-xxs text-body-sm">
@@ -1695,16 +1647,10 @@ export function Dispatches() {
                                                             </span>
                                                         ) : null}
                                                     </span>
-                                                    {row.stage ? (
-                                                        <span className="block text-caption text-muted">
-                                                            {row.stage}
-                                                        </span>
-                                                    ) : null}
+                                                    {row.stage ? <span className="block text-caption text-muted">{row.stage}</span> : null}
                                                 </td>
                                                 <td className="px-sm py-xxs text-body-sm text-muted">{row.by}</td>
-                                                <td className="px-sm py-xxs text-body-sm text-muted">
-                                                    {row.receivedBy || '—'}
-                                                </td>
+                                                <td className="px-sm py-xxs text-body-sm text-muted">{row.receivedBy || '—'}</td>
                                                 {showActions ? (
                                                     <td className="px-sm py-xxs">
                                                         <div className="flex flex-wrap items-center justify-end gap-xxs">

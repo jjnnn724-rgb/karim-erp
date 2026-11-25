@@ -37,9 +37,7 @@ export function AccountantDashboard() {
     const filteredRevenues = useMemo(() => {
         return (data?.latestRevenues ?? []).filter((row) => {
             const dateOk =
-                range.from && range.to
-                    ? textOf(row.date).slice(0, 10) >= range.from && textOf(row.date).slice(0, 10) <= range.to
-                    : true;
+                range.from && range.to ? textOf(row.date).slice(0, 10) >= range.from && textOf(row.date).slice(0, 10) <= range.to : true;
             const textOk = q ? (textOf(row.source) ?? '').includes(q) : true;
             return dateOk && textOk;
         });
@@ -48,9 +46,7 @@ export function AccountantDashboard() {
     const filteredExpenses = useMemo(() => {
         return (data?.latestExpenses ?? []).filter((row) => {
             const dateOk =
-                range.from && range.to
-                    ? textOf(row.date).slice(0, 10) >= range.from && textOf(row.date).slice(0, 10) <= range.to
-                    : true;
+                range.from && range.to ? textOf(row.date).slice(0, 10) >= range.from && textOf(row.date).slice(0, 10) <= range.to : true;
             const textOk = q ? (textOf(row.desc) ?? textOf(row.category) ?? '').includes(q) : true;
             return dateOk && textOk;
         });
@@ -221,10 +217,7 @@ export function AccountantDashboard() {
                     </div>
 
                     {data.failures.length > 0 ? (
-                        <p
-                            className="rounded-md border border-warning bg-surface p-sm text-body-sm text-warning-text"
-                            role="alert"
-                        >
+                        <p className="rounded-md border border-warning bg-surface p-sm text-body-sm text-warning-text" role="alert">
                             {`تعذّر قراءة: ${data.failures.join(' · ')}`}
                         </p>
                     ) : null}

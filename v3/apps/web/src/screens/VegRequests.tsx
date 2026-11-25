@@ -2,13 +2,12 @@ import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
-import { fetchMyPermissions } from '../lib/my-menus';
 import { fetchCurrency } from '../lib/finance';
 import { formatMoney, parseArabicDecimal } from '../lib/format';
-import { presetRange } from '../lib/reporting';
+import { fetchMyPermissions } from '../lib/my-menus';
 import { printSmart } from '../lib/print-viewer';
+import { presetRange } from '../lib/reporting';
 import { vegRequestPrintHtml } from '../lib/veg-print';
-import { AnswerStrip, ScreenHero } from '../ui';
 import {
     fetchVegConsumption,
     fetchVegRequests,
@@ -44,11 +43,12 @@ import {
     vegReceiveVisible,
 } from '../lib/veg-requests-write';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
+import { AnswerStrip, ScreenHero } from '../ui';
 import { Button } from '../ui/Button';
-import { StatCard } from '../ui/StatCard';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
+import { StatCard } from '../ui/StatCard';
 import { useToast } from '../ui/Toast';
 
 /**
@@ -161,7 +161,7 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
 
     const categoryNames = useMemo(() => (catalog ? Object.keys(catalog.categories) : []), [catalog]);
     const activeCategory = category && categoryNames.includes(category) ? category : (categoryNames[0] ?? '');
-    const itemsForCategory = useMemo(() => (catalog?.categories[activeCategory] ?? []), [catalog, activeCategory]);
+    const itemsForCategory = useMemo(() => catalog?.categories[activeCategory] ?? [], [catalog, activeCategory]);
 
     useEffect(() => {
         if (open) {
@@ -212,10 +212,18 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
             const name = row.name.trim();
             const qtyNum = parseArabicDecimal(row.qty);
             const note = row.note.trim();
-            if (!name && !row.qty.trim() && !row.unit.trim() && !note) { continue; }
-            if (!name) { return { ok: false, error: 'صنف يدوي ناقص الاسم' }; }
-            if (!Number.isFinite(qtyNum) || qtyNum <= 0 || qtyNum > 99999) { return { ok: false, error: `كمية الصنف اليدوي «${name}» غير صحيحة` }; }
-            if ([...lines, ...filled].some((l) => l.name === name)) { return { ok: false, error: `الصنف «${name}» مكرر` }; }
+            if (!name && !row.qty.trim() && !row.unit.trim() && !note) {
+                continue;
+            }
+            if (!name) {
+                return { ok: false, error: 'صنف يدوي ناقص الاسم' };
+            }
+            if (!Number.isFinite(qtyNum) || qtyNum <= 0 || qtyNum > 99999) {
+                return { ok: false, error: `كمية الصنف اليدوي «${name}» غير صحيحة` };
+            }
+            if ([...lines, ...filled].some((l) => l.name === name)) {
+                return { ok: false, error: `الصنف «${name}» مكرر` };
+            }
             filled.push({ name, qty: Math.round(qtyNum * 1000) / 1000, unit: row.unit || 'وحدة', note: note || null });
         }
         return { ok: true, items: filled };
@@ -308,7 +316,17 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
                 <div className="rounded-md border border-dashed border-hairline p-sm">
                     <div className="mb-xs flex flex-wrap items-center justify-between gap-sm">
                         <span className="text-label-md text-muted">أصناف من خارج الكتالوج</span>
-                        <Button type="button" variant="secondary" size="sm" onClick={() => setManualRows((prev) => [...prev, { id: Date.now() + prev.length, name: '', qty: '1', unit: 'كجم', note: '' }])}>
+                        <Button
+                            type="button"
+                            variant="secondary"
+                            size="sm"
+                            onClick={() =>
+                                setManualRows((prev) => [
+                                    ...prev,
+                                    { id: Date.now() + prev.length, name: '', qty: '1', unit: 'كجم', note: '' },
+                                ])
+                            }
+                        >
                             + أضف صنف يدوي
                         </Button>
                     </div>
@@ -320,7 +338,9 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
                                         label="الصنف"
                                         name={`manual-name-${row.id}`}
                                         value={row.name}
-                                        onChange={(e) => setManualRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, name: e.target.value } : r)))}
+                                        onChange={(e) =>
+                                            setManualRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, name: e.target.value } : r)))
+                                        }
                                         placeholder="اكتب اسم الصنف…"
                                     />
                                     <Input
@@ -330,20 +350,28 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
                                         min={0}
                                         step={0.001}
                                         value={row.qty}
-                                        onChange={(e) => setManualRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, qty: e.target.value } : r)))}
+                                        onChange={(e) =>
+                                            setManualRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, qty: e.target.value } : r)))
+                                        }
                                     />
                                     <Select
                                         label="الوحدة"
                                         name={`manual-unit-${row.id}`}
                                         value={row.unit}
-                                        onValueChange={(value) => setManualRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, unit: String(value ?? 'وحدة') } : r)))}
+                                        onValueChange={(value) =>
+                                            setManualRows((prev) =>
+                                                prev.map((r) => (r.id === row.id ? { ...r, unit: String(value ?? 'وحدة') } : r)),
+                                            )
+                                        }
                                         options={MANUAL_UNITS.map((u) => ({ label: u, value: u }))}
                                     />
                                     <Input
                                         label="ملاحظة (اختياري)"
                                         name={`manual-note-${row.id}`}
                                         value={row.note}
-                                        onChange={(e) => setManualRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, note: e.target.value } : r)))}
+                                        onChange={(e) =>
+                                            setManualRows((prev) => prev.map((r) => (r.id === row.id ? { ...r, note: e.target.value } : r)))
+                                        }
                                         placeholder="زي: حظ كبير / عريض"
                                     />
                                     <button
@@ -436,7 +464,9 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
     useEffect(() => {
         if (open) {
             const next: Record<string, string> = {};
-            for (const item of items) { next[item.name] = String(item.qty ?? 0); }
+            for (const item of items) {
+                next[item.name] = String(item.qty ?? 0);
+            }
             setReceived(next);
             setRejected(new Set());
             setConfirmStage(false);
@@ -445,17 +475,33 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
     }, [open, items]);
 
     const stats = useMemo(() => {
-        let asked = 0, got = 0, spoiled = 0, rejectedCount = 0, over = 0;
+        let asked = 0,
+            got = 0,
+            spoiled = 0,
+            rejectedCount = 0,
+            over = 0;
         for (const item of items) {
             const q = Number(item.qty) || 0;
             const g = parseArabicDecimal(received[item.name]);
             asked += q;
-            if (Number.isFinite(g) && g >= 0) { got += g; }
+            if (Number.isFinite(g) && g >= 0) {
+                got += g;
+            }
             spoiled += Math.max(0, q - (Number.isFinite(g) && g >= 0 ? g : 0));
-            if (Number.isFinite(g) && g > q) { over += g - q; }
-            if (rejected.has(item.name)) { rejectedCount += 1; }
+            if (Number.isFinite(g) && g > q) {
+                over += g - q;
+            }
+            if (rejected.has(item.name)) {
+                rejectedCount += 1;
+            }
         }
-        return { asked: Math.round(asked * 1000) / 1000, got: Math.round(got * 1000) / 1000, spoiled: Math.round(spoiled * 1000) / 1000, rejectedCount, over: Math.round(over * 1000) / 1000 };
+        return {
+            asked: Math.round(asked * 1000) / 1000,
+            got: Math.round(got * 1000) / 1000,
+            spoiled: Math.round(spoiled * 1000) / 1000,
+            rejectedCount,
+            over: Math.round(over * 1000) / 1000,
+        };
     }, [items, received, rejected]);
 
     function tabularNumber(v: string | undefined): number {
@@ -484,29 +530,51 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
     return (
         <Dialog
             open={open}
-            onOpenChange={(next) => { if (!next) { onClose(); } }}
+            onOpenChange={(next) => {
+                if (!next) {
+                    onClose();
+                }
+            }}
             title={row ? `استلام الطلب — ${row.number}` : 'استلام الطلب'}
             size="lg"
-            footer={confirmStage ? (
-                <>
-                    <Button type="button" variant="secondary" size="sm" onClick={() => setConfirmStage(false)}>رجوع للتعديل</Button>
-                    <Button type="button" size="sm" variant="danger" loading={pending} onClick={() => void doSubmit()}>
-                        تأكيد الاستلام النهائي
-                    </Button>
-                </>
-            ) : (
-                <>
-                    <Button type="button" variant="secondary" size="sm" onClick={onClose}>{VEG_TEXT.cancel}</Button>
-                    <Button type="button" size="sm" onClick={() => {
-                        if (!items.length) { setError('لا توجد أصناف في الطلب'); return; }
-                        for (const item of items) {
-                            const g = tabularNumber(received[item.name]);
-                            if (!Number.isFinite(g) || g < 0 || g > 1000000) { setError(`كمية الاستلام للصنف «${item.name}» غير صحيحة`); return; }
-                        }
-                        setConfirmStage(true);
-                    }}>استكمال ←</Button>
-                </>
-            )}
+            footer={
+                confirmStage ? (
+                    <>
+                        <Button type="button" variant="secondary" size="sm" onClick={() => setConfirmStage(false)}>
+                            رجوع للتعديل
+                        </Button>
+                        <Button type="button" size="sm" variant="danger" loading={pending} onClick={() => void doSubmit()}>
+                            تأكيد الاستلام النهائي
+                        </Button>
+                    </>
+                ) : (
+                    <>
+                        <Button type="button" variant="secondary" size="sm" onClick={onClose}>
+                            {VEG_TEXT.cancel}
+                        </Button>
+                        <Button
+                            type="button"
+                            size="sm"
+                            onClick={() => {
+                                if (!items.length) {
+                                    setError('لا توجد أصناف في الطلب');
+                                    return;
+                                }
+                                for (const item of items) {
+                                    const g = tabularNumber(received[item.name]);
+                                    if (!Number.isFinite(g) || g < 0 || g > 1000000) {
+                                        setError(`كمية الاستلام للصنف «${item.name}» غير صحيحة`);
+                                        return;
+                                    }
+                                }
+                                setConfirmStage(true);
+                            }}
+                        >
+                            استكمال ←
+                        </Button>
+                    </>
+                )
+            }
         >
             <form id={RECEIVE_FORM_ID} onSubmit={(event) => event.preventDefault()} className="flex flex-col gap-sm">
                 {!confirmStage ? (
@@ -514,7 +582,8 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
                         <div className="rounded-md border border-hairline bg-surface-sunken p-sm">
                             <p className="text-label-md font-bold text-ink">السو شيف — تسجيل ما وصل بالفعل</p>
                             <p className="text-body-xs leading-relaxed text-muted">
-                                اكتب الكمية المستلمة فعليًا لكل صنف — زيادة عن المطلوب مقبولة بالكامل وستُحمَّل على الاستلام والتسعير — والصنف المرفوض يستبعد بالكامل.
+                                اكتب الكمية المستلمة فعليًا لكل صنف — زيادة عن المطلوب مقبولة بالكامل وستُحمَّل على الاستلام والتسعير — والصنف
+                                المرفوض يستبعد بالكامل.
                             </p>
                         </div>
 
@@ -522,12 +591,24 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
                             <table className="w-full border-collapse text-body-sm">
                                 <thead>
                                     <tr className="bg-surface-sunken text-caption font-bold text-muted">
-                                        <th scope="col" className="px-sm py-xs text-start">#</th>
-                                        <th scope="col" className="px-sm py-xs text-start">الصنف</th>
-                                        <th scope="col" className="px-sm py-xs text-end">المطلوب</th>
-                                        <th scope="col" className="px-sm py-xs text-end">المستلم</th>
-                                        <th scope="col" className="px-sm py-xs text-end">التالف / زيادة</th>
-                                        <th scope="col" className="px-sm py-xs text-center">مرفوض</th>
+                                        <th scope="col" className="px-sm py-xs text-start">
+                                            #
+                                        </th>
+                                        <th scope="col" className="px-sm py-xs text-start">
+                                            الصنف
+                                        </th>
+                                        <th scope="col" className="px-sm py-xs text-end">
+                                            المطلوب
+                                        </th>
+                                        <th scope="col" className="px-sm py-xs text-end">
+                                            المستلم
+                                        </th>
+                                        <th scope="col" className="px-sm py-xs text-end">
+                                            التالف / زيادة
+                                        </th>
+                                        <th scope="col" className="px-sm py-xs text-center">
+                                            مرفوض
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -539,10 +620,15 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
                                         const over = gotSafe > asked ? Math.round((gotSafe - asked) * 1000) / 1000 : 0;
                                         const isRejected = rejected.has(item.name);
                                         return (
-                                            <tr key={item.name} className={`border-t border-hairline ${isRejected ? 'bg-red-50/40 opacity-70' : ''}`}>
+                                            <tr
+                                                key={item.name}
+                                                className={`border-t border-hairline ${isRejected ? 'bg-red-50/40 opacity-70' : ''}`}
+                                            >
                                                 <td className="px-sm py-xs text-caption text-faint">{idx + 1}</td>
                                                 <td className="px-sm py-xs font-semibold text-ink">{item.name}</td>
-                                                <td className="erp-numeric px-sm py-xs text-end text-ink" dir="ltr">{asked.toLocaleString('en-US', { maximumFractionDigits: 3 })} {item.unit ?? ''}</td>
+                                                <td className="erp-numeric px-sm py-xs text-end text-ink" dir="ltr">
+                                                    {asked.toLocaleString('en-US', { maximumFractionDigits: 3 })} {item.unit ?? ''}
+                                                </td>
                                                 <td className="px-sm py-xs">
                                                     <Input
                                                         aria-label={`المستلم من ${item.name}`}
@@ -553,12 +639,26 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
                                                         inputMode="decimal"
                                                         className="text-end tabular-nums"
                                                         value={received[item.name] ?? ''}
-                                                        onChange={(e) => setReceived((previous) => ({ ...previous, [item.name]: e.target.value }))}
+                                                        onChange={(e) =>
+                                                            setReceived((previous) => ({ ...previous, [item.name]: e.target.value }))
+                                                        }
                                                         disabled={isRejected}
                                                         dir="ltr"
                                                     />
                                                 </td>
-                                                <td className="erp-numeric px-sm py-xs text-end font-bold" dir="ltr">{spoiled > 0 ? <span className="text-danger-text">-{spoiled.toLocaleString('en-US', { maximumFractionDigits: 3 })}</span> : over > 0 ? <span className="text-success-text">+{over.toLocaleString('en-US', { maximumFractionDigits: 3 })}</span> : '—'}</td>
+                                                <td className="erp-numeric px-sm py-xs text-end font-bold" dir="ltr">
+                                                    {spoiled > 0 ? (
+                                                        <span className="text-danger-text">
+                                                            -{spoiled.toLocaleString('en-US', { maximumFractionDigits: 3 })}
+                                                        </span>
+                                                    ) : over > 0 ? (
+                                                        <span className="text-success-text">
+                                                            +{over.toLocaleString('en-US', { maximumFractionDigits: 3 })}
+                                                        </span>
+                                                    ) : (
+                                                        '—'
+                                                    )}
+                                                </td>
                                                 <td className="px-sm py-xs text-center">
                                                     <label className="inline-flex cursor-pointer items-center gap-xxs text-caption text-danger-text">
                                                         <input
@@ -568,7 +668,11 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
                                                                 const checked = e.target.checked;
                                                                 setRejected((prev) => {
                                                                     const next = new Set(prev);
-                                                                    if (checked) { next.add(item.name); } else { next.delete(item.name); }
+                                                                    if (checked) {
+                                                                        next.add(item.name);
+                                                                    } else {
+                                                                        next.delete(item.name);
+                                                                    }
                                                                     return next;
                                                                 });
                                                             }}
@@ -582,17 +686,39 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
                                 </tbody>
                                 <tfoot>
                                     <tr className="border-t-2 border-hairline-strong bg-surface-sunken">
-                                        <td colSpan={2} className="px-sm py-xs text-body-sm font-bold text-ink">الإجمالي</td>
-                                        <td className="erp-numeric px-sm py-xs text-end text-body-sm text-ink" dir="ltr">{stats.asked.toLocaleString('en-US', { maximumFractionDigits: 3 })}</td>
-                                        <td className="erp-numeric px-sm py-xs text-end font-extrabold text-success-text" dir="ltr">{stats.got.toLocaleString('en-US', { maximumFractionDigits: 3 })}</td>
-                                        <td className="erp-numeric px-sm py-xs text-end font-bold text-ink" dir="ltr">{stats.spoiled > 0 ? `-${stats.spoiled.toLocaleString('en-US', { maximumFractionDigits: 3 })}` : stats.over > 0 ? <span className="text-success-text">+{stats.over.toLocaleString('en-US', { maximumFractionDigits: 3 })}</span> : '—'}</td>
+                                        <td colSpan={2} className="px-sm py-xs text-body-sm font-bold text-ink">
+                                            الإجمالي
+                                        </td>
+                                        <td className="erp-numeric px-sm py-xs text-end text-body-sm text-ink" dir="ltr">
+                                            {stats.asked.toLocaleString('en-US', { maximumFractionDigits: 3 })}
+                                        </td>
+                                        <td className="erp-numeric px-sm py-xs text-end font-extrabold text-success-text" dir="ltr">
+                                            {stats.got.toLocaleString('en-US', { maximumFractionDigits: 3 })}
+                                        </td>
+                                        <td className="erp-numeric px-sm py-xs text-end font-bold text-ink" dir="ltr">
+                                            {stats.spoiled > 0 ? (
+                                                `-${stats.spoiled.toLocaleString('en-US', { maximumFractionDigits: 3 })}`
+                                            ) : stats.over > 0 ? (
+                                                <span className="text-success-text">
+                                                    +{stats.over.toLocaleString('en-US', { maximumFractionDigits: 3 })}
+                                                </span>
+                                            ) : (
+                                                '—'
+                                            )}
+                                        </td>
                                         <td />
                                     </tr>
                                 </tfoot>
                             </table>
                         </div>
-                        {error ? <p role="alert" className="text-body-sm text-danger-text">{error}</p> : null}
-                        <p className="text-body-xs text-faint">الاستلام بواسطة: {receiverName ?? '…'} — التالف يُوثَّق ولا يُسعَّر ولا يُحمّل على المطبخ.</p>
+                        {error ? (
+                            <p role="alert" className="text-body-sm text-danger-text">
+                                {error}
+                            </p>
+                        ) : null}
+                        <p className="text-body-xs text-faint">
+                            الاستلام بواسطة: {receiverName ?? '…'} — التالف يُوثَّق ولا يُسعَّر ولا يُحمّل على المطبخ.
+                        </p>
                     </>
                 ) : (
                     <div className="flex flex-col gap-sm">
@@ -600,15 +726,40 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
                         <div className="rounded-md border border-hairline bg-surface-sunken p-sm text-body-sm text-ink">
                             <p className="mb-xs font-semibold">ملخص ما سيتم تسجيله:</p>
                             <ul className="list-disc ps-5 leading-relaxed text-muted">
-                                <li>أصناف سيتم استلامها: <b className="text-ink">{items.length - stats.rejectedCount} صنف</b></li>
-                                <li>الكمية المستلمة الكلية: <b className="text-ink" dir="ltr">{stats.got.toLocaleString('en-US', { maximumFractionDigits: 3 })}</b></li>
-                                <li>التالف والموثق: <b className="text-ink" dir="ltr">{stats.spoiled.toLocaleString('en-US', { maximumFractionDigits: 3 })}</b></li>
-                                <li>زيادة عن المطلوب (مقبولة بالكامل): <b className="text-ink" dir="ltr">{stats.over > 0 ? `+${stats.over.toLocaleString('en-US', { maximumFractionDigits: 3 })}` : '—'}</b></li>
-                                <li>أصناف مرفوضة كاملة: <b className="text-ink">{stats.rejectedCount}</b></li>
+                                <li>
+                                    أصناف سيتم استلامها: <b className="text-ink">{items.length - stats.rejectedCount} صنف</b>
+                                </li>
+                                <li>
+                                    الكمية المستلمة الكلية:{' '}
+                                    <b className="text-ink" dir="ltr">
+                                        {stats.got.toLocaleString('en-US', { maximumFractionDigits: 3 })}
+                                    </b>
+                                </li>
+                                <li>
+                                    التالف والموثق:{' '}
+                                    <b className="text-ink" dir="ltr">
+                                        {stats.spoiled.toLocaleString('en-US', { maximumFractionDigits: 3 })}
+                                    </b>
+                                </li>
+                                <li>
+                                    زيادة عن المطلوب (مقبولة بالكامل):{' '}
+                                    <b className="text-ink" dir="ltr">
+                                        {stats.over > 0 ? `+${stats.over.toLocaleString('en-US', { maximumFractionDigits: 3 })}` : '—'}
+                                    </b>
+                                </li>
+                                <li>
+                                    أصناف مرفوضة كاملة: <b className="text-ink">{stats.rejectedCount}</b>
+                                </li>
                             </ul>
-                            <p className="mt-xs text-body-xs text-faint">مرفوض = ممنوع تمامًا من التسعير والترحيل — يُعتبر غير موجود نهائيًا.</p>
+                            <p className="mt-xs text-body-xs text-faint">
+                                مرفوض = ممنوع تمامًا من التسعير والترحيل — يُعتبر غير موجود نهائيًا.
+                            </p>
                         </div>
-                        {error ? <p role="alert" className="text-body-sm text-danger-text">{error}</p> : null}
+                        {error ? (
+                            <p role="alert" className="text-body-sm text-danger-text">
+                                {error}
+                            </p>
+                        ) : null}
                     </div>
                 )}
             </form>
@@ -745,15 +896,19 @@ function PriceDialog({ open, row, items, pending, onClose, onSubmit }: PriceDial
     const math = useMemo(() => {
         let total = 0;
         const lines = items.map((item) => {
-            if (item.rejected) { return { item, raw: '', price: null, valid: true, lineTotal: null }; }
+            if (item.rejected) {
+                return { item, raw: '', price: null, valid: true, lineTotal: null };
+            }
             const raw = String(prices[item.name] ?? '').trim();
             const price = raw === '' ? null : Number(raw);
             const valid = price !== null && Number.isFinite(price) && price >= 0 && price <= 1000000;
             const lineTotal = valid ? Math.round(price! * item.qty * 100) / 100 : null;
-            if (lineTotal !== null) { total += lineTotal; }
+            if (lineTotal !== null) {
+                total += lineTotal;
+            }
             return { item, raw, price, valid, lineTotal };
         });
-        const unpriced = lines.reduce((count, l) => count + ((l.item.rejected || l.valid) ? 0 : 1), 0);
+        const unpriced = lines.reduce((count, l) => count + (l.item.rejected || l.valid ? 0 : 1), 0);
         return { total: Math.round(total * 100) / 100, unpriced };
     }, [items, prices]);
 
@@ -766,7 +921,9 @@ function PriceDialog({ open, row, items, pending, onClose, onSubmit }: PriceDial
         }
         const payload: { name: string; price: number; qty?: number | undefined }[] = [];
         for (const item of items) {
-            if (item.rejected) { continue; }
+            if (item.rejected) {
+                continue;
+            }
             const raw = String(prices[item.name] ?? '').trim();
             const price = Number(raw);
             if (raw === '' || !Number.isFinite(price) || price < 0 || price > 1000000) {
@@ -807,12 +964,15 @@ function PriceDialog({ open, row, items, pending, onClose, onSubmit }: PriceDial
                     <div className="min-w-0">
                         <p className="text-label-md font-bold text-ink">وزارة الحسابات ← الاعتماد السعري</p>
                         <p className="text-body-xs leading-relaxed text-muted">
-                            سعر الوحدة لكل صنف مُستلم فقط. بضغطة واحدة يُقفل التسعير، ويُحمَّل الإجمالي كمصروف على قسم المطبخ تلقائيًا (category: خضار، adjustment veg_request).
+                            سعر الوحدة لكل صنف مُستلم فقط. بضغطة واحدة يُقفل التسعير، ويُحمَّل الإجمالي كمصروف على قسم المطبخ تلقائيًا (category:
+                            خضار، adjustment veg_request).
                         </p>
                     </div>
                     <div className="text-end">
                         <p className="text-caption text-muted">الإجمالي الحالي</p>
-                        <p className="erp-numeric text-heading-lg font-extrabold text-success-text" dir="ltr">{moneyFmt(math.total)} ر.س</p>
+                        <p className="erp-numeric text-heading-lg font-extrabold text-success-text" dir="ltr">
+                            {moneyFmt(math.total)} ر.س
+                        </p>
                     </div>
                 </div>
 
@@ -820,33 +980,54 @@ function PriceDialog({ open, row, items, pending, onClose, onSubmit }: PriceDial
                     <table className="w-full border-collapse text-body-sm">
                         <thead>
                             <tr className="bg-surface-sunken text-caption font-bold text-muted">
-                                <th scope="col" className="px-sm py-xs text-start">#</th>
-                                <th scope="col" className="px-sm py-xs text-start">الصنف</th>
-                                <th scope="col" className="px-sm py-xs text-center">الوحدة</th>
-                                <th scope="col" className="px-sm py-xs text-end">الكمية</th>
-                                <th scope="col" className="px-sm py-xs text-end">سعر الوحدة (ر.س)</th>
-                                <th scope="col" className="px-sm py-xs text-end">الإجمالي (ر.س)</th>
+                                <th scope="col" className="px-sm py-xs text-start">
+                                    #
+                                </th>
+                                <th scope="col" className="px-sm py-xs text-start">
+                                    الصنف
+                                </th>
+                                <th scope="col" className="px-sm py-xs text-center">
+                                    الوحدة
+                                </th>
+                                <th scope="col" className="px-sm py-xs text-end">
+                                    الكمية
+                                </th>
+                                <th scope="col" className="px-sm py-xs text-end">
+                                    سعر الوحدة (ر.س)
+                                </th>
+                                <th scope="col" className="px-sm py-xs text-end">
+                                    الإجمالي (ر.س)
+                                </th>
                             </tr>
                         </thead>
                         <tbody>
                             {items.map((item, idx) => {
                                 const isRejected = item.rejected === true;
-                                const line = (!isRejected && math) ? (() => {
-                                    const raw = String(prices[item.name] ?? '').trim();
-                                    const price = raw === '' ? null : Number(raw);
-                                    const valid = price !== null && Number.isFinite(price) && price >= 0 && price <= 1000000;
-                                    const lineTotal = valid ? Math.round(price! * item.qty * 100) / 100 : null;
-                                    return { raw, lineTotal };
-                                })() : { raw: '', lineTotal: null };
+                                const line =
+                                    !isRejected && math
+                                        ? (() => {
+                                              const raw = String(prices[item.name] ?? '').trim();
+                                              const price = raw === '' ? null : Number(raw);
+                                              const valid = price !== null && Number.isFinite(price) && price >= 0 && price <= 1000000;
+                                              const lineTotal = valid ? Math.round(price! * item.qty * 100) / 100 : null;
+                                              return { raw, lineTotal };
+                                          })()
+                                        : { raw: '', lineTotal: null };
                                 return (
                                     <tr key={item.name} className={`border-t border-hairline${isRejected ? ' bg-red-50/40' : ''}`}>
                                         <td className="px-sm py-xs text-caption text-faint">{idx + 1}</td>
-                                        <td className={`px-sm py-xs font-semibold ${isRejected ? 'text-muted line-through' : 'text-ink'}`}>{item.name}</td>
+                                        <td className={`px-sm py-xs font-semibold ${isRejected ? 'text-muted line-through' : 'text-ink'}`}>
+                                            {item.name}
+                                        </td>
                                         <td className="px-sm py-xs text-center text-muted">{item.unit ?? 'كجم'}</td>
-                                        <td className="erp-numeric px-sm py-xs text-end text-ink" dir="ltr">{(item.qty ?? 0).toLocaleString('en-US', { maximumFractionDigits: 3 })}</td>
+                                        <td className="erp-numeric px-sm py-xs text-end text-ink" dir="ltr">
+                                            {(item.qty ?? 0).toLocaleString('en-US', { maximumFractionDigits: 3 })}
+                                        </td>
                                         <td className="px-sm py-xs">
                                             {isRejected ? (
-                                                <span className="inline-flex rounded-full bg-red-100 px-sm py-xxs text-caption font-bold text-danger-text">مرفوض — لا يُسعّر</span>
+                                                <span className="inline-flex rounded-full bg-red-100 px-sm py-xxs text-caption font-bold text-danger-text">
+                                                    مرفوض — لا يُسعّر
+                                                </span>
                                             ) : (
                                                 <Input
                                                     aria-label={`سعر ${item.name}`}
@@ -857,13 +1038,21 @@ function PriceDialog({ open, row, items, pending, onClose, onSubmit }: PriceDial
                                                     inputMode="decimal"
                                                     className="text-end tabular-nums"
                                                     value={prices[item.name] ?? ''}
-                                                    onChange={(e) => setPrices((previous) => ({ ...previous, [item.name]: e.target.value }))}
+                                                    onChange={(e) =>
+                                                        setPrices((previous) => ({ ...previous, [item.name]: e.target.value }))
+                                                    }
                                                     dir="ltr"
                                                 />
                                             )}
                                         </td>
                                         <td className="erp-numeric px-sm py-xs text-end font-bold text-ink" dir="ltr">
-                                            {isRejected ? <span className="text-muted">—</span> : (line.lineTotal !== null ? moneyFmt(line.lineTotal) : <span className="text-muted">—</span>)}
+                                            {isRejected ? (
+                                                <span className="text-muted">—</span>
+                                            ) : line.lineTotal !== null ? (
+                                                moneyFmt(line.lineTotal)
+                                            ) : (
+                                                <span className="text-muted">—</span>
+                                            )}
                                         </td>
                                     </tr>
                                 );
@@ -871,8 +1060,16 @@ function PriceDialog({ open, row, items, pending, onClose, onSubmit }: PriceDial
                         </tbody>
                         <tfoot>
                             <tr className="border-t-2 border-hairline-strong bg-surface-sunken">
-                                <td colSpan={4} className="px-sm py-xs text-body-sm font-bold text-ink">الإجمالي النهائي</td>
-                                <td colSpan={2} className="erp-numeric px-sm py-xs text-end text-heading-md font-extrabold text-success-text" dir="ltr">{moneyFmt(math.total)} ر.س</td>
+                                <td colSpan={4} className="px-sm py-xs text-body-sm font-bold text-ink">
+                                    الإجمالي النهائي
+                                </td>
+                                <td
+                                    colSpan={2}
+                                    className="erp-numeric px-sm py-xs text-end text-heading-md font-extrabold text-success-text"
+                                    dir="ltr"
+                                >
+                                    {moneyFmt(math.total)} ر.س
+                                </td>
                             </tr>
                         </tfoot>
                     </table>
@@ -935,7 +1132,13 @@ function ConfirmDialog({ open, title, message, pending, onConfirm, onClose }: Co
 
 const CONTACTS_FORM_ID = 'erp-veg-contacts-form';
 
-function VegContactsDialog({ open, pending, current, onClose, onSave }: {
+function VegContactsDialog({
+    open,
+    pending,
+    current,
+    onClose,
+    onSave,
+}: {
     open: boolean;
     pending: boolean;
     current: VegContacts | null;
@@ -983,13 +1186,21 @@ function VegContactsDialog({ open, pending, current, onClose, onSave }: {
     return (
         <Dialog
             open={open}
-            onOpenChange={(next) => { if (!next) { onClose(); } }}
+            onOpenChange={(next) => {
+                if (!next) {
+                    onClose();
+                }
+            }}
             title="أرقام واتساب — المورد والمخزن"
             size="md"
             footer={
                 <>
-                    <Button type="button" variant="secondary" size="sm" onClick={onClose}>{VEG_TEXT.cancel}</Button>
-                    <Button type="submit" form={CONTACTS_FORM_ID} size="sm" loading={pending}>حفظ</Button>
+                    <Button type="button" variant="secondary" size="sm" onClick={onClose}>
+                        {VEG_TEXT.cancel}
+                    </Button>
+                    <Button type="submit" form={CONTACTS_FORM_ID} size="sm" loading={pending}>
+                        حفظ
+                    </Button>
                 </>
             }
         >
@@ -1010,14 +1221,17 @@ function VegContactsDialog({ open, pending, current, onClose, onSave }: {
                     onChange={(e) => setWarehouse(e.target.value)}
                     placeholder="مثال: 9665XXXXXXXX"
                 />
-                {error ? <p role="alert" className="text-body-sm text-danger-text">{error}</p> : null}
+                {error ? (
+                    <p role="alert" className="text-body-sm text-danger-text">
+                        {error}
+                    </p>
+                ) : null}
             </form>
         </Dialog>
     );
 }
 
 /* ── الشاشة ───────────────────────────────────────────────────────────── */
-
 
 export function VegRequests() {
     const auth = useAuthState();
@@ -1050,7 +1264,9 @@ export function VegRequests() {
     const [editItems, setEditItems] = useState<ReadonlyArray<{ name: string; qty: number; unit?: string | undefined }>>([]);
     const [priceOpen, setPriceOpen] = useState(false);
     const [priceRow, setPriceRow] = useState<VegRequestRow | null>(null);
-    const [priceItems, setPriceItems] = useState<ReadonlyArray<{ name: string; qty: number; unit?: string | undefined; rejected?: boolean | undefined }>>([]);
+    const [priceItems, setPriceItems] = useState<
+        ReadonlyArray<{ name: string; qty: number; unit?: string | undefined; rejected?: boolean | undefined }>
+    >([]);
     const [actionOpen, setActionOpen] = useState(false);
     const [actionRow, setActionRow] = useState<VegRequestRow | null>(null);
     const [actionKind, setActionKind] = useState<'cancel' | 'delete'>('cancel');
@@ -1059,7 +1275,6 @@ export function VegRequests() {
     const [receiveOpen, setReceiveOpen] = useState(false);
     const [receiveRow, setReceiveRow] = useState<VegRequestRow | null>(null);
     const [receiveItems, setReceiveItems] = useState<ReadonlyArray<{ name: string; qty: number; unit?: string | undefined }>>([]);
-
 
     const vegQuery = useQuery({
         queryKey: ['veg-requests', status],
@@ -1123,7 +1338,10 @@ export function VegRequests() {
         onSuccess: () => setCreateOpen(false),
     });
 
-    const receiveMutation = useWriteMutation<{ id: string | number; payload: { quantities: Array<{ name: string; receivedQty: number }>; rejections: string[] } }, void>({
+    const receiveMutation = useWriteMutation<
+        { id: string | number; payload: { quantities: Array<{ name: string; receivedQty: number }>; rejections: string[] } },
+        void
+    >({
         mutationFn: ({ id, payload }) => receiveVegRequest(id, payload).then(() => undefined),
         successTitle: () => '✓ تم استلام الطلب',
         invalidate: [['veg-requests']],
@@ -1217,11 +1435,13 @@ export function VegRequests() {
             ? (raw.items as Array<{ name?: string; qty?: number; quantity?: number; unit?: string; rejected?: boolean }>)
             : [];
         setReceiveRow(row);
-        setReceiveItems(items.map((item) => ({
-            name: String(item.name ?? ''),
-            qty: Number(item.qty ?? item.quantity ?? 0),
-            unit: item.unit ? String(item.unit) : undefined,
-        })));
+        setReceiveItems(
+            items.map((item) => ({
+                name: String(item.name ?? ''),
+                qty: Number(item.qty ?? item.quantity ?? 0),
+                unit: item.unit ? String(item.unit) : undefined,
+            })),
+        );
         setReceiveOpen(true);
     }
 
@@ -1284,10 +1504,12 @@ export function VegRequests() {
         }
         setPrintingId(row.id);
         try {
-            printSmart(vegRequestPrintHtml(raw, {
-                byName: String(auth.user?.name ?? auth.user?.username ?? ''),
-                currency,
-            }));
+            printSmart(
+                vegRequestPrintHtml(raw, {
+                    byName: String(auth.user?.name ?? auth.user?.username ?? ''),
+                    currency,
+                }),
+            );
             void markVegPrinted(row.id).catch(() => undefined);
         } finally {
             setPrintingId(null);
@@ -1303,10 +1525,24 @@ export function VegRequests() {
                 answer={
                     <AnswerStrip
                         items={[
-                            { label: 'بانتظار الاستلام', english: 'Pending', value: counts.pending, format: formatInt, hint: 'طلبات لم تُستلم بعد', tone: 'warning' },
+                            {
+                                label: 'بانتظار الاستلام',
+                                english: 'Pending',
+                                value: counts.pending,
+                                format: formatInt,
+                                hint: 'طلبات لم تُستلم بعد',
+                                tone: 'warning',
+                            },
                             { label: 'مستلمة', english: 'Received', value: counts.received, format: formatInt, hint: 'استلمها المخزن' },
                             { label: 'مُسعّرة', english: 'Priced', value: counts.priced, format: formatInt, hint: 'سعّرها المخزن' },
-                            { label: 'عاجلة', english: 'Urgent', value: counts.urgent, format: formatInt, hint: 'طلبات بعلامة الاستعجال', tone: counts.urgent > 0 ? 'danger' : 'neutral' },
+                            {
+                                label: 'عاجلة',
+                                english: 'Urgent',
+                                value: counts.urgent,
+                                format: formatInt,
+                                hint: 'طلبات بعلامة الاستعجال',
+                                tone: counts.urgent > 0 ? 'danger' : 'neutral',
+                            },
                         ]}
                         columns={4}
                     />
@@ -1319,7 +1555,13 @@ export function VegRequests() {
                             </Button>
                         ) : null}
                         {isContactsAdmin ? (
-                            <Button type="button" size="sm" variant="secondary" onClick={() => setContactsOpen(true)} title="أرقام واتساب المورد والمخزن">
+                            <Button
+                                type="button"
+                                size="sm"
+                                variant="secondary"
+                                onClick={() => setContactsOpen(true)}
+                                title="أرقام واتساب المورد والمخزن"
+                            >
                                 📞 أرقام واتساب
                             </Button>
                         ) : null}
@@ -1330,7 +1572,9 @@ export function VegRequests() {
                             }}
                             aria-expanded={analysisOpen}
                             className={`rounded-md px-md py-xs text-button-md ${
-                                analysisOpen ? 'bg-primary text-ink-inverse' : 'border border-hairline-strong bg-surface text-ink hover:bg-surface-hover'
+                                analysisOpen
+                                    ? 'bg-primary text-ink-inverse'
+                                    : 'border border-hairline-strong bg-surface text-ink hover:bg-surface-hover'
                             }`}
                         >
                             تحليل الخضار
@@ -1693,7 +1937,9 @@ export function VegRequests() {
                 pending={contactsMutation.isPending}
                 current={contactsQuery.data ?? null}
                 onClose={() => setContactsOpen(false)}
-                onSave={async (value) => { await contactsMutation.mutateAsync(value); }}
+                onSave={async (value) => {
+                    await contactsMutation.mutateAsync(value);
+                }}
             />
         </div>
     );
@@ -1832,7 +2078,12 @@ function VegAnalysisPanel() {
                             hint="صرف مخزني + بيع + توليد + هالك"
                             tone="warning"
                         />
-                        <StatCard label="أصناف في التحليل" english="Items" value={String(totals?.items ?? 0)} hint="أصناف الخضار المتتبعة" />
+                        <StatCard
+                            label="أصناف في التحليل"
+                            english="Items"
+                            value={String(totals?.items ?? 0)}
+                            hint="أصناف الخضار المتتبعة"
+                        />
                         <StatCard
                             label="الفترة"
                             english="Range"
@@ -1848,29 +2099,64 @@ function VegAnalysisPanel() {
                             <table className="w-full border-collapse text-body-md">
                                 <thead>
                                     <tr className="bg-surface-sunken text-label-md text-ink-secondary">
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">الصنف</th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">الوحدة</th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">المستلم</th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">قيمة المستلم</th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">المستهلك</th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">قيمة المستهلك</th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">الرصيد الحالي</th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">متوسط التكلفة</th>
-                                        <th scope="col" className="px-sm py-xs text-start font-medium">طلبات</th>
+                                        <th scope="col" className="px-sm py-xs text-start font-medium">
+                                            الصنف
+                                        </th>
+                                        <th scope="col" className="px-sm py-xs text-start font-medium">
+                                            الوحدة
+                                        </th>
+                                        <th scope="col" className="px-sm py-xs text-start font-medium">
+                                            المستلم
+                                        </th>
+                                        <th scope="col" className="px-sm py-xs text-start font-medium">
+                                            قيمة المستلم
+                                        </th>
+                                        <th scope="col" className="px-sm py-xs text-start font-medium">
+                                            المستهلك
+                                        </th>
+                                        <th scope="col" className="px-sm py-xs text-start font-medium">
+                                            قيمة المستهلك
+                                        </th>
+                                        <th scope="col" className="px-sm py-xs text-start font-medium">
+                                            الرصيد الحالي
+                                        </th>
+                                        <th scope="col" className="px-sm py-xs text-start font-medium">
+                                            متوسط التكلفة
+                                        </th>
+                                        <th scope="col" className="px-sm py-xs text-start font-medium">
+                                            طلبات
+                                        </th>
                                     </tr>
                                 </thead>
                                 <tbody>
                                     {rows.map((row) => (
-                                        <tr key={`${row.name}-${String(row.inventoryId ?? 'x')}`} className="border-b border-hairline hover:bg-surface-hover">
+                                        <tr
+                                            key={`${row.name}-${String(row.inventoryId ?? 'x')}`}
+                                            className="border-b border-hairline hover:bg-surface-hover"
+                                        >
                                             <td className="px-sm py-xxs text-ink">{row.name}</td>
                                             <td className="px-sm py-xxs text-body-sm text-muted">{row.unit || 'كجم'}</td>
-                                            <td className="erp-numeric px-sm py-xxs" dir="ltr">{Math.round(row.receivedQty * 1000) / 1000}</td>
-                                            <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">{String(row.receivedValue)}</td>
-                                            <td className="erp-numeric px-sm py-xxs font-medium" dir="ltr">{Math.round(row.consumedQty * 1000) / 1000}</td>
-                                            <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">{String(row.consumedValue)}</td>
-                                            <td className="erp-numeric px-sm py-xxs" dir="ltr">{Math.round(row.onHand * 1000) / 1000}</td>
-                                            <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">{String(row.avgCost)}</td>
-                                            <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">{row.requests}</td>
+                                            <td className="erp-numeric px-sm py-xxs" dir="ltr">
+                                                {Math.round(row.receivedQty * 1000) / 1000}
+                                            </td>
+                                            <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">
+                                                {String(row.receivedValue)}
+                                            </td>
+                                            <td className="erp-numeric px-sm py-xxs font-medium" dir="ltr">
+                                                {Math.round(row.consumedQty * 1000) / 1000}
+                                            </td>
+                                            <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">
+                                                {String(row.consumedValue)}
+                                            </td>
+                                            <td className="erp-numeric px-sm py-xxs" dir="ltr">
+                                                {Math.round(row.onHand * 1000) / 1000}
+                                            </td>
+                                            <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">
+                                                {String(row.avgCost)}
+                                            </td>
+                                            <td className="erp-numeric px-sm py-xxs text-muted" dir="ltr">
+                                                {row.requests}
+                                            </td>
                                         </tr>
                                     ))}
                                 </tbody>
@@ -1878,7 +2164,8 @@ function VegAnalysisPanel() {
                         </TableScroll>
                     )}
                     <p className="px-sm pb-xs text-caption text-faint">
-                        المستلم من سجل الطلبيات المسلمة/المعتمدة في الفترة؛ المستهلك من دفتر حركات المخزون (صرف، بيع، توليد، هالك)؛ الرصيد ومتوسط التكلفة لحظة العرض.
+                        المستلم من سجل الطلبيات المسلمة/المعتمدة في الفترة؛ المستهلك من دفتر حركات المخزون (صرف، بيع، توليد، هالك)؛ الرصيد
+                        ومتوسط التكلفة لحظة العرض.
                     </p>
                 </>
             ) : null}

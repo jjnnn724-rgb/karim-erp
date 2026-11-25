@@ -4,7 +4,7 @@ import { BarList, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { buildHrKpis, departmentDistribution, fetchHrSnapshot, pendingLeaveRows, weeklyAttendance } from '../lib/hr-dashboard';
 import { errorMessage, intOf, presetRange, rangeProblem, shareOf } from '../lib/reporting';
-import { FilterBar, StatCard , ScreenHero } from '../ui';
+import { FilterBar, ScreenHero, StatCard } from '../ui';
 
 /**
  * لوحة الموارد البشرية — مؤشرات الفريق والحضور وسلسلة الإجازات.
@@ -46,7 +46,7 @@ export function HrDashboard() {
 
     return (
         <div className="flex flex-col gap-md">
-<ScreenHero
+            <ScreenHero
                 title="لوحة الموارد البشرية"
                 english="HR Dashboard"
                 description="الفريق والحضور والإجازات في مكان واحد — كل مصدرٍ يُعلن نفسه، والفاشل يُسمّى."
@@ -54,9 +54,11 @@ export function HrDashboard() {
                     <>
                         <button
                             type="button"
-                            onClick={() => { () => {
-                    void snapshotQuery.refetch();
-                } }}
+                            onClick={() => {
+                                () => {
+                                    void snapshotQuery.refetch();
+                                };
+                            }}
                             disabled={snapshotQuery.isFetching}
                             className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
                         >

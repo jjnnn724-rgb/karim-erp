@@ -5,7 +5,7 @@ import { BarList, SectionCard } from '../components/Reports';
 import { StateEmpty, StateError, StateLoading, TableScroll } from '../components/TableState';
 import { fetchCostAnalysis, topCostRows } from '../lib/cost-analysis';
 import { errorMessage, intOf, moneyOf, pctOf, presetRange, rangeProblem, shareOf, textOf } from '../lib/reporting';
-import { FilterBar, StatCard , ScreenHero } from '../ui';
+import { FilterBar, ScreenHero, StatCard } from '../ui';
 
 /**
  * تحليل التكاليف — تكلفة كل قسم مقابل إيراده من `finance-routes`.
@@ -65,7 +65,7 @@ export function CostAnalysis() {
 
     return (
         <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-lg">
-<ScreenHero
+            <ScreenHero
                 title="تحليل التكاليف"
                 english="Cost Analysis"
                 description="تكلفة كل قسم — مواد وصرف مخزني وتحويلات وتسوية جرد ومصروفات تشغيلية مقابل إيراده، بنسبة التكلفة من الخادم."
@@ -73,9 +73,11 @@ export function CostAnalysis() {
                     <>
                         <button
                             type="button"
-                            onClick={() => { () => {
-                    void analysisQuery.refetch();
-                } }}
+                            onClick={() => {
+                                () => {
+                                    void analysisQuery.refetch();
+                                };
+                            }}
                             disabled={analysisQuery.isFetching}
                             className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
                         >

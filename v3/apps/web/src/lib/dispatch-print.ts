@@ -34,15 +34,15 @@ const num = (value: unknown): number => {
 
 const fmtQty = (value: unknown): string => {
     const n = num(value);
-    if (n <= 0) { return '—'; }
+    if (n <= 0) {
+        return '—';
+    }
     return n.toLocaleString('en-US', { maximumFractionDigits: 3 });
 };
 
-const fmtMoney = (value: number): string =>
-    value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
+const fmtMoney = (value: number): string => value.toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
-const escMultiline = (value: string | null | undefined): string =>
-    escape(value ?? '').replace(/\r?\n/g, '<br>');
+const escMultiline = (value: string | null | undefined): string => escape(value ?? '').replace(/\r?\n/g, '<br>');
 
 /* ── السجل الكامل (best effort — نتحقق أجزاءً ونمرّر الباقي) ─────────────── */
 
@@ -71,7 +71,10 @@ const fullDispatchSchema = z
         notes: z.string().nullable().optional(),
         items: z.array(itemSchema).nullable().optional(),
         approvedItems: z.array(itemSchema).nullable().optional(),
-        receivedItems: z.union([z.array(itemSchema), z.record(z.string(), z.unknown())]).nullable().optional(),
+        receivedItems: z
+            .union([z.array(itemSchema), z.record(z.string(), z.unknown())])
+            .nullable()
+            .optional(),
         needsChefApproval: z.boolean().nullable().optional(),
         approveNotes: z.string().nullable().optional(),
         requestSignatureData: z.string().nullable().optional(),
@@ -100,7 +103,9 @@ export type DispatchPrintRecord = z.infer<typeof fullDispatchSchema>;
 /** تحويل أي حمولة (قائمة أو سجل كامل) إلى سجل صالح للورقة — يفشل رجعيًا إلى أدنى سجل. */
 export function parseDispatchPrintRecord(input: unknown): DispatchPrintRecord {
     const parsed = fullDispatchSchema.safeParse(input);
-    if (parsed.success) { return parsed.data; }
+    if (parsed.success) {
+        return parsed.data;
+    }
     const raw = (input as { id?: string | number } | null) ?? {};
     return { id: String(raw.id ?? '?') };
 }
@@ -108,7 +113,12 @@ export function parseDispatchPrintRecord(input: unknown): DispatchPrintRecord {
 /** قراءة السجل الكامل مع التواقيع — يفشل صامتًا ويعيد `null`. */
 export async function fetchDispatchFull(id: string, signal?: AbortSignal): Promise<DispatchPrintRecord | null> {
     try {
-        const body = await fetchJson(fullDispatchSchema, `/api/dispatches/${encodeURIComponent(id)}`, getAccessToken(), signal ? { signal } : {});
+        const body = await fetchJson(
+            fullDispatchSchema,
+            `/api/dispatches/${encodeURIComponent(id)}`,
+            getAccessToken(),
+            signal ? { signal } : {},
+        );
         return body;
     } catch {
         return null;
@@ -152,9 +162,13 @@ function dateOnly(value: string | null | undefined): string {
 
 function formatAt(value: string | null | undefined): string {
     const raw = String(value ?? '').trim();
-    if (!raw) { return '—'; }
+    if (!raw) {
+        return '—';
+    }
     const parsed = new Date(raw);
-    if (Number.isNaN(parsed.getTime())) { return raw.slice(0, 16).replace('T', ' '); }
+    if (Number.isNaN(parsed.getTime())) {
+        return raw.slice(0, 16).replace('T', ' ');
+    }
     const pad = (x: number) => String(x).padStart(2, '0');
     return `${parsed.getFullYear()}-${pad(parsed.getMonth() + 1)}-${pad(parsed.getDate())} ${pad(parsed.getHours())}:${pad(parsed.getMinutes())}`;
 }
@@ -165,7 +179,9 @@ function splitName(value: string | null | undefined): string {
 
 function pickItems(record: DispatchPrintRecord): Array<z.infer<typeof itemSchema>> {
     const approved = Array.isArray(record.approvedItems) ? record.approvedItems : [];
-    if (approved.length) { return approved; }
+    if (approved.length) {
+        return approved;
+    }
     return Array.isArray(record.items) ? record.items : [];
 }
 
@@ -175,7 +191,9 @@ function firstNameOf(record: DispatchPrintRecord): string {
 
 function inkImage(dataUrl: string | null | undefined, label: string): string {
     const src = String(dataUrl ?? '').trim();
-    if (!src.startsWith('data:image')) { return ''; }
+    if (!src.startsWith('data:image')) {
+        return '';
+    }
     return `<img class="sig-ink" src="${escape(src)}" alt="توقيع ${escape(label)}" />`;
 }
 
@@ -203,7 +221,13 @@ function buildChain(record: DispatchPrintRecord): Array<{ role: string; name: st
             ink: inkImage(record.chefRejectionSignatureData, splitName(record.chefRejectedBy)),
         });
     }
-    if (record.warehouseApprovedBy || record.approvedBy || record.warehouseApprovedAt || record.approvedDate || record.warehouseApprovalSignatureData) {
+    if (
+        record.warehouseApprovedBy ||
+        record.approvedBy ||
+        record.warehouseApprovedAt ||
+        record.approvedDate ||
+        record.warehouseApprovalSignatureData
+    ) {
         chain.push({
             role: 'اعتماد المخزن',
             name: splitName(record.warehouseApprovedBy ?? record.approvedBy),
@@ -229,7 +253,10 @@ function buildChain(record: DispatchPrintRecord): Array<{ role: string; name: st
     return chain;
 }
 
-export function buildDispatchPrintHtml(record: DispatchPrintRecord, opts: { currency?: string; printedBy?: string | undefined } = {}): string {
+export function buildDispatchPrintHtml(
+    record: DispatchPrintRecord,
+    opts: { currency?: string; printedBy?: string | undefined } = {},
+): string {
     const items = pickItems(record);
     const statusKey = String(record.status ?? '').trim();
     const pill = STATUS_PILL[statusKey] ?? { label: statusKey || '—', tone: 'slate' as PillTone };
@@ -241,18 +268,19 @@ export function buildDispatchPrintHtml(record: DispatchPrintRecord, opts: { curr
 
     let totalValue = 0;
     let unitCostKnown = false;
-    const rowsHtml = items.map((item, idx) => {
-        const name = splitName(item.itemName ?? item.name ?? null);
-        const unit = splitName(item.unit);
-        const reqQty = num(item.qty);
-        const appQty = item.approvedQty == null ? null : num(item.approvedQty);
-        const recQty = item.receivedQty == null ? null : num(item.receivedQty);
-        const cost = num(item.avgCost);
-        if (cost > 0) {
-            unitCostKnown = true;
-            totalValue += (appQty ?? reqQty) * cost;
-        }
-        return `<tr>
+    const rowsHtml = items
+        .map((item, idx) => {
+            const name = splitName(item.itemName ?? item.name ?? null);
+            const unit = splitName(item.unit);
+            const reqQty = num(item.qty);
+            const appQty = item.approvedQty == null ? null : num(item.approvedQty);
+            const recQty = item.receivedQty == null ? null : num(item.receivedQty);
+            const cost = num(item.avgCost);
+            if (cost > 0) {
+                unitCostKnown = true;
+                totalValue += (appQty ?? reqQty) * cost;
+            }
+            return `<tr>
             <td class="c-num" dir="ltr">${idx + 1}</td>
             <td class="c-name">${escape(name)}</td>
             <td class="c-unit">${escape(unit)}</td>
@@ -262,14 +290,17 @@ export function buildDispatchPrintHtml(record: DispatchPrintRecord, opts: { curr
             <td class="c-cost" dir="ltr">${cost > 0 ? fmtMoney(cost) : '—'}</td>
             <td class="c-total" dir="ltr">${cost > 0 ? fmtMoney((appQty ?? reqQty) * cost) : '—'}</td>
         </tr>`;
-    }).join('');
+        })
+        .join('');
 
     const totalsRow = unitCostKnown
         ? `<tr class="sheet-totals"><td colspan="6">الإجمالي — ${items.length} صنف</td><td class="c-total" dir="ltr">${fmtMoney(totalValue)}</td></tr>`
         : `<tr class="sheet-totals"><td colspan="6">الإجمالي — ${items.length} صنف</td><td class="c-total" dir="ltr">—</td></tr>`;
 
     const chain = buildChain(record);
-    const chainHtml = chain.map((step, idx) => `
+    const chainHtml = chain
+        .map(
+            (step, idx) => `
         <div class="chain-box">
             <div class="chain-step">
                 <span class="chain-role">${escape(step.role)}</span>
@@ -278,7 +309,9 @@ export function buildDispatchPrintHtml(record: DispatchPrintRecord, opts: { curr
             ${step.ink || '<div class="sig-ink-empty" aria-hidden="true"></div>'}
             <span class="chain-name">${escape(step.name)}</span>
             <small class="chain-at" dir="ltr">${escape(step.at)}</small>
-        </div>`).join('<div class="chain-connector" aria-hidden="true"></div>');
+        </div>`,
+        )
+        .join('<div class="chain-connector" aria-hidden="true"></div>');
 
     const notes = [record.requestNotes ?? record.notes, record.approveNotes]
         .map((value) => String(value ?? '').trim())

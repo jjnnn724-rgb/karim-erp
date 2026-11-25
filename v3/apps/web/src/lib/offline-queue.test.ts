@@ -1,21 +1,23 @@
 import { describe, expect, it, vi } from 'vitest';
-import {
-    createOfflineQueue,
-    OfflineQueueCorruptError,
-    type OfflineQueueStore,
-    type SendResult,
-} from './offline-queue';
+import { createOfflineQueue, OfflineQueueCorruptError, type OfflineQueueStore, type SendResult } from './offline-queue';
 
 function memoryStore(shared?: { value: string }): OfflineQueueStore & { value: { value: string } } {
     const value = shared ?? { value: '' };
     return {
         value,
-        async read() { return value.value || null; },
-        async write(next) { value.value = next; },
+        async read() {
+            return value.value || null;
+        },
+        async write(next) {
+            value.value = next;
+        },
     };
 }
 
-interface Sale { id: string; total: number }
+interface Sale {
+    id: string;
+    total: number;
+}
 
 function harness(shared = { value: '' }, sendImpl?: (payload: Sale, uuid: string) => Promise<SendResult>) {
     let clock = Date.parse('2026-11-23T10:00:00Z');
@@ -35,7 +37,14 @@ function harness(shared = { value: '' }, sendImpl?: (payload: Sale, uuid: string
         })(),
         baseDelayMs: 1000,
     });
-    return { queue, send, sent, advance: (ms: number) => { clock += ms; } };
+    return {
+        queue,
+        send,
+        sent,
+        advance: (ms: number) => {
+            clock += ms;
+        },
+    };
 }
 
 describe('offline queue — Stage 5 acceptance', () => {
@@ -48,7 +57,9 @@ describe('offline queue — Stage 5 acceptance', () => {
 
     it('انقطاع ⇒ إعادة اتصال ⇒ إعادة تشغيل: صفر فقد وصفر تكرار', async () => {
         const shared = { value: '' };
-        const first = harness(shared, async () => { throw new Error('network down'); });
+        const first = harness(shared, async () => {
+            throw new Error('network down');
+        });
         await first.queue.enqueue({ id: 'sale-1', total: 10 }, 'local-1');
         await first.queue.enqueue({ id: 'sale-2', total: 20 }, 'local-2');
         let result = await first.queue.flush();
@@ -67,7 +78,9 @@ describe('offline queue — Stage 5 acceptance', () => {
     });
 
     it('backoff أُسّي بسقف، ولا إرسال قبل موعد المحاولة', async () => {
-        const { queue, send, advance } = harness(undefined, async () => { throw new Error('500'); });
+        const { queue, send, advance } = harness(undefined, async () => {
+            throw new Error('500');
+        });
         await queue.enqueue({ id: 'x', total: 1 }, 'local-1');
         await queue.flush();
         await queue.flush();
@@ -104,8 +117,7 @@ describe('offline queue — Stage 5 acceptance', () => {
 
     it('مزامنة جزئية: واحدة تنجح وواحدة تفشل — الباقي محفوظ', async () => {
         const shared = { value: '' };
-        const { queue } = harness(shared, async (payload) =>
-            payload.id === 'ok' ? { ok: true } : { ok: false, status: 503 });
+        const { queue } = harness(shared, async (payload) => (payload.id === 'ok' ? { ok: true } : { ok: false, status: 503 }));
         await queue.enqueue({ id: 'ok', total: 1 }, 'a');
         await queue.enqueue({ id: 'bad', total: 2 }, 'b');
         const result = await queue.flush();
@@ -117,8 +129,12 @@ describe('offline queue — Stage 5 acceptance', () => {
 
     it('تخزين تالف = خطأ صريح، لا إعادة تعيين صامتة', async () => {
         const broken: OfflineQueueStore = {
-            async read() { return '{not json'; },
-            async write() { /* لا شيء */ },
+            async read() {
+                return '{not json';
+            },
+            async write() {
+                /* لا شيء */
+            },
         };
         const queue = createOfflineQueue<Sale>({ store: broken, send: async () => ({ ok: true }) });
         await expect(queue.list()).rejects.toBeInstanceOf(OfflineQueueCorruptError);

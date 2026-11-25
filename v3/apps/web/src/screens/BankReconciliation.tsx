@@ -1,5 +1,4 @@
 import { useQuery } from '@tanstack/react-query';
-import { ScreenHero } from '../ui';
 import { useState } from 'react';
 import { KpiCard, RangeControls, SectionCard } from '../components/Reports';
 import { StateError, StateLoading } from '../components/TableState';
@@ -7,6 +6,7 @@ import { useAuthState } from '../lib/auth';
 import { fetchBankRec, matchBankRec } from '../lib/bank-rec';
 import { errorMessage, moneyOf, num, presetRange, rangeProblem } from '../lib/reporting';
 import { isWriteRole, useWriteMutation } from '../lib/write';
+import { ScreenHero } from '../ui';
 import { Button } from '../ui/Button';
 
 /**
@@ -59,7 +59,7 @@ export function BankReconciliation() {
 
     return (
         <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-lg">
-<ScreenHero
+            <ScreenHero
                 title="مطابقة البنك"
                 english="Bank reconciliation"
                 description="كشف البنك مقابل الدفتر المرحّل: المطابقات الآلية والحركات غير المطابقة في الفترة."
@@ -67,9 +67,11 @@ export function BankReconciliation() {
                     <>
                         <button
                             type="button"
-                            onClick={() => { () => {
-                    void query.refetch();
-                } }}
+                            onClick={() => {
+                                () => {
+                                    void query.refetch();
+                                };
+                            }}
                             disabled={query.isFetching}
                             className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
                         >

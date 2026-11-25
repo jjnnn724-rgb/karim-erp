@@ -1,10 +1,10 @@
 import { useQuery } from '@tanstack/react-query';
-import { ScreenHero } from '../ui';
 import { useState } from 'react';
 import { KpiCard, RangeControls, SectionCard } from '../components/Reports';
 import { StateError, StateLoading } from '../components/TableState';
 import { fetchCashFlow } from '../lib/cash-flow';
 import { errorMessage, moneyOf, presetRange, rangeProblem } from '../lib/reporting';
+import { ScreenHero } from '../ui';
 
 /**
  * قائمة التدفقات النقدية — من الأستاذ الفعلي (حركات حسابَي النقد/البنك
@@ -39,7 +39,7 @@ export function CashFlow() {
 
     return (
         <div className="mx-auto flex w-full max-w-[1600px] flex-col gap-lg">
-<ScreenHero
+            <ScreenHero
                 title="قائمة التدفقات النقدية"
                 english="Cash Flow"
                 description="مقبوضات ومدفوعات على حسابات النقد والبنك — قراءة من الأستاذ المرحّل فقط."
@@ -47,9 +47,11 @@ export function CashFlow() {
                     <>
                         <button
                             type="button"
-                            onClick={() => { () => {
-                    void query.refetch();
-                } }}
+                            onClick={() => {
+                                () => {
+                                    void query.refetch();
+                                };
+                            }}
                             disabled={query.isFetching}
                             className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
                         >
@@ -58,8 +60,7 @@ export function CashFlow() {
                     </>
                 }
             />
-            <div data-erp-print-hide className="flex flex-wrap items-center gap-sm">
-            </div>
+            <div data-erp-print-hide className="flex flex-wrap items-center gap-sm"></div>
             <SectionCard title="الفترة" english="Period">
                 <div className="flex flex-col gap-sm p-sm">
                     <RangeControls

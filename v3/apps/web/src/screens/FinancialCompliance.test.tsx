@@ -1,12 +1,7 @@
 import { QueryClient, QueryClientProvider } from '@tanstack/react-query';
 import { fireEvent, render, screen } from '@testing-library/react';
 import { beforeEach, describe, expect, it, vi } from 'vitest';
-import {
-    fetchComplianceDashboard,
-    fetchGosiMonth,
-    fetchVatStatus,
-    submitBankMatches,
-} from '../lib/financial-compliance';
+import { fetchComplianceDashboard, fetchGosiMonth, fetchVatStatus, submitBankMatches } from '../lib/financial-compliance';
 import { FinancialCompliance } from './FinancialCompliance';
 
 vi.mock('../lib/financial-compliance', () => ({

@@ -6,8 +6,8 @@
  * المفتاح `posOfflineQueue` مغلق افتراضيًا ⇒ مسار البيع القديم كما كان.
  */
 import { ApiError } from './api';
-import { createOfflineQueue, localStorageQueueStore, type FlushResult } from './offline-queue';
-import { completePosSale, type CompleteSaleInput, type PosSaleResult } from './pos';
+import { createOfflineQueue, type FlushResult, localStorageQueueStore } from './offline-queue';
+import { type CompleteSaleInput, completePosSale, type PosSaleResult } from './pos';
 import { isUiFlagOn } from './ui-flags';
 
 const STORE_KEY = 'karim_pos_offline_queue_v1';
@@ -48,9 +48,15 @@ export function isElectronRenderer(): boolean {
 }
 
 export function isNetworkFailure(error: unknown): boolean {
-    if (typeof navigator !== 'undefined' && navigator.onLine === false) {return true;}
-    if (error instanceof ApiError) {return false;} // الخادم ردّ — خطأ عمل/صلاحية
-    if (error instanceof TypeError) {return true;}
+    if (typeof navigator !== 'undefined' && navigator.onLine === false) {
+        return true;
+    }
+    if (error instanceof ApiError) {
+        return false;
+    } // الخادم ردّ — خطأ عمل/صلاحية
+    if (error instanceof TypeError) {
+        return true;
+    }
     const text = String((error as { message?: unknown } | null)?.message ?? '').toLowerCase();
     return /network|fetch|enotfound|econnrefused|timeout|offline/.test(text);
 }
@@ -64,11 +70,15 @@ const queue = createOfflineQueue<CompleteSaleInput>({
 });
 
 export async function submitSaleWithOffline(input: CompleteSaleInput): Promise<PosSaleResult> {
-    if (!isUiFlagOn('posOfflineQueue')) {return completePosSale(input);}
+    if (!isUiFlagOn('posOfflineQueue')) {
+        return completePosSale(input);
+    }
     try {
         return await completePosSale(input);
     } catch (error) {
-        if (!isNetworkFailure(error)) {throw error;}
+        if (!isNetworkFailure(error)) {
+            throw error;
+        }
         const existing = (await queue.list()).some((row) => row.local_transaction_uuid === input.idempotencyKey);
         if (!existing && (await queuedSalesCount()) >= offlineDeviceLimit()) {
             throw new OfflineLimitReachedError(offlineDeviceLimit());
@@ -88,11 +98,7 @@ export function queuedSalesCount(): Promise<number> {
 
 /** إيصال مؤقت وقت الانقطاع — بلا رقم ضريبي نهائي (B1.3). */
 export function offlineReceiptLines(localTransactionUuid: string): string[] {
-    return [
-        'PENDING FISCAL',
-        `LOCAL: ${localTransactionUuid}`,
-        'سيُستبدل برقم ضريبي من الخادم عند المزامنة.',
-    ];
+    return ['PENDING FISCAL', `LOCAL: ${localTransactionUuid}`, 'سيُستبدل برقم ضريبي من الخادم عند المزامنة.'];
 }
 
 /** تعارضات 409 تحتاج قرارًا بشريًا صريحًا — لا إعادة تلقائية. */

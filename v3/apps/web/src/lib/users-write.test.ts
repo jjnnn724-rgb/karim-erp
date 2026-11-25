@@ -1,5 +1,5 @@
 import { afterEach, describe, expect, it, vi } from 'vitest';
-import { resetCodeSchema, updateUser, USER_TEXT, userResetVisible, userUpdateSchema } from './users-write';
+import { resetCodeSchema, USER_TEXT, updateUser, userResetVisible, userUpdateSchema } from './users-write';
 
 afterEach(() => {
     vi.unstubAllGlobals();
@@ -21,8 +21,9 @@ describe('users-write optional password update', () => {
     });
 
     it.each([undefined, '', 'TestPassword123'])('sends a password only when nonempty: %s', async (password) => {
-        const fetchMock = vi.fn(async (_url: string, _init?: RequestInit) =>
-            new Response(JSON.stringify({ id: 42 }), { headers: { 'Content-Type': 'application/json' } }),
+        const fetchMock = vi.fn(
+            async (_url: string, _init?: RequestInit) =>
+                new Response(JSON.stringify({ id: 42 }), { headers: { 'Content-Type': 'application/json' } }),
         );
         vi.stubGlobal('fetch', fetchMock);
 

@@ -4,8 +4,10 @@
  * هذا الملف يبني «داخل الورقة فقط» — شريط الأزرار (طباعة/إغلاق) يعاد استخدامه
  * من `print-viewer.ts` ويربط بأحدث سند: حذف أي تأشير inline (CSP-safe).
  */
-import { printSmart } from './print-viewer';
+
 import { COMPANY_LOGO } from './company-logo';
+import { printSmart } from './print-viewer';
+
 /**
  * لغة واحدة مع إذن الصرف: شريط كربوني/ذهبي بشارة الشعار، عناوين قابلة
  * للقراءة باللغة العربية والإنجليزية، شبكة KPI عصرية، وجداول بحد أحمر أو
@@ -17,7 +19,11 @@ import { COMPANY_LOGO } from './company-logo';
  */
 
 const escape = (v: unknown): string =>
-    String(v ?? '').replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+    String(v ?? '')
+        .replace(/&/g, '&amp;')
+        .replace(/</g, '&lt;')
+        .replace(/>/g, '&gt;')
+        .replace(/"/g, '&quot;');
 
 export interface OfficialSheetKpi {
     label: string;
@@ -86,17 +92,25 @@ function autoRef(title: string): string {
     const now = new Date();
     const stamp = todayIso().replace(/-/g, '');
     const seq = String(now.getTime() % 10000).padStart(4, '0');
-    const code = String(title || 'doc').replace(/[^A-Za-z0-9]/g, '').slice(0, 6).toUpperCase() || 'DOC';
+    const code =
+        String(title || 'doc')
+            .replace(/[^A-Za-z0-9]/g, '')
+            .slice(0, 6)
+            .toUpperCase() || 'DOC';
     return `${code}-${stamp}-${seq}`;
 }
 
 function signatureCards(signatures: Array<{ role: string; name?: string }>): string {
-    return `<div class="signatures">${signatures.map((s) => `
+    return `<div class="signatures">${signatures
+        .map(
+            (s) => `
         <div class="sig-box">
             <span class="sig-role">${escape(s.role)}</span>
             <span class="sig-line"></span>
             <span class="sig-name">${escape(s.name ?? 'التوقيع / التاريخ')}</span>
-        </div>`).join('')}</div>`;
+        </div>`,
+        )
+        .join('')}</div>`;
 }
 
 export function buildOfficialSheetHtml(input: OfficialSheetInput): string {
@@ -105,46 +119,57 @@ export function buildOfficialSheetHtml(input: OfficialSheetInput): string {
     const ref = input.ref ?? autoRef(input.title);
     const signatures = input.signatures ?? [{ role: 'إعداد الطلب' }, { role: 'مراجعة المسؤول' }, { role: 'الاعتماد' }];
 
-    const kpiHtml = input.kpis && input.kpis.length
-        ? `<div class="kpis">${input.kpis.map((k) => `
+    const kpiHtml =
+        input.kpis && input.kpis.length
+            ? `<div class="kpis">${input.kpis
+                  .map(
+                      (k) => `
             <div class="kpi"><span class="kpi-label">${escape(k.label)}</span>
                 <strong class="kpi-value">${escape(k.value)}</strong>
                 ${k.hint ? `<span class="kpi-hint">${escape(k.hint)}</span>` : ''}
-            </div>`).join('')}</div>`
-        : '';
+            </div>`,
+                  )
+                  .join('')}</div>`
+            : '';
 
-    const sectionsHtml = input.sections.map((section) => {
-        const parts: string[] = [];
-        parts.push(`<h2 class="section-title">${escape(section.heading)}</h2>`);
-        if (section.columns && section.rows?.length) {
-            const cols = section.columns;
-            const hasTotals = Array.isArray(section.totalsRow) && section.totalsRow.length > 0;
-            parts.push(`
+    const sectionsHtml = input.sections
+        .map((section) => {
+            const parts: string[] = [];
+            parts.push(`<h2 class="section-title">${escape(section.heading)}</h2>`);
+            if (section.columns && section.rows?.length) {
+                const cols = section.columns;
+                const hasTotals = Array.isArray(section.totalsRow) && section.totalsRow.length > 0;
+                parts.push(`
             <table class="sheet">
               <thead><tr>${cols.map((c) => `<th style="${c.width ? `width:${c.width};` : ''}text-align:${c.align ?? 'right'}">${escape(c.header)}</th>`).join('')}</tr></thead>
               <tbody>
 ${section.rows.map((row) => `                <tr>${cols.map((c) => `<td style="text-align:${c.align ?? 'right'}">${escape(row[c.key])}</td>`).join('')}</tr>`).join('\n')}
-${hasTotals && section.totalsRow ? `                <tr class="totals-row">${section.totalsRow.map((cell, i) => {
-    const col = cols[i];
-    const key = col?.key ?? String(i);
-    const value = typeof cell === 'string' ? cell : cell[key];
-    return `<td style="text-align:${col?.align ?? 'right'}">${escape(value)}</td>`;
-}).join('')}</tr>` : ''}
+${
+    hasTotals && section.totalsRow
+        ? `                <tr class="totals-row">${section.totalsRow
+              .map((cell, i) => {
+                  const col = cols[i];
+                  const key = col?.key ?? String(i);
+                  const value = typeof cell === 'string' ? cell : cell[key];
+                  return `<td style="text-align:${col?.align ?? 'right'}">${escape(value)}</td>`;
+              })
+              .join('')}</tr>`
+        : ''
+}
               </tbody>
             </table>`);
-        }
-        if (section.list?.length) {
-            parts.push(`<ul class="bullets">${section.list.map((li) => `<li>${escape(li)}</li>`).join('')}</ul>`);
-        }
-        if (section.note) {
-            parts.push(`<p class="section-note">${escape(section.note)}</p>`);
-        }
-        return `<section class="sheet-section">${parts.join('\n')}</section>`;
-    }).join('\n');
+            }
+            if (section.list?.length) {
+                parts.push(`<ul class="bullets">${section.list.map((li) => `<li>${escape(li)}</li>`).join('')}</ul>`);
+            }
+            if (section.note) {
+                parts.push(`<p class="section-note">${escape(section.note)}</p>`);
+            }
+            return `<section class="sheet-section">${parts.join('\n')}</section>`;
+        })
+        .join('\n');
 
-    const notesHtml = input.notes?.length
-        ? `<div class="notes">${input.notes.map((n) => `<p>◆ ${escape(n)}</p>`).join('')}</div>`
-        : '';
+    const notesHtml = input.notes?.length ? `<div class="notes">${input.notes.map((n) => `<p>◆ ${escape(n)}</p>`).join('')}</div>` : '';
 
     const printedStamp = stampDate();
 
@@ -278,7 +303,7 @@ ${hasTotals && section.totalsRow ? `                <tr class="totals-row">${sec
     </div>
     ${input.stamp ? `<span class="stamp">${escape(input.stamp)}</span>` : ''}
   </div>
-  ${(from || to) ? `<div class="period-line">الفترة: <b>${escape(from || 'بداية السجل')}</b> ← <b>${escape(to || 'اليوم')}</b></div>` : ''}
+  ${from || to ? `<div class="period-line">الفترة: <b>${escape(from || 'بداية السجل')}</b> ← <b>${escape(to || 'اليوم')}</b></div>` : ''}
 
   ${kpiHtml}
   ${sectionsHtml}

@@ -1,5 +1,4 @@
 import './DailyLocks.premium.css';
-import { ScreenHero } from '../ui';
 import { useQuery } from '@tanstack/react-query';
 import { useState } from 'react';
 import { KpiCard, SectionCard } from '../components/Reports';
@@ -8,6 +7,7 @@ import { ApiError } from '../lib/api';
 import { type DailyLocksResponse, dailyLockRows, displayTotals, fetchDailyLocks, isLocked } from '../lib/daily-locks';
 import { formatInt } from '../lib/format';
 import { errorMessage, qtyOf, todayIso } from '../lib/reporting';
+import { ScreenHero } from '../ui';
 
 /**
  * لوحة التقفيل اليومي — قراءة فقط (ADR-001).
@@ -48,7 +48,7 @@ export function DailyLocks() {
 
     return (
         <div className="daily-locks-premium flex flex-col gap-md">
-<ScreenHero
+            <ScreenHero
                 title="لوحة التقفيل اليومي"
                 english="Daily Locks"
                 description="أقسام يومٍ واحد: حالة الإقفال والإيراد والمرتجع والصافي."
@@ -56,9 +56,11 @@ export function DailyLocks() {
                     <>
                         <button
                             type="button"
-                            onClick={() => { () => {
-                    void locksQuery.refetch();
-                } }}
+                            onClick={() => {
+                                () => {
+                                    void locksQuery.refetch();
+                                };
+                            }}
                             disabled={locksQuery.isFetching}
                             className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
                         >
@@ -67,8 +69,7 @@ export function DailyLocks() {
                     </>
                 }
             />
-            <div className="flex justify-end gap-xs" data-erp-print-hide>
-            </div>
+            <div className="flex justify-end gap-xs" data-erp-print-hide></div>
 
             <SectionCard title="اليوم" english="Day">
                 <div className="flex flex-wrap items-end gap-sm p-sm">

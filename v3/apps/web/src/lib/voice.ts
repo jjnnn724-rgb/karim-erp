@@ -14,15 +14,26 @@ export interface VoiceSupport {
     speech: boolean;
 }
 
-interface SpeechRecognitionAlternative { readonly transcript: string }
-interface SpeechRecognitionResult { readonly isFinal: boolean; readonly length: number; readonly [index: number]: SpeechRecognitionAlternative }
+interface SpeechRecognitionAlternative {
+    readonly transcript: string;
+}
+interface SpeechRecognitionResult {
+    readonly isFinal: boolean;
+    readonly length: number;
+    readonly [index: number]: SpeechRecognitionAlternative;
+}
 interface SpeechRecognitionResultList {
     readonly length: number;
     readonly [index: number]: SpeechRecognitionResult;
     item(index: number): SpeechRecognitionResult;
 }
-interface SpeechRecognitionEventLike { readonly resultIndex: number; readonly results: SpeechRecognitionResultList }
-interface SpeechRecognitionErrorEventLike { readonly error: string }
+interface SpeechRecognitionEventLike {
+    readonly resultIndex: number;
+    readonly results: SpeechRecognitionResultList;
+}
+interface SpeechRecognitionErrorEventLike {
+    readonly error: string;
+}
 interface SpeechRecognitionLike {
     lang: string;
     interimResults: boolean;
@@ -45,7 +56,9 @@ export function voiceSupport(): VoiceSupport {
 }
 
 function getRecognitionCtor(): SpeechRecognitionCtor | null {
-    if (typeof window === 'undefined') { return null; }
+    if (typeof window === 'undefined') {
+        return null;
+    }
     const w = window as unknown as { SpeechRecognition?: SpeechRecognitionCtor; webkitSpeechRecognition?: SpeechRecognitionCtor };
     return w.SpeechRecognition ?? w.webkitSpeechRecognition ?? null;
 }
@@ -67,7 +80,9 @@ const SILENCE_MS = 1_600;
 
 export function listen(opts: { lang?: string } = {}): ListenSession | null {
     const Ctor = getRecognitionCtor();
-    if (!Ctor) { return null; }
+    if (!Ctor) {
+        return null;
+    }
     const lang = opts.lang ?? 'ar-SA';
     const recognition = new Ctor();
     recognition.lang = lang;
@@ -85,21 +100,33 @@ export function listen(opts: { lang?: string } = {}): ListenSession | null {
     let finalText = '';
 
     const clearSilence = () => {
-        if (silenceTimer !== null) { window.clearTimeout(silenceTimer); silenceTimer = null; }
+        if (silenceTimer !== null) {
+            window.clearTimeout(silenceTimer);
+            silenceTimer = null;
+        }
     };
     const setActive = (next: boolean) => {
-        if (active === next) { return; }
+        if (active === next) {
+            return;
+        }
         active = next;
-        for (const h of stateHandlers) { h(active); }
+        for (const h of stateHandlers) {
+            h(active);
+        }
     };
 
-    recognition.onstart = () => { finalText = ''; setActive(true); };
+    recognition.onstart = () => {
+        finalText = '';
+        setActive(true);
+    };
     recognition.onresult = (event: SpeechRecognitionEventLike) => {
         let interim = '';
         let final = '';
         for (let i = event.resultIndex; i < event.results.length; i += 1) {
             const r = event.results[i];
-            if (!r) { continue; }
+            if (!r) {
+                continue;
+            }
             const alt = r[0];
             const transcript = alt?.transcript ?? '';
             if (r.isFinal) {
@@ -110,44 +137,87 @@ export function listen(opts: { lang?: string } = {}): ListenSession | null {
         }
         if (interim) {
             clearSilence();
-            silenceTimer = window.setTimeout(() => { try { recognition.stop(); } catch { /* noop */ } }, SILENCE_MS);
-            for (const h of interimHandlers) { h(finalText + interim); }
+            silenceTimer = window.setTimeout(() => {
+                try {
+                    recognition.stop();
+                } catch {
+                    /* noop */
+                }
+            }, SILENCE_MS);
+            for (const h of interimHandlers) {
+                h(finalText + interim);
+            }
         }
         if (final) {
             finalText += final;
-            for (const h of interimHandlers) { h(finalText); }
+            for (const h of interimHandlers) {
+                h(finalText);
+            }
         }
     };
     recognition.onerror = (event: SpeechRecognitionErrorEventLike) => {
         clearSilence();
         setActive(false);
         const code = String(event.error ?? 'unknown');
-        const friendly = code === 'not-allowed' || code === 'service-not-allowed'
-            ? 'الميكروفون مرفوض — اسمح للمتصفح بالوصول إليه من إعدادات الموقع'
-            : code === 'no-speech'
-                ? 'لم أسمع شيئًا — تكلم بصوت أعلى قليلًا'
-                : code === 'network'
+        const friendly =
+            code === 'not-allowed' || code === 'service-not-allowed'
+                ? 'الميكروفون مرفوض — اسمح للمتصفح بالوصول إليه من إعدادات الموقع'
+                : code === 'no-speech'
+                  ? 'لم أسمع شيئًا — تكلم بصوت أعلى قليلًا'
+                  : code === 'network'
                     ? 'تعذر تشغيل التعرف على الصوت — تحقق من الإنترنت'
                     : 'تعذر تشغيل الميكروفون — حاول مرة أخرى';
-        for (const h of errorHandlers) { h(friendly); }
+        for (const h of errorHandlers) {
+            h(friendly);
+        }
     };
     recognition.onend = () => {
         clearSilence();
         setActive(false);
         if (finalText.trim()) {
-            for (const h of finalHandlers) { h(finalText.trim()); }
+            for (const h of finalHandlers) {
+                h(finalText.trim());
+            }
         }
     };
 
     return {
-        start() { try { recognition.start(); } catch { /* already running */ } },
-        stop() { try { recognition.stop(); } catch { /* noop */ } },
-        cancel() { try { recognition.abort(); } catch { /* noop */ } },
-        isActive() { return active; },
-        onInterim(handler) { interimHandlers.push(handler); },
-        onFinal(handler) { finalHandlers.push(handler); },
-        onError(handler) { errorHandlers.push(handler); },
-        onStateChange(handler) { stateHandlers.push(handler); },
+        start() {
+            try {
+                recognition.start();
+            } catch {
+                /* already running */
+            }
+        },
+        stop() {
+            try {
+                recognition.stop();
+            } catch {
+                /* noop */
+            }
+        },
+        cancel() {
+            try {
+                recognition.abort();
+            } catch {
+                /* noop */
+            }
+        },
+        isActive() {
+            return active;
+        },
+        onInterim(handler) {
+            interimHandlers.push(handler);
+        },
+        onFinal(handler) {
+            finalHandlers.push(handler);
+        },
+        onError(handler) {
+            errorHandlers.push(handler);
+        },
+        onStateChange(handler) {
+            stateHandlers.push(handler);
+        },
     };
 }
 
@@ -163,42 +233,68 @@ export interface SpeakSession {
 const VOICE_LANG_CANDIDATES = ['ar-SA', 'ar-EG', 'ar-AE', 'ar-IQ', 'ar-SY', 'ar-LB', 'ar-MA', 'ar'];
 
 export function pickBestArabicVoice(): SpeechSynthesisVoice | null {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) { return null; }
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+        return null;
+    }
     const voices = window.speechSynthesis.getVoices();
-    if (!voices.length) { return null; }
+    if (!voices.length) {
+        return null;
+    }
     for (const lang of VOICE_LANG_CANDIDATES) {
         const exact = voices.find((v) => v.lang?.toLowerCase().startsWith(lang.toLowerCase()));
-        if (exact) { return exact; }
+        if (exact) {
+            return exact;
+        }
     }
     return voices.find((v) => (v.lang ?? '').toLowerCase().startsWith('ar')) ?? voices[0] ?? null;
 }
 
 export function createSpeechSession(): SpeakSession | null {
-    if (typeof window === 'undefined' || !('speechSynthesis' in window)) { return null; }
+    if (typeof window === 'undefined' || !('speechSynthesis' in window)) {
+        return null;
+    }
     let speaking = false;
     const session: SpeakSession = {
         speak(text: string) {
-            if (!text.trim()) { return; }
+            if (!text.trim()) {
+                return;
+            }
             window.speechSynthesis.cancel();
             const utterance = new SpeechSynthesisUtterance(text);
             const voice = pickBestArabicVoice();
-            if (voice) { utterance.voice = voice; }
+            if (voice) {
+                utterance.voice = voice;
+            }
             utterance.lang = voice?.lang ?? 'ar-SA';
             utterance.rate = 1;
             utterance.pitch = 1;
             utterance.volume = 1;
-            utterance.onstart = () => { speaking = true; };
-            utterance.onend = () => { speaking = false; };
-            utterance.onerror = () => { speaking = false; };
+            utterance.onstart = () => {
+                speaking = true;
+            };
+            utterance.onend = () => {
+                speaking = false;
+            };
+            utterance.onerror = () => {
+                speaking = false;
+            };
             speaking = true;
             window.speechSynthesis.speak(utterance);
         },
         stop() {
-            try { window.speechSynthesis.cancel(); } catch { /* noop */ }
+            try {
+                window.speechSynthesis.cancel();
+            } catch {
+                /* noop */
+            }
             speaking = false;
         },
-        isSpeaking() { return speaking; },
-        voices() { return window.speechSynthesis.getVoices().slice(); },
+        isSpeaking() {
+            return speaking;
+        },
+        voices() {
+            return window.speechSynthesis.getVoices().slice();
+        },
     };
     return session;
 }

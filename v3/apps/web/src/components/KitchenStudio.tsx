@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useAuthState } from '../lib/auth';
+import { fetchKitchenOverview } from '../lib/kitchen';
 import {
     approveKitchenAudit,
     canReviewKitchenExceptions,
@@ -28,7 +29,6 @@ import {
     submitKitchenAudit,
     validateKitchenProduction,
 } from '../lib/kitchen-ops';
-import { fetchKitchenOverview } from '../lib/kitchen';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
@@ -1113,10 +1113,18 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                                         <table className="mt-xs w-full border-collapse text-body-md">
                                             <thead>
                                                 <tr className="bg-surface text-label-md text-ink-secondary">
-                                                    <th scope="col" className="px-sm py-xs text-start font-medium">التاريخ</th>
-                                                    <th scope="col" className="px-sm py-xs text-start font-medium">الصنف</th>
-                                                    <th scope="col" className="px-sm py-xs text-start font-medium">القسم</th>
-                                                    <th scope="col" className="px-sm py-xs text-end font-medium">الكمية</th>
+                                                    <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                        التاريخ
+                                                    </th>
+                                                    <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                        الصنف
+                                                    </th>
+                                                    <th scope="col" className="px-sm py-xs text-start font-medium">
+                                                        القسم
+                                                    </th>
+                                                    <th scope="col" className="px-sm py-xs text-end font-medium">
+                                                        الكمية
+                                                    </th>
                                                 </tr>
                                             </thead>
                                             <tbody>
@@ -1125,9 +1133,7 @@ export function KitchenStudio({ open, onOpenChange }: KitchenStudioProps) {
                                                         <td className="px-sm py-xxs text-body-sm text-muted" dir="ltr">
                                                             {String(row.created_at ?? '').slice(0, 10)}
                                                         </td>
-                                                        <td className="px-sm py-xxs text-ink">
-                                                            {String(row.product_name ?? '—')}
-                                                        </td>
+                                                        <td className="px-sm py-xxs text-ink">{String(row.product_name ?? '—')}</td>
                                                         <td className="px-sm py-xxs text-body-sm text-muted">
                                                             {String(row.department_name ?? '—')}
                                                         </td>
