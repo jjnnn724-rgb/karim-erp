@@ -7,6 +7,7 @@
 3. تحويل قواعد أسلوبية/a11y غير حاجزة من `error` إلى `warn` في `biome.json` (مع الهيكل الحالي 284 warning).
 
 ## الحالة الحالية (حقيقية)
+
 - `pnpm gate` → **exit 0**
 - typecheck: 0 أخطاء
 - test: 216 ملف / 1513 اختبار ناجح
@@ -14,7 +15,9 @@
 - lint: 0 errors / 284 warnings
 
 ## ملاحظة مهمة
+
 تحويل القواعد لـ `warn` **مش معناها إن المشاكل اتصلحت** — دي قرار سياسة عشان البوابة تبقى قابلة للاستخدام على كود قديم. الوظايف اللي لسه محتاجة مراجعة فعلية:
+
 - `useExhaustiveDependencies` (hooks dependencies)
 - `noNonNullAssertion`
 - `useSemanticElements` / a11y
