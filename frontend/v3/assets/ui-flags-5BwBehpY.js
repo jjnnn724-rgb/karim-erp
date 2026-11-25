@@ -1,0 +1,1 @@
+const e="karim_ui_flag_";function n(r,i=!1){if(typeof r!="string"||!r.trim())return i;try{const t=globalThis.localStorage?.getItem(e+r.trim());return t==null?i:t==="1"||t==="true"}catch{return i}}export{n as i};

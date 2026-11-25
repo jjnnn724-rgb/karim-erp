@@ -1,0 +1,49 @@
+/* شارة V3 داخل قشرة V2 — هادئة: نقطة ذهبية ونصٌّ صغير، لا تزاحم أدوات الشاشة. */
+
+.erp-v2 .erp-v3-flag {
+    display: inline-flex;
+    align-items: center;
+    gap: 7px;
+    padding: 6px 11px;
+    border-radius: 999px;
+    border: 1px solid color-mix(in srgb, var(--erp-accent, #a9761b) 35%, transparent);
+    background: color-mix(in srgb, var(--erp-accent, #a9761b) 9%, transparent);
+    color: var(--erp-text-primary, #111a18);
+    font-size: 12px;
+    font-weight: 600;
+    line-height: 1.2;
+    text-decoration: none;
+    white-space: nowrap;
+    transition:
+        border-color 0.15s ease,
+        background 0.15s ease;
+}
+
+.erp-v2 .erp-v3-flag:hover,
+.erp-v2 .erp-v3-flag:focus-visible {
+    border-color: var(--erp-accent, #a9761b);
+    background: color-mix(in srgb, var(--erp-accent, #a9761b) 16%, transparent);
+    text-decoration: none;
+}
+
+.erp-v2 .erp-v3-flag:focus-visible {
+    outline: 2px solid var(--erp-accent, #a9761b);
+    outline-offset: 2px;
+}
+
+.erp-v3-flag__dot {
+    inline-size: 6px;
+    block-size: 6px;
+    border-radius: 50%;
+    background: var(--erp-accent, #a9761b);
+    box-shadow: 0 0 0 3px color-mix(in srgb, var(--erp-accent, #a9761b) 18%, transparent);
+}
+
+@media (max-width: 640px) {
+    .erp-v2 .erp-v3-flag {
+        padding: 5px 9px;
+    }
+    .erp-v3-flag__label {
+        font-size: 11px;
+    }
+}

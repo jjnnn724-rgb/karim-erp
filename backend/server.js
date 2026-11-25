@@ -2810,6 +2810,16 @@ app.use('/app', express.static(APP_DIR, {
     setHeaders: (res, filePath) => setStaticCacheHeaders(res, filePath),
 }));
 
+// ─── الواجهة الثالثة (React) تحت /v3 ────────────────────────────────────
+// الخدمة + CSP + قلب الشاشات (v3-screens) في وحدة واحدة — راجع v3-static.js.
+try {
+    require('./v3-static').register(app, { buildCsp: buildV2Csp });
+    logger.info('[v3] الواجهة الثالثة مركّبة على /v3');
+} catch (err) {
+    // فشل تركيب V3 لا يُسقط V2: المدخل يعود إلى V2 تلقائيًا عبر fallback.
+    logger.error({ err: { message: String(err.message), stack: (err && err.stack) || null } }, '[v3] تعذّر تركيب /v3 —');
+}
+
 // -------------------------------------------------------
 // OmniTrack POS — Institutional Smart Cashier Module
 // Registers: /api/auth/login, /api/sales/complete,
