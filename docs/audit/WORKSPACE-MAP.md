@@ -5,7 +5,8 @@
 ## الحالة بعد التنظيم النهائي (2026-11-26)
 - **النظام = مجلد واحد: `C:\Users\DELL\Desktop\k\KARIM-ERP\`** (كان `karim-erp-ci-release-fix`). كل التقارير جوه `docs/audit/`.
 - كل حاجة تانية اتنقلت لـ `C:\Users\DELL\Desktop\KARIM-ERP-ARCHIVE-2026-11-26\` (بره مساحة العمل).
-- لسه في الجذر مجلدات مرتبطة بخدمات شغالة فعلياً: `karim-erp-phase5-8` (KarimERP-Service + node server)، `karim-saas-staging-run` (start-isolated)، `karimabdelhamedeldsouky` (vite dev)، و`.mimosa`/`.zcode` (حالة أدوات). محتاجة إيقاف الخدمات قبل نقلها.
+- ✅ كل الخدمات اتوقفت واتعطل الإقلاع التلقائي (KarimERP-Server / KarimERP-Control / KarimControlTunnel)، وكل المجلدات اتنقلت للأرشيف. التفاصيل: `C:\Users\DELL\Desktop\KARIM-ERP-ARCHIVE-2026-11-26\SERVICES-NOTICE.md`.
+- فاضل في الجذر مجلدان **فاضيان تماماً** (`karim-erp-phase5-8`, `karimabdelhamedeldsouky`) لأن فيه مقابض مفتوحة مش قابلة للحذف، plus `.mimosa`/`.zcode` (حالة أدوات) و3 ملفات 0 بايت بأسما غريبة. كلها مش مؤثرة على النظام.
 - `_archive-2026-11-26/folders` (17 مجلد) + `files` (39 ملف): كل المجلدات/الملفات المبعثرة القديمة اتنقلت هنا — قابلة للرجوع.
 - `_quarantine-2026-11-25/`: 28 ملف مؤقت + `.git` الفاضي القديم + 15 سكربت مساعد + `secret-backups-before-rotation/` (نسخ أصلية قبل تدوير الأسرار).
 - `SECRET-ROTATION-2026-11-26.md`: سجل التدوير (أسماء ملفات/مفاتيح فقط، بلا أي قيمة).
