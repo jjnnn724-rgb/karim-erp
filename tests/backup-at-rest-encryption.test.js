@@ -18,11 +18,15 @@ const { spawnSync } = require('child_process');
 
 const ROOT = path.resolve(__dirname, '..');
 
-// متغيّرات التشفير فقط — لا تُحمَّل بقية .env (DB_NAME يبقى قاعدة الاختبار)
-for (const line of fs.readFileSync(path.join(ROOT, '.env'), 'utf8').split(/\r?\n/)) {
-  const m = line.match(/^(KARIM_BACKUP_PASSPHRASE|KARIM_GPG_PATH|KARIM_BACKUP_GPG_RECIPIENT)=(.*)$/);
-  if (m && process.env[m[1]] === undefined) {
-    process.env[m[1]] = m[2];
+// متغيّرات التشفير فقط — لا تُحمَّل بقية .env (DB_NAME يبقى قاعدة الاختبار).
+// غياب .env مقبول في بيئة الاختبار المعزولة؛ القيم تُؤخذ من البيئة إن وُجدت.
+const localEnv = path.join(ROOT, '.env');
+if (fs.existsSync(localEnv)) {
+  for (const line of fs.readFileSync(localEnv, 'utf8').split(/\r?\n/)) {
+    const m = line.match(/^(KARIM_BACKUP_PASSPHRASE|KARIM_GPG_PATH|KARIM_BACKUP_GPG_RECIPIENT)=(.*)$/);
+    if (m && process.env[m[1]] === undefined) {
+      process.env[m[1]] = m[2];
+    }
   }
 }
 

@@ -10,17 +10,17 @@ const {
     SOCKET_EVENT_BUDGETS,
 } = require('../backend/realtime/guard');
 
-describe('isRtAuthRequired — default off (coexistence)', () => {
+describe('isRtAuthRequired — default ON (fail-closed)', () => {
     const prev = process.env.RT_REQUIRE_AUTH;
     afterEach(() => {
         if (prev === undefined) {delete process.env.RT_REQUIRE_AUTH;}
         else {process.env.RT_REQUIRE_AUTH = prev;}
     });
-    test('unset → false', () => {
+    test('unset → true', () => {
         delete process.env.RT_REQUIRE_AUTH;
-        expect(isRtAuthRequired()).toBe(false);
+        expect(isRtAuthRequired()).toBe(true);
     });
-    test.each([['true', true], ['TRUE', true], ['1', false], ['yes', false], ['', false]])('%s → %s', (v, expected) => {
+    test.each([['true', true], ['TRUE', true], ['1', false], ['yes', false], ['', true], ['false', false]])('%s → %s', (v, expected) => {
         process.env.RT_REQUIRE_AUTH = v;
         expect(isRtAuthRequired()).toBe(expected);
     });

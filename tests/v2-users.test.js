@@ -113,7 +113,7 @@ describe('المستخدمون — عقد الشاشة من المصدر', () =>
         const s = src();
         expect(s).toMatch(/هذه الصفحة للمدير فقط/);
         expect(s).toMatch(/لا يمكن حذف حسابك/);
-        expect(s).toMatch(/data-v2-pw/);
+        expect(s).not.toMatch(/data-v2-pw/); // عرض كلمة المرور مقروءة أُزيل لأسباب أمنية
         expect(s).toMatch(/data-v2-reset/);
         expect(s).toMatch(/data-v2-del/);
         expect(s).toMatch(/username.*readonly|readonly.*username/s);
