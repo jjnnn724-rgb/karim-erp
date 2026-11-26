@@ -748,6 +748,12 @@ export function AttendanceWorkbench({ employees, todayStr }: { employees: readon
                 }
             >
                 <div className="flex flex-col gap-sm">
+                    <div className="sticky top-0 z-10 -mt-sm flex items-center justify-between gap-md border-b border-hairline bg-surface-raised px-sm py-xs">
+                        <span className="text-body-sm text-muted">اضغط Esc أو «إغلاق» للعودة إلى شاشة الحضور</span>
+                        <Button type="button" size="sm" variant="secondary" onClick={() => setPanel('none')}>
+                            إغلاق التقرير
+                        </Button>
+                    </div>
                     <Input label="الشهر" type="month" value={month} onChange={(event) => setMonth(event.target.value)} />
                     {attendanceMonthError(month) ? (
                         <p role="alert" className="text-body-sm text-danger-text">

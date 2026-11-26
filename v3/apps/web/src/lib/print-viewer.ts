@@ -126,11 +126,41 @@ export function printViewerDocument(win: Window, html: string, opts: PrintViewer
         doc?.querySelector('[data-erp-pt="share"]')?.addEventListener('click', () => {
             void shareInnerAsPdf(win.document);
         });
-        doc?.querySelector('[data-erp-pt="close"]')?.addEventListener('click', () => {
+        const closeViewer = () => {
             try {
                 win.close();
             } catch {
-                /* noop */
+                /* المتصفح يرفض إغلاق تبويب فتحه المستخدم — ننتقل لصفحة آمنة بدل تركه عالقًا. */
+            }
+            // إن بقي التبويب مفتوحًا (بعض المتصفحات ترفض close على تبويب مستقل)،
+            // نبدّله بصفحة ختامية واضحة يستطيع المستخدم إغلاقها بلا قلق.
+            window.setTimeout(() => {
+                if (win.closed) {
+                    return;
+                }
+                try {
+                    win.document.open();
+                    win.document.write(
+                        '<!doctype html><html dir="rtl" lang="ar"><meta charset="utf-8">' +
+                            '<title>تم الإغلاق</title><body style="font-family:Tajawal,Arial,sans-serif;display:grid;place-items:center;min-height:70vh;background:#f5f7fa;color:#102a43">' +
+                            '<div style="text-align:center"><h1 style="font-size:24px">تم إغلاق المستند</h1>' +
+                            '<p>يمكنك إغلاق هذا التبويب بأمان والعودة إلى النظام.</p></div></body></html>',
+                    );
+                    win.document.close();
+                    try {
+                        window.focus();
+                    } catch {
+                        /* noop */
+                    }
+                } catch {
+                    /* لا وصول للتبويب — المستخدم يتولّاه بنفسه */
+                }
+            }, 250);
+        };
+        doc?.querySelector('[data-erp-pt="close"]')?.addEventListener('click', closeViewer);
+        doc?.addEventListener('keydown', (event: KeyboardEvent) => {
+            if (event.key === 'Escape') {
+                closeViewer();
             }
         });
     } catch {

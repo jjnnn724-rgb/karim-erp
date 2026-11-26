@@ -466,6 +466,66 @@
     border-color: var(--erp-primary);
     background: color-mix(in srgb, var(--erp-primary) 13%, var(--erp-surface));
 }
+/* لمسة احترافية موحّدة: حلقة تركيز واضحة لكل أدوات الشريط العلوي. */
+.erp-shell__header :is(button, a):focus-visible {
+    outline: 2px solid var(--erp-primary);
+    outline-offset: 2px;
+}
+.erp-shell__workspace-label {
+    letter-spacing: 0.01em;
+    font-weight: 700;
+}
+.erp-shell__workspace-label::before {
+    content: "";
+    display: inline-block;
+    inline-size: 0.5rem;
+    block-size: 0.5rem;
+    margin-inline-end: 0.5rem;
+    border-radius: 50%;
+    background: var(--erp-primary);
+    vertical-align: middle;
+}
+
+/* بوابة الموظف — اختصار علوي دائم، بنفس لغة تصميم زر الكاشير. */
+.erp-shell__portal-link {
+    flex: 0 0 auto;
+    max-inline-size: none;
+    min-inline-size: 0;
+    gap: 0.5rem;
+    padding-inline: 0.875rem;
+    border-color: color-mix(in srgb, var(--erp-success) 30%, var(--erp-hairline));
+    background: color-mix(in srgb, var(--erp-success) 8%, var(--erp-surface));
+    color: var(--erp-ink);
+    font-weight: 600;
+    text-decoration: none;
+    white-space: nowrap;
+}
+.erp-shell__portal-link:hover {
+    border-color: var(--erp-success);
+    background: color-mix(in srgb, var(--erp-success) 14%, var(--erp-surface));
+}
+.erp-shell__header-logout {
+    display: inline-flex;
+    align-items: center;
+    gap: 0.375rem;
+    flex: 0 0 auto;
+    padding: 0.5rem 0.75rem;
+    border: 1px solid var(--erp-hairline);
+    border-radius: 0.75rem;
+    background: color-mix(in srgb, var(--erp-danger) 6%, var(--erp-surface));
+    color: var(--erp-danger-text, var(--erp-danger));
+    font: inherit;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    cursor: pointer;
+    transition:
+        background 120ms ease,
+        border-color 120ms ease;
+}
+.erp-shell__header-logout:hover {
+    background: color-mix(in srgb, var(--erp-danger) 14%, var(--erp-surface));
+    border-color: var(--erp-danger);
+}
 .erp-shell__session-context {
     display: flex;
     align-items: center;
@@ -623,6 +683,17 @@
     }
     .erp-shell__pos-link {
         display: none;
+    }
+    .erp-shell__header-logout {
+        padding: 0.5rem;
+    }
+    .erp-shell__header-logout > span {
+        position: absolute;
+        inline-size: 1px;
+        block-size: 1px;
+        overflow: hidden;
+        clip-path: inset(50%);
+        white-space: nowrap;
     }
     .erp-shell__command-trigger {
         flex: none;

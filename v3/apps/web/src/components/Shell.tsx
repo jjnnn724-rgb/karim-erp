@@ -713,6 +713,14 @@ function ShellLayout() {
                             <ShellIcon name="monitor" />
                             <span>الكاشير</span>
                         </Link>
+                        <Link
+                            to="/employee-portal"
+                            title="بوابة الموظف — حالتك اليومية والبصمات والإجازات"
+                            className="erp-shell__command-trigger erp-shell__portal-link"
+                        >
+                            <ShellIcon name="users" />
+                            <span>بوابة الموظف</span>
+                        </Link>
                         <button
                             type="button"
                             onClick={() => {
@@ -750,6 +758,16 @@ function ShellLayout() {
                                 </span>
                             </div>
                         </div>
+                        <button
+                            type="button"
+                            onClick={() => logout()}
+                            title="تسجيل الخروج من النظام"
+                            aria-label="تسجيل الخروج من النظام"
+                            className="erp-shell__header-logout"
+                        >
+                            <ShellIcon name="logout" />
+                            <span>خروج</span>
+                        </button>
                     </header>
                     <main id="erp-v3-main" ref={mainRef} tabIndex={-1} className="erp-shell__main">
                         <Breadcrumbs pathname={currentPath} />
