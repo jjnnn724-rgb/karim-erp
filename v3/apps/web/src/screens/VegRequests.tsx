@@ -932,8 +932,14 @@ function PriceDialog({ open, row, items, pending, onClose, onSubmit }: PriceDial
             const raw = String(prices[item.name] ?? '').trim();
             const price = raw === '' ? null : Number(raw);
             const qty = weightOf(item);
-            const valid = price !== null && Number.isFinite(price) && price >= 0 && price <= 1000000 &&
-                Number.isFinite(qty) && qty >= 0 && qty <= 100000;
+            const valid =
+                price !== null &&
+                Number.isFinite(price) &&
+                price >= 0 &&
+                price <= 1000000 &&
+                Number.isFinite(qty) &&
+                qty >= 0 &&
+                qty <= 100000;
             const lineTotal = valid ? Math.round((price ?? 0) * qty * 100) / 100 : null;
             if (lineTotal !== null) {
                 total += lineTotal;

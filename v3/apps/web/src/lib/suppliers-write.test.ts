@@ -1,11 +1,5 @@
 import { describe, expect, it } from 'vitest';
-import {
-    supplierBody,
-    supplierCreateSchema,
-    supplierDeleteVisible,
-    supplierTaxError,
-    supplierWriteVisible,
-} from './suppliers-write';
+import { supplierBody, supplierCreateSchema, supplierDeleteVisible, supplierTaxError, supplierWriteVisible } from './suppliers-write';
 
 describe('حقول ضريبة المورد — عقد الخادم', () => {
     it('الحمولة تستخدم الأسماء التي يقرأها الخادم لا الاسم القديم tax_number', () => {

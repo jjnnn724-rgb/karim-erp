@@ -171,6 +171,22 @@ describe('عقود الكتابة', () => {
         expect(result.record).toEqual({ id: 9 });
     });
 
+    it('يقبل شكل استجابة الخادم الحقيقي: decision نص وتفاصيله في decisionDetail', async () => {
+        const fetchMock = stubFetch({
+            ok: true,
+            action: 'check_in',
+            decision: 'in',
+            decisionDetail: { action: 'in', confidence: 0.91, reason: 'دخول مسائي' },
+            at: '2026-11-27T06:00:00.000Z',
+        });
+        const result = await punchPortal({ deviceId: 'dev-1', location: null });
+        expect(result.action).toBe('check_in');
+        expect(result.decision).toBe('in');
+        // الحقل الإضافي يمرّ دون أن يكسر التحقق (passthrough).
+        expect((result as unknown as Record<string, unknown>).decisionDetail).toMatchObject({ confidence: 0.91 });
+        expect(lastRequest(fetchMock).url).toBe('/api/attendance/portal/punch');
+    });
+
     it('يرفض رمز الخادم يُطرح كـApiError بكوده', async () => {
         vi.stubGlobal(
             'fetch',

@@ -298,4 +298,146 @@ router.post('/scan', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
     }
 });
 
+/** اكتشاف موحَّد للواجهة: طابعات مسجّلة + مرشّحين network على /24.
+ *  عقد الواجهة (`printerDiscoverySchema`) يتوقّع كل الحقول أدناه. */
+router.get('/discover', jwtAuth, requireRole(...READ_ROLES), async (req, res) => {
+    try {
+        const doScan = String(req.query.scan ?? '1') !== '0';
+        const lanIp = detectLanIp(os.networkInterfaces());
+        const base = lanIp ? subnetBaseFromIp(lanIp) : null;
+        const subnet = base ? `${base}/24` : '';
+        const network = [];
+        if (doScan && base) {
+            const hosts = buildSubnetHosts(base).slice(0, SCAN_MAX_HOSTS);
+            let cursor = 0;
+            async function worker() {
+                while (cursor < hosts.length) {
+                    const ip = hosts[cursor];
+                    cursor += 1;
+                    const probe = await tcpProbe(ip, SCAN_PORT_DEFAULT, SCAN_TIMEOUT_DEFAULT);
+                    if (probe.reachable) {
+                        network.push({
+                            ip, port: SCAN_PORT_DEFAULT, latency_ms: probe.latency_ms,
+                            address: `${ip}:${SCAN_PORT_DEFAULT}`, connection_type: 'network',
+                        });
+                    }
+                }
+            }
+            await Promise.all(Array.from({ length: Math.min(SCAN_CONCURRENCY, hosts.length) }, worker));
+            network.sort((a, b) => a.ip.split('.').map(Number)[3] - b.ip.split('.').map(Number)[3]);
+        }
+        const registered = (await pool.query(
+            `SELECT id, name, kind, department_id, connection_type, address,
+                    paper_width_mm, charset, is_online, last_seen_at
+               FROM pos_printers ORDER BY kind, id;`
+        )).rows;
+        return res.json({
+            platform: process.platform,
+            local_queue_supported: process.platform === 'win32',
+            local_error: process.platform === 'win32' ? null : 'قوائم الطباعة المحلية تُقرأ من أجهزة ويندوز فقط',
+            local: [],
+            network,
+            subnet,
+            registered,
+            scanned_at: new Date().toISOString(),
+        });
+    } catch (err) {
+        logger.error('[printers] discover failed:', err.message);
+        return res.status(500).json({ error: 'PRINTER_DISCOVER_FAILED', message: 'فشل اكتشاف الطابعات' });
+    }
+});
+
+/** ربط طابعة بضغطة واحدة: مسجّلة متصلة ← عنوان مُعطى ← أول مرشّح network. */
+router.post('/auto', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
+    const body = req.body || {};
+    const kind = body.kind === 'kot' ? 'kot' : 'receipt';
+    const departmentId = Number(body.department_id) > 0 ? Number(body.department_id) : null;
+    const wantedName = String(body.name || '').trim().slice(0, 120) || null;
+    try {
+        let row = null;
+        let source = 'registered';
+        if (departmentId) {
+            row = (await pool.query(
+                `SELECT * FROM pos_printers WHERE kind=$1 AND department_id=$2 AND is_online=TRUE ORDER BY id LIMIT 1`,
+                [kind, departmentId]
+            )).rows[0] || null;
+        }
+        if (!row) {
+            row = (await pool.query(
+                `SELECT * FROM pos_printers WHERE kind=$1 AND is_online=TRUE ORDER BY id LIMIT 1`, [kind]
+            )).rows[0] || null;
+        }
+        if (row) {
+            return res.json({ printer: row, probe: null, source, note: 'استُخدمت طابعة مسجّلة ومتصلة' });
+        }
+
+        let address = String(body.address || '').trim();
+        let connectionType = body.connection_type === 'windows_share' ? 'windows_share' : 'network';
+        if (!address) {
+            const lanIp = detectLanIp(os.networkInterfaces());
+            const base = lanIp ? subnetBaseFromIp(lanIp) : null;
+            if (!base) {
+                return res.status(422).json({ error: 'NO_LAN', message: 'لا توجد شبكة محلية — أدخل عنوان الطابعة يدويًا' });
+            }
+            const hosts = buildSubnetHosts(base).slice(0, SCAN_MAX_HOSTS);
+            let cursor = 0;
+            let found = null;
+            async function worker() {
+                while (cursor < hosts.length && !found) {
+                    const ip = hosts[cursor];
+                    cursor += 1;
+                    const probe = await tcpProbe(ip, SCAN_PORT_DEFAULT, SCAN_TIMEOUT_DEFAULT);
+                    if (probe.reachable) {found = { ip, probe };}
+                }
+            }
+            await Promise.all(Array.from({ length: Math.min(SCAN_CONCURRENCY, hosts.length) }, worker));
+            if (!found) {
+                return res.status(409).json({ error: 'NO_PRINTER_FOUND', message: 'لم يُعثر على طابعة متاحة — سجّل الطابعة يدويًا' });
+            }
+            address = `${found.ip}:${SCAN_PORT_DEFAULT}`;
+            source = 'discovered';
+        } else {
+            source = 'provided';
+        }
+        const normalized = validatePrinterAddress(connectionType, address);
+        if (!normalized) {
+            return res.status(422).json({ error: 'PRINTER_ADDRESS', message: 'عنوان الطابعة غير صالح' });
+        }
+        const resolved = resolvePrinterId(kind, departmentId);
+        if (!resolved.ok) {
+            return res.status(422).json({ error: 'PRINTER_ID_DERIVE', message: 'حدّد القسم أو المعرّف' });
+        }
+        const existing = (await pool.query(`SELECT 1 FROM pos_printers WHERE id=$1`, [resolved.id])).rowCount > 0;
+        const name = wantedName || `${kind === 'kot' ? 'طابعة مطبخ' : 'طابعة فاتورة'} ${resolved.id}`;
+        if (existing) {
+            await pool.query(
+                `UPDATE pos_printers SET name=$2, connection_type=$3, address=$4, kind=$5, department_id=$6 WHERE id=$1`,
+                [resolved.id, name, connectionType, address, kind, departmentId]
+            );
+        } else {
+            await pool.query(
+                `INSERT INTO pos_printers (id, name, kind, department_id, connection_type, address, paper_width_mm, charset, is_online)
+                 VALUES ($1,$2,$3,$4,$5,$6,80,'UTF-8',false)`,
+                [resolved.id, name, kind, departmentId, connectionType, address]
+            );
+        }
+        let probe = null;
+        if (connectionType === 'network') {
+            const check = await tcpProbe(normalized.host, normalized.port, 2000);
+            await pool.query(
+                `UPDATE pos_printers SET is_online=$2,
+                    last_seen_at = CASE WHEN $2 THEN CURRENT_TIMESTAMP ELSE last_seen_at END WHERE id=$1`,
+                [resolved.id, check.reachable]
+            );
+            probe = { reachable: check.reachable, latency_ms: check.latency_ms, error: check.error };
+        }
+        const finalRow = (await pool.query(`SELECT * FROM pos_printers WHERE id=$1`, [resolved.id])).rows[0];
+        logger.info(`[printers] auto-linked ${resolved.id} (${source}) by ${req.user?.username}`);
+        return res.status(201).json({ printer: finalRow, probe, source, note: 'تم ربط الطابعة تلقائيًا' });
+    } catch (err) {
+        logger.error('[printers] auto-link failed:', err.message);
+        return res.status(500).json({ error: 'PRINTER_AUTO_FAILED', message: 'فشل الربط التلقائي للطابعة' });
+    }
+});
+
 module.exports = { router, tcpProbe };

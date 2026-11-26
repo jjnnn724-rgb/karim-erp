@@ -112,11 +112,10 @@ export function supplierBody(input: SupplierBodyInput): Record<string, unknown> 
 }
 
 /** مرآة تحقق الضريبة في الخادم — تُمنع قبل الإرسال بدل 422 متأخرة. */
-export function supplierTaxError(input: {
-    tax_registration_status?: string | null;
-    vat_number?: string | null;
-}): string {
-    const status = String(input.tax_registration_status ?? 'NOT_REGISTERED').trim().toUpperCase();
+export function supplierTaxError(input: { tax_registration_status?: string | null; vat_number?: string | null }): string {
+    const status = String(input.tax_registration_status ?? 'NOT_REGISTERED')
+        .trim()
+        .toUpperCase();
     const vat = String(input.vat_number ?? '').trim();
     const validVat = /^\d{15}$/.test(vat);
     if (status === 'REGISTERED') {

@@ -462,9 +462,9 @@ export function Procurement() {
 
     const categories = useMemo(
         () =>
-            Array.from(
-                new Set((suppliersQuery.data ?? []).map((s) => String(s.category ?? '').trim()).filter(Boolean)),
-            ).sort((a, b) => a.localeCompare(b, 'ar')),
+            Array.from(new Set((suppliersQuery.data ?? []).map((s) => String(s.category ?? '').trim()).filter(Boolean))).sort((a, b) =>
+                a.localeCompare(b, 'ar'),
+            ),
         [suppliersQuery.data],
     );
 
@@ -595,8 +595,8 @@ export function Procurement() {
                         </span>
                     </h1>
                     <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        دليل الموردين وملخص المشتريات — بحث وفلاتر ومؤشرات، مع إضافة وتعديل وإيقاف وتفعيل وحذف. صلاحية الكتابة الكاملة
-                        لأمين المخزن ومدير المطاعم والمدير، مطابقة للخادم.
+                        دليل الموردين وملخص المشتريات — بحث وفلاتر ومؤشرات، مع إضافة وتعديل وإيقاف وتفعيل وحذف. صلاحية الكتابة الكاملة لأمين
+                        المخزن ومدير المطاعم والمدير، مطابقة للخادم.
                     </p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>

@@ -666,6 +666,33 @@ router.put('/products/:id', jwtAuth, requireRole('manager','admin','kitchen','so
     }
 });
 
+/** تعديل سعر البيع وحده — عقد الواجهة: {id, name_ar, price}.
+ *  مسار مخصّص بدل PUT /products/:id الذي يحتاج الحمولة الكاملة. */
+router.post('/products/:id/price', jwtAuth, requireRole('manager','admin'), async (req, res) => {
+    const productId = parseInt(req.params.id, 10);
+    const price = Number(req.body?.price);
+    if (!Number.isInteger(productId) || productId <= 0) {
+        return res.status(422).json({ error: 'INVALID_PRODUCT_ID' });
+    }
+    if (!Number.isFinite(price) || price < 0 || price > 1000000) {
+        return res.status(422).json({ error: 'INVALID_PRICE', message: 'سعر البيع غير صالح' });
+    }
+    try {
+        const r = await pool.query(
+            `UPDATE pos_products SET price = $2, updated_at = CURRENT_TIMESTAMP
+              WHERE id = $1 RETURNING id, name_ar, price`,
+            [productId, Math.round(price * 100) / 100],
+        );
+        if (!r.rows.length) {return res.status(404).json({ error: 'NOT_FOUND' });}
+        const row = r.rows[0];
+        emitCatalogChanged(req, 'update', row);
+        res.json({ id: row.id, name_ar: row.name_ar, price: Number(row.price) });
+    } catch (e) {
+        logger.error('[pos_product_price]', e);
+        res.status(500).json({ error: 'INTERNAL_ERROR' });
+    }
+});
+
 router.delete('/products/:id', jwtAuth, requireRole('manager','admin','kitchen','sous_chef'), async (req, res) => {
     const productId = parseInt(req.params.id, 10);
     if (!Number.isInteger(productId) || productId <= 0) {return res.status(422).json({ error: 'INVALID_PRODUCT_ID' });}

@@ -452,10 +452,16 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
             engine_result: { action: result.action, decision: result.decision },
         });
 
+        // العقد المعلن للواجهات (v2/v3): `decision` نص يُقرأ كـZod string.
+        // كان يُرسل كائن `verdict` كاملًا (action/confidence/reason) فيُفشل
+        // تحقق الاستجابة في v3 برسالة «استجابة الخادم تخالف العقد» رغم أن
+        // البصمة نفسها كانت مسجّلة بنجاح. التفاصيل تنتقل في `decisionDetail`.
+        const decisionText = String(result.decision?.action ?? result.action ?? '');
         return res.json({
             ok: true,
             action: result.action, // 'check_in' | 'check_out' (من محرك الحضور الذكي)
-            decision: result.decision,
+            decision: decisionText,
+            decisionDetail: result.decision ?? null,
             at: now.toISOString(),
         });
     } catch (e) {

@@ -99,6 +99,8 @@ export default defineConfig({
         exclude: [
             '**/node_modules/**',
             '**/dist/**',
+            // اختبارات قديمة من فرع v4/عقود لم تُدمج في هذا الفرع بعد؛
+            // تفعيلها يعني اختبار دوال غير موجودة (راجع MERGE-PENDING.md).
             'src/lib/dispatch-print.test.ts',
             'src/lib/dispatches.test.ts',
             'src/lib/purchase-invoices.test.ts',
