@@ -762,6 +762,36 @@ app.use('/api/yara-reports', yaraReportsRouter);
 app.use('/api/inventory-inquiry', require('./inventory-inquiry').router);
 // ─── متابعة الكاشير للأونر (مرآة يارا سوفت 1/4/5/6/9 — قراءة فقط + بث حي) ──
 app.use('/api/cashier-monitor', (req, res, next) => { req.io = io; next(); }, require('./cashier-monitor-routes'));
+
+// ─── وحدات نسخة الإنتاج المُضافة (تحميل محروس — لا يُسقط الخادم عند فشل وحدة) ──
+const extraModules = [
+    ['/api/buffet', () => require('./buffet-routes').router],
+    ['/api/external-sales', () => require('./external-sales-routes').router],
+    ['/api/integrations', () => require('./legacy-source-routes').router(app)],
+    ['/api/integration', () => require('./modules/integrations')],
+    ['/api/integration', () => require('./integration/wps-routes')],
+    ['/api/warehouse', () => require('./dept-transfer-routes').router],
+    ['/api/pos', () => require('./cashier-module/pos-reports').router],
+    ['/api/pos', () => require('./cashier-module/drawer-routes').router],
+    ['/api/pos', () => require('./cashier-module/department-cost').router],
+    ['/api/push', () => require('./push-routes')],
+    ['/api/attendance', () => require('./punch-statement-routes')],
+    ['/api/v3/accounting', () => require('./v3-accounting-read').createV3AccountingReadRouter()],
+];
+for (const [mount, load] of extraModules) {
+    try {
+        app.use(mount, (req, res, next) => { req.io = io; next(); }, load());
+        logger.info('[extra-modules] mounted ' + mount);
+    } catch (e) {
+        logger.warn('[extra-modules] skipped ' + mount + ': ' + e.message);
+    }
+}
+try {
+    app.use('/api', require('./tenant-zatca-routes'));
+} catch (e) {
+    logger.warn('[extra-modules] skipped tenant-zatca: ' + e.message);
+}
+
 // ─── النسخ الاحتياطي الكامل والاستعادة بزر واحد (مدير فقط) ─────────────
 const systemRouter = require('./system-routes');
 app.use('/api/system', (req, res, next) => { req.io = io; next(); }, systemRouter);
