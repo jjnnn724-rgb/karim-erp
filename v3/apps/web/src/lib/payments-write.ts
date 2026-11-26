@@ -2,12 +2,12 @@ import { z } from 'zod';
 import { isWriteRole, writeAck, writeJson } from './write';
 
 /**
- * كتابة الدفعات — منقولة من V2 بوابات الصلاحية نفسها:
- *  • إنشاء     POST   /api/payments          (admin|manager|accountant)
- *  • تعديل     PATCH  /api/payments/:id      (admin|manager|accountant)
- *  • حذف نهائي DELETE /api/payments/:id      (admin)
+ * كتابة الدفعات — مطابقة لـ `backend/procurement-routes.js`:
+ *  • إنشاء  POST   /api/procurement/payments       (admin|manager|accountant)
+ *  • حذف    DELETE /api/procurement/payments/:id   (admin)
  *
- * حتى تُفعَّل هذه المسارات في الباكendien، تُعدّ الدوال جاهزة للاستدعاء.
+ * الخادم لا يعرض PUT/PATCH للدفعات، لذلك لا توجد عملية تعديل هنا.
+ * الحمولة: supplierId / invoiceId / amount / method / date / notes.
  */
 
 export const PAYMENT_WRITE_ROLES = ['admin', 'manager', 'accountant'] as const;
@@ -45,23 +45,15 @@ export const PAYMENT_TEXT = {
 /* ── مخططات التحقق ────────────────────────────────────────────────────── */
 
 export const paymentCreateSchema = z.object({
-    invoiceNo: z.string().min(1, PAYMENT_TEXT.invoiceRequired),
+    supplierId: z.coerce.number().int().positive('اختر المورد'),
+    invoiceId: z.coerce.number().int().positive(PAYMENT_TEXT.invoiceRequired).optional(),
     amount: z.coerce.number().gt(0, PAYMENT_TEXT.amountInvalid),
-    paymentDate: z.string().min(1, PAYMENT_TEXT.dateRequired),
+    date: z.string().min(1, PAYMENT_TEXT.dateRequired),
     method: z.string().min(1, PAYMENT_TEXT.methodRequired),
     notes: z.string().optional().nullable(),
 });
 
 export type PaymentCreateInput = z.infer<typeof paymentCreateSchema>;
-
-export const paymentUpdateSchema = z.object({
-    amount: z.coerce.number().gt(0, PAYMENT_TEXT.amountInvalid).optional(),
-    paymentDate: z.string().optional(),
-    method: z.string().optional(),
-    notes: z.string().optional().nullable(),
-});
-
-export type PaymentUpdateInput = z.infer<typeof paymentUpdateSchema>;
 
 const paymentResultSchema = z.object({ id: z.union([z.string(), z.number()]) }).passthrough();
 export type PaymentResult = z.infer<typeof paymentResultSchema>;
@@ -69,26 +61,18 @@ export type PaymentResult = z.infer<typeof paymentResultSchema>;
 /* ── العمليات ─────────────────────────────────────────────────────────── */
 
 export async function createPayment(input: PaymentCreateInput): Promise<PaymentResult> {
-    return writeJson(paymentResultSchema, '/api/payments', 'POST', {
-        invoice_no: input.invoiceNo.trim(),
+    return writeJson(paymentResultSchema, '/api/procurement/payments', 'POST', {
+        supplierId: input.supplierId,
+        ...(input.invoiceId !== undefined ? { invoiceId: input.invoiceId } : {}),
         amount: Number(input.amount),
-        payment_date: input.paymentDate,
         method: input.method.trim(),
+        date: input.date,
         notes: input.notes?.trim() || null,
     });
 }
 
-export async function updatePayment(id: string | number, input: PaymentUpdateInput): Promise<PaymentResult> {
-    return writeJson(paymentResultSchema, `/api/payments/${encodeURIComponent(String(id))}`, 'PUT', {
-        ...(input.amount !== undefined ? { amount: Number(input.amount) } : {}),
-        ...(input.paymentDate !== undefined ? { payment_date: input.paymentDate } : {}),
-        ...(input.method !== undefined ? { method: input.method.trim() } : {}),
-        ...(input.notes !== undefined ? { notes: input.notes?.trim() || null } : {}),
-    });
-}
-
 export async function deletePayment(id: string | number): Promise<void> {
-    await writeAck(`/api/payments/${encodeURIComponent(String(id))}`, 'DELETE');
+    await writeAck(`/api/procurement/payments/${encodeURIComponent(String(id))}`, 'DELETE');
 }
 
 /* ── دوال تأكيد ───────────────────────────────────────────────────────── */

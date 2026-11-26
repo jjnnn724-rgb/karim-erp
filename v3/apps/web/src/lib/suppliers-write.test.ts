@@ -1,5 +1,11 @@
 import { describe, expect, it } from 'vitest';
-import { supplierBody, supplierCreateSchema, supplierTaxError } from './suppliers-write';
+import {
+    supplierBody,
+    supplierCreateSchema,
+    supplierDeleteVisible,
+    supplierTaxError,
+    supplierWriteVisible,
+} from './suppliers-write';
 
 describe('حقول ضريبة المورد — عقد الخادم', () => {
     it('الحمولة تستخدم الأسماء التي يقرأها الخادم لا الاسم القديم tax_number', () => {
@@ -39,6 +45,22 @@ describe('حقول ضريبة المورد — عقد الخادم', () => {
     it('القيمة الافتراضية للحالة غير مسجل (لا تخمين)', () => {
         const parsed = supplierCreateSchema.parse({ name: 'مورد', phone: '0500000002' });
         expect(parsed.tax_registration_status).toBe('NOT_REGISTERED');
+    });
+});
+
+describe('صلاحيات الموردين — مطابقة لبوابات الخادم', () => {
+    it('أمين المخزن يملك إنشاء وتعديل وإيقاف وحذف مثل المدير', () => {
+        for (const role of ['warehouse', 'admin', 'manager']) {
+            expect(supplierWriteVisible(role)).toBe(true);
+            expect(supplierDeleteVisible(role)).toBe(true);
+        }
+    });
+
+    it('المحاسب والطاهي لا يملكان كتابة الموردين', () => {
+        for (const role of ['accountant', 'sous_chef', 'kitchen', null]) {
+            expect(supplierWriteVisible(role)).toBe(false);
+            expect(supplierDeleteVisible(role)).toBe(false);
+        }
     });
 });
 

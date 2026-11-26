@@ -477,6 +477,22 @@ if (cspMeasurementEnabled) {
         });
     // القراءة (العدّادات) تُركَّب لاحقًا بعد apiKeyMiddleware — انظر أدناه.
 }
+// أخطاء JavaScript في المتصفح (v3 main.tsx / ErrorBoundary) كانت تُرسل إلى
+// مسار غير مسجّل فتردّ 404 صامتًا مع كل خطأ. نستقبلها ونُقيّدها قبل التسجيل:
+// لا نخزّن stack كاملًا ولا أي بيانات حساسة — الرسالة مقطوعة والصفحة كذلك.
+app.post('/api/security/client-error', generalLimiter, (req, res) => {
+    try {
+        const body = req.body && typeof req.body === 'object' ? req.body : {};
+        const message = String(body.message ?? '').slice(0, 400);
+        const page = String(body.page ?? '').slice(0, 190);
+        const kind = String(body.kind ?? 'error').slice(0, 40);
+        const version = String(body.version ?? '').slice(0, 20);
+        if (message) {
+            logger.warn('[client-error]', { kind, version, page, message });
+        }
+    } catch (_) { /* تقرير تالف — نتجاهله دون إزعاج المتصفح */ }
+    res.status(204).end();
+});
 // FIX 2026-10-03 (اختبار ضغط): أُزيل morgan('combined') — كان يسجّل كل طلب
 // مرتين (httpLogger المنظم يغطي البداية والنهاية بتفاصيل أكبر)، والتحذير
 // للطلبات البطيئة موجود أصلًا في httpLogger (slowThresholdMs). العمل المكرر

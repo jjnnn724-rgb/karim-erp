@@ -519,11 +519,11 @@ router.post('/suppliers', jwtAuth, requireRole(...SUPPLIER_WRITE_ROLES), async (
         const row = (await client.query(
             `INSERT INTO suppliers (id, name, name_en, phone, email, category, address, notes,
                 "openingBalance", is_active, tax_registration_status, vat_number, commercial_register)
-             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,TRUE,$10,$11,$12) RETURNING *`,
+             VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,COALESCE($13,TRUE),$10,$11,$12) RETURNING *`,
             [id(), v.clean.name, v.clean.name_en || null, v.clean.phone || null, v.clean.email || null,
                 v.clean.category || null, v.clean.address || null, v.clean.notes || null,
                 v.clean.openingBalance ?? 0, v.clean.tax_registration_status || 'NOT_REGISTERED',
-                v.clean.vat_number || null, v.clean.commercial_register || null]
+                v.clean.vat_number || null, v.clean.commercial_register || null, v.clean.is_active ?? null]
         )).rows[0];
         emit(req, 'procurement', 'create', row);
         res.status(201).json(row);

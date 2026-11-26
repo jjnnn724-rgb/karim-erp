@@ -26,21 +26,20 @@ import {
     supplierDeactivateConfirm,
     supplierDeleteConfirm,
     supplierDeleteVisible,
+    supplierTaxError,
     supplierWriteVisible,
     updateSupplier,
 } from '../lib/suppliers-write';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
+import { Badge } from '../ui/Badge';
 import { Button } from '../ui/Button';
 import { Dialog } from '../ui/Dialog';
 import { Input } from '../ui/Input';
 
 /**
- * دليل الموردين — CRUD كامل مثل V2:
- *  • إنشاء مورد (POST /api/procurement/suppliers — admin|manager|accountant)
- *  • تعديل مورد (PATCH /api/procurement/suppliers/:id — admin|manager|accountant)
- *  • إيقاف/تفعيل مورد (PATCH /api/procurement/suppliers/:id/active — admin|manager|accountant)
- *  • حذف مورد (DELETE /api/procurement/suppliers/:id — أدمن فقط)
- *  • طباعة القائمة (PrintActions)
+ * دليل الموردين — CRUD كامل مطابق للخادم (`backend/procurement-routes.js`):
+ *  • إنشاء/تعديل/إيقاف/حذف: admin|manager|warehouse (أمين المخزن صلاحية كاملة)
+ *  • أسماء الحقول: is_active / vat_number / tax_registration_status / commercial_register
  *
  * القراءة من `/api/procurement/suppliers`، والبحث والترشيح عميلان على الدليل المحمّل.
  */
@@ -48,7 +47,7 @@ import { Input } from '../ui/Input';
 const PAGE_SIZE = 20;
 
 type SortKey = 'name' | 'purchasesTotal' | 'paymentsTotal' | 'dueTotal' | 'lastPurchaseDate';
-type TaxFilter = 'ALL' | 'REGISTERED' | 'NOT_REGISTERED';
+type TaxFilter = 'ALL' | 'REGISTERED' | 'NOT_REGISTERED' | 'EXEMPT';
 type StatusFilter = 'ALL' | 'active' | 'inactive';
 
 function formatInt(value: number): string {
@@ -69,14 +68,15 @@ function compareSuppliers(a: Supplier, b: Supplier, key: SortKey): number {
 
 function Kpi({ label, english, value, hint }: { label: string; english: string; value: string; hint: string }) {
     return (
-        <div className="rounded-lg border border-hairline bg-surface p-md shadow-card">
+        <div className="relative overflow-hidden rounded-lg border border-hairline bg-surface p-md shadow-card transition-shadow duration-[var(--erp-motion-fast)] hover:shadow-pop">
+            <span aria-hidden="true" className="absolute start-0 top-0 h-1 w-14 rounded-full bg-accent" />
             <p className="text-label-md text-muted">
                 {label}{' '}
                 <span className="text-caption text-faint" dir="ltr" lang="en">
                     {english}
                 </span>
             </p>
-            <p className="erp-numeric mt-xs text-heading-lg text-ink">{value}</p>
+            <p className="erp-numeric mt-xs text-heading-lg font-bold text-ink">{value}</p>
             <p className="mt-xxs text-caption text-muted">{hint}</p>
         </div>
     );
@@ -94,24 +94,53 @@ interface SupplierFormDialogProps {
 
 const SUPPLIER_FORM_ID = 'erp-supplier-form';
 
+type SupplierFormState = {
+    name: string;
+    nameEn: string;
+    phone: string;
+    email: string;
+    address: string;
+    notes: string;
+    category: string;
+    taxStatus: string;
+    vatNumber: string;
+    commercialRegister: string;
+    openingBalance: string;
+    active: boolean;
+};
+
+function emptySupplierForm(): SupplierFormState {
+    return {
+        name: '',
+        nameEn: '',
+        phone: '',
+        email: '',
+        address: '',
+        notes: '',
+        category: '',
+        taxStatus: 'NOT_REGISTERED',
+        vatNumber: '',
+        commercialRegister: '',
+        openingBalance: '',
+        active: true,
+    };
+}
+
 function SupplierFormDialog({ open, onClose, pending, editing, onSave }: SupplierFormDialogProps) {
     const [form, setForm] = useState<{
         name: string;
         nameEn: string;
         phone: string;
+        email: string;
         address: string;
-        taxNumber: string;
+        notes: string;
         category: string;
+        taxStatus: string;
+        vatNumber: string;
+        commercialRegister: string;
+        openingBalance: string;
         active: boolean;
-    }>({
-        name: '',
-        nameEn: '',
-        phone: '',
-        address: '',
-        taxNumber: '',
-        category: '',
-        active: true,
-    });
+    }>(emptySupplierForm());
     const [formError, setFormError] = useState('');
 
     useEffect(() => {
@@ -120,16 +149,22 @@ function SupplierFormDialog({ open, onClose, pending, editing, onSave }: Supplie
         }
         if (editing) {
             setForm({
+                ...emptySupplierForm(),
                 name: String(editing.name),
                 nameEn: String(editing.name_en ?? ''),
                 phone: String(editing.phone ?? ''),
+                email: String(editing.email ?? ''),
                 address: String(editing.address ?? ''),
-                taxNumber: String(editing.tax_number ?? ''),
+                notes: String(editing.notes ?? ''),
                 category: String(editing.category ?? ''),
+                taxStatus: String(editing.tax_registration_status ?? 'NOT_REGISTERED'),
+                vatNumber: String(editing.vat_number ?? ''),
+                commercialRegister: String(editing.commercial_register ?? ''),
+                openingBalance: String(editing.openingBalance ?? ''),
                 active: isSupplierActive(editing),
             });
         } else {
-            setForm({ name: '', nameEn: '', phone: '', address: '', taxNumber: '', category: '', active: true });
+            setForm(emptySupplierForm());
         }
         setFormError('');
     }, [open, editing]);
@@ -145,14 +180,33 @@ function SupplierFormDialog({ open, onClose, pending, editing, onSave }: Supplie
             setFormError(SUPPLIER_TEXT.phoneRequired);
             return;
         }
+        const taxError = supplierTaxError({
+            tax_registration_status: form.taxStatus,
+            vat_number: form.vatNumber.trim() || null,
+        });
+        if (taxError) {
+            setFormError(taxError);
+            return;
+        }
+        const openingBalance = form.openingBalance.trim() === '' ? 0 : Number(form.openingBalance.replace(',', '.'));
+        if (!Number.isFinite(openingBalance) || openingBalance < 0) {
+            setFormError('الرصيد الافتتاحي يجب أن يكون رقمًا غير سالب');
+            return;
+        }
 
         const input: SupplierCreateInput | SupplierUpdateInput = {
             name: form.name.trim(),
             phone: form.phone.trim(),
+            name_en: form.nameEn.trim() || null,
+            email: form.email.trim() || null,
             address: form.address.trim() || null,
-            tax_number: form.taxNumber.trim() || null,
-            ...(form.category ? { category: form.category.trim() } : {}),
-            active: form.active,
+            notes: form.notes.trim() || null,
+            category: form.category.trim() || null,
+            tax_registration_status: form.taxStatus as SupplierCreateInput['tax_registration_status'],
+            vat_number: form.vatNumber.trim() || null,
+            commercial_register: form.commercialRegister.trim() || null,
+            openingBalance,
+            is_active: form.active,
         };
 
         try {
@@ -183,6 +237,7 @@ function SupplierFormDialog({ open, onClose, pending, editing, onSave }: Supplie
             }
         >
             <form id={SUPPLIER_FORM_ID} onSubmit={(event) => void save(event)} className="flex flex-col gap-sm">
+                <p className="text-label-md text-ink-secondary">البيانات الأساسية</p>
                 <div className="grid gap-sm sm:grid-cols-2">
                     <Input
                         label="اسم المورد"
@@ -208,18 +263,12 @@ function SupplierFormDialog({ open, onClose, pending, editing, onSave }: Supplie
                         required
                     />
                     <Input
-                        label="العنوان (اختياري)"
-                        name="address"
-                        value={form.address}
-                        onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
-                        placeholder="القاهرة، مصر"
-                    />
-                    <Input
-                        label="الرقم الضريبي (اختياري)"
-                        name="taxNumber"
-                        value={form.taxNumber}
-                        onChange={(e) => setForm((prev) => ({ ...prev, taxNumber: e.target.value }))}
-                        placeholder="123456789"
+                        label="البريد الإلكتروني (اختياري)"
+                        name="email"
+                        type="email"
+                        value={form.email}
+                        onChange={(e) => setForm((prev) => ({ ...prev, email: e.target.value }))}
+                        placeholder="supplier@example.com"
                     />
                     <Input
                         label="الفئة (اختياري)"
@@ -228,7 +277,66 @@ function SupplierFormDialog({ open, onClose, pending, editing, onSave }: Supplie
                         onChange={(e) => setForm((prev) => ({ ...prev, category: e.target.value }))}
                         placeholder="خضروات، ألبان، لحوم…"
                     />
-                    <div className="flex items-end gap-sm">
+                    <Input
+                        label="العنوان (اختياري)"
+                        name="address"
+                        value={form.address}
+                        onChange={(e) => setForm((prev) => ({ ...prev, address: e.target.value }))}
+                        placeholder="القاهرة، مصر"
+                    />
+                </div>
+
+                <p className="mt-xs text-label-md text-ink-secondary">الملف الضريبي والتشغيلي</p>
+                <div className="grid gap-sm sm:grid-cols-2">
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-supplier-tax-status">
+                        الحالة الضريبية
+                        <select
+                            id="erp-supplier-tax-status"
+                            value={form.taxStatus}
+                            onChange={(e) => setForm((prev) => ({ ...prev, taxStatus: e.target.value }))}
+                            className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
+                        >
+                            <option value="NOT_REGISTERED">{TAX_STATUS_LABEL.NOT_REGISTERED}</option>
+                            <option value="REGISTERED">{TAX_STATUS_LABEL.REGISTERED}</option>
+                            <option value="EXEMPT">{TAX_STATUS_LABEL.EXEMPT}</option>
+                        </select>
+                    </label>
+                    <Input
+                        label="الرقم الضريبي (15 رقمًا)"
+                        name="vatNumber"
+                        inputMode="numeric"
+                        dir="ltr"
+                        value={form.vatNumber}
+                        onChange={(e) => setForm((prev) => ({ ...prev, vatNumber: e.target.value }))}
+                        placeholder="302212427200003"
+                    />
+                    <Input
+                        label="السجل التجاري (اختياري)"
+                        name="commercialRegister"
+                        dir="ltr"
+                        value={form.commercialRegister}
+                        onChange={(e) => setForm((prev) => ({ ...prev, commercialRegister: e.target.value }))}
+                        placeholder="7051115819"
+                    />
+                    <Input
+                        label="الرصيد الافتتاحي (اختياري)"
+                        name="openingBalance"
+                        type="number"
+                        min={0}
+                        step={0.01}
+                        value={form.openingBalance}
+                        onChange={(e) => setForm((prev) => ({ ...prev, openingBalance: e.target.value }))}
+                        placeholder="0.00"
+                    />
+                    <Input
+                        label="ملاحظات (اختياري)"
+                        name="notes"
+                        value={form.notes}
+                        onChange={(e) => setForm((prev) => ({ ...prev, notes: e.target.value }))}
+                        placeholder="ملاحظات داخلية على المورد"
+                        className="sm:col-span-2"
+                    />
+                    <div className="flex items-end gap-sm sm:col-span-2">
                         <input
                             id="erp-supplier-active"
                             type="checkbox"
@@ -305,6 +413,7 @@ export function Procurement() {
     const [search, setSearch] = useState('');
     const [tax, setTax] = useState<TaxFilter>('ALL');
     const [status, setStatus] = useState<StatusFilter>('ALL');
+    const [category, setCategory] = useState('ALL');
     const [sort, setSort] = useState<{ key: SortKey; dir: 'asc' | 'desc' }>({ key: 'dueTotal', dir: 'desc' });
     const [page, setPage] = useState(1);
 
@@ -337,6 +446,9 @@ export function Procurement() {
             if (status === 'inactive' && active) {
                 return false;
             }
+            if (category !== 'ALL' && String(supplier.category ?? '') !== category) {
+                return false;
+            }
             if (!term) {
                 return true;
             }
@@ -346,7 +458,15 @@ export function Procurement() {
         });
         const sorted = [...filtered].sort((a, b) => compareSuppliers(a, b, sort.key));
         return sort.dir === 'asc' ? sorted : sorted.reverse();
-    }, [suppliersQuery.data, search, tax, status, sort]);
+    }, [suppliersQuery.data, search, tax, status, category, sort]);
+
+    const categories = useMemo(
+        () =>
+            Array.from(
+                new Set((suppliersQuery.data ?? []).map((s) => String(s.category ?? '').trim()).filter(Boolean)),
+            ).sort((a, b) => a.localeCompare(b, 'ar')),
+        [suppliersQuery.data],
+    );
 
     const pageCount = Math.max(1, Math.ceil(rows.length / PAGE_SIZE));
     const safePage = Math.min(page, pageCount);
@@ -369,6 +489,7 @@ export function Procurement() {
         setSearch('');
         setTax('ALL');
         setStatus('ALL');
+        setCategory('ALL');
         setSort({ key: 'dueTotal', dir: 'desc' });
         setPage(1);
     }
@@ -474,8 +595,8 @@ export function Procurement() {
                         </span>
                     </h1>
                     <p className="mt-xs max-w-3xl text-body-sm leading-relaxed text-muted">
-                        دليل الموردين وملخص المشتريات — إضافة وتعديل وإيقاف وتفعيل وحذف. القراءة من `/api/procurement/suppliers`، والكتابة
-                        لـ admin|manager|accountant والحذف للأدمن فقط.
+                        دليل الموردين وملخص المشتريات — بحث وفلاتر ومؤشرات، مع إضافة وتعديل وإيقاف وتفعيل وحذف. صلاحية الكتابة الكاملة
+                        لأمين المخزن ومدير المطاعم والمدير، مطابقة للخادم.
                     </p>
                 </div>
                 <div className="flex items-center gap-xs" data-erp-print-hide>
@@ -561,6 +682,7 @@ export function Procurement() {
                             <option value="ALL">كل الحالات</option>
                             <option value="REGISTERED">{TAX_STATUS_LABEL.REGISTERED}</option>
                             <option value="NOT_REGISTERED">{TAX_STATUS_LABEL.NOT_REGISTERED}</option>
+                            <option value="EXEMPT">{TAX_STATUS_LABEL.EXEMPT}</option>
                         </select>
                     </label>
                     <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-procurement-status">
@@ -579,6 +701,25 @@ export function Procurement() {
                             <option value="inactive">موقوف</option>
                         </select>
                     </label>
+                    <label className="flex flex-col gap-xxs text-label-md text-ink-secondary" htmlFor="erp-procurement-category">
+                        الفئة
+                        <select
+                            id="erp-procurement-category"
+                            value={category}
+                            onChange={(event) => {
+                                setCategory(event.target.value);
+                                setPage(1);
+                            }}
+                            className="h-9 rounded-md border border-hairline-strong bg-surface px-sm text-body-md text-ink"
+                        >
+                            <option value="ALL">كل الفئات</option>
+                            {categories.map((item) => (
+                                <option key={item} value={item}>
+                                    {item}
+                                </option>
+                            ))}
+                        </select>
+                    </label>
                     <button
                         type="button"
                         onClick={resetFilters}
@@ -586,7 +727,9 @@ export function Procurement() {
                     >
                         إعادة الضبط
                     </button>
-                    <span className="text-body-sm text-muted">{formatInt(rows.length)} موردًا</span>
+                    <Badge variant="info" dot>
+                        {formatInt(rows.length)} موردًا مطابقًا
+                    </Badge>
                 </div>
             </Card>
 
@@ -715,11 +858,9 @@ export function Procurement() {
                                                 {supplier.lastPurchaseDate || '—'}
                                             </td>
                                             <td className="px-sm py-xxs text-body-sm">
-                                                {isSupplierActive(supplier) ? (
-                                                    <span className="text-success-text">{supplierStatusLabel(supplier)}</span>
-                                                ) : (
-                                                    <span className="text-muted">{supplierStatusLabel(supplier)}</span>
-                                                )}
+                                                <Badge variant={isSupplierActive(supplier) ? 'success' : 'neutral'} dot>
+                                                    {supplierStatusLabel(supplier)}
+                                                </Badge>
                                             </td>
                                             {(canWrite || canDelete) && (
                                                 <td className="px-sm py-xxs" data-erp-print-hide>

@@ -82,6 +82,7 @@ const paymentListSchema = z
 export const TAX_STATUS_LABEL = {
     REGISTERED: 'مسجل ضريبيًا',
     NOT_REGISTERED: 'غير مسجل',
+    EXEMPT: 'معفى',
 } as const;
 
 /** كلمات طرق الدفع من قاموس التطبيق نفسه (`PCMT_PAY_LABELS`). */

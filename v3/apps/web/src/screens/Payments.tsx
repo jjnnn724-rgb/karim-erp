@@ -11,11 +11,9 @@ import {
     deletePayment,
     PAYMENT_TEXT,
     type PaymentCreateInput,
-    type PaymentUpdateInput,
     paymentDeleteConfirm,
     paymentDeleteVisible,
     paymentWriteVisible,
-    updatePayment,
 } from '../lib/payments-write';
 import {
     fetchSupplierPayments,
@@ -34,14 +32,12 @@ import { Input } from '../ui/Input';
 import { Select } from '../ui/Select';
 
 /**
- * مدفوعات الموردين — CRUD كامل مثل V2:
- *  • إنشاء دفعة (POST /api/payments — admin|manager|accountant)
- *  • تعديل دفعة (PATCH /api/payments/:id — admin|manager|accountant)
- *  • حذف دفعة (DELETE /api/payments/:id — أدمن فقط)
- *  • طباعة القائمة (PrintActions)
+ * مدفوعات الموردين — مطابقة للخادم (`backend/procurement-routes.js`):
+ *  • تسجيل دفعة: POST   /api/procurement/payments     (admin|manager|accountant)
+ *  • حذف دفعة:   DELETE /api/procurement/payments/:id (admin)
+ *  • الخادم لا يدعم تعديل دفعة، لذلك لا يوجد زر تعديل هنا.
  *
- * القراءة من `/api/procurement/payments`، والفترة والمورد يُصفّيان في SQL عند
- * الخادم كما في القديم.
+ * القراءة من `/api/procurement/payments`، والفترة والمورد يُصفّيان في SQL عند الخادم.
  */
 
 const PAGE_SIZE = 20;
@@ -89,26 +85,25 @@ interface PaymentFormDialogProps {
     open: boolean;
     onClose: () => void;
     pending: boolean;
-    editing: Payment | null;
     suppliers: { id: string | number; name: string }[];
-    onSave: (payload: PaymentCreateInput | PaymentUpdateInput, isEditing: boolean) => Promise<void>;
+    onSave: (payload: PaymentCreateInput) => Promise<void>;
 }
 
 const PAYMENT_FORM_ID = 'erp-payments-form';
 
-function PaymentFormDialog({ open, onClose, pending, editing, suppliers, onSave }: PaymentFormDialogProps) {
+function PaymentFormDialog({ open, onClose, pending, suppliers, onSave }: PaymentFormDialogProps) {
     const [form, setForm] = useState<{
-        invoiceNo: string;
+        invoiceId: string;
         amount: string;
-        paymentDate: string;
+        date: string;
         method: string;
         supplierId: string | number | '';
         notes: string;
     }>({
-        invoiceNo: '',
+        invoiceId: '',
         amount: '',
-        paymentDate: '',
-        method: '',
+        date: riyadhToday(),
+        method: 'cash',
         supplierId: '',
         notes: '',
     });
@@ -118,34 +113,35 @@ function PaymentFormDialog({ open, onClose, pending, editing, suppliers, onSave 
         if (!open) {
             return;
         }
-        if (editing) {
-            setForm({
-                invoiceNo: editing.invoiceId != null ? String(editing.invoiceId) : '',
-                amount: String(moneyOf(editing.amount)),
-                paymentDate: String(editing.date ?? ''),
-                method: String(editing.method ?? ''),
-                supplierId: String(editing.supplierId ?? ''),
-                notes: String(editing.notes ?? ''),
-            });
-        } else {
-            setForm({ invoiceNo: '', amount: '', paymentDate: '', method: '', supplierId: '', notes: '' });
-        }
+        setForm({
+            invoiceId: '',
+            amount: '',
+            date: riyadhToday(),
+            method: 'cash',
+            supplierId: '',
+            notes: '',
+        });
         setFormError('');
-    }, [open, editing]);
+    }, [open]);
 
     async function save(event: React.FormEvent<HTMLFormElement>): Promise<void> {
         event.preventDefault();
         setFormError('');
-        if (!form.invoiceNo.trim()) {
-            setFormError(PAYMENT_TEXT.invoiceRequired);
+        if (form.supplierId === '') {
+            setFormError('اختر المورد');
             return;
         }
-        const amount = Number(form.amount);
+        const invoiceId = form.invoiceId.trim();
+        if (!invoiceId || !Number.isInteger(Number(invoiceId)) || Number(invoiceId) <= 0) {
+            setFormError('رقم الفاتورة مطلوب (رقمي)');
+            return;
+        }
+        const amount = Number(form.amount.replace(',', '.'));
         if (!form.amount.trim() || !Number.isFinite(amount) || amount <= 0) {
             setFormError(PAYMENT_TEXT.amountInvalid);
             return;
         }
-        if (!form.paymentDate) {
+        if (!form.date) {
             setFormError(PAYMENT_TEXT.dateRequired);
             return;
         }
@@ -154,19 +150,20 @@ function PaymentFormDialog({ open, onClose, pending, editing, suppliers, onSave 
             return;
         }
 
-        const input: PaymentCreateInput | PaymentUpdateInput = {
-            invoiceNo: form.invoiceNo.trim(),
+        const input: PaymentCreateInput = {
+            supplierId: Number(form.supplierId),
+            invoiceId: Number(invoiceId),
             amount,
-            paymentDate: form.paymentDate,
+            date: form.date,
             method: form.method.trim(),
             notes: form.notes.trim() || null,
         };
 
         try {
-            await onSave(input, Boolean(editing));
+            await onSave(input);
             onClose();
         } catch (cause) {
-            setFormError(writeErrorMessage(cause, editing ? PAYMENT_TEXT.updateFailed : PAYMENT_TEXT.createFailed));
+            setFormError(writeErrorMessage(cause, PAYMENT_TEXT.createFailed));
         }
     }
 
@@ -176,7 +173,7 @@ function PaymentFormDialog({ open, onClose, pending, editing, suppliers, onSave 
             onOpenChange={(next) => {
                 if (!next) onClose();
             }}
-            title={editing ? 'تعديل دفعة مورد' : 'دفعة مورد جديدة'}
+            title="دفعة مورد جديدة"
             size="lg"
             footer={
                 <>
@@ -184,7 +181,7 @@ function PaymentFormDialog({ open, onClose, pending, editing, suppliers, onSave 
                         {PAYMENT_TEXT.cancel}
                     </Button>
                     <Button type="submit" form={PAYMENT_FORM_ID} size="sm" loading={pending}>
-                        {editing ? 'حفظ التعديل' : 'تسجيل الدفعة'}
+                        تسجيل الدفعة
                     </Button>
                 </>
             }
@@ -193,10 +190,12 @@ function PaymentFormDialog({ open, onClose, pending, editing, suppliers, onSave 
                 <div className="grid gap-sm sm:grid-cols-2">
                     <Input
                         label="رقم الفاتورة"
-                        name="invoiceNo"
-                        value={form.invoiceNo}
-                        onChange={(e) => setForm((prev) => ({ ...prev, invoiceNo: e.target.value }))}
-                        placeholder="INV-2026-001"
+                        name="invoiceId"
+                        inputMode="numeric"
+                        dir="ltr"
+                        value={form.invoiceId}
+                        onChange={(e) => setForm((prev) => ({ ...prev, invoiceId: e.target.value }))}
+                        placeholder="رقم الفاتورة في النظام"
                         required
                     />
                     <Input
@@ -224,13 +223,14 @@ function PaymentFormDialog({ open, onClose, pending, editing, suppliers, onSave 
                         value={String(form.supplierId ?? '')}
                         onValueChange={(value) => setForm((prev) => ({ ...prev, supplierId: value ?? '' }))}
                         options={suppliers.map((s) => ({ label: s.name, value: String(s.id) }))}
+                        required
                     />
                     <Input
                         label="تاريخ الدفع"
-                        name="paymentDate"
+                        name="date"
                         type="date"
-                        value={form.paymentDate}
-                        onChange={(e) => setForm((prev) => ({ ...prev, paymentDate: e.target.value }))}
+                        value={form.date}
+                        onChange={(e) => setForm((prev) => ({ ...prev, date: e.target.value }))}
                         required
                     />
                     <Input
@@ -294,7 +294,6 @@ export function Payments() {
     const canDelete = paymentDeleteVisible(auth.user?.role);
 
     const [formOpen, setFormOpen] = useState(false);
-    const [editing, setEditing] = useState<Payment | null>(null);
     const [actionOpen, setActionOpen] = useState(false);
     const [actionRow, setActionRow] = useState<Payment | null>(null);
     const [actionMessage, setActionMessage] = useState('');
@@ -364,18 +363,6 @@ export function Payments() {
         silentError: true,
         onSuccess: () => {
             setFormOpen(false);
-            setEditing(null);
-        },
-    });
-
-    const updatePaymentMutation = useWriteMutation<{ id: string | number; input: PaymentUpdateInput }, { id: string | number }>({
-        mutationFn: ({ id, input }) => updatePayment(id, input).then((r) => ({ id: r.id })),
-        successTitle: () => PAYMENT_TEXT.updateSuccess,
-        invalidate: [['procurement', 'payments']],
-        silentError: true,
-        onSuccess: () => {
-            setFormOpen(false);
-            setEditing(null);
         },
     });
 
@@ -390,8 +377,7 @@ export function Payments() {
         },
     });
 
-    async function openForm(row?: Payment) {
-        setEditing(row ?? null);
+    async function openForm() {
         setFormOpen(true);
     }
 
@@ -597,11 +583,11 @@ export function Payments() {
                                         <th scope="col" className="px-sm py-xs text-start font-medium">
                                             الملاحظات
                                         </th>
-                                        {(canWrite || canDelete) && (
+                                        {canDelete ? (
                                             <th scope="col" className="px-sm py-xs text-start font-medium" data-erp-print-hide>
                                                 إجراءات
                                             </th>
-                                        )}
+                                        ) : null}
                                     </tr>
                                 </thead>
                                 <tbody>
@@ -619,20 +605,9 @@ export function Payments() {
                                                 {payment.invoiceId ? `#${payment.invoiceId}` : '—'}
                                             </td>
                                             <td className="px-sm py-xxs text-body-sm text-muted">{String(payment.notes ?? '—')}</td>
-                                            {(canWrite || canDelete) && (
+                                            {canDelete ? (
                                                 <td className="px-sm py-xxs" data-erp-print-hide>
                                                     <div className="flex flex-wrap items-center gap-xs">
-                                                        {canWrite ? (
-                                                            <Button
-                                                                type="button"
-                                                                size="sm"
-                                                                variant="secondary"
-                                                                title="تعديل الدفعة"
-                                                                onClick={() => openForm(payment)}
-                                                            >
-                                                                تعديل
-                                                            </Button>
-                                                        ) : null}
                                                         {canDelete ? (
                                                             <Button
                                                                 type="button"
@@ -646,7 +621,7 @@ export function Payments() {
                                                         ) : null}
                                                     </div>
                                                 </td>
-                                            )}
+                                            ) : null}
                                         </tr>
                                     ))}
                                 </tbody>
@@ -688,15 +663,10 @@ export function Payments() {
             <PaymentFormDialog
                 open={formOpen}
                 onClose={() => setFormOpen(false)}
-                pending={createPaymentMutation.isPending || updatePaymentMutation.isPending}
-                editing={editing}
+                pending={createPaymentMutation.isPending}
                 suppliers={suppliersQuery.data ?? []}
-                onSave={async (input, isEditing) => {
-                    if (isEditing && editing) {
-                        await updatePaymentMutation.mutateAsync({ id: editing.id, input: input as PaymentUpdateInput });
-                    } else {
-                        await createPaymentMutation.mutateAsync(input as PaymentCreateInput);
-                    }
+                onSave={async (input) => {
+                    await createPaymentMutation.mutateAsync(input);
                 }}
             />
             <PaymentActionDialog
