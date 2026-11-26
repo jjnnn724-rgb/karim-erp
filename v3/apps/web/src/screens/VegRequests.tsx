@@ -7,6 +7,7 @@ import { formatMoney, parseArabicDecimal } from '../lib/format';
 import { fetchMyPermissions } from '../lib/my-menus';
 import { printSmart } from '../lib/print-viewer';
 import { presetRange } from '../lib/reporting';
+import { vegAnalysisPrintHtml } from '../lib/veg-analysis-print';
 import { vegRequestPrintHtml } from '../lib/veg-print';
 import {
     fetchVegConsumption,
@@ -193,8 +194,8 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
             setError('اختر الصنف من الكتالوج');
             return;
         }
-        if (!Number.isFinite(q) || q <= 0) {
-            setError('أدخل كمية صحيحة أكبر من صفر');
+        if (!Number.isFinite(q) || q < 0) {
+            setError('أدخل كمية صحيحة (صفر يعني بلا كمية)');
             return;
         }
         if (lines.some((line) => line.name === selected)) {
@@ -210,7 +211,7 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
         const filled: VegItemInput[] = [];
         for (const row of manualRows) {
             const name = row.name.trim();
-            const qtyNum = parseArabicDecimal(row.qty);
+            const qtyNum = parseArabicDecimal(row.qty, 0);
             const note = row.note.trim();
             if (!name && !row.qty.trim() && !row.unit.trim() && !note) {
                 continue;
@@ -218,7 +219,7 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
             if (!name) {
                 return { ok: false, error: 'صنف يدوي ناقص الاسم' };
             }
-            if (!Number.isFinite(qtyNum) || qtyNum <= 0 || qtyNum > 99999) {
+            if (!Number.isFinite(qtyNum) || qtyNum < 0 || qtyNum > 99999) {
                 return { ok: false, error: `كمية الصنف اليدوي «${name}» غير صحيحة` };
             }
             if ([...lines, ...filled].some((l) => l.name === name)) {
@@ -299,7 +300,7 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
                         label="الكمية"
                         name="qty"
                         type="number"
-                        min={0.001}
+                        min={0}
                         step={0.001}
                         value={qty}
                         onChange={(e) => setQty(e.target.value)}
@@ -465,7 +466,7 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
         if (open) {
             const next: Record<string, string> = {};
             for (const item of items) {
-                next[item.name] = String(item.qty ?? 0);
+                next[item.name] = '';
             }
             setReceived(next);
             setRejected(new Set());
@@ -505,13 +506,21 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
     }, [items, received, rejected]);
 
     function tabularNumber(v: string | undefined): number {
-        return parseArabicDecimal(v);
+        // الخانة الفاضية = صفر (بلا كمية) — مقبولة في الاستلام.
+        return parseArabicDecimal(v, 0);
     }
 
     async function doSubmit(): Promise<void> {
         setError('');
         const quantities: Array<{ name: string; receivedQty: number }> = [];
         for (const item of items) {
+            if (rejected.has(item.name)) {
+                continue;
+            }
+            if (!String(received[item.name] ?? '').trim()) {
+                setError(`أدخل الكمية المستلمة للصنف «${item.name}» — اكتب صفرًا إذا لم تستلم منه`);
+                return;
+            }
             const g = tabularNumber(received[item.name]);
             if (!Number.isFinite(g) || g < 0 || g > 1000000) {
                 setError(`كمية الاستلام للصنف «${item.name}» غير صحيحة`);
@@ -561,6 +570,13 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
                                     return;
                                 }
                                 for (const item of items) {
+                                    if (rejected.has(item.name)) {
+                                        continue;
+                                    }
+                                    if (!String(received[item.name] ?? '').trim()) {
+                                        setError(`أدخل الكمية المستلمة للصنف «${item.name}» — اكتب صفرًا إذا لم تستلم منه`);
+                                        return;
+                                    }
                                     const g = tabularNumber(received[item.name]);
                                     if (!Number.isFinite(g) || g < 0 || g > 1000000) {
                                         setError(`كمية الاستلام للصنف «${item.name}» غير صحيحة`);
@@ -637,6 +653,8 @@ function ReceiveDialog({ open, row, items, pending, receiverName, onClose, onSub
                                                         min={0}
                                                         step={0.001}
                                                         inputMode="decimal"
+                                                        aria-required={!isRejected}
+                                                        placeholder="اكتب الكمية المستلمة"
                                                         className="text-end tabular-nums"
                                                         value={received[item.name] ?? ''}
                                                         onChange={(e) =>
@@ -800,8 +818,8 @@ function EditItemsDialog({ open, row, items, pending, onClose, onSubmit }: EditI
         setError('');
         const payload: VegItemInput[] = [];
         for (const item of items) {
-            const q = parseArabicDecimal(qtys[item.name]);
-            if (!Number.isFinite(q) || q <= 0) {
+            const q = parseArabicDecimal(qtys[item.name], 0);
+            if (!Number.isFinite(q) || q < 0) {
                 setError(`كمية غير صالحة للصنف ${item.name}`);
                 return;
             }
@@ -846,7 +864,7 @@ function EditItemsDialog({ open, row, items, pending, onClose, onSubmit }: EditI
                                 label="الكمية"
                                 name={`qty-${item.name}`}
                                 type="number"
-                                min={0.001}
+                                min={0}
                                 step={0.001}
                                 value={qtys[item.name] ?? ''}
                                 onChange={(e) => setQtys((previous) => ({ ...previous, [item.name]: e.target.value }))}
@@ -871,25 +889,37 @@ interface PriceDialogProps {
     pending: boolean;
     approverName?: string | undefined;
     onClose: () => void;
-    onSubmit: (prices: { name: string; price: number; qty?: number | undefined }[]) => Promise<void>;
+    onSubmit: (prices: { name: string; unitPrice: number; qty?: number | undefined }[]) => Promise<void>;
 }
 
 const PRICE_FORM_ID = 'erp-veg-price-form';
 
 function PriceDialog({ open, row, items, pending, onClose, onSubmit }: PriceDialogProps) {
     const [prices, setPrices] = useState<Record<string, string>>({});
+    // أمين المخزن يعدّل الوزن المستلم أثناء التسعير — القيمة تبدأ من وزن الاستلام.
+    const [weights, setWeights] = useState<Record<string, string>>({});
     const [error, setError] = useState('');
 
     useEffect(() => {
         if (open) {
             const next: Record<string, string> = {};
+            const nextWeights: Record<string, string> = {};
             for (const item of items) {
                 next[item.name] = '';
+                nextWeights[item.name] = String(item.qty);
             }
             setPrices(next);
+            setWeights(nextWeights);
             setError('');
         }
     }, [open, items]);
+
+    const weightOf = (item: { name: string; qty: number }): number => {
+        const raw = String(weights[item.name] ?? '').trim();
+        const parsed = raw ? parseArabicDecimal(raw) : 0;
+        // الصفر أو الخانة الفاضية = بلا كمية، ويُقبل كما هو.
+        return Number.isFinite(parsed) && parsed >= 0 && parsed <= 100000 ? Math.round(parsed * 1000) / 1000 : Number.NaN;
+    };
 
     const moneyFmt = (value: number) => Number(value).toLocaleString('en-US', { minimumFractionDigits: 2, maximumFractionDigits: 2 });
 
@@ -901,16 +931,18 @@ function PriceDialog({ open, row, items, pending, onClose, onSubmit }: PriceDial
             }
             const raw = String(prices[item.name] ?? '').trim();
             const price = raw === '' ? null : Number(raw);
-            const valid = price !== null && Number.isFinite(price) && price >= 0 && price <= 1000000;
-            const lineTotal = valid ? Math.round(price! * item.qty * 100) / 100 : null;
+            const qty = weightOf(item);
+            const valid = price !== null && Number.isFinite(price) && price >= 0 && price <= 1000000 &&
+                Number.isFinite(qty) && qty >= 0 && qty <= 100000;
+            const lineTotal = valid ? Math.round((price ?? 0) * qty * 100) / 100 : null;
             if (lineTotal !== null) {
                 total += lineTotal;
             }
-            return { item, raw, price, valid, lineTotal };
+            return { item, raw, price, valid, lineTotal, qty };
         });
         const unpriced = lines.reduce((count, l) => count + (l.item.rejected || l.valid ? 0 : 1), 0);
-        return { total: Math.round(total * 100) / 100, unpriced };
-    }, [items, prices]);
+        return { total: Math.round(total * 100) / 100, unpriced, lines };
+    }, [items, prices, weights]);
 
     async function save(event: React.FormEvent<HTMLFormElement>): Promise<void> {
         event.preventDefault();
@@ -919,18 +951,23 @@ function PriceDialog({ open, row, items, pending, onClose, onSubmit }: PriceDial
             setError('لا توجد أصناف في الطلب');
             return;
         }
-        const payload: { name: string; price: number; qty?: number | undefined }[] = [];
+        const payload: { name: string; unitPrice: number; qty?: number | undefined }[] = [];
         for (const item of items) {
             if (item.rejected) {
                 continue;
             }
             const raw = String(prices[item.name] ?? '').trim();
-            const price = Number(raw);
+            const price = Number(raw.replace(',', '.'));
             if (raw === '' || !Number.isFinite(price) || price < 0 || price > 1000000) {
                 setError(`أدخل سعرًا صحيحًا للصنف «${item.name}»`);
                 return;
             }
-            payload.push({ name: item.name, price: Math.round(price * 100) / 100, qty: item.qty });
+            const qty = weightOf(item);
+            if (qty < 0 || qty > 100000) {
+                setError(`أدخل وزنًا صحيحًا للصنف «${item.name}»`);
+                return;
+            }
+            payload.push({ name: item.name, unitPrice: Math.round(price * 100) / 100, qty });
         }
         try {
             await onSubmit(payload);
@@ -990,7 +1027,7 @@ function PriceDialog({ open, row, items, pending, onClose, onSubmit }: PriceDial
                                     الوحدة
                                 </th>
                                 <th scope="col" className="px-sm py-xs text-end">
-                                    الكمية
+                                    الوزن المستلم (قابل للتعديل)
                                 </th>
                                 <th scope="col" className="px-sm py-xs text-end">
                                     سعر الوحدة (ر.س)
@@ -1008,8 +1045,16 @@ function PriceDialog({ open, row, items, pending, onClose, onSubmit }: PriceDial
                                         ? (() => {
                                               const raw = String(prices[item.name] ?? '').trim();
                                               const price = raw === '' ? null : Number(raw);
-                                              const valid = price !== null && Number.isFinite(price) && price >= 0 && price <= 1000000;
-                                              const lineTotal = valid ? Math.round(price! * item.qty * 100) / 100 : null;
+                                              const qty = weightOf(item);
+                                              const valid =
+                                                  price !== null &&
+                                                  Number.isFinite(price) &&
+                                                  price >= 0 &&
+                                                  price <= 1000000 &&
+                                                  Number.isFinite(qty) &&
+                                                  qty >= 0 &&
+                                                  qty <= 100000;
+                                              const lineTotal = valid ? Math.round((price ?? 0) * qty * 100) / 100 : null;
                                               return { raw, lineTotal };
                                           })()
                                         : { raw: '', lineTotal: null };
@@ -1020,8 +1065,22 @@ function PriceDialog({ open, row, items, pending, onClose, onSubmit }: PriceDial
                                             {item.name}
                                         </td>
                                         <td className="px-sm py-xs text-center text-muted">{item.unit ?? 'كجم'}</td>
-                                        <td className="erp-numeric px-sm py-xs text-end text-ink" dir="ltr">
-                                            {(item.qty ?? 0).toLocaleString('en-US', { maximumFractionDigits: 3 })}
+                                        <td className="px-sm py-xs">
+                                            <Input
+                                                type="number"
+                                                inputMode="decimal"
+                                                min={0}
+                                                max={100000}
+                                                step={0.001}
+                                                aria-label={`وزن ${item.name} المستلم`}
+                                                disabled={isRejected}
+                                                value={weights[item.name] ?? String(item.qty)}
+                                                onChange={(event) => {
+                                                    setWeights((current) => ({ ...current, [item.name]: event.target.value }));
+                                                }}
+                                                className="erp-numeric text-end"
+                                                dir="ltr"
+                                            />
                                         </td>
                                         <td className="px-sm py-xs">
                                             {isRejected ? (
@@ -1352,7 +1411,7 @@ export function VegRequests() {
         },
     });
 
-    const priceMutation = useWriteMutation<{ id: string; prices: { name: string; price: number; qty?: number | undefined }[] }, void>({
+    const priceMutation = useWriteMutation<{ id: string; prices: { name: string; unitPrice: number; qty?: number | undefined }[] }, void>({
         mutationFn: ({ id, prices }) => priceVegRequest(id, prices).then(() => undefined),
         successTitle: () => VEG_TEXT.priceSuccess,
         invalidate: [['veg-requests']],
@@ -1592,7 +1651,7 @@ export function VegRequests() {
                 }
             />
 
-            {analysisOpen ? <VegAnalysisPanel /> : null}
+            {analysisOpen ? <VegAnalysisPanel currency={currency} /> : null}
 
             <Card className="p-sm">
                 <div className="flex flex-wrap items-end gap-sm">
@@ -1954,7 +2013,8 @@ const ANALYSIS_PRESETS: ReadonlyArray<{ preset: 'today' | 'week' | 'month' | 'ye
     { preset: 'year', label: 'هذا العام' },
 ];
 
-function VegAnalysisPanel() {
+function VegAnalysisPanel({ currency = '' }: { currency?: string }) {
+    const auth = useAuthState();
     const [draft, setDraft] = useState(() => ({ from: presetRange('month').from, to: presetRange('month').to }));
     const [range, setRange] = useState(draft);
     const [q, setQ] = useState('');
@@ -1983,9 +2043,31 @@ function VegAnalysisPanel() {
                         Veg Consumption
                     </span>
                 </h2>
-                <span className="text-body-sm text-muted" role="status" dir="ltr">
-                    {`${range.from} → ${range.to}`}
-                </span>
+                <div className="flex flex-wrap items-center gap-xs">
+                    <span className="text-body-sm text-muted" role="status" dir="ltr">
+                        {`${range.from} → ${range.to}`}
+                    </span>
+                    <Button
+                        type="button"
+                        size="sm"
+                        variant="secondary"
+                        disabled={!data || analysisQuery.isPending}
+                        title="طباعة تقرير تحليل الخضار بالشعار والتفاصيل"
+                        onClick={() => {
+                            if (!data) {
+                                return;
+                            }
+                            printSmart(
+                                vegAnalysisPrintHtml(data, {
+                                    byName: String(auth.user?.name ?? auth.user?.username ?? ''),
+                                    currency,
+                                }),
+                            );
+                        }}
+                    >
+                        🖨 طباعة التقرير
+                    </Button>
+                </div>
             </div>
 
             <div className="flex flex-wrap items-end gap-sm p-sm" data-erp-print-hide>

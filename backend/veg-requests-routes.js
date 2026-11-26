@@ -18,7 +18,7 @@ const express = require('express');
 const { pool } = require('./shared-pool');
 const { logger } = require('./logger');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
-const { cleanText, validateItems, applyPrices, UNITS, VEG_CATALOG } = require('./veg-requests-logic');
+const { cleanText, validateItems, applyReceivedQuantities, applyPrices, UNITS, VEG_CATALOG } = require('./veg-requests-logic');
 
 const router = express.Router();
 
@@ -196,44 +196,17 @@ router.post('/:id/receive', ...receiveGate, async (req, res, next) => {
             return res.status(422).json({ ok: false, error: 'ID_INVALID', message: 'معرّف طلب غير سليم' });
         }
         const byDept = String(req.user.dept_code || '').split(',')[0].trim() || 'سو شيف';
-        // الرفض على مستوى الصنف (طلب المالك 2026-10-04): المرفوض لا يرجع للتسعير
-        const rejections = new Set(
-            (Array.isArray(req.body?.rejections) ? req.body.rejections : [])
-                .map((n) => cleanText(n, 80).toLowerCase()).filter(Boolean)
-        );
         const row0 = (await pool.query('SELECT items, request_no FROM veg_requests WHERE id = $1', [id])).rows[0];
         const items0 = Array.isArray(row0?.items) ? row0.items : (() => { try { return JSON.parse(row0?.items || '[]'); } catch (_) { return []; } })();
-        // الاستلام الجزئي (طلب المالك 2026-10-09): استلمت 80 طماطم والسليم 30 —
-        // الحساب على السليم فقط، والتالف موثق ولا يُسعَّر ولا يُحمَّل
-        const qtyMap = new Map();
-        if (Array.isArray(req.body?.quantities)) {
-            for (const q of req.body.quantities) {
-                const nm = cleanText(q?.name, 80).toLowerCase();
-                const rq = Number(q?.receivedQty ?? q?.qty);
-                if (nm && Number.isFinite(rq) && rq >= 0 && rq <= 1000000) {qtyMap.set(nm, rq);}
-            }
+        const receipt = applyReceivedQuantities(items0, req.body?.quantities, req.body?.rejections);
+        if (!receipt.ok) {
+            return res.status(422).json({ ok: false, error: 'RECEIVED_QUANTITIES_INVALID', message: receipt.error });
         }
-        let itemsUpdate = null;
-        const spoiledNotes = [];
-        if (rejections.size || qtyMap.size) {
-            itemsUpdate = JSON.stringify(items0.map((it) => {
-                const key = String(it.name).toLowerCase();
-                if (rejections.has(key)) {return { ...it, rejected: true };}
-                if (qtyMap.has(key)) {
-                    const got = Math.round(qtyMap.get(key) * 1000) / 1000;
-                    const asked = Number(it.qty) || 0;
-                    if (got < asked) {
-                        const spoiled = Math.round((asked - got) * 1000) / 1000;
-                        spoiledNotes.push(`${it.name}: المطلوب ${asked} — السليم ${got} — التالف ${spoiled}`);
-                        return { ...it, qty: got, spoiledQty: spoiled };
-                    }
-                }
-                return it;
-            }));
-        }
+        // احفظ الكميات التي تم عدّها فعلًا؛ لا نسمح بالرجوع للكمية المطلوبة عند غياب الإدخال.
+        const itemsUpdate = JSON.stringify(receipt.items);
         // التسعير الفوري مع الاستلام (طلب المالك 2026-10-09): سعر المندوب/المشتريات
         // نهائي — لو أُرسلت أسعار مع الاستلام يُعتمد الطلب مباشرة (priced) بلا خطوة لاحقة
-        const finalItems = itemsUpdate ? JSON.parse(itemsUpdate) : items0;
+        const finalItems = receipt.items;
         let directApprove = null;
         if (Array.isArray(req.body?.prices) && req.body.prices.length) {
             const checked = applyPrices(finalItems, req.body.prices);
@@ -298,7 +271,7 @@ router.post('/:id/receive', ...receiveGate, async (req, res, next) => {
         }
         logger.info('[veg-requests] استلام طلب', {
             request_no: upd.rows[0].request_no, by: req.user.username, dept: byDept,
-            rejected: [...rejections].length || undefined,
+            rejected: receipt.items.filter((item) => item.rejected).length || undefined,
             directApproved: directApprove ? directApprove.total : undefined,
         });
         try { if (req.io) { req.io.emit('veg_request:update', { id, status: upd.rows[0].status }); } } catch (_) { /* best-effort: الخطأ لا يوقف المسار */ }
@@ -410,8 +383,9 @@ router.put('/:id/items', jwtAuth, requireRole(...EDIT_ROLES), async (req, res, n
             if (!target) {
                 return res.status(422).json({ ok: false, error: 'UNKNOWN_ITEM', message: `الصنف غير موجود في الطلب: ${w.name || '؟'} — أنشئ طلبًا جديدًا لإضافته` });
             }
-            const q = Number(w.qty ?? w.quantity);
-            if (!Number.isFinite(q) || q <= 0 || q > 100000) {
+            const rawQty = w.qty ?? w.quantity;
+            const q = rawQty === '' || rawQty == null ? 0 : Number(rawQty);
+            if (!Number.isFinite(q) || q < 0 || q > 100000) {
                 return res.status(422).json({ ok: false, error: 'INVALID_QTY', message: `كمية غير صالحة للصنف ${target.name}` });
             }
             target.qty = Math.round(q * 1000) / 1000;

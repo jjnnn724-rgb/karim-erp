@@ -108,7 +108,7 @@ export interface VegItemInput {
 
 export const vegItemSchema = z.object({
     name: z.string().min(1),
-    qty: z.coerce.number().positive(),
+    qty: z.coerce.number().nonnegative(),
     unit: z.string().optional().nullable(),
 });
 
@@ -149,8 +149,10 @@ export async function receiveVegRequest(
 
 export async function priceVegRequest(
     id: string | number,
-    prices: { name: string; price: number; qty?: number | undefined }[],
+    prices: { name: string; unitPrice: number; qty?: number | undefined }[],
 ): Promise<VegResult> {
+    // `unitPrice` هو اسم الحقل التعاقدي للخادم (v2 يرسله كذلك)؛ `qty` اختياري
+    // ليتمكّن أمين المخزن من تعديل الوزن المستلم أثناء التسعير.
     return writeJson(vegResultSchema, `/api/veg-requests/${encodeURIComponent(String(id))}/price`, 'POST', { prices });
 }
 

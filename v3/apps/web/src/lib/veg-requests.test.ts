@@ -1,4 +1,5 @@
 import { describe, expect, it } from 'vitest';
+import { vegItemSchema, vegPriceVisible } from './veg-requests-write';
 import {
     fetchVegRequests,
     searchVegRequests,
@@ -9,6 +10,19 @@ import {
     vegStatusCounts,
     vegStatusLabel,
 } from './veg-requests';
+
+describe('تحقق كميات وتسعير طلبات الخضار', () => {
+    it('يسمح بالصفر والخانة الفارغة ككمية، ويرفض الكمية السالبة', () => {
+        expect(vegItemSchema.parse({ name: 'بصل', qty: 0 }).qty).toBe(0);
+        expect(vegItemSchema.parse({ name: 'بصل', qty: '' }).qty).toBe(0);
+        expect(vegItemSchema.safeParse({ name: 'بصل', qty: -1 }).success).toBe(false);
+    });
+
+    it('يسمح لأمين المخزن بتسعير الطلب، بما يشمل صلاحية تعديل الوزن', () => {
+        expect(vegPriceVisible('warehouse')).toBe(true);
+        expect(vegPriceVisible('kitchen')).toBe(false);
+    });
+});
 
 /**
  * عقد طلبات الخضار — مطابق لـ `frontend/app/js/v2/data/veg-repo.js:166-182`

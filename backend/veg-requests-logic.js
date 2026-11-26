@@ -101,12 +101,14 @@ function validateItems(raw) {
   const items = [];
   for (const r of raw) {
     const name = cleanText(r?.name, 80);
-    const qty = Number(r?.qty);
+    const rawQty = r?.qty;
+    const qty = rawQty === '' || rawQty == null ? 0 : Number(rawQty);
     if (!name) {
       return { ok: false, error: 'يوجد صنف بلا اسم — أكمل البيانات' };
     }
-    if (!Number.isFinite(qty) || qty <= 0 || qty > 99999) {
-      return { ok: false, error: `كمية غير سليمة للصنف «${name}» — اكتب رقمًا أكبر من صفر` };
+    // الصفر / الخانة الفاضية تعني «بلا كمية» وتُقبل في أي تعديل.
+    if (!Number.isFinite(qty) || qty < 0 || qty > 99999) {
+      return { ok: false, error: `كمية غير سليمة للصنف «${name}» — صفر يعني بلا كمية` };
     }
     const key = name.toLowerCase();
     if (seen.has(key)) {
@@ -121,6 +123,75 @@ function validateItems(raw) {
     items.push({ name, qty: Math.round(qty * 1000) / 1000, unit, note });
   }
   return { ok: true, items };
+}
+
+/**
+ * Validate and apply the actual quantities entered at receipt time.
+ * A missing value is not the same as zero: every accepted item must be
+ * explicitly counted so the requested quantity can never masquerade as received.
+ */
+function applyReceivedQuantities(items, rawQuantities, rawRejections) {
+  if (!Array.isArray(items) || items.length < 1) {
+    return { ok: false, error: 'لا توجد أصناف لاستلامها' };
+  }
+  if (!Array.isArray(rawQuantities) || !Array.isArray(rawRejections)) {
+    return { ok: false, error: 'أدخل الكمية المستلمة لكل صنف وحدد الأصناف المرفوضة' };
+  }
+
+  const itemsByName = new Map(items.map(item => [cleanText(item?.name, 80).toLowerCase(), item]));
+  const rejected = new Set();
+  for (const rawName of rawRejections) {
+    const name = cleanText(rawName, 80).toLowerCase();
+    if (!name || !itemsByName.has(name)) {
+      return { ok: false, error: `اسم صنف مرفوض غير صالح: ${name || 'فارغ'}` };
+    }
+    rejected.add(name);
+  }
+
+  const quantitiesByName = new Map();
+  for (const entry of rawQuantities) {
+    const name = cleanText(entry?.name, 80).toLowerCase();
+    if (!name || !itemsByName.has(name)) {
+      return { ok: false, error: `اسم صنف الاستلام غير صالح: ${name || 'فارغ'}` };
+    }
+    if (quantitiesByName.has(name)) {
+      return { ok: false, error: `كمية استلام مكررة للصنف «${itemsByName.get(name).name}»` };
+    }
+    if (rejected.has(name)) {
+      quantitiesByName.set(name, null);
+      continue;
+    }
+    const rawQty = entry?.receivedQty ?? entry?.qty;
+    if (rawQty === '' || rawQty === undefined || rawQty === null) {
+      return { ok: false, error: `أدخل الكمية المستلمة للصنف «${itemsByName.get(name).name}» — اكتب صفرًا إذا لم تستلم منه` };
+    }
+    const qty = typeof rawQty === 'string' ? Number(rawQty.trim().replace(',', '.')) : Number(rawQty);
+    if (!Number.isFinite(qty) || qty < 0 || qty > 1000000) {
+      return { ok: false, error: `كمية الاستلام غير صالحة للصنف «${itemsByName.get(name).name}»` };
+    }
+    quantitiesByName.set(name, Math.round(qty * 1000) / 1000);
+  }
+
+  const receivedItems = [];
+  for (const item of items) {
+    const name = cleanText(item?.name, 80).toLowerCase();
+    if (rejected.has(name)) {
+      receivedItems.push({ ...item, rejected: true });
+      continue;
+    }
+    if (!quantitiesByName.has(name)) {
+      return { ok: false, error: `أدخل الكمية المستلمة للصنف «${item.name}» — اكتب صفرًا إذا لم تستلم منه` };
+    }
+    const qty = quantitiesByName.get(name);
+    const asked = Number(item.qty) || 0;
+    receivedItems.push({
+      ...item,
+      qty,
+      spoiledQty: qty < asked ? Math.round((asked - qty) * 1000) / 1000 : 0,
+      overQty: qty > asked ? Math.round((qty - asked) * 1000) / 1000 : 0,
+    });
+  }
+  return { ok: true, items: receivedItems };
 }
 
 /**
@@ -142,32 +213,45 @@ function applyPrices(items, rawPrices) {
   const byKey = new Map();
   for (const p of rawPrices) {
     const name = cleanText(p?.name, 80).toLowerCase();
-    const unitPrice = Number(p?.unitPrice);
-    if (!name) {
-      continue;
-    }
+    // v3 يرسل `price`، v2 يرسل `unitPrice` — كلاهما مقبول الآن.
+    const rawPrice = p?.unitPrice ?? p?.price;
+    const unitPrice = typeof rawPrice === 'string' && rawPrice.trim() ? Number(rawPrice.replace(',', '.')) : Number(rawPrice);
+    if (!name) {continue;}
     if (!Number.isFinite(unitPrice) || unitPrice < 0 || unitPrice > 1000000) {
       return { ok: false, error: `سعر غير سليم للصنف «${name}» — اكتب رقمًا ≥ صفر` };
     }
-    byKey.set(name, Math.round(unitPrice * 100) / 100);
+    // تعديل الوزن اختياري، ويخضع لتحقق السيرفر (لا ثقة في إجمالي العميل).
+    let qty = null;
+    if (p?.qty !== undefined && p?.qty !== null) {
+      const rawQty = p.qty === '' ? 0 : (typeof p.qty === 'string' && p.qty.trim() ? Number(p.qty.replace(',', '.')) : Number(p.qty));
+      if (!Number.isFinite(rawQty) || rawQty < 0 || rawQty > 100000) {
+        return { ok: false, error: `وزن غير سليم للصنف «${name}» — صفر يعني بلا كمية` };
+      }
+      qty = Math.round(rawQty * 1000) / 1000;
+    }
+    byKey.set(name, { price: Math.round(unitPrice * 100) / 100, qty });
   }
   const out = [];
   let total = 0;
   for (const it of items) {
+    const key = cleanText(it.name, 80).toLowerCase();
     if (it.rejected) {
       out.push({ ...it, price: null, lineTotal: null });
       continue;
     }
-    const key = String(it.name).toLowerCase();
     if (!byKey.has(key)) {
       return { ok: false, error: `الصنف «${it.name}» بلا سعر — سعّر كل الأصناف المقبولة` };
     }
-    const price = byKey.get(key);
-    const lineTotal = Math.round(it.qty * price * 100) / 100;
+    const { price, qty } = byKey.get(key);
+    const effectiveQty = qty ?? (Number(it.qty) || 0);
+    const asked = Number(it.qty) || 0;
+    const spoiled = effectiveQty < asked ? Math.round((asked - effectiveQty) * 1000) / 1000 : 0;
+    const lineTotal = Math.round(effectiveQty * price * 100) / 100;
     total += lineTotal;
-    out.push({ ...it, price, lineTotal });
+    out.push({ ...it, qty: effectiveQty, price, lineTotal, spoiledQty: spoiled,
+      ...(effectiveQty > asked ? { overQty: Math.round((effectiveQty - asked) * 1000) / 1000 } : {}) });
   }
   return { ok: true, items: out, total: Math.round(total * 100) / 100 };
 }
 
-module.exports = { cleanText, validateItems, applyPrices, UNITS, VEG_CATALOG };
+module.exports = { cleanText, validateItems, applyReceivedQuantities, applyPrices, UNITS, VEG_CATALOG };

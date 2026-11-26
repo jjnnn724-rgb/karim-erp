@@ -163,7 +163,7 @@ describe('veg-repo — الباب الواحد: ثلاث قراءات وستة �
         expect(JSON.parse(recv.bodies[0].body)).toEqual(rbody);
 
         const price = repoStub({});
-        const prices = [{ name: 'طماطم', unitPrice: 5 }];
+        const prices = [{ name: 'طماطم', unitPrice: 5, qty: 2 }];
         await price.repo.priceVegRequest(9, prices);
         expect(price.calls).toEqual(['/veg-requests/9/price']);
         expect(price.bodies[0].method).toBe('POST');
@@ -570,9 +570,16 @@ describe('شاشة 14 — العقد المصدَّر من المصدر', () => 
         expect(s).toContain('مرفوض، لا يُسعَّر ولا يُحمَّل');
         expect(s).toContain('data-v2-line=');
         expect(s).toContain('data-v2-total');
+        expect(s).toContain('data-v2-vp-weight=');
+        expect(s).toContain('qty: Number(weight ? weight.value : Number.NaN)');
+        expect(s).toContain("matches('[data-v2-vp-price], [data-v2-vp-weight]')");
+        expect(s).toContain('اكتب الكمية المستلمة فعلًا');
+        expect(s).toContain('أدخل الكمية المستلمة للصنف ${name}');
+        expect(s).toContain("qty: inp.value.trim() === '' ? 0 : Number(inp.value)");
         // التعديل: أرقام الأصناف القائمة فقط — إضافة الأصناف مرفوضة بطلب جديد
         expect(s).toContain('data-v2-edit-qty');
         expect(s).toContain('إضافة أصناف جديدة مرفوضة — طلب جديد لها');
+        expect(s).toContain('min="0" step="0.001" value="${esc(String(Number(it.qty || 0)))}"');
     });
 
     test('الطباعة: العارض الداخلي يُفتح مباشرة قبل الجلب، والورقة ورقة القديم بحرفها', () => {

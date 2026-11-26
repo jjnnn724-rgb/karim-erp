@@ -522,9 +522,9 @@ export function mountVegScreen(host, ctx = {}) {
           <div class="erp-veg-line">
             <div class="erp-veg-line__row">
               <span class="erp-veg-line__name">${esc(it.name)} <small class="erp-text-muted">(${esc(String(it.qty))} ${esc(it.unit)})</small></span>
-              <label class="erp-field">المستلم:
-                <input class="erp-input" type="number" min="0" step="0.001" value="${esc(String(it.qty))}"
-                  data-v2-vq-name="${esc(it.name)}" title="الكمية السليمة المستلمة — الباقي يُسجل تالفًا" aria-label="الكمية السليمة من ${esc(it.name)}"></label>
+              <label class="erp-field">المستلم فعليًا:
+                <input class="erp-input" type="number" min="0" step="0.001" placeholder="اكتب الكمية المستلمة"
+                  data-v2-vq-name="${esc(it.name)}" title="اكتب الكمية السليمة المستلمة؛ اكتب صفرًا إذا لم تستلم منه" aria-label="الكمية السليمة من ${esc(it.name)}" required></label>
               <label class="erp-field">السعر:
                 <input class="erp-input" type="number" min="0" step="0.01" placeholder="سعر الوحدة"
                   data-v2-vp-recv="${esc(String(raw.id))}" data-v2-vp-name="${esc(it.name)}"
@@ -537,7 +537,8 @@ export function mountVegScreen(host, ctx = {}) {
           </div>`).join('');
         return panelShell(`استلام الطلب ${esc(raw.request_no || ('#' + raw.id))}`, 'check',
             `<div class="erp-flow-note" data-tone="info">
-               حدد مستلَمًا أو مُرجَعًا لكل صنف. لو جزء تالف: اكتب الكمية <b>السليمة</b> في خانة المستلم —
+               حدد مستلَمًا أو مُرجَعًا لكل صنف، واكتب الكمية المستلمة فعلًا. اكتب صفرًا إذا لم تستلم من الصنف.
+               لو جزء تالف: اكتب الكمية <b>السليمة</b> في خانة المستلم —
                الحساب على السليم فقط والباقي يُسجل تالفًا.<br>
                💰 لو كتبت <b>سعر كل الأصناف المقبولة</b> يُعتمد الطلب مباشرة بسعر المندوب — لو تركتها فارغة يبقى التسعير لخطوة لاحقة.
              </div>
@@ -557,9 +558,13 @@ export function mountVegScreen(host, ctx = {}) {
           <div class="erp-veg-line">
             <div class="erp-veg-line__row">
               <span class="erp-veg-line__name">${esc(it.name)} <small class="erp-text-muted">(${esc(String(it.qty))} ${esc(it.unit)})</small>${it.spoiledQty ? ` <span class="erp-badge" data-tone="danger" title="كمية تالفة لا تُحتسب">تالف: ${esc(String(it.spoiledQty))}</span>` : ''}</span>
-              <input class="erp-input" type="number" min="0" step="0.01" placeholder="سعر الوحدة"
-                data-v2-vp-price="${esc(String(raw.id))}" data-v2-vp-name="${esc(it.name)}" data-v2-vp-qty="${esc(String(it.qty))}"
-                aria-label="سعر وحدة ${esc(it.name)}">
+              <label class="erp-field">الوزن المستلم:
+                <input class="erp-input" type="number" min="0" max="100000" step="0.001" value="${esc(String(it.qty))}"
+                  data-v2-vp-weight="${esc(it.name)}" aria-label="وزن ${esc(it.name)} المستلم"></label>
+              <label class="erp-field">سعر الوحدة:
+                <input class="erp-input" type="number" min="0" step="0.01" placeholder="سعر الوحدة"
+                  data-v2-vp-price="${esc(String(raw.id))}" data-v2-vp-name="${esc(it.name)}"
+                  aria-label="سعر وحدة ${esc(it.name)}"></label>
               <span class="erp-veg-line__total" data-v2-line="${esc(it.name)}">—</span>
             </div>
           </div>`).join('');
@@ -582,7 +587,7 @@ export function mountVegScreen(host, ctx = {}) {
           <div class="erp-veg-line">
             <div class="erp-veg-line__row">
               <span class="erp-veg-line__name">${esc(it.name)} <small class="erp-text-muted">(${esc(it.unit || '')})</small></span>
-              <input class="erp-input" type="number" min="0.001" step="0.001" value="${esc(String(Number(it.qty || 0)))}"
+              <input class="erp-input" type="number" min="0" step="0.001" value="${esc(String(Number(it.qty || 0)))}"
                 data-v2-edit-qty="${i}" data-v2-edit-name="${esc(it.name)}" data-v2-edit-unit="${esc(it.unit || '')}"
                 aria-label="كمية ${esc(it.name)}">
             </div>
@@ -677,11 +682,20 @@ export function mountVegScreen(host, ctx = {}) {
                 const ok = await confirmFn('رفض كل الأصناف؟ الطلب سيُستلم بلا أي صنف ولا يُسعَّر.');
                 if (!ok) {return;}
             }
-            const quantities = [...panelEl.querySelectorAll('[data-v2-vq-name]')].map((inp) => ({
-                name: inp.getAttribute('data-v2-vq-name'), receivedQty: Number(inp.value),
-            })).filter((r) => r.name && Number.isFinite(r.receivedQty));
-            // أسعار المندوب النهائية — تُرسل فقط لو سُعّرت كل الأصناف المقبولة (اعتماد مباشر)
             const rejSet = new Set(rejections);
+            const quantities = [];
+            for (const inp of panelEl.querySelectorAll('[data-v2-vq-name]')) {
+                const name = inp.getAttribute('data-v2-vq-name');
+                if (!name || rejSet.has(name)) {continue;}
+                const value = String(inp.value || '').trim();
+                if (!value) {notify(`أدخل الكمية المستلمة للصنف ${name} — اكتب صفرًا إذا لم تستلم منه`); return;}
+                const receivedQty = Number(value);
+                if (!Number.isFinite(receivedQty) || receivedQty < 0 || receivedQty > 1000000) {
+                    notify(`كمية الاستلام غير صحيحة للصنف ${name}`); return;
+                }
+                quantities.push({ name, receivedQty });
+            }
+            // أسعار المندوب النهائية — تُرسل فقط لو سُعّرت كل الأصناف المقبولة (اعتماد مباشر)
             const prices = [];
             let need = 0;
             for (const inp of panelEl.querySelectorAll('[data-v2-vp-recv]')) {
@@ -715,11 +729,18 @@ export function mountVegScreen(host, ctx = {}) {
         if (busy) {notify('جارٍ تنفيذ عملية — انتظر النتيجة'); return;}
         busy = true;
         try {
-            const prices = [...panelEl.querySelectorAll('[data-v2-vp-price]')].map((inp) => ({
-                name: inp.getAttribute('data-v2-vp-name') || '',
-                unitPrice: Number(inp.value),
-            }));
-            if (!prices.length || prices.some((p) => !p.name || !Number.isFinite(p.unitPrice) || p.unitPrice < 0)) {
+            const prices = [...panelEl.querySelectorAll('[data-v2-vp-price]')].map((inp) => {
+                const name = inp.getAttribute('data-v2-vp-name') || '';
+                const weight = panelEl.querySelector(`[data-v2-vp-weight="${CSS.escape(name)}"]`);
+                return {
+                    name,
+                    unitPrice: Number(inp.value),
+                    qty: Number(weight ? weight.value : Number.NaN),
+                };
+            });
+            if (!prices.length || prices.some((p) =>
+                !p.name || !Number.isFinite(p.unitPrice) || p.unitPrice < 0 ||
+                !Number.isFinite(p.qty) || p.qty < 0 || p.qty > 100000)) {
                 notify('سعّر كل الأصناف المقبولة (صفر أو أكثر) قبل التأكيد'); return;
             }
             const res = await priceVegRequest(panelRaw.id, prices);
@@ -739,7 +760,7 @@ export function mountVegScreen(host, ctx = {}) {
         try {
             const rows = [...panelEl.querySelectorAll('[data-v2-edit-qty]')].map((inp) => ({
                 name: inp.getAttribute('data-v2-edit-name') || '',
-                qty: Number(inp.value),
+                qty: inp.value.trim() === '' ? 0 : Number(inp.value),
                 unit: inp.getAttribute('data-v2-edit-unit') || '',
             }));
             await editVegItems(panelRaw.id, vegEditPayload(rows));
@@ -916,14 +937,16 @@ export function mountVegScreen(host, ctx = {}) {
             });
             return;
         }
-        if (event.target.matches('[data-v2-vp-price]')) {
+        if (event.target.matches('[data-v2-vp-price], [data-v2-vp-weight]')) {
             let total = 0;
             panelEl.querySelectorAll('[data-v2-vp-price]').forEach((inp) => {
                 const price = Number(inp.value);
-                const qty = Number(inp.getAttribute('data-v2-vp-qty'));
+                const name = inp.getAttribute('data-v2-vp-name') || '';
+                const weight = panelEl.querySelector(`[data-v2-vp-weight="${CSS.escape(name)}"]`);
+                const qty = Number(weight ? weight.value : Number.NaN);
                 const line = Number.isFinite(price) && price >= 0 && Number.isFinite(qty)
                     ? Math.round(qty * price * 100) / 100 : 0;
-                const lineEl = panelEl.querySelector(`[data-v2-line="${CSS.escape(inp.getAttribute('data-v2-vp-name') || '')}"]`);
+                const lineEl = panelEl.querySelector(`[data-v2-line="${CSS.escape(name)}"]`);
                 if (lineEl) {lineEl.textContent = inp.value === '' ? '—' : line.toFixed(2);}
                 total += line;
             });
