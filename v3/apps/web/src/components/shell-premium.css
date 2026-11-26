@@ -672,8 +672,13 @@
 @media (max-width: 767px) {
     .erp-shell__header {
         min-block-size: 4.5rem;
-        padding-inline: 1rem;
-        gap: 0.75rem;
+        padding-block-start: calc(0.75rem + env(safe-area-inset-top));
+        padding-block-end: 0.75rem;
+        padding-inline: max(1rem, env(safe-area-inset-inline-start));
+        gap: 0.5rem;
+    }
+    .erp-shell__main {
+        padding-block-end: calc(1rem + env(safe-area-inset-bottom));
     }
     .erp-shell__header-start {
         flex: 1;
@@ -685,7 +690,10 @@
         display: none;
     }
     .erp-shell__header-logout {
-        padding: 0.5rem;
+        padding: 0;
+        inline-size: 2.75rem;
+        block-size: 2.75rem;
+        justify-content: center;
     }
     .erp-shell__header-logout > span {
         position: absolute;
@@ -698,10 +706,13 @@
     .erp-shell__command-trigger {
         flex: none;
         min-inline-size: 0;
-        inline-size: 2.5rem;
-        min-block-size: 2.5rem;
+        inline-size: 2.75rem;
+        min-block-size: 2.75rem;
         padding: 0;
         justify-content: center;
+    }
+    .erp-shell__portal-link {
+        display: inline-flex;
     }
     .erp-shell__command-trigger > span,
     .erp-shell__command-trigger kbd {

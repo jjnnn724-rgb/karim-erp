@@ -632,7 +632,22 @@
     }
 }
 
-@media (min-width: 1000px) {
+/* القيم المالية تُلفّ بدل قصّها بـ ellipsis في المساحات الضيقة. */
+@media (max-width: 1399px) {
+    .home-kpi p.home-kpi__value {
+        white-space: normal;
+        overflow: visible;
+        text-overflow: clip;
+    }
+}
+
+/* البطاقات تتسع حسب المساحة الحقيقية بعد الشريط الجانبي — لا أرقام مقطوعة. */
+@media (min-width: 820px) {
+    .home-kpis {
+        grid-template-columns: repeat(3, minmax(0, 1fr));
+    }
+}
+@media (min-width: 1400px) {
     .home-kpis {
         grid-template-columns: repeat(4, minmax(0, 1fr));
     }

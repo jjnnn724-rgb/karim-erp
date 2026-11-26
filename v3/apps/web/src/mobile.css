@@ -279,6 +279,40 @@
     }
 }
 
+/* ── لمسة نهائية للهاتف: لمس مريح، شبكات ذاتية، وصور بلا قفز ─────────── */
+@media (max-width: 767px) {
+    :root {
+        --erp-mobile-tap: 2.75rem;
+    }
+
+    .erp-shell__main :is(button, a[role="button"], select) {
+        min-block-size: var(--erp-mobile-tap);
+    }
+
+    /* عناوين الشاشات: حجم سائل بلا قفزة بين المقاسات. */
+    .erp-shell__main :is(h1) {
+        font-size: clamp(1.25rem, 1rem + 1.1vw, 1.75rem);
+        line-height: 1.25;
+    }
+    .erp-shell__main :is(h2, h3) {
+        font-size: clamp(1.0625rem, 0.95rem + 0.5vw, 1.375rem);
+        line-height: 1.3;
+    }
+
+    /* الجداول: تمرير أفقي داخل حاويتها فقط، مع إشارة ظلّ خفيفة. */
+    .erp-table__scroll,
+    .erp-shell__main :is([class*="overflow-auto"]) {
+        scrollbar-width: thin;
+        -webkit-overflow-scrolling: touch;
+    }
+
+    /* صور الأصناف/الصور الرمزية: نسبة ثابتة تمنع قفز التخطيط. */
+    .erp-shell__main img {
+        aspect-ratio: auto;
+        object-fit: cover;
+    }
+}
+
 @media (prefers-reduced-motion: reduce) {
     .erp-dialog,
     .erp-dialog--sm,

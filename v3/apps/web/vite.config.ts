@@ -90,6 +90,9 @@ export default defineConfig({
         },
     },
     test: {
+        // الاختبارات الكاملة (1516) تتحمّل jsdom تحت ضغط الحمل؛ 5 ثوانٍ كانت
+        // تُنتج فشلًا عابرًا في App.test.tsx بلا سبب حقيقي في الكود.
+        testTimeout: 15000,
         environment: 'jsdom',
         setupFiles: ['./src/setupTests.ts'],
         include: ['src/**/*.test.ts', 'src/**/*.test.tsx'],
