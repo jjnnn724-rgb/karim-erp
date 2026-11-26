@@ -592,6 +592,132 @@ router.post('/:id/notify', jwtAuth, requireRole(...CREATE_ROLES), async (req, re
     }
 });
 
+// ─── تحليل استهلاك الخضار (قراءة فقط) ────────────────────────────────────────
+// العقد: v3/apps/web/src/lib/veg-requests.ts → consumptionResponseSchema.
+// المستلم: طلبات الخضار المسلمة/المعتمدة (received/priced) في الفترة — الأصناف
+//   مخزّنة في veg_requests.items (JSONB؛ لا يوجد جدول veg_request_items).
+// المستهلك: حركات الخروج من دفتر المخزون (صرف/بيع/إنتاج/هالك).
+// الرصيد ومتوسط التكلفة: من inventory لحظة العرض — بلا تقدير ولا أرقام مُختلقة.
+const normVegName = (v) => String(v ?? '').replace(/\s+/g, ' ').trim().toLowerCase();
+const numVeg = (v) => { const n = Number(v); return Number.isFinite(n) ? n : 0; };
+const round3 = (v) => Math.round(numVeg(v) * 1000) / 1000;
+const round2 = (v) => Math.round(numVeg(v) * 100) / 100;
+const VEG_CATALOG_NAMES = new Set(
+    VEG_CATALOG.flatMap((group) => (group.items || []).map((it) => normVegName(it.name))).filter(Boolean)
+);
+
+router.get('/consumption', jwtAuth, requireRole(...READ_ROLES), async (req, res, next) => {
+    try {
+        await ensureSchema();
+        const from = String(req.query.from || '').slice(0, 10);
+        const to = String(req.query.to || '').slice(0, 10);
+        if (!/^\d{4}-\d{2}-\d{2}$/.test(from) || !/^\d{4}-\d{2}-\d{2}$/.test(to) || from > to) {
+            return res.status(422).json({ ok: false, error: 'RANGE_INVALID', message: 'الفترة مطلوبة بصيغة YYYY-MM-DD' });
+        }
+        const q = String(req.query.q || '').trim().slice(0, 60).toLowerCase();
+
+        // $1/$2 فقط — لا إدراج لأي إدخال مستخدم في نص الاستعلام
+        const [orders, stock, movements] = await Promise.all([
+            pool.query(
+                `SELECT id, items FROM veg_requests
+                  WHERE created_at >= $1::date AND created_at < ($2::date + INTERVAL '1 day')
+                    AND status IN ('received','priced')`,
+                [from, to]
+            ),
+            pool.query('SELECT id, name, unit, qty, "avgCost" FROM inventory'),
+            pool.query(
+                `SELECT inventory_id,
+                        ROUND(SUM(-quantity_delta), 3)::float AS consumed_qty,
+                        ROUND(SUM(CASE WHEN quantity_delta < 0 THEN -total_cost ELSE 0 END), 2)::float AS consumed_value
+                   FROM inventory_ledger
+                  WHERE quantity_delta < 0
+                    AND created_at >= $1::date AND created_at < ($2::date + INTERVAL '1 day')
+                    AND (reference_type = 'dispatch'
+                         OR transaction_type IN ('sale_consumption','production_consumption','waste'))
+                  GROUP BY inventory_id`,
+                [from, to]
+            ),
+        ]);
+
+        // تجميع المستلم بالاسم + الوحدة (اسم مفتوح من المستخدم، لا يثق به كـ SQL)
+        const received = new Map();
+        for (const order of orders.rows) {
+            let items = order.items;
+            if (typeof items === 'string') {
+                try { items = JSON.parse(items); } catch (_) { items = []; }
+            }
+            if (!Array.isArray(items)) { continue; }
+            for (const it of items) {
+                if (!it || it.rejected) { continue; }
+                const name = normVegName(it.name);
+                if (!name) { continue; }
+                const unit = String(it.unit ?? '').trim().slice(0, 20) || null;
+                const key = `${name}\u0000${unit || ''}`;
+                let agg = received.get(key);
+                if (!agg) {
+                    agg = { name: String(it.name).trim().slice(0, 120), unit, qty: 0, value: 0, ids: new Set() };
+                    received.set(key, agg);
+                }
+                const qty = numVeg(it.qty);
+                const lineTotal = it.lineTotal == null || it.lineTotal === '' ? null : numVeg(it.lineTotal);
+                agg.qty += qty;
+                agg.value += lineTotal != null ? lineTotal : qty * numVeg(it.price);
+                agg.ids.add(order.id);
+            }
+        }
+
+        const inventoryByName = new Map();
+        const inventoryById = new Map();
+        for (const inv of stock.rows) {
+            const id = Number(inv.id);
+            inventoryById.set(id, inv);
+            const key = normVegName(inv.name);
+            if (key && !inventoryByName.has(key)) { inventoryByName.set(key, inv); }
+        }
+        const consumed = new Map();
+        for (const row of movements.rows) { consumed.set(Number(row.inventory_id), row); }
+
+        const rows = [];
+        const seen = new Set();
+        function addRow(name, unit, recv, consumption, inv) {
+            const key = normVegName(name);
+            if (!key || seen.has(key) || (!recv && !consumption)) { return; }
+            seen.add(key);
+            rows.push({
+                name: String(name).slice(0, 120),
+                unit: unit || inv?.unit || null,
+                inventoryId: inv ? Number(inv.id) : null,
+                onHand: round3(inv?.qty ?? 0),
+                avgCost: round2(inv?.avgCost ?? 0),
+                receivedQty: round3(recv?.qty ?? 0),
+                receivedValue: round2(recv?.value ?? 0),
+                requests: recv ? recv.ids.size : 0,
+                consumedQty: round3(consumption?.consumed_qty ?? 0),
+                consumedValue: round2(consumption?.consumed_value ?? 0),
+            });
+        }
+        for (const agg of received.values()) {
+            const inv = inventoryByName.get(normVegName(agg.name)) || null;
+            addRow(agg.name, agg.unit, agg, inv ? consumed.get(Number(inv.id)) : null, inv);
+        }
+        // أصناف الخضار من الكتالوج التي استُهلكت دون طلب مسلَّم في الفترة
+        for (const [id, cons] of consumed) {
+            const inv = inventoryById.get(id);
+            if (!inv || !VEG_CATALOG_NAMES.has(normVegName(inv.name))) { continue; }
+            addRow(inv.name, inv.unit, null, cons, inv);
+        }
+        const filtered = q ? rows.filter((row) => normVegName(row.name).includes(q)) : rows;
+        filtered.sort((a, b) => a.name.localeCompare(b.name, 'ar'));
+        const totals = {
+            receivedQty: round3(filtered.reduce((s, r) => s + r.receivedQty, 0)),
+            receivedValue: round2(filtered.reduce((s, r) => s + r.receivedValue, 0)),
+            consumedQty: round3(filtered.reduce((s, r) => s + r.consumedQty, 0)),
+            items: filtered.length,
+        };
+        res.json({ ok: true, from, to, rows: filtered, totals });
+    } catch (e) { next(e); }
+});
+
 router._internals = { cleanText, validateItems, UNITS, VEG_CATALOG };
 
 module.exports = router;

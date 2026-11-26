@@ -739,4 +739,142 @@ router.get('/cfo-summary', jwtAuth, requireRole(...READ_ROLES), async (req, res)
     }
 });
 
+// ─── تصفية ضريبة القيمة المضافة (POST /vat-settlement) ──────────────────────
+// العقد: v3/apps/web/src/lib/vat-return.ts → vatSettlementSchema.
+//   { month }           → preview:true  (قراءة فقط، بلا أثر في الدفاتر)
+//   { month, apply:true } → قيد Dr 2100 / Cr 1150 بمفتاح (vat_settlement, month)
+// كل الأرقام مشتقة من القيود المرحّلة (2100 / 1150) — لا أرقام مُخترعة.
+// الأرقام تُعاد كأعداد (z.number() في العقد) لا كنصوص "0.00" — النص يكسر التحقق.
+async function vatSettlementPlan(db, month) {
+    const [year, mon] = month.split('-').map(Number);
+    const from = `${month}-01`;
+    const monthEnd = new Date(Date.UTC(year, mon, 0));
+    const to = `${monthEnd.getUTCFullYear()}-${String(monthEnd.getUTCMonth() + 1).padStart(2, '0')}-${String(monthEnd.getUTCDate()).padStart(2, '0')}`;
+    const period = (await db.query(
+        `SELECT COALESCE(ROUND(SUM(l.credit) FILTER (WHERE l.account_code = '2100'), 2), 0)::float AS output_vat,
+                COALESCE(ROUND(SUM(l.debit)  FILTER (WHERE l.account_code = '1150'), 2), 0)::float AS input_vat
+           FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'posted'
+          WHERE e.date >= $1::date AND e.date <= $2::date`, [from, to])).rows[0];
+    const balances = (await db.query(
+        `SELECT COALESCE(ROUND(SUM(l.credit - l.debit) FILTER (WHERE l.account_code = '2100'), 2), 0)::float AS payable,
+                COALESCE(ROUND(SUM(l.debit - l.credit) FILTER (WHERE l.account_code = '1150'), 2), 0)::float AS recoverable
+           FROM journal_lines l JOIN journal_entries e ON e.id = l.entry_id AND e.status = 'posted'
+          WHERE e.date <= $1::date`, [to])).rows[0];
+    const prior = (await db.query(
+        `SELECT entry_no, TO_CHAR(date, 'YYYY-MM-DD') AS date, status FROM journal_entries
+          WHERE source_type = 'vat_settlement' AND source_id = $1 LIMIT 1`, [month])).rows[0];
+
+    const outputVat = round2(period.output_vat);
+    const inputVat = round2(period.input_vat);
+    const payable = round2(balances.payable);
+    const recoverable = round2(balances.recoverable);
+    const clearing = round2(Math.min(payable, recoverable));
+    const lines = clearing > 0
+        ? [
+            { account_code: '2100', debit: clearing, credit: 0, memo: `تصفية ضريبة ${month} — مقابل المدخلات` },
+            { account_code: '1150', debit: 0, credit: clearing, memo: `تصفية ضريبة ${month} — مقابل المخرجات` },
+          ]
+        : [];
+    return {
+        month, from, to,
+        output_vat: outputVat,
+        input_vat: inputVat,
+        net_payable: round2(Math.max(outputVat - inputVat, 0)),
+        payable_balance: payable,
+        recoverable_balance: recoverable,
+        clearing,
+        net_payable_after: round2(payable - clearing),
+        carry_forward_after: round2(recoverable - clearing),
+        lines,
+        settled: prior ? {
+            entry_no: String(prior.entry_no),
+            date: String(prior.date).slice(0, 10),
+            status: String(prior.status),
+        } : null,
+        skipped: clearing > 0 ? null : 'no_offsetting_balance',
+    };
+}
+
+router.post('/vat-settlement', jwtAuth, requireRole(...WRITE_ROLES), async (req, res) => {
+    const month = String(req.body?.month || '').trim();
+    if (!/^\d{4}-\d{2}$/.test(month) || Number(month.slice(5, 7)) < 1 || Number(month.slice(5, 7)) > 12) {
+        return res.status(422).json({ error: 'LEDGER_VAT_SETTLEMENT_MONTH_INVALID', message: 'الشهر بصيغة YYYY-MM' });
+    }
+    const apply = req.body?.apply === true;
+    try {
+        // المعاينة قراءة فقط — تبقى متاحة حتى للشهر الجاري (الواجهة تعرض الخطة قبل الترحيل).
+        if (!apply) {
+            return res.json({ ...(await vatSettlementPlan(pool, month)), preview: true, applied: false });
+        }
+        // الشهر الجاري/المستقبلي لم تكتمل حركته → 422
+        if (month >= riyadhMonth()) {
+            return res.status(422).json({ error: 'LEDGER_VAT_SETTLEMENT_MONTH_OPEN', message: 'لا تُصفّى الشهر الجاري أو المستقبلي' });
+        }
+        const client = await pool.connect();
+        try {
+            await client.query('BEGIN');
+            // الفترة المقفولة → 423 (نفس حارس بقية الترحيل)
+            try {
+                await require('./accounting-periods').assertPeriodOpen(`${month}-01`);
+            } catch (pe) {
+                await client.query('ROLLBACK');
+                return res.status(423).json({ error: 'PERIOD_LOCKED', message: pe.message });
+            }
+            const plan = await vatSettlementPlan(client, month);
+            // إعادة الشهر نفسه → 409 بلا ازدواج (uq_journal_source)
+            if (plan.settled) {
+                await client.query('ROLLBACK');
+                return res.status(409).json({
+                    error: 'LEDGER_VAT_SETTLEMENT_DUPLICATE',
+                    message: `تصفية ${month} مُرحَّلة مسبقًا`,
+                    ...plan, applied: false,
+                });
+            }
+            // لا رصيدين متقابلين → لا قيد (الخطة تعرض سطورًا فارغة)
+            if (!(plan.clearing > 0)) {
+                await client.query('COMMIT');
+                return res.json({ ...plan, preview: false, applied: false });
+            }
+            let out;
+            try {
+                out = await postJournal(client, {
+                    date: plan.to,
+                    memo: `تصفية ضريبة القيمة المضافة ${month}`,
+                    source_type: 'vat_settlement',
+                    source_id: month,
+                    lines: plan.lines,
+                    created_by: req.user?.id || null,
+                });
+            } catch (err) {
+                if (err.statusCode) {
+                    await client.query('ROLLBACK');
+                    return res.status(err.statusCode).json({
+                        error: err.statusCode === 422 ? 'LEDGER_VAT_SETTLEMENT_INVALID' : 'LEDGER_VAT_SETTLEMENT_FAILED',
+                        message: err.message,
+                    });
+                }
+                throw err;
+            }
+            await client.query('COMMIT');
+            return res.json({
+                ...plan,
+                settled: { entry_no: out.entry.entry_no, date: plan.to, status: out.entry.status },
+                preview: false,
+                applied: true,
+            });
+        } catch (err) {
+            await client.query('ROLLBACK').catch(() => {});
+            throw err;
+        } finally {
+            client.release();
+        }
+    } catch (error) {
+        logger.error('[ledger/vat-settlement]', error);
+        res.status(error.statusCode || 500).json({
+            error: 'LEDGER_VAT_SETTLEMENT_FAILED',
+            message: error.statusCode ? error.message : 'تعذر حساب تصفية الضريبة',
+        });
+    }
+});
+
 module.exports = { router, postJournal, postSaleToLedger, postPurchaseToLedger, postOpeningToLedger, postDispatchToLedger, postReturnToLedger, buildStockMoveLines, ensureCostCenters, resetCcCache: () => { _ccReady = null; } };

@@ -777,6 +777,10 @@ const extraModules = [
     ['/api/push', () => require('./push-routes')],
     ['/api/attendance', () => require('./punch-statement-routes')],
     ['/api/v3/accounting', () => require('./v3-accounting-read').createV3AccountingReadRouter()],
+    ['/api/v3', () => require('./v3-compliance-routes').router],
+    ['/api/sales', () => require('./v3-extras-routes').quoteRouter],
+    ['/api/payroll-sheet', () => require('./v3-extras-routes').payrollRouter],
+    ['/api/cashier-revenues', () => require('./v3-extras-routes').revenueRouter],
 ];
 for (const [mount, load] of extraModules) {
     try {
