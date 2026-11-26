@@ -8,6 +8,7 @@ const path = require('path');
 const express = require('express');
 const { logger } = require('./logger');
 const { jwtAuth } = require('./cashier-module/jwt-middleware');
+const rollout = require('./rollout');
 
 const BUFFET_DATA_FILE = path.resolve(__dirname, '..', 'database', 'data', 'buffet-menu.json');
 
@@ -83,9 +84,9 @@ function sanitizeBuffetPayload(payload) {
 function register(app, opts = {}) {
     const { io } = opts;
 
-    // Root redirect
+    // المدخل الافتراضي: v3 عند اكتمال الموعد/البنية، وإلا V2 للطوارئ.
     app.get('/', (req, res) => {
-        res.redirect('/app/index.html');
+        res.redirect(rollout.v3Entry() ? '/v3/' : '/app/index.html');
     });
 
     // ─── مسارات شاشة المنيو والداشبورد السهلة ───

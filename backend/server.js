@@ -2828,6 +2828,9 @@ app.get(['/login', '/login.html', '/index.html'], (req, res) => {
 // «الرجوع للواجهة القديمة» (preview.js). لا تُمس pos.html / menu.html /
 // menu-board.html — شاشات تشغيلية مستقلة بمداخلها.
 app.get(['/app', '/app/'], (req, res) => {
+    // v3 هو المدخل الافتراضي على كل الأجهزة (بما فيها الهاتف) بعد اكتماله.
+    const rollout = require('./rollout');
+    if (rollout.v3Entry()) {return res.redirect(302, '/v3/');}
     res.redirect(302, '/app/v2.html?live=1');
 });
 
