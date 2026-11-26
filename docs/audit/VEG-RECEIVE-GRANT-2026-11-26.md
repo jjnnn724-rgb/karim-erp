@@ -11,7 +11,8 @@
 ## الإصلاح
 1. أُضيفت مفاتيح `veg.view` / `veg.create` / `veg.receive` لكتالوج الصلاحيات مع قائمة `veg-requests`.
 2. `receiveGate` صار يستخدم `userHasPerm(user, 'veg.receive', RECEIVE_ROLES)` بسلوك fail-closed.
-3. مُنحت الصلاحية لحساب `1789955417852261` مع تسجيل في `permission_audit`.
+3. تبيّن أن المقصود هو **محمد احمد يحيى** (موظف 63 / المستخدم `1789955417833693`) — كان عنده `veg.receive` أصلاً، لكن الواجهة القديمة V2 كانت تفحص الدور فقط ولا تقرأ المنح. `vegReceiveVisible()` صارت تقرأ `STATE.permissions.grants` تلقائياً.
+4. سُحب المنح اللي أُضيف بالغلط لحساب `1789955417852261` مع تسجيل في `permission_audit`، ورُفع إصدار الواجهة إلى 4.9.171.
 
 ## التحقق
 - `GET /api/permissions/me` بحسابه: `{ grants: ["veg.receive"], menus: ["veg-requests"] }`.

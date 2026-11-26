@@ -252,7 +252,14 @@ export function vegCreateVisible(role) {return VEG_UI_CREATE_ROLES.includes(role
 
 /** زر الاستلام — pending && vegCanReceive :22-25 (يساوي RECEIVE_ROLES). */
 export function vegReceiveVisible(role, status) {
-    return status === 'pending' && VEG_RECEIVE_ROLES.includes(role);
+    // المنح الفردية من /permissions/me تُحمّل في STATE.permissions.grants
+    // (preview.js §4b) — زر الاستلام يظهر لمن مُنح veg.receive حتى لو لم يكن
+    // دوره مش في القائمة القديمة.
+    const list = typeof window !== 'undefined' && window.STATE && Array.isArray(window.STATE.permissions?.grants)
+        ? window.STATE.permissions.grants
+        : [];
+    const byGrant = list.includes('veg.receive');
+    return status === 'pending' && (VEG_RECEIVE_ROLES.includes(role) || byGrant);
 }
 
 /** زر السعر — received && vegCanPrice :19 (الخادم يضم manager أيضًا —
