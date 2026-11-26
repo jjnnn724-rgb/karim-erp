@@ -701,17 +701,31 @@ router.get('/my-punches', jwtAuth, async (req, res) => {
         const emp = own.rows[0];
         if (!emp) {
             return res.json({ linked: false, hasEmployeeProfile: false, deviceUserId: null, employeeNumber: null,
-                punches: [], todayRecord: null, devices: { enabled: 0, online: 0 } });
+                punches: [], punchCount: 0, todayRecord: null, devices: { enabled: 0, online: 0 } });
         }
+        // عقد الواجهة (`myPunchesSchema`) يتوقّع: id، attendanceTime، punchTime،
+        // state، verifyType، deviceName — نُطبّق الخريطة صراحةً بدل إرسال أعمدة
+        // الخام التي كانت تُنتج «استجابة الخادم تخالف العقد المعلَن».
         const punches = (await pool.query(
-            `SELECT l."attendanceTime", l."punchState", l."verifyType", d.name AS "deviceName"
+            `SELECT l.id::text AS id,
+                    l."attendanceTime" AS "attendanceTime",
+                    l."punchState" AS state,
+                    l."verifyType" AS "verifyType",
+                    d.name AS "deviceName"
              FROM attendance_logs l LEFT JOIN attendance_devices d ON d.id = l."deviceId"
              WHERE l."employeeId" = $1 AND NOT l.ignored
                AND l."attendanceTime" >=
                    date_trunc('day', NOW() AT TIME ZONE 'Asia/Riyadh') AT TIME ZONE 'Asia/Riyadh'
              ORDER BY l."attendanceTime" ASC LIMIT 50`,
             [emp.id]
-        )).rows;
+        )).rows.map((row) => ({
+            id: row.id,
+            attendanceTime: row.attendanceTime,
+            punchTime: row.attendanceTime,
+            state: row.state,
+            verifyType: row.verifyType,
+            deviceName: row.deviceName || null,
+        }));
         const todayRecord = (await pool.query(
             `SELECT id, date, "checkIn", "checkOut", late, source, "workMinutes", notes
              FROM attendance WHERE "employeeId" = $1 AND date = TO_CHAR(NOW() AT TIME ZONE 'Asia/Riyadh', 'YYYY-MM-DD')`,
@@ -729,7 +743,7 @@ router.get('/my-punches', jwtAuth, async (req, res) => {
             deviceUserId: emp.deviceUserId || null,
             employeeNumber: emp.employeeId || null,
             employee: { id: emp.id, name: emp.name },
-            punches, todayRecord, devices,
+            punches, punchCount: punches.length, todayRecord, devices,
         });
     } catch (error) {
         logger.error({ err: { message: (error && error.message) || String(error), stack: (error && error.stack) || null } }, '[zkteco/my-punches]');

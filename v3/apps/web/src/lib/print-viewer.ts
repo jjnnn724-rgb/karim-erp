@@ -11,6 +11,7 @@
  */
 
 import { exportElementPdf } from './pdf-share';
+import { withPrintBrand } from './print-brand';
 import { writeHtmlDocument } from './print-document';
 
 export interface PrintViewerOptions {
@@ -54,7 +55,7 @@ function openNativeOverlay(html: string, opts: PrintViewerOptions): boolean {
     frame.title = 'معاينة الطباعة';
     frame.setAttribute('sandbox', 'allow-same-origin allow-print');
     frame.style.cssText = 'flex:1;inline-size:100%;block-size:100%;border:0;background:#ffffff;';
-    frame.srcdoc = html;
+    frame.srcdoc = withPrintBrand(html);
 
     const toolbar = document.createElement('div');
     toolbar.className = 'erp-pt-overlay';

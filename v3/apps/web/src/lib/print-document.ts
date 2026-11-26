@@ -1,7 +1,10 @@
 /**
  * نافذة مستند الطباعة — تُفتح في النقر نفسه (قبل أي جلب) حتى لا يحجبها
  * مانع النوافذ، ثم تُكتب الورقة بعد وصولها من الخادم.
+ *
+ * كل ورقة تمرّ على `withPrintBrand` فتحمل شعار الشركة تلقائيًا.
  */
+import { withPrintBrand } from './print-brand';
 
 const PLACEHOLDER = `<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8">
 <title>جارٍ تجهيز المستند</title></head>
@@ -24,8 +27,9 @@ export function openBlankTab(title: string): Window | null {
 
 /** يكتب مستند HTML كاملًا (من الخادم أو مبنيًا هنا) في التبويب. */
 export function writeHtmlDocument(win: Window, html: string): void {
+    const branded = withPrintBrand(html);
     win.document.open();
-    win.document.write(html);
+    win.document.write(branded);
     win.document.close();
     win.focus();
 }

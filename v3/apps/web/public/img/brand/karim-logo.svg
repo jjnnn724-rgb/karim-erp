@@ -1,0 +1,14 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 150" role="img" aria-label="مطاعم الشرفة العالمي — AL SHURFA AL ALAMI RESTAURANTS">
+  <title>مطاعم الشرفة العالمي · AL SHURFA AL ALAMI RESTAURANTS</title>
+  <g fill="#B08D57" text-anchor="middle" font-family="Amiri, 'Aref Ruqaa', 'Times New Roman', serif">
+    <!-- زخرفة علوية: ثلاث نقاط + خط رفيع (كما في الشعار المرفق) -->
+    <circle cx="132" cy="22" r="2.6"/><circle cx="150" cy="16" r="3"/><circle cx="168" cy="22" r="2.6"/>
+    <path d="M96 34 H204" stroke="#B08D57" stroke-width="1.4" fill="none"/>
+    <text x="150" y="74" font-size="46" font-weight="700" letter-spacing="-1">الشرفة</text>
+    <text x="150" y="103" font-size="15">مطاعم الشرفة العالمي</text>
+  </g>
+  <g fill="#B08D57" text-anchor="middle" font-family="Cinzel, Georgia, serif">
+    <text x="150" y="124" font-size="11" font-weight="700" letter-spacing="1.6">AL SHURFA AL ALAMI</text>
+    <text x="150" y="140" font-size="8.5" font-weight="600" letter-spacing="3.4">RESTAURANTS</text>
+  </g>
+</svg>

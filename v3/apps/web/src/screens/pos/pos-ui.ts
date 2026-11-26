@@ -7,6 +7,7 @@
  */
 
 import type { BuffetTier, PosProduct } from '../../lib/pos';
+import { withPrintBrand } from '../../lib/print-brand';
 
 export const POS_ROLES = ['admin', 'manager', 'accountant', 'cashier'] as const;
 /**
@@ -292,16 +293,14 @@ export function openPrintWindow(title: string, html: string): boolean {
         return false;
     }
     win.opener = null;
-    win.document.open();
-    win.document.write(
+    const document_ =
         `<!doctype html><html dir="rtl" lang="ar"><head><meta charset="utf-8"><title>${escapeHtml(title)}</title>` +
-            '<style>body{font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;padding:16px;color:#111}' +
-            'table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #c9c9c9;padding:6px 8px;text-align:right}' +
-            'th{background:#f2f2f2}caption{text-align:right;font-weight:600;margin-bottom:8px}</style>' +
-            '</head><body>',
-    );
-    win.document.write(html);
-    win.document.write('</body></html>');
+        '<style>body{font-family:system-ui,-apple-system,"Segoe UI",Tahoma,sans-serif;padding:16px;color:#111}' +
+        'table{width:100%;border-collapse:collapse;font-size:12px}th,td{border:1px solid #c9c9c9;padding:6px 8px;text-align:right}' +
+        'th{background:#f2f2f2}caption{text-align:right;font-weight:600;margin-bottom:8px}</style>' +
+        `</head><body>${html}</body></html>`;
+    win.document.open();
+    win.document.write(withPrintBrand(document_));
     win.document.close();
     win.focus();
     win.print();
@@ -318,7 +317,7 @@ export function openServerHtmlWindow(html: string, title = '', features = '', au
         return false;
     }
     win.document.open();
-    win.document.write(html);
+    win.document.write(withPrintBrand(html));
     win.document.close();
     if (title) {
         win.document.title = title;
