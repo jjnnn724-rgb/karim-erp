@@ -17,6 +17,7 @@
 const fs = require('fs');
 const path = require('path');
 const express = require('express');
+const compression = require('compression');
 const rollout = require('./rollout');
 
 const V3_DIR = path.join(__dirname, '..', 'frontend', 'v3');
@@ -81,6 +82,11 @@ function register(app, opts = {}) {
     }
     const disabled = disabledScreens();
     const indexHtml = createIndexServer();
+
+    // ضغط المحتوى لحزمة v3 (~700KB) — يقلّل زمن التنزيل على الشبكات البطيئة
+    // دون تغيير أسماء الملفات أو كاش التخزين الدائم (immutable).
+    app.use('/v3', compression({ threshold: 1024 }));
+    app.use('/v3-preview', compression({ threshold: 1024 }));
 
     app.use((req, res, next) => {
         if (req.path === '/v3' || req.path.startsWith('/v3/') || req.path.startsWith('/v3-preview')) {
