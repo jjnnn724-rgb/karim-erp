@@ -477,6 +477,121 @@ router.post('/:id/printed', jwtAuth, requireRole(...READ_ROLES), async (req, res
 });
 
 // أدوات نقية للاختبار (لا تُستخدم في المسار) — المصدر: veg-requests-logic.js
+// ─── أرقام واتساب (مورد / مخزن) — إعداد الإدارة ─────────────────────────────
+const ADMIN_ROLES = ['admin', 'owner'];
+const sanitizeJid = (v) => String(v ?? '').replace(/\D/g, '').slice(0, 15);
+
+router.get('/contacts', jwtAuth, requireRole(...ADMIN_ROLES), async (_req, res, next) => {
+    try {
+        const store = require('./whatsapp-engine/store');
+        const [supplier_jid, warehouse_jid] = await Promise.all([
+            store.getSetting('veg_supplier_jid').catch(() => null),
+            store.getSetting('veg_warehouse_jid').catch(() => null),
+        ]);
+        res.json({ supplier_jid: supplier_jid || '', warehouse_jid: warehouse_jid || '' });
+    } catch (e) { next(e); }
+});
+
+router.put('/contacts', jwtAuth, requireRole(...ADMIN_ROLES), async (req, res, next) => {
+    try {
+        const body = req.body || {};
+        const entries = [];
+        for (const [bodyKey, settingKey] of [['supplier_jid', 'veg_supplier_jid'], ['warehouse_jid', 'veg_warehouse_jid']]) {
+            if (body[bodyKey] === undefined) {continue;}
+            const digits = sanitizeJid(body[bodyKey]);
+            if (digits && (digits.length < 7 || digits.length > 13)) {
+                return res.status(422).json({ ok: false, error: 'CONTACT_INVALID', message: `الرقم ${digits} غير صالح — استخدم صيغة دولية بدون + أو 00` });
+            }
+            entries.push([settingKey, digits]);
+        }
+        if (!entries.length) {
+            return res.status(422).json({ ok: false, error: 'NOTHING_TO_UPDATE', message: 'مرّر: supplier_jid أو warehouse_jid' });
+        }
+        const store = require('./whatsapp-engine/store');
+        for (const [key, digits] of entries) {
+            await store.setSetting(key, digits);
+        }
+        logger.info('[veg-requests] أرقام واتساب اتحدّثت', { keys: entries.map(([k]) => k).join(',') });
+        res.json({ ok: true });
+    } catch (e) { next(e); }
+});
+
+// ─── إرسال الطلبية على واتساب (للمورد أو للمخزن) ────────────────────────────
+const NOTIFY_TARGETS = new Set(['supplier', 'warehouse']);
+const STATUS_AR = { received: 'تم الاستلام', priced: 'تم التسعير', pending: 'بانتظار المعالجة', cancelled: 'ملغي' };
+const PRIORITY_AR = { urgent: 'عاجلة', normal: 'عادية' };
+
+function buildVegNotifyText(row, target, items) {
+    const lines = (Array.isArray(items) ? items : [])
+        .slice(0, 40)
+        .map((it, i) => `${i + 1}. ${it.name} — ${it.qty ?? '?'} ${it.unit ?? ''}`.trim())
+        .join('\n');
+    const notesLine = row.notes ? `\nملاحظات: ${String(row.notes).slice(0, 300)}` : '';
+    const isSupplier = target === 'supplier';
+    const head = isSupplier
+        ? '🏪 مطاعم الشرفة العالمي — طلبية الخضروات والأعشاب\nيرجى التحضير والتسليم وفق الموعد المتفق عليه 🤝'
+        : '🏬 مخزن المطبخ — طلبية خضار جديدة\nمطلوب منك: استلام الطلبية، الكشف عليها، وتسجيلها في صفحة «طلبات خضار» للاستلام والصرف ✓';
+    return [
+        head,
+        '',
+        `📋 رقم الطلب: ${row.request_no || `#${row.id}`}`,
+        `🗓 التاريخ: ${String(row.created_at || '').slice(0, 10) || '—'}`,
+        `👤 بواسطة: ${row.created_by_name || '—'}${row.created_by_role ? ` (${row.created_by_role})` : ''}`,
+        `📦 الأصناف: ${row.items_count} · الأولوية: ${PRIORITY_AR[row.priority] || row.priority} · الحالة: ${STATUS_AR[row.status] || row.status}`,
+        '',
+        'الأصناف:',
+        lines,
+        notesLine,
+        '',
+        '──────────',
+        'Sent by Karim ERP · KARIM ERP',
+    ].join('\n');
+}
+
+router.post('/:id/notify', jwtAuth, requireRole(...CREATE_ROLES), async (req, res) => {
+    const target = String(req.body?.target || '').trim().toLowerCase();
+    if (!NOTIFY_TARGETS.has(target)) {
+        return res.status(422).json({ ok: false, error: 'TARGET_INVALID', message: 'الهدف: supplier أو warehouse' });
+    }
+    try {
+        const found = await pool.query(
+            `SELECT id, request_no, created_by_name, created_by_role, priority, items, items_count, status, created_at, notes
+               FROM veg_requests WHERE id = $1`,
+            [req.params.id],
+        );
+        if (!found.rows.length) {
+            return res.status(404).json({ ok: false, error: 'NOT_FOUND', message: 'الطلب غير موجود' });
+        }
+        const row = found.rows[0];
+        let items = row.items;
+        if (typeof items === 'string') {
+            try { items = JSON.parse(items); } catch { items = []; }
+        }
+        const store = require('./whatsapp-engine/store');
+        const settingKey = target === 'supplier' ? 'veg_supplier_jid' : 'veg_warehouse_jid';
+        const digits = String(await store.getSetting(settingKey).catch(() => '') || '').replace(/\D/g, '');
+        if (!digits || digits.length < 7) {
+            const label = target === 'supplier' ? 'المورد' : 'المخزن';
+            return res.status(422).json({ ok: false, error: 'CONTACT_MISSING', message: `رقم ${label} غير مضاف — أضفه من «أرقام واتساب»` });
+        }
+        const mod = require('./whatsapp-engine');
+        const engine = (typeof mod.getEngine === 'function' ? mod.getEngine() : null) || mod.whatsappEngine || mod.engine || null;
+        const sender = engine && engine.sender ? engine.sender : null;
+        if (!sender || typeof sender.enqueue !== 'function') {
+            return res.status(503).json({ ok: false, error: 'WHATSAPP_UNAVAILABLE', message: 'واتساب غير متاح الآن — حاول مرة أخرى' });
+        }
+        const text = buildVegNotifyText(row, target, items);
+        const jidFull = digits.includes('@') ? digits : `${digits}@s.whatsapp.net`;
+        await sender.enqueue(jidFull, text, { clientKey: `veg-notify:${row.id}:${target}` });
+        try { await store.logEvent('veg_notify', String(row.id), `${target}->${digits}`); } catch (_) {}
+        logger.info('[veg-requests] رسائل واتساب انزرعت', { id: row.id, target });
+        res.json({ ok: true, sent: 1, target });
+    } catch (e) {
+        logger.error('[veg-requests] notify failed', { msg: e && e.message });
+        res.status(500).json({ ok: false, error: 'SEND_FAILED', message: 'تعذر الإرسال — حاول مرة أخرى' });
+    }
+});
+
 router._internals = { cleanText, validateItems, UNITS, VEG_CATALOG };
 
 module.exports = router;
