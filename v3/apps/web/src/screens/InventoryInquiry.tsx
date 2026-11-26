@@ -114,21 +114,19 @@ export function InventoryInquiry() {
                 english="Inventory Query"
                 description="ما دخل من الفواتير، وما في المخزن، وما انصرف، وما بيع، وبأي تكلفة — من دفتر المخزون مباشرة."
                 actions={
-                    <>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                () => {
-                                    void itemsQuery.refetch();
-                                    void departmentsQuery.refetch();
-                                };
-                            }}
-                            disabled={itemsQuery.isFetching || departmentsQuery.isFetching}
-                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
-                        >
-                            تحديث
-                        </button>
-                    </>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            () => {
+                                void itemsQuery.refetch();
+                                void departmentsQuery.refetch();
+                            };
+                        }}
+                        disabled={itemsQuery.isFetching || departmentsQuery.isFetching}
+                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                    >
+                        تحديث
+                    </button>
                 }
             />
 

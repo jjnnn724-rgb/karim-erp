@@ -60,7 +60,7 @@ export function SalesAnalyzer() {
     const prevWindow = useMemo(() => {
         const days = Math.max(
             1,
-            Math.round((new Date(range.to + 'T12:00:00Z').getTime() - new Date(range.from + 'T12:00:00Z').getTime()) / 86400000),
+            Math.round((new Date(`${range.to}T12:00:00Z`).getTime() - new Date(`${range.from}T12:00:00Z`).getTime()) / 86400000),
         );
         return { from: shiftIsoDays(range.from, -days), to: shiftIsoDays(range.from, -1) };
     }, [range.from, range.to]);

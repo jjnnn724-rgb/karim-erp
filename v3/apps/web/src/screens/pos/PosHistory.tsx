@@ -386,7 +386,7 @@ export function PosOrderDetailPanel({
                         </div>
 
                         <h3 className="text-heading-sm text-ink">وسائل الدفع</h3>
-                        {detail.payments && detail.payments.length ? (
+                        {detail.payments?.length ? (
                             <TableScroll label="وسائل دفع الفاتورة">
                                 <table className="w-full border-collapse text-body-md">
                                     <thead>

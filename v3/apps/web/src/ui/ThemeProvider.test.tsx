@@ -29,7 +29,7 @@ describe('ThemeProvider + ThemeToggle', () => {
         renderToggle();
 
         expect(document.documentElement.classList.contains('dark')).toBe(true);
-        expect(document.documentElement.dataset['theme']).toBe('system');
+        expect(document.documentElement.dataset.theme).toBe('system');
         expect(document.documentElement.style.colorScheme).toBe('dark');
         expect(screen.getByRole('button', { name: 'النظام' }).getAttribute('aria-pressed')).toBe('true');
     });

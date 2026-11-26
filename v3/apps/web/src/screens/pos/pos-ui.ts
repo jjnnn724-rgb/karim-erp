@@ -207,7 +207,7 @@ export function searchScore(item: CatalogItem, needle: string): number {
     const name = item.name.toLocaleLowerCase();
     const barcode = item.barcode.toLocaleLowerCase();
     if (barcode && barcode === q) return 0;
-    if (barcode && barcode.startsWith(q)) return 1;
+    if (barcode?.startsWith(q)) return 1;
     if (name.startsWith(q)) return 2;
     if (name.split(/\s+/).some((word) => word.startsWith(q))) return 3;
     return 4;

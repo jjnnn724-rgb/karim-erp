@@ -120,20 +120,18 @@ export function BalanceSheet() {
                 english="Balance Sheet"
                 description="قائمة مركزية من الأستاذ العام — للقراءة فقط، لا تعديل ولا ترحيل. تُولَّد من القيود المرحّلة مباشرة."
                 actions={
-                    <>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                () => {
-                                    void query.refetch();
-                                };
-                            }}
-                            disabled={query.isFetching}
-                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
-                        >
-                            تحديث
-                        </button>
-                    </>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            () => {
+                                void query.refetch();
+                            };
+                        }}
+                        disabled={query.isFetching}
+                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                    >
+                        تحديث
+                    </button>
                 }
             />
             <div data-erp-print-hide className="flex flex-wrap items-center gap-sm"></div>

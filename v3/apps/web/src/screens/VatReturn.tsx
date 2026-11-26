@@ -385,20 +385,18 @@ export function VatReturn() {
                 english="VAT Return Review"
                 description="ملخص داخلي مبني على القيود المحاسبية المرحّلة فقط؛ لا يقدّم أو يرسل إقرارًا رسميًا."
                 actions={
-                    <>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                () => {
-                                    void reportQuery.refetch();
-                                };
-                            }}
-                            disabled={reportQuery.isFetching}
-                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
-                        >
-                            تحديث
-                        </button>
-                    </>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            () => {
+                                void reportQuery.refetch();
+                            };
+                        }}
+                        disabled={reportQuery.isFetching}
+                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                    >
+                        تحديث
+                    </button>
                 }
             />
             <div data-erp-print-hide className="flex flex-wrap items-center gap-sm">

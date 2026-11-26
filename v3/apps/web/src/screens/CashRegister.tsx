@@ -688,20 +688,18 @@ export function CashRegister() {
                 english="Expense Register"
                 description="كل ما خرج من الصندوق: حركةٌ بإذنها وحالتها، مع مؤشرات الفترة وتوزيع الأقسام."
                 actions={
-                    <>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                () => {
-                                    void registerQuery.refetch();
-                                };
-                            }}
-                            disabled={registerQuery.isFetching}
-                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
-                        >
-                            تحديث
-                        </button>
-                    </>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            () => {
+                                void registerQuery.refetch();
+                            };
+                        }}
+                        disabled={registerQuery.isFetching}
+                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                    >
+                        تحديث
+                    </button>
                 }
             />
 

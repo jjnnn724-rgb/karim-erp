@@ -64,21 +64,19 @@ export function Briefing() {
                 english="Executive Briefing"
                 description="لوحة المتابعة اللحظية للمدير: مبيعات اليوم، المصروفات، متوسط الفاتورة، وحالة المخزون والأقسام."
                 actions={
-                    <>
-                        <div className="flex items-center gap-xs">
-                            <PrintActions title="الموجز التنفيذي" />
-                            <button
-                                type="button"
-                                onClick={() => {
-                                    void briefingQuery.refetch();
-                                    void posStatsQuery.refetch();
-                                }}
-                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                            >
-                                تحديث
-                            </button>
-                        </div>
-                    </>
+                    <div className="flex items-center gap-xs">
+                        <PrintActions title="الموجز التنفيذي" />
+                        <button
+                            type="button"
+                            onClick={() => {
+                                void briefingQuery.refetch();
+                                void posStatsQuery.refetch();
+                            }}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                        >
+                            تحديث
+                        </button>
+                    </div>
                 }
             />
 

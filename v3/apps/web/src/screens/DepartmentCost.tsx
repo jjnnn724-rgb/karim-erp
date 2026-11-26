@@ -434,7 +434,7 @@ function BreakfastTab({ from, to }: { from: string; to: string }) {
                                             </span>
                                             <button
                                                 type="button"
-                                                className={'dcost__manual-toggle' + (isAdded ? ' is-added' : '')}
+                                                className={`dcost__manual-toggle${isAdded ? ' is-added' : ''}`}
                                                 aria-pressed={isAdded}
                                                 onClick={() =>
                                                     setExtraIds((prev) =>

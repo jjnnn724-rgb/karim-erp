@@ -287,7 +287,7 @@ export function mergeItemKey(name: unknown): string {
 export function duplicateGroups(rows: readonly DuplicateCandidate[]): DuplicateGroup[] {
     const byKey = new Map<string, DuplicateCandidate[]>();
     for (const item of rows) {
-        const key = mergeItemKey(item && item.name);
+        const key = mergeItemKey(item?.name);
         if (!key) {
             continue;
         }

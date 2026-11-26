@@ -62,7 +62,7 @@ export function applyTheme(theme: Theme): ResolvedTheme {
     const root = document.documentElement;
     root.classList.toggle('dark', resolved === 'dark');
     root.style.colorScheme = resolved;
-    root.dataset['theme'] = theme;
+    root.dataset.theme = theme;
     return resolved;
 }
 

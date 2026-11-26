@@ -53,20 +53,18 @@ export function CashierSales() {
                 english="Cashier Sales"
                 description="محصّل الفترة وفواتيرها وطرق الدفع والكاشيريات وأعلى الأصناف — من مرآة الكاشير، بلا إعادة حساب."
                 actions={
-                    <>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                () => {
-                                    void summaryQuery.refetch();
-                                };
-                            }}
-                            disabled={summaryQuery.isFetching}
-                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
-                        >
-                            تحديث
-                        </button>
-                    </>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            () => {
+                                void summaryQuery.refetch();
+                            };
+                        }}
+                        disabled={summaryQuery.isFetching}
+                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                    >
+                        تحديث
+                    </button>
                 }
             />
 

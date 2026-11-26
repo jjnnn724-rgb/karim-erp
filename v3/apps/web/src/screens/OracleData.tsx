@@ -138,20 +138,18 @@ export function OracleData() {
                 english="Oracle Data"
                 description="الجداول المنسوخة من Oracle: عدّاد صفوفها الحيّ، وأعمدتها وصفوفها بحثًا وترقيمًا من الخادم."
                 actions={
-                    <>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                () => {
-                                    void tablesQuery.refetch();
-                                };
-                            }}
-                            disabled={tablesQuery.isFetching}
-                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
-                        >
-                            تحديث
-                        </button>
-                    </>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            () => {
+                                void tablesQuery.refetch();
+                            };
+                        }}
+                        disabled={tablesQuery.isFetching}
+                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                    >
+                        تحديث
+                    </button>
                 }
             />
 

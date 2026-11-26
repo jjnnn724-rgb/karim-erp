@@ -220,7 +220,7 @@ export function Attendance() {
                     onClick={() => {
                         const csv = attendanceCsv(visibleRows);
                         downloadBlob(
-                            new Blob(['\uFEFF' + csv], { type: 'text/csv;charset=utf-8' }),
+                            new Blob([`\uFEFF${csv}`], { type: 'text/csv;charset=utf-8' }),
                             `attendance_${range.from}_${range.to}.csv`,
                         );
                     }}

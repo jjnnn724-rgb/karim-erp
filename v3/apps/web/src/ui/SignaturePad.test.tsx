@@ -109,7 +109,7 @@ describe('SignaturePad — توقيع باسم الحساب كما في V2', () 
         render(<SignaturePad label="توقيع" name="أحمد علي" onChange={onChange} testId="sig" />);
         fireEvent.pointerDown(screen.getByTestId('sig'), { clientX: 10, clientY: 10, pointerId: 1 });
 
-        expect(painted['strokeStyle']).toBe('rgb(32, 37, 45)');
+        expect(painted.strokeStyle).toBe('rgb(32, 37, 45)');
         styleSpy.mockRestore();
     });
 });

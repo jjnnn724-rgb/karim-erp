@@ -434,23 +434,21 @@ export function Shelves() {
                 english="Shelves"
                 description="كل صنف يُعيَّن لرفٍ واحد من شاشة المخزن. إضافة وتعديل وحذف الرفوف."
                 actions={
-                    <>
-                        <div className="flex items-center gap-xs" data-erp-print-hide>
-                            {writable ? (
-                                <Button type="button" size="sm" onClick={openAdd}>
-                                    إضافة رف
-                                </Button>
-                            ) : null}
-                            <PrintActions title="الرفوف" />
-                            <button
-                                type="button"
-                                onClick={refresh}
-                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
-                            >
-                                تحديث
-                            </button>
-                        </div>
-                    </>
+                    <div className="flex items-center gap-xs" data-erp-print-hide>
+                        {writable ? (
+                            <Button type="button" size="sm" onClick={openAdd}>
+                                إضافة رف
+                            </Button>
+                        ) : null}
+                        <PrintActions title="الرفوف" />
+                        <button
+                            type="button"
+                            onClick={refresh}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                        >
+                            تحديث
+                        </button>
+                    </div>
                 }
             />
 

@@ -52,20 +52,18 @@ export function Executive() {
                 english="Executive Summary"
                 description="تاب المحاسبي من دفتر القيود المُرحَّل، وتاب التشغيلي من موجز المدير: مبيعات اليوم والمصروفات والنواقص — في صفحة واحدة."
                 actions={
-                    <>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                () => {
-                                    window.location.reload();
-                                };
-                            }}
-                            disabled={false}
-                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
-                        >
-                            تحديث
-                        </button>
-                    </>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            () => {
+                                window.location.reload();
+                            };
+                        }}
+                        disabled={false}
+                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                    >
+                        تحديث
+                    </button>
                 }
             />
 

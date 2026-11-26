@@ -68,20 +68,18 @@ function IntegrationConsole() {
                 english="YaraSoft Integration"
                 description="حالة الاستيراد والمراجعة والأقسام والروابط وربط Oracle وجودة البيانات والمرآة — نفس عقود V2."
                 actions={
-                    <>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                () => {
-                                    void queryClient.invalidateQueries({ queryKey: ['yarasoft'] });
-                                };
-                            }}
-                            disabled={false}
-                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
-                        >
-                            تحديث
-                        </button>
-                    </>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            () => {
+                                void queryClient.invalidateQueries({ queryKey: ['yarasoft'] });
+                            };
+                        }}
+                        disabled={false}
+                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                    >
+                        تحديث
+                    </button>
                 }
             />
             <YarasoftWorkbench />
@@ -121,20 +119,18 @@ function LocalRevenueReport() {
                 english="Cashier Revenue"
                 description="إيرادات الكاشير مقروءة من قاعدة البيانات المحلية — مصدر القراءة هو PostgreSQL عندنا لا مزامنة Yarasoft."
                 actions={
-                    <>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                () => {
-                                    void snapshot.refetch();
-                                };
-                            }}
-                            disabled={snapshot.isFetching}
-                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
-                        >
-                            تحديث
-                        </button>
-                    </>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            () => {
+                                void snapshot.refetch();
+                            };
+                        }}
+                        disabled={snapshot.isFetching}
+                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                    >
+                        تحديث
+                    </button>
                 }
             />
             <div className="flex justify-end gap-xs" data-erp-print-hide></div>

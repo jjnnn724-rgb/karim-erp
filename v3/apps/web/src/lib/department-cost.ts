@@ -237,7 +237,7 @@ export async function fetchBreakfastCost(
     dept?: 'المطبخ' | 'بوفيه الافطار',
 ): Promise<BreakfastCost> {
     const qs = new URLSearchParams({ from: range.from, to: range.to });
-    if (extraIds && extraIds.length) {
+    if (extraIds?.length) {
         qs.set('extra_ids', extraIds.join(','));
     }
     if (dept) {

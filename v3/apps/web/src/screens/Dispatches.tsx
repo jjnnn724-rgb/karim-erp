@@ -1383,32 +1383,30 @@ export function Dispatches() {
                 english="Dispatch Orders"
                 description="سجل أذون الصرف ودورة قرارها كاملة (إنشاء · اعتماد الشيف · اعتماد المخازن · استلام بالتوقيع · تعديل · إرجاع المعتمد قبل الاستلام للتعديل · حذف)."
                 actions={
-                    <>
-                        <div className="flex flex-wrap items-center gap-xs" data-erp-print-hide>
-                            {canCreate ? (
-                                <Button
-                                    type="button"
-                                    size="sm"
-                                    onClick={() => {
-                                        setPageError('');
-                                        setActive({ kind: 'create' });
-                                    }}
-                                >
-                                    طلب صرف جديد
-                                </Button>
-                            ) : null}
-                            <PrintActions title="أذون الصرف" />
-                            <button
+                    <div className="flex flex-wrap items-center gap-xs" data-erp-print-hide>
+                        {canCreate ? (
+                            <Button
                                 type="button"
+                                size="sm"
                                 onClick={() => {
-                                    void dispatchesQuery.refetch();
+                                    setPageError('');
+                                    setActive({ kind: 'create' });
                                 }}
-                                className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
                             >
-                                تحديث
-                            </button>
-                        </div>
-                    </>
+                                طلب صرف جديد
+                            </Button>
+                        ) : null}
+                        <PrintActions title="أذون الصرف" />
+                        <button
+                            type="button"
+                            onClick={() => {
+                                void dispatchesQuery.refetch();
+                            }}
+                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover"
+                        >
+                            تحديث
+                        </button>
+                    </div>
                 }
             />
 

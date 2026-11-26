@@ -64,20 +64,18 @@ export function BankReconciliation() {
                 english="Bank reconciliation"
                 description="كشف البنك مقابل الدفتر المرحّل: المطابقات الآلية والحركات غير المطابقة في الفترة."
                 actions={
-                    <>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                () => {
-                                    void query.refetch();
-                                };
-                            }}
-                            disabled={query.isFetching}
-                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
-                        >
-                            تحديث
-                        </button>
-                    </>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            () => {
+                                void query.refetch();
+                            };
+                        }}
+                        disabled={query.isFetching}
+                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                    >
+                        تحديث
+                    </button>
                 }
             />
 

@@ -459,183 +459,174 @@ export function PosReports() {
 
                 {/* ═══════ النظرة التنفيذية ═══════ */}
                 {execTabActive && exec ? (
-                    <>
-                        {executiveQuery.data ? (
-                            <div className="pos-reports__exec">
-                                <div className="pos-reports__kpis">
-                                    {kpis.map((kpi) => {
-                                        const delta = kpi.delta;
-                                        return (
-                                            <div key={kpi.label} className="pos-reports__kpi">
-                                                <span className="pos-reports__kpi-label">{kpi.label}</span>
-                                                <div className="pos-reports__kpi-row">
-                                                    <strong className="pos-reports__kpi-value">
-                                                        {kpi.value}
-                                                        <small> {kpi.unit}</small>
-                                                    </strong>
-                                                    <span className={trendClass(delta)}>
-                                                        {trendArrow(delta)} {deltaText(delta)}
-                                                    </span>
-                                                </div>
-                                                <span className="pos-reports__kpi-hint">
-                                                    مقابل {exec.previous.from} — {exec.previous.to}
+                    executiveQuery.data ? (
+                        <div className="pos-reports__exec">
+                            <div className="pos-reports__kpis">
+                                {kpis.map((kpi) => {
+                                    const delta = kpi.delta;
+                                    return (
+                                        <div key={kpi.label} className="pos-reports__kpi">
+                                            <span className="pos-reports__kpi-label">{kpi.label}</span>
+                                            <div className="pos-reports__kpi-row">
+                                                <strong className="pos-reports__kpi-value">
+                                                    {kpi.value}
+                                                    <small> {kpi.unit}</small>
+                                                </strong>
+                                                <span className={trendClass(delta)}>
+                                                    {trendArrow(delta)} {deltaText(delta)}
                                                 </span>
                                             </div>
-                                        );
-                                    })}
-                                </div>
+                                            <span className="pos-reports__kpi-hint">
+                                                مقابل {exec.previous.from} — {exec.previous.to}
+                                            </span>
+                                        </div>
+                                    );
+                                })}
+                            </div>
 
-                                <div className="pos-reports__charts">
-                                    <figure className="pos-reports__chart pos-reports__chart--wide">
-                                        <figcaption>الإيرادات اليومية ومقارنة بالفترة السابقة</figcaption>
-                                        <ResponsiveContainer width="100%" height={210}>
-                                            <AreaChart data={compareDaily} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
-                                                <CartesianGrid stroke={CHART_GRID} vertical={false} strokeDasharray="3 3" />
-                                                <XAxis
-                                                    dataKey="day"
-                                                    tick={{ fontSize: 10, fill: CHART_MUTED }}
-                                                    tickLine={false}
-                                                    axisLine={false}
-                                                />
-                                                <YAxis
-                                                    tick={{ fontSize: 10, fill: CHART_MUTED }}
-                                                    tickLine={false}
-                                                    axisLine={false}
-                                                    width={56}
-                                                    tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}K`}
-                                                />
-                                                <Tooltip
-                                                    contentStyle={tooltipStyle}
-                                                    formatter={(value) => [`${money(Number(value ?? 0))} ر.س`, 'الإيراد']}
-                                                />
-                                                <Legend />
-                                                <Area
-                                                    type="monotone"
-                                                    dataKey="current"
-                                                    name="هذه الفترة"
-                                                    stroke={CHART_GREEN}
-                                                    strokeWidth={2.5}
-                                                    fill={CHART_GREEN}
-                                                    fillOpacity={0.18}
-                                                />
-                                                <Area
-                                                    type="monotone"
-                                                    dataKey="previous"
-                                                    name="الفترة السابقة"
-                                                    stroke={CHART_MUTED}
-                                                    strokeWidth={1.5}
-                                                    strokeDasharray="5 4"
-                                                    fill="transparent"
-                                                />
-                                            </AreaChart>
-                                        </ResponsiveContainer>
-                                    </figure>
+                            <div className="pos-reports__charts">
+                                <figure className="pos-reports__chart pos-reports__chart--wide">
+                                    <figcaption>الإيرادات اليومية ومقارنة بالفترة السابقة</figcaption>
+                                    <ResponsiveContainer width="100%" height={210}>
+                                        <AreaChart data={compareDaily} margin={{ top: 8, right: 4, left: 0, bottom: 0 }}>
+                                            <CartesianGrid stroke={CHART_GRID} vertical={false} strokeDasharray="3 3" />
+                                            <XAxis
+                                                dataKey="day"
+                                                tick={{ fontSize: 10, fill: CHART_MUTED }}
+                                                tickLine={false}
+                                                axisLine={false}
+                                            />
+                                            <YAxis
+                                                tick={{ fontSize: 10, fill: CHART_MUTED }}
+                                                tickLine={false}
+                                                axisLine={false}
+                                                width={56}
+                                                tickFormatter={(v: number) => `${(v / 1000).toFixed(0)}K`}
+                                            />
+                                            <Tooltip
+                                                contentStyle={tooltipStyle}
+                                                formatter={(value) => [`${money(Number(value ?? 0))} ر.س`, 'الإيراد']}
+                                            />
+                                            <Legend />
+                                            <Area
+                                                type="monotone"
+                                                dataKey="current"
+                                                name="هذه الفترة"
+                                                stroke={CHART_GREEN}
+                                                strokeWidth={2.5}
+                                                fill={CHART_GREEN}
+                                                fillOpacity={0.18}
+                                            />
+                                            <Area
+                                                type="monotone"
+                                                dataKey="previous"
+                                                name="الفترة السابقة"
+                                                stroke={CHART_MUTED}
+                                                strokeWidth={1.5}
+                                                strokeDasharray="5 4"
+                                                fill="transparent"
+                                            />
+                                        </AreaChart>
+                                    </ResponsiveContainer>
+                                </figure>
 
-                                    <figure className="pos-reports__chart">
-                                        <figcaption>توزيع الإيرادات على الأقسام</figcaption>
-                                        <ResponsiveContainer width="100%" height={210}>
-                                            <BarChart
-                                                data={topDepartments}
-                                                layout="vertical"
-                                                margin={{ left: 8, right: 4, top: 4, bottom: 0 }}
+                                <figure className="pos-reports__chart">
+                                    <figcaption>توزيع الإيرادات على الأقسام</figcaption>
+                                    <ResponsiveContainer width="100%" height={210}>
+                                        <BarChart data={topDepartments} layout="vertical" margin={{ left: 8, right: 4, top: 4, bottom: 0 }}>
+                                            <CartesianGrid stroke={CHART_GRID} horizontal={false} strokeDasharray="3 3" />
+                                            <XAxis type="number" hide />
+                                            <YAxis
+                                                dataKey="name"
+                                                type="category"
+                                                width={110}
+                                                tick={{ fontSize: 10, fill: CHART_MUTED }}
+                                                tickLine={false}
+                                                axisLine={false}
+                                            />
+                                            <Tooltip
+                                                contentStyle={tooltipStyle}
+                                                formatter={(value) => [`${money(Number(value ?? 0))} ر.س`, 'الإيراد']}
+                                            />
+                                            <Bar dataKey="revenue" radius={[0, 8, 8, 0]} fill={CHART_GREEN} barSize={16} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </figure>
+
+                                <figure className="pos-reports__chart">
+                                    <figcaption>توزيع طرق الدفع</figcaption>
+                                    <ResponsiveContainer width="100%" height={210}>
+                                        <PieChart>
+                                            <Pie
+                                                data={paymentData}
+                                                dataKey="value"
+                                                nameKey="name"
+                                                innerRadius={48}
+                                                outerRadius={76}
+                                                paddingAngle={3}
+                                                strokeWidth={2}
                                             >
-                                                <CartesianGrid stroke={CHART_GRID} horizontal={false} strokeDasharray="3 3" />
-                                                <XAxis type="number" hide />
-                                                <YAxis
-                                                    dataKey="name"
-                                                    type="category"
-                                                    width={110}
-                                                    tick={{ fontSize: 10, fill: CHART_MUTED }}
-                                                    tickLine={false}
-                                                    axisLine={false}
-                                                />
-                                                <Tooltip
-                                                    contentStyle={tooltipStyle}
-                                                    formatter={(value) => [`${money(Number(value ?? 0))} ر.س`, 'الإيراد']}
-                                                />
-                                                <Bar dataKey="revenue" radius={[0, 8, 8, 0]} fill={CHART_GREEN} barSize={16} />
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    </figure>
+                                                {paymentData.map((entry, index) => (
+                                                    <Cell key={entry.name} fill={PIE_COLORS[index % PIE_COLORS.length] ?? CHART_GREEN} />
+                                                ))}
+                                            </Pie>
+                                            <Tooltip
+                                                contentStyle={tooltipStyle}
+                                                formatter={(value) => [`${money(Number(value ?? 0))} ر.س`, 'المبلغ']}
+                                            />
+                                            <Legend />
+                                        </PieChart>
+                                    </ResponsiveContainer>
+                                </figure>
+                            </div>
 
-                                    <figure className="pos-reports__chart">
-                                        <figcaption>توزيع طرق الدفع</figcaption>
-                                        <ResponsiveContainer width="100%" height={210}>
-                                            <PieChart>
-                                                <Pie
-                                                    data={paymentData}
-                                                    dataKey="value"
-                                                    nameKey="name"
-                                                    innerRadius={48}
-                                                    outerRadius={76}
-                                                    paddingAngle={3}
-                                                    strokeWidth={2}
-                                                >
-                                                    {paymentData.map((entry, index) => (
-                                                        <Cell
-                                                            key={entry.name}
-                                                            fill={PIE_COLORS[index % PIE_COLORS.length] ?? CHART_GREEN}
-                                                        />
-                                                    ))}
-                                                </Pie>
-                                                <Tooltip
-                                                    contentStyle={tooltipStyle}
-                                                    formatter={(value) => [`${money(Number(value ?? 0))} ر.س`, 'المبلغ']}
-                                                />
-                                                <Legend />
-                                            </PieChart>
-                                        </ResponsiveContainer>
-                                    </figure>
-                                </div>
+                            <div className="pos-reports__bottom">
+                                <figure className="pos-reports__chart pos-reports__chart--wide">
+                                    <figcaption>الأكثر مبيعًا (بالإيراد)</figcaption>
+                                    <ResponsiveContainer width="100%" height={230}>
+                                        <BarChart data={topProducts} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
+                                            <CartesianGrid stroke={CHART_GRID} vertical={false} strokeDasharray="3 3" />
+                                            <XAxis
+                                                dataKey="name"
+                                                tick={{ fontSize: 9, fill: CHART_MUTED }}
+                                                tickLine={false}
+                                                axisLine={false}
+                                                interval={0}
+                                            />
+                                            <YAxis
+                                                tick={{ fontSize: 10, fill: CHART_MUTED }}
+                                                tickLine={false}
+                                                axisLine={false}
+                                                width={52}
+                                            />
+                                            <Tooltip
+                                                contentStyle={tooltipStyle}
+                                                formatter={(value, name) => [
+                                                    name === 'revenue' ? `${money(Number(value ?? 0))} ر.س` : `${value} قطعة`,
+                                                    name === 'revenue' ? 'الإيراد' : 'الكمية',
+                                                ]}
+                                            />
+                                            <Bar dataKey="revenue" radius={[8, 8, 0, 0]} fill={CHART_AMBER} barSize={34} />
+                                        </BarChart>
+                                    </ResponsiveContainer>
+                                </figure>
 
-                                <div className="pos-reports__bottom">
-                                    <figure className="pos-reports__chart pos-reports__chart--wide">
-                                        <figcaption>الأكثر مبيعًا (بالإيراد)</figcaption>
-                                        <ResponsiveContainer width="100%" height={230}>
-                                            <BarChart data={topProducts} margin={{ top: 4, right: 4, left: 0, bottom: 0 }}>
-                                                <CartesianGrid stroke={CHART_GRID} vertical={false} strokeDasharray="3 3" />
-                                                <XAxis
-                                                    dataKey="name"
-                                                    tick={{ fontSize: 9, fill: CHART_MUTED }}
-                                                    tickLine={false}
-                                                    axisLine={false}
-                                                    interval={0}
-                                                />
-                                                <YAxis
-                                                    tick={{ fontSize: 10, fill: CHART_MUTED }}
-                                                    tickLine={false}
-                                                    axisLine={false}
-                                                    width={52}
-                                                />
-                                                <Tooltip
-                                                    contentStyle={tooltipStyle}
-                                                    formatter={(value, name) => [
-                                                        name === 'revenue' ? `${money(Number(value ?? 0))} ر.س` : `${value} قطعة`,
-                                                        name === 'revenue' ? 'الإيراد' : 'الكمية',
-                                                    ]}
-                                                />
-                                                <Bar dataKey="revenue" radius={[8, 8, 0, 0]} fill={CHART_AMBER} barSize={34} />
-                                            </BarChart>
-                                        </ResponsiveContainer>
-                                    </figure>
-
-                                    <div className="pos-reports__depts">
-                                        <h3 className="pos-reports__depts-title">الأقسام حسب الإيراد</h3>
-                                        <ol className="pos-reports__depts-list">
-                                            {topDepartments.map((d) => (
-                                                <li key={d.id} className="pos-reports__dept-row">
-                                                    <span className="pos-reports__dept-rank">{topDepartments.indexOf(d) + 1}</span>
-                                                    <span className="pos-reports__dept-name">{d.name}</span>
-                                                    <span className="pos-reports__dept-share">{d.share}%</span>
-                                                    <span className="pos-reports__dept-revenue">{money(d.revenue)}</span>
-                                                </li>
-                                            ))}
-                                        </ol>
-                                    </div>
+                                <div className="pos-reports__depts">
+                                    <h3 className="pos-reports__depts-title">الأقسام حسب الإيراد</h3>
+                                    <ol className="pos-reports__depts-list">
+                                        {topDepartments.map((d) => (
+                                            <li key={d.id} className="pos-reports__dept-row">
+                                                <span className="pos-reports__dept-rank">{topDepartments.indexOf(d) + 1}</span>
+                                                <span className="pos-reports__dept-name">{d.name}</span>
+                                                <span className="pos-reports__dept-share">{d.share}%</span>
+                                                <span className="pos-reports__dept-revenue">{money(d.revenue)}</span>
+                                            </li>
+                                        ))}
+                                    </ol>
                                 </div>
                             </div>
-                        ) : null}
-                    </>
+                        </div>
+                    ) : null
                 ) : null}
 
                 {/* ═══════ تفاصيل: قسم/صنف/مخزن ═══════ */}

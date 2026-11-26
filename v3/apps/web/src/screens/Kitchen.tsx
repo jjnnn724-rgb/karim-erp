@@ -238,23 +238,21 @@ export function Kitchen() {
                 english="Kitchen Overview"
                 description="أوامر الإنتاج والاستثناءات والتوزيعات والسياسات — على نافذة الخادم المعلنة، لا ادعاء اكتمال خارجها."
                 actions={
-                    <>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                () => {
-                                    void overviewQuery.refetch();
-                                    if (!costRangeInvalid) {
-                                        void costCardsQuery.refetch();
-                                    }
-                                };
-                            }}
-                            disabled={overviewQuery.isFetching || costCardsQuery.isFetching}
-                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
-                        >
-                            تحديث
-                        </button>
-                    </>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            () => {
+                                void overviewQuery.refetch();
+                                if (!costRangeInvalid) {
+                                    void costCardsQuery.refetch();
+                                }
+                            };
+                        }}
+                        disabled={overviewQuery.isFetching || costCardsQuery.isFetching}
+                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                    >
+                        تحديث
+                    </button>
                 }
             />
 

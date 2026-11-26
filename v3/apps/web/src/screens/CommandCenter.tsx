@@ -149,20 +149,18 @@ export function CommandCenter() {
                 english="Command Center"
                 description="قراءة موحّدة من الضريبة والرواتب ومدد ومطابقة البنك — لا أرقام مخمّنة ولا إرسال إلى زاتكا."
                 actions={
-                    <>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                () => {
-                                    void query.refetch();
-                                };
-                            }}
-                            disabled={query.isFetching}
-                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
-                        >
-                            تحديث
-                        </button>
-                    </>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            () => {
+                                void query.refetch();
+                            };
+                        }}
+                        disabled={query.isFetching}
+                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                    >
+                        تحديث
+                    </button>
                 }
             />
 

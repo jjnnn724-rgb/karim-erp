@@ -47,20 +47,18 @@ export function PunchControl() {
                 english="Fingerprint & Attendance Control"
                 description="جهاز البصمة، كاميرا الموبايل، والموقع الجغرافي — كل التحكم هنا، كتابةً بتمرير السبب وخلفيها بوابات الخادم."
                 actions={
-                    <>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                () => {
-                                    void statusQuery.refetch();
-                                };
-                            }}
-                            disabled={statusQuery.isFetching}
-                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
-                        >
-                            تحديث
-                        </button>
-                    </>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            () => {
+                                void statusQuery.refetch();
+                            };
+                        }}
+                        disabled={statusQuery.isFetching}
+                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                    >
+                        تحديث
+                    </button>
                 }
             />
 

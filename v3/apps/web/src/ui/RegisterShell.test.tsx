@@ -67,7 +67,7 @@ describe('RegisterShell', () => {
         fireEvent.click(savedButton);
         expect(onApplyView).toHaveBeenCalledWith({ status: 'pending', dept: 'kitchen' });
         // تخزين فعلي بالمفتاح المتعاقد عليه
-        expect(JSON.parse(storage.getItem(VIEWS_KEY_PREFIX + 'test-2') ?? '[]').length).toBe(1);
+        expect(JSON.parse(storage.getItem(`${VIEWS_KEY_PREFIX}test-2`) ?? '[]').length).toBe(1);
     });
 
     it('حذف عرضة يزيلها من الواجهة والتخزين', () => {
@@ -83,7 +83,7 @@ describe('RegisterShell', () => {
 
         fireEvent.click(screen.getByRole('button', { name: 'حذف العرضة عرضة مؤقتة' }));
         expect(screen.queryByRole('button', { name: 'عرضة مؤقتة' })).toBeNull();
-        expect(storage.getItem(VIEWS_KEY_PREFIX + 'test-3')).toBe('[]');
+        expect(storage.getItem(`${VIEWS_KEY_PREFIX}test-3`)).toBe('[]');
     });
 
     it('المرشّحات الفارغة تعطّل زر الحفظ', () => {
@@ -116,7 +116,7 @@ describe('RegisterShell', () => {
     });
 
     it('عرضات محفوظة مسبقًا في التخزين تُقرأ عند الإقلاع', () => {
-        storage.setItem(VIEWS_KEY_PREFIX + 'test-7', JSON.stringify([{ name: 'شهر مطبخ', filters: { dept: 'kitchen' } }]));
+        storage.setItem(`${VIEWS_KEY_PREFIX}test-7`, JSON.stringify([{ name: 'شهر مطبخ', filters: { dept: 'kitchen' } }]));
         const onApplyView = vi.fn();
         render(
             <RegisterShell viewKey="test-7" storage={storage} onApplyView={onApplyView}>

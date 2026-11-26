@@ -71,21 +71,19 @@ export function CashierMonitor() {
                 english="Cashier Monitor"
                 description="أوردرات اليوم الحيّة لكل كاشير، والوردية المفتوحة وآخر حركة — تحديث تلقائي كل ٣٠ ثانية."
                 actions={
-                    <>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                () => {
-                                    void summaryQuery.refetch();
-                                    void ordersQuery.refetch();
-                                };
-                            }}
-                            disabled={summaryQuery.isFetching || ordersQuery.isFetching}
-                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
-                        >
-                            تحديث
-                        </button>
-                    </>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            () => {
+                                void summaryQuery.refetch();
+                                void ordersQuery.refetch();
+                            };
+                        }}
+                        disabled={summaryQuery.isFetching || ordersQuery.isFetching}
+                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                    >
+                        تحديث
+                    </button>
                 }
             />
 

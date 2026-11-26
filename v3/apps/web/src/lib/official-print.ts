@@ -119,18 +119,17 @@ export function buildOfficialSheetHtml(input: OfficialSheetInput): string {
     const ref = input.ref ?? autoRef(input.title);
     const signatures = input.signatures ?? [{ role: 'إعداد الطلب' }, { role: 'مراجعة المسؤول' }, { role: 'الاعتماد' }];
 
-    const kpiHtml =
-        input.kpis && input.kpis.length
-            ? `<div class="kpis">${input.kpis
-                  .map(
-                      (k) => `
+    const kpiHtml = input.kpis?.length
+        ? `<div class="kpis">${input.kpis
+              .map(
+                  (k) => `
             <div class="kpi"><span class="kpi-label">${escape(k.label)}</span>
                 <strong class="kpi-value">${escape(k.value)}</strong>
                 ${k.hint ? `<span class="kpi-hint">${escape(k.hint)}</span>` : ''}
             </div>`,
-                  )
-                  .join('')}</div>`
-            : '';
+              )
+              .join('')}</div>`
+        : '';
 
     const sectionsHtml = input.sections
         .map((section) => {

@@ -59,23 +59,21 @@ export function CostCenter() {
                 english="Cost Center"
                 description="بنود قسمٍ واحد خلف رقمه — صرف مخزني وتحويلات وتسوية جرد وتشغيلية، بأحدث 800 بند من الخادم."
                 actions={
-                    <>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                () => {
-                                    void analysisQuery.refetch();
-                                    if (activeCode) {
-                                        void detailQuery.refetch();
-                                    }
-                                };
-                            }}
-                            disabled={detailQuery.isFetching || analysisQuery.isFetching}
-                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
-                        >
-                            تحديث
-                        </button>
-                    </>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            () => {
+                                void analysisQuery.refetch();
+                                if (activeCode) {
+                                    void detailQuery.refetch();
+                                }
+                            };
+                        }}
+                        disabled={detailQuery.isFetching || analysisQuery.isFetching}
+                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                    >
+                        تحديث
+                    </button>
                 }
             />
 

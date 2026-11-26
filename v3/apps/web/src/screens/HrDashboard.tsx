@@ -51,20 +51,18 @@ export function HrDashboard() {
                 english="HR Dashboard"
                 description="الفريق والحضور والإجازات في مكان واحد — كل مصدرٍ يُعلن نفسه، والفاشل يُسمّى."
                 actions={
-                    <>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                () => {
-                                    void snapshotQuery.refetch();
-                                };
-                            }}
-                            disabled={snapshotQuery.isFetching}
-                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
-                        >
-                            تحديث
-                        </button>
-                    </>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            () => {
+                                void snapshotQuery.refetch();
+                            };
+                        }}
+                        disabled={snapshotQuery.isFetching}
+                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                    >
+                        تحديث
+                    </button>
                 }
             />
 

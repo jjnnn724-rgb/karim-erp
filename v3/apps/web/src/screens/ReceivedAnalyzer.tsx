@@ -52,21 +52,19 @@ export function ReceivedAnalyzer() {
                 english="Received Analyzer"
                 description="بنود الاستلام وأذونها في الفترة: الكمية المرسلة والمستلمة والفرق، بحالة كل إذن."
                 actions={
-                    <>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                () => {
-                                    void itemsQuery.refetch();
-                                    void dispatchesQuery.refetch();
-                                };
-                            }}
-                            disabled={itemsQuery.isFetching || dispatchesQuery.isFetching}
-                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
-                        >
-                            تحديث
-                        </button>
-                    </>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            () => {
+                                void itemsQuery.refetch();
+                                void dispatchesQuery.refetch();
+                            };
+                        }}
+                        disabled={itemsQuery.isFetching || dispatchesQuery.isFetching}
+                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                    >
+                        تحديث
+                    </button>
                 }
             />
 

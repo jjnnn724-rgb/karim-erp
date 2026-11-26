@@ -156,7 +156,7 @@ export async function buildPdfFromElement(element: HTMLElement | null, options: 
             windowHeight: document.documentElement.scrollHeight,
             ignoreElements: (candidate) => candidate.hasAttribute('data-erp-print-hide'),
         });
-        if (!canvas || !canvas.width || !canvas.height) {
+        if (!canvas?.width || !canvas.height) {
             return { ok: false, error: 'تعذر رسم المستند للتصدير' };
         }
         const pdf = new jsPdf({ unit: 'pt', format: 'a4', orientation: 'portrait', compress: true });
@@ -190,7 +190,7 @@ export async function buildPdfFromElement(element: HTMLElement | null, options: 
             pdf.addImage(image, 'JPEG', 0, 0, pageW, drawH, undefined, 'FAST');
         }
         const blob = pdf.output('blob');
-        if (!blob || !blob.size) {
+        if (!blob?.size) {
             return { ok: false, error: 'تعذر توليد ملف PDF' };
         }
         return { ok: true, blob };

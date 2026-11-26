@@ -76,7 +76,7 @@ export function Sessions() {
         const q = filter.trim().toLowerCase();
         if (!q) return data.sessions;
         return data.sessions.filter(
-            (s) => s.device.toLowerCase().includes(q) || (s.ip && s.ip.toLowerCase().includes(q)) || s.id.toLowerCase().includes(q),
+            (s) => s.device.toLowerCase().includes(q) || s.ip?.toLowerCase().includes(q) || s.id.toLowerCase().includes(q),
         );
     }, [data.sessions, filter]);
 

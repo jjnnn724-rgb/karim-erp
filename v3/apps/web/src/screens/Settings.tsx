@@ -114,18 +114,16 @@ export function Settings() {
                 title="الإعدادات"
                 english="System Settings"
                 actions={
-                    <>
-                        <Button
-                            variant="secondary"
-                            size="sm"
-                            loading={fetching > 0}
-                            onClick={() => {
-                                void queryClient.invalidateQueries({ queryKey: ['settings'] });
-                            }}
-                        >
-                            تحديث
-                        </Button>
-                    </>
+                    <Button
+                        variant="secondary"
+                        size="sm"
+                        loading={fetching > 0}
+                        onClick={() => {
+                            void queryClient.invalidateQueries({ queryKey: ['settings'] });
+                        }}
+                    >
+                        تحديث
+                    </Button>
                 }
             />
 

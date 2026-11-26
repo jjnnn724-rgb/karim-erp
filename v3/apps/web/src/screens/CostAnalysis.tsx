@@ -70,20 +70,18 @@ export function CostAnalysis() {
                 english="Cost Analysis"
                 description="تكلفة كل قسم — مواد وصرف مخزني وتحويلات وتسوية جرد ومصروفات تشغيلية مقابل إيراده، بنسبة التكلفة من الخادم."
                 actions={
-                    <>
-                        <button
-                            type="button"
-                            onClick={() => {
-                                () => {
-                                    void analysisQuery.refetch();
-                                };
-                            }}
-                            disabled={analysisQuery.isFetching}
-                            className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
-                        >
-                            تحديث
-                        </button>
-                    </>
+                    <button
+                        type="button"
+                        onClick={() => {
+                            () => {
+                                void analysisQuery.refetch();
+                            };
+                        }}
+                        disabled={analysisQuery.isFetching}
+                        className="rounded-md border border-hairline-strong bg-surface px-md py-xs text-button-md text-ink hover:bg-surface-hover disabled:opacity-50"
+                    >
+                        تحديث
+                    </button>
                 }
             />
 
