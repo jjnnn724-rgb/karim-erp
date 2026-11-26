@@ -72,6 +72,13 @@ const PERMISSIONS = [
       menus: ['cashier-monitor'], entitiesRead: [], entitiesWrite: [] },
     { key: 'whatsapp.use', ar: 'استخدام واتساب', group: 'التكامل',
       menus: ['whatsapp'], entitiesRead: [], entitiesWrite: [] },
+    // طلبات الخضار: منح فردية تُفتح بغض النظر عن الدور (قرار المالك)
+    { key: 'veg.view', ar: 'عرض طلبات الخضار', group: 'التشغيل',
+      menus: ['veg-requests'], entitiesRead: ['vegRequests'], entitiesWrite: [] },
+    { key: 'veg.create', ar: 'إنشاء طلبات الخضار', group: 'التشغيل',
+      menus: ['veg-requests'], entitiesRead: ['vegRequests'], entitiesWrite: ['vegRequests'] },
+    { key: 'veg.receive', ar: 'استلام طلبات الخضار', group: 'التشغيل',
+      menus: ['veg-requests'], entitiesRead: ['vegRequests'], entitiesWrite: ['vegRequests'] },
     // النظام (عرض فقط — الكتابة الحساسة تبقى للأدوار)
     { key: 'users.view', ar: 'عرض المستخدمين', group: 'النظام',
       menus: ['users', 'settings'], entitiesRead: [], entitiesWrite: [] },

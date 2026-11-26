@@ -178,8 +178,13 @@ router.get('/', jwtAuth, requireRole(...READ_ROLES), async (req, res, next) => {
 
 // ─── استلام — السو شيف فقط (+ الإدارة) — قرار المالك 2026-10-10 ───────────
 
-const receiveGate = [jwtAuth, (req, res, next) => {
-    if (RECEIVE_ROLES.includes(req.user?.role)) {return next();}
+const receiveGate = [jwtAuth, async (req, res, next) => {
+    try {
+        const { userHasPerm } = require('./permissions');
+        if (await userHasPerm(req.user, 'veg.receive', RECEIVE_ROLES)) {return next();}
+    } catch (_) {
+        // فشل فحص الصلاحيات ⇒ نرفض ولا نفتح الباب (fail-closed)
+    }
     return res.status(403).json({ ok: false, error: 'FORBIDDEN', message: 'الاستلام والتوقيع للسو شيف فقط' });
 }];
 
