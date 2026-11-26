@@ -980,12 +980,55 @@ async loadPattern(employeeId) {
         const nullLogs = (await pool.query(
             `SELECT id, "deviceUserId" FROM attendance_logs WHERE "employeeId" IS NULL LIMIT 5000`
         )).rows;
+        const relinkedIds = [];
         for (const l of nullLogs) {
             const eid = matchNow(String(l.deviceUserId));
             if (eid) {
                 await pool.query('UPDATE attendance_logs SET "employeeId" = $2 WHERE id = $1 AND "employeeId" IS NULL', [l.id, eid]);
                 fixedLogs++;
+                relinkedIds.push(l.id);
             }
+        }
+
+        // 1b. السجلات التي رُبطت للتو تُعاد معالجتها فورًا كي لا تضيع بصمتها.
+        //     لا نلمس السجلات القديمة: حارس الاستخدام المزدوج يمنع إعادةwriting
+        //     بصمة استُخدمت فعلًا في صف آخر.
+        if (relinkedIds.length > 0) {
+        let replayed = 0;
+        const replayRows = (await pool.query(
+            `SELECT l.id, l."employeeId", l."attendanceTime", l."punchState", d.name AS "deviceName"
+               FROM attendance_logs l
+               LEFT JOIN attendance_devices d ON d.id = l."deviceId"
+              WHERE l.id = ANY($1::bigint[])
+                AND COALESCE(l.ignored, false) = false
+              ORDER BY l."attendanceTime" ASC LIMIT 5000`,
+            [relinkedIds]
+        )).rows;
+        for (const log of replayRows) {
+            const instant = new Date(log.attendanceTime);
+            const shifted = new Date(instant.getTime() + BUSINESS_TZ_OFFSET_MS);
+            const p2 = (n) => String(n).padStart(2, '0');
+            const wall = {
+                year: shifted.getUTCFullYear(), month: shifted.getUTCMonth() + 1, day: shifted.getUTCDate(),
+                hour: shifted.getUTCHours(), minute: shifted.getUTCMinutes(),
+                date: `${shifted.getUTCFullYear()}-${p2(shifted.getUTCMonth() + 1)}-${p2(shifted.getUTCDate())}`,
+                time: `${p2(shifted.getUTCHours())}:${p2(shifted.getUTCMinutes())}`,
+            };
+            try {
+                const result = await this.processPunch({
+                    employeeId: log.employeeId,
+                    punchState: log.punchState,
+                    instant,
+                    wall,
+                    device: { name: log.deviceName || 'device' },
+                    source: 'device',
+                });
+                if (result && !result.error) {replayed++;}
+            } catch (e) {
+                logger.warn('[attendance/reconcile] replay failed log=' + log.id + ': ' + e.message);
+            }
+        }
+        fixedRows += replayed;
         }
 
         // 2. معالجة الأيام المغلقة

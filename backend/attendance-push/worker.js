@@ -20,7 +20,8 @@ const BATCH = Math.max(1, Math.min(50, Number(process.env.ATTENDANCE_PUSH_BATCH)
 async function pollOnce() {
     const { rows } = await pool.query(
         `SELECT id FROM attendance_push_queue
-          WHERE status = 'queued' ORDER BY queued_at LIMIT $1`,
+          WHERE status = 'queued' OR (status = 'failed' AND attempts < 5)
+          ORDER BY queued_at LIMIT $1`,
         [BATCH]
     ).catch((e) => { logger.warn('[attendance-push] poll failed: ' + e.message); return { rows: [] }; });
     for (const r of rows) {

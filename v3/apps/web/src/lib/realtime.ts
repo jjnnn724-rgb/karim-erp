@@ -140,6 +140,8 @@ export function startRealtime(options: RealtimeOptions): void {
             const schedule = () => scheduleInvalidation(options);
             next.on('entity_changed', schedule);
             next.on('state_updated', schedule);
+            // بصمة جديدة كُتبت صفّها في `attendance` — حدّث شاشة الحضور فورًا.
+            next.on('attendance:updated', schedule);
             // رفض المصادقة ⇒ توقف هادئ؛ غير ذلك تتركه إعادة الاتصال المحدودة.
             next.on('connect_error', (err) => {
                 if (isAuthError(err)) {

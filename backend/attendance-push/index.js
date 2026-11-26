@@ -24,7 +24,9 @@ function startEmbeddedPoller(io) {
     _timer = setInterval(async () => {
         try {
             const { rows } = await pool.query(
-                `SELECT id FROM attendance_push_queue WHERE status='queued' ORDER BY queued_at LIMIT 10`);
+                `SELECT id FROM attendance_push_queue
+                  WHERE status='queued' OR (status='failed' AND attempts < 5)
+                  ORDER BY queued_at LIMIT 10`);
             for (const r of rows) {
                 try { await processQueueRow(r.id, io); } catch (err) { logger.debug('[attendance-push] row skipped: ' + err.message); }
             }

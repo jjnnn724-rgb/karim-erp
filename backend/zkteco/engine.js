@@ -498,8 +498,10 @@ class AttendanceSyncEngine {
     }
 
     async _loadEmployeeMapping() {
+        // نفس خريطة attendance-engine.loadEmployeeMapping: رقم الجهاز الأساسي
+        // والبديل (uid مقابل userId) كلاهما يُربط، وإلا تضيع بصمات أجهزة تُرسل uid.
         const { rows } = await pool.query(
-            'SELECT id, name, "deviceUserId", "employeeId", shift_start, shift_karim, auto_checkout FROM employees'
+            'SELECT id, name, "deviceUserId", "deviceUserIdAlt", "employeeId", shift_start, shift_karim, auto_checkout, auto_lock FROM employees'
         );
         const byDeviceId = new Map();
         const byEmployeeNo = new Map();
@@ -507,6 +509,8 @@ class AttendanceSyncEngine {
         for (const row of rows) {
             const duid = row.deviceUserId != null ? String(row.deviceUserId).trim() : '';
             if (duid) {byDeviceId.set(duid, row.id);}
+            const alt = row.deviceUserIdAlt != null ? String(row.deviceUserIdAlt).trim() : '';
+            if (alt && !byDeviceId.has(alt)) {byDeviceId.set(alt, row.id);}
             const empNo = row.employeeId != null ? String(row.employeeId).trim() : '';
             if (empNo) {byEmployeeNo.set(empNo, row.id);}
             byId.set(row.id, {

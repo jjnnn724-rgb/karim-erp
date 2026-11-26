@@ -96,7 +96,7 @@ function stripVersionSpecificStatements(file) {
           if (complete[i] !== 0x0a) continue;
           const line = complete.subarray(start, i);
           start = i + 1;
-          if (line.startsWith(TRANSACTION_TIMEOUT_LINE)) {
+          if (line.toString('utf8', 0, Math.min(line.length, TRANSACTION_TIMEOUT_LINE.length)).startsWith(TRANSACTION_TIMEOUT_LINE)) {
             stripped++;
           } else {
             kept.push(line, NEWLINE);
@@ -105,7 +105,7 @@ function stripVersionSpecificStatements(file) {
         // ذيل بلا سطر جديد (عند EOF فقط) — لا يجوز إسقاطه.
         if (start < complete.length) {
           const tail = complete.subarray(start);
-          if (tail.startsWith(TRANSACTION_TIMEOUT_LINE)) {
+          if (tail.toString('utf8', 0, Math.min(tail.length, TRANSACTION_TIMEOUT_LINE.length)).startsWith(TRANSACTION_TIMEOUT_LINE)) {
             stripped++;
           } else {
             kept.push(tail);
