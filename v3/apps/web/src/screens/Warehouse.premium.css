@@ -1,3 +1,16 @@
+/* لمسة مؤسسية بالألوان الرمزية فقط. */
+.erp-premium-Warehouse > :is(div, section) {
+    box-shadow: var(--erp-shadow-card);
+    border-radius: 0.875rem;
+}
+.erp-premium-Warehouse thead th {
+    background: var(--erp-surface-sunken);
+    box-shadow: 0 1px 0 var(--erp-hairline);
+}
+.erp-premium-Warehouse tbody tr:hover {
+    background: var(--erp-primary-soft);
+}
+
 .erp-premium-Warehouse {
     min-width: 0;
 }

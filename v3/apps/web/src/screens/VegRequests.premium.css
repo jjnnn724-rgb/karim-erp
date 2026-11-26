@@ -1,3 +1,22 @@
+/* لمسة مؤسسية بالألوان الرمزية فقط — بلا قيم خامّة (يحرسها css-contract). */
+.erp-veg-kpi,
+.erp-veg-order__intro {
+    box-shadow: var(--erp-shadow-card);
+    border-radius: 0.875rem;
+}
+.erp-veg-order table thead th {
+    position: sticky;
+    inset-block-start: 0;
+    background: var(--erp-surface-sunken);
+    box-shadow: 0 1px 0 var(--erp-hairline);
+}
+.erp-veg-order tbody tr:hover {
+    background: var(--erp-primary-soft);
+}
+.erp-veg-status {
+    min-block-size: 2.25rem;
+}
+
 .erp-veg-kpi--success .erp-veg-kpi__icon {
     border-color: var(--erp-success);
     background: var(--erp-success-soft);
