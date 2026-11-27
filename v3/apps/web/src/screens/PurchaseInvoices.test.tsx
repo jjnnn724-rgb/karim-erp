@@ -505,9 +505,18 @@ describe('قائمة الأصناف في محرر الفاتورة', () => {
         expect(list).toBeTruthy();
         expect(Array.from(list?.querySelectorAll('option') ?? []).map((o) => o.getAttribute('value'))).toContain('طماطم');
 
+        fireEvent.focus(inputOf('[name="itemName-0"]'));
+        expect(screen.getByRole('listbox', { name: 'أصناف المخزون' })).toBeTruthy();
+        expect(screen.getAllByRole('option').some((o) => o.textContent?.includes('متاح'))).toBe(true);
+
         fireEvent.input(inputOf('[name="itemName-0"]'), { target: { value: 'طماطم' } });
         expect(inputOf('[name="unit-0"]').value).toBe('كجم');
         expect(inputOf('[name="price-0"]').value).toBe('3.50');
+
+        fireEvent.input(inputOf('[name="itemName-0"]'), { target: { value: '' } });
+        fireEvent.click(screen.getByRole('option', { name: /بصل/ }));
+        expect(inputOf('[name="itemName-0"]').value).toBe('بصل');
+        expect(inputOf('[name="unit-0"]').value).toBe('كجم');
     });
 });
 

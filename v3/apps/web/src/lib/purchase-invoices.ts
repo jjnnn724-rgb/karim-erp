@@ -116,6 +116,7 @@ export type InvoiceItemOption = {
     id: string;
     name: string;
     unit: string;
+    qty: string;
     avgCost: string;
 };
 
@@ -133,6 +134,7 @@ export async function fetchInvoiceItemOptions(signal?: AbortSignal): Promise<Inv
             id: String(item.id),
             name: String(item.name).trim(),
             unit: String(item.unit ?? '').trim(),
+            qty: roundHalfUp(String(item.qty ?? '0'), 2),
             avgCost: roundHalfUp(String(item.avgCost ?? '0'), 2),
         }));
 }

@@ -185,6 +185,8 @@ function InvoiceFormDialog({ open, editing, suppliers, currency, saving, onClose
     const [items, setItems] = useState<InvoiceItemDraft[]>([]);
     const [paidTouched, setPaidTouched] = useState(false);
     const [error, setError] = useState('');
+    const [pickerFor, setPickerFor] = useState<number | null>(null);
+    const [pickerTerm, setPickerTerm] = useState('');
     const formRef = useRef<HTMLFormElement>(null);
     const nextDraftKey = useRef(1);
 
@@ -201,6 +203,12 @@ function InvoiceFormDialog({ open, editing, suppliers, currency, saving, onClose
         staleTime: 30 * 60 * 1000,
     });
     const vatRate = taxRateQuery.data ?? 15;
+
+    const pickerOptions = useMemo(() => {
+        const term = pickerTerm.trim().toLowerCase();
+        const list = term ? itemOptions.filter((item) => item.name.toLowerCase().includes(term)) : itemOptions;
+        return list.slice(0, 8);
+    }, [itemOptions, pickerTerm]);
 
     function chooseItem(index: number, name: string): void {
         const match = itemOptions.find((option) => option.name === name.trim());
@@ -435,21 +443,54 @@ function InvoiceFormDialog({ open, editing, suppliers, currency, saving, onClose
                                 key={item.draftKey}
                                 className="grid gap-xs rounded-md border border-hairline p-xs sm:grid-cols-2 xl:grid-cols-4"
                             >
-                                <label className={labelClass}>
-                                    الصنف
-                                    <input
-                                        name={`itemName-${index}`}
-                                        data-invoice-item-name=""
-                                        list="erp-invoice-items"
-                                        autoComplete="off"
-                                        placeholder="ابحث عن صنف…"
-                                        value={String(item.itemName ?? '')}
-                                        onChange={(event) => {
-                                            chooseItem(index, event.target.value);
-                                        }}
-                                        className={fieldClass}
-                                    />
-                                </label>
+                                <div className={labelClass}>
+                                    <span>الصنف</span>
+                                    <span className="erp-item-picker">
+                                        <input
+                                            name={`itemName-${index}`}
+                                            data-invoice-item-name=""
+                                            list="erp-invoice-items"
+                                            autoComplete="off"
+                                            placeholder="ابحث عن صنف…"
+                                            value={String(item.itemName ?? '')}
+                                            onFocus={() => {
+                                                setPickerFor(index);
+                                                setPickerTerm(String(item.itemName ?? ''));
+                                            }}
+                                            onBlur={() => setPickerFor(null)}
+                                            onChange={(event) => {
+                                                setPickerTerm(event.target.value);
+                                                setPickerFor(index);
+                                                chooseItem(index, event.target.value);
+                                            }}
+                                            className={fieldClass}
+                                        />
+                                        {pickerFor === index && pickerOptions.length > 0 ? (
+                                            <span className="erp-item-picker__list" role="listbox" aria-label="أصناف المخزون">
+                                                {pickerOptions.map((option) => (
+                                                    <button
+                                                        key={option.id}
+                                                        type="button"
+                                                        role="option"
+                                                        aria-selected={String(item.itemName ?? '') === option.name}
+                                                        onMouseDown={(event) => event.preventDefault()}
+                                                        onClick={() => {
+                                                            chooseItem(index, option.name);
+                                                            setPickerFor(null);
+                                                        }}
+                                                        className="erp-item-picker__option"
+                                                    >
+                                                        <span className="erp-item-picker__name">{option.name}</span>
+                                                        <span className="erp-item-picker__meta" dir="ltr">
+                                                            {option.unit || 'وحدة'} · متاح {formatMoney(option.qty)} ·{' '}
+                                                            {formatMoney(option.avgCost)}
+                                                        </span>
+                                                    </button>
+                                                ))}
+                                            </span>
+                                        ) : null}
+                                    </span>
+                                </div>
                                 <label className={labelClass}>
                                     الكمية
                                     <input

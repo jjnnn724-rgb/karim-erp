@@ -88,6 +88,57 @@
 .erp-premium-screen [role="status"] {
     line-height: 1.8;
 }
+/* قائمة الأصناف التفاعلية في محرر الفاتورة */
+.erp-item-picker {
+    position: relative;
+    display: block;
+    min-width: 0;
+}
+.erp-item-picker__list {
+    position: absolute;
+    inset-block-start: calc(100% + 0.25rem);
+    inset-inline: 0;
+    z-index: var(--erp-z-dropdown);
+    display: flex;
+    flex-direction: column;
+    gap: 2px;
+    max-block-size: 15rem;
+    overflow-y: auto;
+    padding: 0.25rem;
+    border: 1px solid var(--erp-hairline-strong);
+    border-radius: 0.5rem;
+    background: var(--erp-surface-raised);
+    box-shadow: var(--erp-shadow-pop);
+}
+.erp-item-picker__option {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.5rem;
+    width: 100%;
+    padding: 0.4rem 0.5rem;
+    border: 0;
+    border-radius: 0.35rem;
+    background: transparent;
+    color: var(--erp-ink);
+    text-align: start;
+    cursor: pointer;
+}
+.erp-item-picker__option:hover,
+.erp-item-picker__option:focus-visible {
+    background: var(--erp-surface-hover);
+}
+.erp-item-picker__name {
+    font-size: 0.875rem;
+    font-weight: 600;
+    overflow-wrap: anywhere;
+}
+.erp-item-picker__meta {
+    font-size: 0.75rem;
+    color: var(--erp-muted);
+    white-space: nowrap;
+    font-variant-numeric: tabular-nums;
+}
 @media (max-width: 640px) {
     .erp-premium-screen {
         gap: 1rem !important;
