@@ -64,7 +64,12 @@ describe('vegRequestPrintHtml', () => {
         // الشريط الذهبي الموحّد (طباعة/مشاركة/إغلاق) يُحقن في طبقة printSmart — لم يعد جزءًا من محتوى الورقة.
         expect(html).not.toContain('data-veg-print');
         expect(html).toContain('background:#102a43');
-        expect(html).toContain('border-bottom:3px solid #0f766e');
+        expect(html).toContain('border-bottom:3px solid #B08D57');
+        // الشعار الحقيقي للشركة داخل الترويسة — لا رمز 🥬 ولا اسم قديم.
+        expect(html).toContain('data-print-brand');
+        expect(html).toContain('data:image/');
+        expect(html).toContain('مطاعم الشرفة العالمي');
+        expect(html).not.toContain('🥬');
         expect(html).not.toContain('سعر الوحدة');
         expect(html).not.toContain('معتمد');
     });

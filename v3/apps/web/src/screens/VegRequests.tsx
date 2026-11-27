@@ -1,6 +1,7 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
 import './VegRequests.catalog.css';
+import './VegRequests.premium.css';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { fetchCurrency } from '../lib/finance';
@@ -1631,7 +1632,7 @@ export function VegRequests() {
     }
 
     return (
-        <div className="mx-auto flex w-full min-w-0 flex-col gap-lg">
+        <div className="screen-premium mx-auto flex w-full min-w-0 flex-col gap-lg">
             <ScreenHero
                 title="طلبات شراء الخضار"
                 english="VEGETABLE REQUESTS"

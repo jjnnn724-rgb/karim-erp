@@ -21,6 +21,10 @@ describe('نموذج طلبية الخضروات والأعشاب', () => {
             generatedAt: new Date('2026-11-27T10:00:00Z'),
         });
         expect(html).toContain('dir="rtl"');
+        expect(html).toContain('data-print-brand');
+        expect(html).toContain('data:image/');
+        expect(html).toContain('مطاعم الشرفة العالمي');
+        expect(html).not.toContain('🥬');
         expect(html).toContain('@page{size:A4 portrait;margin:11mm}');
         expect(html).toContain('@media print');
         expect(html).toContain('التوقيع / المُعِدّ');

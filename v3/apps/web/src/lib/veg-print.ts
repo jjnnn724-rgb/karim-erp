@@ -1,4 +1,5 @@
 import { intText, moneyText, qtyText } from './cash-register';
+import { BRAND_MARK_HTML } from './print-brand';
 import type { VegRequest } from './veg-requests';
 
 /**
@@ -156,10 +157,10 @@ export function vegRequestPrintHtml(request: VegRequest, options: VegPrintOption
 *{box-sizing:border-box}
 body{font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif;color:var(--ink);background:#eef2f5;margin:0;padding:24px;direction:rtl;font-size:13px;line-height:1.6}
 .sheet{max-width:820px;margin:auto;background:#fff;border:1px solid var(--line);border-radius:16px;padding:26px 30px;box-shadow:0 18px 50px -24px rgba(16,42,67,.35)}
-.head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;border-bottom:3px solid #0f766e;padding-bottom:14px}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;border-bottom:3px solid #B08D57;padding-bottom:14px}
 .brand{display:flex;align-items:center;gap:13px;min-width:0}
-.mark{width:48px;height:48px;flex:none;border-radius:14px;background:var(--teal);color:#fff;display:grid;place-items:center;font-size:23px;font-weight:900;box-shadow:0 8px 18px -10px var(--teal)}
-.brand h1{margin:0;font-size:21px;line-height:1.3;letter-spacing:-.02em}
+.brand img{max-inline-size:150px;block-size:auto;object-fit:contain}
+.brand h1{margin:0;font-size:19px;line-height:1.3;letter-spacing:-.01em;color:#102a43}
 .brand p{margin:3px 0 0;color:var(--muted);font-size:11.5px}
 .docno{text-align:left;flex:none}
 .docno .no{display:inline-block;border:2px solid var(--teal);border-radius:10px;padding:5px 14px;font-size:16px;font-weight:800;direction:ltr;color:var(--teal)}
@@ -205,7 +206,7 @@ tr.rej-row{background:#fce8e6!important}
 </style></head><body>
 <main class="sheet">
 <header class="head">
-<div class="brand"><div class="mark">🥬</div><div><h1>مطاعم الشرفاء العالمي</h1><p>نظام Karim ERP لإدارة المطاعم — قسم المطبخ والمخازن</p></div></div>
+<div class="brand" data-print-brand>${BRAND_MARK_HTML}<div><h1>مطاعم الشرفة العالمي</h1><p>نظام Karim ERP لإدارة المطاعم — قسم المطبخ والمخازن</p></div></div>
 <div class="docno"><div class="no">${escapeHtml(requestNo)}</div><div class="dt">${escapeHtml(stampText(request.created_at))}</div></div>
 </header>
 <div class="title">طلب شراء خضار</div>

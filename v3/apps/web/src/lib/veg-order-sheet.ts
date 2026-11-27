@@ -1,3 +1,4 @@
+import { BRAND_MARK_HTML } from './print-brand';
 import { VEG_REQUEST_CATALOG } from './veg-catalog';
 
 /**
@@ -40,10 +41,10 @@ const STYLE = `
 *{box-sizing:border-box}
 body{font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif;color:var(--ink);background:#eef2f5;margin:0;padding:20px;direction:rtl;line-height:1.5}
 .sheet{max-width:960px;margin:auto;background:#fff;border:1px solid var(--line);border-radius:14px;padding:22px 26px;box-shadow:0 18px 50px -26px rgba(16,42,67,.4)}
-.head{display:flex;justify-content:space-between;align-items:center;gap:16px;border-bottom:3px solid #0f766e;padding-bottom:12px}
+.head{display:flex;justify-content:space-between;align-items:center;gap:16px;border-bottom:3px solid #B08D57;padding-bottom:12px}
 .brand{display:flex;align-items:center;gap:12px;min-width:0}
-.mark{width:44px;height:44px;flex:none;border-radius:13px;background:var(--teal);color:#fff;display:grid;place-items:center;font-size:22px;font-weight:900}
-.brand h1{margin:0;font-size:20px;line-height:1.3}
+.brand img{max-inline-size:150px;block-size:auto;object-fit:contain}
+.brand h1{margin:0;font-size:19px;line-height:1.3;color:var(--ink)}
 .brand p{margin:2px 0 0;color:var(--muted);font-size:11px}
 .date{text-align:left;flex:none;background:var(--mint);border:1px solid #b9ded7;border-radius:10px;padding:7px 13px}
 .date span{display:block;color:var(--muted);font-size:10.5px}
@@ -107,7 +108,7 @@ export function vegOrderSheetHtml(options: VegOrderSheetOptions = {}): string {
 <title>طلبية الخضروات والأعشاب</title><style>${STYLE}</style></head><body>
 <main class="sheet">
 <header class="head">
-<div class="brand"><div class="mark">🥬</div><div><h1>مطاعم الشرفاء العالمي</h1><p>نظام Karim ERP — طلبية الخضروات والأعشاب</p></div></div>
+<div class="brand" data-print-brand>${BRAND_MARK_HTML}<div><h1>مطاعم الشرفة العالمي</h1><p>نظام Karim ERP — طلبية الخضروات والأعشاب</p></div></div>
 <div class="date"><span>التاريخ</span><b>${escapeHtml(displayDate(options))}</b></div>
 </header>
 <div class="title">طلبية الخضروات والأعشاب</div>

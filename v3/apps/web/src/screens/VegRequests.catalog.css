@@ -2,7 +2,7 @@
    توكنات فقط مع قيم احتياطية، RTL/logical properties، وشبكة تتكيف من 360px. */
 
 .veg-picker {
-    --vp-accent: var(--accent);
+    --vp-accent: var(--erp-primary);
     --vp-soft: var(--primary-soft);
     --vp-line: var(--hairline);
     --vp-muted: var(--muted);
@@ -248,7 +248,7 @@
 .veg-picker__bar button {
     border: 0;
     background: transparent;
-    color: var(--danger-text);
+    color: var(--erp-danger-text);
     font-weight: 700;
     font-size: 0.78rem;
     cursor: pointer;
