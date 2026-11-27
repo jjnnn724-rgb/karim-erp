@@ -130,6 +130,17 @@ function stubFetch(failInvoices = false): string[] {
             if (text.includes('/api/settings/main_settings')) {
                 return json({ currency: 'SAR' });
             }
+            if (text.includes('/api/warehouse/inventory/search')) {
+                return json({
+                    data: [
+                        { id: 7, name: 'طماطم', unit: 'كجم', qty: 20, avgCost: '3.50', category: 'خضار' },
+                        { id: 8, name: 'بصل', unit: 'كجم', qty: 15, avgCost: '2.00', category: 'خضار' },
+                    ],
+                    pagination: { page: 1, limit: 200, total: 2, pages: 1 },
+                    categories: ['خضار'],
+                    fuzzy: false,
+                });
+            }
             return json({ error: 'NOT_FOUND', message: 'مسار غير معروف' }, 404);
         }),
     );
@@ -383,7 +394,7 @@ describe('فواتير الشراء — إنشاء وتعديل (نموذج بن
         expect(mocks.createPurchaseInvoice.mock.calls[0]?.[0]).toMatchObject({
             invoiceNumber: 'INV-9',
             paymentMethod: 'cash',
-            items: [{ itemName: 'طماطم', qty: '2', price: '5', unit: 'وحدة' }],
+            items: [{ itemName: 'طماطم', qty: '2', price: '5', unit: 'كجم' }],
         });
         expect(await screen.findByText('تم حفظ الفاتورة')).toBeTruthy();
         await waitFor(() => {
@@ -471,6 +482,29 @@ describe('فواتير الشراء — إنشاء وتعديل (نموذج بن
 
         expect(await screen.findByText('الفاتورة مسجلة بالفعل — لم تتكرر')).toBeTruthy();
         expect(screen.getByRole('heading', { name: 'فاتورة مشتريات جديدة' })).toBeTruthy();
+    });
+});
+
+describe('قائمة الأصناف في محرر الفاتورة', () => {
+    it('يعرض datalist بالأصناف ويملأ الوحدة والسعر عند الاختيار', async () => {
+        mocks.role = 'manager';
+        stubFetch();
+        renderScreen();
+        await waitFor(() => {
+            expect(dataRows()).toHaveLength(3);
+        });
+
+        fireEvent.click(screen.getByRole('button', { name: 'فاتورة شراء جديدة' }));
+        expect(await screen.findByRole('heading', { name: 'فاتورة مشتريات جديدة' })).toBeTruthy();
+        fireEvent.click(screen.getByRole('button', { name: 'إضافة صنف' }));
+
+        const list = document.getElementById('erp-invoice-items');
+        expect(list).toBeTruthy();
+        expect(Array.from(list?.querySelectorAll('option') ?? []).map((o) => o.getAttribute('value'))).toContain('طماطم');
+
+        fireEvent.input(inputOf('[name="itemName-0"]'), { target: { value: 'طماطم' } });
+        expect(inputOf('[name="unit-0"]').value).toBe('كجم');
+        expect(inputOf('[name="price-0"]').value).toBe('3.50');
     });
 });
 

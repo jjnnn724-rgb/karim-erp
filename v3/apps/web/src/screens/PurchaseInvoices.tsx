@@ -9,6 +9,7 @@ import { fetchCurrency, firstOfMonth, riyadhToday } from '../lib/finance';
 import { formatMoney } from '../lib/format';
 import { fetchSuppliers, isSupplierActive, riyadhDaysAgo, type Supplier } from '../lib/procurement';
 import {
+    fetchInvoiceItemOptions,
     fetchPurchaseInvoices,
     invoiceToRow,
     invoiceTotals,
@@ -187,6 +188,27 @@ function InvoiceFormDialog({ open, editing, suppliers, currency, saving, onClose
     const formRef = useRef<HTMLFormElement>(null);
     const nextDraftKey = useRef(1);
 
+    const itemOptionsQuery = useQuery({
+        queryKey: ['inventory', 'invoice-items'],
+        queryFn: ({ signal }) => fetchInvoiceItemOptions(signal),
+        staleTime: 5 * 60 * 1000,
+    });
+    const itemOptions = itemOptionsQuery.data ?? [];
+
+    function chooseItem(index: number, name: string): void {
+        const match = itemOptions.find((option) => option.name === name.trim());
+        if (match) {
+            updateItem(index, {
+                itemName: name,
+                unit: match.unit || 'وحدة',
+                price: match.avgCost,
+                weight: '',
+            });
+            return;
+        }
+        updateItem(index, { itemName: name });
+    }
+
     function draftOf(item: InvoiceItemInput): InvoiceItemDraft {
         const draft: InvoiceItemDraft = { ...item, draftKey: nextDraftKey.current };
         nextDraftKey.current += 1;
@@ -342,7 +364,9 @@ function InvoiceFormDialog({ open, editing, suppliers, currency, saving, onClose
                             value={String(form.supplierId ?? '')}
                             disabled={paidLock}
                             onChange={(event) => {
-                                update({ supplierId: event.target.value });
+                                const supplierId = event.target.value;
+                                // الاسم/الهاتف من دليل الموردين — لا نرسل قيمًا قديمة من حقل حر سابق.
+                                update({ supplierId, ...(supplierId ? { supplierName: '', supplierPhone: '' } : {}) });
                             }}
                             className={fieldClass}
                         >
@@ -388,7 +412,13 @@ function InvoiceFormDialog({ open, editing, suppliers, currency, saving, onClose
                 <section className="flex flex-col gap-sm rounded-md border border-hairline p-sm">
                     <div className="flex items-center justify-between gap-sm">
                         <strong className="text-label-md text-ink">الأصناف</strong>
-                        <span className="text-caption text-muted">الوحدة مرنة — الوزن والصلاحية اختياريان</span>
+                        <span className="text-caption text-muted">
+                            {itemOptionsQuery.isPending
+                                ? 'جارٍ تحميل الأصناف…'
+                                : itemOptionsQuery.isError
+                                  ? 'تعذّر تحميل الأصناف — أعد فتح النموذج'
+                                  : `${itemOptions.length} صنف متاح للاختيار`}
+                        </span>
                     </div>
                     {items.length === 0 ? <p className="text-body-sm text-muted">{INVOICE_TEXT.itemsEmpty}</p> : null}
                     {items.map((item, index) => {
@@ -403,9 +433,12 @@ function InvoiceFormDialog({ open, editing, suppliers, currency, saving, onClose
                                     <input
                                         name={`itemName-${index}`}
                                         data-invoice-item-name=""
+                                        list="erp-invoice-items"
+                                        autoComplete="off"
+                                        placeholder="ابحث عن صنف…"
                                         value={String(item.itemName ?? '')}
                                         onChange={(event) => {
-                                            updateItem(index, { itemName: event.target.value });
+                                            chooseItem(index, event.target.value);
                                         }}
                                         className={fieldClass}
                                     />
@@ -521,6 +554,15 @@ function InvoiceFormDialog({ open, editing, suppliers, currency, saving, onClose
                     <datalist id="erp-invoice-units">
                         {UNIT_OPTIONS.map((unit) => (
                             <option key={unit} value={unit} />
+                        ))}
+                    </datalist>
+                    <datalist id="erp-invoice-items">
+                        {itemOptions.map((item) => (
+                            <option
+                                key={item.id}
+                                value={item.name}
+                                label={item.unit ? `${item.unit} · ${formatMoney(item.avgCost)}` : undefined}
+                            />
                         ))}
                     </datalist>
                     <div>

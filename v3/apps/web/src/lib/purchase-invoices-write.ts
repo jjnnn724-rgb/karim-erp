@@ -390,7 +390,8 @@ export function invoiceSaveError(form: InvoiceForm = {}): string {
         }
         const qty = Number(item.qty);
         const price = Number(item.price);
-        return !Number.isFinite(qty) || !Number.isFinite(price) || qty < 0 || price < 0;
+        // الخادم يرفض qty<=0 — كان العميل يحذف البند بصمت ويحفظ الفاتورة ناقصة.
+        return !Number.isFinite(qty) || !Number.isFinite(price) || qty <= 0 || price < 0;
     });
     if (invalidLine) {
         return 'تحقق من إدخال كمية وسعر صحيحين لكل صنف';

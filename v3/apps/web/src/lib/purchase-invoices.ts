@@ -2,6 +2,7 @@ import { addMoney, fromCents, roundHalfUp, toCents } from '@karim/shared';
 import { z } from 'zod';
 import { fetchJson } from './api';
 import { getAccessToken } from './auth';
+import { fetchInventoryRegister } from './inventory-register';
 
 /**
  * فواتير الشراء — قراءة فقط من المسار القديم نفسه
@@ -40,6 +41,7 @@ export const purchaseInvoiceSchema = z
             .transform((value) => (value === null || value === undefined || value === '' ? null : String(value))),
         supplierName: optionalText,
         supplier_name_snapshot: optionalText,
+        vat_total: moneyValue,
         totalAmount: moneyValue,
         paidAmount: moneyValue,
         paymentStatus: optionalText,
@@ -108,6 +110,33 @@ export async function fetchPurchaseInvoices(signal?: AbortSignal): Promise<Purch
     return rows;
 }
 
+/* ─── قائمة الأصناف لمحرر الفاتورة ──────────────────────────────────────── */
+
+export type InvoiceItemOption = {
+    id: string;
+    name: string;
+    unit: string;
+    avgCost: string;
+};
+
+/**
+ * أصناف المخزون المعروضة في قائمة《الصنف》بمحرر فاتورة الشراء.
+ * V2 كان يبني datalist من `/api/warehouse/inventory/search` (`invoice-editor.js:127,193`) —
+ * v3 كان يرسل الحقل كنص حر بلا قائمة، فكان المستخدم لا يجد ما يختاره.
+ * نستخدم نفس المصدر والعميل (`fetchInventoryRegister`) الذي تستخدمه بقية شاشات v3.
+ */
+export async function fetchInvoiceItemOptions(signal?: AbortSignal): Promise<InvoiceItemOption[]> {
+    const result = await fetchInventoryRegister({ q: '', category: 'all', stock: 'all' }, signal);
+    return result.rows
+        .filter((item) => Boolean(item.name && String(item.name).trim()))
+        .map((item) => ({
+            id: String(item.id),
+            name: String(item.name).trim(),
+            unit: String(item.unit ?? '').trim(),
+            avgCost: roundHalfUp(String(item.avgCost ?? '0'), 2),
+        }));
+}
+
 /* ─── عرض ─────────────────────────────────────────────────────────────── */
 
 function moneyOf(value: string | undefined): string {
@@ -129,6 +158,7 @@ export type PurchaseInvoiceRow = {
     supplierId: string | null;
     supplier: string;
     supplierResolved: boolean;
+    vat: string;
     total: string;
     paid: string;
     remaining: string;
@@ -156,6 +186,7 @@ export function invoiceToRow(invoice: PurchaseInvoice, supplierById: ReadonlyMap
         supplierId: invoice.supplierId,
         supplier,
         supplierResolved: Boolean(live),
+        vat: moneyOf(invoice.vat_total),
         total: moneyOf(invoice.totalAmount),
         paid: moneyOf(invoice.paidAmount),
         remaining: invoiceRemaining(invoice),

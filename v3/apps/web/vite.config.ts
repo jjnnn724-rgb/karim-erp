@@ -103,7 +103,6 @@ export default defineConfig({
             // تفعيلها يعني اختبار دوال غير موجودة (راجع MERGE-PENDING.md).
             'src/lib/dispatch-print.test.ts',
             'src/lib/dispatches.test.ts',
-            'src/lib/purchase-invoices.test.ts',
             'src/lib/v4-surface.test.tsx',
             'src/lib/wh-returns-write.test.ts',
         ],
