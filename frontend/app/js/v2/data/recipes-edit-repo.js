@@ -42,7 +42,7 @@
  *   features/kitchen.js:1444. لذلك costRatioPercent هنا يردّ نسبة مئوية.
  */
 
-import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.180';
+import { apiFetch, API_BASE } from '../../core/api.js?v=4.9.183';
 
 /** مرآة OPEN_ENTITY_WRITE_ROLES.recipes (schema-registry.js:791). */
 export const RECIPE_WRITE_ROLES = ['admin', 'manager', 'kitchen', 'sous_chef'];
@@ -54,7 +54,7 @@ export const RECIPE_BOM_ROLES = ['admin', 'manager'];
  * مرآة ALIASES في backend/unit-conversion.js:8 حرفًا بحرف — تُستخدم لتطبيع
  * الوحدة الافتراضية فقط، ولا تحوّل شيئًا.
  */
-export const UNIT_ALIASES = { g:'g', gram:'g', grams:'g', جرام:'g', غرام:'g', جم:'g', kg:'kg', kilo:'kg', kilogram:'kg', كيلو:'kg', كجم:'kg', كغ:'kg', كيلوجرام:'kg', ml:'ml', milliliter:'ml', مليلتر:'ml', مل:'ml', l:'l', liter:'l', litre:'l', لتر:'l', piece:'piece', pieces:'piece', unit:'piece', وحدة:'piece', قطعة:'piece', حبة:'piece' };
+export const UNIT_ALIASES = { g:'g', gram:'g', grams:'g', جرام:'g', غرام:'g', جم:'g', kg:'kg', kilo:'kg', kilogram:'kg', كيلو:'kg', كجم:'kg', كغ:'kg', كيلوجرام:'kg', ml:'ml', milliliter:'ml', مليلتر:'ml', مل:'ml', l:'l', liter:'l', litre:'l', لتر:'l', piece:'piece', pieces:'piece', unit:'piece', وحدة:'piece', قطعة:'piece', حبة:'piece', علبة:'piece', عبوة:'piece' };
 
 /** تطبيع اسم وحدة كما backend/unit-conversion.js:9 — بلا تحويل قيمة. */
 export function normalizeRecipeUnit(value) {

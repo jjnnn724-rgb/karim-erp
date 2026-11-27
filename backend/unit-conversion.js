@@ -5,7 +5,7 @@ const UNIT_DEFINITIONS = [
   { value: 'l', label: 'لتر', family: 'volume', factor: 1000 },
   { value: 'piece', label: 'قطعة/وحدة', family: 'count', factor: 1 },
 ];
-const ALIASES = { g:'g', gram:'g', grams:'g', جرام:'g', غرام:'g', جم:'g', kg:'kg', kilo:'kg', kilogram:'kg', كيلو:'kg', كجم:'kg', كغ:'kg', كيلوجرام:'kg', ml:'ml', milliliter:'ml', مليلتر:'ml', مل:'ml', l:'l', liter:'l', litre:'l', لتر:'l', piece:'piece', pieces:'piece', unit:'piece', وحدة:'piece', قطعة:'piece', حبة:'piece' };
+const ALIASES = { g:'g', gram:'g', grams:'g', جرام:'g', غرام:'g', جم:'g', kg:'kg', kilo:'kg', kilogram:'kg', كيلو:'kg', كجم:'kg', كغ:'kg', كيلوجرام:'kg', ml:'ml', milliliter:'ml', مليلتر:'ml', مل:'ml', l:'l', liter:'l', litre:'l', لتر:'l', piece:'piece', pieces:'piece', unit:'piece', وحدة:'piece', قطعة:'piece', حبة:'piece', علبة:'piece', عبوة:'piece' };
 function normalizeUnit(value){ const key=String(value||'').trim().toLowerCase(); return ALIASES[key]||key||'piece'; }
 function getUnit(value){ return UNIT_DEFINITIONS.find(x=>x.value===normalizeUnit(value)); }
 function unitError(code, fromUnit, toUnit){

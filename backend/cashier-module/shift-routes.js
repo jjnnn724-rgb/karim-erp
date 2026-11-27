@@ -19,7 +19,7 @@ const { pool, withTransaction } = require('./db-pool');
 const { jwtAuth, requireRole } = require('./jwt-middleware');
 const { rateLimit } = require('./rate-limit');
 const { writeAuditLog } = require('./audit-middleware');
-const { UNIT_DEFINITIONS, normalizeUnit, convertQuantity } = require('../unit-conversion');
+const { UNIT_DEFINITIONS, normalizeUnit, convertQuantity, getUnit } = require('../unit-conversion');
 const { riyadhToday } = require('../riyadh-date');
 
 const router = express.Router();
@@ -512,14 +512,14 @@ router.get('/menu-cost/today', jwtAuth, requireRole('manager', 'admin', 'auditor
             ),
             pool.query(
                 `SELECT rv.product_id, ri.inventory_id, ri.quantity_per_yield AS qty,
-                        ri.unit, ri.waste_percent
+                        ri.unit, ri.waste_percent, ri.notes
                    FROM pos_recipe_versions rv
                    JOIN pos_recipe_version_ingredients ri ON ri.recipe_version_id = rv.id
                   WHERE rv.status = 'active' AND rv.effective_from <= now()
                     AND (rv.effective_to IS NULL OR rv.effective_to > now())`,
             ),
             pool.query(
-                `SELECT product_id, inventory_id, quantity_per_unit AS qty, unit, waste_percent
+                `SELECT product_id, inventory_id, quantity_per_unit AS qty, unit, waste_percent, notes
                    FROM pos_product_ingredients`,
             ),
             pool.query('SELECT id, name, unit, weight, "avgCost" AS avg_cost FROM inventory'),
@@ -560,12 +560,31 @@ router.get('/menu-cost/today', jwtAuth, requireRole('manager', 'admin', 'auditor
                 const price = Number(inv.avg_cost);
                 if (!Number.isFinite(price) || price <= 0) { reasons.push(`بلا متوسط سعر: ${inv.name}`); continue; }
                 try {
-                    const qty = convertQuantity(Number(line.qty), line.unit, inv.unit, { inventoryWeight: Number(inv.weight || 0) });
-                    if (!Number.isFinite(qty)) { throw new Error('bad qty'); }
-                    cost += qty * (1 + Number(line.waste_percent || 0) / 100) * price;
+                    const notes = String(line.notes ?? '');
+                    const packKg = Number(/packKg\s*=\s*([\d.]+)/i.exec(notes)?.[1] ?? 0);
+                    const perPack = Number(/unitsPerPack\s*=\s*([\d.]+)/i.exec(notes)?.[1] ?? 0);
+                    const from = getUnit(line.unit);
+                    const to = getUnit(inv.unit);
+                    let quantityInPriceUnits;
+                    if (to) {
+                        quantityInPriceUnits = convertQuantity(Number(line.qty), line.unit, inv.unit, {
+                            inventoryWeight: Number(inv.weight || 0),
+                        });
+                    } else if (from && (from.family === 'mass' || from.family === 'volume') && packKg > 0) {
+                        // وحدة الشراء كرتون/كيس: المتوسط لكل عبوة، والحجم موثّق في notes.
+                        quantityInPriceUnits = convertQuantity(Number(line.qty), line.unit, 'kg', {
+                            inventoryWeight: Number(inv.weight || 0),
+                        }) / packKg;
+                    } else if (from && from.family === 'count' && perPack > 0) {
+                        quantityInPriceUnits = Number(line.qty) / perPack;
+                    } else {
+                        throw new Error('UNIT_PACK_REQUIRED');
+                    }
+                    if (!Number.isFinite(quantityInPriceUnits)) { throw new Error('bad qty'); }
+                    cost += quantityInPriceUnits * (1 + Number(line.waste_percent || 0) / 100) * price;
                     priced += 1;
                 } catch {
-                    reasons.push(`وحدات غير متوافقة: ${inv.name}`);
+                    reasons.push(`وحدات غير متوافقة — أضف packKg أو unitsPerPack في ملاحظات المكوّن: ${inv.name}`);
                 }
             }
             const sold = soldByProduct.get(String(p.id));
