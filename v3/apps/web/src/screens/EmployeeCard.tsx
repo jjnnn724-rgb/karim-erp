@@ -800,7 +800,12 @@ function EmployeeEditDrawer({
                     payload.status = raw === 'inactive' ? 'inactive' : 'active';
                     continue;
                 }
-                if ((key === 'auto_checkout' || key === 'auto_lock') && !isAdmin) {
+                if (key === 'auto_checkout' || key === 'auto_lock') {
+                    if (!isAdmin) {
+                        continue;
+                    }
+                    // القيم من القائمة نصوص 'true'/'false' — الخادم يقبل boolean أو 0/1 فقط.
+                    payload[key] = raw === 'true' || raw === '1';
                     continue;
                 }
                 payload[key] = raw;

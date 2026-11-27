@@ -132,6 +132,7 @@ export const employeeProfileSchema = z.object({
     cardId: z.string().optional().nullable(),
     deviceUserId: z.string().optional().nullable(),
     shift_start: z.string().optional().nullable(),
+    shift_karim: z.number().min(0).max(24).optional().nullable(),
     day_off: z.number().int().min(0).max(6).optional().nullable(),
     photo: z.string().optional().nullable(),
     auto_checkout: z.boolean().optional(),
@@ -173,10 +174,22 @@ export async function updateEmployeeProfile(id: string | number, input: Employee
             payload[key] = value;
         }
     }
+    // حماية من جذور المشكلة: واجهة البطاقة (وغيرها) قد ترسل 'true'/'false'
+    // كنص، بينما بوابة الخادم (schema-registry TYPES.BOOLEAN) تقبل boolean
+    // أو 0/1 فقط — فكانت كل محاولة تعديل دوام تُرفض بخطأ auto_checkout.
+    for (const key of ['auto_checkout', 'auto_lock'] as const) {
+        if (key in payload) {
+            const value = payload[key];
+            payload[key] =
+                value === true || value === 1 || (typeof value === 'string' && ['true', '1', 'yes'].includes(value.trim().toLowerCase()));
+        }
+    }
     if (typeof payload.name === 'string') {
         payload.name = payload.name.trim();
     }
-    return writeJson(employeeResultSchema, `/api/employees/${encodeURIComponent(String(id))}`, 'PUT', payload);
+    // تحقق نهائي بعد التطبيع — يمنع أي حقل غير متوقع أو نوع خاطئ من العبور.
+    const validated = employeeProfileSchema.parse(payload);
+    return writeJson(employeeResultSchema, `/api/employees/${encodeURIComponent(String(id))}`, 'PUT', validated);
 }
 
 export async function setEmployeeActive(id: string | number, active: boolean): Promise<EmployeeResult> {
