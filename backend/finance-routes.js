@@ -2299,6 +2299,14 @@ router.get('/monthly-comparison/month/print', asyncHandler(async (req, res) => {
     }));
 }));
 
+/** نسبة الضريبة المعتمدة — مصدر واحد للخادم وللمعاينة في واجهة الفواتير. */
+router.get('/tax-rate', jwtAuth, requireRole('admin', 'manager', 'accountant', 'warehouse', 'auditor'), asyncHandler(async (req, res) => {
+    const row = (await pool.query('SELECT standard_vat_rate FROM tax_config WHERE id = 1')).rows[0];
+    const rate = Number(row?.standard_vat_rate);
+    const value = Number.isFinite(rate) && rate >= 0 && rate <= 100 ? rate : 15;
+    res.json({ ok: true, rate: value, source: Number.isFinite(rate) ? 'tax_config' : 'fallback' });
+}));
+
 // asyncHandler بسيط محلي (نفس نمط بقية الملفات)
 function asyncHandler(fn) {
     return (req, res, next) => Promise.resolve(fn(req, res, next)).catch(next);

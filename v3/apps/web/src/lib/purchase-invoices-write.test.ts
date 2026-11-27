@@ -320,6 +320,11 @@ describe('فواتير الشراء — تقدير الإجمالي (مرآة pc
         expect(estimate).toMatchObject({ subtotal: 30, discount: 3, net: 27, vat: 4.05, grand: 31.05 });
     });
 
+    it('يستخدم نسبة الضريبة القادمة من إعداد الخادم لا 15% الثابتة', () => {
+        const estimate = invoiceEstimate({ items, supplierId: '10' }, true, 10);
+        expect(estimate).toMatchObject({ net: 30, vat: 3, grand: 33 });
+    });
+
     it('خصم مبلغ لا يتجاوز الصافي', () => {
         expect(invoiceEstimate({ items, discountType: 'amount', discountValue: '100' })).toMatchObject({
             subtotal: 30,

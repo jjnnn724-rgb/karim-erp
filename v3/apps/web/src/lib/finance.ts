@@ -123,6 +123,18 @@ export async function fetchCurrency(signal?: AbortSignal): Promise<string> {
     return body.currency ?? '';
 }
 
+const taxRateSchema = z.object({
+    ok: z.boolean().optional(),
+    rate: z.number().min(0).max(100),
+    source: z.string().optional(),
+});
+
+/** نسبة الضريبة المعتمدة من `tax_config` — لا تخمين 15% في الواجهة. */
+export async function fetchTaxRate(signal?: AbortSignal): Promise<number> {
+    const body = await fetchJson(taxRateSchema, '/api/finance/tax-rate', getAccessToken(), signal ? { signal } : {});
+    return body.rate;
+}
+
 /* ─── عرض ─────────────────────────────────────────────────────────────── */
 
 /** مبلغ من الخادم (نصّ NUMERIC) → نصّ منتهٍ بحانتين، بلا Float. */

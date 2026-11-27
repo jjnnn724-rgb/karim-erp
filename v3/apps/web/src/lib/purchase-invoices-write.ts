@@ -429,9 +429,10 @@ export interface InvoiceEstimate {
 
 /**
  * الإجمالي المتوقع (العميل يعرضه فقط؛ الخادم يعيد الحساب عند الحفظ).
- * ضريبة 15% على أسطر STANDARD فقط حين يكون المورد مسجلًا — نفس قرار V2.
+ * النسبة تُمرَّر من `tax_config` عبر الواجهة — لا تخمين محلي. الافتراضي 15
+ * يبقى فقط للدوال النقية/الاختبارات قبل وصول إعداد الخادم.
  */
-export function invoiceEstimate(form: InvoiceForm = {}, supplierRegistered = false): InvoiceEstimate {
+export function invoiceEstimate(form: InvoiceForm = {}, supplierRegistered = false, vatRate = 15): InvoiceEstimate {
     const rows = Array.isArray(form.items) ? form.items : [];
     const selected = form.supplierId !== undefined && form.supplierId !== null && form.supplierId !== '';
     const grossLines = rows.map((item) => r2(num(item.qty) * num(item.price)));
@@ -454,7 +455,7 @@ export function invoiceEstimate(form: InvoiceForm = {}, supplierRegistered = fal
         const lineNet = r2(gross - lineDiscount);
         net = r2(net + lineNet);
         const category = str(rows[index]?.taxCategory || 'STANDARD').toUpperCase();
-        const rate = supplierRegistered && category === 'STANDARD' ? 15 : 0;
+        const rate = supplierRegistered && category === 'STANDARD' ? vatRate : 0;
         vat = r2(vat + r2((lineNet * rate) / 100));
     });
     return { subtotal, discount, net, vat, grand: r2(net + vat), registered: supplierRegistered, selected };

@@ -5,7 +5,7 @@ import { useEffect, useMemo, useRef, useState } from 'react';
 import { useConfirm } from '../components/ConfirmProvider';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
-import { fetchCurrency, firstOfMonth, riyadhToday } from '../lib/finance';
+import { fetchCurrency, fetchTaxRate, firstOfMonth, riyadhToday } from '../lib/finance';
 import { formatMoney } from '../lib/format';
 import { fetchSuppliers, isSupplierActive, riyadhDaysAgo, type Supplier } from '../lib/procurement';
 import {
@@ -195,6 +195,13 @@ function InvoiceFormDialog({ open, editing, suppliers, currency, saving, onClose
     });
     const itemOptions = itemOptionsQuery.data ?? [];
 
+    const taxRateQuery = useQuery({
+        queryKey: ['finance', 'tax-rate'],
+        queryFn: ({ signal }) => fetchTaxRate(signal),
+        staleTime: 30 * 60 * 1000,
+    });
+    const vatRate = taxRateQuery.data ?? 15;
+
     function chooseItem(index: number, name: string): void {
         const match = itemOptions.find((option) => option.name === name.trim());
         if (match) {
@@ -245,7 +252,7 @@ function InvoiceFormDialog({ open, editing, suppliers, currency, saving, onClose
 
     const selectedSupplier = form.supplierId ? suppliers.find((supplier) => String(supplier.id) === String(form.supplierId)) : undefined;
     const registered = String(selectedSupplier?.tax_registration_status ?? '').toUpperCase() === 'REGISTERED';
-    const estimate = invoiceEstimate({ ...form, items }, registered);
+    const estimate = invoiceEstimate({ ...form, items }, registered, vatRate);
     // V2 يعبّئ المسدد تلقائيًا ما لم يلمسه المشغّل: نقدي/بنكي = الإجمالي، آجل = 0.
     const paidValue = paidTouched ? String(form.paidAmount ?? '') : form.paymentMethod === 'credit' ? '0' : estimate.grand.toFixed(2);
     const supplierOptions = suppliers.filter(
@@ -626,7 +633,7 @@ function InvoiceFormDialog({ open, editing, suppliers, currency, saving, onClose
 
                 <p className="text-body-sm text-muted">
                     {registered && estimate.vat > 0
-                        ? `شامل الضريبة تلقائيًا: صافي ${moneyWithUnit(estimate.net, currency)} + ضريبة 15% (${moneyWithUnit(estimate.vat, currency)}) = شامل ${moneyWithUnit(estimate.grand, currency)} — يُحسم عند الحفظ`
+                        ? `شامل الضريبة تلقائيًا: صافي ${moneyWithUnit(estimate.net, currency)} + ضريبة ${vatRate}% (${moneyWithUnit(estimate.vat, currency)}) = شامل ${moneyWithUnit(estimate.grand, currency)} — يُحسم عند الحفظ`
                         : registered
                           ? 'المورد مسجل — لا ضريبة على هذه الأصناف (معفاة/صفرية)'
                           : selectedSupplier

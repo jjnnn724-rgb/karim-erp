@@ -130,6 +130,9 @@ function stubFetch(failInvoices = false): string[] {
             if (text.includes('/api/settings/main_settings')) {
                 return json({ currency: 'SAR' });
             }
+            if (text.includes('/api/finance/tax-rate')) {
+                return json({ ok: true, rate: 15, source: 'tax_config' });
+            }
             if (text.includes('/api/warehouse/inventory/search')) {
                 return json({
                     data: [
