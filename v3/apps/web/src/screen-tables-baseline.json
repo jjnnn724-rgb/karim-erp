@@ -36,6 +36,7 @@
         "screens/InventoryInquiry.tsx": 2,
         "screens/InventoryMovements.tsx": 1,
         "screens/ItemPrices.tsx": 1,
+        "screens/MenuCost.tsx": 1,
         "screens/JournalViewer.tsx": 1,
         "screens/Kitchen.tsx": 4,
         "screens/KitchenReturns.tsx": 1,

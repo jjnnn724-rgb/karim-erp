@@ -20,6 +20,7 @@ const { jwtAuth, requireRole } = require('./jwt-middleware');
 const { rateLimit } = require('./rate-limit');
 const { writeAuditLog } = require('./audit-middleware');
 const { UNIT_DEFINITIONS, normalizeUnit, convertQuantity } = require('../unit-conversion');
+const { riyadhToday } = require('../riyadh-date');
 
 const router = express.Router();
 const PRODUCTS_CACHE_TTL_MS = 2000;
@@ -492,6 +493,126 @@ router.get('/products/:id/ingredients', jwtAuth, requireRole('manager','admin','
         });
         res.json(rows);
     } catch (e) { logger.error(e); res.status(500).json({ error: 'INTERNAL_ERROR' }); }
+});
+
+/**
+ * محرك تسعير المنيو — كل صنف + تكلفة وحدته من `inventory.avgCost` الحي،
+ * وتكلفة اليوم = الكمية المباعة اليوم × تكلفة الوحدة (يوم الرياض لا UTC).
+ * لا يكتب شيئًا، ولا يخمّن سعر مكوّن غير مرتبط أو بلا متوسط سعر.
+ */
+router.get('/menu-cost/today', jwtAuth, requireRole('manager', 'admin', 'auditor', 'kitchen', 'sous_chef'), async (req, res) => {
+    const requested = String(req.query.date ?? '').trim();
+    const date = /^\d{4}-\d{2}-\d{2}$/.test(requested) ? requested : riyadhToday();
+    const round = (n) => Math.round(Number(n || 0) * 100) / 100;
+    try {
+        const [productsR, activeR, legacyR, invR, soldR] = await Promise.all([
+            pool.query(
+                `SELECT id, name_ar, name_en, price, cost_price, department_id
+                   FROM pos_products WHERE is_active = TRUE ORDER BY name_ar`,
+            ),
+            pool.query(
+                `SELECT rv.product_id, ri.inventory_id, ri.quantity_per_yield AS qty,
+                        ri.unit, ri.waste_percent
+                   FROM pos_recipe_versions rv
+                   JOIN pos_recipe_version_ingredients ri ON ri.recipe_version_id = rv.id
+                  WHERE rv.status = 'active' AND rv.effective_from <= now()
+                    AND (rv.effective_to IS NULL OR rv.effective_to > now())`,
+            ),
+            pool.query(
+                `SELECT product_id, inventory_id, quantity_per_unit AS qty, unit, waste_percent
+                   FROM pos_product_ingredients`,
+            ),
+            pool.query('SELECT id, name, unit, weight, "avgCost" AS avg_cost FROM inventory'),
+            pool.query(
+                `SELECT poi.product_id,
+                        SUM(poi.quantity)::float AS qty_sold,
+                        SUM(poi.line_total - COALESCE(poi.discount, 0) - COALESCE(poi.vat_amount, 0))::float AS net_sales
+                   FROM pos_order_items poi
+                   JOIN pos_orders po ON po.id = poi.order_id
+                  WHERE (po.created_at AT TIME ZONE 'Asia/Riyadh')::date = $1::date
+                    AND po.status IN ('issued', 'reported') AND po.voided_at IS NULL
+                  GROUP BY poi.product_id`,
+                [date],
+            ),
+        ]);
+
+        const inventoryById = new Map(invR.rows.map((r) => [String(r.id), r]));
+        const activeByProduct = new Map();
+        for (const row of activeR.rows) {
+            if (!activeByProduct.has(String(row.product_id))) { activeByProduct.set(String(row.product_id), []); }
+            activeByProduct.get(String(row.product_id)).push(row);
+        }
+        const legacyByProduct = new Map();
+        for (const row of legacyR.rows) {
+            if (!legacyByProduct.has(String(row.product_id))) { legacyByProduct.set(String(row.product_id), []); }
+            legacyByProduct.get(String(row.product_id)).push(row);
+        }
+        const soldByProduct = new Map(soldR.rows.map((r) => [String(r.product_id), r]));
+
+        const rows = productsR.rows.map((p) => {
+            const bom = activeByProduct.get(String(p.id)) ?? legacyByProduct.get(String(p.id)) ?? [];
+            let cost = 0;
+            let priced = 0;
+            const reasons = [];
+            for (const line of bom) {
+                const inv = inventoryById.get(String(line.inventory_id));
+                if (!inv) { reasons.push('مكوّن غير مرتبط بالمخزن'); continue; }
+                const price = Number(inv.avg_cost);
+                if (!Number.isFinite(price) || price <= 0) { reasons.push(`بلا متوسط سعر: ${inv.name}`); continue; }
+                try {
+                    const qty = convertQuantity(Number(line.qty), line.unit, inv.unit, { inventoryWeight: Number(inv.weight || 0) });
+                    if (!Number.isFinite(qty)) { throw new Error('bad qty'); }
+                    cost += qty * (1 + Number(line.waste_percent || 0) / 100) * price;
+                    priced += 1;
+                } catch {
+                    reasons.push(`وحدات غير متوافقة: ${inv.name}`);
+                }
+            }
+            const sold = soldByProduct.get(String(p.id));
+            const qtySold = Number(sold?.qty_sold || 0);
+            const netSales = Number(sold?.net_sales || 0);
+            const complete = bom.length > 0 && priced === bom.length;
+            const unitCost = complete ? round(cost) : null;
+            const dailyCost = unitCost === null ? null : round(unitCost * qtySold);
+            return {
+                product_id: p.id,
+                name: p.name_ar || p.name_en || `#${p.id}`,
+                name_en: p.name_en || null,
+                department_id: p.department_id ?? null,
+                price: Number(p.price || 0),
+                unit_cost: unitCost,
+                quantity_sold_today: round(qtySold),
+                daily_cost: dailyCost,
+                net_sales: round(netSales),
+                cost_ratio: unitCost != null && Number(p.price) > 0 ? round((unitCost / Number(p.price)) * 100) : null,
+                ingredient_count: bom.length,
+                priced_lines: priced,
+                pricing_status: bom.length === 0 ? 'unpriced' : complete ? 'priced' : 'partial',
+                reason: reasons[0] ?? null,
+            };
+        });
+
+        const pricedRows = rows.filter((r) => r.unit_cost != null);
+        const totalDailyCost = round(pricedRows.reduce((s, r) => s + Number(r.daily_cost || 0), 0));
+        const totalNetSales = round(rows.reduce((s, r) => s + Number(r.net_sales || 0), 0));
+        res.json({
+            ok: true,
+            date,
+            basis: 'inventory.avgCost live · Riyadh day',
+            totals: {
+                items: rows.length,
+                priced_count: pricedRows.length,
+                unpriced_count: rows.length - pricedRows.length,
+                total_daily_cost: totalDailyCost,
+                total_net_sales: totalNetSales,
+                cost_ratio: totalNetSales > 0 ? round((totalDailyCost / totalNetSales) * 100) : null,
+            },
+            rows,
+        });
+    } catch (e) {
+        logger.error(e);
+        res.status(500).json({ error: 'INTERNAL_ERROR' });
+    }
 });
 
 router.put('/products/:id/ingredients', jwtAuth, requireRole('manager','admin'), async (req, res) => {

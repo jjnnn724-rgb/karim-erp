@@ -1,1 +1,0 @@
-import{l as e}from"./index-xmgoA3NZ.js";import{c as r}from"./fileRoute-DPfDCdeR.js";import{S as o}from"./ScreenGate-C_vFl-RW.js";import{F as t,R as s}from"./FinanceRegister-BIrrnNqP.js";import"./TableState-BRO5E0ql.js";import"./finance-CsGCYQ9V.js";const R=r("/revenues")({component:()=>e.jsx(o,{screen:"revenues",children:e.jsx(t,{config:s})})});export{R as Route};

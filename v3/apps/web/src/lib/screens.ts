@@ -34,6 +34,7 @@ export const V3_SCREENS = [
     'permissions',
     'veg-requests',
     'recipes',
+    'menu-cost',
     'buffet',
     'goods-scan',
     'attendance',
@@ -87,6 +88,7 @@ export const V3_SCREENS = [
     'inventory-inquiry-pro',
     'accountant-dashboard',
     'financial-compliance',
+    'cost-command',
 ] as const;
 export type V3Screen = (typeof V3_SCREENS)[number];
 

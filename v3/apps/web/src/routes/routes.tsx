@@ -268,6 +268,13 @@ export const recipesRoute = createRoute({
 });
 recipesRoute.lazy(() => import('../screens/Recipes.lazy').then((module) => module.Route));
 
+/** محرك تسعير المنيو — تكلفة كل صنف وتكلفة اليوم من متوسط المخزن الحي. */
+export const menuCostRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/menu-cost',
+});
+menuCostRoute.lazy(() => import('../screens/MenuCost.lazy').then((module) => module.Route));
+
 /** الأجهزة والجلسات النشطة — قراءة وإبطال. */
 export const sessionsRoute = createRoute({
     getParentRoute: () => rootRoute,
@@ -588,6 +595,13 @@ export const punchControlRoute = createRoute({
 });
 punchControlRoute.lazy(() => import('../screens/PunchControl.lazy').then((module) => module.Route));
 
+/** مركز تحليل التكلفة — ذاكرة استباقية + مساعد محلي. */
+export const costCommandRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/cost-command',
+});
+costCommandRoute.lazy(() => import('../screens/CostCommand.lazy').then((module) => module.Route));
+
 export const routeTree = rootRoute.addChildren([
     indexRoute,
     accountsRoute,
@@ -626,6 +640,7 @@ export const routeTree = rootRoute.addChildren([
     permissionsRoute,
     vegRequestsRoute,
     recipesRoute,
+    menuCostRoute,
     buffetRoute,
     sessionsRoute,
     whatsappRoute,
@@ -670,4 +685,5 @@ export const routeTree = rootRoute.addChildren([
     punchControlRoute,
     departmentCostRoute,
     yarasoftRoute,
+    costCommandRoute,
 ]);
