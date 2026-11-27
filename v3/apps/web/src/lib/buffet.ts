@@ -213,7 +213,18 @@ export const dishPayloadSchema = z.object({
     description: z.string().trim().default(''),
     description_en: z.string().trim().default(''),
     ingredients: z
-        .array(z.object({ name: z.string().trim().min(1), qty: z.coerce.number().min(0), unit: z.string().trim().min(1) }).passthrough())
+        .array(
+            z
+                .object({
+                    id: z.union([z.string(), z.number()]).nullish(),
+                    name: z.string().trim().min(1),
+                    qty: z.coerce.number().min(0),
+                    unit: z.string().trim().min(1),
+                    inventoryId: z.union([z.string(), z.number()]).nullable().optional(),
+                    packKg: z.coerce.number().min(0).nullable().optional(),
+                })
+                .passthrough(),
+        )
         .default([]),
 });
 export type DishPayload = z.infer<typeof dishPayloadSchema>;
@@ -431,15 +442,15 @@ export async function searchInventoryForLink(q: string, signal?: AbortSignal): P
 
 /** ربط سطر واحد بصنف مخزن (مع pack_kg تلقائي من الخادم عندما يلزم). */
 export function useBuffetLinkMutation() {
-    return useWriteMutation<{ lineId: string | number; inventoryId: string | number | null }, void>({
-        mutationFn: async ({ lineId, inventoryId }) => {
+    return useWriteMutation<{ lineId: string | number; inventoryId: string | number | null; packKg?: number | null }, void>({
+        mutationFn: async ({ lineId, inventoryId, packKg }) => {
             await fetchJson(
                 z.object({ ok: z.boolean().optional() }).passthrough(),
                 `/api/buffet/ingredients/${lineId}/link`,
                 getAccessToken(),
                 {
                     method: 'PUT',
-                    body: { inventoryId: idAsString(inventoryId) },
+                    body: { inventoryId: idAsString(inventoryId), ...(packKg != null ? { packKg } : {}) },
                 },
             );
         },

@@ -93,7 +93,14 @@ const STATUS_PILL: Record<'priced' | 'partial' | 'unpriced', string> = {
     unpriced: 'bf-pill bf-pill--none',
 };
 
-type FormIngredient = { name: string; qty: number; unit: string };
+type FormIngredient = {
+    id?: string | number | null | undefined;
+    name: string;
+    qty: number;
+    unit: string;
+    inventoryId?: string | number | null | undefined;
+    packKg?: number | null | undefined;
+};
 const emptyForm = () => ({
     name: '',
     name_en: '',
@@ -122,6 +129,7 @@ export function Buffet() {
     const [openDishId, setOpenDishId] = useState<string | number | null>(null);
     const [linkLineId, setLinkLineId] = useState<string | number | null>(null);
     const [linkQuery, setLinkQuery] = useState('');
+    const [packDraft, setPackDraft] = useState('');
     const [linkAll, setLinkAll] = useState(true);
 
     // نموذج الإضافة/التعديل + المساعد الشخصي
@@ -144,7 +152,10 @@ export function Buffet() {
     const query = useQuery({
         queryKey: ['buffet', 'overview'],
         queryFn: ({ signal }) => fetchBuffetOverview(signal),
-        staleTime: 30_000,
+        // متوسطات المخزن تتغير مع كل وارد — لا ننتظر المستخدم يعمل Refresh.
+        staleTime: 5_000,
+        refetchInterval: 30_000,
+        refetchOnWindowFocus: true,
     });
     const data = query.data;
 
@@ -278,6 +289,7 @@ export function Buffet() {
     useEffect(() => {
         setLinkLineId(null);
         setLinkQuery('');
+        setPackDraft('');
         setLinkAll(true);
     }, [openDishId]);
 
@@ -285,10 +297,16 @@ export function Buffet() {
         if (linkAll && sameNameCount > 1 && line.name.trim()) {
             linkGroup.mutate({ name: line.name.trim(), inventoryId });
         } else if (line.id != null) {
-            linkOne.mutate({ lineId: line.id, inventoryId });
+            const packKg = packDraft.trim() === '' ? null : Number(packDraft.replace(',', '.'));
+            linkOne.mutate({
+                lineId: line.id,
+                inventoryId,
+                ...(packKg != null && Number.isFinite(packKg) && packKg > 0 ? { packKg } : {}),
+            });
         }
         setLinkLineId(null);
         setLinkQuery('');
+        setPackDraft('');
     };
 
     /** فتح نموذج إضافة صنف جديد (فارغ) */
@@ -310,7 +328,14 @@ export function Buffet() {
             notes: dish.notes,
             description: dish.description ?? '',
             description_en: dish.description_en ?? '',
-            ingredients: dish.lines.map((l) => ({ name: l.name, qty: l.qty, unit: l.unit })),
+            ingredients: dish.lines.map((l) => ({
+                id: l.id,
+                name: l.name,
+                qty: l.qty,
+                unit: l.unit,
+                inventoryId: l.inventoryId,
+                packKg: l.packKg,
+            })),
         });
         setDraftNutrition(dish.nutrition ?? null);
         setDishOpen(true);
@@ -1139,6 +1164,15 @@ export function Buffet() {
                                                 value={linkQuery}
                                                 onChange={(e) => setLinkQuery(e.target.value)}
                                                 autoFocus
+                                            />
+                                            <Input
+                                                aria-label="حجم العبوة بالكيلو (اختياري)"
+                                                placeholder="حجم العبوة كجم — اتركه فارغًا للكشف التلقائي"
+                                                type="number"
+                                                min={0}
+                                                step={0.01}
+                                                value={packDraft}
+                                                onChange={(e) => setPackDraft(e.target.value)}
                                             />
                                             <div className="bf-results">
                                                 {linkQuery.trim().length >= 2 &&

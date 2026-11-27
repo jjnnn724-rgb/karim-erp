@@ -16,6 +16,8 @@ const API_CACHE_MAX = 2000;
 function apiCacheMiddleware(req, res, next) {
     if (req.method !== 'GET') { return next(); }
     if (req.path === '/api/state' || req.path === '/state') { return next(); }
+    // كوست البوفيه يجب أن يتبع متوسط المخزن لحظيًا — كاش 30 ثانية يخفي التحديث.
+    if (req.path === '/api/buffet/overview') { return next(); }
     if (req.path.startsWith('/api/users/') && req.path.endsWith('/password')) { return next(); }
     const key = `${req.headers.authorization || ''}|${req.originalUrl}`;
     const cached = _apiCache.get(key);

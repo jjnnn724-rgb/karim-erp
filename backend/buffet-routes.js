@@ -206,17 +206,23 @@ router.put('/ingredients/:id/link', jwtAuth, writeGate, async (req, res, next) =
                 return res.status(404).json({ ok: false, error: 'NOT_FOUND', message: 'صنف المخزن غير موجود' });
             }
         }
+        const packRaw = req.body?.packKg;
+        const packKg = packRaw === undefined || packRaw === null || packRaw === '' ? null : Number(packRaw);
+        if (packKg !== null && (!Number.isFinite(packKg) || packKg <= 0)) {
+            return res.status(422).json({ ok: false, error: 'BAD_PACK', message: 'حجم العبوة يجب أن يكون رقمًا أكبر من صفر' });
+        }
         const updated = await pool.query(
             `UPDATE buffet_ingredients
                 SET inventory_id = $2,
                     pack_kg = CASE
                         WHEN $2 IS NULL THEN NULL
+                        WHEN $3 IS NOT NULL THEN $3
                         ELSE pack_kg_for($2, unit)
                     END,
                     updated_at = now()
               WHERE id = $1
               RETURNING id, inventory_id, pack_kg`,
-            [lineId, inventoryId == null ? null : String(inventoryId)],
+            [lineId, inventoryId == null ? null : String(inventoryId), packKg],
         );
         if (!updated.rows[0]) {
             return res.status(404).json({ ok: false, error: 'NOT_FOUND', message: 'سطر المكوّن غير موجود' });
@@ -316,9 +322,13 @@ const parseQty = (v) => {
 };
 
 const ingredientSchema = z.object({
+    id: z.union([z.string(), z.number()]).optional(),
     name: z.string().trim().min(1).max(300),
     qty: z.coerce.number().min(0),
     unit: z.string().trim().min(1).max(60),
+    // الربط بحساب المخزن وحجم العبوة يُحفظان عند أي تعديل للصنف.
+    inventoryId: z.union([z.string(), z.number()]).nullable().optional(),
+    packKg: z.coerce.number().min(0).nullable().optional(),
 }).passthrough();
 
 const dishPayloadSchema = z.object({
@@ -340,13 +350,24 @@ async function saveDishWithIngredients(client, payload, dishId) {
           WHERE id = $1`,
         [dishId, payload.name, payload.name_en, payload.category, payload.freq, payload.yields, payload.notes, payload.description, payload.description_en],
     );
+    // احفظ الروابط قبل الحذف — كان تعديل أي صنف يمسح inventory_id/pack_kg
+    // فيفقد السعر الحي ويحتاج المستخدم يعيد الربط يدويًا كل مرة.
+    const before = await client.query(
+        'SELECT name, "inventory_id" AS inventory_id, "pack_kg" AS pack_kg FROM buffet_ingredients WHERE dish_id = $1',
+        [dishId],
+    );
+    const links = new Map(before.rows.map((r) => [String(r.name ?? '').trim().toLowerCase(), r]));
     await client.query('DELETE FROM buffet_ingredients WHERE dish_id = $1', [dishId]);
     let pos = 0;
     for (const ing of payload.ingredients) {
         pos += 1;
+        const previous = links.get(ing.name.trim().toLowerCase());
+        const inventoryId = ing.inventoryId ?? previous?.inventory_id ?? null;
+        const packKg = ing.packKg ?? previous?.pack_kg ?? null;
         await client.query(
-            'INSERT INTO buffet_ingredients (dish_id, position, name, qty, unit) VALUES ($1, $2, $3, $4, $5)',
-            [dishId, pos, ing.name, ing.qty, ing.unit],
+            `INSERT INTO buffet_ingredients (dish_id, position, name, qty, unit, "inventory_id", "pack_kg")
+             VALUES ($1, $2, $3, $4, $5, $6, $7)`,
+            [dishId, pos, ing.name, ing.qty, ing.unit, inventoryId, packKg],
         );
     }
     return dishId;
