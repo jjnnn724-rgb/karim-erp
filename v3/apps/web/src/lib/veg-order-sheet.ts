@@ -69,8 +69,10 @@ tr.extra td{background:#fdf9ef}
 .sign .line{border-top:2px dotted #9aabb7;margin-top:40px;padding-top:5px}
 .sign .who{color:var(--muted);font-size:10.5px;font-weight:400}
 .foot{border-top:2px solid var(--teal);margin-top:18px;padding-top:7px;color:var(--muted);font-size:10px;text-align:center}
-@page{size:A4 portrait;margin:11mm}
-@media print{body{padding:0;background:#fff}.sheet{max-width:none;border:0;border-radius:0;padding:0;box-shadow:none}.cols{break-inside:avoid}tr{break-inside:avoid;page-break-inside:avoid}}
+.doc-head{break-inside:avoid;page-break-inside:avoid;break-after:avoid;page-break-after:avoid}
+.doc-head .head,.doc-head .title,.doc-head .hint{break-inside:avoid;page-break-inside:avoid}
+@page{size:A4 portrait;margin:10mm}
+@media print{html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact}body{padding:0;background:#fff}.sheet{max-width:none;border:0;border-radius:0;padding:0;box-shadow:none}.doc-head{break-after:avoid;page-break-after:avoid}.title{margin:8px 0 6px;padding:7px}.head{padding-bottom:8px}tr{break-inside:avoid;page-break-inside:avoid}}
 @media(max-width:700px){.cols{grid-template-columns:1fr}.signs{grid-template-columns:1fr}}
 `;
 
@@ -107,12 +109,14 @@ export function vegOrderSheetHtml(options: VegOrderSheetOptions = {}): string {
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>طلبية الخضروات والأعشاب</title><style>${STYLE}</style></head><body>
 <main class="sheet">
+<section class="doc-head">
 <header class="head">
 <div class="brand" data-print-brand>${BRAND_MARK_HTML}<div><h1>مطاعم الشرفة العالمي</h1><p>نظام Karim ERP — طلبية الخضروات والأعشاب</p></div></div>
 <div class="date"><span>التاريخ</span><b>${escapeHtml(displayDate(options))}</b></div>
 </header>
 <div class="title">طلبية الخضروات والأعشاب</div>
 <div class="hint"><b>يرجى تسجيل الكمية المتاحة أمام كل صنف</b> — ${VEG_REQUEST_CATALOG.length} صنفًا (30 رئيسية + 5 إضافية)</div>
+</section>
 <div class="cols">${columnHtml(first)}${columnHtml(second)}</div>
 <div class="legend"><span>• كجم = كيلوجرام</span><span>${preparedBy ? `مُعِدّ الطلبية: <b>${preparedBy}</b>` : 'طلبية من مطبخ المطعم إلى المخازن'}</span></div>
 <div class="signs">

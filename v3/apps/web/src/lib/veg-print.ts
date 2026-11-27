@@ -200,11 +200,15 @@ tr.rej-row{background:#fce8e6!important}
 .sign .line{border-top:2px dotted #9aabb7;margin-top:44px;padding-top:6px;font-weight:800;font-size:12px}
 .sign .who{color:var(--muted);font-size:11px}
 .foot{border-top:2px solid var(--teal);margin-top:22px;padding-top:8px;display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:10.5px}
-@page{size:A4;margin:13mm}
-@media print{body{padding:0;background:#fff}.sheet{max-width:none;border:0;border-radius:0;padding:0;box-shadow:none}.meta .m,.tbl,.summary,.notes-box{break-inside:avoid;page-break-inside:avoid}}
+/* الترويسة كتلة واحدة: لا تُفصل عن أول جدول في ورقة مستقلة */
+.doc-head{break-inside:avoid;page-break-inside:avoid;break-after:avoid;page-break-after:avoid}
+.doc-head .head,.doc-head .title,.doc-head .meta{break-inside:avoid;page-break-inside:avoid}
+@page{size:A4;margin:11mm}
+@media print{html,body{-webkit-print-color-adjust:exact;print-color-adjust:exact}body{padding:0;background:#fff}.sheet{max-width:none;border:0;border-radius:0;padding:0;box-shadow:none}.doc-head{break-after:avoid;page-break-after:avoid}.meta .m,.tbl,.summary,.notes-box{break-inside:avoid;page-break-inside:avoid}.title{margin:8px 0 6px;padding:7px}.head{padding-bottom:9px}.signs{margin-top:20px}.sign .line{margin-top:30px}.foot{margin-top:14px}}
 @media(max-width:560px){body{padding:10px}.sheet{padding:16px}.head{flex-wrap:wrap}.signs{gap:14px}}
 </style></head><body>
 <main class="sheet">
+<section class="doc-head">
 <header class="head">
 <div class="brand" data-print-brand>${BRAND_MARK_HTML}<div><h1>مطاعم الشرفة العالمي</h1><p>نظام Karim ERP لإدارة المطاعم — قسم المطبخ والمخازن</p></div></div>
 <div class="docno"><div class="no">${escapeHtml(requestNo)}</div><div class="dt">${escapeHtml(stampText(request.created_at))}</div></div>
@@ -219,6 +223,7 @@ tr.rej-row{background:#fce8e6!important}
 ${String(request.priority ?? '').toLowerCase() === 'urgent' ? '<div class="m urgent"><b>الأولوية</b>عاجل — التوريد بأسرع وقت</div>' : ''}
 ${statusStamp ? `<div class="m"><b>حالة الطلب</b>${statusStamp}</div>` : ''}
 </div>
+</section>
 <div class="tbl"><table>
 <thead><tr><th class="c">م</th><th>الصنف</th><th class="c">الكمية</th><th class="c">الوحدة</th>${
         hasPrices ? '<th class="c">سعر الوحدة</th><th class="c">الإجمالي</th>' : ''

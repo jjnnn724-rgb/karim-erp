@@ -80,7 +80,8 @@ function openNativeOverlay(html: string, opts: PrintViewerOptions): boolean {
     toolbar.querySelector<HTMLButtonElement>('[data-erp-pt="close"]')?.addEventListener('click', () => root?.remove());
 
     if (opts.autoPrint !== false) {
-        // طباعة متزامنة افتراضية — يتيح للمستخدم الكشف من نفس دورة النقرة ويمنح المتصفح وقتًا للتحميل قبل الطباعة فقط للأوراق المبنية من العناصر الداخلية.
+        // الشعار صورة data-URI والتنسيق يحتاجان دورة رسم واحدة على الأقل —
+        // الطباعة الفورية كانت تُلتقط قبل ظهور اللوج في بعض WebViews.
         try {
             frame.contentWindow?.focus();
             frame.contentWindow?.print();
