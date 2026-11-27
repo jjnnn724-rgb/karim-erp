@@ -112,10 +112,12 @@ describe('الباب ↔ الخادم — الأدوار والمسار والس
         expect(loadRepo().m.INQ_READ_ROLES).toEqual(['admin', 'sous_chef']);
     });
 
-    test('الأبواب الثلاثة كلها jwtAuth + requireRoleOrPerm(READ_ROLES, READ_PERM)', () => {
+    test('قائمة الاستعلام محصورة، وبطاقة الصنف مفتوحة لأمين المخزن والمدير', () => {
         const gets = [...server.matchAll(/router\.get\('([^']+)',\s*jwtAuth,\s*requireRoleOrPerm\(READ_ROLES, READ_PERM\)/g)]
             .map((x) => x[1]);
-        expect(gets).toEqual(['/items', '/item/:id', '/departments']);
+        expect(gets).toEqual(['/items', '/departments']);
+        expect(server).toMatch(/router\.get\('\/item\/:id',\s*jwtAuth,\s*requireRoleOrPerm\(DETAIL_READ_ROLES, READ_PERM\)/);
+        expect(server).toMatch(/const DETAIL_READ_ROLES = \[\.\.\.READ_ROLES, 'manager', 'warehouse'\];/);
         expect(server).toMatch(/const READ_PERM = 'inventory-inquiry\.view';/);
         expect(read(PERMS)).toContain("'inventory-inquiry.view'");
     });

@@ -1,0 +1,169 @@
+/* بطاقة الصنف — ديزاين احترافي برموز التصميم فقط (بلا ألوان خام). */
+.erp-dossier {
+    min-width: 0;
+}
+
+.erp-dossier__hero {
+    display: flex;
+    flex-wrap: wrap;
+    align-items: center;
+    justify-content: space-between;
+    gap: 1rem;
+    padding: 1rem 1.15rem;
+    border: 1px solid var(--erp-hairline);
+    border-radius: 0.75rem;
+    background: linear-gradient(135deg, var(--erp-surface-raised), var(--erp-surface-sunken));
+    box-shadow: var(--erp-shadow-card);
+}
+
+.erp-dossier__identity {
+    flex: 1 1 18rem;
+    min-width: 0;
+}
+
+.erp-dossier__eyebrow {
+    display: block;
+    font-size: 0.7rem;
+    letter-spacing: 0.12em;
+    color: var(--erp-muted);
+}
+
+.erp-dossier__title {
+    margin: 0.2rem 0 0.5rem;
+    font-size: clamp(1.15rem, 1.8vw, 1.5rem);
+    line-height: 1.3;
+    font-weight: 800;
+    color: var(--erp-ink);
+    overflow-wrap: anywhere;
+}
+
+.erp-dossier__badges {
+    display: flex;
+    flex-wrap: wrap;
+    gap: 0.35rem;
+}
+
+.erp-dossier__price {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 10rem;
+    padding: 0.75rem 1rem;
+    border: 1px solid var(--erp-hairline-strong);
+    border-radius: 0.65rem;
+    background: var(--erp-surface-raised);
+    text-align: end;
+}
+
+.erp-dossier__price > span {
+    font-size: 0.75rem;
+    color: var(--erp-muted);
+}
+
+.erp-dossier__price > b {
+    font-size: 1.5rem;
+    font-weight: 800;
+    color: var(--erp-ink);
+    line-height: 1.2;
+}
+
+.erp-dossier__price > small {
+    font-size: 0.7rem;
+    color: var(--erp-faint, var(--erp-muted));
+}
+
+.erp-dossier__kpis {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(11rem, 1fr));
+    gap: 0.65rem;
+}
+
+.erp-dossier__kpi {
+    display: flex;
+    flex-direction: column;
+    gap: 0.2rem;
+    padding: 0.7rem 0.9rem;
+    border: 1px solid var(--erp-hairline);
+    border-radius: 0.6rem;
+    background: var(--erp-surface);
+    box-shadow: var(--erp-shadow-card);
+}
+
+.erp-dossier__kpi > span {
+    font-size: 0.75rem;
+    color: var(--erp-muted);
+}
+
+.erp-dossier__kpi > b {
+    font-size: 1.2rem;
+    font-weight: 800;
+    color: var(--erp-ink);
+}
+
+.erp-dossier__kpi > small {
+    font-size: 0.7rem;
+    color: var(--erp-muted);
+}
+
+.erp-dossier__facts {
+    display: grid;
+    grid-template-columns: repeat(auto-fit, minmax(10rem, 1fr));
+    gap: 0.5rem 0.9rem;
+    padding: 0.75rem 0.9rem;
+    border: 1px dashed var(--erp-hairline-strong);
+    border-radius: 0.6rem;
+    background: var(--erp-surface-sunken);
+}
+
+.erp-dossier__facts > div {
+    display: flex;
+    flex-direction: column;
+    gap: 0.15rem;
+    min-width: 0;
+}
+
+.erp-dossier__facts > div > span {
+    font-size: 0.72rem;
+    color: var(--erp-muted);
+}
+
+.erp-dossier__facts > div > b {
+    font-size: 0.9rem;
+    font-weight: 650;
+    color: var(--erp-ink);
+    overflow-wrap: anywhere;
+}
+
+.erp-dossier__section {
+    min-width: 0;
+    overflow: hidden;
+    border: 1px solid var(--erp-hairline);
+    border-radius: 0.6rem;
+    background: var(--erp-surface);
+}
+
+.erp-dossier__section-title {
+    display: flex;
+    align-items: baseline;
+    gap: 0.5rem;
+    margin: 0;
+    padding: 0.55rem 0.75rem;
+    border-bottom: 1px solid var(--erp-hairline);
+    background: var(--erp-surface-sunken);
+    font-size: 0.95rem;
+    font-weight: 750;
+    color: var(--erp-ink);
+}
+
+.erp-dossier__section-title > span {
+    font-size: 0.72rem;
+    font-weight: 500;
+    color: var(--erp-muted);
+}
+
+@media (max-width: 640px) {
+    .erp-dossier__price {
+        width: 100%;
+        text-align: start;
+    }
+}

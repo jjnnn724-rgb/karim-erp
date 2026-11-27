@@ -21,10 +21,18 @@ describe('كتالوج الخضار', () => {
             }
         }
     });
-    test('أصناف أساسية موجودة (طماطم/بطاطس/بصل/ملوخية)', () => {
-        const names = VEG_CATALOG.flatMap((c) => c.items.map((i) => i.name));
-        for (const must of ['طماطم', 'بطاطس', 'بصل', 'ملوخية']) {
-            expect(names).toContain(must);
+    test('النسخة المعتمدة: 30 صنفًا رئيسيًا + 5 أصناف إضافية بوحدات الورقة', () => {
+        const flat = VEG_CATALOG.flatMap((c) => c.items.map((i) => ({ ...i, group: c.key })));
+        expect(flat).toHaveLength(35);
+        expect(new Set(flat.map((item) => item.name)).size).toBe(35);
+        expect(flat.filter((item) => item.group === 'extra')).toHaveLength(5);
+        for (const must of ['طماطم', 'خيار', 'بصل أحمر', 'بطاطس', 'كزبرة خضراء', 'طماطم شيري', 'زعتر فريش', 'دبة', 'فرع بلدي']) {
+            expect(flat.map((item) => item.name)).toContain(must);
+        }
+        expect(flat.find((item) => item.name === 'كرنب أبيض')?.unit).toBe('كيس');
+        expect(flat.find((item) => item.name === 'زنجبيل')?.unit).toBe('كرتونة');
+        for (const name of ['طماطم شيري', 'زعتر فريش', 'بقدونس فرنسي', 'دبة', 'فرع بلدي']) {
+            expect(flat.find((item) => item.name === name)?.unit).toBe('كجم');
         }
     });
 });

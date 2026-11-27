@@ -94,6 +94,9 @@ const router = express.Router();
 
 /** سياسة المالك: المدير والسو-شيف. أي غيرهما يُرفض 403 من الخادم لا من المتصفح. */
 const READ_ROLES = ['admin', 'sous_chef'];
+// بطاقة الصنف تُفتح من شاشة «المخزون» أيضًا — أمين المخزن والمدير يقرآن
+// نفس الحقائق دون أن يُمنحا صلاحية محرك الاستعلامات كاملًا.
+const DETAIL_READ_ROLES = [...READ_ROLES, 'manager', 'warehouse'];
 const READ_PERM = 'inventory-inquiry.view';
 
 const DAY_RE = /^\d{4}-\d{2}-\d{2}$/;
@@ -443,7 +446,7 @@ router.get('/items', jwtAuth, requireRoleOrPerm(READ_ROLES, READ_PERM), async (r
  * ملف الصنف: حقائقه، كاردكس برصيد جاري حقيقي، فواتير دخوله، الأقسام التي صرفته،
  * مبيعاته، ودُفَعات الصلاحية.
  */
-router.get('/item/:id', jwtAuth, requireRoleOrPerm(READ_ROLES, READ_PERM), async (req, res) => {
+router.get('/item/:id', jwtAuth, requireRoleOrPerm(DETAIL_READ_ROLES, READ_PERM), async (req, res) => {
     const itemId = Math.floor(n(req.params.id));
     if (!(itemId > 0)) {return fail(res, 422, 'INVALID_ITEM_ID', 'معرّف الصنف مطلوب رقمًا موجبًا');}
     const range = readRange(req.query);

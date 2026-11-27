@@ -3,10 +3,14 @@ import { VEG_CATALOG_CATEGORIES, VEG_REQUEST_CATALOG, VEG_UNITS, vegItemsFromQua
 
 describe('كتالوج طلب الخضار الأساسي', () => {
     it('يعرض الأصناف المرسلة مرة واحدة فقط بوحداتها الافتراضية', () => {
-        expect(VEG_REQUEST_CATALOG).toHaveLength(27);
+        expect(VEG_REQUEST_CATALOG).toHaveLength(35);
         expect(new Set(VEG_REQUEST_CATALOG.map((item) => item.name)).size).toBe(VEG_REQUEST_CATALOG.length);
+        expect(VEG_REQUEST_CATALOG.filter((item) => item.category === 'أصناف إضافية')).toHaveLength(5);
         expect(VEG_REQUEST_CATALOG.find((item) => item.name === 'كرنب أبيض')?.unit).toBe('كيس');
         expect(VEG_REQUEST_CATALOG.find((item) => item.name === 'زنجبيل')?.unit).toBe('كرتونة');
+        for (const name of ['طماطم شيري', 'زعتر فريش', 'بقدونس فرنسي', 'دبة', 'فرع بلدي']) {
+            expect(VEG_REQUEST_CATALOG.find((item) => item.name === name)?.unit).toBe('كجم');
+        }
         expect(VEG_UNITS).toEqual(['كجم', 'كيس', 'كرتونة']);
         expect(VEG_CATALOG_CATEGORIES[0]).toBe('الكل');
     });

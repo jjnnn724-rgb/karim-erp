@@ -5,6 +5,9 @@ import type { VegRequest } from './veg-requests';
  * ورقة طلب خضار واحدة — هيكل V2 `buildVegPrintHtml` (veg-requests.js:58-158)
  * بنفس الحقول: الأصناف المرفوضة والتالف، أسعار الوحدة والإجماليات عند التسعير،
  * ختم الحالة، توقيعا الشيف وأمين المخزن، ورقم النسخة من `print_count + 1`.
+ *
+ * الديزاين (طلب المالك 2026-11-27): ترويسة مؤسسية، بطاقات بيانات، جدول بخطوط
+ * واضحة، مساحات توقيع ثابتة، وقواعد طباعة A4 تحفظ السطور من الانكسار.
  */
 
 export type VegPrintItem = {
@@ -100,17 +103,17 @@ export function vegRequestPrintHtml(request: VegRequest, options: VegPrintOption
 
     const rows = items
         .map((item, index) => {
-            const spoiled = item.spoiledQty ? ` <span class="rej">تالف: ${escapeHtml(qtyText(item.spoiledQty))}</span>` : '';
-            const rejected = item.rejected ? ' <span class="rej">✗ مرفوض — لا يُسعَّر</span>' : '';
+            const spoiled = item.spoiledQty ? ` <span class="flag">تالف: ${escapeHtml(qtyText(item.spoiledQty))}</span>` : '';
+            const rejected = item.rejected ? ' <span class="flag no">✗ مرفوض — لا يُسعَّر</span>' : '';
             const priceCells = hasPrices
                 ? `<td class="c n">${item.rejected || item.price === null ? '—' : escapeHtml(moneyText(item.price, currency))}</td>` +
-                  `<td class="c n">${item.rejected || item.lineTotal === null ? '—' : escapeHtml(moneyText(item.lineTotal, currency))}</td>`
+                  `<td class="c n strong">${item.rejected || item.lineTotal === null ? '—' : escapeHtml(moneyText(item.lineTotal, currency))}</td>`
                 : '';
             return (
-                `<tr${item.rejected ? ' class="rej-row"' : ''}><td class="c">${index + 1}</td>` +
-                `<td><b>${escapeHtml(item.name)}</b>${rejected}${spoiled}</td>` +
-                `<td class="c n">${escapeHtml(qtyText(item.qty))}</td>` +
-                `<td class="c">${escapeHtml(item.unit)}</td>` +
+                `<tr${item.rejected ? ' class="rej-row"' : ''}><td class="c idx">${index + 1}</td>` +
+                `<td class="name"><b>${escapeHtml(item.name)}</b>${rejected}${spoiled}</td>` +
+                `<td class="c n qty">${escapeHtml(qtyText(item.qty))}</td>` +
+                `<td class="c unit">${escapeHtml(item.unit)}</td>` +
                 priceCells +
                 `<td class="note">${escapeHtml(item.note)}</td></tr>`
             );
@@ -149,56 +152,81 @@ export function vegRequestPrintHtml(request: VegRequest, options: VegPrintOption
 <meta name="viewport" content="width=device-width, initial-scale=1.0">
 <title>طلب شراء خضار ${escapeHtml(requestNo)}</title>
 <style>
-body{font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif;color:#172b3b;background:#fff;margin:0;padding:28px;direction:rtl}
-.sheet{max-width:820px;margin:auto}
-.head{display:flex;justify-content:space-between;align-items:flex-start;border-bottom:3px solid #0f766e;padding-bottom:12px}
-.brand h1{margin:0;color:#0f766e;font-size:22px}.brand p{margin:4px 0 0;color:#596e80;font-size:12px}
-.docno{text-align:left}.docno .no{display:inline-block;border:2px solid #0f766e;border-radius:10px;padding:6px 14px;font-size:17px;font-weight:800;direction:ltr}
-.docno .dt{margin-top:6px;color:#596e80;font-size:12px}
-.title{background:#102a43;color:#f0f6fa;text-align:center;font-size:18px;font-weight:800;padding:9px;border-radius:10px;margin:14px 0}
-.meta{display:flex;gap:8px;flex-wrap:wrap;margin-bottom:12px}
-.meta .m{background:#f3f6fa;border:1px solid #dce5ec;border-radius:9px;padding:6px 12px;font-size:12.5px}
-.meta .m.urgent{background:#fce8e6;border-color:#b3261e;color:#8e1f16;font-weight:800}
-.stamp{display:inline-block;border:2.5px solid #16834a;color:#16834a;font-weight:900;font-size:15px;border-radius:10px;padding:3px 16px;transform:rotate(-4deg);margin:6px 0}
-.stamp.no{border-color:#8e1f16;color:#8e1f16}
-.recv{color:#16834a;font-size:12.5px;margin-top:4px}
-table{width:100%;border-collapse:collapse;margin-top:6px}
-th{background:#eaf0f5;color:#102a43;padding:8px 6px;font-size:12.5px;border:1px solid #dce5ec}
-td{border:1px solid #dce5ec;padding:7px 8px;font-size:13px}
-tr:nth-child(even) td{background:#f3f6fa}
-td.c{text-align:center}td.n{direction:ltr;unicode-bidi:embed}td.note{color:#596e80;font-size:12px}
-tr.rej-row td{background:#fce8e6}
-.rej{color:#8e1f16;font-weight:800;font-size:10.5px}
-.total{margin-top:8px;text-align:left;font-weight:800}
-.notes-box{margin-top:12px;background:#f3f6fa;border:1px dashed #0f766e;border-radius:10px;padding:10px 14px;font-size:13px}
-.signs{display:flex;gap:24px;margin-top:36px}
-.sign{flex:1;text-align:center}.sign .line{border-top:2px dotted #8496a5;margin-top:46px;padding-top:6px;font-weight:700;font-size:12.5px}
-.sign .who{color:#596e80;font-size:11.5px}
-.foot{border-top:2px solid #0f766e;margin-top:26px;padding-top:8px;display:flex;justify-content:space-between;color:#596e80;font-size:10.5px}
-@media print{body{padding:0}@page{size:A4;margin:13mm}}
+:root{--ink:#102a43;--teal:#0f766e;--mint:#e7f5f2;--line:#d8e4ea;--muted:#5d7383;--soft:#f5f8fa;--danger:#8e1f16;--ok:#16834a}
+*{box-sizing:border-box}
+body{font-family:'Tajawal','Segoe UI',Tahoma,Arial,sans-serif;color:var(--ink);background:#eef2f5;margin:0;padding:24px;direction:rtl;font-size:13px;line-height:1.6}
+.sheet{max-width:820px;margin:auto;background:#fff;border:1px solid var(--line);border-radius:16px;padding:26px 30px;box-shadow:0 18px 50px -24px rgba(16,42,67,.35)}
+.head{display:flex;justify-content:space-between;align-items:flex-start;gap:18px;border-bottom:3px solid #0f766e;padding-bottom:14px}
+.brand{display:flex;align-items:center;gap:13px;min-width:0}
+.mark{width:48px;height:48px;flex:none;border-radius:14px;background:var(--teal);color:#fff;display:grid;place-items:center;font-size:23px;font-weight:900;box-shadow:0 8px 18px -10px var(--teal)}
+.brand h1{margin:0;font-size:21px;line-height:1.3;letter-spacing:-.02em}
+.brand p{margin:3px 0 0;color:var(--muted);font-size:11.5px}
+.docno{text-align:left;flex:none}
+.docno .no{display:inline-block;border:2px solid var(--teal);border-radius:10px;padding:5px 14px;font-size:16px;font-weight:800;direction:ltr;color:var(--teal)}
+.docno .dt{margin-top:6px;color:var(--muted);font-size:11.5px;direction:ltr;unicode-bidi:embed}
+.title{background:#102a43;color:#f0f6fa;text-align:center;font-size:18px;font-weight:800;letter-spacing:.02em;padding:10px;border-radius:10px;margin:16px 0 12px}
+.meta{display:grid;grid-template-columns:repeat(auto-fit,minmax(185px,1fr));gap:8px;margin-bottom:12px}
+.meta .m{background:var(--soft);border:1px solid var(--line);border-radius:10px;padding:7px 12px;font-size:12.5px;min-width:0}
+.meta .m b{display:block;color:var(--muted);font-size:10.5px;font-weight:700;margin-bottom:2px}
+.meta .m.urgent{background:#fce8e6;border-color:#e3a29b;color:var(--danger);font-weight:800}
+.stamp{display:inline-block;border:2.5px solid var(--ok);color:var(--ok);font-weight:900;font-size:15px;border-radius:10px;padding:3px 16px;transform:rotate(-4deg);margin-top:4px}
+.stamp.no{border-color:var(--danger);color:var(--danger)}
+.recv{color:var(--ok);font-size:12px;margin-top:4px}
+.tbl{border:1px solid var(--line);border-radius:12px;overflow:hidden}
+table{width:100%;border-collapse:collapse}
+th{background:var(--mint);color:var(--ink);padding:9px 7px;font-size:11.5px;font-weight:800;border-bottom:1px solid #b9ded7;white-space:nowrap}
+td{border-bottom:1px solid var(--line);padding:8px 9px;font-size:12.5px;vertical-align:middle}
+tbody tr:last-child td{border-bottom:0}
+tbody tr:nth-child(even){background:var(--soft)}
+tbody tr{break-inside:avoid;page-break-inside:avoid}
+td.c{text-align:center}
+td.idx{width:34px;color:var(--muted);font-size:11px}
+td.qty{font-weight:800;font-size:14px}
+td.unit{color:var(--muted)}
+td.strong{font-weight:800}
+td.n{direction:ltr;unicode-bidi:embed}
+td.note{color:var(--muted);font-size:11.5px;max-width:170px}
+td.name b{font-weight:800}
+tr.rej-row{background:#fce8e6!important}
+.flag{color:var(--danger);font-weight:800;font-size:10px;display:inline-block;margin-inline-start:6px}
+.summary{display:flex;justify-content:space-between;align-items:center;gap:12px;flex-wrap:wrap;margin-top:10px;background:var(--mint);border:1px solid #b9ded7;border-radius:10px;padding:9px 14px;font-size:12.5px}
+.summary b{font-size:15px}
+.summary .n{direction:ltr;unicode-bidi:embed}
+.notes-box{margin-top:12px;border:1px dashed var(--teal);border-radius:10px;padding:10px 14px;font-size:12.5px;background:var(--soft)}
+.notes-box b{color:var(--teal)}
+.signs{display:grid;grid-template-columns:1fr 1fr;gap:28px;margin-top:34px}
+.sign{text-align:center;min-width:0}
+.sign .line{border-top:2px dotted #9aabb7;margin-top:44px;padding-top:6px;font-weight:800;font-size:12px}
+.sign .who{color:var(--muted);font-size:11px}
+.foot{border-top:2px solid var(--teal);margin-top:22px;padding-top:8px;display:flex;justify-content:space-between;gap:12px;color:var(--muted);font-size:10.5px}
+@page{size:A4;margin:13mm}
+@media print{body{padding:0;background:#fff}.sheet{max-width:none;border:0;border-radius:0;padding:0;box-shadow:none}.meta .m,.tbl,.summary,.notes-box{break-inside:avoid;page-break-inside:avoid}}
+@media(max-width:560px){body{padding:10px}.sheet{padding:16px}.head{flex-wrap:wrap}.signs{gap:14px}}
 </style></head><body>
 <main class="sheet">
 <header class="head">
-<div class="brand"><h1>طلب شراء خضار</h1><p>نظام Karim ERP لإدارة المطاعم</p></div>
+<div class="brand"><div class="mark">🥬</div><div><h1>مطاعم الشرفاء العالمي</h1><p>نظام Karim ERP لإدارة المطاعم — قسم المطبخ والمخازن</p></div></div>
 <div class="docno"><div class="no">${escapeHtml(requestNo)}</div><div class="dt">${escapeHtml(stampText(request.created_at))}</div></div>
 </header>
 <div class="title">طلب شراء خضار</div>
 <div class="meta">
-<div class="m"><b>الجهة الطالبة:</b> مطبخ المطعم</div>
-<div class="m"><b>بواسطة:</b> ${escapeHtml(request.created_by_name ?? '')}${
+<div class="m"><b>الجهة الطالبة</b>مطبخ المطعم</div>
+<div class="m"><b> بواسطة</b>${escapeHtml(request.created_by_name ?? '')}${
         request.created_by_role ? ` (${escapeHtml(request.created_by_role)})` : ''
     }</div>
-<div class="m"><b>إلى:</b> المخازن</div>
-${String(request.priority ?? '').toLowerCase() === 'urgent' ? '<div class="m urgent">عاجل — التوريد بأسرع وقت</div>' : ''}
-${statusStamp}
+<div class="m"><b>إلى</b>المخازن</div>
+${String(request.priority ?? '').toLowerCase() === 'urgent' ? '<div class="m urgent"><b>الأولوية</b>عاجل — التوريد بأسرع وقت</div>' : ''}
+${statusStamp ? `<div class="m"><b>حالة الطلب</b>${statusStamp}</div>` : ''}
 </div>
-<table>
-<thead><tr><th class="c">م</th><th>الصنف</th><th class="c">الكمية</th><th>الوحدة</th>${
-        hasPrices ? '<th>سعر الوحدة</th><th>الإجمالي</th>' : ''
+<div class="tbl"><table>
+<thead><tr><th class="c">م</th><th>الصنف</th><th class="c">الكمية</th><th class="c">الوحدة</th>${
+        hasPrices ? '<th class="c">سعر الوحدة</th><th class="c">الإجمالي</th>' : ''
     }<th>ملاحظات</th></tr></thead>
-<tbody>${rows || '<tr><td colspan="6" class="c">لا أصناف مسجّلة في الطلب</td></tr>'}</tbody>
-</table>
-<div class="total">إجمالي الأصناف: ${escapeHtml(intText(items.length))}${total ? ` — إجمالي القيمة: ${escapeHtml(moneyText(total, currency))}` : ''}</div>
+<tbody>${rows || `<tr><td class="c" colspan="${hasPrices ? 7 : 5}">لا أصناف مسجّلة في الطلب</td></tr>`}</tbody>
+</table></div>
+<div class="summary"><span>إجمالي الأصناف: <b class="n">${escapeHtml(intText(items.length))}</b></span>${
+        total ? `<span>إجمالي القيمة: <b class="n">${escapeHtml(moneyText(total, currency))}</b></span>` : ''
+    }</div>
 ${request.notes ? `<div class="notes-box"><b>ملاحظات:</b> ${escapeHtml(request.notes)}</div>` : ''}
 <div class="signs">
 <div class="sign"><div class="line"></div><div class="who">توقيع الشيف — ${escapeHtml(request.created_by_name ?? '')}</div></div>

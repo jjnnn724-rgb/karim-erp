@@ -59,6 +59,7 @@ const items = [
         qty: '0',
         minQty: '5',
         mainQty: '0',
+        avgCost: '2.50',
         barcode: '6221',
         shelfId: 7,
     },
@@ -132,6 +133,28 @@ function stubFetch(fail = false, source = items): string[] {
                     pagination: { page: 1, limit: 200, total: data.length, pages: 1 },
                     categories: [...new Set(source.map((item) => item.category))].sort(),
                     fuzzy,
+                });
+            }
+            if (target.includes('/api/inventory-inquiry/item/')) {
+                return json({
+                    ok: true,
+                    item: {
+                        id: 1,
+                        name: 'باذنجان',
+                        category: 'خضروات',
+                        unit: 'كجم',
+                        barcode: '6221',
+                        qty: 0,
+                        minQty: 5,
+                        avgCost: '2.50',
+                        stockValue: '0.00',
+                        lowStock: true,
+                    },
+                    cardex: [],
+                    departments: [],
+                    batches: [],
+                    purchases: { qty: 10, cost: 25, invoices: [] },
+                    sales: { pos: 0, net: 0, orders: 0 },
                 });
             }
             return json({ error: 'NOT_FOUND', message: 'مسار غير معروف' }, 404);
@@ -214,6 +237,7 @@ describe('المخزون — القراءة بقواعد V2', () => {
         const eggplant = rowByText('باذنجان');
         expect(within(eggplant).getByText('نفد')).toBeTruthy();
         expect(within(eggplant).getByText('V-01')).toBeTruthy();
+        expect(within(eggplant).getByText(/2\.5/)).toBeTruthy();
         expect(within(eggplant).getByText('6221')).toBeTruthy();
 
         const tomato = rowByText('طماطم');
@@ -339,6 +363,20 @@ describe('المخزون — أزرار الكتابة حسب الدور (بوا
         expect(screen.getByRole('button', { name: 'دمج أصناف مكررة' })).toBeTruthy();
     });
 
+    it('فتح بطاقة الصنف من اسمه يعرض متوسط التكلفة الحالي', async () => {
+        mocks.role = 'warehouse';
+        stubFetch();
+        renderScreen();
+        await waitFor(() => {
+            expect(registerRows()).toHaveLength(5);
+        });
+
+        fireEvent.click(within(rowByText('باذنجان')).getByRole('button', { name: 'عرض بطاقة الصنف الكاملة' }));
+        expect(await screen.findByRole('heading', { name: /بطاقة الصنف/ })).toBeTruthy();
+        expect(await screen.findByText('متوسط التكلفة الحالي')).toBeTruthy();
+        expect(screen.getAllByText(/2\.5/).length).toBeGreaterThan(0);
+    });
+
     it('محاسب: لا زر كتابة ولا عمود إجراءات', async () => {
         mocks.role = 'accountant';
         stubFetch();
@@ -347,7 +385,9 @@ describe('المخزون — أزرار الكتابة حسب الدور (بوا
             expect(registerRows()).toHaveLength(5);
         });
         const row = rowByText('باذنجان');
-        expect(within(row).queryByRole('button')).toBeNull();
+        // زر بطاقة الصنف للقراءة فقط مسموح لكل الأدوار؛ أزرار الكتابة ممنوعة.
+        expect(within(row).getByRole('button', { name: 'عرض بطاقة الصنف الكاملة' })).toBeTruthy();
+        expect(within(row).queryByRole('button', { name: 'حذف' })).toBeNull();
         expect(screen.queryByRole('button', { name: 'دمج أصناف مكررة' })).toBeNull();
     });
 });

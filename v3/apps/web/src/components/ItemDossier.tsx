@@ -1,6 +1,8 @@
+import './ItemDossier.premium.css';
 import { useQuery } from '@tanstack/react-query';
 import { fetchInquiryItem } from '../lib/inventory-inquiry';
 import { errorMessage, intOf, moneyOf, qtyOf, textOf } from '../lib/reporting';
+import { Badge } from '../ui/Badge';
 import { StateEmpty, StateError, StateLoading, TableScroll } from './TableState';
 
 /**
@@ -9,6 +11,7 @@ import { StateEmpty, StateError, StateLoading, TableScroll } from './TableState'
  * أقسام الصرف، الدُفعات والصلاحية، وأسطر POS.
  *
  * مكوّن واحد تستخدمه الشاشتان (المحرك والبطاقة الفاخرة) — فلا نسختان لرقم واحد.
+ * كل رقم معروض قادم من الخادم؛ الواجهة لا تحسب متوسطًا ولا رصيدًا بنفسها.
  */
 export function ItemDossier({ itemId, from, to }: { itemId: string; from: string; to: string }) {
     const query = useQuery({
@@ -46,41 +49,126 @@ export function ItemDossier({ itemId, from, to }: { itemId: string; from: string
         return <StateEmpty title="لا بيانات للصنف" hint="أعد المحاولة أو وسّع المدى." />;
     }
 
+    const lowStock = Boolean(item.lowStock);
+    const unit = textOf(item.unit) || 'وحدة';
+
     return (
-        <div className="flex flex-col gap-md">
-            <div className="grid gap-sm p-sm text-body-sm sm:grid-cols-2 lg:grid-cols-4">
-                <div>
-                    <p className="text-caption text-muted">الصنف</p>
-                    <p className="text-heading-sm text-ink">{textOf(item.name) || '—'}</p>
-                    <p className="text-caption text-faint">{textOf(item.category) || 'بلا تصنيف'}</p>
+        <div className="erp-dossier flex flex-col gap-md">
+            <div className="erp-dossier__hero">
+                <div className="erp-dossier__identity">
+                    <span className="erp-dossier__eyebrow" dir="ltr">
+                        ITEM DOSSIER · #{String(item.id)}
+                    </span>
+                    <h3 className="erp-dossier__title">{textOf(item.name) || '—'}</h3>
+                    <div className="erp-dossier__badges">
+                        <Badge variant="info">{textOf(item.category) || 'بلا تصنيف'}</Badge>
+                        {textOf(item.barcode) ? (
+                            <Badge>
+                                <span dir="ltr">{textOf(item.barcode)}</span>
+                            </Badge>
+                        ) : null}
+                        <Badge variant={lowStock ? 'warning' : 'success'} dot>
+                            {lowStock ? 'تحت الحد الأدنى' : 'رصيد آمن'}
+                        </Badge>
+                    </div>
                 </div>
-                <div>
-                    <p className="text-caption text-muted">الرصيد / الحد</p>
-                    <p className="erp-numeric text-ink" dir="ltr">
-                        {qtyOf(item.qty)} / {qtyOf(item.minQty)}
-                    </p>
-                    {item.lowStock ? <p className="text-caption text-warning-text">تحت الحد الأدنى</p> : null}
-                </div>
-                <div>
-                    <p className="text-caption text-muted">متوسط التكلفة</p>
-                    <p className="erp-numeric text-ink" dir="ltr">
+                <div className="erp-dossier__price">
+                    <span>متوسط التكلفة الحالي</span>
+                    <b className="erp-numeric" dir="ltr">
                         {moneyOf(item.avgCost)}
-                    </p>
-                    <p className="text-caption text-faint">{textOf(item.unit) || '—'}</p>
-                </div>
-                <div>
-                    <p className="text-caption text-muted">قيمة المخزون</p>
-                    <p className="erp-numeric text-ink" dir="ltr">
-                        {moneyOf(item.stockValue)}
-                    </p>
-                    <p className="text-caption text-faint">{textOf(item.shelf) || textOf(item.barcode) || '—'}</p>
+                    </b>
+                    <small>لكل {unit} — من دفتر المخزون</small>
                 </div>
             </div>
 
-            <section className="border-t border-hairline">
-                <h3 className="px-sm py-xs text-heading-sm text-ink">
+            <div className="erp-dossier__kpis">
+                <div className="erp-dossier__kpi">
+                    <span>الرصيد الحالي</span>
+                    <b className="erp-numeric" dir="ltr">
+                        {qtyOf(item.qty)}
+                    </b>
+                    <small>{unit}</small>
+                </div>
+                <div className="erp-dossier__kpi">
+                    <span>قيمة المخزون</span>
+                    <b className="erp-numeric" dir="ltr">
+                        {moneyOf(item.stockValue)}
+                    </b>
+                    <small>رصيد × متوسط التكلفة</small>
+                </div>
+                <div className="erp-dossier__kpi">
+                    <span>الحد الأدنى</span>
+                    <b className="erp-numeric" dir="ltr">
+                        {qtyOf(item.minQty)}
+                    </b>
+                    <small>{lowStock ? 'يحتاج توريد' : 'ضمن الحد'}</small>
+                </div>
+                <div className="erp-dossier__kpi">
+                    <span>حركات في المدى</span>
+                    <b className="erp-numeric" dir="ltr">
+                        {intOf(cardex.length)}
+                    </b>
+                    <small>عملية مسجّلة</small>
+                </div>
+            </div>
+
+            <div className="erp-dossier__facts">
+                <div>
+                    <span>الوحدة</span>
+                    <b>{unit}</b>
+                </div>
+                <div>
+                    <span>الباركود</span>
+                    <b dir="ltr">{textOf(item.barcode) || '—'}</b>
+                </div>
+                <div>
+                    <span>الرف / الموقع</span>
+                    <b>{textOf(item.shelf) || '—'}</b>
+                </div>
+                <div>
+                    <span>رصيد الكاردكس</span>
+                    <b className="erp-numeric" dir="ltr">
+                        {qtyOf(item.balanceSum)}
+                    </b>
+                </div>
+                <div>
+                    <span>دُفعات مسجّلة</span>
+                    <b className="erp-numeric" dir="ltr">
+                        {intOf(batches.length)}
+                    </b>
+                </div>
+                <div>
+                    <span>فواتير شراء في المدى</span>
+                    <b className="erp-numeric" dir="ltr">
+                        {intOf(purchases?.invoices?.length ?? 0)}
+                    </b>
+                </div>
+                <div>
+                    <span>آخر سعر شراء</span>
+                    <b className="erp-numeric" dir="ltr">
+                        {purchases?.invoices?.length ? moneyOf(purchases.invoices[0]?.unitCost) : '—'}
+                    </b>
+                    {purchases?.invoices?.length ? (
+                        <small className="text-caption text-muted">
+                            {textOf(purchases.invoices[0]?.supplier) || '—'} · {textOf(purchases.invoices[0]?.day)}
+                        </small>
+                    ) : null}
+                </div>
+                <div>
+                    <span>آخر حركة</span>
+                    <b dir="ltr">{cardex.length ? textOf(cardex[0]?.date) || '—' : '—'}</b>
+                    {cardex.length ? (
+                        <small className="text-caption text-muted">
+                            {textOf(cardex[0]?.type) || '—'} · {qtyOf(cardex[0]?.delta)}
+                        </small>
+                    ) : null}
+                </div>
+            </div>
+
+            <section className="erp-dossier__section">
+                <h3 className="erp-dossier__section-title">
                     الكاردكس{' '}
-                    <span className="text-body-sm text-muted" dir="ltr" lang="en">
+                    <span dir="ltr" lang="en">
                         Cardex
                     </span>
                 </h3>
@@ -144,10 +232,10 @@ export function ItemDossier({ itemId, from, to }: { itemId: string; from: string
             </section>
 
             <div className="grid gap-md lg:grid-cols-2">
-                <section className="border-t border-hairline">
-                    <h3 className="px-sm py-xs text-heading-sm text-ink">
+                <section className="erp-dossier__section">
+                    <h3 className="erp-dossier__section-title">
                         صرف الأقسام{' '}
-                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
+                        <span dir="ltr" lang="en">
                             Departments
                         </span>
                     </h3>
@@ -170,10 +258,10 @@ export function ItemDossier({ itemId, from, to }: { itemId: string; from: string
                     )}
                 </section>
 
-                <section className="border-t border-hairline">
-                    <h3 className="px-sm py-xs text-heading-sm text-ink">
+                <section className="erp-dossier__section">
+                    <h3 className="erp-dossier__section-title">
                         الدُفعات والصلاحية{' '}
-                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
+                        <span dir="ltr" lang="en">
                             Batches
                         </span>
                     </h3>
@@ -201,10 +289,10 @@ export function ItemDossier({ itemId, from, to }: { itemId: string; from: string
             </div>
 
             <div className="grid gap-md lg:grid-cols-2">
-                <section className="border-t border-hairline">
-                    <h3 className="px-sm py-xs text-heading-sm text-ink">
+                <section className="erp-dossier__section">
+                    <h3 className="erp-dossier__section-title">
                         المشتريات{' '}
-                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
+                        <span dir="ltr" lang="en">
                             Purchases
                         </span>
                     </h3>
@@ -235,10 +323,10 @@ export function ItemDossier({ itemId, from, to }: { itemId: string; from: string
                     )}
                 </section>
 
-                <section className="border-t border-hairline">
-                    <h3 className="px-sm py-xs text-heading-sm text-ink">
+                <section className="erp-dossier__section">
+                    <h3 className="erp-dossier__section-title">
                         مبيعات نقطة البيع{' '}
-                        <span className="text-body-sm text-muted" dir="ltr" lang="en">
+                        <span dir="ltr" lang="en">
                             POS
                         </span>
                     </h3>

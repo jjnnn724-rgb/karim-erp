@@ -5,6 +5,7 @@ import { useEffect, useMemo, useState } from 'react';
 import { BulkReceiptDialog } from '../components/BulkReceiptDialog';
 import { useConfirm } from '../components/ConfirmProvider';
 import { InventoryAuditStudio } from '../components/InventoryAuditStudio';
+import { ItemDossier } from '../components/ItemDossier';
 import { Card, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { canReadAudit } from '../lib/inventory-audits';
@@ -55,6 +56,7 @@ import {
     receiptSuccess,
     receiveInventoryItem,
 } from '../lib/inventory-write';
+import { moneyOf, presetRange } from '../lib/reporting';
 import { useWriteMutation, writeErrorMessage } from '../lib/write';
 import { AnswerStrip, EmptyState, ScreenHero } from '../ui';
 import { Button } from '../ui/Button';
@@ -504,6 +506,8 @@ export function Warehouse() {
     const [mergeOpen, setMergeOpen] = useState(false);
     const [auditsOpen, setAuditsOpen] = useState(false);
     const [bulkOpen, setBulkOpen] = useState(false);
+    const [dossierId, setDossierId] = useState('');
+    const dossierRange = useMemo(() => presetRange('month'), []);
 
     const auth = useAuthState();
     const role = auth.user?.role;
@@ -1000,6 +1004,12 @@ export function Warehouse() {
                                         <th scope="col" className="px-sm py-xs text-center font-medium">
                                             الحد الأدنى
                                         </th>
+                                        <th scope="col" className="px-sm py-xs text-end font-medium">
+                                            متوسط التكلفة
+                                        </th>
+                                        <th scope="col" className="px-sm py-xs text-end font-medium">
+                                            الوزن
+                                        </th>
                                         <th scope="col" className="px-sm py-xs text-start font-medium">
                                             الرف
                                         </th>
@@ -1017,7 +1027,15 @@ export function Warehouse() {
                                     {pageRows.map((row: InventoryRow) => (
                                         <tr key={row.id} className="border-b border-hairline hover:bg-surface-hover">
                                             <td className="px-sm py-xxs text-ink">
-                                                <span className={row.nameResolved ? '' : 'text-muted'}>{row.name}</span>
+                                                <button
+                                                    type="button"
+                                                    aria-label="عرض بطاقة الصنف الكاملة"
+                                                    title="عرض بطاقة الصنف الكاملة"
+                                                    onClick={() => setDossierId(row.id)}
+                                                    className="text-start font-medium text-ink underline decoration-hairline-strong underline-offset-2 hover:text-primary"
+                                                >
+                                                    <span className={row.nameResolved ? '' : 'text-muted'}>{row.name}</span>
+                                                </button>
                                                 {row.barcode ? (
                                                     <span className="block erp-numeric text-caption text-faint" dir="ltr">
                                                         {row.barcode}
@@ -1045,6 +1063,12 @@ export function Warehouse() {
                                             </td>
                                             <td className="erp-numeric px-sm py-xxs text-center text-muted" dir="ltr">
                                                 {row.minQty === null ? '—' : formatQty(row.minQty)}
+                                            </td>
+                                            <td className="erp-numeric px-sm py-xxs text-end text-ink" dir="ltr">
+                                                {row.avgCost === null ? '—' : moneyOf(row.avgCost)}
+                                            </td>
+                                            <td className="erp-numeric px-sm py-xxs text-end text-muted" dir="ltr">
+                                                {row.weight === null ? '—' : formatQty(row.weight)}
                                             </td>
                                             <td className="px-sm py-xxs text-body-sm">
                                                 {!row.shelfId ? (
@@ -1215,6 +1239,19 @@ export function Warehouse() {
                     }}
                 />
             ) : null}
+
+            <Dialog
+                open={dossierId !== ''}
+                onOpenChange={(next) => {
+                    if (!next) {
+                        setDossierId('');
+                    }
+                }}
+                title="بطاقة الصنف"
+                size="lg"
+            >
+                <ItemDossier itemId={dossierId} from={dossierRange.from} to={dossierRange.to} />
+            </Dialog>
         </div>
     );
 }

@@ -6,7 +6,7 @@ import { PrintActions } from '../components/PrintActions';
 import { RangeControls, ReportHeader, SectionCard } from '../components/Reports';
 import { Card, StateEmpty, StateError } from '../components/TableState';
 import { fetchInquiryExport, fetchInquiryItems, type InquiryRow, saveDownload } from '../lib/inventory-inquiry';
-import { errorMessage, intOf, presetRange, rangeProblem, textOf } from '../lib/reporting';
+import { errorMessage, intOf, moneyOf, presetRange, qtyOf, rangeProblem, textOf } from '../lib/reporting';
 
 /**
  * البطاقة الفاخرة — منتقي صنف مباشر يفتح بطاقة الصنف الكاملة.
@@ -100,7 +100,8 @@ export function InventoryInquiryPro() {
                                 {rows.map((row) => (
                                     <option key={String(row.itemId)} value={String(row.itemId)}>
                                         {textOf(row.itemName) || `#${String(row.itemId)}`}
-                                        {row.category ? ` — ${textOf(row.category)}` : ''}
+                                        {row.category ? ` — ${textOf(row.category)}` : ''} · رصيد {qtyOf(row.onHand)} · متوسط{' '}
+                                        {moneyOf(row.avgCost)}
                                     </option>
                                 ))}
                             </select>

@@ -14,7 +14,7 @@
  * وضع URL: window.openInAppReport('إيصال', url) — يعرض رابطًا جاهزًا.
  */
 import { esc } from '../core/utils.js?v=4.9.13';
-import { addCompanyPrintLogo } from '../core/print-branding.js?v=4.9.177';
+import { addCompanyPrintLogo } from '../core/print-branding.js?v=4.9.178';
 
 let overlayEl = null;
 let frameLoaded = false;

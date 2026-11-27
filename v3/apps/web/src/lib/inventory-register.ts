@@ -262,6 +262,7 @@ export interface InventoryRow {
     mainOverTotal: boolean;
     minQty: number | null;
     weight: number | null;
+    avgCost: number | null;
     barcode: string;
     shelfId: string;
     shelf: string;
@@ -303,6 +304,7 @@ export function inventoryToRow(item: InventoryItem, shelfById: Map<string, Shelf
         mainOverTotal: hasMain && mainQty > qty,
         minQty,
         weight: item.weight === undefined || item.weight === null ? null : num(item.weight),
+        avgCost: item.avgCost === undefined || item.avgCost === null ? null : num(item.avgCost),
         barcode: item.barcode ? String(item.barcode) : '',
         shelfId,
         shelf: shelf ? String(shelf.code || shelf.name || '') : shelfId,

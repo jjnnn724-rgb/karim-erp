@@ -1,5 +1,6 @@
 import { useQuery } from '@tanstack/react-query';
 import { useEffect, useMemo, useState } from 'react';
+import './VegRequests.catalog.css';
 import { Card, StateEmpty, StateError, StateLoading, TableScroll, TableSkeleton } from '../components/TableState';
 import { useAuthState } from '../lib/auth';
 import { fetchCurrency } from '../lib/finance';
@@ -8,6 +9,7 @@ import { fetchMyPermissions } from '../lib/my-menus';
 import { printSmart } from '../lib/print-viewer';
 import { presetRange } from '../lib/reporting';
 import { vegAnalysisPrintHtml } from '../lib/veg-analysis-print';
+import { vegOrderSheetHtml } from '../lib/veg-order-sheet';
 import { vegRequestPrintHtml } from '../lib/veg-print';
 import {
     fetchVegConsumption,
@@ -71,6 +73,11 @@ type SortKey = 'number' | 'itemsCount' | 'priority' | 'total' | 'by' | 'created'
 
 function formatInt(value: number): string {
     return value.toLocaleString('en-US');
+}
+
+/** تسامح بسيط في البحث: الألف والهمزات/Ta marbuta/Alif maqsura لا تفرّق بين الأصناف. */
+function normalizeVegName(value: string): string {
+    return value.trim().replace(/[أإآ]/g, 'ا').replace(/ة/g, 'ه').replace(/ى/g, 'ي');
 }
 
 function SortableTh({
@@ -152,17 +159,32 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
     const [manualRows, setManualRows] = useState<Array<{ id: number; name: string; qty: string; unit: string; note: string }>>([]);
     const [priority, setPriority] = useState<'normal' | 'urgent'>('normal');
     const [notes, setNotes] = useState('');
-    const [selected, setSelected] = useState('');
     const [category, setCategory] = useState('');
-    const [qty, setQty] = useState('1');
-    const [unit, setUnit] = useState('كجم');
+    const [query, setQuery] = useState('');
+    const [unitOverrides, setUnitOverrides] = useState<Record<string, string>>({});
     const [error, setError] = useState('');
 
     const MANUAL_UNITS = ['كجم', 'جرام', 'طن', 'كرتونة', 'ربطة', 'حبة', 'صندوق', 'كيس', 'شيكارة', 'لتر', 'جالون', 'وحدة'];
 
-    const categoryNames = useMemo(() => (catalog ? Object.keys(catalog.categories) : []), [catalog]);
+    const categoryNames = useMemo(() => Object.keys(catalog?.categories ?? {}), [catalog]);
     const activeCategory = category && categoryNames.includes(category) ? category : (categoryNames[0] ?? '');
-    const itemsForCategory = useMemo(() => catalog?.categories[activeCategory] ?? [], [catalog, activeCategory]);
+    const normalizedQuery = normalizeVegName(query);
+    const visibleGroups = useMemo(() => {
+        if (!catalog) {
+            return [];
+        }
+        const labels = normalizedQuery ? categoryNames : [activeCategory];
+        return labels
+            .map((label) => ({
+                label,
+                items: (catalog.categories[label] ?? []).filter(
+                    (item) => !normalizedQuery || normalizeVegName(item.name).includes(normalizedQuery),
+                ),
+            }))
+            .filter((group) => group.items.length > 0);
+    }, [catalog, categoryNames, activeCategory, normalizedQuery]);
+    const selectedByName = useMemo(() => new Map(lines.map((line) => [line.name, line])), [lines]);
+    const catalogUnits = catalog?.units?.length ? catalog.units : ['كجم', 'كيس', 'كرتونة'];
 
     useEffect(() => {
         if (open) {
@@ -170,41 +192,38 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
             setManualRows([]);
             setPriority('normal');
             setNotes('');
-            setSelected('');
             setCategory('');
-            setQty('1');
-            setUnit('كجم');
+            setQuery('');
+            setUnitOverrides({});
             setError('');
         }
     }, [open]);
 
-    // عند وصول الكتالوج: كل فئة تُعرض كما هي في الورقة الرسمية، مع الوحدة الافتراضية للصنف الملتقى
-    useEffect(() => {
-        if (!catalog) return;
-        const keys = Object.keys(catalog.categories);
-        if (keys.length && !keys.includes(category)) {
-            setCategory(keys[0] ?? '');
+    /** الكمية تُكتب مباشرة أمام الصنف — نفس فكرة الورقة الرسمية، بلا خطوة «إضافة» منفصلة. */
+    function updateQty(name: string, defaultUnit: string, raw: string): void {
+        const qtyValue = parseArabicDecimal(raw, 0);
+        if (!raw.trim() || !Number.isFinite(qtyValue) || qtyValue <= 0) {
+            setLines((previous) => previous.filter((line) => line.name !== name));
+            setError('');
+            return;
         }
-    }, [catalog]);
-
-    function addLine() {
+        setLines((previous) => [
+            ...previous.filter((line) => line.name !== name),
+            { name, qty: qtyValue, unit: unitOverrides[name] || defaultUnit || 'كجم' },
+        ]);
         setError('');
-        const q = parseArabicDecimal(qty);
-        if (!selected) {
-            setError('اختر الصنف من الكتالوج');
-            return;
-        }
-        if (!Number.isFinite(q) || q < 0) {
-            setError('أدخل كمية صحيحة (صفر يعني بلا كمية)');
-            return;
-        }
-        if (lines.some((line) => line.name === selected)) {
-            setError('الصنف موجود بالفعل في الطلب');
-            return;
-        }
-        setLines((previous) => [...previous, { name: selected, qty: q, unit: unit.trim() || 'كجم' }]);
-        setSelected('');
-        setQty('1');
+    }
+
+    function updateUnit(name: string, unitValue: string): void {
+        setUnitOverrides((previous) => ({ ...previous, [name]: unitValue }));
+        setLines((previous) => previous.map((line) => (line.name === name ? { ...line, unit: unitValue } : line)));
+    }
+
+    function clearSelection(): void {
+        setLines([]);
+        setUnitOverrides({});
+        setQuery('');
+        setError('');
     }
 
     function collectManualItems(): { ok: true; items: VegItemInput[] } | { ok: false; error: string } {
@@ -271,47 +290,104 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
             }
         >
             <form id={CREATE_FORM_ID} onSubmit={(event) => void save(event)} className="flex flex-col gap-sm">
-                <div className="grid gap-sm sm:grid-cols-[1fr_1.3fr_96px_96px]">
-                    <Select
-                        label="القسم"
-                        name="category"
-                        value={activeCategory}
-                        onValueChange={(value) => {
-                            setCategory(String(value ?? ''));
-                            setSelected('');
-                        }}
-                        options={categoryNames.map((label) => ({ label, value: label }))}
-                    />
-                    <Select
-                        label="الصنف من الكتالوج"
-                        name="item"
-                        value={selected}
-                        onValueChange={(value) => {
-                            const next = String(value ?? '');
-                            setSelected(next);
-                            const found = itemsForCategory.find((candidate) => candidate.name === next);
-                            if (found) {
-                                setUnit(found.unit);
-                            }
-                        }}
-                        options={itemsForCategory.map((item) => ({ label: `${item.name} — ${item.unit}`, value: item.name }))}
-                    />
-                    <Input
-                        label="الكمية"
-                        name="qty"
-                        type="number"
-                        min={0}
-                        step={0.001}
-                        value={qty}
-                        onChange={(e) => setQty(e.target.value)}
-                    />
-                    <Input label="الوحدة" name="unit" value={unit} onChange={(e) => setUnit(e.target.value)} placeholder="كجم" />
-                </div>
-                <div>
-                    <Button type="button" variant="secondary" size="sm" onClick={addLine}>
-                        إضافة الصنف
-                    </Button>
-                </div>
+                <section className="veg-picker" aria-label="كتالوج الأصناف">
+                    <div className="veg-picker__head">
+                        <div>
+                            <h4 className="veg-picker__title">كتالوج الأصناف</h4>
+                            <p className="veg-picker__hint">
+                                اكتب الكمية أمام كل صنف —{' '}
+                                {Object.values(catalog?.categories ?? {}).reduce((sum, items) => sum + items.length, 0)} صنفًا جاهزًا
+                            </p>
+                        </div>
+                        <input
+                            className="veg-picker__search"
+                            type="search"
+                            value={query}
+                            aria-label="بحث في الأصناف"
+                            placeholder="🔍 ابحث عن صنف…"
+                            onChange={(event) => setQuery(event.target.value)}
+                        />
+                    </div>
+
+                    <div className="veg-picker__tabs">
+                        {categoryNames.map((label) => (
+                            <button
+                                key={label}
+                                type="button"
+                                aria-pressed={label === activeCategory && !normalizedQuery}
+                                className={label === activeCategory && !normalizedQuery ? 'is-active' : ''}
+                                onClick={() => {
+                                    setCategory(label);
+                                    setQuery('');
+                                }}
+                            >
+                                {label}
+                                <span>{(catalog?.categories[label] ?? []).length}</span>
+                            </button>
+                        ))}
+                    </div>
+
+                    {catalogLoading ? <p className="veg-picker__hint">جارٍ تحميل الكتالوج…</p> : null}
+
+                    <div className="veg-picker__groups">
+                        {visibleGroups.map((group) => (
+                            <div key={group.label} className="veg-picker__group">
+                                <h5 className="veg-picker__group-title">
+                                    {group.label} <span>{group.items.length}</span>
+                                </h5>
+                                <div className="veg-picker__grid">
+                                    {group.items.map((item) => {
+                                        const line = selectedByName.get(item.name);
+                                        const chosenUnit = unitOverrides[item.name] || item.unit;
+                                        return (
+                                            <div key={item.name} className={`veg-card${line ? ' is-filled' : ''}`}>
+                                                <div className="veg-card__name">
+                                                    <span>{item.name}</span>
+                                                    <span className="veg-card__unit">{item.unit}</span>
+                                                </div>
+                                                <div className="veg-card__controls">
+                                                    <input
+                                                        type="number"
+                                                        min={0}
+                                                        step={0.001}
+                                                        inputMode="decimal"
+                                                        value={line ? String(line.qty) : ''}
+                                                        placeholder="—"
+                                                        aria-label={`كمية ${item.name}`}
+                                                        onChange={(event) => updateQty(item.name, item.unit, event.target.value)}
+                                                    />
+                                                    <select
+                                                        aria-label={`وحدة ${item.name}`}
+                                                        value={chosenUnit}
+                                                        onChange={(event) => updateUnit(item.name, String(event.target.value))}
+                                                    >
+                                                        {catalogUnits.map((unitOption) => (
+                                                            <option key={unitOption} value={unitOption}>
+                                                                {unitOption}
+                                                            </option>
+                                                        ))}
+                                                    </select>
+                                                </div>
+                                            </div>
+                                        );
+                                    })}
+                                </div>
+                            </div>
+                        ))}
+                        {!visibleGroups.length && !catalogLoading ? (
+                            <p className="veg-picker__empty">لا توجد أصناف تطابق البحث — جرّب اسمًا آخر أو أضف صنفًا يدويًا أدناه.</p>
+                        ) : null}
+                    </div>
+
+                    <div className="veg-picker__bar">
+                        <span>
+                            المختار: <b>{lines.length}</b> صنفًا
+                        </span>
+                        <button type="button" onClick={clearSelection} disabled={!lines.length && !query}>
+                            مسح الكميات
+                        </button>
+                    </div>
+                </section>
 
                 {/* ── أصناف يدوية خارج الكتالوج (زي v2) ── */}
                 <div className="rounded-md border border-dashed border-hairline p-sm">
@@ -387,33 +463,6 @@ function CreateDialog({ open, catalog, catalogLoading, pending, onClose, onSubmi
                         </ul>
                     ) : null}
                 </div>
-
-                {catalogLoading ? <p className="text-body-sm text-muted">جارٍ تحميل الكتالوج…</p> : null}
-
-                {lines.length ? (
-                    <ul className="flex flex-col gap-xxs">
-                        {lines.map((line) => (
-                            <li
-                                key={line.name}
-                                className="flex items-center justify-between gap-sm rounded-md bg-surface-sunken px-sm py-xxs text-body-sm"
-                            >
-                                <span className="text-ink">{line.name}</span>
-                                <span className="erp-numeric text-muted" dir="ltr">
-                                    {line.qty} {line.unit}
-                                </span>
-                                <button
-                                    type="button"
-                                    onClick={() => setLines((previous) => previous.filter((entry) => entry.name !== line.name))}
-                                    className="text-danger-text"
-                                >
-                                    إزالة
-                                </button>
-                            </li>
-                        ))}
-                    </ul>
-                ) : (
-                    <p className="text-body-sm text-muted">لم تُضف أصناف بعد — اختر من الكتالوج أعلاه أو أضف صنفًا يدويًا (زي v2).</p>
-                )}
 
                 <Select
                     label="الأولوية"
@@ -1619,6 +1668,21 @@ export function VegRequests() {
                                 طلب جديد
                             </Button>
                         ) : null}
+                        <Button
+                            type="button"
+                            size="sm"
+                            variant="secondary"
+                            title="نموذج فارغ لتسجيل الكميات المتاحة أمام كل صنف"
+                            onClick={() =>
+                                printSmart(
+                                    vegOrderSheetHtml({
+                                        preparedBy: String(auth.user?.name ?? auth.user?.username ?? ''),
+                                    }),
+                                )
+                            }
+                        >
+                            نموذج الطلبية
+                        </Button>
                         {isContactsAdmin ? (
                             <Button
                                 type="button"
