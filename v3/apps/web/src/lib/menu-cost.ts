@@ -25,7 +25,7 @@ export const menuCostRowSchema = z
         cost_ratio: num,
         ingredient_count: z.number().optional(),
         priced_lines: z.number().optional(),
-        pricing_status: z.enum(['priced', 'partial', 'unpriced']).optional(),
+        pricing_status: z.enum(['priced', 'estimated', 'partial', 'unpriced']).optional(),
         reason: text,
     })
     .passthrough();
@@ -60,6 +60,7 @@ export async function fetchMenuCostToday(date?: string, signal?: AbortSignal): P
 
 export const MENU_COST_STATUS_AR: Record<string, string> = {
     priced: 'مسعّر',
+    estimated: 'تقديري',
     partial: 'جزئي',
     unpriced: 'بلا تسعير',
 };

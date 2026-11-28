@@ -566,7 +566,10 @@ router.get('/menu-cost/today', jwtAuth, requireRole('manager', 'admin', 'auditor
                     const from = getUnit(line.unit);
                     const to = getUnit(inv.unit);
                     let quantityInPriceUnits;
-                    if (to) {
+                    if (perPack > 0 && from && from.family === 'count') {
+                        // «علبة/قطعة» داخل كرتون أو علبة أكبر — المتوسط للعبوة الأم.
+                        quantityInPriceUnits = Number(line.qty) / perPack;
+                    } else if (to) {
                         quantityInPriceUnits = convertQuantity(Number(line.qty), line.unit, inv.unit, {
                             inventoryWeight: Number(inv.weight || 0),
                         });
@@ -593,6 +596,8 @@ router.get('/menu-cost/today', jwtAuth, requireRole('manager', 'admin', 'auditor
             const complete = bom.length > 0 && priced === bom.length;
             const unitCost = complete ? round(cost) : null;
             const dailyCost = unitCost === null ? null : round(unitCost * qtySold);
+            const estimated = bom.some((line) => String(line.notes ?? '').includes('تقديري'));
+            const pricingStatus = bom.length === 0 ? 'unpriced' : !complete ? 'partial' : estimated ? 'estimated' : 'priced';
             return {
                 product_id: p.id,
                 name: p.name_ar || p.name_en || `#${p.id}`,
@@ -606,8 +611,8 @@ router.get('/menu-cost/today', jwtAuth, requireRole('manager', 'admin', 'auditor
                 cost_ratio: unitCost != null && Number(p.price) > 0 ? round((unitCost / Number(p.price)) * 100) : null,
                 ingredient_count: bom.length,
                 priced_lines: priced,
-                pricing_status: bom.length === 0 ? 'unpriced' : complete ? 'priced' : 'partial',
-                reason: reasons[0] ?? null,
+                pricing_status: pricingStatus,
+                reason: reasons[0] ?? (estimated ? 'كميات تقديرية — راجع الوصفة' : null),
             };
         });
 

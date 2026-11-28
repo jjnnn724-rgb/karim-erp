@@ -115,6 +115,7 @@ export function MenuCost() {
                         >
                             <option value="all">كل الأصناف</option>
                             <option value="priced">مسعّر</option>
+                            <option value="estimated">تقديري</option>
                             <option value="partial">جزئي</option>
                             <option value="unpriced">بلا تسعير</option>
                         </select>
@@ -200,9 +201,11 @@ export function MenuCost() {
                                                 variant={
                                                     row.pricing_status === 'priced'
                                                         ? 'success'
-                                                        : row.pricing_status === 'partial'
+                                                        : row.pricing_status === 'estimated'
                                                           ? 'warning'
-                                                          : 'neutral'
+                                                          : row.pricing_status === 'partial'
+                                                            ? 'warning'
+                                                            : 'neutral'
                                                 }
                                                 dot
                                             >
