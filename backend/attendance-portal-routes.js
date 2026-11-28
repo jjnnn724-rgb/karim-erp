@@ -448,26 +448,30 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
             source: 'portal',
         });
 
-        if (!result.action || result.error) {
+        if (result.error) {
             await auditAttempt({ ...auditBase, decision: 'rejected', rejectCode: 'PUNCH_ENGINE_ERROR' });
             return res.status(422).json({ ok: false, error: 'PUNCH_ENGINE_ERROR', message: 'تعذر تسجيل البصمة — راجع الإدارة' });
         }
+        // المحرك يُعيد action:null حين تكون البصمة مكررة/صف اليوم مغلقًا — هذه
+        // ليست مشكلة تقنية؛ كانت تُترجم خطأً إلى «تعذر تسجيل البصمة». نُعلنها
+        // بصمة مُتجاهَلة (ignore) بنفس عقد الاستجابة، ونُسجّلها كعملية مقبولة.
+        const action = result.action || 'ignore';
 
         await auditAttempt({
             ...auditBase,
             decision: 'accepted',
             faceDistance,
-            engine_result: { action: result.action, decision: result.decision },
+            engine_result: { action, decision: result.decision },
         });
 
         // العقد المعلن للواجهات (v2/v3): `decision` نص يُقرأ كـZod string.
         // كان يُرسل كائن `verdict` كاملًا (action/confidence/reason) فيُفشل
         // تحقق الاستجابة في v3 برسالة «استجابة الخادم تخالف العقد» رغم أن
         // البصمة نفسها كانت مسجّلة بنجاح. التفاصيل تنتقل في `decisionDetail`.
-        const decisionText = String(result.decision?.action ?? result.action ?? '');
+        const decisionText = String(result.decision?.action ?? action ?? '');
         return res.json({
             ok: true,
-            action: result.action, // 'check_in' | 'check_out' (من محرك الحضور الذكي)
+            action, // 'check_in' | 'check_out' | 'ignore' (من محرك الحضور الذكي)
             decision: decisionText,
             decisionDetail: result.decision ?? null,
             at: now.toISOString(),
@@ -564,7 +568,9 @@ function validatePunchSettingValue(key, value) {
 router.get('/settings-admin', jwtAuth, requireRole('admin', 'hr'), async (req, res, next) => {
     try {
         const { rows } = await pool.query('SELECT key, value, updated_at, updated_by FROM punch_settings ORDER BY key');
-        res.json({ ok: true, settings: rows });
+        // قائمة الاستثناءات حساسة — لا تُعرض لـ HR أو أي دور غير الأدمن.
+        const visible = req.user?.role === 'admin' ? rows : rows.filter((r) => r.key !== 'punch_geo_exempt_user_ids');
+        res.json({ ok: true, settings: visible });
     } catch (e) { next(e); }
 });
 
@@ -573,6 +579,9 @@ router.put('/settings-admin', jwtAuth, requireRole('admin', 'hr'), async (req, r
     try {
         const body = req.body || {};
         const updates = Object.entries(body).filter(([k]) => k in PUNCH_SETTING_KEYS);
+        if (req.user?.role !== 'admin' && updates.some(([k]) => k === 'punch_geo_exempt_user_ids')) {
+            return res.status(403).json({ ok: false, error: 'ADMIN_ONLY', message: 'قائمة الاستثناءات متاحة للأدمن فقط' });
+        }
         if (!updates.length) {
             return res.status(422).json({ ok: false, error: 'NO_VALID_KEYS', message: 'لا توجد مفاتيح إعدادات صالحة في الطلب' });
         }

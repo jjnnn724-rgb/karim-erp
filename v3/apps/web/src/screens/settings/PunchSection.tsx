@@ -77,10 +77,14 @@ const COORD_FIELDS = FIELDS.filter((field) => field.kind === 'coord');
 
 /** قائمة المعرّفات (مفصولة بفواصل/فراغات) — مطابقة لمنطق الخادم تمامًا. */
 function parseExemptIds(raw: string): string[] {
-    return String(raw || '')
-        .split(/[\s,]+/)
-        .map((s) => s.trim())
-        .filter(Boolean);
+    return [
+        ...new Set(
+            String(raw || '')
+                .split(/[,;\s]+/)
+                .map((s) => s.trim())
+                .filter((s) => /^\d+$/.test(s)),
+        ),
+    ];
 }
 
 interface PunchForm {
@@ -446,11 +450,21 @@ export function PunchSection() {
                     ) : null}
                     <div className="flex flex-wrap items-end gap-sm">
                         <Select
-                            label="الموظف"
+                            label="اقتراح من المستخدمين"
                             name="exempt_user"
-                            value={exemptUserId}
+                            value={users.some((u) => u.value === exemptUserId) ? exemptUserId : ''}
                             onValueChange={(value) => setExemptUserId(String(value ?? ''))}
                             options={users}
+                            containerClassName="min-w-56"
+                        />
+                        <Input
+                            label="أو أدخل أي معرّف مستخدم"
+                            name="exempt_user_id"
+                            dir="ltr"
+                            inputMode="numeric"
+                            placeholder="مثال: 1789955417831757"
+                            value={exemptUserId}
+                            onChange={(e) => setExemptUserId(e.target.value.trim())}
                             containerClassName="min-w-56"
                         />
                         <Button
@@ -460,9 +474,11 @@ export function PunchSection() {
                             loading={saveExempt.isPending}
                             onClick={() => {
                                 const id = exemptUserId.trim();
-                                if (!id) {
+                                if (!/^\d+$/.test(id) || !Number.isSafeInteger(Number(id))) {
+                                    setExemptError('أدخل معرّف مستخدم رقميًا صحيحًا');
                                     return;
                                 }
+                                setExemptError('');
                                 const merged = [...exemptIds.filter((x) => x !== id), id].join(',');
                                 saveExempt.mutate({ punch_geo_exempt_user_ids: merged });
                             }}

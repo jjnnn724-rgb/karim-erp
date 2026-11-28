@@ -116,8 +116,7 @@ describe('إعدادات البصمة — استثناء الموقع الجغر
         renderSection();
         await screen.findByText('استثناء الموقع الجغرافي');
 
-        fireEvent.click(screen.getByRole('combobox', { name: 'الموظف' }));
-        fireEvent.click(await screen.findByRole('option', { name: 'أيمن محمد (ayman)' }));
+        fireEvent.change(screen.getByLabelText('أو أدخل أي معرّف مستخدم'), { target: { value: '222' } });
         fireEvent.click(screen.getByRole('button', { name: 'استثناء' }));
 
         await waitFor(() => {
