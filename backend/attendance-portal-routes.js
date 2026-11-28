@@ -17,7 +17,10 @@ const express = require('express');
 const { pool } = require('./shared-pool');
 const { logger } = require('./logger');
 const { jwtAuth, requireRole } = require('./cashier-module/jwt-middleware');
-const { evaluatePunch, resolvePunchSettings, evaluateFaceMatch, isValidFaceDescriptor, assessTeleport, resolveDeviceBindingAction } = require('./punch-portal-logic');
+const {
+    evaluatePunch, resolvePunchSettings, parseGeoExemptUserIds,
+    evaluateFaceMatch, isValidFaceDescriptor, assessTeleport, resolveDeviceBindingAction,
+} = require('./punch-portal-logic');
 const { createRateLimiter } = require('./rate-limiter');
 
 const router = express.Router();
@@ -130,6 +133,8 @@ router.get('/status', jwtAuth, async (req, res, next) => {
             ok: true,
             enabled: settings.portalEnabled,
             geofence: settings.geofenceEnabled,
+            // استثناء فردي: يمنع العميل من طلب GPS ويمنع الخادم من تطبيق قيد الموقع.
+            geoExempt: parseGeoExemptUserIds(settings.geoExemptUserIds).has(Number(req.user.id)),
             deviceBinding: settings.deviceBinding,
             radiusMeters: settings.radiusMeters,
             hasEmployeeProfile: Boolean(employee),
@@ -159,8 +164,11 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
         const viaTunnel = Boolean(cfIp || req.headers['cf-ray']);
         const remoteIp = cfIp || req.socket?.remoteAddress || req.ip || '';
         const deviceId = String(req.headers['x-device-id'] || req.body?.deviceId || '').trim().slice(0, 80) || null;
+        // استثناء موقعي فردي (معرّف المستخدم في punch_settings) — يُحسم هنا مرة واحدة
+        // ويُمرَّر للمحرك، فلا يُطبَّق أي قيد شبكة/موقع على هذا المستخدم فقط.
+        const geoExempt = parseGeoExemptUserIds(settings.geoExemptUserIds).has(Number(req.user.id));
 
-        const loc = req.body?.location || null;
+        const loc = geoExempt ? null : (req.body?.location || null);
         // إشارات الجهاز (بلجن أندرويد v2): MOCK_APP_SELECTED = إشارة ضبط (تطبيق
         // مُختار في خيارات المطور) تُسجَّل للتدقيق ولا ترفض — الرفض القاطع يحتاج
         // دليلًا على القراءة نفسها (mocked) ويُحسم في punch-portal-logic.
@@ -184,7 +192,7 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
             boundDeviceId: null, // يُملأ بعد الربط أدناه
         };
 
-        const settings2 = { ...settings };
+        const settings2 = { ...settings, geoExempt };
         // L4: جلب الجهاز المربوط (قبل الحكم حتى يُسجَّل في التفاصيل).
         // الربط الذاتي (2026-10-04): جهاز جديد لحساب مربوط = إعادة ربط فورية بدل
         // الرفض الدائم — العطل الأصلي كان: أي reinstall/مسح بيانات/متصفح مختلف
@@ -286,7 +294,7 @@ router.post('/punch', punchLimiter, jwtAuth, requireRole('admin', 'hr', 'dept_he
         // فحص التنقل المستحيل (2026-10-01): آخر بصمة مقبولة لهذا الموظف vs الحالية —
         // قفزة آلاف الكيلومترات بدقائق = مشاركة حساب أو تزييف متنقل. يعمل فقط عند
         // تفعيل الجيوفانس (توجد إحداثيات للمقارنة) ومفتاح punch_teleport_check.
-        if (settings.teleportCheck && settings.geofenceEnabled
+        if (settings.teleportCheck && settings.geofenceEnabled && !geoExempt
             && Number.isFinite(verdict.details.bestLat) && Number.isFinite(verdict.details.bestLng)) {
             try {
                 const last = (await pool.query(
@@ -510,6 +518,7 @@ router.post('/punch/client-reject', punchLimiter, jwtAuth, requireRole('admin', 
 const PUNCH_SETTING_KEYS = {
     punch_portal_enabled:   { type: 'bool' },
     punch_geofence_enabled: { type: 'bool' },
+    punch_geo_exempt_user_ids: { type: 'csvIds' },
     punch_device_binding:   { type: 'bool' },
     punch_device_auto_rebind: { type: 'bool' },
     punch_selfie_enabled:   { type: 'bool' },
@@ -529,6 +538,12 @@ const PUNCH_SETTING_KEYS = {
 function validatePunchSettingValue(key, value) {
     const spec = PUNCH_SETTING_KEYS[key];
     if (!spec) {return { error: 'UNKNOWN_KEY' };}
+    if (spec.type === 'csvIds') {
+        if (value === null || value === undefined || String(value).trim() === '') {return { value: '' };}
+        const ids = parseGeoExemptUserIds(value);
+        if (ids.size > 100) {return { error: 'TOO_MANY_IDS' };}
+        return { value: [...ids].join(',') };
+    }
     if (spec.type === 'bool') {
         if (typeof value === 'boolean') {return { value: String(value) };}
         const s = String(value).trim().toLowerCase();

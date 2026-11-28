@@ -254,9 +254,21 @@ function resolvePunchSettings(rows, env = {}) {
         teleportCheck: boolOr(kv.punch_teleport_check, true),
         maxTeleportKmh: /** @type {number} */ (numOr(kv.punch_max_teleport_kmh, 250)),
         radiusMeters: /** @type {number} */ (numOr(kv.punch_radius_meters, 120)),
+        // معرّفات المستخدمين المستثنين من قيد الموقع — تُقرأ كنص خام ثم تُحلَّل صراحةً.
+        geoExemptUserIds: String(kv.punch_geo_exempt_user_ids ?? ''),
         lat: coordsSet ? lat : null,
         lng: coordsSet ? lng : null,
     };
+}
+
+/** CSV/مسافات → مجموعة معرّفات موجبة. أي قيمة غير رقمية تُتجاهل بأمان. */
+function parseGeoExemptUserIds(raw) {
+    const ids = new Set();
+    for (const part of String(raw ?? '').split(/[,;\s]+/)) {
+        const n = Number(part);
+        if (Number.isInteger(n) && n > 0) { ids.add(n); }
+    }
+    return ids;
 }
 
 // ─── تحصين الموقع (multi-fix): كشف التجميد/الانتقال المستحيل/التشتت ─────────
@@ -572,8 +584,11 @@ function evaluatePunch(settings, req) {
     //    إثبات الموقع؛ مع تعطيل الجيوفانس تُرفض (لا بصمة عن بُعد بلا إثبات مكان).
     const viaTunnel = req.viaTunnel === true;
     details.networkOk = viaTunnel || isInternalIp(req.remoteIp);
-    if (!details.networkOk || (viaTunnel && !settings.geofenceEnabled)) {
+    if (!details.networkOk || (viaTunnel && !settings.geofenceEnabled && !settings.geoExempt)) {
         return { decision: 'rejected', rejectCode: 'PUNCH_OUT_OF_NETWORK', details };
+    }
+    if (settings.geoExempt) {
+        details.trustSignals = [...(details.trustSignals || []), 'GEO_EXEMPT'];
     }
 
     // تحصين الموقع: تطبيع الإصلاحات (متعددة أو أحادية للتوافق القديم)
@@ -582,7 +597,7 @@ function evaluatePunch(settings, req) {
     details.fixCount = fixes.length;
 
     // 2-5. الطبقات الجغرافية — تعمل فقط إذا فُعّلت إداريًا (وقُطبت الإحداثيات)
-    if (settings.geofenceEnabled) {
+    if (settings.geofenceEnabled && !settings.geoExempt) {
         if (settings.lat == null || settings.lng == null) {
             return { decision: 'rejected', rejectCode: 'PUNCH_GEOFENCE_NOT_CONFIGURED', details };
         }
@@ -699,6 +714,7 @@ module.exports = {
     isWithinRadius,
     isInternalIp,
     resolvePunchSettings,
+    parseGeoExemptUserIds,
     normalizeFixes,
     assessFixQuality,
     assessFixRealism,

@@ -262,7 +262,7 @@ export function EmployeePortal() {
 
         let fixes: Awaited<ReturnType<typeof collectLocationFixes>> = null;
         let mockSignals: Awaited<ReturnType<typeof nativeMockSignals>> = null;
-        if (isOn(status.geofence)) {
+        if (isOn(status.geofence) && !isOn(status.geoExempt)) {
             setPunchStage('تحديد الموقع 0/6…');
             const [collected, signals] = await Promise.all([
                 collectLocationFixes((done, total, accuracy) => {
@@ -587,7 +587,11 @@ export function EmployeePortal() {
                                                 {punch.isPending ? 'جارٍ تسجيل البصمة…' : 'تسجيل البصمة الآن'}
                                             </button>
                                             <p className="portal-punch__cta-note">
-                                                {isOn(status.faceEnabled) ? 'سيُطلب تأكيد الوجه ثم الموقع' : 'سيُقرأ موقعك لحظة البصمة فقط'}
+                                                {isOn(status.geoExempt)
+                                                    ? 'مستثنى من قيد الموقع — البصمة من أي مكان، وباقي طبقات الأمان سارية'
+                                                    : isOn(status.faceEnabled)
+                                                      ? 'سيُطلب تأكيد الوجه ثم الموقع'
+                                                      : 'سيُقرأ موقعك لحظة البصمة فقط'}
                                             </p>
                                         </>
                                     )}

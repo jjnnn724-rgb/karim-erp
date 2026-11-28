@@ -197,6 +197,7 @@ export const portalStatusSchema = z
         ok: boolLike,
         enabled: boolLike,
         geofence: boolLike,
+        geoExempt: boolLike,
         deviceBinding: boolLike,
         radiusMeters: numLike,
         hasEmployeeProfile: boolLike,

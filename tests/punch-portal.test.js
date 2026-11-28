@@ -11,6 +11,7 @@ const {
     haversineMeters,
     isInternalIp,
     resolvePunchSettings,
+    parseGeoExemptUserIds,
     evaluatePunch,
 } = require('../backend/punch-portal-logic');
 
@@ -94,6 +95,27 @@ describe('resolvePunchSettings — الإعدادات المولودة مغلق�
         ]);
         expect(s.lat).toBeNull();
         expect(s.lng).toBeNull();
+    });
+});
+
+describe('استثناء الموقع الجغرافي', () => {
+    test('قائمة الاستثناء تُحلَّل بأمان (فواصل/مسافات/قيم غلط)', () => {
+        const ids = parseGeoExemptUserIds('1789955417831757, 42; abc  7');
+        expect(ids.has(1789955417831757)).toBe(true);
+        expect(ids.has(42)).toBe(true);
+        expect(ids.has(7)).toBe(true);
+        expect(ids.size).toBe(3);
+    });
+    test('المستثنى يُقبل من أي IP وبلا موقع — وباقي الطبقات ما زالت سارية', () => {
+        const r = evaluatePunch({ ...baseSettings, geoExempt: true }, {
+            ...baseReq, remoteIp: '156.203.44.10', viaTunnel: true, location: null,
+        });
+        expect(r.decision).toBe('accepted');
+        expect(r.details.trustSignals).toContain('GEO_EXEMPT');
+    });
+    test('غير المستثنى يبقى مرفوضًا بنفس الظروف', () => {
+        const r = evaluatePunch(baseSettings, { ...baseReq, remoteIp: '156.203.44.10', viaTunnel: true, location: null });
+        expect(r.rejectCode).toBe('PUNCH_LOCATION_REQUIRED');
     });
 });
 
